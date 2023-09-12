@@ -1,0 +1,66 @@
+[build-system]
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plaid"
+authors = [{name = "Safran", email = "fabien.casenave@safrangroup.com"}]
+description = "A package that implements a data model tailored for AI and ML in the context of physics problems"
+requires-python = ">=3.11"
+keywords=[
+    "machine learning",
+    "physics",
+    "data-model",
+    "Safran",
+]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "rich",
+    "tqdm",
+    "pyyaml",
+    "pycgns",
+    "numpy",
+    "scipy",
+    "pyvista",
+    "h5py",
+]
+
+dynamic = ["version"]
+
+[tool.setuptools_scm]
+write_to = "src/plaid/_version.py"
+
+[project.urls]
+homepage = "https://gitlab.com/drti/plaid"
+documentation = "https://plaid.readthedocs.io/en/latest/"
+repository = "https://gitlab.com/drti/plaid"
+
+[project.license]
+text="BSD 3-Clause License"
+files=["LICENSE.txt"]
+
+[project.readme]
+file="README.md"
+content-type = "text/markdown"
+
+[tool.setuptools]
+platforms = [
+    "Linux",
+    "Mac OS-X",
+    "Unix",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["plaid"]

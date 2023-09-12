@@ -1,0 +1,25 @@
+name: plaid
+
+channels:
+  - conda-forge
+  - nodefaults
+
+dependencies:
+#---# basic python
+  - ipython  # for notebooks
+  - ipykernel # for notebooks
+  - jupyter # for notebooks
+  - jupyterlab # for notebooks
+  - notebook # for notebooks
+  # - sh
+  - rich # for notebooks
+  - tqdm # for notebooks
+  - pyyaml
+  - pycgns
+
+#---# science
+  - numpy
+#---# mesh/graph libs
+  - basictools>=1.9
+  - pyvista # for notebooks
+  - h5py # for notebooks

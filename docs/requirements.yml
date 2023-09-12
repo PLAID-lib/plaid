@@ -1,0 +1,22 @@
+name: plaid
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - rich
+  - tqdm
+  - pyyaml
+  - pycgns
+  - numpy
+  - basictools>=1.9.9
+  - pyvista
+  - h5py
+  - myst-nb
+  - myst-parser
+  - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
+  - graphviz
+  - pyment
+  - sphinx
+  - pip:
+    - sphinx-autoapi
+    - furo
