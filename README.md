@@ -56,7 +56,7 @@ Writing code isn’t the only way to contribute to PLAID. You can also:
 - review pull requests
 - help us stay on top of new and old issues
 - develop tutorials, presentations, and other educational materials
-- maintain and improve [our documentaion](https://plaid-lib.readthedocs.io/)
+- maintain and improve [our documentation](https://plaid-lib.readthedocs.io/)
 - help with outreach and onboard new contributors
 
 If you are new to contributing to open source, [this guide](https://opensource.guide/how-to-contribute/) helps explain why, what,
@@ -64,4 +64,4 @@ and how to successfully get involved.
 
 ## 4. Documentation
 
-A documentation is available in readthedocs.
+A documentation is available in [readthedocs](https://plaid-lib.readthedocs.io/).
