@@ -61,7 +61,7 @@ dependencies:
   - meshio
   - trimesh
   - networkx
-  - basictools>=1.9
+  - basictools>=1.9.9
   - pyvista<=0.38
   - h5py
   - pycgns

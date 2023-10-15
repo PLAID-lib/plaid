@@ -24,6 +24,3 @@ The datamodel heavily relies on CGNS, see [Seven keys for practical understandin
 
 
 You may see example usage of each class in the `examples` folder
-
-
-You can even find some nicely auto generated diagrams of classes and packages in [here](diagrams.rst)

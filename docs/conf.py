@@ -39,9 +39,6 @@ project = 'plaid-lib'
 copyright = '2023-{}, Safran'.format(datetime.date.today().year)
 author = 'Safran'
 
-# # The full version, including alpha/beta/rc tags
-# release = '0.0.1'
-
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
