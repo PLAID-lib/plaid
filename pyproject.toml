@@ -63,4 +63,4 @@ platforms = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["plaid"]
+include = ["plaid*"]
