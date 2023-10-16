@@ -5,5 +5,9 @@
 #
 #
 
+try:
+    from ._version import __version__
+except ImportError:
+    __version__ = "None"
 
-__version__ = "0.0.2"
+__all__ = ["__version__"]
