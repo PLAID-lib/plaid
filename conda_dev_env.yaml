@@ -5,23 +5,11 @@ channels:
   - nodefaults
 
 dependencies:
+  - python>=3.11
 #---# basic python
   - pip
-  - mamba
-  - conda-pack
-  - ipython
-  - ipykernel
-  - jupyter
-  - jupyterlab
-  - notebook
-  # - sh
-  - rich
-  - python-dotenv
   - tqdm
   - setuptools
-  - pybind11
-  - pyyaml
-  - scalene
 #---# formatting
   - autopep8
   - black
@@ -31,37 +19,18 @@ dependencies:
   - pytest-cov
   - pytest-xdist
   - hypothesis
-  - mypy
-  - pytest-mypy
-  - types-setuptools
-  - types-toml
+#---# io
+  - pyyaml
 #---# doc
   - sphinx
-  - sphinx-autoapi
-  - furo
-  - sphinx_rtd_theme
-  - sphinxcontrib-bibtex
-  - sphinxcontrib-apidoc
   - myst-nb
   - myst-parser
   - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
-  - graphviz
-  - pyment
-
 #---# science
   - numpy
-  - einops
-  - scipy
-#---# visu
-  - matplotlib
-  - seaborn
 #---# mesh/graph libs
-  - gmsh
-  - python-gmsh
-  - meshio
-  - trimesh
-  - networkx
   - basictools>=1.9.9
-  - pyvista<=0.38
-  - h5py
   - pycgns
+  - pip:
+    - sphinx-autoapi
+    - furo

@@ -26,14 +26,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "rich",
     "tqdm",
     "pyyaml",
     "pycgns",
     "numpy",
-    "scipy",
-    "pyvista",
-    "h5py",
 ]
 
 dynamic = ["version"]

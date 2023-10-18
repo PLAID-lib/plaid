@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 PLAID documentation
-=================
+===================
 
 This library proposes an implementation for a datamodel tailored for AI and ML learning of physics problems.
 It has been developped at SafranTech, the research center of `Safran group <https://www.safran-group.com/>`_
@@ -18,7 +18,6 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
 
    source/getting_started.md
    source/tutorial.md
-   .. source/notebooks.rst
 
 .. _Advanced:
 
@@ -27,23 +26,16 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
    :maxdepth: 1
    :caption: Advanced
 
-   .. source/impl_details.md
-
    source/contributing.md
-   .. source/diagrams.rst
 
 .. toctree::
    :glob:
    :maxdepth: 1
    :caption: API
 
-   plaid.Dataset <autoapi/plaid/containers/dataset/index>
-   plaid.Sample <autoapi/plaid/containers/sample/index>
    autoapi/plaid/index
-..    autoapi/examples/index
-..    autoapi/tests/index
+   autoapi/examples/index
 
-.. `Coverage Report <coverage/index.html>`_
 
 Indices and tables
 ==================
@@ -51,3 +43,9 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+
+.. plaid.Dataset <autoapi/plaid/containers/dataset/index>
+.. plaid.Sample <autoapi/plaid/containers/sample/index>
+.. autoapi/tests/index

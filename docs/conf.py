@@ -67,10 +67,10 @@ extensions = [
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'pytest': ('https://pytest.org/en/stable/', None),
-    'ipykernel': ('https://ipykernel.readthedocs.io/en/latest/', None),
+    # 'ipykernel': ('https://ipykernel.readthedocs.io/en/latest/', None),
     'numpy': ('https://numpy.org/doc/stable/', None),
-    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
-    'matplotlib': ('http://matplotlib.org/', None),
+    # 'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+    # 'matplotlib': ('http://matplotlib.org/', None),
     # 'torch': ('https://pytorch.org/docs/stable/', None),
     # 'dgl': ('https://docs.dgl.ai/', None),
     # 'torch_geometric': ('https://pytorch-geometric.readthedocs.io/en/latest/', None),
@@ -118,8 +118,8 @@ autosummary_generate = True
 # autoapi options :
 # https://sphinx-autoapi.readthedocs.io/en/latest/tutorials.html#setting-up-automatic-api-documentation-generation
 extensions.append('autoapi.extension')
-autoapi_dirs = ['../src/plaid']
-# autoapi_dirs = ['../src/plaid', '../tests', '../examples']
+# autoapi_dirs = ['../src/plaid']
+autoapi_dirs = ['../src/plaid', '../tests', '../examples']
 autoapi_type = 'python'
 autoapi_options = ['show-inheritance', 'show-module-summary', 'undoc-members']
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members']
@@ -185,7 +185,7 @@ html_theme_options = {
     "source_directory": "docs/",
     # "source_directory": "docs/source",
     # "source_directory": "source",
-    'logo_only': True,
+    # 'logo_only': True,
 }
 
 github_url = 'https://gitlab.com/drti/plaid'
