@@ -3,20 +3,32 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - rich
+  - python>=3.11
+#---# basic python
+  - pip
   - tqdm
+  - setuptools
+#---# formatting
+  - autopep8
+  - black
+  - yapf
+#---# test
+  - pytest
+  - pytest-cov
+  - pytest-xdist
+  - hypothesis
+#---# io
   - pyyaml
-  - pycgns
-  - numpy
-  - basictools>=1.9.9
-  - pyvista
-  - h5py
+#---# doc
+  - sphinx
   - myst-nb
   - myst-parser
   - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
-  - graphviz
-  - pyment
-  - sphinx
+#---# science
+  - numpy
+#---# mesh/graph libs
+  - basictools>=1.9.9
+  - pycgns
   - pip:
     - sphinx-autoapi
     - furo

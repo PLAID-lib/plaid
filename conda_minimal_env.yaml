@@ -5,21 +5,10 @@ channels:
   - nodefaults
 
 dependencies:
-#---# basic python
-  - ipython  # for notebooks
-  - ipykernel # for notebooks
-  - jupyter # for notebooks
-  - jupyterlab # for notebooks
-  - notebook # for notebooks
-  # - sh
-  - rich # for notebooks
-  - tqdm # for notebooks
+  - python>=3.11
+  - tqdm
   - pyyaml
   - pycgns
-
-#---# science
   - numpy
-#---# mesh/graph libs
-  - basictools>=1.9
-  - pyvista # for notebooks
-  - h5py # for notebooks
+  - basictools>=1.9.9
+  - pytest

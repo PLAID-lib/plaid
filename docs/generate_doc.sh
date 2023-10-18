@@ -13,10 +13,10 @@ rm -rf _extra/coverage
 cp -r ../public/coverage _extra/coverage
 
 #---# Copy diagrams in local
-rm -rf _extra/diagrams
-cp -r ../public/diagrams _extra/diagrams
-rm -rf source/additional/diagrams
-cp -r ../public/diagrams source/additional/diagrams
+# rm -rf _extra/diagrams
+# cp -r ../public/diagrams _extra/diagrams
+# rm -rf source/additional/diagrams
+# cp -r ../public/diagrams source/additional/diagrams
 
 # #---# Copy notebooks in local
 # rm -rf source/additional/notebooks
@@ -34,9 +34,9 @@ cp -r ../public/diagrams source/additional/diagrams
 echo "";echo "#---# ls -lAh source/"
 ls -lAh source/
 echo "";echo "#---# ls -lAh source/additional/*"
-ls -lAh source/additional/*
-echo "";echo "#---# ls -lAh _extra/diagrams/*"
-ls -lAh _extra/diagrams/*
+# ls -lAh source/additional/*
+# echo "";echo "#---# ls -lAh _extra/diagrams/*"
+# ls -lAh _extra/diagrams/*
 # echo "";echo "#---# ls -lAh api_reference/"
 # ls -lAh api_reference/
 # cat api_reference/*/module*
