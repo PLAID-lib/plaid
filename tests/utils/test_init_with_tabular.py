@@ -10,7 +10,7 @@
 import numpy as np
 import pytest
 
-from plaid.utils.init import initialize_dataset_with_tabular_data
+from plaid.utils.init_with_tabular import initialize_dataset_with_tabular_data
 
 # %% Fixtures
 
