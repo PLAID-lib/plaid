@@ -15,8 +15,31 @@ from plaid.utils.split import split_dataset
 # %% Functions
 
 
-def main():
+def split_examples():
+    """
+    This function shows the usage of dataset splitting functions.
 
+    Example Usage:
+
+    1. Initializing a Dataset:
+    - Create a dataset with random tabular data for testing purposes.
+
+    2. Splitting a Dataset with ratios:
+    - Split the dataset into training, validation, and test sets using specified ratios.
+    - Shuffle the dataset if desired.
+
+    3. Splitting a Dataset with fixed sizes:
+    - Split the dataset into training, validation, and test sets with fixed sample counts for each set.
+    - Shuffle the dataset if desired.
+
+    4. Splitting a Dataset with custom split IDs:
+    - Split the dataset based on custom sample IDs for each set.
+    - Specify the sample IDs for training, validation, and prediction sets.
+
+    This function provides examples of using dataset splitting functions to divide a dataset into training,
+    validation, and test sets, offering flexibility in the splitting process. It is intended for documentation
+    purposes and familiarization with the PLAID library.
+    """
     # %% Initialize Dataset
     print("# Initialize Dataset")
     nb_scalars = 7
@@ -70,4 +93,4 @@ def main():
 
 # %% Main Script
 if __name__ == '__main__':
-    main()
+    split_examples()
