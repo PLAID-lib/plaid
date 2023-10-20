@@ -17,7 +17,6 @@ from BasicTools.Containers.UnstructuredMesh import UnstructuredMesh
 
 # %% Functions
 
-
 def generate_random_ASCII(size=16) -> str:
     """Generate a random ASCII string of the specified size.
 
@@ -39,14 +38,12 @@ def generate_random_ASCII(size=16) -> str:
 
 # %% Classes
 
-
 BTMesh = Union[UnstructuredMesh, ConstantRectilinearMesh]
 """A BTMesh is an Union[UnstructuredMesh, ConstantRectilinearMesh]
 """
 Filter = Union[ElementFilter, NodeFilter]
 """A Filter is an Union[ElementFilter, NodeFilter]
 """
-
 
 class NotAllowedError(Exception):
     """Exception for not allowed usage."""
@@ -56,26 +53,3 @@ class NotAllowedError(Exception):
 class ShapeError(Exception):
     """Exception for badly shaped tensors."""
     pass
-
-
-class IdentifierError(Exception):
-    """Exception for unavailable ``feature``/``storage`` with given ``identifier``."""
-    pass
-
-# TODO: use it instead of tuples (feature_type:str, feature_name:str)
-
-
-class FeatureIndentifier(TypedDict):
-    """Uniquely identifies ``feature``/``storage``."""
-    type: str
-    name: str
-
-# TODO: use it instead of tuples (feature_type:str, feature_name:str,
-# value_id:int)
-
-
-class ValueIndentifier(TypedDict):
-    """Uniquely identifies a ``value`` in a ``storage``."""
-    type: str
-    name: str
-    id: int
