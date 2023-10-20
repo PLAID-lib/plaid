@@ -16,8 +16,30 @@ from plaid.utils.stats import OnlineStatistics, Stats
 # %% Functions
 
 
-def main():
+def stats_examples():
+    """
+    This function shows the usage and functionality of statistics calculation classes.
 
+    Example Usage:
+
+    1. OnlineStatistics Class:
+    - Initialize an OnlineStatistics object.
+    - Calculate statistics for an empty dataset.
+    - Add the first batch of samples and update statistics.
+    - Add the second batch of samples and update statistics.
+    - Combine and recompute statistics for all samples.
+
+    2. Stats Class:
+    - Initialize a Stats object to collect statistics.
+    - Create and add samples with scalar and field data.
+    - Retrieve and display the calculated statistics.
+    - Add more samples with varying field sizes and update statistics.
+    - Retrieve and display the updated statistics.
+
+    This function provides examples of utilizing the OnlineStatistics and Stats classes
+    to compute statistics from sample data, including scalars and fields. It is intended
+    for documentation purposes and familiarization with the PLAID library.
+    """
     # %%
     print(f"#---# Initialize OnlineStatistics")
     stats_computer = OnlineStatistics()
@@ -102,4 +124,4 @@ def main():
 
 # %% Main Script
 if __name__ == '__main__':
-    main()
+    stats_examples()

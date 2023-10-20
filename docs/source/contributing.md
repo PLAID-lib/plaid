@@ -1,4 +1,4 @@
-# Contributing to PLAID Project
+# Contributing to PLAID
 
 Thank you for your interest in contributing to PLAID Project! We welcome contributions from the community to help make this project even better.
 
@@ -6,7 +6,7 @@ Thank you for your interest in contributing to PLAID Project! We welcome contrib
 
 Everything you need to know if you want to contribute.
 
-- [Contributing to PLAID Project](#contributing-to-plaid-project)
+- [Contributing to PLAID](#contributing-to-plaid)
   - [Summary](#summary)
   - [1. Before contributing](#1-before-contributing)
   - [2. Reporting Issues](#2-reporting-issues)

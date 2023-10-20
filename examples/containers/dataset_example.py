@@ -20,8 +20,31 @@ from plaid.containers.sample import Sample
 # %% Functions
 
 
-def main():
+def dataset_examples():
+    """
+    This function shows various use cases for the Dataset classe.
 
+    Example Usage:
+
+    1. Initializing an Empty Dataset and Adding Samples:
+    - Initialize an empty Dataset and add Samples.
+
+    2. Retrieving and Manipulating Samples:
+    - Create and add Samples to the Dataset.
+    - Add tree structures and scalars to Samples.
+    - Retrieve and manipulate Sample data within the Dataset.
+
+    3. Performing Operations on the Dataset:
+    - Add Samples to the Dataset, add information, and access data.
+    - Perform operations like merging datasets, adding tabular scalars, and setting information.
+
+    4. Saving and Loading Datasets:
+    - Save and load datasets from directories or files.
+
+    This function provides detailed examples of using the Dataset class to manage data, samples,
+    and information within the dataset. It is intended for documentation purposes and
+    familiarization with the PLAID library.
+    """
     # %% Init
 
     print("#---# Empty Dataset")
@@ -29,6 +52,7 @@ def main():
     print(f"{dataset=}")
 
     # %% Feed Samples
+    # Example of creating Samples.
 
     points = np.array([
         [0.0, 0.0],
@@ -85,6 +109,7 @@ def main():
     print(f"{sample_03.get_scalar_names()=}")
 
     # %% Feed Dataset
+    # Example of adding Samples to the Dataset, adding information, and accessing data.
 
     dataset.set_sample(id=0, sample=sample_01)
     dataset.set_sample(id=1, sample=sample_02)
@@ -146,6 +171,9 @@ def main():
     print("dataset.get_scalars_to_tabular():")
     print(dataset.get_scalars_to_tabular())
 
+    # %% Various operations on the Dataset
+    # Example of operations like merging datasets, adding tabular scalars, and setting information.
+
     print()
     print("===")
     other_dataset = Dataset()
@@ -187,6 +215,10 @@ def main():
 
     print()
     print("===")
+
+    # %% Saving and Loading Dataset
+    # Example of saving and loading a dataset from a directory or file.
+
     tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(1e10,1e12)}'
     print(f"Test save in: {tmpdir}")
     dataset._save_to_dir_(tmpdir)
@@ -194,9 +226,19 @@ def main():
 
     print()
     print("===")
-    dataset2 = Dataset()
-    dataset2._load_from_dir_(tmpdir)
+    dataset2 = Dataset(tmpdir)
     print(f"{dataset2=}")
+
+    print()
+    print("===")
+    dataset3 = Dataset.load_from_dir(tmpdir)
+    print(f"{dataset3=}")
+
+    print()
+    print("===")
+    dataset4 = Dataset()
+    dataset4._load_from_dir_(tmpdir)
+    print(f"{dataset4=}")
 
     print()
     print("===")
@@ -204,6 +246,7 @@ def main():
     tmpfile = os.path.join(tmpdir, 'test_file.plaid')
     print(f"Test save in: {tmpfile}")
     dataset.save(tmpfile)
+
     # print(f"{os.listdir(tmpdir)=}")
     new_dataset = Dataset()
     new_dataset.load(tmpfile)
@@ -213,7 +256,7 @@ def main():
 
 # %% Main Script
 if __name__ == '__main__':
-    main()
+    dataset_examples()
 
     print()
     print("#==============#")

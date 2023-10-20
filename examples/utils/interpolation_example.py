@@ -18,8 +18,36 @@ from plaid.utils.interpolation import (
 # %% Functions
 
 
-def main():
+def interpolation_examples():
+    """
+    This function shows the usage and functionality of interpolation functions.
 
+    Example Usage:
+
+    1. Piece-wise linear interpolation:
+    - Interpolate values using piece-wise linear interpolation.
+    - Test interpolation for various inputs and compare results.
+
+    2. Piece-wise linear interpolation with mapping:
+    - Interpolate values using piece-wise linear interpolation with mapping to named vectors.
+    - Ensure accurate interpolation for different inputs.
+
+    3. Vectorized interpolation with mapping:
+    - Perform vectorized piece-wise linear interpolation with mapping.
+    - Validate the accuracy of the interpolation results.
+
+    4. Vectorized interpolation:
+    - Perform vectorized piece-wise linear interpolation for arrays of values.
+    - Validate the accuracy of the interpolation results.
+
+    5. Binary Search:
+    - Apply binary search to find indices for given values within a reference list.
+    - Compare the results of binary search with expected indices.
+
+    This function provides comprehensive examples and tests for interpolation functions,
+    including piece-wise linear interpolation, interpolation with mapping, vectorized interpolation,
+    and binary search. It is intended for documentation purposes and familiarization with the PLAID library.
+    """
     time_indices = np.array([0.0, 1.0, 2.5])
     vectors = np.array([np.ones(5), 2.0 * np.ones(5), 3.0 * np.ones(5)])
     vectors_dict = {}
@@ -109,7 +137,7 @@ def main():
 
 # %% Main Script
 if __name__ == '__main__':
-    main()
+    interpolation_examples()
 
     print()
     print("#==============#")

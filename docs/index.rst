@@ -17,7 +17,7 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
    :caption: Getting Started
 
    source/getting_started.md
-   source/tutorial.md
+   source/description.md
 
 .. _Advanced:
 
@@ -33,9 +33,8 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
    :maxdepth: 1
    :caption: API
 
-   autoapi/plaid/index
-   autoapi/examples/index
-
+   plaid-lib <autoapi/plaid/index>
+   Basic examples <source/notebooks.rst>
 
 Indices and tables
 ==================
