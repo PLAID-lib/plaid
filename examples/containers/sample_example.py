@@ -16,9 +16,29 @@ from plaid.containers.sample import Sample, show_cgns_tree
 # %% Functions
 
 
-def main():
+def sample_examples():
+    """
+    This function shows the usage of various operations and methods involving a sample data structure.
 
-    # %%
+    Example Usage:
+
+    1. Initializing an Empty Sample and Adding Data:
+    - Initialize an empty Sample and add scalars and time series data.
+
+    2. Accessing and Modifying Sample Data:
+    - Add scalar and field data to the Sample.
+    - Access and modify scalar and field data within the Sample.
+
+    3. Creating a Sample Hierarchy:
+    - Create a sample hierarchy with bases, zones, and associated data.
+
+    4. Saving and Loading Samples:
+    - Save and load Samples from files or directories.
+
+    This function provides detailed examples of using the Sample class to manage and manipulate
+    sample data structures. It is intended for documentation purposes and familiarization with
+    the PLAID library.
+    """
 
     # %% Input data
     points = np.array([
@@ -183,14 +203,25 @@ def main():
     print()
     print("-" * 80)
     print("--- new_sample.load(os.path.join(test_pth, 'test'))")
+    new_sample = Sample(os.path.join(test_pth, 'test'))
+    new_sample.show_tree()
+
+    print()
+    print("-" * 80)
+    print("--- new_sample.load(os.path.join(test_pth, 'test'))")
     new_sample = Sample()
     new_sample.load(os.path.join(test_pth, 'test'))
     new_sample.show_tree()
 
+    print()
+    print("-" * 80)
+    new_sample_2 = Sample.load_from_dir(os.path.join(test_pth, 'test'))
+    new_sample_2.show_tree()
+
 
 # %% Main Script
 if __name__ == '__main__':
-    main()
+    sample_examples()
 
     print()
     print("-" * 80)

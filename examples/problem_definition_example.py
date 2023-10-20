@@ -18,8 +18,28 @@ from plaid.utils.split import split_dataset
 # %% Functions
 
 
-def main():
+def problem_definition_examples():
+    """
+    This function shows the usage of a ProblemDefinition class for defining machine learning problems.
 
+    Example Usage:
+
+    1. Initializing an empty ProblemDefinition:
+    - Create an empty ProblemDefinition object.
+    - Add input and output variables to the problem definition.
+
+    2. Configuring Problem characteristics:
+    - Set the task type (e.g., regression) for the problem definition.
+    - Define a dataset split configuration and associate it with the problem.
+
+    3. Saving and loading Problem Definitions:
+    - Save the problem definition to a directory.
+    - Load a saved problem definition from a directory for later use.
+
+    This function provides examples of using the ProblemDefinition class to define machine learning problems,
+    configure characteristics, and save/load problem definitions. It is intended for documentation and educational
+    purposes.
+    """
     # %% Init
 
     print("#---# Empty ProblemDefinition")
@@ -66,10 +86,15 @@ def main():
     problem._load_from_dir_(test_pth)
     print(problem)
 
+    print()
+    print("-" * 80)
+    problem = ProblemDefinition(test_pth)
+    print(problem)
+
 
 # %% Main Script
 if __name__ == '__main__':
-    main()
+    problem_definition_examples()
 
     print()
     print("#==============#")
