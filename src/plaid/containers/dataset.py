@@ -69,7 +69,7 @@ class Dataset(object):
                 >>> 0
 
                 # 2. Load dataset and create Dataset instance
-                dataset = Dataset("path_to_plaid_dataset")
+                dataset = Dataset("path_to_plaid_dataset") # .plaid or directory
                 print(dataset)
                 >>> Dataset(3 samples, 2 scalars, 5 fields)
                 print(len(dataset))
@@ -84,7 +84,11 @@ class Dataset(object):
         self._infos: dict[str, dict[str, str]] = {}
 
         if directory_path is not None:
-            self._load_from_dir_(directory_path)
+            extenstion = directory_path.split(".")[-1]
+            if extenstion == "plaid":
+                self.load(directory_path)
+            else:
+                self._load_from_dir_(directory_path)
 
     # -------------------------------------------------------------------------#
     def get_samples(self, ids: list[int] = None,
@@ -470,7 +474,7 @@ class Dataset(object):
             TFormat.II()
             for info in infos:
                 tf += TFormat.GetIndent() + TFormat.InGreen(info) + ":" + \
-                    self._infos[cat][info] + '\n'
+                    str(self._infos[cat][info]) + '\n'
             TFormat.DI()
         tf += TFormat.Center('') + '\n'
         print(tf)
@@ -757,8 +761,8 @@ class Dataset(object):
             ValueError: If the 'id' inside a sample is negative (id >= 0 is required).
             TypeError: If 'sample' parameter is not of type Sample.
 
-        Warning:
-            Deprecated, prefer using _set_samples instead.
+        Caution:
+            In case of conflict, the existing samples will be overwritten.
         """
         if not (isinstance(id, int)):
             raise TypeError(

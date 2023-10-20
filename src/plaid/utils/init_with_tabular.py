@@ -60,8 +60,8 @@ def initialize_dataset_with_tabular_data(
             sample.add_scalar(scalar_name, value[i])
         dataset.add_sample(sample)
 
-    logger.info(
-        "Pour l'instant on boucle sur les samples, il y a probablement mieux à faire, mais l'API est simple")
+    # TODO:
+    # logger.info("Pour l'instant on boucle sur les samples, il y a probablement mieux à faire, mais l'API est simple")
 
     return dataset
 

@@ -5,22 +5,40 @@ Everything you need to know to start using the PLAID.
 ---
 
 - [Getting Started](#getting-started)
-  - [1. Installation](#1-installation)
+  - [1. Install guide](#1-install-guide)
+    - [1.1 Using the library](#11-using-the-library)
+    - [1.2 Contributing to the library](#12-contributing-to-the-library)
   - [2. Test installation](#2-test-installation)
 
 ---
 
-## 1. Installation
+## 1. Install guide
 
-To use the library, you need to clone the repo using git, and install the package by either updating you PYTHONPATH, or using
+### 1.1 Using the library
+
+To use the library, the simplest way is to install the conda package:
+
+```bash
+conda install -c conda-forge plaid
+```
+
+Alternatively, you can configure an environment manually following the dependencies listed in ``conda_minimal_env.yml``, and installing the library, see the next section.
+
+
+### 1.2 Contributing to the library
+
+To contribute to the library, you need to clone the repo using git:
+
+```bash
+git clone https://gitlab.com/drti/plaid.git
+```
+
+configure an environment manually following the dependencies listed in ``conda_dev_env.yml``
+and install the package by either updating you PYTHONPATH, or using
 
 ```bash
 pip setup.py install
 ```
-
-To configure a compatible environment, consider using the provided conda yaml files.
-
-A conda package on conda-forge will be provided in the future.
 
 ## 2. Test installation
 

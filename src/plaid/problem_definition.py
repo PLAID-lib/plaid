@@ -7,6 +7,11 @@
 
 # %% Imports
 
+try: # pragma: no cover
+    from typing import Self
+except ImportError: # pragma: no cover
+    from typing import Any as Self
+
 import csv
 import logging
 import os
@@ -400,7 +405,20 @@ class ProblemDefinition(object):
                 for name, indices in self._split.items():
                     write.writerow([name] + list(indices))
 
-    # @classmethod  ??? call : ProblemDefinition.load(fname) -> returns an instance of ProblemDefinition #TODO
+    @classmethod
+    def load(cls, save_dir: str) -> Self:
+        """Load data from a specified directory.
+
+        Args:
+            save_dir (str): The path from which to load files.
+
+        Returns:
+            Self: The loaded dataset (Dataset).
+        """
+        instance = cls()
+        instance._load_from_dir_(save_dir)
+        return instance
+
     def _load_from_dir_(self, save_dir: str) -> None:
         """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
 

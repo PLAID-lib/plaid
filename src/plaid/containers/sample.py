@@ -820,7 +820,7 @@ class Sample(object):
 
     def add_field(self, name: str, field: FieldType, zone_name: str = None,
                   base_name: str = None, location: str = 'Vertex', time: float = 0.) -> None:
-        """Add a field to a specified zone in the computational grid.
+        """Add a field to a specified zone in the grid.
 
         Args:
             name (str): The name of the field to be added.
@@ -1069,3 +1069,5 @@ class Sample(object):
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
         return str_repr
+
+# %%

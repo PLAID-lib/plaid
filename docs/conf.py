@@ -28,7 +28,7 @@ sys.path.insert(0, '../')
 basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, basedir)
 sys.path.insert(0, os.path.join(basedir, "src/plaid"))
-sys.path.insert(0, os.path.join(basedir, "tests"))
+# sys.path.insert(0, os.path.join(basedir, "tests"))
 sys.path.insert(0, os.path.join(basedir, "examples"))
 print(sys.path)
 
@@ -118,8 +118,8 @@ autosummary_generate = True
 # autoapi options :
 # https://sphinx-autoapi.readthedocs.io/en/latest/tutorials.html#setting-up-automatic-api-documentation-generation
 extensions.append('autoapi.extension')
-# autoapi_dirs = ['../src/plaid']
-autoapi_dirs = ['../src/plaid', '../tests', '../examples']
+autoapi_dirs = ['../src/plaid', '../examples']
+# autoapi_dirs = ['../src/plaid', '../tests', '../examples']
 autoapi_type = 'python'
 autoapi_options = ['show-inheritance', 'show-module-summary', 'undoc-members']
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members']

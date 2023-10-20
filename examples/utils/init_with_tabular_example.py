@@ -14,7 +14,25 @@ from plaid.utils.init_with_tabular import initialize_dataset_with_tabular_data
 # %% Functions
 
 
-def main():
+def init_with_tabular_example():
+    """
+    This function shows the initialization and basic operations of a dataset with tabular data.
+
+    Example Usage:
+
+    1. Initializing a Dataset with Tabular Data:
+    - Generate random tabular data for multiple scalars.
+    - Initialize a dataset with the tabular data.
+
+    2. Accessing and Manipulating Data in the Dataset:
+    - Retrieve and print the dataset and specific samples.
+    - Access and display the value of a particular scalar within a sample.
+    - Retrieve tabular data from the dataset based on scalar names.
+
+    This function provides a simple example of initializing a dataset with tabular data and performing
+    basic operations on the dataset. It is intended for documentation purposes and familiarization with
+    the PLAID library.
+    """
 
     # %% Initialize Dataset
     nb_scalars = 7
@@ -37,4 +55,4 @@ def main():
 
 # %% Main Script
 if __name__ == '__main__':
-    main()
+    init_with_tabular_example()
