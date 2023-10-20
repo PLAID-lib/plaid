@@ -13,7 +13,7 @@ This page, still under construction, provides elements on PLAID functionalities.
 ## 1. Datamodel
 
 
-PLAID is the name of a datamodel, described in this section, and also the name of the present library, which is an implementation of this datamodel, and the format when the data is samed on disk.
+PLAID is the name of a datamodel, described in this section, and also the name of the present library, which is an implementation of this datamodel, and the format when the data is saved on disk.
 
 PLAID aims to formalize, as generally as possible, a set of physics problems configurations, named dataset, and a learning problem defined on these configurations, named problem_definition. The provided implementation allows to populate the datamodel in memory, and read from / write to disk in a corresponding format using provided io routines. Let us take a look at the characteristics of the format, from which we will be able to defined our objects. The plaid format looks like this:
 

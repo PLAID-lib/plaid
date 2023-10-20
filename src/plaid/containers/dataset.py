@@ -46,7 +46,7 @@ authorized_info_keys = {
 # %% Classes
 
 class Dataset(object):
-    """A set of samples, and optionnaly some other informations such as splits and feature tags."""
+    """A set of samples, and optionnaly some other informations about the Dataset."""
 
     def __init__(self, directory_path: str = None) -> None:
         """Initialize an empty :class:`Dataset <plaid.containers.dataset.Dataset>` that should be fed with :class:`Samples <plaid.containers.sample.Sample>.`
