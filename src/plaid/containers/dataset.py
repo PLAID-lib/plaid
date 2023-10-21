@@ -593,21 +593,25 @@ class Dataset(object):
         subprocess.call(arguments)
 
     # -------------------------------------------------------------------------#
-    def _save_to_dir_(self, savedir: str) -> None:
+    def _save_to_dir_(self, savedir: str, verbose: bool = False) -> None:
         """Saves the dataset into a created sample directory and creates an 'infos.yaml' file to store additional information about the dataset.
 
         Args:
             savedir (str): The path in which to save the files.
+            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
         """
         if not (os.path.isdir(savedir)):
             os.makedirs(savedir)
+
+        if verbose: # pragma: no cover
+            print(f"Saving database to: {savedir}")
 
         samples_dir = os.path.join(savedir, 'samples')
         if not (os.path.isdir(samples_dir)):
             os.makedirs(samples_dir)
 
         # ---# save samples
-        for i_sample, sample in tqdm(self._samples.items()):
+        for i_sample, sample in tqdm(self._samples.items(), disable=not (verbose)):
             sample_fname = os.path.join(samples_dir, f'sample_{i_sample:09d}')
             sample.save(sample_fname)
 
@@ -636,7 +640,7 @@ class Dataset(object):
         Args:
             savedir (str): The path from which to load files.
             ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
-            verbose (bool, optional): Explicitly displays the operations performed. Defaults to True.
+            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
