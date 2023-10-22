@@ -49,4 +49,4 @@ The datamodel heavily relies on CGNS, see [Seven keys for practical understandin
 PLAID proposes high-level functions to construct and handling datasets.
 In practice, the user should only use the classes [`Dataset`](plaid.containers.dataset.Dataset) and [`Sample`](plaid.containers.sample.Sample) when handling a database of physical solutions.
 
-Example usage of each class are available and documented in the [`examples`](examples) folder.
+Example usage of each class are available and documented in the [`notebooks`](notebooks).

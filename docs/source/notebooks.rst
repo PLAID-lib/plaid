@@ -7,10 +7,10 @@ You can find here all basic detailed examples different part of PLAID-lib, nicel
    :glob:
    :maxdepth: 1
 
-   additional/notebooks/sample
-   additional/notebooks/dataset
-   additional/notebooks/problem_definition
-   additional/notebooks/stats
-   additional/notebooks/split
-   additional/notebooks/init_with_tabular
-   additional/notebooks/interpolation
+   notebooks/sample
+   notebooks/dataset
+   notebooks/problem_definition
+   notebooks/stats
+   notebooks/split
+   notebooks/init_with_tabular
+   notebooks/interpolation

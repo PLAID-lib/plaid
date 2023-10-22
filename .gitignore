@@ -58,7 +58,6 @@ report.xml
 
 # Sphinx documentation
 docs/_build/
-docs/source/additional/
 docs/api_reference/
 docs/autoapi/
 docs/_extra/
