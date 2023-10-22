@@ -118,7 +118,7 @@ autosummary_generate = True
 # autoapi options :
 # https://sphinx-autoapi.readthedocs.io/en/latest/tutorials.html#setting-up-automatic-api-documentation-generation
 extensions.append('autoapi.extension')
-autoapi_dirs = ['../src/plaid', '../examples']
+autoapi_dirs = ['../src/plaid']
 # autoapi_dirs = ['../src/plaid', '../tests', '../examples']
 autoapi_type = 'python'
 autoapi_options = ['show-inheritance', 'show-module-summary', 'undoc-members']

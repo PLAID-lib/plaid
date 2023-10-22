@@ -5,12 +5,12 @@ rm -rf _build
 rm -rf source/additional
 rm -rf autoapi
 # rm -rf api_reference
-mkdir -p source/additional
-mkdir -p _extra
+# mkdir -p source/additional
+# mkdir -p _extra
 
 #---# Copy coverage in local
-rm -rf _extra/coverage
-cp -r ../public/coverage _extra/coverage
+# rm -rf _extra/coverage
+# cp -r ../public/coverage _extra/coverage
 
 #---# Copy diagrams in local
 # rm -rf _extra/diagrams
@@ -19,9 +19,9 @@ cp -r ../public/coverage _extra/coverage
 # cp -r ../public/diagrams source/additional/diagrams
 
 # #---# Copy notebooks in local
-rm -rf source/additional/notebooks
-mkdir -p source/additional/notebooks
-cp ../examples/*.ipynb source/additional/notebooks
+# rm -rf source/additional/notebooks
+# mkdir -p source/additional/notebooks
+# cp ../examples/*.ipynb source/additional/notebooks
 
 # #---# Generate API pages
 # sphinx-apidoc --ext-autodoc --ext-doctest --ext-intersphinx --ext-todo --ext-coverage --ext-imgmath --ext-mathjax --ext-ifconfig --ext-viewcode --ext-githubpages -P -e -f -d 2 -o api_reference/plaid ../src/plaid
@@ -33,8 +33,8 @@ cp ../examples/*.ipynb source/additional/notebooks
 #---# Verbose BEFORE
 echo "";echo "#---# ls -lAh source/"
 ls -lAh source/
-echo "";echo "#---# ls -lAh source/additional/*"
-ls -lAh source/additional/notebooks
+# echo "";echo "#---# ls -lAh source/additional/*"
+# ls -lAh source/additional/notebooks
 # echo "";echo "#---# ls -lAh _extra/diagrams/*"
 # ls -lAh _extra/diagrams/*
 # echo "";echo "#---# ls -lAh api_reference/"
