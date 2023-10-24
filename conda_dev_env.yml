@@ -26,8 +26,6 @@ dependencies:
   - myst-nb
   - myst-parser
   - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
-#---# science
-  - numpy
 #---# mesh/graph libs
   - basictools>=1.9.9
   - pycgns
