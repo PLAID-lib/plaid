@@ -28,6 +28,12 @@ It has been developped at SafranTech, the research center of [Safran group](http
 
 ## 2. Getting started
 
+To use the library, the simplest way is to install the conda package:
+
+```bash
+conda install -c conda-forge plaid
+```
+
 Consider using setup.py for install, and exploring the examples folder.
 
 ```bash
