@@ -64,18 +64,34 @@ def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
     all_ids = dset.get_sample_ids()
     total_size = len(dset)
 
-    # 2 possible cases
-    if ('split_ids' in options):
-        if len(options) > 1:
-            logger.warning(
-                "options has key 'split_ids' and other keys -> other keys will be ignored")
-        if 'other' in options['split_ids']:
+    # Verify that split option validity
+    def check_options_validity(split_option: dict):
+        assert isinstance(split_option, dict), "split option must be a dictionary"
+        if 'other' in split_option:
             raise ValueError("name 'other' is not authorized for a split")
 
+    # Check that the keys in options are among authorized keys
+    authorized_task = ['split_ids', 'split_ratios', 'split_sizes', 'shuffle']
+    for task in options:
+        if task in authorized_task:
+            continue
+        logger.warning(f"option {task} is not authorized. {task} key will be ignored")
+
+    f_case = len(set(['split_ids']).intersection(set(options.keys())))
+    s_case = len(set(['split_ratios', 'split_sizes']).intersection(set(options.keys())))
+    assert f_case == 0 or s_case == 0, "split by id cannot exist with split by ratios or sizes"
+
+    # First case
+    if 'split_ids' in options:
+        check_options_validity(options['split_ids'])
+
+        if len(options) > 1:
+            logger.warning("options has key 'split_ids' and 'shuffle' -> 'shuffle' key will be ignored")
+
         # all_ids = np.arange(total_size)
-        used_ids = np.unique(np.concatenate(
-            [ids for ids in options['split_ids'].values()]))
-        if not (np.min(used_ids) >= 0) or not (np.max(used_ids) < total_size):
+        used_ids = np.unique(np.concatenate([ids for ids in options['split_ids'].values()]))
+
+        if np.min(used_ids) < 0 or np.max(used_ids) >= total_size:
             raise ValueError(
                 "there are some ids out of bounds -> min/max:{}/{} | dataset len:{}".format(
                     np.min(used_ids), np.max(used_ids), total_size))
@@ -95,54 +111,51 @@ def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
             #     split_samples.append(dset[id])
             # dset._splits[name] = Dataset()
             # dset._splits[name].add_samples(split_samples)
+        return _splits
 
+    if 'shuffle' in options:
+        shuffle = options['shuffle']
     else:
-        if ('shuffle' in options) and (options['shuffle']):
-            shuffle = True
-        else:
-            shuffle = False
-        split_sizes = [0]
-        split_names = []
-        if ('split_ratios' in options):
-            for k in options['split_ratios']:
-                assert (isinstance(options['split_ratios'][k], float))
-                split_names.append(k)
-                split_sizes.append(
-                    int(total_size * options['split_ratios'][k]))
-        if ('split_sizes' in options):
-            for k in options['split_sizes']:
-                assert (
-                    not (
-                        'split_ratios' in options) or not (
-                        k in options['split_ratios']))
-                assert (isinstance(options['split_sizes'][k], int))
-                split_names.append(k)
-                split_sizes.append(options['split_sizes'][k])
+        shuffle = False
 
-        if 'other' in split_names:
-            raise ValueError("name 'other' is not authorized for a split")
-        if len(np.unique(split_names)) < len(split_names):
-            raise ValueError(
-                "some split names are in 'split_ratios' and 'split_sizes'")
+    split_sizes = [0]
+    split_names = []
+    # Second case
+    if 'split_ratios' in options:
+        check_options_validity(options['split_ratios'])
 
-        assert (np.sum(split_sizes) <= total_size)
-        if np.sum(split_sizes) < total_size:
-            split_names.append('other')
-            split_sizes.append(total_size - np.sum(split_sizes))
-        slices = np.cumsum(split_sizes)
+        for key, value in options['split_ratios'].items():
+            assert (isinstance(value, float))
+            split_names.append(key)
+            split_sizes.append(int(total_size * value))
 
-        # all_ids = np.arange(total_size)
-        if shuffle:
-            all_ids = np.random.permutation(all_ids)
+    if 'split_sizes' in options:
+        check_options_validity(options['split_sizes'])
 
-        for i_split in range(len(split_names)):
-            _splits[split_names[i_split]
-                    ] = all_ids[slices[i_split]:slices[i_split + 1]]
-            # split_samples = []
-            # for id in all_ids[slices[i_split]:slices[i_split+1]]:
-            #     split_samples.append(dset[id])
-            # dset._splits[split_names[i_split]] = Dataset()
-            # dset._splits[split_names[i_split]].add_samples(split_samples)
+        for key, value in options['split_sizes'].items():
+            assert (not ('split_ratios' in options) or not (key in options['split_ratios']))
+            assert (isinstance(value, int))
+            split_names.append(key)
+            split_sizes.append(value)
+
+    assert (np.sum(split_sizes) <= total_size)
+    if np.sum(split_sizes) < total_size:
+        split_names.append('other')
+        split_sizes.append(total_size - np.sum(split_sizes))
+    slices = np.cumsum(split_sizes)
+
+    # all_ids = np.arange(total_size)
+    if shuffle:
+        all_ids = np.random.permutation(all_ids)
+
+    for i_split in range(len(split_names)):
+        _splits[split_names[i_split]
+                ] = all_ids[slices[i_split]:slices[i_split + 1]]
+        # split_samples = []
+        # for id in all_ids[slices[i_split]:slices[i_split+1]]:
+        #     split_samples.append(dset[id])
+        # dset._splits[split_names[i_split]] = Dataset()
+        # dset._splits[split_names[i_split]].add_samples(split_samples)
 
     return _splits
 
