@@ -1,264 +1,401 @@
-# -*- coding: utf-8 -*-
+# %% [markdown]
+# # Dataset Examples
 #
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
+# This Jupyter Notebook demonstrates various use cases for the Dataset class, including:
 #
+# 1. Initializing an Empty Dataset and Adding Samples
+# 2. Retrieving and Manipulating Samples from a Dataset
+# 3. Performing Operations on the Dataset
+# 4. Saving and Loading Datasets from directories or files
 #
+# This notebook provides detailed examples of using the Dataset class to manage data, Samples, and information within a PLAID Dataset. It is intended for documentation purposes and familiarization with the PLAID library.
+#
+# **Each section is documented and explained.**
 
-# %% Imports
-
+# %%
+# Import required libraries
+import numpy as np
 import os
 
+# %%
+# Import necessary libraries and functions
 import BasicTools.Containers.ElementNames as ElementNames
-import numpy as np
 from BasicTools.Bridges.CGNSBridge import MeshToCGNS
 from BasicTools.Containers import UnstructuredMeshCreationTools as UMCT
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 
-# %% Functions
+# %%
+# Print dict util
+def dprint(name: str, dictio: dict, end: str = "\n"):
+    print(name, '{')
+    for key, value in dictio.items():
+	    print("    ", key, ':', value)
 
+    print('}', end=end)
 
-def dataset_examples():
-    """
-    This function shows various use cases for the Dataset classe.
+# %% [markdown]
+# ## Section 1: Initializing an Empty Dataset and Samples construction
+#
+# This section demonstrates how to initialize an empty Dataset and handle Samples.
 
-    Example Usage:
+# %% [markdown]
+# ### Initialize an empty Dataset
 
-    1. Initializing an Empty Dataset and Adding Samples:
-    - Initialize an empty Dataset and add Samples.
+# %%
+print("#---# Empty Dataset")
+dataset = Dataset()
+print(f"{dataset=}")
 
-    2. Retrieving and Manipulating Samples:
-    - Create and add Samples to the Dataset.
-    - Add tree structures and scalars to Samples.
-    - Retrieve and manipulate Sample data within the Dataset.
+# %% [markdown]
+# ### Create Sample
 
-    3. Performing Operations on the Dataset:
-    - Add Samples to the Dataset, add information, and access data.
-    - Perform operations like merging datasets, adding tabular scalars, and setting information.
-
-    4. Saving and Loading Datasets:
-    - Save and load datasets from directories or files.
-
-    This function provides detailed examples of using the Dataset class to manage data, samples,
-    and information within the dataset. It is intended for documentation purposes and
-    familiarization with the PLAID library.
-    """
-    # %% Init
-
-    print("#---# Empty Dataset")
-    dataset = Dataset()
-    print(f"{dataset=}")
-
-    # %% Feed Samples
-    # Example of creating Samples.
-
-    points = np.array([
+# %%
+# Create Sample
+points = np.array([
         [0.0, 0.0],
         [1.0, 0.0],
         [1.0, 1.0],
         [0.0, 1.0],
         [0.5, 1.5],
     ])
-    triangles = np.array([
+
+triangles = np.array([
         [0, 1, 2],
         [0, 2, 3],
         [2, 4, 3],
     ])
-    bars = np.array([
+
+bars = np.array([
         [0, 1],
         [0, 2]
     ])
-    BTMesh = UMCT.CreateMeshOfTriangles(points, triangles)
-    elbars = BTMesh.GetElementsOfType(ElementNames.Bar_2)
-    elbars.AddNewElements(bars, [1, 2])
-    cgns_mesh = MeshToCGNS(BTMesh)
 
-    print("#---# Empty Sample")
-    sample_01 = Sample()
-    print(f"{sample_01=}")
+BTMesh = UMCT.CreateMeshOfTriangles(points, triangles)
+elbars = BTMesh.GetElementsOfType(ElementNames.Bar_2)
+elbars.AddNewElements(bars, [1, 2])
+cgns_mesh = MeshToCGNS(BTMesh)
 
-    sample_01.add_tree(cgns_mesh)
-    print(f"{sample_01=}")
-    # temporal_support_ref = sample_01.add_feature("temporal_support", "t", np.random.randn(10))
-    # print(f"{sample_01=}")
-    # print(f"{temporal_support_ref=}")
-    scalar_ref_01 = sample_01.add_scalar('rotation', np.random.randn())
-    print(f"{sample_01=}")
-    print(f"{scalar_ref_01=}")
+# Initialize an empty Sample
+print("#---# Empty Sample")
+sample_01 = Sample()
+print(f"{sample_01 = }")
 
-    print("#---# Empty Sample")
-    sample_02 = Sample()
-    print(f"{sample_02=}")
-    scalar_ref_02 = sample_02.add_scalar('rotation', np.random.randn())
-    print(f"{sample_02=}")
-    print(f"{scalar_ref_02=}")
+# %%
+# Add a CGNS tree structure to the Sample
+sample_01.add_tree(cgns_mesh)
+print(f"{sample_01 = }")
 
-    print("#---# Empty Sample")
-    sample_03 = Sample()
-    sample_03.add_scalar('speed', np.random.randn())
-    sample_03.add_scalar('rotation', sample_01.get_scalar('rotation'))
-    sample_03.add_tree(cgns_mesh)
-    sample_03.show_tree()
-    sample_03.add_field('temperature', np.random.rand(5), "Zone", "Base_2_2")
-    sample_03.show_tree()
-    print(f"{sample_03=}")
-    print(f"{sample_03.get_scalar('speed')=}")
-    print(f"{sample_03.get_scalar('rotation')=}")
-    print(f"{sample_03.get_scalar_names()=}")
+# %%
+# Add a scalar to the Sample
+sample_01.add_scalar('rotation', np.random.randn())
+print(f"{sample_01 = }")
 
-    # %% Feed Dataset
-    # Example of adding Samples to the Dataset, adding information, and accessing data.
+# %% [markdown]
+# ### Print Sample general data
 
-    dataset.set_sample(id=0, sample=sample_01)
-    dataset.set_sample(id=1, sample=sample_02)
-    dataset.add_sample(sample_03)
+# %%
+# Initialize another empty Sample
+print("#---# Empty Sample")
+sample_02 = Sample()
+print(f"{sample_02 = }")
 
-    dataset.add_info("legal", "owner", "Safran")
-    infos = {"legal": {"owner": "Safran", "license": "CC0"}}
-    dataset.set_infos(infos)
-    print("dataset.get_infos() =", dataset.get_infos())
+# %%
+# Add a scalar to the second Sample
+sample_02.add_scalar('rotation', np.random.randn())
+print(f"{sample_02 = }")
 
-    print()
-    print("===")
+# %% [markdown]
+# ### Display Sample CGNS tree
 
-    print("length of dataset =", len(dataset))
-    print("first sample =", dataset[0].get_scalar_names())
-    print("second sample =", dataset[1].get_scalar_names())
-    print("third sample =", dataset[2].get_scalar_names())
-    print("get_samples_from_ids =", dataset.get_samples(ids=[0, 1]))
+# %%
+# Initialize a third empty Sample
+print("#---# Empty Sample")
+sample_03 = Sample()
+sample_03.add_scalar('speed', np.random.randn())
+sample_03.add_scalar('rotation', sample_01.get_scalar('rotation'))
+sample_03.add_tree(cgns_mesh)
 
-    print()
-    print("===")
+# Show Sample CGNS content
+sample_03.show_tree()
 
-    print("get_sample_ids =", dataset.get_sample_ids())
+# %%
+# Add a field to the third empty Sample
+sample_03.add_field('temperature', np.random.rand(5), "Zone", "Base_2_2")
+sample_03.show_tree()
 
-    print()
-    print("===")
-    print(f"{dataset=}")
+# %% [markdown]
+# ### Get Sample data
 
-    print()
-    print("===")
+# %%
+# Print sample general data
+print(f"{sample_03 = }", end="\n\n")
 
-    dataset = Dataset()
-    samples = [sample_01, sample_02, sample_03]
-    dataset.add_samples(samples)
-    print(f"{dataset=}")
+# Print sample scalar data
+print(f"{sample_03.get_scalar_names() = }")
+print(f"{sample_03.get_scalar('speed') = }")
+print(f"{sample_03.get_scalar('rotation') = }", end="\n\n")
 
-    print(f"{dataset=}")
-    print(f"{dataset[0]=}")
-    print(f"{dataset[1]=}")
-    print(f"{dataset[2]=}")
-    print(dataset[0].get_scalar("rotation"))
-    print(dataset[1].get_scalar("rotation"))
-    print(dataset[2].get_scalar("rotation"))
+# Print sample scalar data
+print(f"{sample_03.get_field_names() = }")
+print(f"{sample_03.get_field('temperature') = }")
 
-    print()
-    print("===")
+# %% [markdown]
+# ## Section 2: Performing Operations on the Dataset
+#
+# This section demonstrates how to add Samples to the Dataset, add information, and access data.
 
-    print("dataset.get_scalars_to_tabular(['rotation']):")
-    print(dataset.get_scalars_to_tabular(['rotation']))
+# %% [markdown]
+# ### Add Samples in the Dataset
 
-    print("dataset.get_scalars_to_tabular(['speed']):")
-    print(dataset.get_scalars_to_tabular(['speed']))
+# %%
+# Add Samples by id in the Dataset
+dataset.set_sample(id=0, sample=sample_01)
+dataset.set_sample(1, sample_02)
 
-    print("dataset.get_scalars_to_tabular(['speed', 'rotation']):")
-    print(dataset.get_scalars_to_tabular(['speed', 'rotation']))
+# Add unique Sample and automatically create its id
+added_sample_id = dataset.add_sample(sample_03)
+print(f"{added_sample_id = }")
 
-    print(dataset.get_scalar_names())
+# %% [markdown]
+# ### Add and display information to the Dataset
 
-    print("dataset.get_scalars_to_tabular():")
-    print(dataset.get_scalars_to_tabular())
+# %%
+# Add node information to the Dataset
+dataset.add_info("legal", "owner", "Safran")
 
-    # %% Various operations on the Dataset
-    # Example of operations like merging datasets, adding tabular scalars, and setting information.
+# Retrive dataset information
+import json
+dataset_info = dataset.get_infos()
+print("dataset info =", json.dumps(dataset_info, sort_keys=False, indent=4), end="\n\n")
 
-    print()
-    print("===")
-    other_dataset = Dataset()
-    nb_samples = 3
-    samples = []
-    for _ in range(nb_samples):
-        sample = Sample()
-        sample.add_scalar('rotation', np.random.rand() + 1.0)
-        sample.add_scalar('random_name', np.random.rand() - 1.0)
-        samples.append(sample)
-    other_dataset.add_samples(samples)
-    print("dataset.merge_dataset(other_dataset):")
-    dataset.merge_dataset(other_dataset)
-    print(dataset)
-    print(dataset.get_scalars_to_tabular())
+# Overwrite information (logger will display warnings)
+infos = {"legal": {"owner": "Safran", "license": "CC0"}}
+dataset.set_infos(infos)
 
-    print()
-    print("===")
-    new_scalars = np.random.rand(3, 2)
-    dataset.add_tabular_scalars(new_scalars, names=['Tu', 'random_name'])
-    print(dataset)
-    print(dataset.get_scalars_to_tabular())
+# Retrive dataset information
+dataset_info = dataset.get_infos()
+print("dataset info =", json.dumps(dataset_info, sort_keys=False, indent=4), end="\n\n")
 
-    print()
-    print("===")
-    infos = {
-        "legal": {
-            "owner": "Safran",
-            "license": "CC0"},
-        "data_production": {
-            "type": "simulation",
-            "simulator": "dummy"}
-    }
-    dataset.set_infos(infos)
-    print(dataset)
+# Add tree information to the Dataset (logger will display warnings)
+dataset.add_infos("data_description", {"number_of_samples" : 0, "number_of_splits": 0})
 
-    print()
-    print("===")
+# Pretty print dataset information
+dataset.print_infos()
 
-    print()
-    print("===")
+# %% [markdown]
+# ### Get a list of specific Samples in a Dataset
 
-    # %% Saving and Loading Dataset
-    # Example of saving and loading a dataset from a directory or file.
+# %%
+get_samples_from_ids = dataset.get_samples(ids=[0, 1])
+dprint("get samples from ids =", get_samples_from_ids)
 
-    tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(1e10,1e12)}'
-    print(f"Test save in: {tmpdir}")
-    dataset._save_to_dir_(tmpdir)
-    print(f"{os.listdir(tmpdir)=}")
+# %% [markdown]
+# ### Get the list of Sample ids in a Dataset
 
-    print()
-    print("===")
-    dataset2 = Dataset(tmpdir)
-    print(f"{dataset2=}")
+# %%
+# Print sample IDs
+print("get_sample_ids =", dataset.get_sample_ids())
 
-    print()
-    print("===")
-    dataset3 = Dataset.load_from_dir(tmpdir)
-    print(f"{dataset3=}")
+# %% [markdown]
+# ### Print Dataset general data
 
-    print()
-    print("===")
-    dataset4 = Dataset()
-    dataset4._load_from_dir_(tmpdir)
-    print(f"{dataset4=}")
+# %%
+# Print the Dataset
+print(f"{dataset = }")
+print("length of dataset =", len(dataset))
 
-    print()
-    print("===")
-    tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(1e10,1e12)}'
-    tmpfile = os.path.join(tmpdir, 'test_file.plaid')
-    print(f"Test save in: {tmpfile}")
-    dataset.save(tmpfile)
+# %% [markdown]
+# ### Add a list of Sample to a Dataset
 
-    # print(f"{os.listdir(tmpdir)=}")
-    new_dataset = Dataset()
-    new_dataset.load(tmpfile)
-    print(f"{dataset=}")
-    print(f"{new_dataset=}")
+# %%
+# Create a new Dataset and add multiple samples
+dataset = Dataset()
+samples = [sample_01, sample_02, sample_03]
+added_ids = dataset.add_samples(samples)
+print(f"{added_ids = }")
+print(f"{dataset = }")
+
+# %% [markdown]
+# ### Access to Samples data through Dataset
+
+# %%
+# Access Sample data with indexes through the Dataset
+print(f"{dataset(0) = }") # call strategy
+print(f"{dataset[1] = }") # getitem strategy
+print(f"{dataset[2] = }", end="\n\n")
+
+print("scalar of the first sample = ", dataset[0].get_scalar_names())
+print("scalar of the second sample = ", dataset[1].get_scalar_names())
+print("scalar of the third sample = ", dataset[2].get_scalar_names())
+
+# %%
+# Access dataset information
+print(f"{dataset[0].get_scalar('rotation') = }")
+print(f"{dataset[1].get_scalar('rotation') = }")
+print(f"{dataset[2].get_scalar('rotation') = }")
+
+# %% [markdown]
+# ### Get Dataset scalars to tabular
+
+# %%
+# Print scalars in tabular format
+print(f"{dataset.get_scalar_names() = }", end="\n\n")
+
+dprint("get rotation scalar = ", dataset.get_scalars_to_tabular(['rotation']))
+dprint("get speed scalar = ", dataset.get_scalars_to_tabular(['speed']), end="\n\n")
+
+# Get specific scalars in tabular format
+dprint("get specific scalars =", dataset.get_scalars_to_tabular(['speed', 'rotation']))
+dprint("get all scalars =", dataset.get_scalars_to_tabular())
+
+# %%
+# Get specific scalars np.array
+print("get all scalar arrays =", dataset.get_scalars_to_tabular(as_nparray=True))
+
+# %% [markdown]
+# ### Get Dataset fields
+
+# %%
+# Print fields in the Dataset
+print("fields in the dataset = ", dataset.get_field_names())
+
+# %% [markdown]
+# ## Section 3: Various operations on the Dataset
+#
+# This section demonstrates operations like merging datasets, adding tabular scalars, and setting information.
+
+# %% [markdown]
+# ### Initialize a Dataset with a list of Samples
+
+# %%
+# Create another Dataset
+other_dataset = Dataset()
+nb_samples = 3
+samples = []
+for _ in range(nb_samples):
+    sample = Sample()
+    sample.add_scalar('rotation', np.random.rand() + 1.0)
+    sample.add_scalar('random_name', np.random.rand() - 1.0)
+    samples.append(sample)
+
+# Add a list of Samples
+other_dataset.add_samples(samples)
+print(f"{other_dataset = }")
+
+# %% [markdown]
+# ### Merge two Datasets
+
+# %%
+# Merge the other dataset with the main dataset
+print(f"before merge: {dataset = }")
+dataset.merge_dataset(other_dataset)
+print(f"after merge: {dataset = }", end="\n\n")
+
+dprint("dataset scalars = ", dataset.get_scalars_to_tabular())
+
+# %% [markdown]
+# ### Add tabular scalars to a Dataset
+
+# %%
+# Adding tabular scalars to the dataset
+new_scalars = np.random.rand(3, 2)
+dataset.add_tabular_scalars(new_scalars, names=['Tu', 'random_name'])
+
+print(f"{dataset = }")
+dprint("dataset scalars =", dataset.get_scalars_to_tabular())
+
+# %% [markdown]
+# ### Set additional information to a dataset
+
+# %%
+infos = {
+    "legal": {
+        "owner": "Safran",
+        "license": "CC0"},
+    "data_production": {
+        "type": "simulation",
+        "simulator": "dummy"}
+}
+dataset.set_infos(infos)
+dataset.print_infos()
+
+# %% [markdown]
+# ## Section 4: Saving and Loading Dataset
+#
+# This section demonstrates how to save and load a Dataset from a directory or file.
+
+# %% [markdown]
+# ### Save a Dataset as a file tree
+
+# %%
+tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}'
+print(f"Save dataset in: {tmpdir}")
+
+dataset._save_to_dir_(tmpdir)
+
+# %% [markdown]
+# ### Get the number of Samples that can be loaded from a directory
+
+# %%
+empty_ds = Dataset()
+nb_samples = empty_ds._load_number_of_samples_(tmpdir)
+
+print(f"{nb_samples = }")
+
+# %% [markdown]
+# ### Load a Dataset from a directory via initialization
+
+# %%
+loaded_dataset_from_init = Dataset(tmpdir)
+
+print(f"{loaded_dataset_from_init = }")
+
+# %% [markdown]
+# ### Load a Dataset from a directory via the Dataset class
+
+# %%
+loaded_dataset_from_class = Dataset.load_from_dir(tmpdir)
+
+print(f"{loaded_dataset_from_class = }")
+
+# %% [markdown]
+# ### Load the dataset from a directory via a Dataset instance
+
+# %%
+loaded_dataset_from_instance = Dataset()
+loaded_dataset_from_instance._load_from_dir_(tmpdir)
+
+print(f"{loaded_dataset_from_instance = }")
+
+# %% [markdown]
+# ### Save the dataset to a TAR (Tape Archive) file
+
+# %%
+tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(1e10,1e12)}'
+tmpfile = os.path.join(tmpdir, 'test_file.plaid')
+
+print(f"Save dataset in: {tmpfile}")
+dataset.save(tmpfile)
+
+# %% [markdown]
+# ### Load the dataset from a TAR (Tape Archive) file via Dataset instance
+
+# %%
+new_dataset = Dataset()
+new_dataset.load(tmpfile)
+
+print(f"{dataset = }")
+print(f"{new_dataset = }")
+
+# %% [markdown]
+# ### Load the dataset from a TAR (Tape Archive) file via initialization
+
+# %%
+new_dataset = Dataset(tmpfile)
+
+print(f"{dataset = }")
+print(f"{new_dataset = }")
 
 
-# %% Main Script
-if __name__ == '__main__':
-    dataset_examples()
-
-    print()
-    print("#==============#")
-    print("#===# DONE #===#")
-    print("#==============#")

@@ -152,6 +152,24 @@ def other_dataset_with_samples(other_samples):
     other_dataset.add_samples(other_samples)
     return other_dataset
 
+def compare_two_samples(sample_1: Sample, sample_2: Sample):
+    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
+    assert set(sample_1.get_scalar_names()) == set(sample_2.get_scalar_names())
+    assert set(sample_1.get_field_names()) == set(sample_2.get_field_names())
+    assert set(sample_1.get_time_series_names()) == set(sample_2.get_time_series_names())
+    assert np.array_equal(sample_1.get_nodes(), sample_2.get_nodes())
+    assert set(sample_1.get_base_names()) == set(sample_2.get_base_names())
+    for base_name in sample_1.get_base_names():
+        assert set(sample_1.get_zone_names(base_name)) == set(sample_2.get_zone_names(base_name))
+        for zone_name in sample_1.get_zone_names(base_name):
+            assert sample_1.get_zone_type(zone_name, base_name) == sample_2.get_zone_type(zone_name, base_name)
+
+    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
+    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
+    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
+    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
+
+
 # %% Tests
 
 
@@ -324,6 +342,19 @@ class Test_Dataset():
             dataset.add_info("legal", "illegal_info_key", "PLAID")
         dataset.add_info("legal", "owner", "PLAID2")
 
+    def test_add_infos(self, dataset):
+        infos = {"legal":{"owner":"CompX", "license":"li_X"}}
+        dataset.set_infos(infos)
+        new_info = {"type":"simulation", "simulator":"Z-set"}
+        dataset.add_infos("data_production", new_info)
+        dataset.add_infos("legal", {"owner":"CompY", "license":"li_Y"})
+        with pytest.raises(KeyError):
+            dataset.add_infos("illegal_category_key", new_info)
+        with pytest.raises(KeyError):
+            illegal_info = {"z":"simulation", "e":"Z-set"}
+            dataset.add_infos("data_production", illegal_info)
+        dataset.add_info("legal", "owner", "PLAID2")
+
     def test_set_infos(self, dataset, infos):
         dataset.set_infos(infos)
         dataset.set_infos(infos)
@@ -370,7 +401,13 @@ class Test_Dataset():
         new_dataset = Dataset()
         new_dataset.load(fname)
         assert (len(new_dataset) == len(dataset_with_samples))
-        # TODO: check each sample
+        for sample_1, sample_2 in zip(dataset_with_samples, new_dataset):
+            compare_two_samples(sample_1, sample_2)
+
+        n_dataset = Dataset(str(fname))
+        assert (len(n_dataset) == len(dataset_with_samples))
+        for sample_1, sample_2 in zip(dataset_with_samples, n_dataset):
+            compare_two_samples(sample_1, sample_2)
 
     def test_load_from_file(self, dataset_with_samples, tmp_path):
         fname = tmp_path / 'test_fname.plaid'
@@ -388,6 +425,7 @@ class Test_Dataset():
     def test__save_to_dir_(self, dataset_with_samples, tmp_path):
         savedir = tmp_path / 'testdir'
         dataset_with_samples._save_to_dir_(savedir)
+        assert dataset_with_samples._load_number_of_samples_(savedir) == len(dataset_with_samples)
         assert (os.path.isdir(savedir))
         assert (os.path.isfile(savedir / 'infos.yaml'))
 
@@ -398,7 +436,12 @@ class Test_Dataset():
         new_dataset._load_from_dir_(savedir)
         assert (len(new_dataset) == len(dataset_with_samples))
         assert (new_dataset.get_infos() == infos)
-        # TODO: check each sample
+        for sample_1, sample_2 in zip(dataset_with_samples, new_dataset):
+            compare_two_samples(sample_1, sample_2)
+
+        new_dataset = Dataset()
+        new_dataset._load_from_dir_(savedir, [1, 2])
+        assert len(new_dataset) == 2
 
     # -------------------------------------------------------------------------#
     def test_set_samples(self, dataset, samples):

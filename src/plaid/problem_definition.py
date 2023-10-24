@@ -79,7 +79,7 @@ class ProblemDefinition(object):
             self._load_from_dir_(directory_path)
 
     # -------------------------------------------------------------------------#
-    def get_task(self) -> str: # pragma: no cover
+    def get_task(self) -> str:
         """Get the authorized task. None if not defined.
 
         Returns:
@@ -160,7 +160,7 @@ class ProblemDefinition(object):
         self._split = split
     # -------------------------------------------------------------------------#
 
-    def get_inputs(self) -> list[str]: # pragma: no cover
+    def get_inputs(self) -> list[str]:
         """Get the input names or identifiers of the problem.
 
         Returns:
@@ -223,7 +223,7 @@ class ProblemDefinition(object):
         self._inputs.sort()
 
     # -------------------------------------------------------------------------#
-    def get_outputs(self) -> list[str]: # pragma: no cover
+    def get_outputs(self) -> list[str]:
         """Get the outputs names or identifiers of the problem.
 
         Returns:
@@ -385,7 +385,7 @@ class ProblemDefinition(object):
                 problem = ProblemDefinition()
                 problem._save_to_dir_("/path/to/save_directory")
         """
-        if not (os.path.isdir(savedir)):
+        if not (os.path.isdir(savedir)): # pragma: no cover
             os.makedirs(savedir)
 
         data = {
@@ -406,7 +406,7 @@ class ProblemDefinition(object):
                     write.writerow([name] + list(indices))
 
     @classmethod
-    def load(cls, save_dir: str) -> Self:
+    def load(cls, save_dir: str) -> Self: # pragma: no cover
         """Load data from a specified directory.
 
         Args:
@@ -436,11 +436,11 @@ class ProblemDefinition(object):
                 problem = ProblemDefinition()
                 problem._load_from_dir_("/path/to/load_directory")
         """
-        if not os.path.exists(save_dir):
+        if not os.path.exists(save_dir): # pragma: no cover
             raise FileNotFoundError(
                 f"Directory \"{save_dir}\" does not exist. Abort")
 
-        if not os.path.isdir(save_dir):
+        if not os.path.isdir(save_dir): # pragma: no cover
             raise FileExistsError(f"\"{save_dir}\" is not a directory. Abort")
 
         pbdef_fname = os.path.join(save_dir, 'problem_infos.yaml')
@@ -448,7 +448,7 @@ class ProblemDefinition(object):
         if os.path.isfile(pbdef_fname):
             with open(pbdef_fname, 'r') as file:
                 data = yaml.safe_load(file)
-        else:
+        else: # pragma: no cover
             logger.warning(
                 f"file with path `{pbdef_fname}` does not exist. Task, inputs, and outputs will not be set")
 
@@ -463,7 +463,7 @@ class ProblemDefinition(object):
                 reader = csv.reader(file, delimiter=',')
                 for row in reader:
                     split[row[0]] = [int(i) for i in row[1:]]
-        else:
+        else: # pragma: no cover
             logger.warning(
                 f"file with path `{split_fname}` does not exist. Splits will not be set")
         self._split = split
