@@ -1,0 +1,9 @@
+task: regression
+inputs:
+- predict_scalar
+- scalar
+- test_scalar
+outputs:
+- scalar
+- test_scalar
+- predict_scalar

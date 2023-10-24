@@ -84,8 +84,8 @@ class Dataset(object):
         self._infos: dict[str, dict[str, str]] = {}
 
         if directory_path is not None:
-            extenstion = directory_path.split(".")[-1]
-            if extenstion == "plaid":
+            splits = directory_path.split(".")
+            if len(splits) > 1 and splits[-1] == "plaid":
                 self.load(directory_path)
             else:
                 self._load_from_dir_(directory_path)

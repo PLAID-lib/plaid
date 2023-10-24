@@ -1,96 +1,125 @@
-# -*- coding: utf-8 -*-
+# %% [markdown]
+# # Dataset Splitting Examples
 #
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
+# This Jupyter Notebook demonstrates the usage of the split module using the PLAID library. It includes examples of:
 #
+# 1. Initializing a Dataset
+# 2. Splitting a Dataset with ratios
+# 3. Splitting a Dataset with fixed sizes
+# 4. Splitting a Dataset with ratio and fixed Sizes
+# 5. Splitting a Dataset with custom split IDs
 #
+# This example demonstrates the usage of dataset splitting functions to divide a dataset into training, validation, and test sets. It provides examples of splitting the dataset using different methods and configurations.
+#
+# **Each section is documented and explained.**
 
-# %% Imports
-
+# %%
+# Import required libraries
 import numpy as np
 
+# %%
+# Import necessary libraries and functions
 from plaid.utils.init_with_tabular import initialize_dataset_with_tabular_data
 from plaid.utils.split import split_dataset
 
-# %% Functions
+# %%
+# Print dict util
+def dprint(name: str, dictio: dict):
+    print(name, '{')
+    for key, value in dictio.items():
+	    print("    ", key, ':', value)
 
+    print('}')
 
-def split_examples():
-    """
-    This function shows the usage of dataset splitting functions.
+# %% [markdown]
+# ## Section 1: Initialize Dataset
+#
+# In this section, we create a dataset with random tabular data for testing purposes. The dataset will be used for subsequent splitting.
 
-    Example Usage:
+# %%
+# Create a dataset with random tabular data for testing purposes
+nb_scalars = 7
+nb_samples = 70
+tabular_data = {f'scalar_{j}': np.random.randn(nb_samples) for j in range(nb_scalars)}
+dataset = initialize_dataset_with_tabular_data(tabular_data)
 
-    1. Initializing a Dataset:
-    - Create a dataset with random tabular data for testing purposes.
+print(f"{dataset = }")
 
-    2. Splitting a Dataset with ratios:
-    - Split the dataset into training, validation, and test sets using specified ratios.
-    - Shuffle the dataset if desired.
+# %% [markdown]
+# ## Section 2: Splitting a Dataset with Ratios
+#
+# In this section, we split the dataset into training, validation, and test sets using specified ratios. We also have the option to shuffle the dataset during the split process.
 
-    3. Splitting a Dataset with fixed sizes:
-    - Split the dataset into training, validation, and test sets with fixed sample counts for each set.
-    - Shuffle the dataset if desired.
+# %%
+print("# First split")
+options = {
+    'shuffle': True,
+    'split_ratios': {
+        'train': 0.8,
+        'val': 0.1,
+    },
+}
 
-    4. Splitting a Dataset with custom split IDs:
-    - Split the dataset based on custom sample IDs for each set.
-    - Specify the sample IDs for training, validation, and prediction sets.
+split = split_dataset(dataset, options)
+dprint("split =", split)
 
-    This function provides examples of using dataset splitting functions to divide a dataset into training,
-    validation, and test sets, offering flexibility in the splitting process. It is intended for documentation
-    purposes and familiarization with the PLAID library.
-    """
-    # %% Initialize Dataset
-    print("# Initialize Dataset")
-    nb_scalars = 7
-    nb_samples = 700
-    dset = initialize_dataset_with_tabular_data(
-        {f'scalar_{j}': np.random.randn(nb_samples) for j in range(nb_scalars)})
-    print(f"{dset=}")
+# %% [markdown]
+# ## Section 3: Splitting a Dataset with Fixed Sizes
+#
+# In this section, we split the dataset into training, validation, and test sets with fixed sample counts for each set. We can also choose to shuffle the dataset during the split.
 
-    # %% Test split
+# %%
+print("# Second split")
+options = {
+    'shuffle': True,
+    'split_sizes': {
+        'train': 14,
+        'val': 8,
+        'test': 5,
+    },
+}
 
-    # 1. Split dataset
-    print()
-    print("# First split")
-    options = {
-        'shuffle': True,
-        'split_ratios': {
-            'train': 0.8,
-            'val': 0.1,
-        },
+split = split_dataset(dataset, options)
+dprint("split =", split)
+
+# %% [markdown]
+# ## Section 4: Splitting a Dataset with Ratios and Fixed Sizes
+#
+# In this section, we split the dataset into training, validation, and test sets with fixed sample counts and sample ratios for each set. We can also choose to shuffle the dataset during the split.
+
+# %%
+print("# Third split")
+options = {
+    'shuffle': True,
+    'split_ratios': {
+        'train': 0.7,
+        'test': 0.1,
+    },
+    'split_sizes': {
+        'val': 7
     }
-    split = split_dataset(dset, options)
-    print(f"{split=}")
+}
 
-    # 2. Split dataset
-    print()
-    print("# Second split")
-    options = {
-        'shuffle': True,
-        'split_sizes': {
-            'train': 140,
-            'val': 80,
-            'test': 50,
-        },
-    }
-    split = split_dataset(dset, options)
-    print(f"{dset=}")
+split = split_dataset(dataset, options)
+dprint("split =", split)
 
-    # 3. Split dataset
-    print()
-    print("# Third split")
-    options = {
-        'split_ids': {
-            'train': np.arange(200),
-            'val': np.arange(300, 600),
-            'predict': np.arange(250, 350),
-        },
-    }
-    split = split_dataset(dset, options)
-    print(f"{split=}")
+# %% [markdown]
+# ## Section 5: Splitting a Dataset with Custom Split IDs
+#
+# In this section, we split the dataset based on custom sample IDs for each set. We can specify the sample IDs for training, validation, and prediction sets.
+
+# %%
+
+print("# Fourth split")
+options = {
+    'split_ids': {
+        'train': np.arange(20),
+        'val': np.arange(30, 60),
+        'predict': np.arange(25, 35),
+    },
+}
+
+split = split_dataset(dataset, options)
+dprint("split =", split)
 
 
-# %% Main Script
-if __name__ == '__main__':
-    split_examples()
