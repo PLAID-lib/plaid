@@ -44,8 +44,20 @@ def quantity_tabular_data(nb_samples):
 
 
 class Test_initialize_dataset_with_tabular_data():
-
     def test_initialize_dataset_with_tabular_data(
             self, scalar_tabular_data, nb_samples):
-        dset = initialize_dataset_with_tabular_data(scalar_tabular_data)
-        assert (len(dset) == nb_samples)
+        dataset = initialize_dataset_with_tabular_data(scalar_tabular_data)
+        assert (len(dataset) == nb_samples)
+
+        sample_1 = dataset[1]
+        scalar_value = sample_1.get_scalar("scalar_name_1")
+        assert isinstance(scalar_value, float)
+
+    def test_initialize_dataset_with_quantity_tabular_data(
+            self, quantity_tabular_data, nb_samples):
+        dataset = initialize_dataset_with_tabular_data(quantity_tabular_data)
+        assert (len(dataset) == nb_samples)
+
+        #scalar_names = ["test_scalar", "test_1D_field", "test_2D_field"]
+        #tabular_data_subset = dataset.get_scalars_to_tabular(scalar_names)
+        #assert isinstance(tabular_data_subset, dict)
