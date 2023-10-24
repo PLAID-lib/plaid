@@ -9,6 +9,5 @@ dependencies:
   - tqdm
   - pyyaml
   - pycgns
-  - numpy
   - basictools>=1.9.9
   - pytest
