@@ -238,9 +238,14 @@ class Sample(object):
         return self._meshes[time] if (self._meshes is not None) else None
 
     def get_default_time(self) -> float:
+        """Return the default time step.
+
+        Returns:
+            float: The default time, used if argument time=None in all other methods. Return the first time step among all the available time steps else return 0.0 .
+        """
         timestamps = self.get_all_mesh_times()
         if len(timestamps)>0:
-            return timestamps[0]
+            return sorted(timestamps)[0]
         else:
             return 0.0
 
@@ -406,9 +411,6 @@ class Sample(object):
         Returns:
             bool: `True` if the CGNS tree has a Base called `base_name`, else return `False`.
         """
-        if time is None:
-            time = self.get_default_time()
-
         return (base_name in self.get_base_names(time=time))
 
     def get_base(self, base_name: str = None, time: float = None) -> CGNSNode:
@@ -463,9 +465,6 @@ class Sample(object):
         Returns:
             CGLNode: The newly initialized zone node within the CGNS tree.
         """
-        if time is None:
-            time = self.get_default_time()
-
         self.init_tree(time)
         base_node = self.get_base(base_name, time=time)
         if base_node is None:
@@ -487,9 +486,6 @@ class Sample(object):
         Returns:
             list[str]: List of Zone names in Base named `base_name`, empty if there is none or if the Base doesn't exist.
         """
-        if time is None:
-            time = self.get_default_time()
-
         zone_paths = []
         base_node = self.get_base(base_name, time=time)
         if base_node is not None:
@@ -520,9 +516,6 @@ class Sample(object):
         Returns:
             bool: `True` if the CGNS tree has a Zone called `zone_name` in a Base called `base_name`, else return `False`.
         """
-        if time is None:
-            time = self.get_default_time()
-
         return (zone_name in self.get_zone_names(base_name, time=time))
 
     def get_zone(self, zone_name: str = None, base_name: str = None,
@@ -540,9 +533,6 @@ class Sample(object):
         Returns:
             CGNSNode: Returns a CGNS Zone node if found; otherwise, returns None.
         """
-        if time is None:
-            time = self.get_default_time()
-
         base_node = self.get_base(base_name, time=time)
 
         if zone_name is None:
@@ -578,9 +568,6 @@ class Sample(object):
         Returns:
             str: The type of the specified zone as a string.
         """
-        if time is None:
-            time = self.get_default_time()
-
         zone_node = self.get_zone(zone_name, base_name, time=time)
         if zone_node is None:
             raise KeyError(
@@ -692,9 +679,6 @@ class Sample(object):
         Seealso:
             This function can also be called using `get_points()` or `get_vertices()`.
         """
-        if time is None:
-            time = self.get_default_time()
-
         search_node = self.get_zone(zone_name, base_name, time=time)
         if search_node is not None:
             grid_paths = CGU.getAllNodesByTypeSet(
@@ -740,9 +724,6 @@ class Sample(object):
         Seealso:
             This function can also be called using `set_points()` or `set_vertices()`
         """
-        if time is None:
-            time = self.get_default_time()
-
         zone_node = self.get_zone(zone_name, base_name, time=time)
         if zone_node is None:
             raise KeyError(
@@ -770,9 +751,6 @@ class Sample(object):
             dict[str,np.ndarray]: A dictionary where keys are element type namesand values are NumPy arrays representing the element connectivity data.
             The NumPy arrays have shape (num_elements, num_nodes_per_element), and element indices are 0-based.
         """
-        if time is None:
-            time = self.get_default_time()
-
         zone_node = self.get_zone(zone_name, base_name, time=time)
 
         elements = {}
@@ -823,9 +801,6 @@ class Sample(object):
                                 names.append(field_name)
             return names
 
-        if time is None:
-            time = self.get_default_time()
-
         if base_name is None:
             base_names = self.get_base_names(time=time)
         else:
@@ -854,9 +829,6 @@ class Sample(object):
         Returns:
             FieldType: A set containing the names of the fields that match the specified criteria.
         """
-        if time is None:
-            time = self.get_default_time()
-
         is_empty = True
         search_node = self.get_zone(zone_name, base_name, time=time)
         if search_node is not None:
@@ -894,9 +866,6 @@ class Sample(object):
         Raises:
             KeyError: Raised if the specified zone does not exist in the given base.
         """
-        if time is None:
-            time = self.get_default_time()
-
         self.init_tree(time)
 
         zone_node = self.get_zone(zone_name, base_name, time=time)
