@@ -27,7 +27,7 @@ dependencies:
   - myst-parser
   - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
 #---# mesh/graph libs
-  - basictools>=1.9.9
+  - muscat>=2.0.0
   - pycgns
   - pip:
     - sphinx-autoapi

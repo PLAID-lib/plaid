@@ -466,7 +466,7 @@ class Dataset(object):
         """Prints information in a readable format (pretty print).
         """
         infos_cats = list(self._infos.keys())
-        from BasicTools.Helpers.TextFormatHelper import TFormat
+        from Muscat.Helpers.TextFormatHelper import TFormat
         tf = TFormat.Center(TFormat.InBlue("dataset infos")) + '\n'
         for cat in infos_cats:
             tf += TFormat.GetIndent() + TFormat.InYellow(cat) + '\n'
