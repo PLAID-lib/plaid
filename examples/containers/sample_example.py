@@ -18,8 +18,8 @@ import os
 
 # %%
 # Import necessary libraries and functions
-from BasicTools.Bridges.CGNSBridge import MeshToCGNS
-from BasicTools.Containers import UnstructuredMeshCreationTools as UMCT
+from Muscat.Bridges.CGNSBridge import MeshToCGNS
+from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
 
 from plaid.containers.sample import Sample, show_cgns_tree
 
@@ -238,6 +238,8 @@ print(f"{sample.get_field('Temperature') = }")
 
 # %%
 # It will look for a default base if no base and zone are given
+sample.add_time_series('stuff', np.arange(10), np.random.randn(10))
+
 print(f"{sample.get_time_series_names() = }")
 print(f"{sample.get_time_series('S') = }")
 print(f"{sample.get_time_series('stuff') = }")

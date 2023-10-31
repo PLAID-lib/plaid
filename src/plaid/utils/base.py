@@ -7,13 +7,11 @@
 
 # %% Imports
 
-from typing import TypedDict, Union
+from typing import Union
 
 import numpy as np
-from BasicTools.Containers.ConstantRectilinearMesh import \
-    ConstantRectilinearMesh
-from BasicTools.Containers.Filters import ElementFilter, NodeFilter
-from BasicTools.Containers.UnstructuredMesh import UnstructuredMesh
+from Muscat.Containers.Filters.FilterObjects import ElementFilter, NodeFilter
+from Muscat.Containers.UnstructuredMesh import UnstructuredMesh
 
 # %% Functions
 
@@ -38,8 +36,8 @@ def generate_random_ASCII(size=16) -> str:
 
 # %% Classes
 
-BTMesh = Union[UnstructuredMesh, ConstantRectilinearMesh]
-"""A BTMesh is an Union[UnstructuredMesh, ConstantRectilinearMesh]
+BTMesh = Union[UnstructuredMesh, UnstructuredMesh]
+"""A BTMesh is an Union[UnstructuredMesh, UnstructuredMesh]
 """
 Filter = Union[ElementFilter, NodeFilter]
 """A Filter is an Union[ElementFilter, NodeFilter]

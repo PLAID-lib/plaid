@@ -19,9 +19,9 @@ import os
 
 # %%
 # Import necessary libraries and functions
-import BasicTools.Containers.ElementNames as ElementNames
-from BasicTools.Bridges.CGNSBridge import MeshToCGNS
-from BasicTools.Containers import UnstructuredMeshCreationTools as UMCT
+import Muscat.Containers.ElementNames as ElementNames
+from Muscat.Bridges.CGNSBridge import MeshToCGNS
+from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
