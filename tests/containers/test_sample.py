@@ -13,8 +13,8 @@ import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 import pytest
-from BasicTools.Bridges.CGNSBridge import MeshToCGNS
-from BasicTools.Containers import UnstructuredMeshCreationTools as UMCT
+from Muscat.Bridges.CGNSBridge import MeshToCGNS
+from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
 
 from plaid.containers.sample import Sample, show_cgns_tree
 
@@ -217,6 +217,96 @@ class Test_Sample():
             Sample(dataset_path)
 
     # -------------------------------------------------------------------------#
+    def test_set_default_base(
+            self, sample, topological_dim, physical_dim):
+        sample.init_base(topological_dim, physical_dim, time=0.5)
+
+        sample.set_default_base(f"Base_{topological_dim}_{physical_dim}", 0.5)
+        # check dims getters
+        assert sample.get_topological_dim() == topological_dim
+        assert sample.get_physical_dim() == physical_dim
+        assert sample.get_base_assignment() == f"Base_{topological_dim}_{physical_dim}"
+        assert sample.get_time_assignment() == 0.5
+        assert sample.get_base_assignment("test") == "test"
+
+        sample.set_default_base(f"Base_{topological_dim}_{physical_dim}") # already set
+        sample.set_default_base(None) # will not assign to None
+        assert sample.get_base_assignment() == f"Base_{topological_dim}_{physical_dim}"
+        with pytest.raises(ValueError):
+            sample.set_default_base(f"Unknown base name")
+
+    def test_set_default_zone_with_default_base(
+            self, sample, topological_dim, physical_dim, base_name, zone_name, zone_shape):
+        sample.init_base(topological_dim, physical_dim, base_name, time=0.5)
+        sample.set_default_base(base_name)
+        # No zone provided
+        assert sample.get_zone() is None
+
+        sample.init_zone(
+            zone_name,
+            zone_shape,
+            CGK.Structured_s,
+            base_name=base_name)
+        # Look for the only zone in the default base
+        assert sample.get_zone() is not None
+
+        sample.init_zone(
+            zone_name,
+            zone_shape,
+            CGK.Structured_s,
+            base_name=base_name)
+        # There is more than one zone in this base
+        with pytest.raises(KeyError):
+            sample.get_zone()
+
+    def test_set_default_zone(
+            self, sample, topological_dim, physical_dim, base_name, zone_name, zone_shape):
+        sample.init_base(topological_dim, physical_dim, base_name, time=0.5)
+        sample.init_zone(
+            zone_name,
+            zone_shape,
+            CGK.Structured_s,
+            base_name=base_name)
+
+        sample.set_default_base_zone(base_name, zone_name, 0.5)
+        # check dims getters
+        assert sample.get_topological_dim() == topological_dim
+        assert sample.get_physical_dim() == physical_dim
+        assert sample.get_base_assignment() == base_name
+        assert sample.get_time_assignment() == 0.5
+
+        sample.set_default_base(base_name) # already set
+        sample.set_default_base(None) # will not assign to None
+        assert sample.get_base_assignment() == base_name
+        with pytest.raises(ValueError):
+            sample.set_default_base(f"Unknown base name")
+
+        assert sample.get_zone_assignment() == zone_name
+        assert sample.get_time_assignment() == 0.5
+
+        assert sample.get_zone() is not None
+        sample.set_default_base_zone(base_name, zone_name)
+        sample.set_default_base_zone(base_name, None) # will not assign to None
+        assert sample.get_zone_assignment() == zone_name
+        with pytest.raises(ValueError):
+            sample.set_default_base_zone(base_name, f"Unknown zone name")
+
+    def test_set_default_time(
+            self, sample, topological_dim, physical_dim):
+        sample.init_base(topological_dim, physical_dim, time=0.5)
+        sample.init_base(topological_dim, physical_dim, "OK_name", time=1.5)
+
+
+        assert sample.get_time_assignment() == 0.5
+        sample.set_default_time(1.5)
+        assert sample.get_time_assignment() == 1.5, "here"
+
+        sample.set_default_time(1.5) # already set
+        sample.set_default_time(None) # will not assign to None
+        assert sample.get_time_assignment() == 1.5
+        with pytest.raises(ValueError):
+            sample.set_default_time(2.5)
+    # -------------------------------------------------------------------------#
 
     def test_show_tree(self, sample_with_tree_and_scalar_and_time_series):
         sample_with_tree_and_scalar_and_time_series.show_tree()
@@ -248,10 +338,22 @@ class Test_Sample():
     # -------------------------------------------------------------------------#
     def test_init_base(self, sample, base_name, topological_dim, physical_dim):
         sample.init_base(topological_dim, physical_dim, base_name)
+        # check dims getters
+        assert sample.get_topological_dim(base_name) == topological_dim
+        assert sample.get_physical_dim(base_name) == physical_dim
 
     def test_init_base_no_base_name(
             self, sample, topological_dim, physical_dim):
         sample.init_base(topological_dim, physical_dim)
+
+        # check dims getters
+        assert sample.get_topological_dim(f"Base_{topological_dim}_{physical_dim}") == topological_dim
+        assert sample.get_physical_dim(f"Base_{topological_dim}_{physical_dim}") == physical_dim
+
+        # check setting default base
+        sample.set_default_base(f"Base_{topological_dim}_{physical_dim}")
+        assert sample.get_topological_dim() == topological_dim
+        assert sample.get_physical_dim() == physical_dim
 
     def test_get_base_names(self, sample):
         assert (sample.get_base_names() == [])
@@ -263,6 +365,11 @@ class Test_Sample():
                 full_path=True) == [
                 '/base_name_1',
                 '/base_name_2'])
+        # check dims getters
+        assert sample.get_topological_dim('base_name_1') == 3
+        assert sample.get_physical_dim('base_name_1') == 3
+        assert sample.get_topological_dim('base_name_2') == 3
+        assert sample.get_physical_dim('base_name_2') == 3
 
     def test_get_base(self, sample, base_name):
         sample.init_tree()
@@ -274,6 +381,11 @@ class Test_Sample():
         assert (sample.get_base(base_name) is not None)
         with pytest.raises(KeyError):
             sample.get_base()
+        # check dims getters
+        assert sample.get_topological_dim(base_name) == 3
+        assert sample.get_physical_dim(base_name) == 3
+        assert sample.get_topological_dim('other_base_name') == 3
+        assert sample.get_physical_dim('other_base_name') == 3
 
     # -------------------------------------------------------------------------#
     def test_init_zone(self, sample, base_name, zone_name, zone_shape):
@@ -290,6 +402,9 @@ class Test_Sample():
             zone_shape,
             CGK.Unstructured_s,
             base_name=base_name)
+        # check dims getters
+        assert sample.get_topological_dim(base_name) == 3
+        assert sample.get_physical_dim(base_name) == 3
 
     def test_has_zone(self, sample, base_name, zone_name):
         sample.init_base(3, 3, base_name)
