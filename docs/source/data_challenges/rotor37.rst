@@ -86,10 +86,6 @@ Rotor37
             Detailed metrics from :cite:p:`casenave2023mmgp`
 
 
-        .. bibliography::
-            :style: unsrt
-
-
         .. RRMSE
         .. GCNN MGN MMGP
 
