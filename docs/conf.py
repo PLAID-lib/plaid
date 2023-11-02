@@ -114,10 +114,15 @@ myst_heading_anchors = 7  # max 7
 # ---------------------------------------------------------#
 # autosummary options
 autosummary_generate = True
+
+extensions.append('sphinx_tabs.tabs')
+sphinx_tabs_valid_builders = ['linkcheck']
+
 # -----------------------------------------------------------------------------#
 # autoapi options :
 # https://sphinx-autoapi.readthedocs.io/en/latest/tutorials.html#setting-up-automatic-api-documentation-generation
 extensions.append('autoapi.extension')
+
 autoapi_dirs = ['../src/plaid']
 # autoapi_dirs = ['../src/plaid', '../tests', '../examples']
 autoapi_type = 'python'
@@ -151,6 +156,7 @@ autoapi_python_class_content = 'both'  # default is 'class'
 #     #     - Functions
 #     #     - Methods
 
+numfig = True
 
 # -----------------------------------------------------------------------------#
 
