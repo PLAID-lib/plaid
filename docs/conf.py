@@ -61,7 +61,13 @@ extensions = [
     # 'myst_parser', # imported by myst_nb
     # 'sphinxcontrib.apidoc', # autoapi is better
     'sphinx.ext.autosummary',
+    'sphinxcontrib.bibtex'
 ]
+
+bibtex_bibfiles = ['refs.bib']
+bibtex_encoding = 'latin'
+bibtex_default_style = 'unsrt'
+
 # -----------------------------------------------------------------------------#
 # sphinx.ext.intersphinx options
 intersphinx_mapping = {

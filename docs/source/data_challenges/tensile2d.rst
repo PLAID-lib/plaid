@@ -71,15 +71,15 @@ Tensile2d
 
         .. _t2d_ldb:
 
-        .. csv-table:: Leaderboad using composite score
+        .. csv-table:: Leaderboad using composite scores (without accumulated plasticity :math:`p`)
             :class: with-border
-            :widths: 50, 50
+            :widths: 25, 25, 50
             :header-rows: 1
 
-            "Method", "Composite score"
-            "MMGP", ":math:`1\times 10^{-3}`"
-            "GCNN", ":math:`2\times 10^{-3}`"
-            "MGN", ":math:`3\times 10^{-3}`"
+            "Rank", "Method", "Composite score"
+            1, "MMGP", ":math:`3.5\times 10^{-3}`"
+            2, "MGN", ":math:`3.3\times 10^{-2}`"
+            3, "GCNN", ":math:`5.8\times 10^{-2}`"
 
         Detailed metrics and provided in :numref:`t2d_res`.
 
@@ -90,4 +90,36 @@ Tensile2d
             :width: 800px
             :align: center
 
-            Detailed metrics
+            Detailed metrics from :cite:p:`casenave2023mmgp`
+
+
+        .. bibliography::
+            :style: unsrt
+
+
+        .. RRMSE
+        .. GCNN MGN MMGP
+
+        .. Tensile2d dataset
+        .. vmax 4.4e-2 5.8e-2 5.0e-3
+        .. σmax22 3.1e-3 4.5e-3 1.7e-3
+        .. σmaxv 1.2e-1 2.4e-2 5.0e-3
+        .. u 4.5e-2 1.5e-2 3.4e-3
+        .. v 7.4e-2 9.7e-2 5.5e-3
+        .. σ11 1.0e-1 2.8e-2 3.7e-3
+        .. σ12 4.5e-2 7.5e-3 2.4e-3
+        .. σ22 3.3e-2 2.7e-2 1.4e-3
+
+
+        .. np.array(
+        .. [
+        .. [4.4e-2, 5.8e-2, 5.0e-3 ],
+        .. [3.1e-3, 4.5e-3, 1.7e-3 ],
+        .. [1.2e-1, 2.4e-2, 5.0e-3 ],
+        .. [4.5e-2, 1.5e-2, 3.4e-3 ],
+        .. [7.4e-2, 9.7e-2, 5.5e-3 ],
+        .. [1.0e-1, 2.8e-2, 3.7e-3 ],
+        .. [4.5e-2, 7.5e-3, 2.4e-3 ],
+        .. [3.3e-2, 2.7e-2, 1.4e-3 ],
+        .. ]
+        .. )

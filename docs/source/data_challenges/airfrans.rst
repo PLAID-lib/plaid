@@ -64,15 +64,15 @@ AirfRANS
 
         .. _arf_ldb:
 
-        .. csv-table:: Leaderboad using composite score
+        .. csv-table:: Leaderboad using composite scores (without field :math:`\nu_t`)
             :class: with-border
-            :widths: 50, 50
+            :widths: 25, 25, 50
             :header-rows: 1
 
-            "Method", "Composite score"
-            "MMGP", ":math:`1\times 10^{-3}`"
-            "GCNN", ":math:`2\times 10^{-3}`"
-            "MGN", ":math:`3\times 10^{-3}`"
+            "Rank", "Method", "Composite score"
+            1, "MMGP", ":math:`2.5\times 10^{-2}`"
+            2, "MGN", ":math:`1.2\times 10^{-1}`"
+            3, "GCNN", ":math:`1.3\times 10^{-1}`"
 
         Detailed metrics and provided in :numref:`arf_res`.
 
@@ -83,4 +83,30 @@ AirfRANS
             :width: 800px
             :align: center
 
-            Detailed metrics
+            Detailed metrics from :cite:p:`casenave2023mmgp`
+
+
+        .. bibliography::
+            :style: unsrt
+
+
+        .. RRMSE
+        .. GCNN MGN MMGP
+
+        .. AirfRANS dataset
+        .. CD 6.1e-2 4.9e-2 3.3e-2
+        .. CL 4.1e-1 2.4e-1 8.0e-3
+        .. u 5.6e-2 8.3e-2 1.8e-2
+        .. v 4.2e-2 1.2e-1 1.5e-2
+        .. p 8.5e-2 9.9e-2 5.1e-2
+
+
+        .. np.array(
+        .. [
+        .. [6.1e-2, 4.9e-2, 3.3e-2 ],
+        .. [4.1e-1, 2.4e-1, 8.0e-3 ],
+        .. [5.6e-2, 8.3e-2, 1.8e-2 ],
+        .. [4.2e-2, 1.2e-1, 1.5e-2 ],
+        .. [8.5e-2, 9.9e-2, 5.1e-2 ],
+        .. ]
+        .. )
