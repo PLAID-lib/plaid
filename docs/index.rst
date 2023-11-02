@@ -35,6 +35,7 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
 
    plaid-lib <autoapi/plaid/index>
    Basic examples <source/notebooks.rst>
+   Default values flowchart <source/default_values.rst>
 
 Indices and tables
 ==================

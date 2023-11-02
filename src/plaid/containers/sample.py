@@ -351,7 +351,7 @@ class Sample(object):
         if len(base_names) == 0:
             return None
         elif len(base_names) == 1:
-            logging.info(f"No default base provided. Taking the only base available: {base_names[0]}")
+            # logging.info(f"No default base provided. Taking the only base available: {base_names[0]}")
             return base_names[0]
 
         raise KeyError(f"No default base provided among {base_names}")
@@ -384,7 +384,7 @@ class Sample(object):
         if len(zone_names) == 0:
             return None
         elif len(zone_names) == 1:
-            logging.info(f"No default zone provided. Taking the only zone available: {zone_names[0]} in default base: {base_name}")
+            # logging.info(f"No default zone provided. Taking the only zone available: {zone_names[0]} in default base: {base_name}")
             return zone_names[0]
 
         raise KeyError(f"No default zone provided among {zone_names} in the default base: {base_name}")

@@ -19,7 +19,7 @@ import os
 
 # %%
 # Import necessary libraries and functions
-import Muscat.Containers.ElementNames as ElementNames
+import Muscat.Containers.ElementsDescription as ElementsDescription
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
 
@@ -73,7 +73,7 @@ bars = np.array([
     ])
 
 BTMesh = UMCT.CreateMeshOfTriangles(points, triangles)
-elbars = BTMesh.GetElementsOfType(ElementNames.Bar_2)
+elbars = BTMesh.GetElementsOfType(ElementsDescription.Bar_2)
 elbars.AddNewElements(bars, [1, 2])
 cgns_mesh = MeshToCGNS(BTMesh)
 
