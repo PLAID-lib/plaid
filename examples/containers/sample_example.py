@@ -5,7 +5,8 @@
 #
 # 1. Initializing an Empty Sample and Adding Data
 # 2. Accessing and Modifying Sample Data
-# 3. Saving and Loading Samples
+# 3. Set and Get default values
+# 4. Saving and Loading Samples
 #
 # This notebook provides detailed examples of using the Sample class to manage and manipulate sample data structures.
 #
@@ -18,9 +19,9 @@ import os
 
 # %%
 # Import necessary libraries and functions
+import CGNS.PAT.cgnskeywords as CGK
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
-
 from plaid.containers.sample import Sample, show_cgns_tree
 
 # %%
@@ -377,7 +378,127 @@ for b_name in bases_names:
             f"    - {z_name} -> type: {sample.get_zone_type(z_name, b_name)} | full: {f_z_name}")
 
 # %% [markdown]
-# ## Section 3: Saving and Loading Sample
+# ## Section 3: Set and Get default values
+#
+# This section demonstrates how to use default CGNS values in a Sample.
+
+# %% [markdown]
+# ### Set and use default time in a Sample
+
+# %%
+# Without a provided default time, it searches the first time available in all mesh times
+print(f"{sample.get_all_mesh_times() = }")
+print(f"{sample.get_time_assignment() = }", end="\n\n")
+
+# Set default time
+sample.set_default_time(1.0)
+# Now that default time has been assigned, there's no need to specify it in function calls.
+print(f"{sample.get_time_assignment() = }", end="\n\n")
+
+# Print the tree at time 1.0
+sample.show_tree() # == sample.show_tree(1.0)
+
+# %%
+# If time is specified as an argument in a function, it takes precedence over the default time.
+sample.show_tree(0.0) # Print the tree at time 0.0 even if default time is 1.0
+
+# %% [markdown]
+# ### Set and use default base and time in a Sample
+
+# %%
+# Reset default time
+sample._defaults["active_time"] = None
+
+# Without a provided default time, it searches the first time available in all mesh times
+print(f"{sample.get_time_assignment() = }", end="\n\n")
+
+# Create new bases
+sample.init_base(1, 1, 'new_base', 0.0)
+print(f"{sample.get_topological_dim('new_base', 0.0) = }")
+print(f"{sample.get_physical_dim('new_base', 0.0) = }")
+
+# %%
+# Attempting to get a base when the default base is not set, and there are multiple bases available.
+print(f"{sample.get_base_names() = }", end="\n\n")
+try:
+    sample.get_base_assignment()
+except KeyError as e:
+    print(str(e))
+
+# %%
+# Set default base and time
+sample.set_default_base('SurfaceMesh', 0.0)
+
+# Now that default base and time have been assigned, it is no longer necessary to specify them in function calls.
+print(f"{sample.get_time_assignment() = }")
+print(f"{sample.get_base_assignment() = }", end="\n\n")
+
+# Print the topological and physical dim for the default base == 'SurfaceMesh'
+print(f"{sample.get_topological_dim() = }")
+print(f"{sample.get_physical_dim() = }")
+
+# %%
+# If base is specified as an argument in a function, it takes precedence over the default base.
+print(f"{sample.get_physical_dim('new_base') = }") # Print the 'new_base' physical dim instead of the default base physical dim
+
+# %% [markdown]
+# ### Set and use default base, zone and time in a Sample
+
+# %%
+# Reset default base and time
+sample._defaults["active_time"] = None
+sample._defaults["active_base"] = None
+
+# Without a provided default time, it searches the first time available in all mesh times
+print(f"{sample.get_time_assignment() = }", end="\n\n")
+
+# Create a new zone in 'SurfaceMesh' base
+sample.init_zone('new_zone', zone_shape=np.array([5, 3, 0]), zone_type=CGK.Structured_s, base_name='SurfaceMesh')
+print(f"{sample.get_zone_type('TestZoneName', 'SurfaceMesh') = }")
+print(f"{sample.get_zone_type('new_zone', 'SurfaceMesh') = }")
+
+# %%
+# Set default base
+sample.set_default_base('SurfaceMesh')
+
+# Attempting to get a zone when the default zone is not set, and there are multiple zones available in the default base.
+print(f"{sample.get_zone_names() = }", end="\n\n")
+try:
+    sample.get_zone_assignment()
+except KeyError as e:
+    print(str(e))
+
+# %%
+# Reset default base and time
+sample._defaults["active_time"] = None
+sample._defaults["active_base"] = None
+
+# Set default base, zone and time
+sample.set_default_base_zone('SurfaceMesh', 'TestZoneName', 0.0)
+
+# Now that default base, zone and time have been assigned, it is no longer necessary to specify them in function calls.
+print(f"{sample.get_time_assignment() = }")
+print(f"{sample.get_base_assignment() = }")
+print(f"{sample.get_zone_assignment() = }", end="\n\n")
+
+# Print the type of the default zone (from the default base)
+print(f"{sample.get_zone_type() = }")
+
+# Print the default zone content (from the default base)
+print(f"{sample.get_zone() = }")
+
+# %%
+# If zone is specified as an argument in a function, it takes precedence over the default zone.
+print(f"{sample.get_zone_type('new_zone') = }") # Print the 'new_zone' type instead of the default zone type
+
+# %% [markdown]
+# ### More information on how default values work
+
+# %% [markdown]
+# ![Alt text](../../docs/source/images/default_value_selection.png "default values flowchart")
+
+# %% [markdown]
+# ## Section 4: Saving and Loading Sample
 #
 # This section demonstrates how to save and load a Sample from a directory.
 
