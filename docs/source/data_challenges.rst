@@ -45,7 +45,4 @@ Data challenges:
     data_challenges/rotor37
     data_challenges/airfrans
 
-
-
-.. bibliography::
-    :style: unsrt
+    data_challenges/references
