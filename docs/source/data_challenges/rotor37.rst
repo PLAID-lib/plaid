@@ -64,15 +64,15 @@ Rotor37
 
         .. _r37_ldb:
 
-        .. csv-table:: Leaderboad using composite score
+        .. csv-table:: Leaderboad using composite scores
             :class: with-border
-            :widths: 50, 50
+            :widths: 25, 25, 50
             :header-rows: 1
 
-            "Method", "Composite score"
-            "MMGP", ":math:`1\times 10^{-3}`"
-            "GCNN", ":math:`2\times 10^{-3}`"
-            "MGN", ":math:`3\times 10^{-3}`"
+            "Rank", "Method", "Composite score"
+            1, "MMGP", ":math:`1.7\times 10^{-3}`"
+            2, "GCNN", ":math:`6.0\times 10^{-3}`"
+            3, "MGN", ":math:`9.2\times 10^{-3}`"
 
         Detailed metrics and provided in :numref:`r37_res`.
 
@@ -83,4 +83,31 @@ Rotor37
             :width: 800px
             :align: center
 
-            Detailed metrics
+            Detailed metrics from :cite:p:`casenave2023mmgp`
+
+
+        .. bibliography::
+            :style: unsrt
+
+
+        .. RRMSE
+        .. GCNN MGN MMGP
+
+        .. Rotor37 dataset
+        .. m 4.4e-3 5.4e-3 5.0e-4
+        .. p 4.4e-3 5.3e-3 4.8e-4
+        .. η 3.1e-3 7.2e-3 5.0e-4
+        .. γ 2.9e-3 6.5e-3 4.6e-4
+        .. P 1.7e-2 1.7e-2 7.2e-3
+        .. T 3.9e-3 1.4e-2 8.2e-4
+
+        .. np.array(
+        .. [
+        .. [4.4e-3, 5.4e-3, 5.0e-4],
+        .. [4.4e-3, 5.3e-3, 4.8e-4],
+        .. [3.1e-3, 7.2e-3, 5.0e-4],
+        .. [2.9e-3, 6.5e-3, 4.6e-4],
+        .. [1.7e-2, 1.7e-2, 7.2e-3],
+        .. [3.9e-3, 1.4e-2, 8.2e-4],
+        .. ]
+        .. }

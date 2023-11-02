@@ -4,9 +4,11 @@ Data challenges
 As part of the documentation for PLAID, we detail the three numerical experiments of the paper:
 "MMGP: Mesh Morphing Gaussian Process-based machine learning method
 for regression of physical problems under non-parameterized geometrical variability"
-(`arXiv preprint <https://arxiv.org/abs/2305.12871>`_, `neurips 2023 <https://arxiv.org/abs/2305.12871>`_).
+:cite:p:`casenave2023mmgp` (`arXiv preprint <https://arxiv.org/abs/2305.12871>`_,
+`neurips 2023 <https://arxiv.org/abs/2305.12871>`_).
 The library implementating the MMGP method is available at `Safran Gitlab <https://gitlab.com/drti/mmgp>`_,
 and documented on `readthedocs <https://mmgp.readthedocs.io/>`_.
+
 
 The corresponding datasets are available in PLAID format on `Zenodo <https://zenodo.org/>`_.
 
@@ -42,3 +44,8 @@ Data challenges:
     data_challenges/tensile2d
     data_challenges/rotor37
     data_challenges/airfrans
+
+
+
+.. bibliography::
+    :style: unsrt
