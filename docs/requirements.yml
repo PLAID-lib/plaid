@@ -16,5 +16,7 @@ dependencies:
   - pycgns
   - pip
   - pip:
-    - sphinx-autoapi
     - furo
+    - sphinx-autoapi
+    - sphinx-tabs
+    - sphinxcontrib.bibtex
