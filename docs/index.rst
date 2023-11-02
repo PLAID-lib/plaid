@@ -19,8 +19,6 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
    source/getting_started.md
    source/description.md
 
-.. _Advanced:
-
 .. toctree::
    :glob:
    :maxdepth: 1
@@ -37,15 +35,17 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
    Basic examples <source/notebooks.rst>
    Default values flowchart <source/default_values.rst>
 
+.. toctree::
+   :glob:
+   :maxdepth: 1
+   :caption: Going further
+
+   GCNS standard <http://cgns.github.io/>
+   Data Challenges <source/data_challenges.rst>
+
 Indices and tables
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-
-.. plaid.Dataset <autoapi/plaid/containers/dataset/index>
-.. plaid.Sample <autoapi/plaid/containers/sample/index>
-.. autoapi/tests/index
