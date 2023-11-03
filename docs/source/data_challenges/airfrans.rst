@@ -1,0 +1,108 @@
+AirfRANS
+========
+
+.. tabs::
+
+    .. tab:: Dataset
+
+        The dataset ``AirfRANS`` can be downloaded `here <https://zenodo.org/>`_.
+        A description is given in :numref:`arf_descr`.
+
+        .. _arf_descr:
+
+        .. csv-table:: Description
+            :class: with-border
+            :widths: 20, 80
+
+            "Model", "3D compressible Navier-Stokes"
+            "Variability", "Mesh (drawn in the NACA 4 and 5 digit series), inlet_velocity, angle_of_attack"
+            "Meshes", "2D connected unstructured mesh, only triangles"
+            "Scalars", "inlet_velocity, angle_of_attack, C_L, C_D"
+            "Fields", "U_x, U_y, p, nu_t"
+
+        Exemple meshes are illustrated in :numref:`arf_phys_setting`.
+
+        .. _arf_phys_setting:
+
+        .. figure:: airfrans_images/airfrans_mesh_example.png
+            :class: with-shadow
+            :width: 800px
+            :align: center
+
+            Physics setting
+
+        Solution examples are illustrated in :numref:`arf_sol_ex`.
+
+        .. _arf_sol_ex:
+
+        .. figure:: airfrans_images/airfrans_solution_example.png
+            :class: with-shadow
+            :width: 800px
+            :align: center
+
+            Example of solution
+
+
+    .. tab:: Machine learning problem
+
+        The characteristics of the machine learning problem are listed in :numref:`arf_inout`.
+
+        .. _arf_inout:
+
+        .. csv-table:: ML problem description
+            :class: with-border
+            :widths: 20, 80
+
+            "Inputs", "Mesh, inlet_velocity, angle_of_attack"
+            "Outputs", "C_L, C_D, U_x, U_y, p, nu_t"
+            "Splits", "Train (800 samples), Test (200 samples)"
+
+    .. tab:: Leaderboard
+
+
+        The leaderboad for dataset ``AirfRANS`` is in :numref:`arf_ldb`.
+
+        .. _arf_ldb:
+
+        .. csv-table:: Leaderboad using composite scores (without field :math:`\nu_t`)
+            :class: with-border
+            :widths: 25, 25, 50
+            :header-rows: 1
+
+            "Rank", "Method", "Composite score"
+            1, "MMGP", ":math:`2.5\times 10^{-2}`"
+            2, "MGN", ":math:`1.2\times 10^{-1}`"
+            3, "GCNN", ":math:`1.3\times 10^{-1}`"
+
+        Detailed metrics and provided in :numref:`arf_res`.
+
+        .. _arf_res:
+
+        .. figure:: airfrans_images/res_airfrans.png
+            :class: with-shadow
+            :width: 800px
+            :align: center
+
+            Detailed metrics from :cite:p:`casenave2023mmgp`
+
+
+        .. RRMSE
+        .. GCNN MGN MMGP
+
+        .. AirfRANS dataset
+        .. CD 6.1e-2 4.9e-2 3.3e-2
+        .. CL 4.1e-1 2.4e-1 8.0e-3
+        .. u 5.6e-2 8.3e-2 1.8e-2
+        .. v 4.2e-2 1.2e-1 1.5e-2
+        .. p 8.5e-2 9.9e-2 5.1e-2
+
+
+        .. np.array(
+        .. [
+        .. [6.1e-2, 4.9e-2, 3.3e-2 ],
+        .. [4.1e-1, 2.4e-1, 8.0e-3 ],
+        .. [5.6e-2, 8.3e-2, 1.8e-2 ],
+        .. [4.2e-2, 1.2e-1, 1.5e-2 ],
+        .. [8.5e-2, 9.9e-2, 5.1e-2 ],
+        .. ]
+        .. )
