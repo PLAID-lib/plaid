@@ -429,7 +429,7 @@ class Test_Sample():
             base_name=base_name)
         sample.init_zone(
             np.random.randint(0, 10, size=3),
-            zone_name='zone_name_1',
+            zone_name='zone_name_2',
             base_name=base_name)
         assert (
             sample.get_zone_names(base_name) == [
@@ -535,7 +535,7 @@ class Test_Sample():
         with pytest.raises(KeyError):
             sample.set_nodes(nodes, zone_name, base_name)
         sample.init_zone(
-            np.array([len(nodes), 0, 0]), 
+            np.array([len(nodes), 0, 0]),
             zone_name=zone_name,
             base_name=base_name)
         sample.set_nodes(nodes, zone_name, base_name)
