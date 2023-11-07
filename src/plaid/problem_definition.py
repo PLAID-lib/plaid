@@ -45,7 +45,7 @@ class ProblemDefinition(object):
     def __init__(self, directory_path: str = None) -> None:
         """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`
 
-        Use :meth:`add_inputs <plaid.problem_definition.ProblemDefinition.add_inputs>` or :meth:`add_outputs <plaid.problem_definition.ProblemDefinition.add_outputs>` to feed the :class:`ProblemDefinition`
+        Use :meth:`add_inputs <plaid.problem_definition.ProblemDefinition.add_inputs>` or :meth:`add_output_scalars_names <plaid.problem_definition.ProblemDefinition.add_output_scalars_names>` to feed the :class:`ProblemDefinition`
 
         Args:
             directory_path (str, optional): The path from which to load PLAID problem definition files.
@@ -63,17 +63,18 @@ class ProblemDefinition(object):
                 # 2. Load problem definition and create ProblemDefinition instance
                 problem_definition = ProblemDefinition("path_to_plaid_prob_def")
                 print(problem_definition)
-                >>> ProblemDefinition(input_names=['mesh', 's_1'], output_names=['s_2'], task='regression')
+                >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
         self._task: str = None  # list[task name]
-        self._inputs: list[str] = []   # list[input name]
-        self._outputs: list[str] = []   # list[output name]
+        self.in_scalars_names: list[str]     = []
+        self.out_scalars_names: list[str]    = []
+        self.in_timeseries_names: list[str]  = []
+        self.out_timeseries_names: list[str] = []
+        self.in_fields_names: list[str]      = []
+        self.out_fields_names: list[str]     = []
+        self.in_meshes_names: list[str]      = []
+        self.out_meshes_names: list[str]     = []
         self._split: dict[str, IndexType] = None
-
-        self.in_scalars_names: list[str] = []
-        self.out_scalars_names: list[str] = []
-        self.in_fields_names: list[str] = []
-        self.out_fields_names: list[str] = []
 
         if directory_path is not None:
             self._load_from_dir_(directory_path)
@@ -158,10 +159,10 @@ class ProblemDefinition(object):
         if self._split is not None: # pragma: no cover
             logger.warning(f"split already exists -> data will be replaced")
         self._split = split
-    # -------------------------------------------------------------------------#
 
-    def get_inputs(self) -> list[str]:
-        """Get the input names or identifiers of the problem.
+    # -------------------------------------------------------------------------#
+    def get_input_scalars_names(self) -> list[str]:
+        """Get the input scalars names or identifiers of the problem.
 
         Returns:
             list[str]: A list of input feature names or identifiers.
@@ -172,14 +173,14 @@ class ProblemDefinition(object):
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
-                input_names = problem.get_inputs()
-                print(input_names)
+                input_scalars_names = problem.get_input_scalars_names()
+                print(input_scalars_names)
                 >>> ['omega', 'pressure']
         """
-        return self._inputs
+        return self.in_scalars_names
 
-    def add_inputs(self, inputs: list[str]) -> None:
-        """Add input names or identifiers to the problem.
+    def add_input_scalars_names(self, inputs: list[str]) -> None:
+        """Add input scalars names or identifiers to the problem.
 
         Args:
             inputs (list[str]): A list of input feature names or identifiers to add.
@@ -192,16 +193,16 @@ class ProblemDefinition(object):
 
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
-                input_names = ['omega', 'pressure']
-                problem.add_inputs(input_names)
+                input_scalars_names = ['omega', 'pressure']
+                problem.add_input_scalars_names(input_scalars_names)
         """
         if not (len(set(inputs)) == len(inputs)):
             raise ValueError('Some inputs have same names')
         for input in inputs:
-            self.add_input(input)
+            self.add_input_scalar_name(input)
 
-    def add_input(self, input: str) -> None:
-        """Add an input name or identifier to the problem.
+    def add_input_scalar_name(self, input: str) -> None:
+        """Add an input scalar name or identifier to the problem.
 
         Args:
             input (str):  The name or identifier of the input feature to add.
@@ -215,77 +216,15 @@ class ProblemDefinition(object):
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
                 input_name = 'pressure'
-                problem.add_input(input_name)
+                problem.add_input_scalar_name(input_name)
         """
-        if input in self._inputs:
-            raise ValueError(f"{input} is already in self._inputs")
-        self._inputs.append(input)
-        self._inputs.sort()
+        if input in self.in_scalars_names:
+            raise ValueError(f"{input} is already in self.in_scalars_names")
+        self.in_scalars_names.append(input)
+        self.in_scalars_names.sort()
 
-    # -------------------------------------------------------------------------#
-    def get_outputs(self) -> list[str]:
-        """Get the outputs names or identifiers of the problem.
-
-        Returns:
-            list[str]: A list of output feature names or identifiers.
-
-        Example:
-            .. code-block:: python
-
-                from plaid.problem_definition import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                outputs_names = problem.get_outputs()
-                print(outputs_names)
-                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-        """
-        return self._outputs
-
-    def add_outputs(self, outputs: list[str]) -> None:
-        """Add output names or identifiers to the problem.
-
-        Args:
-            outputs (list[str]): A list of output feature names or identifiers to add.
-
-        Raises:
-            ValueError: if some :code:`outputs` are redondant.
-
-        Example:
-            .. code-block:: python
-
-                from plaid.problem_definition import ProblemDefinition
-                problem = ProblemDefinition()
-                output_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-                problem.add_outputs(output_names)
-        """
-        if not (len(set(outputs)) == len(outputs)):
-            raise ValueError('Some outputs have same names')
-        for output in outputs:
-            self.add_output(output)
-
-    def add_output(self, output: str) -> None:
-        """Add an output name or identifier to the problem.
-        Args:
-            output (str):  The name or identifier of the output feature to add.
-
-        Raises:
-            ValueError: If the specified output feature is already in the list of outputs.
-
-        Example:
-            .. code-block:: python
-
-                from plaid.problem_definition import ProblemDefinition
-                problem = ProblemDefinition()
-                output_names = 'pressure'
-                problem.add_output(output_names)
-        """
-        if output in self._outputs:
-            raise ValueError(f"{output} is already in self._outputs")
-        self._outputs.append(output)
-        self._inputs.sort()
-
-    def filter_input_names(self, names: list[str]) -> list[str]:
-        """Filter and get input features corresponding to a sorted list of names.
+    def filter_input_scalars_names(self, names: list[str]) -> list[str]:
+        """Filter and get input scalars features corresponding to a sorted list of names.
 
         Args:
             names (list[str]): A list of names for which to retrieve corresponding input features.
@@ -299,14 +238,76 @@ class ProblemDefinition(object):
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
-                input_names = ['omega', 'pressure', 'temperature']
-                input_features = my_instance.get_inputs_from_names(input_names)
+                input_scalars_names = ['omega', 'pressure', 'temperature']
+                input_features = problem.filter_input_scalars_names(input_scalars_names)
                 print(input_features)
                 >>> ['omega', 'pressure']
         """
-        return sorted(set(names).intersection(self.get_inputs()))
+        return sorted(set(names).intersection(self.get_input_scalars_names()))
 
-    def filter_output_names(self, names: list[str]) -> list[str]:
+    # -------------------------------------------------------------------------#
+    def get_output_scalars_names(self) -> list[str]:
+        """Get the output scalars names or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of output feature names or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                outputs_names = problem.get_output_scalars_names()
+                print(outputs_names)
+                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+        """
+        return self.out_scalars_names
+
+    def add_output_scalars_names(self, outputs: list[str]) -> None:
+        """Add output scalars names or identifiers to the problem.
+
+        Args:
+            outputs (list[str]): A list of output feature names or identifiers to add.
+
+        Raises:
+            ValueError: if some :code:`outputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_scalars_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                problem.add_output_scalars_names(output_scalars_names)
+        """
+        if not (len(set(outputs)) == len(outputs)):
+            raise ValueError('Some outputs have same names')
+        for output in outputs:
+            self.add_output_scalar_name(output)
+
+    def add_output_scalar_name(self, output: str) -> None:
+        """Add an output scalar name or identifier to the problem.
+        Args:
+            output (str):  The name or identifier of the output feature to add.
+
+        Raises:
+            ValueError: If the specified output feature is already in the list of outputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_scalars_names = 'pressure'
+                problem.add_output_scalar_name(output_scalars_names)
+        """
+        if output in self.out_scalars_names:
+            raise ValueError(f"{output} is already in self.out_scalars_names")
+        self.out_scalars_names.append(output)
+        self.in_scalars_names.sort()
+
+    def filter_output_scalars_names(self, names: list[str]) -> list[str]:
         """Filter and get output features corresponding to a sorted list of names.
 
         Args:
@@ -321,13 +322,521 @@ class ProblemDefinition(object):
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
-                output_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-                output_features = my_instance.get_outputs_from_names(output_names)
+                output_scalars_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                output_features = problem.filter_output_scalars_names(output_scalars_names)
                 print(output_features)
                 >>> ['in_massflow']
         """
-        return sorted(set(names).intersection(self.get_outputs()))
+        return sorted(set(names).intersection(self.get_output_scalars_names()))
 
+    # -------------------------------------------------------------------------#
+    def get_input_fields_names(self) -> list[str]:
+        """Get the input fields names or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of input feature names or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                input_fields_names = problem.get_input_fields_names()
+                print(input_fields_names)
+                >>> ['omega', 'pressure']
+        """
+        return self.in_fields_names
+
+    def add_input_fields_names(self, inputs: list[str]) -> None:
+        """Add input fields names or identifiers to the problem.
+
+        Args:
+            inputs (list[str]): A list of input feature names or identifiers to add.
+
+        Raises:
+            ValueError: If some :code:`inputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                input_fields_names = ['omega', 'pressure']
+                problem.add_input_fields_names(input_fields_names)
+        """
+        if not (len(set(inputs)) == len(inputs)):
+            raise ValueError('Some inputs have same names')
+        for input in inputs:
+            self.add_input_field_name(input)
+
+    def add_input_field_name(self, input: str) -> None:
+        """Add an input field name or identifier to the problem.
+
+        Args:
+            input (str):  The name or identifier of the input feature to add.
+
+        Raises:
+            ValueError: If the specified input feature is already in the list of inputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                input_name = 'pressure'
+                problem.add_input_field_name(input_name)
+        """
+        if input in self.in_fields_names:
+            raise ValueError(f"{input} is already in self.in_fields_names")
+        self.in_fields_names.append(input)
+        self.in_fields_names.sort()
+
+    def filter_input_fields_names(self, names: list[str]) -> list[str]:
+        """Filter and get input fields features corresponding to a sorted list of names.
+
+        Args:
+            names (list[str]): A list of names for which to retrieve corresponding input features.
+
+        Returns:
+            list[str]: A sorted list of input feature names or categories corresponding to the provided names.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                input_fields_names = ['omega', 'pressure', 'temperature']
+                input_features = problem.filter_input_fields_names(input_fields_names)
+                print(input_features)
+                >>> ['omega', 'pressure']
+        """
+        return sorted(set(names).intersection(self.get_input_fields_names()))
+
+    # -------------------------------------------------------------------------#
+    def get_output_fields_names(self) -> list[str]:
+        """Get the output fields names or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of output feature names or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                outputs_names = problem.get_output_fields_names()
+                print(outputs_names)
+                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+        """
+        return self.out_fields_names
+
+    def add_output_fields_names(self, outputs: list[str]) -> None:
+        """Add output fields names or identifiers to the problem.
+
+        Args:
+            outputs (list[str]): A list of output feature names or identifiers to add.
+
+        Raises:
+            ValueError: if some :code:`outputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_fields_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                problem.add_output_fields_names(output_fields_names)
+        """
+        if not (len(set(outputs)) == len(outputs)):
+            raise ValueError('Some outputs have same names')
+        for output in outputs:
+            self.add_output_field_name(output)
+
+    def add_output_field_name(self, output: str) -> None:
+        """Add an output field name or identifier to the problem.
+        Args:
+            output (str):  The name or identifier of the output feature to add.
+
+        Raises:
+            ValueError: If the specified output feature is already in the list of outputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_fields_names = 'pressure'
+                problem.add_output_field_name(output_fields_names)
+        """
+        if output in self.out_fields_names:
+            raise ValueError(f"{output} is already in self.out_fields_names")
+        self.out_fields_names.append(output)
+        self.in_fields_names.sort()
+
+    def filter_output_fields_names(self, names: list[str]) -> list[str]:
+        """Filter and get output features corresponding to a sorted list of names.
+
+        Args:
+            names (list[str]): A list of names for which to retrieve corresponding output features.
+
+        Returns:
+            list[str]: A sorted list of output feature names or categories corresponding to the provided names.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                output_fields_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                output_features = problem.filter_output_fields_names(output_fields_names)
+                print(output_features)
+                >>> ['in_massflow']
+        """
+        return sorted(set(names).intersection(self.get_output_fields_names()))
+
+    # -------------------------------------------------------------------------#
+    def get_input_timeseries_names(self) -> list[str]:
+        """Get the input timeseries names or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of input feature names or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                input_timeseries_names = problem.get_input_timeseries_names()
+                print(input_timeseries_names)
+                >>> ['omega', 'pressure']
+        """
+        return self.in_timeseries_names
+
+    def add_input_timeseries_names(self, inputs: list[str]) -> None:
+        """Add input timeseries names or identifiers to the problem.
+
+        Args:
+            inputs (list[str]): A list of input feature names or identifiers to add.
+
+        Raises:
+            ValueError: If some :code:`inputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                input_timeseries_names = ['omega', 'pressure']
+                problem.add_input_timeseries_names(input_timeseries_names)
+        """
+        if not (len(set(inputs)) == len(inputs)):
+            raise ValueError('Some inputs have same names')
+        for input in inputs:
+            self.add_input_timeseries_name(input)
+
+    def add_input_timeseries_name(self, input: str) -> None:
+        """Add an input timeserie name or identifier to the problem.
+
+        Args:
+            input (str):  The name or identifier of the input feature to add.
+
+        Raises:
+            ValueError: If the specified input feature is already in the list of inputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                input_name = 'pressure'
+                problem.add_input_timeseries_name(input_name)
+        """
+        if input in self.in_timeseries_names:
+            raise ValueError(f"{input} is already in self.in_timeseries_names")
+        self.in_timeseries_names.append(input)
+        self.in_timeseries_names.sort()
+
+    def filter_input_timeseries_names(self, names: list[str]) -> list[str]:
+        """Filter and get input timeseries features corresponding to a sorted list of names.
+
+        Args:
+            names (list[str]): A list of names for which to retrieve corresponding input features.
+
+        Returns:
+            list[str]: A sorted list of input feature names or categories corresponding to the provided names.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                input_timeseries_names = ['omega', 'pressure', 'temperature']
+                input_features = problem.filter_input_timeseries_names(input_timeseries_names)
+                print(input_features)
+                >>> ['omega', 'pressure']
+        """
+        return sorted(set(names).intersection(self.get_input_timeseries_names()))
+
+    # -------------------------------------------------------------------------#
+    def get_output_timeseries_names(self) -> list[str]:
+        """Get the output timeseries names or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of output feature names or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                outputs_names = problem.get_output_timeseries_names()
+                print(outputs_names)
+                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+        """
+        return self.out_timeseries_names
+
+    def add_output_timeseries_names(self, outputs: list[str]) -> None:
+        """Add output timeseries names or identifiers to the problem.
+
+        Args:
+            outputs (list[str]): A list of output feature names or identifiers to add.
+
+        Raises:
+            ValueError: if some :code:`outputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_timeseries_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                problem.add_output_timeseries_names(output_timeseries_names)
+        """
+        if not (len(set(outputs)) == len(outputs)):
+            raise ValueError('Some outputs have same names')
+        for output in outputs:
+            self.add_output_timeseries_name(output)
+
+    def add_output_timeseries_name(self, output: str) -> None:
+        """Add an output timeserie name or identifier to the problem.
+        Args:
+            output (str):  The name or identifier of the output feature to add.
+
+        Raises:
+            ValueError: If the specified output feature is already in the list of outputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_timeseries_names = 'pressure'
+                problem.add_output_timeseries_name(output_timeseries_names)
+        """
+        if output in self.out_timeseries_names:
+            raise ValueError(f"{output} is already in self.out_timeseries_names")
+        self.out_timeseries_names.append(output)
+        self.in_timeseries_names.sort()
+
+    def filter_output_timeseries_names(self, names: list[str]) -> list[str]:
+        """Filter and get output features corresponding to a sorted list of names.
+
+        Args:
+            names (list[str]): A list of names for which to retrieve corresponding output features.
+
+        Returns:
+            list[str]: A sorted list of output feature names or categories corresponding to the provided names.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                output_timeseries_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                output_features = problem.filter_output_timeseries_names(output_timeseries_names)
+                print(output_features)
+                >>> ['in_massflow']
+        """
+        return sorted(set(names).intersection(self.get_output_timeseries_names()))
+
+    # -------------------------------------------------------------------------#
+    def get_input_meshes_names(self) -> list[str]:
+        """Get the input meshes names or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of input feature names or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                input_meshes_names = problem.get_input_meshes_names()
+                print(input_meshes_names)
+                >>> ['omega', 'pressure']
+        """
+        return self.in_meshes_names
+
+    def add_input_meshes_names(self, inputs: list[str]) -> None:
+        """Add input meshes names or identifiers to the problem.
+
+        Args:
+            inputs (list[str]): A list of input feature names or identifiers to add.
+
+        Raises:
+            ValueError: If some :code:`inputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                input_meshes_names = ['omega', 'pressure']
+                problem.add_input_meshes_names(input_meshes_names)
+        """
+        if not (len(set(inputs)) == len(inputs)):
+            raise ValueError('Some inputs have same names')
+        for input in inputs:
+            self.add_input_mesh_name(input)
+
+    def add_input_mesh_name(self, input: str) -> None:
+        """Add an input mesh name or identifier to the problem.
+
+        Args:
+            input (str):  The name or identifier of the input feature to add.
+
+        Raises:
+            ValueError: If the specified input feature is already in the list of inputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                input_name = 'pressure'
+                problem.add_input_mesh_name(input_name)
+        """
+        if input in self.in_meshes_names:
+            raise ValueError(f"{input} is already in self.in_meshes_names")
+        self.in_meshes_names.append(input)
+        self.in_meshes_names.sort()
+
+    def filter_input_meshes_names(self, names: list[str]) -> list[str]:
+        """Filter and get input meshes features corresponding to a sorted list of names.
+
+        Args:
+            names (list[str]): A list of names for which to retrieve corresponding input features.
+
+        Returns:
+            list[str]: A sorted list of input feature names or categories corresponding to the provided names.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                input_meshes_names = ['omega', 'pressure', 'temperature']
+                input_features = problem.filter_input_meshes_names(input_meshes_names)
+                print(input_features)
+                >>> ['omega', 'pressure']
+        """
+        return sorted(set(names).intersection(self.get_input_meshes_names()))
+
+    # -------------------------------------------------------------------------#
+    def get_output_meshes_names(self) -> list[str]:
+        """Get the output meshes names or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of output feature names or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                outputs_names = problem.get_output_meshes_names()
+                print(outputs_names)
+                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+        """
+        return self.out_meshes_names
+
+    def add_output_meshes_names(self, outputs: list[str]) -> None:
+        """Add output meshes names or identifiers to the problem.
+
+        Args:
+            outputs (list[str]): A list of output feature names or identifiers to add.
+
+        Raises:
+            ValueError: if some :code:`outputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_meshes_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                problem.add_output_meshes_names(output_meshes_names)
+        """
+        if not (len(set(outputs)) == len(outputs)):
+            raise ValueError('Some outputs have same names')
+        for output in outputs:
+            self.add_output_mesh_name(output)
+
+    def add_output_mesh_name(self, output: str) -> None:
+        """Add an output mesh name or identifier to the problem.
+        Args:
+            output (str):  The name or identifier of the output feature to add.
+
+        Raises:
+            ValueError: If the specified output feature is already in the list of outputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_meshes_names = 'pressure'
+                problem.add_output_mesh_name(output_meshes_names)
+        """
+        if output in self.out_meshes_names:
+            raise ValueError(f"{output} is already in self.out_meshes_names")
+        self.out_meshes_names.append(output)
+        self.in_meshes_names.sort()
+
+    def filter_output_meshes_names(self, names: list[str]) -> list[str]:
+        """Filter and get output features corresponding to a sorted list of names.
+
+        Args:
+            names (list[str]): A list of names for which to retrieve corresponding output features.
+
+        Returns:
+            list[str]: A sorted list of output feature names or categories corresponding to the provided names.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                output_meshes_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                output_features = problem.filter_output_meshes_names(output_meshes_names)
+                print(output_features)
+                >>> ['in_massflow']
+        """
+        return sorted(set(names).intersection(self.get_output_meshes_names()))
+
+    # -------------------------------------------------------------------------#
     def get_all_indices(self) -> list[int]:
         """Get all indices from splits.
 
@@ -347,7 +856,7 @@ class ProblemDefinition(object):
     #         dict[str,np.ndarray]: if as_dataframe is False, scalar’s ``feature_name`` -> tabular values
     #     """
     #     res = {}
-    #     for _,feature_name in self.get_inputs(feature_type='scalar'):
+    #     for _,feature_name in self.get_input_scalars_names(feature_type='scalar'):
     #         res.update(self.get_scalars_to_tabular(feature_name, sample_ids))
 
     #     if as_dataframe:
@@ -363,7 +872,7 @@ class ProblemDefinition(object):
     #         dict[str,np.ndarray]: if as_dataframe is False, scalar’s ``feature_name`` -> tabular values
     #     """
     #     res = {}
-    #     for _,feature_name in self.get_outputs(feature_type='scalar'):
+    #     for _,feature_name in self.get_output_scalars_names(feature_type='scalar'):
     #         res.update(self.get_scalars_to_tabular(feature_name, sample_ids))
 
     #     if as_dataframe:
@@ -390,8 +899,14 @@ class ProblemDefinition(object):
 
         data = {
             "task": self._task,
-            "inputs": self._inputs,     # list[input name]
-            "outputs": self._outputs
+            "input_scalars": self.in_scalars_names,         # list[input scalar name]
+            "output_scalars": self.out_scalars_names,       # list[output scalar name]
+            "input_fields": self.in_fields_names,           # list[input field name]
+            "output_fields": self.out_fields_names,         # list[output field name]
+            "input_timeseries": self.in_timeseries_names,   # list[input timeserie name]
+            "output_timeseries": self.out_timeseries_names, # list[output timeserie name]
+            "input_meshes": self.in_meshes_names,           # list[input mesh name]
+            "output_meshes": self.out_meshes_names,         # list[output mesh name]
         }
 
         pbdef_fname = os.path.join(savedir, 'problem_infos.yaml')
@@ -453,8 +968,14 @@ class ProblemDefinition(object):
                 f"file with path `{pbdef_fname}` does not exist. Task, inputs, and outputs will not be set")
 
         self._task = data["task"]
-        self._inputs = data["inputs"]
-        self._outputs = data["outputs"]
+        self.in_scalars_names = data["input_scalars"]
+        self.out_scalars_names = data["output_scalars"]
+        self.in_fields_names = data["input_fields"]
+        self.out_fields_names = data["output_fields"]
+        self.in_timeseries_names = data["input_timeseries"]
+        self.out_timeseries_names = data["output_timeseries"]
+        self.in_meshes_names = data["input_meshes"]
+        self.out_meshes_names = data["output_meshes"]
 
         split_fname = os.path.join(save_dir, 'split.csv')
         split = {}
@@ -482,21 +1003,47 @@ class ProblemDefinition(object):
                 problem = ProblemDefinition()
                 # [...]
                 print(problem)
-                >>> ProblemDefinition(input_names=['mesh', 's_1'], output_names=['s_2'], task='regression', split_names=['train', 'val'])
+                >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression', split_names=['train', 'val'])
         """
         str_repr = "ProblemDefinition("
-        if len(self._inputs) > 0:
-            input_names = self._inputs
-            str_repr += f"{input_names=}, "
-        if len(self._outputs) > 0:
-            output_names = self._outputs
-            str_repr += f"{output_names=}, "
+
+        #---# scalars
+        if len(self.in_scalars_names) > 0:
+            input_scalars_names = self.in_scalars_names
+            str_repr += f"{input_scalars_names=}, "
+        if len(self.out_scalars_names) > 0:
+            output_scalars_names = self.out_scalars_names
+            str_repr += f"{output_scalars_names=}, "
+        #---# fields
+        if len(self.in_fields_names) > 0:
+            input_fields_names = self.in_fields_names
+            str_repr += f"{input_fields_names=}, "
+        if len(self.out_fields_names) > 0:
+            output_fields_names = self.out_fields_names
+            str_repr += f"{output_fields_names=}, "
+        #---# timeseries
+        if len(self.in_timeseries_names) > 0:
+            input_timeseries_names = self.in_timeseries_names
+            str_repr += f"{input_timeseries_names=}, "
+        if len(self.out_timeseries_names) > 0:
+            output_timeseries_names = self.out_timeseries_names
+            str_repr += f"{output_timeseries_names=}, "
+        #---# meshes
+        if len(self.in_meshes_names) > 0:
+            input_meshes_names = self.in_meshes_names
+            str_repr += f"{input_meshes_names=}, "
+        if len(self.out_meshes_names) > 0:
+            output_meshes_names = self.out_meshes_names
+            str_repr += f"{output_meshes_names=}, "
+        #---# task
         if self._task is not None:
             task = self._task
             str_repr += f"{task=}, "
+        #---# split
         if self._split is not None:
             split_names = list(self._split.keys())
             str_repr += f"{split_names=}, "
+
         if str_repr[-2:] == ', ':
             str_repr = str_repr[:-2]
         str_repr += ")"
