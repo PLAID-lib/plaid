@@ -776,7 +776,7 @@ class Sample(object):
             time (float, optional): The timestamp for which you want to retrieve the zone type. Default is 0.0.
 
         Raises:
-            KeyError: Raised when the specified zone or base does not exist. You should first create the base/zone using `Sample.init_zone(base_name, zone_name)`.
+            KeyError: Raised when the specified zone or base does not exist. You should first create the base/zone using `Sample.init_zone(zone_name, base_name)`.
 
         Returns:
             str: The type of the specified zone as a string.
@@ -786,7 +786,7 @@ class Sample(object):
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({base_name=},{zone_name=})`")
+                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`")
         return CGU.getValueByPath(zone_node, "ZoneType").tobytes().decode()
 
     # -------------------------------------------------------------------------#
@@ -943,7 +943,7 @@ class Sample(object):
 
         Raises:
             KeyError: Raised if the specified base or zone do not exist. You should first
-            create the base and zone using the `Sample.init_zone(base_name, zone_name)` method.
+            create the base and zone using the `Sample.init_zone(zone_name,base_name)` method.
 
         Seealso:
             This function can also be called using `set_points()` or `set_vertices()`
@@ -953,7 +953,7 @@ class Sample(object):
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({base_name=},{zone_name=})`")
+                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`")
 
         coord_type = [CGK.CoordinateX_s, CGK.CoordinateY_s, CGK.CoordinateZ_s]
         for i_dim in range(nodes.shape[1]):
