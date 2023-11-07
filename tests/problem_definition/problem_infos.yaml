@@ -1,9 +1,33 @@
 task: regression
-inputs:
+input_scalars:
 - predict_scalar
 - scalar
 - test_scalar
-outputs:
+output_scalars:
 - scalar
 - test_scalar
 - predict_scalar
+input_fields:
+- field
+- predict_field
+- test_field
+output_fields:
+- field
+- test_field
+- predict_field
+input_timeseries:
+- predict_timeseries
+- test_timeseries
+- timeseries
+output_timeseries:
+- timeseries
+- test_timeseries
+- predict_timeseries
+input_meshes:
+- mesh
+- predict_mesh
+- test_mesh
+output_meshes:
+- mesh
+- test_mesh
+- predict_mesh
