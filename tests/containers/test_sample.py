@@ -14,7 +14,7 @@ import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
-from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
+from Muscat.Containers import MeshCreationTools as MCT
 
 from plaid.containers.sample import Sample, show_cgns_tree
 
@@ -116,21 +116,21 @@ def cell_center_field():
 
 @pytest.fixture()
 def tree(nodes, triangles, vertex_field, cell_center_field):
-    BTMesh = UMCT.CreateMeshOfTriangles(nodes, triangles)
-    BTMesh.nodeFields['test_node_field_1'] = vertex_field
-    BTMesh.nodeFields['big_node_field'] = np.random.randn(50)
-    BTMesh.elemFields['test_elem_field_1'] = cell_center_field
-    tree = MeshToCGNS(BTMesh)
+    Mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
+    Mesh.nodeFields['test_node_field_1'] = vertex_field
+    Mesh.nodeFields['big_node_field'] = np.random.randn(50)
+    Mesh.elemFields['test_elem_field_1'] = cell_center_field
+    tree = MeshToCGNS(Mesh)
     return tree
 
 
 @pytest.fixture()
 def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
-    BTMesh = UMCT.CreateMeshOfTriangles(nodes3d, triangles)
-    BTMesh.nodeFields['test_node_field_1'] = vertex_field
-    BTMesh.nodeFields['big_node_field'] = np.random.randn(50)
-    BTMesh.elemFields['test_elem_field_1'] = cell_center_field
-    tree = MeshToCGNS(BTMesh)
+    Mesh = MCT.CreateMeshOfTriangles(nodes3d, triangles)
+    Mesh.nodeFields['test_node_field_1'] = vertex_field
+    Mesh.nodeFields['big_node_field'] = np.random.randn(50)
+    Mesh.elemFields['test_elem_field_1'] = cell_center_field
+    tree = MeshToCGNS(Mesh)
     return tree
 
 
