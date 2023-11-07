@@ -114,7 +114,7 @@ for sample in samples:
     sample.add_scalar('test_scalar', np.random.randn())
     sample.init_base(2, 3, 'test_base')
     zone_shape = np.array([0, 0, 0])
-    sample.init_zone('test_zone', zone_shape)
+    sample.init_zone(zone_shape, zone_name='test_zone')
     sample.add_field('test_field', np.random.randn(spatial_shape_max))
 
 stats.add_samples(samples)
@@ -138,7 +138,7 @@ for sample in samples:
     sample.add_scalar('test_scalar', np.random.randn())
     sample.init_base(2, 3, 'test_base')
     zone_shape = np.array([0, 0, 0])
-    sample.init_zone('test_zone', zone_shape)
+    sample.init_zone(zone_shape, zone_name='test_zone')
     sample.add_field('test_field_same_size', np.random.randn(7))
     sample.add_field(
         'test_field',
@@ -155,5 +155,3 @@ stats.add_samples(samples)
 # %%
 rich.print(f"stats.get_stats():")
 rich.print(stats.get_stats())
-
-
