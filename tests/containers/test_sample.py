@@ -407,6 +407,7 @@ class Test_Sample():
         assert sample.get_physical_dim(base_name) == 3
 
     def test_init_zone_defaults_names(self, sample, zone_shape):
+        sample.init_base(3, 3)
         sample.init_zone(zone_shape)
 
     def test_has_zone(self, sample, base_name, zone_name):
