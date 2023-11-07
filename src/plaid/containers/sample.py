@@ -149,13 +149,17 @@ class Sample(object):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
     """
 
-    def __init__(self, directory_path: str = None,
-                 mesh_base_name: str = 'Base') -> None:
+    def __init__(self,
+                 directory_path: str = None,
+                 mesh_base_name: str = 'Base',
+                 mesh_zone_name: str = 'Zone',
+                 ) -> None:
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
         Args:
             directory_path (str, optional): The path from which to load PLAID sample files.
             mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
+            mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
 
         Example:
             .. code-block:: python
@@ -183,6 +187,7 @@ class Sample(object):
         self._paths: dict[float, list[PathType]] = None
 
         self._mesh_base_name: str = mesh_base_name
+        self._mesh_zone_name: str = mesh_zone_name
 
         if directory_path is not None:
             self.load(directory_path)
@@ -666,14 +671,14 @@ class Sample(object):
         return CGU.getNodeByPath(self._meshes[time], f'/CGNSTree/{base_name}')
 
     # -------------------------------------------------------------------------#
-    def init_zone(self, zone_name: str, zone_shape: np.ndarray,
-                  zone_type: str = CGK.Unstructured_s, base_name: str = None, time: float = None) -> CGNSNode:
+    def init_zone(self, zone_shape: np.ndarray, zone_type: str = CGK.Unstructured_s,
+                  zone_name: str = None, base_name: str = None, time: float = None) -> CGNSNode:
         """Initialize a new zone within a CGNS base.
 
         Args:
-            zone_name (str): The name of the zone to initialize.
             zone_shape (np.ndarray): An array specifying the shape or dimensions of the zone.
             zone_type (str, optional): The type of the zone. Defaults to CGK.Unstructured_s.
+            zone_name (str, optional): The name of the zone to initialize. If not provided, uses `mesh_zone_name` specified in Sample initialization. Defaults to None.
             base_name (str, optional): The name of the base to which the zone will be added. If not provided, the zone will be added to the currently active base. Defaults to None.
             time (float, optional): The time at which to initialize the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
@@ -690,6 +695,11 @@ class Sample(object):
         if base_node is None:
             raise KeyError(
                 f"there is no base <{base_name}>, you should first create one with `Sample.init_base({base_name=})`")
+
+        zone_name = self.get_zone_assignment(zone_name, base_name)
+        if zone_name is None:
+            zone_name = self._mesh_zone_name
+
         zone_node = CGL.newZone(base_node, zone_name, zone_shape, zone_type)
         return zone_node
 
@@ -775,7 +785,7 @@ class Sample(object):
             time (float, optional): The timestamp for which you want to retrieve the zone type. Default is 0.0.
 
         Raises:
-            KeyError: Raised when the specified zone or base does not exist. You should first create the base/zone using `Sample.init_zone(base_name, zone_name)`.
+            KeyError: Raised when the specified zone or base does not exist. You should first create the base/zone using `Sample.init_zone(zone_name, base_name)`.
 
         Returns:
             str: The type of the specified zone as a string.
@@ -785,7 +795,7 @@ class Sample(object):
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({base_name=},{zone_name=})`")
+                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`")
         return CGU.getValueByPath(zone_node, "ZoneType").tobytes().decode()
 
     # -------------------------------------------------------------------------#
@@ -942,7 +952,7 @@ class Sample(object):
 
         Raises:
             KeyError: Raised if the specified base or zone do not exist. You should first
-            create the base and zone using the `Sample.init_zone(base_name, zone_name)` method.
+            create the base and zone using the `Sample.init_zone(zone_name,base_name)` method.
 
         Seealso:
             This function can also be called using `set_points()` or `set_vertices()`
@@ -952,7 +962,7 @@ class Sample(object):
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({base_name=},{zone_name=})`")
+                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`")
 
         coord_type = [CGK.CoordinateX_s, CGK.CoordinateY_s, CGK.CoordinateZ_s]
         for i_dim in range(nodes.shape[1]):

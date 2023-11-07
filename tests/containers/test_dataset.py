@@ -51,7 +51,7 @@ def scalar_names(nb_scalars):
 def sample(zone_name, base_name):
     sample = Sample()
     sample.init_base(3, 3, base_name)
-    sample.init_zone(zone_name, np.array([0, 0, 0]), base_name=base_name)
+    sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
     sample.add_scalar('test_scalar', np.random.randn())
     sample.add_field(
         'test_field_same_size',
@@ -75,7 +75,7 @@ def samples(nb_samples, zone_name, base_name):
     for _ in range(nb_samples):
         sample = Sample()
         sample.init_base(3, 3, base_name)
-        sample.init_zone(zone_name, np.array([0, 0, 0]), base_name=base_name)
+        sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
         sample.add_scalar('test_scalar', np.random.randn())
         sample.add_field(
             'test_field_same_size',
@@ -100,7 +100,7 @@ def other_samples(nb_samples, zone_name, base_name):
     for _ in range(nb_samples):
         sample = Sample()
         sample.init_base(3, 3, base_name)
-        sample.init_zone(zone_name, np.array([0, 0, 0]), base_name=base_name)
+        sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
         sample.add_scalar('test_scalar', np.random.randn())
         sample.add_field(
             'test_field_same_size',
