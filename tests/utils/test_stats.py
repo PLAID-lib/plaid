@@ -9,7 +9,6 @@
 
 import numpy as np
 import pytest
-from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
 
 from plaid.utils.stats import OnlineStatistics, Stats
 

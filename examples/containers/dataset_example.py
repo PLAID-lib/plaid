@@ -21,7 +21,7 @@ import os
 # Import necessary libraries and functions
 import Muscat.Containers.ElementsDescription as ElementsDescription
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
-from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
+from Muscat.Containers import MeshCreationTools as MCT
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
@@ -72,10 +72,10 @@ bars = np.array([
         [0, 2]
     ])
 
-BTMesh = UMCT.CreateMeshOfTriangles(points, triangles)
-elbars = BTMesh.GetElementsOfType(ElementsDescription.Bar_2)
+Mesh = MCT.CreateMeshOfTriangles(points, triangles)
+elbars = Mesh.GetElementsOfType(ElementsDescription.Bar_2)
 elbars.AddNewElements(bars, [1, 2])
-cgns_mesh = MeshToCGNS(BTMesh)
+cgns_mesh = MeshToCGNS(Mesh)
 
 # Initialize an empty Sample
 print("#---# Empty Sample")
@@ -397,5 +397,3 @@ new_dataset = Dataset(tmpfile)
 
 print(f"{dataset = }")
 print(f"{new_dataset = }")
-
-
