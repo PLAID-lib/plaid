@@ -243,17 +243,17 @@ class Test_Sample():
         assert sample.get_zone() is None
 
         sample.init_zone(
-            zone_name,
             zone_shape,
             CGK.Structured_s,
+            zone_name,
             base_name=base_name)
         # Look for the only zone in the default base
         assert sample.get_zone() is not None
 
         sample.init_zone(
-            zone_name,
             zone_shape,
             CGK.Structured_s,
+            zone_name,
             base_name=base_name)
         # There is more than one zone in this base
         with pytest.raises(KeyError):
@@ -263,9 +263,9 @@ class Test_Sample():
             self, sample, topological_dim, physical_dim, base_name, zone_name, zone_shape):
         sample.init_base(topological_dim, physical_dim, base_name, time=0.5)
         sample.init_zone(
-            zone_name,
             zone_shape,
             CGK.Structured_s,
+            zone_name,
             base_name=base_name)
 
         sample.set_default_base_zone(base_name, zone_name, 0.5)
@@ -390,27 +390,32 @@ class Test_Sample():
     # -------------------------------------------------------------------------#
     def test_init_zone(self, sample, base_name, zone_name, zone_shape):
         with pytest.raises(KeyError):
-            sample.init_zone(zone_name, zone_shape, base_name=base_name)
+            sample.init_zone(zone_shape, zone_name=zone_name, base_name=base_name)
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            zone_name,
             zone_shape,
             CGK.Structured_s,
+            zone_name,
             base_name=base_name)
         sample.init_zone(
-            zone_name,
             zone_shape,
             CGK.Unstructured_s,
+            zone_name,
             base_name=base_name)
         # check dims getters
         assert sample.get_topological_dim(base_name) == 3
         assert sample.get_physical_dim(base_name) == 3
 
+    def test_init_zone_defaults_names(self, sample, zone_shape):
+        sample.init_base(3, 3)
+        sample.init_zone(zone_shape)
+
     def test_has_zone(self, sample, base_name, zone_name):
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            zone_name, np.random.randint(
-                0, 10, size=3), base_name=base_name)
+            np.random.randint(0, 10, size=3),
+            zone_name=zone_name,
+            base_name=base_name)
         sample.show_tree()
         assert (sample.has_zone(zone_name, base_name))
         assert (~sample.has_zone('not_present_zone_name', base_name))
@@ -423,11 +428,13 @@ class Test_Sample():
     def test_get_zone_names(self, sample, base_name):
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            'zone_name_1', np.random.randint(
-                0, 10, size=3), base_name=base_name)
+            np.random.randint(0, 10, size=3),
+            zone_name='zone_name_1',
+            base_name=base_name)
         sample.init_zone(
-            'zone_name_2', np.random.randint(
-                0, 10, size=3), base_name=base_name)
+            np.random.randint(0, 10, size=3),
+            zone_name='zone_name_2',
+            base_name=base_name)
         assert (
             sample.get_zone_names(base_name) == [
                 'zone_name_1',
@@ -449,8 +456,9 @@ class Test_Sample():
         with pytest.raises(KeyError):
             sample.get_zone_type(zone_name, base_name)
         sample.init_zone(
-            zone_name, np.random.randint(
-                0, 10, size=3), base_name=base_name)
+            np.random.randint(0, 10, size=3),
+            zone_name=zone_name,
+            base_name=base_name)
         assert (
             sample.get_zone_type(
                 zone_name,
@@ -461,13 +469,15 @@ class Test_Sample():
         sample.init_base(3, 3, base_name)
         assert (sample.get_zone(zone_name, base_name) is None)
         sample.init_zone(
-            zone_name, np.random.randint(
-                0, 10, size=3), base_name=base_name)
+            np.random.randint(0, 10, size=3),
+            zone_name=zone_name,
+            base_name=base_name)
         assert (sample.get_zone() is not None)
         assert (sample.get_zone(zone_name, base_name) is not None)
         sample.init_zone(
-            'other_zone_name', np.random.randint(
-                0, 10, size=3), base_name=base_name)
+            np.random.randint(0, 10, size=3),
+            zone_name='other_zone_name',
+            base_name=base_name)
         assert (sample.get_zone(zone_name, base_name) is not None)
         with pytest.raises(KeyError):
             assert (sample.get_zone() is not None)
@@ -528,8 +538,10 @@ class Test_Sample():
         sample.init_base(3, 3, base_name)
         with pytest.raises(KeyError):
             sample.set_nodes(nodes, zone_name, base_name)
-        sample.init_zone(zone_name, np.array(
-            [len(nodes), 0, 0]), base_name=base_name)
+        sample.init_zone(
+            np.array([len(nodes), 0, 0]),
+            zone_name=zone_name,
+            base_name=base_name)
         sample.set_nodes(nodes, zone_name, base_name)
 
     # -------------------------------------------------------------------------#
@@ -574,8 +586,9 @@ class Test_Sample():
                 zone_name,
                 base_name)
         sample.init_zone(
-            zone_name, np.random.randint(
-                0, 10, size=3), base_name=base_name)
+            np.random.randint(0, 10, size=3),
+            zone_name=zone_name,
+            base_name=base_name)
         sample.add_field(
             'test_node_field_2',
             vertex_field,
@@ -593,8 +606,9 @@ class Test_Sample():
                 base_name,
                 location='CellCenter')
         sample.init_zone(
-            zone_name, np.random.randint(
-                0, 10, size=3), base_name=base_name)
+            np.random.randint(0, 10, size=3),
+            zone_name=zone_name,
+            base_name=base_name)
         sample.add_field(
             'test_elem_field_2',
             cell_center_field,
