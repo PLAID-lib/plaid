@@ -21,7 +21,7 @@ import os
 # Import necessary libraries and functions
 import CGNS.PAT.cgnskeywords as CGK
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
-from Muscat.Containers import UnstructuredMeshCreationTools as UMCT
+from Muscat.Containers import MeshCreationTools as MCT
 from plaid.containers.sample import Sample, show_cgns_tree
 
 # %%
@@ -56,10 +56,10 @@ triangles = np.array([
     [2, 4, 3],
 ])
 
-BTMesh = UMCT.CreateMeshOfTriangles(points, triangles)
-BTMesh.nodeFields['test_node_field_1'] = np.random.randn(5)
-BTMesh.elemFields['test_elem_field_1'] = np.random.randn(3)
-tree = MeshToCGNS(BTMesh)
+Mesh = MCT.CreateMeshOfTriangles(points, triangles)
+Mesh.nodeFields['test_node_field_1'] = np.random.randn(5)
+Mesh.elemFields['test_elem_field_1'] = np.random.randn(3)
+tree = MeshToCGNS(Mesh)
 
 # Display CGNS Tree
 show_cgns_tree(tree)

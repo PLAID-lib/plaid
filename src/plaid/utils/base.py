@@ -11,7 +11,6 @@ from typing import Union
 
 import numpy as np
 from Muscat.Containers.Filters.FilterObjects import ElementFilter, NodeFilter
-from Muscat.Containers.UnstructuredMesh import UnstructuredMesh
 
 # %% Functions
 
@@ -35,10 +34,6 @@ def generate_random_ASCII(size=16) -> str:
     return rnd_
 
 # %% Classes
-
-BTMesh = Union[UnstructuredMesh, UnstructuredMesh]
-"""A BTMesh is an Union[UnstructuredMesh, UnstructuredMesh]
-"""
 Filter = Union[ElementFilter, NodeFilter]
 """A Filter is an Union[ElementFilter, NodeFilter]
 """
