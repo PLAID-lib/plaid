@@ -13,6 +13,7 @@ def prepare_datasets(ref_dataset: Dataset, pred_dataset: Dataset,
     Args:
         ref_dataset (Dataset): The reference dataset.
         pred_dataset (Dataset): The predicted dataset.
+        problem_def (ProblemDefinition): The common problem for the reference and predicted dataset
         verbose (bool, optional): Verbose mode. Defaults to False.
 
     Returns:
@@ -52,6 +53,7 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
     Args:
         ref_dataset (Dataset | str): The reference dataset or its file path.
         pred_dataset (Dataset | str): The predicted dataset or its file path.
+        problem_def (ProblemDefinition | str): The common problem for the reference and predicted dataset
         scalar (str | int): The name of the scalar to study or its index.
         save_file_name (str, optional): Figure name when saving to PNG format. Defaults to "bissec_plots".
         verbose (bool, optional): Verbose mode. Defaults to False.
