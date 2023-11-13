@@ -4,10 +4,10 @@ import numpy as np
 from tqdm import tqdm
 
 from plaid.containers.dataset import Dataset
-
+from plaid.problem_definition import ProblemDefinition
 
 def prepare_datasets(ref_dataset: Dataset, pred_dataset: Dataset,
-                     verbose: bool = False) -> tuple[dict, dict, list[str]]:
+                     problem_definition: ProblemDefinition, verbose: bool = False) -> tuple[dict, dict, list[str]]:
     """Prepare datasets for comparison.
 
     Args:
@@ -25,7 +25,7 @@ def prepare_datasets(ref_dataset: Dataset, pred_dataset: Dataset,
     assert ref_problem == pred_problem, "Reference and predicted dataset scalars differ"
 
     n_samples = len(ref_dataset)
-    out_scalars_names = ref_problem
+    out_scalars_names = problem_definition.get_output_scalars_names()
 
     ref_out_scalars = {}
     pred_out_scalars = {}
@@ -44,8 +44,9 @@ def prepare_datasets(ref_dataset: Dataset, pred_dataset: Dataset,
     return ref_out_scalars, pred_out_scalars, out_scalars_names
 
 
-def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str, scalar: str |
-                 int, save_file_name: str = "bissec_plots", verbose: bool = False) -> None:
+def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
+                 problem_def: ProblemDefinition | str, scalar: str | int,
+                 save_file_name: str = "bissec_plots", verbose: bool = False) -> None:
     """Plot a bisect graph comparing predictions vs. targets dataset.
 
     Args:
@@ -63,10 +64,15 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str, scalar
         ref_dataset: Dataset = Dataset(ref_dataset)
     if isinstance(pred_dataset, str):
         pred_dataset: Dataset = Dataset(pred_dataset)
+    if isinstance(problem_def, str):
+        problem_def: ProblemDefinition = ProblemDefinition(problem_def)
+
+    # Load the testing_set
+    # testing_set = problem_def.get_split("test")
 
     print("Data preprocessing...") if verbose else None
     ref_out_scalars, pred_out_scalars, out_scalars_names = prepare_datasets(
-        ref_dataset, pred_dataset)
+        ref_dataset, pred_dataset, problem_def, verbose)
 
     ### Transform string to index ###
     if isinstance(scalar, str):
@@ -74,7 +80,7 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str, scalar
             scalar: int = out_scalars_names.index(scalar)
         else:
             raise KeyError(
-                f"The scalar name provided ({scalar}) is not part of '{out_scalars_names}'")
+                f"The scalar name provided ({scalar}) is not part of '{out_scalars_names = }'")
 
     # Matplotlib plotting options
     plt.rcParams.update({
@@ -91,12 +97,12 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str, scalar
 
     #### Bissect graph plot ####
     print("Bissect graph construction...") if verbose else None
-    label = r"$Predictions~vs~Targets~for~" + out_scalars_names[scalar] + "$"
+    label = r"$\mathrm{Predictions~vs~Targets~for~" + out_scalars_names[scalar] + "}$"
     fig, ax = plt.subplots(figsize=(2 * 6, 2 * 5.5))
 
     ### Matplotlib instructions ###
-    y_true_dataset = np.array(ref_out_scalars[out_scalars_names[scalar]])
-    y_pred_dataset = np.array(pred_out_scalars[out_scalars_names[scalar]])
+    y_true_dataset = np.array(ref_out_scalars[out_scalars_names[scalar]])#[testing_set]
+    y_pred_dataset = np.array(pred_out_scalars[out_scalars_names[scalar]])#[testing_set]
 
     m, M = np.min(y_true_dataset), np.max(y_true_dataset)
     ax.plot(np.array([m, M]), np.array([m, M]), color="k")
