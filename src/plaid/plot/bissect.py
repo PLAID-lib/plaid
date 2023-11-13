@@ -41,7 +41,7 @@ def prepare_datasets(ref_dataset: Dataset, pred_dataset: Dataset,
             pred = pred_dataset[i_sample].get_scalar(sname)
             pred_out_scalars[sname].append(pred)
 
-    return ref_out_scalars, pred_out_scalars, out_scalars_names,
+    return ref_out_scalars, pred_out_scalars, out_scalars_names
 
 
 def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str, scalar: str |
@@ -51,7 +51,7 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str, scalar
     Args:
         ref_dataset (Dataset | str): The reference dataset or its file path.
         pred_dataset (Dataset | str): The predicted dataset or its file path.
-        scalar (str | int): The reference dataset or its file path.
+        scalar (str | int): The name of the scalar to study or its index.
         save_file_name (str, optional): Figure name when saving to PNG format. Defaults to "bissec_plots".
         verbose (bool, optional): Verbose mode. Defaults to False.
 
