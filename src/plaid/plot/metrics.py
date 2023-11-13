@@ -29,7 +29,7 @@ def compute_R2(metrics, r2OutScalars, problem_split, out_scalars_names, number_o
     metrics["R2 for scalars"] = {}
     print("===\nR2 for scalars") if verbose else None
 
-    for split_name, split_indices in problem_split.items():
+    for split_name, _ in problem_split.items():
         metrics["R2 for scalars"][split_name] = {}
         print("  " + split_name) if verbose else None
 
