@@ -8,8 +8,8 @@ from plaid.plot.bissect import prepare_datasets
 from plaid.problem_definition import ProblemDefinition
 
 
-def compute_rRMSE(metrics: dict, rel_SE_out_scalars: dict, problem_split: dict,
-                  out_scalars_names: list[str], verbose: bool) -> None:
+def compute_rRMSE_RMSE(metrics: dict, rel_SE_out_scalars: dict, abs_SE_out_scalars: dict,
+                       problem_split: dict, out_scalars_names: list[str], verbose: bool) -> None:
     """Compute and print the relative Root Mean Square Error (rRMSE) for scalar outputs.
 
     Args:
@@ -20,19 +20,23 @@ def compute_rRMSE(metrics: dict, rel_SE_out_scalars: dict, problem_split: dict,
         verbose (bool): If True, print detailed information during computation.
     """
     metrics["rRMSE for scalars"] = {}
-    print("===\nrRMSE for scalars") if verbose else None
+    metrics["RMSE for scalars"] = {}
 
     for split_name, _ in problem_split.items():
         metrics["rRMSE for scalars"][split_name] = {}
-        print("  " + split_name) if verbose else None
+        metrics["RMSE for scalars"][split_name] = {}
 
         for sname in out_scalars_names:
-            rel_RMSE_out_scalars_set = np.sqrt(
+            rRMSE_value = np.sqrt(
                 np.mean(rel_SE_out_scalars[split_name][sname], axis=0))
-            out_string = "{:#.6g}".format(rel_RMSE_out_scalars_set)
+            out_string_rRMSE = "{:#.6g}".format(rRMSE_value)
 
-            metrics["rRMSE for scalars"][split_name][sname] = float(out_string)
-            print(sname.ljust(14) + ": " + out_string) if verbose else None
+            RMSE_value = np.sqrt(
+                np.mean(abs_SE_out_scalars[split_name][sname], axis=0))
+            out_string_RMSE = "{:#.6g}".format(RMSE_value)
+
+            metrics["rRMSE for scalars"][split_name][sname] = float(out_string_rRMSE)
+            metrics["RMSE for scalars"][split_name][sname] = float(out_string_RMSE)
 
 
 def compute_R2(metrics: dict, r2_out_scalars: dict, problem_split: dict,
@@ -47,22 +51,18 @@ def compute_R2(metrics: dict, r2_out_scalars: dict, problem_split: dict,
         verbose (bool): If True, print detailed information during computation.
     """
     metrics["R2 for scalars"] = {}
-    print("===\nR2 for scalars") if verbose else None
 
     for split_name, _ in problem_split.items():
         metrics["R2 for scalars"][split_name] = {}
-        print("  " + split_name) if verbose else None
 
         for sname in out_scalars_names:
             out_string = "{:#.6g}".format(r2_out_scalars[split_name][sname])
-
             metrics["R2 for scalars"][split_name][sname] = float(out_string)
-            print(sname.ljust(14) + ": " + out_string) if verbose else None
 
 
 def prepare_metrics_for_split(ref_out_specific_scalars: np.ndarray, pred_out_specific_scalars: np.ndarray,
                               split_indices: list[int], rel_SE_out_specific_scalars: np.ndarray,
-                              tolerance: float = 1.e-6) -> float:
+                              abs_SE_out_specific_scalars: np.ndarray, tolerance: float = 1.e-6) -> float:
     """Prepare metrics for a specific split and compute the R-squared (R2) score.
 
     Args:
@@ -81,10 +81,39 @@ def prepare_metrics_for_split(ref_out_specific_scalars: np.ndarray, pred_out_spe
 
     denom_scal = np.where(ref_scal < tolerance, 1., ref_scal)
 
-    reldif = (predict_scal - ref_scal) / denom_scal
-    rel_SE_out_specific_scalars[:] = reldif ** 2
-
+    diff = (predict_scal - ref_scal)
+    rel_SE_out_specific_scalars[:] = (diff / denom_scal) ** 2
+    abs_SE_out_specific_scalars[:] = diff ** 2
     return r2_score(ref_scal, predict_scal)
+
+
+def pretty_metrics(metrics: dict):
+    """Prints metrics information in a readable format (pretty print).
+
+    Args:
+        metrics (dict): The metrics dictionary to print.
+    """
+    metrics_keys = list(metrics.keys())
+    from Muscat.Helpers.TextFormatHelper import TFormat
+    tf = TFormat.Center(TFormat.InBlue("comparision metrics")) + '\n'
+    for metric_key in metrics_keys:
+        tf += TFormat.GetIndent() + TFormat.InYellow(metric_key) + '\n'
+        splits = list(metrics[metric_key].keys())
+        TFormat.II()
+
+        for split in splits:
+            tf += TFormat.GetIndent() + TFormat.InGreen(split) + '\n'
+            scalars = list(metrics[metric_key][split].keys())
+            TFormat.II()
+
+            for scalar in scalars:
+                tf += TFormat.GetIndent() + TFormat.InBlue(scalar) + ": " + \
+                    str(metrics[metric_key][split][scalar]) + '\n'
+
+            TFormat.DI()
+        TFormat.DI()
+    tf += TFormat.Center('') + '\n'
+    print(tf)
 
 
 def compute_metrics(ref_dataset: Dataset | str, pred_dataset: Dataset | str, problem: ProblemDefinition |
@@ -112,13 +141,17 @@ def compute_metrics(ref_dataset: Dataset | str, pred_dataset: Dataset | str, pro
         ref_dataset, pred_dataset, problem, verbose)
 
     rel_SE_out_scalars = {}
+    abs_SE_out_scalars = {}
     r2_out_scalars = {}
 
     for split_name, split_indices in problem_split.items():
         rel_SE_out_scalars[split_name] = {}
+        abs_SE_out_scalars[split_name] = {}
         r2_out_scalars[split_name] = {}
         for sname in out_scalars_names:
             rel_SE_out_scalars[split_name][sname] = np.empty(
+                len(split_indices))
+            abs_SE_out_scalars[split_name][sname] = np.empty(
                 len(split_indices))
             r2_out_scalars[split_name][sname] = np.empty(1)
 
@@ -128,13 +161,14 @@ def compute_metrics(ref_dataset: Dataset | str, pred_dataset: Dataset | str, pro
         for sname in out_scalars_names:
             r2_out_scalars[split_name][sname] = prepare_metrics_for_split(
                 ref_out_scalars[sname], pred_out_scalars[sname], split_indices,
-                rel_SE_out_scalars[split_name][sname]
+                rel_SE_out_scalars[split_name][sname], abs_SE_out_scalars[split_name][sname]
             )
 
     metrics = {}
-    compute_rRMSE(
+    compute_rRMSE_RMSE(
         metrics,
         rel_SE_out_scalars,
+        abs_SE_out_scalars,
         problem_split,
         out_scalars_names,
         verbose)
@@ -147,5 +181,8 @@ def compute_metrics(ref_dataset: Dataset | str, pred_dataset: Dataset | str, pro
 
     with open(f"{save_file_name}.yaml", 'w') as file:
         yaml.dump(metrics, file, default_flow_style=False, sort_keys=False)
+
+    if verbose:
+        pretty_metrics(metrics)
 
     return metrics
