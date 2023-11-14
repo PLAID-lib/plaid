@@ -11,3 +11,5 @@ dependencies:
   - pycgns
   - muscat>=2.0.0
   - pytest
+  - rich
+  - scikit-learn
