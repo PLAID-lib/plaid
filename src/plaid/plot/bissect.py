@@ -6,6 +6,7 @@ from tqdm import tqdm
 from plaid.containers.dataset import Dataset
 from plaid.problem_definition import ProblemDefinition
 
+
 def prepare_datasets(ref_dataset: Dataset, pred_dataset: Dataset,
                      problem_definition: ProblemDefinition, verbose: bool = False) -> tuple[dict, dict, list[str]]:
     """Prepare datasets for comparison.
@@ -99,12 +100,15 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
 
     #### Bissect graph plot ####
     print("Bissect graph construction...") if verbose else None
-    label = r"$\mathrm{Predictions~vs~Targets~for~" + out_scalars_names[scalar] + "}$"
+    label = r"$\mathrm{Predictions~vs~Targets~for~" + \
+        out_scalars_names[scalar] + "}$"
     fig, ax = plt.subplots(figsize=(2 * 6, 2 * 5.5))
 
     ### Matplotlib instructions ###
-    y_true_dataset = np.array(ref_out_scalars[out_scalars_names[scalar]])#[testing_set]
-    y_pred_dataset = np.array(pred_out_scalars[out_scalars_names[scalar]])#[testing_set]
+    y_true_dataset = np.array(
+        ref_out_scalars[out_scalars_names[scalar]])  # [testing_set]
+    y_pred_dataset = np.array(
+        pred_out_scalars[out_scalars_names[scalar]])  # [testing_set]
 
     m, M = np.min(y_true_dataset), np.max(y_true_dataset)
     ax.plot(np.array([m, M]), np.array([m, M]), color="k")
