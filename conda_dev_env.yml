@@ -30,5 +30,7 @@ dependencies:
   - muscat>=2.0.0
   - pycgns
   - pip:
-    - sphinx-autoapi
     - furo
+    - sphinx-autoapi
+    - sphinx-tabs
+    - sphinxcontrib.bibtex
