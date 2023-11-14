@@ -14,6 +14,7 @@ dependencies:
   - autopep8
   - black
   - yapf
+  - rich
 #---# test
   - pytest
   - pytest-cov
@@ -29,6 +30,7 @@ dependencies:
 #---# mesh/graph libs
   - muscat>=2.0.0
   - pycgns
+  - scikit-learn
   - pip:
     - furo
     - sphinx-autoapi
