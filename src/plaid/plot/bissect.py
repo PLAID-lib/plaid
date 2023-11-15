@@ -56,7 +56,7 @@ def is_dvipng_available(verbose: bool) -> bool:
     try:
         subprocess.run(["dvipng", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return True
-    except FileNotFoundError:
+    except subprocess.FileNotFoundError:
         print('dvipng module not installed. Using the default matplotlib options instead') if verbose else None
         return False
 
