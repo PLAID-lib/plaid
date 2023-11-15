@@ -1,6 +1,8 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import subprocess
 from tqdm import tqdm
 
 from plaid.containers.dataset import Dataset
@@ -45,6 +47,18 @@ def prepare_datasets(ref_dataset: Dataset, pred_dataset: Dataset,
 
     return ref_out_scalars, pred_out_scalars, out_scalars_names
 
+def is_dvipng_available(verbose: bool) -> bool:
+    """Check if dvipng is available on the system for matplotlib figures.
+
+    Returns:
+        bool: True if dvipng is available, False otherwise.
+    """
+    try:
+        subprocess.run(["dvipng", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        return True
+    except subprocess.CalledProcessError:
+        print('dvipng module not installed. Using the default matplotlib options instead') if verbose else None
+        return False
 
 def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
                  problem_def: ProblemDefinition | str, scalar: str | int,
@@ -86,12 +100,15 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
                 f"The scalar name provided ({scalar}) is not part of '{out_scalars_names = }'")
 
     # Matplotlib plotting options
-    plt.rcParams.update({
-        "text.usetex": True,
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Helvetica"]})
+    if is_dvipng_available(verbose):
+        plt.rcParams.update({
+            "text.usetex": True,
+            "font.family": "sans-serif",
+            "font.sans-serif": ["Helvetica"]})
+        mpl.style.use("seaborn-v0_8")
+    else:
+        mpl.rcParams.update(mpl.rcParamsDefault)
 
-    mpl.style.use("seaborn-v0_8")
 
     fontsize = 32
     labelsize = 32
