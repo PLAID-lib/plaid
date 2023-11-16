@@ -13,6 +13,8 @@ and documented on `readthedocs <https://mmgp.readthedocs.io/>`_.
 The corresponding datasets are available in PLAID format on `Zenodo <https://zenodo.org/>`_.
 
 
+The considered metrics for compairing methods are the relative RMSE and :math:`Q^2` regression coefficient.
+
 Following the notations of the paper, let :math:`\{ \mathbf{U}^i_{\rm ref} \}_{i=1}^{n_\star}` and :math:`\{ \mathbf{U}^i_{\rm pred} \}_{i=1}^{n_\star}` be respectively test observations and predictions of a given field of interest.
 The relative RMSE is defined as
 
@@ -26,14 +28,10 @@ where :math:`N^i` is the number of nodes in the mesh :math:`i`, and :math:`\max(
 
     \mathrm{RRMSE}_s(\mathbf{w}_{\rm ref}, \mathbf{w}_{\rm pred}) = \left( \frac{1}{n_\star} \sum_{i=1}^{n_\star} \frac{|w^i_{\rm ref} - w_{\rm pred}^i|^2}{|w^i_{\rm ref}|^2} \right)^{1/2}.
 
-For the challenges, we define a composite score :math:`S` as the mean of all the field and scalar RRMSE, computed on the test split:
 
-.. math::
+Given that the input meshes may have different number of nodes, the coefficients of determination :math:`Q^2`
+between the target and predicted output fields are computed by concatenating all the fields together.
 
-    S = \frac{1}{n_f+n_s}\left(\sum_{f \in {\rm fields}} \mathrm{RRMSE}_f(\mathbf{U}_{\rm ref}, \mathbf{U}_{\rm pred})+
-    \sum_{s \in {\rm scalars}} \mathrm{RRMSE}_s(\mathbf{w}_{\rm ref}, \mathbf{w}_{\rm pred})\right),
-
-where :math:`n_f` and :math:`n_s` are respectively the number of ouput fields and scalars of interest.
 
 Data challenges:
 
@@ -46,3 +44,14 @@ Data challenges:
     data_challenges/airfrans
 
     data_challenges/references
+
+
+
+.. For the challenges, we define a composite score :math:`S` as the mean of all the field and scalar RRMSE, computed on the test split:
+
+.. .. math::
+
+..     S = \frac{1}{n_f+n_s}\left(\sum_{f \in {\rm fields}} \mathrm{RRMSE}_f(\mathbf{U}_{\rm ref}, \mathbf{U}_{\rm pred})+
+..     \sum_{s \in {\rm scalars}} \mathrm{RRMSE}_s(\mathbf{w}_{\rm ref}, \mathbf{w}_{\rm pred})\right),
+
+.. where :math:`n_f` and :math:`n_s` are respectively the number of ouput fields and scalars of interest.

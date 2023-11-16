@@ -6,7 +6,10 @@ Rotor37
     .. tab:: Dataset
 
         The dataset ``Rotor37`` can be downloaded `here <https://zenodo.org/>`_.
-        A description is given in :numref:`r37_descr`.
+
+
+        We refere to :cite:p:`casenave2023mmgp`, Sections 4.1 and A.1 for a detailed description of the dataset.
+        Some information is given in :numref:`r37_descr`.
 
         .. _r37_descr:
 
@@ -53,37 +56,36 @@ Rotor37
             :class: with-border
             :widths: 20, 80
 
-            "Inputs", "Mesh, P, omega"
-            "Outputs", "in_massflow, out_massflow, compression_rate, isentropic_efficiency, polytropic_efficiency, Pressure, Temperature, Density, Energy"
-            "Splits", "Train (1250/2500/5000 samples), Test (2187 samples)"
+            "Inputs: scalars", "P, Omega"
+            "Inputs: other", "Mesh"
+            "Outputs: scalars", "Massflow, Compression_ratio, Efficiency"
+            "Outputs: fields", "Density, Pressure, Temperature"
+            "Splits", "Train (8, 16, 32, 64, 125, 250, 500 and 1000 samples), Test (200 samples)"
 
-    .. tab:: Leaderboard
+        Eight training sets of different sizes are provided for different learning difficulties.
 
+    .. tab:: Results
 
-        The leaderboad for dataset ``Rotor37`` is in :numref:`r37_ldb`.
+        Three models GCNN, MGN and MMGP are trained on the training set of size 1000 in :cite:p:`casenave2023mmgp` (see Sections 3, D1 and D2).
 
-        .. _r37_ldb:
+        Detailed metrics and provided in :numref:`r37_res1` and :numref:`r37_res2`, from :cite:p:`casenave2023mmgp` Table 2.
 
-        .. csv-table:: Leaderboad using composite scores
+        .. _r37_res1:
+
+        .. csv-table:: Relative RMSE for the ``Rotor37`` dataset and considered quantities of interest (QoI) (best is bold)
             :class: with-border
-            :widths: 25, 25, 50
-            :header-rows: 1
+            :widths: 25, 25, 25, 25
 
-            "Rank", "Method", "Composite score"
-            1, "MMGP", ":math:`1.7\times 10^{-3}`"
-            2, "GCNN", ":math:`6.0\times 10^{-3}`"
-            3, "MGN", ":math:`9.2\times 10^{-3}`"
+            "QoI", "GCNN", "MGN", "MMGP"
 
-        Detailed metrics and provided in :numref:`r37_res`.
 
-        .. _r37_res:
+        .. _r37_res2:
 
-        .. figure:: rotor37_images/res_rotor37.png
-            :class: with-shadow
-            :width: 800px
-            :align: center
+        .. csv-table:: :math:`Q^2` for the ``Rotor37`` dataset and considered quantities of interest (QoI) (best is bold)
+            :class: with-border
+            :widths: 25, 25, 25, 25
 
-            Detailed metrics from :cite:p:`casenave2023mmgp`
+            "QoI", "GCNN", "MGN", "MMGP"
 
 
         .. RRMSE
@@ -107,3 +109,29 @@ Rotor37
         .. [3.9e-3, 1.4e-2, 8.2e-4],
         .. ]
         .. }
+
+
+        .. The leaderboad for dataset ``Rotor37`` is in :numref:`r37_ldb`.
+
+        .. .. _r37_ldb:
+
+        .. .. csv-table:: Leaderboad using composite scores
+        ..     :class: with-border
+        ..     :widths: 25, 25, 50
+        ..     :header-rows: 1
+
+        ..     "Rank", "Method", "Composite score"
+        ..     1, "MMGP", ":math:`1.7\times 10^{-3}`"
+        ..     2, "GCNN", ":math:`6.0\times 10^{-3}`"
+        ..     3, "MGN", ":math:`9.2\times 10^{-3}`"
+
+        .. Detailed metrics and provided in :numref:`r37_res`.
+
+        .. .. _r37_res:
+
+        .. .. figure:: rotor37_images/res_rotor37.png
+        ..     :class: with-shadow
+        ..     :width: 800px
+        ..     :align: center
+
+        ..     Detailed metrics from :cite:p:`casenave2023mmgp`
