@@ -1,0 +1,13 @@
+task: regression
+input_scalars:
+- scalar_1
+output_scalars:
+- scalar_2
+input_fields: []
+output_fields:
+- field_1
+input_timeseries: []
+output_timeseries: []
+input_meshes:
+- mesh
+output_meshes: []

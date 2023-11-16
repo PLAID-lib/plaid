@@ -5,8 +5,11 @@ AirfRANS
 
     .. tab:: Dataset
 
-        The dataset ``AirfRANS`` can be downloaded `here <https://zenodo.org/>`_.
-        A description is given in :numref:`arf_descr`.
+        The dataset ``AirfRANS`` can be downloaded `here <https://zenodo.org/>`_. There is a standard version and a
+        remeshed (coarsened) one.
+
+        We refere to :cite:p:`airfrans` and :cite:p:`casenave2023mmgp`, Sections 4.1 for a detailed description of the dataset.
+        Some information is given in :numref:`arf_descr`.
 
         .. _arf_descr:
 
@@ -53,38 +56,37 @@ AirfRANS
             :class: with-border
             :widths: 20, 80
 
-            "Inputs", "Mesh, inlet_velocity, angle_of_attack"
-            "Outputs", "C_L, C_D, U_x, U_y, p, nu_t"
+            "Inputs: scalars", "inlet_velocity, angle_of_attack"
+            "Inputs: other", "Mesh"
+            "Outputs: scalars", "C_L, C_D"
+            "Outputs: fields", "U_x, U_y, p, nu_t"
             "Splits", "Train (800 samples), Test (200 samples)"
 
-    .. tab:: Leaderboard
 
+    .. tab:: Results
 
-        The leaderboad for dataset ``AirfRANS`` is in :numref:`arf_ldb`.
+        In :cite:p:`casenave2023mmgp` (see Sections 3, D1 and D2), two models GCNN and MGN
+        are trained in the remeshed version and MMGP is trained on the standard version, all on the training
+        set of size 800.
 
-        .. _arf_ldb:
+        Detailed metrics and provided in :numref:`arf_res1` and :numref:`arf_res2`, from :cite:p:`casenave2023mmgp` Table 2.
 
-        .. csv-table:: Leaderboad using composite scores (without field :math:`\nu_t`)
+        .. _arf_res1:
+
+        .. csv-table:: Relative RMSE for the ``AirfRANS`` dataset and considered quantities of interest (QoI) (best is bold)
             :class: with-border
-            :widths: 25, 25, 50
-            :header-rows: 1
+            :widths: 25, 25, 25, 25
 
-            "Rank", "Method", "Composite score"
-            1, "MMGP", ":math:`2.5\times 10^{-2}`"
-            2, "MGN", ":math:`1.2\times 10^{-1}`"
-            3, "GCNN", ":math:`1.3\times 10^{-1}`"
+            "QoI", "GCNN", "MGN", "MMGP"
 
-        Detailed metrics and provided in :numref:`arf_res`.
 
-        .. _arf_res:
+        .. _arf_res2:
 
-        .. figure:: airfrans_images/res_airfrans.png
-            :class: with-shadow
-            :width: 800px
-            :align: center
+        .. csv-table:: :math:`Q^2` for the ``AirfRANS`` dataset and considered quantities of interest (QoI) (best is bold)
+            :class: with-border
+            :widths: 25, 25, 25, 25
 
-            Detailed metrics from :cite:p:`casenave2023mmgp`
-
+            "QoI", "GCNN", "MGN", "MMGP"
 
         .. RRMSE
         .. GCNN MGN MMGP
@@ -106,3 +108,28 @@ AirfRANS
         .. [8.5e-2, 9.9e-2, 5.1e-2 ],
         .. ]
         .. )
+
+        .. The leaderboad for dataset ``AirfRANS`` is in :numref:`arf_ldb`.
+
+        .. .. _arf_ldb:
+
+        .. .. csv-table:: Leaderboad using composite scores (without field :math:`\nu_t`)
+        ..     :class: with-border
+        ..     :widths: 25, 25, 50
+        ..     :header-rows: 1
+
+        ..     "Rank", "Method", "Composite score"
+        ..     1, "MMGP", ":math:`2.5\times 10^{-2}`"
+        ..     2, "MGN", ":math:`1.2\times 10^{-1}`"
+        ..     3, "GCNN", ":math:`1.3\times 10^{-1}`"
+
+        .. Detailed metrics and provided in :numref:`arf_res`.
+
+        .. .. _arf_res:
+
+        .. .. figure:: airfrans_images/res_airfrans.png
+        ..     :class: with-shadow
+        ..     :width: 800px
+        ..     :align: center
+
+        ..     Detailed metrics from :cite:p:`casenave2023mmgp`
