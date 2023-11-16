@@ -4,6 +4,7 @@ import numpy as np
 import os
 import subprocess
 from tqdm import tqdm
+import shutil
 
 from plaid.containers.dataset import Dataset
 from plaid.problem_definition import ProblemDefinition
@@ -108,7 +109,6 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
         mpl.style.use("seaborn-v0_8")
     else:
         mpl.rcParams.update(mpl.rcParamsDefault)
-
 
     fontsize = 32
     labelsize = 32
