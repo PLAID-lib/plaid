@@ -4,7 +4,7 @@ from sklearn.metrics import r2_score
 from tqdm import tqdm
 
 from plaid.containers.dataset import Dataset
-from plaid.plot.bissect import prepare_datasets
+from plaid.post.bissect import prepare_datasets
 from plaid.problem_definition import ProblemDefinition
 
 
@@ -62,7 +62,7 @@ def compute_R2(metrics: dict, r2_out_scalars: dict, problem_split: dict,
 
 def prepare_metrics_for_split(ref_out_specific_scalars: np.ndarray, pred_out_specific_scalars: np.ndarray,
                               split_indices: list[int], rel_SE_out_specific_scalars: np.ndarray,
-                              abs_SE_out_specific_scalars: np.ndarray, tolerance: float = 1.e-6) -> float:
+                              abs_SE_out_specific_scalars: np.ndarray) -> float:
     """Prepare metrics for a specific split and compute the R-squared (R2) score.
 
     Args:
@@ -70,7 +70,6 @@ def prepare_metrics_for_split(ref_out_specific_scalars: np.ndarray, pred_out_spe
         pred_out_specific_scalars (np.ndarray): Array of predicted scalar outputs.
         split_indices (list[int]): List of indices specifying the split.
         rel_SE_out_specific_scalars (np.ndarray): Array to store relative squared errors for scalar outputs.
-        tolerance (float, optional): Tolerance value for denominator. Defaults to 1.e-6.
 
     Returns:
         float: R-squared (R2) score for the specific split.
@@ -79,10 +78,8 @@ def prepare_metrics_for_split(ref_out_specific_scalars: np.ndarray, pred_out_spe
     predict_scal = np.array([pred_out_specific_scalars[i]
                             for i in split_indices])
 
-    denom_scal = np.where(ref_scal < tolerance, 1., ref_scal)
-
     diff = (predict_scal - ref_scal)
-    rel_SE_out_specific_scalars[:] = (diff / denom_scal) ** 2
+    rel_SE_out_specific_scalars[:] = (diff / ref_scal) ** 2
     abs_SE_out_specific_scalars[:] = diff ** 2
     return r2_score(ref_scal, predict_scal)
 

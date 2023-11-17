@@ -1,0 +1,15 @@
+rRMSE for scalars:
+  train:
+    scalar_2: 1.51801
+  test:
+    scalar_2: 19.1191
+RMSE for scalars:
+  train:
+    scalar_2: 1.3776
+  test:
+    scalar_2: 0.812372
+R2 for scalars:
+  train:
+    scalar_2: -0.228659
+  test:
+    scalar_2: -1.66561
