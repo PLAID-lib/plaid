@@ -1,9 +1,10 @@
 from plaid.containers.dataset import Dataset
-from plaid.plot.bissect import plot_bissect
+from plaid.post.bissect import plot_bissect
 from plaid.problem_definition import ProblemDefinition
-import os
+import os, shutil
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
+working_directory = os.getcwd()
 
 ### Plot with file paths ###
 print("Plot with file paths")
@@ -16,6 +17,7 @@ plot_bissect(
     problem_path,
     "scalar_2",
     "differ_bissect_plot")
+shutil.move(os.path.join(working_directory, "differ_bissect_plot.png"), os.path.join(current_directory, "differ_bissect_plot.png"))
 
 ### Plot with PLAID objects ###
 print("Plot with PLAID objects")
@@ -29,6 +31,7 @@ plot_bissect(
     problem_path,
     "scalar_2",
     "equal_bissect_plot")
+shutil.move(os.path.join(working_directory, "equal_bissect_plot.png"), os.path.join(current_directory, "equal_bissect_plot.png"))
 
 ### Mix with scalar index and verbose ###
 print("Mix with scalar index and verbose")
@@ -43,3 +46,4 @@ plot_bissect(
     scalar_index,
     "converge_bissect_plot",
     verbose=True)
+shutil.move(os.path.join(working_directory, "converge_bissect_plot.png"), os.path.join(current_directory, "converge_bissect_plot.png"))
