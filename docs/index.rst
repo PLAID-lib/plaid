@@ -29,9 +29,9 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: API
+   :caption: API Documentation
 
-   plaid-lib <autoapi/plaid/index>
+   Autoapi <autoapi/plaid/index>
    Basic examples <source/notebooks.rst>
    Default values flowchart <source/default_values.rst>
 
