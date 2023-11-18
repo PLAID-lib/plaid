@@ -1,7 +1,7 @@
 # %% [markdown]
-# # Convert the users data into PLAID
+# # Example for converting user data into PLAID
 #
-# This code is designed to convert user data into the PLAID (Physics Informed AI Datamodel) format.
+# This code provides an example for converting user data into the PLAID (Physics Informed AI Datamodel) format.
 
 # %%
 import numpy as np
@@ -141,7 +141,7 @@ print(samples[0])
 infos: dict = {
         "legal": {
             "owner": "Bob",
-            "license": "CC-BY-SA"},
+            "license": "my_license"},
         "data_production": {
             "type": "simulation",
             "physics": "3D example"}
@@ -159,5 +159,3 @@ dataset.print_infos()
 sample_ids = dataset.add_samples(samples)
 print(sample_ids)
 print(dataset)
-
-
