@@ -5,8 +5,9 @@ Rotor37
 
     .. tab:: Dataset
 
-        The dataset ``Rotor37`` can be downloaded `here <https://zenodo.org/>`_.
+        .. The dataset ``Rotor37`` can be downloaded `here <https://zenodo.org/>`_.
 
+        The dataset ``Rotor37`` will soon be available on `Zenodo <https://zenodo.org/>`_.
 
         We refere to :cite:p:`casenave2023mmgp`, Sections 4.1 and A.1 for a detailed description of the dataset.
         Some information is given in :numref:`r37_descr`.
@@ -77,6 +78,12 @@ Rotor37
             :widths: 25, 25, 25, 25
 
             "QoI", "GCNN", "MGN", "MMGP"
+            "Massflow", "4.4e-3", "5.4e-3", "**5.0e-4**"
+            "Compression_ratio", "4.4e-3", "5.3e-3", "**4.8e-4**"
+            "Isentropic efficiency", "3.1e-3", "7.2e-3", "**5.0e-4**"
+            "Polyentropic efficiency", "2.9e-3", "6.5e-3", "**4.6e-4**"
+            "Pressure", "1.7e-2", "1.7e-2", "**7.2e-3**"
+            "Temperature", "3.9e-3", "1.4e-2", "**8.2e-4**"
 
 
         .. _r37_res2:
@@ -86,6 +93,13 @@ Rotor37
             :widths: 25, 25, 25, 25
 
             "QoI", "GCNN", "MGN", "MMGP"
+            "Massflow", "0.9816", "0.9720", "**0.9998**"
+            "Compression_ratio", "0.9803", "0.9710", "**0.9998**"
+            "Isentropic efficiency", "0.9145", "0.5551", "**0.9979**"
+            "Polyentropic efficiency", "0.9068", "0.5257", "**0.9977**"
+            "Pressure", "0.9863", "0.9866", "**0.9973**"
+            "Temperature", "0.9930", "0.9956", "**0.9997**"
+
 
 
         .. RRMSE
