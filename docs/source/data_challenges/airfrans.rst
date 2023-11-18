@@ -5,8 +5,9 @@ AirfRANS
 
     .. tab:: Dataset
 
-        The dataset ``AirfRANS`` can be downloaded `here <https://zenodo.org/>`_. There is a standard version and a
-        remeshed (coarsened) one.
+        .. The dataset ``AirfRANS`` can be downloaded `here <https://zenodo.org/>`_. There is a standard version and a remeshed (coarsened) one.
+
+        The dataset ``AirfRANS`` will soon be available on `Zenodo <https://zenodo.org/>`_.
 
         We refere to :cite:p:`airfrans` and :cite:p:`casenave2023mmgp`, Sections 4.1 for a detailed description of the dataset.
         Some information is given in :numref:`arf_descr`.
@@ -60,7 +61,7 @@ AirfRANS
             "Inputs: other", "Mesh"
             "Outputs: scalars", "C_L, C_D"
             "Outputs: fields", "U_x, U_y, p, nu_t"
-            "Splits", "Train (800 samples), Test (200 samples)"
+            "Splits", "Scarse train (200 samples), Train (800 samples), Test (200 samples)"
 
 
     .. tab:: Results
@@ -78,6 +79,11 @@ AirfRANS
             :widths: 25, 25, 25, 25
 
             "QoI", "GCNN", "MGN", "MMGP"
+            "C_D", "6.1e-2", "4.9e-2", "**3.3e-2**"
+            "C_L", "4.1e-1", "2.4e-1", "**8.0e-3**"
+            "U_x", "5.6e-2", "8.3e-2", "**1.8e-2**"
+            "U_y", "4.2e-2", "1.2e-1", "**1.5e-2**"
+            "p", "8.5e-2", "9.9e-2", "**5.1e-2**"
 
 
         .. _arf_res2:
@@ -87,6 +93,12 @@ AirfRANS
             :widths: 25, 25, 25, 25
 
             "QoI", "GCNN", "MGN", "MMGP"
+            "C_D", "0.9596", "0.9743", "**0.9831**"
+            "C_L", "0.9776", "0.9851", "**0.9999**"
+            "U_x", "0.9659", "0.9110", "**0.9749**"
+            "U_y", "0.9683", "0.7516", "**0.9806**"
+            "p", "0.9602", "0.9390", "**0.9934**"
+
 
         .. RRMSE
         .. GCNN MGN MMGP
@@ -94,8 +106,8 @@ AirfRANS
         .. AirfRANS dataset
         .. CD 6.1e-2 4.9e-2 3.3e-2
         .. CL 4.1e-1 2.4e-1 8.0e-3
-        .. u 5.6e-2 8.3e-2 1.8e-2
-        .. v 4.2e-2 1.2e-1 1.5e-2
+        .. U_x 5.6e-2 8.3e-2 1.8e-2
+        .. U_y 4.2e-2 1.2e-1 1.5e-2
         .. p 8.5e-2 9.9e-2 5.1e-2
 
 
