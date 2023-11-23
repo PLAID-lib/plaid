@@ -10,8 +10,9 @@ You can find here all basic detailed examples different part of PLAID-lib, nicel
    notebooks/sample
    notebooks/dataset
    notebooks/problem_definition
-   notebooks/stats
    notebooks/split
+   notebooks/stats
+   notebooks/bisect
+   notebooks/metrics
    notebooks/init_with_tabular
    notebooks/interpolation
-   notebooks/convert_users_data_into_PLAID
