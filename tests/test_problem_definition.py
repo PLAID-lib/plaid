@@ -9,7 +9,7 @@
 
 import pytest
 import os
-
+import subprocess
 from plaid.problem_definition import ProblemDefinition
 # %% Fixtures
 
@@ -21,6 +21,10 @@ def problem_definition() -> ProblemDefinition:
 @pytest.fixture()
 def current_directory() -> str:
     return os.path.dirname(os.path.abspath(__file__))
+
+@pytest.fixture(scope="session", autouse=True)
+def clean_tests():
+    subprocess.call(['sh', './tests/clean.sh'])
 
 # %% Tests
 
