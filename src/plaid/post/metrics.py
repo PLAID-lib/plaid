@@ -4,20 +4,20 @@ from sklearn.metrics import r2_score
 from tqdm import tqdm
 
 from plaid.containers.dataset import Dataset
-from plaid.post.bissect import prepare_datasets
+from plaid.post.bisect import prepare_datasets
 from plaid.problem_definition import ProblemDefinition
 
 
 def compute_rRMSE_RMSE(metrics: dict, rel_SE_out_scalars: dict, abs_SE_out_scalars: dict,
-                       problem_split: dict, out_scalars_names: list[str], verbose: bool) -> None:
+                       problem_split: dict, out_scalars_names: list[str]) -> None:
     """Compute and print the relative Root Mean Square Error (rRMSE) for scalar outputs.
 
     Args:
         metrics (dict): Dictionary to store the computed metrics.
         rel_SE_out_scalars (dict): Dictionary containing relative squared errors for scalar outputs.
+        abs_SE_out_scalars (dict): Dictionary containing absolute squared errors for scalar outputs.
         problem_split (dict): Dictionary specifying how the problem is split.
         out_scalars_names (list[str]): List of names of scalar outputs.
-        verbose (bool): If True, print detailed information during computation.
     """
     metrics["rRMSE for scalars"] = {}
     metrics["RMSE for scalars"] = {}
@@ -40,7 +40,7 @@ def compute_rRMSE_RMSE(metrics: dict, rel_SE_out_scalars: dict, abs_SE_out_scala
 
 
 def compute_R2(metrics: dict, r2_out_scalars: dict, problem_split: dict,
-               out_scalars_names: list[str], verbose: bool) -> None:
+               out_scalars_names: list[str]) -> None:
     """Compute and print the R-squared (R2) score for scalar outputs.
 
     Args:
@@ -48,7 +48,6 @@ def compute_R2(metrics: dict, r2_out_scalars: dict, problem_split: dict,
         r2OutScalars (dict): Dictionary containing R2 scores for scalar outputs.
         problem_split (dict): Dictionary specifying how the problem is split.
         out_scalars_names (list[str]): List of names of scalar outputs.
-        verbose (bool): If True, print detailed information during computation.
     """
     metrics["R2 for scalars"] = {}
 
@@ -70,6 +69,7 @@ def prepare_metrics_for_split(ref_out_specific_scalars: np.ndarray, pred_out_spe
         pred_out_specific_scalars (np.ndarray): Array of predicted scalar outputs.
         split_indices (list[int]): List of indices specifying the split.
         rel_SE_out_specific_scalars (np.ndarray): Array to store relative squared errors for scalar outputs.
+        abs_SE_out_specific_scalars (np.ndarray): Array to store absolute squared errors for scalar outputs.
 
     Returns:
         float: R-squared (R2) score for the specific split.
@@ -84,7 +84,7 @@ def prepare_metrics_for_split(ref_out_specific_scalars: np.ndarray, pred_out_spe
     return r2_score(ref_scal, predict_scal)
 
 
-def pretty_metrics(metrics: dict):
+def pretty_metrics(metrics: dict) -> None:
     """Prints metrics information in a readable format (pretty print).
 
     Args:
@@ -167,14 +167,13 @@ def compute_metrics(ref_dataset: Dataset | str, pred_dataset: Dataset | str, pro
         rel_SE_out_scalars,
         abs_SE_out_scalars,
         problem_split,
-        out_scalars_names,
-        verbose)
+        out_scalars_names)
+
     compute_R2(
         metrics,
         r2_out_scalars,
         problem_split,
-        out_scalars_names,
-        verbose)
+        out_scalars_names)
 
     with open(f"{save_file_name}.yaml", 'w') as file:
         yaml.dump(metrics, file, default_flow_style=False, sort_keys=False)
