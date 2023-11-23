@@ -1,10 +1,8 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import subprocess
 from tqdm import tqdm
-import shutil
 
 from plaid.containers.dataset import Dataset
 from plaid.problem_definition import ProblemDefinition
@@ -57,11 +55,11 @@ def is_dvipng_available(verbose: bool) -> bool:
     try:
         subprocess.run(["dvipng", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return True
-    except FileNotFoundError:
+    except FileNotFoundError: # pragma: no cover
         print('dvipng module not installed. Using the default matplotlib options instead') if verbose else None
         return False
 
-def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
+def plot_bisect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
                  problem_def: ProblemDefinition | str, scalar: str | int,
                  save_file_name: str = "bissec_plots", verbose: bool = False) -> None:
     """Plot a bisect graph comparing predictions vs. targets dataset.
@@ -107,7 +105,7 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
             "font.family": "sans-serif",
             "font.sans-serif": ["Helvetica"]})
         mpl.style.use("seaborn-v0_8")
-    else:
+    else: # pragma: no cover
         mpl.rcParams.update(mpl.rcParamsDefault)
 
     fontsize = 32
@@ -115,8 +113,8 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
     markersize = 24
     markeredgewidth = 1
 
-    #### Bissect graph plot ####
-    print("Bissect graph construction...") if verbose else None
+    #### Bisect graph plot ####
+    print("Bisect graph construction...") if verbose else None
     label = r"$\mathrm{Predictions~vs~Targets~for~" + \
         out_scalars_names[scalar] + "}$"
     fig, ax = plt.subplots(figsize=(2 * 6, 2 * 5.5))
@@ -141,10 +139,10 @@ def plot_bissect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
 
     plt.tight_layout()
 
-    print("Bissect graph saving...") if verbose else None
+    print("Bisect graph saving...") if verbose else None
     fig.savefig(
         f"{save_file_name}.png",
         dpi=300,
         format='png',
         bbox_inches='tight')
-    print("...Bissect plot done") if verbose else None
+    print("...Bisect plot done") if verbose else None
