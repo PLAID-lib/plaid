@@ -5,9 +5,7 @@ Rotor37
 
     .. tab:: Dataset
 
-        .. The dataset ``Rotor37`` can be downloaded `here <https://zenodo.org/>`_.
-
-        The dataset ``Rotor37`` will soon be available on `Zenodo <https://zenodo.org/>`_.
+        The dataset ``Rotor37`` can be downloaded `here <https://zenodo.org/records/10149830>`_.
 
         We refere to :cite:p:`casenave2023mmgp`, Sections 4.1 and A.1 for a detailed description of the dataset.
         Some information is given in :numref:`r37_descr`.
