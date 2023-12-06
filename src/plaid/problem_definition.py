@@ -77,7 +77,7 @@ class ProblemDefinition(object):
         self._split: dict[str, IndexType] = None
 
         if directory_path is not None:
-            self._load_from_dir_(directory_path)
+            self._load_from_dir_(str(directory_path))
 
     # -------------------------------------------------------------------------#
     def get_task(self) -> str:

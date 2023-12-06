@@ -33,7 +33,7 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
 
    Autoapi <autoapi/plaid/index>
    Basic examples <source/notebooks.rst>
-   Convert data into PLAID <source/notebooks/convert_users_data_into_PLAID>
+   Convert data into PLAID <source/notebooks/convert_users_data_into_plaid>
    Default values flowchart <source/default_values.rst>
 
 .. toctree::

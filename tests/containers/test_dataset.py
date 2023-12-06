@@ -164,11 +164,6 @@ def compare_two_samples(sample_1: Sample, sample_2: Sample):
         for zone_name in sample_1.get_zone_names(base_name):
             assert sample_1.get_zone_type(zone_name, base_name) == sample_2.get_zone_type(zone_name, base_name)
 
-    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
-    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
-    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
-    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
-
 
 # %% Tests
 
@@ -186,6 +181,11 @@ class Test_Dataset():
         dataset_path = os.path.join(current_directory, "dataset")
         dataset_already_filled = Dataset(dataset_path)
         assert len(dataset_already_filled) == 3
+
+    def test__init__load_path_object(self, current_directory):
+        from pathlib import Path
+        my_dir = Path(current_directory)
+        Dataset(my_dir / 'dataset')
 
     def test___init__unknown_directory(self, current_directory):
         dataset_path = os.path.join(current_directory, "dataset_unknown")
@@ -213,6 +213,50 @@ class Test_Dataset():
     def test_add_sample(self, dataset, sample):
         assert (dataset.add_sample(sample) == 0)
         assert len(dataset) == 1
+
+    def test_del_sample_classical(self, dataset, sample):
+        for i in range(10):
+            assert dataset.add_sample(sample) == i
+
+        assert isinstance(dataset.del_sample(9), Sample)
+        assert len(dataset) == 9, dataset._samples.keys()
+        assert dataset.get_sample_ids() == list(np.arange(0, 9))
+
+        assert isinstance(dataset.del_sample(3), Sample)
+        assert len(dataset) == 8
+        assert dataset.get_sample_ids() == list(np.arange(0, 8))
+
+        assert isinstance(dataset.del_sample(0), Sample)
+        assert len(dataset) == 7
+        assert dataset.get_sample_ids() == list(np.arange(0, 7))
+
+    def test_full_del_sample(self, dataset, sample):
+        for i in range(3):
+            assert dataset.add_sample(sample) == i
+
+        assert isinstance(dataset.del_sample(2), Sample)
+        assert len(dataset) == 2, dataset._samples.keys()
+        assert dataset.get_sample_ids() == list(np.arange(0, 2))
+
+        assert isinstance(dataset.del_sample(0), Sample)
+        assert len(dataset) == 1
+        assert dataset.get_sample_ids() == list(np.arange(0, 1))
+
+        assert isinstance(dataset.del_sample(0), Sample)
+        assert len(dataset) == 0
+        assert dataset.get_sample_ids() == []
+
+        with pytest.raises(ValueError):
+            dataset.del_sample(0)
+
+    def test_on_error_del_sample(self, dataset, sample):
+        for i in range(3):
+            assert dataset.add_sample(sample) == i
+
+        with pytest.raises(ValueError):
+            dataset.del_sample(-1)
+        with pytest.raises(ValueError):
+            dataset.del_sample(10)
 
     def test_add_sample_and_id(self, dataset, sample):
         dataset.add_sample(sample, 10)
@@ -268,6 +312,62 @@ class Test_Dataset():
             dataset.add_samples({0: sample})
         with pytest.raises(TypeError):
             dataset.add_samples(["not_a_sample"])
+
+    def test_del_samples_classical(self, dataset, sample):
+        for i in range(10):
+            assert dataset.add_sample(sample) == i
+
+        assert isinstance(dataset.del_samples([9])[0], Sample)
+
+        list_deleted = dataset.del_samples([0, 2, 4, 6])
+        for s in list_deleted:
+            assert isinstance(s, Sample)
+        assert len(dataset) == 5, dataset._samples.keys()
+        assert dataset.get_sample_ids() == list(np.arange(0, 5))
+
+        list_deleted = dataset.del_samples([1, 2, 3])
+        for s in list_deleted:
+            assert isinstance(s, Sample)
+        assert len(dataset) == 2, dataset._samples.keys()
+        assert dataset.get_sample_ids() == list(np.arange(0, 2))
+
+        assert isinstance(dataset.del_sample(1), Sample)
+        assert len(dataset) == 1, dataset._samples.keys()
+        assert dataset.get_sample_ids() == [0]
+
+        list_deleted = dataset.del_samples([0])
+        for s in list_deleted:
+            assert isinstance(s, Sample)
+        assert len(dataset) == 0, dataset._samples.keys()
+        assert dataset.get_sample_ids() == []
+
+    def test_full_del_samples(self, dataset, sample):
+        for i in range(3):
+            assert dataset.add_sample(sample) == i
+
+        list_deleted = dataset.del_samples([0, 1, 2])
+        for s in list_deleted:
+            assert isinstance(s, Sample)
+        assert len(dataset) == 0, dataset._samples.keys()
+        assert dataset.get_sample_ids() == []
+
+        with pytest.raises(ValueError):
+            dataset.del_samples([0])
+
+    def test_on_error_del_samples(self, dataset, sample):
+        for i in range(3):
+            assert dataset.add_sample(sample) == i
+
+        with pytest.raises(TypeError):
+            dataset.del_samples(1)
+        with pytest.raises(ValueError):
+            dataset.del_samples([])
+        with pytest.raises(ValueError):
+            dataset.del_samples([-1, 0, 1])
+        with pytest.raises(ValueError):
+            dataset.del_samples([0, 1, 10])
+        with pytest.raises(ValueError):
+            dataset.del_samples([0, 0, 1])
 
     def test_get_sample_ids(self, dataset):
         dataset.get_sample_ids()

@@ -1,5 +1,7 @@
 # Project specific
 public/
+tests/post/*.png
+tests/post/*.yaml
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
