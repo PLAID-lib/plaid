@@ -478,7 +478,7 @@ sample._defaults["active_time"] = None
 sample._defaults["active_base"] = None
 
 # Set default base, zone and time
-sample.set_default_base_zone('SurfaceMesh', 'TestZoneName', 0.0)
+sample.set_default_zone_base('TestZoneName', 'SurfaceMesh', 0.0)
 
 # Now that default base, zone and time have been assigned, it is no longer necessary to specify them in function calls.
 print(f"{sample.get_time_assignment() = }")

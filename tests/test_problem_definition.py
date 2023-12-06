@@ -315,6 +315,11 @@ class Test_ProblemDefinition():
 
         problem_definition._save_to_dir_(os.path.join(current_directory, "problem_definition"))
 
+    def test_load_path_object(self, current_directory):
+        from pathlib import Path
+        my_dir = Path(current_directory)
+        ProblemDefinition(my_dir / 'problem_definition')
+
     def test_load(self, current_directory):
         d_path = os.path.join(current_directory, "problem_definition")
         problem = ProblemDefinition(d_path)

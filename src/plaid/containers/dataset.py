@@ -17,6 +17,7 @@ import logging
 import os
 import subprocess
 from typing import Union
+from pathlib import Path
 
 import numpy as np
 import yaml
@@ -48,13 +49,14 @@ authorized_info_keys = {
 class Dataset(object):
     """A set of samples, and optionnaly some other informations about the Dataset."""
 
-    def __init__(self, directory_path: str = None) -> None:
+    def __init__(self, directory_path: str = None, verbose: bool = False) -> None:
         """Initialize an empty :class:`Dataset <plaid.containers.dataset.Dataset>` that should be fed with :class:`Samples <plaid.containers.sample.Sample>.`
 
         Use :meth:`add_sample <plaid.containers.dataset.Dataset.add_sample>` or :meth:`add_samples <plaid.containers.dataset.Dataset.add_samples>` to feed the :class:`Dataset`
 
         Args:
             directory_path (str, optional): The path from which to load PLAID dataset files.
+            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
 
         Example:
             .. code-block:: python
@@ -84,11 +86,14 @@ class Dataset(object):
         self._infos: dict[str, dict[str, str]] = {}
 
         if directory_path is not None:
+            if not isinstance(directory_path, str):
+                directory_path = str(directory_path)
+
             splits = directory_path.split(".")
             if len(splits) > 1 and splits[-1] == "plaid":
-                self.load(directory_path)
+                self.load(directory_path, verbose=verbose)
             else:
-                self._load_from_dir_(directory_path)
+                self._load_from_dir_(directory_path, verbose=verbose)
 
     # -------------------------------------------------------------------------#
     def get_samples(self, ids: list[int] = None,
@@ -140,6 +145,47 @@ class Dataset(object):
         self.set_sample(id=id, sample=sample)
         return id
 
+    def del_sample(self, sample_id: int) -> None:
+        """Delete a :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>`.
+        and reorganize the remaining sample IDs to eliminate gaps.
+
+        Args:
+            sample_id (int): The ID of the sample to delete.
+
+        Raises:
+            ValueError: If the provided sample ID is not present in the dataset.
+
+        Returns:
+            list[int]: The new list of sample ids.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.containers.dataset import Dataset
+                dataset = Dataset()
+                dataset.add_samples(samples)
+                print(dataset)
+                >>> Dataset(1 samples, y scalars, x fields)
+                dataset.del_sample(0)
+                print(dataset)
+                >>> Dataset(0 samples, 0 scalars, 0 fields)
+        """
+        if sample_id < 0 or sample_id >= len(self._samples):
+            raise ValueError(f"Invalid ID {sample_id}, it must be within [0, len(dataset)]")
+
+
+        if sample_id == len(self) - 1:
+            return self._samples.pop(sample_id)
+
+        deleted_sample = self._samples[sample_id]
+        keys_to_move = np.arange(sample_id + 1, len(self._samples))
+
+        # Move each key one position back
+        for key in keys_to_move:
+            self._samples[key - 1] = self._samples.pop(key)
+
+        return deleted_sample
+
     def add_samples(self, samples: list[Sample],
                     ids: list[int] = None) -> list[int]:
         """Add new :class:`Samples <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>`.
@@ -190,6 +236,64 @@ class Dataset(object):
 
         self._samples.update(dict(zip(ids, samples)))
         return ids
+
+    def del_samples(self, sample_ids: list[int]) -> None:
+        """Delete  :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>`
+        and reorganize the remaining sample IDs to eliminate gaps.
+
+        Args:
+            sample_ids (list[int]): The list of IDs of samples to delete.
+
+        Raises:
+            TypeError: If ``sample_ids`` is not a list.
+            ValueError: If sample_ids list is empty.
+            ValueError: If any of the sample_ids does not exist in the dataset.
+            ValueError: If the provided IDs are not unique.
+
+        Returns:
+            list[int]: The new list of sample ids.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.containers.dataset import Dataset
+                dataset = Dataset()
+                # Assume samples are already added to the dataset
+                print(dataset)
+                >>> Dataset(6 samples, y scalars, x fields)
+                dataset.del_samples([1, 3, 5])
+                print(dataset)
+                >>> Dataset(3 samples, y scalars, x fields)
+        """
+        if not isinstance(sample_ids, list):
+            raise TypeError(
+                f"sample_ids should be of type list but {type(sample_ids)=}")
+
+        if sample_ids == []:
+            raise ValueError("The list of sample IDs to delete is empty")
+
+        for id in sample_ids:
+            if id < 0 or id >= len(self._samples):
+                raise ValueError(f"Invalid ID {id}, it must be within [0, len(dataset)]")
+
+        if len(set(sample_ids)) != len(sample_ids):
+            raise ValueError(f"Sample with IDs must be unique")
+
+        # Delete samples
+        deleted_samples = []
+        for id in sample_ids:
+            deleted_samples.append(self._samples[id])
+            del self._samples[id]
+
+        # Reorganize remaining sample IDs to eliminate gaps
+        # from the min index of sample_ids to delete
+        del_idx_min = min(sample_ids)
+        remaining_ids = list(self._samples.keys())
+        for new_id, old_id in enumerate(remaining_ids[del_idx_min:], start=del_idx_min):
+            if new_id != old_id:
+                self._samples[new_id] = self._samples.pop(old_id)
+
+        return deleted_samples
 
     # -------------------------------------------------------------------------#
     def get_sample_ids(self) -> list[int]:
@@ -562,12 +666,13 @@ class Dataset(object):
         instance._load_from_dir_(dname)
         return instance
 
-    def load(self, fname: str) -> None:
+    def load(self, fname: str, verbose: bool = False) -> None:
         """Load data from a specified TAR (Tape Archive) file. It
         creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             fname (str): The path to the data file to be loaded.
+            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
 
         Raises:
             ValueError: If a randomly generated temporary directory already exists,
@@ -586,7 +691,7 @@ class Dataset(object):
         subprocess.call(arguments)
 
         # Then : load data from directory <inputdir>
-        self._load_from_dir_(inputdir)
+        self._load_from_dir_(inputdir, verbose=verbose)
 
         # Finally : removes directory <inputdir>
         arguments = ['rm', '-rf', f'{inputdir}']

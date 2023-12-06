@@ -268,7 +268,7 @@ class Test_Sample():
             zone_name,
             base_name=base_name)
 
-        sample.set_default_base_zone(base_name, zone_name, 0.5)
+        sample.set_default_zone_base(zone_name, base_name, 0.5)
         # check dims getters
         assert sample.get_topological_dim() == topological_dim
         assert sample.get_physical_dim() == physical_dim
@@ -285,11 +285,11 @@ class Test_Sample():
         assert sample.get_time_assignment() == 0.5
 
         assert sample.get_zone() is not None
-        sample.set_default_base_zone(base_name, zone_name)
-        sample.set_default_base_zone(base_name, None) # will not assign to None
+        sample.set_default_zone_base(zone_name, base_name)
+        sample.set_default_zone_base(None, base_name) # will not assign to None
         assert sample.get_zone_assignment() == zone_name
         with pytest.raises(ValueError):
-            sample.set_default_base_zone(base_name, f"Unknown zone name")
+            sample.set_default_zone_base("Unknown zone name", base_name)
 
     def test_set_default_time(
             self, sample, topological_dim, physical_dim):
@@ -329,11 +329,35 @@ class Test_Sample():
             sample_with_tree.set_meshes(tree)
 
     def test_add_tree_empty(self, sample_with_tree, tree):
-        pass
+        with pytest.raises(ValueError):
+            sample_with_tree.add_tree([])
 
-    def test_add_tree(self, sample_with_tree, tree):
-        sample_with_tree.add_tree(tree)
-        sample_with_tree.add_tree(tree, time=0.2)
+    def test_add_tree(self, sample, tree):
+        sample.add_tree(tree)
+        sample.add_tree(tree, time=0.2)
+
+    def test_del_tree(self, sample, tree):
+        sample.add_tree(tree)
+        sample.add_tree(tree, time=0.2)
+
+        assert isinstance(sample.del_tree(0.2), list)
+        assert list(sample._meshes.keys()) == [0.]
+        assert list(sample._links.keys()) == [0.]
+        assert list(sample._paths.keys()) == [0.]
+
+        assert isinstance(sample.del_tree(0.), list)
+        assert list(sample._meshes.keys()) == []
+        assert list(sample._links.keys()) == []
+        assert list(sample._paths.keys()) == []
+
+    def test_on_error_del_tree(self, sample, tree):
+        with pytest.raises(KeyError):
+            sample.del_tree(0.)
+
+        sample.add_tree(tree)
+        sample.add_tree(tree, time=0.2)
+        with pytest.raises(KeyError):
+            sample.del_tree(0.7)
 
     # -------------------------------------------------------------------------#
     def test_init_base(self, sample, base_name, topological_dim, physical_dim):
@@ -341,6 +365,59 @@ class Test_Sample():
         # check dims getters
         assert sample.get_topological_dim(base_name) == topological_dim
         assert sample.get_physical_dim(base_name) == physical_dim
+
+    def test_del_base_existing_base(self, sample, base_name, topological_dim, physical_dim):
+        second_base_name = base_name + '_2'
+        sample.init_base(topological_dim, physical_dim, base_name)
+        sample.init_base(topological_dim, physical_dim, second_base_name)
+
+        # Delete first base
+        updated_cgns_tree = sample.del_base(base_name, 0.)
+        assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
+
+        # Testing the resulting tree
+        new_sample = Sample()
+        new_sample.add_tree(updated_cgns_tree, 0.1)
+        assert new_sample.get_topological_dim() == topological_dim
+        assert new_sample.get_physical_dim() == physical_dim
+        assert new_sample.get_base_names() == [second_base_name]
+
+        # Add 2 bases and delete one base at time 0.2
+        sample.init_base(topological_dim, physical_dim, "tree", 0.2)
+        sample.init_base(topological_dim, physical_dim, base_name, 0.2)
+        updated_cgns_tree = sample.del_base("tree", 0.2)
+        assert sample.get_base("tree", 0.2) is None
+        assert sample.get_base(base_name, 0.2) is not None
+        assert sample.get_base(second_base_name) is not None
+        assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
+
+        # Testing the resulting from time 0.2
+        new_sample = Sample()
+        new_sample.add_tree(updated_cgns_tree)
+        assert new_sample.get_topological_dim() == topological_dim
+        assert new_sample.get_physical_dim() == physical_dim
+        assert new_sample.get_base_names() == [base_name]
+
+        # Deleting the last base at time 0.0
+        updated_cgns_tree = sample.del_base(second_base_name, 0.)
+        assert sample.get_base(second_base_name) is None
+        assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
+
+        # Deleting the last base at time 0.2
+        updated_cgns_tree = sample.del_base(base_name, 0.2)
+        assert sample.get_base(base_name) is None
+        assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
+
+    def test_del_base_nonexistent_base_nonexistent_time(self, sample, base_name, topological_dim, physical_dim):
+        sample.init_base(topological_dim, physical_dim, base_name, time=1.0)
+        with pytest.raises(KeyError):
+            sample.del_base(base_name, time=2.0)
+        with pytest.raises(KeyError):
+            sample.del_base('unknown', time=1.0)
+
+    def test_del_base_no_cgns_tree(self, sample):
+        with pytest.raises(KeyError):
+            sample.del_base('unknwon', 0.0)
 
     def test_init_base_no_base_name(
             self, sample, topological_dim, physical_dim):
@@ -409,6 +486,86 @@ class Test_Sample():
     def test_init_zone_defaults_names(self, sample, zone_shape):
         sample.init_base(3, 3)
         sample.init_zone(zone_shape)
+
+    def test_del_zone_existing_zone(self, sample, base_name, zone_name, zone_shape):
+        topological_dim, physical_dim = 3, 3
+        sample.init_base(topological_dim, physical_dim, base_name)
+
+        second_zone_name = zone_name + '_2'
+        sample.init_zone(
+            zone_shape,
+            CGK.Structured_s,
+            zone_name,
+            base_name=base_name)
+        sample.init_zone(
+            zone_shape,
+            CGK.Unstructured_s,
+            second_zone_name,
+            base_name=base_name)
+
+        # Delete first zone
+        updated_cgns_tree = sample.del_zone(zone_name, base_name, 0.)
+        assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
+
+        # Testing the resulting tree
+        new_sample = Sample()
+        new_sample.add_tree(updated_cgns_tree, 0.1)
+        assert new_sample.get_zone_names() == [second_zone_name]
+
+        # Add 2 zones and delete one zone at time 0.2
+        sample.init_base(topological_dim, physical_dim, base_name, 0.2)
+        sample.init_zone(
+            zone_shape,
+            CGK.Structured_s,
+            zone_name,
+            base_name=base_name,
+            time=0.2)
+        sample.init_zone(
+            zone_shape,
+            CGK.Unstructured_s,
+            "test",
+            base_name=base_name,
+            time=0.2)
+
+        updated_cgns_tree = sample.del_zone("test", base_name, 0.2)
+        assert sample.get_zone("tree", base_name, 0.2) is None
+        assert sample.get_zone(zone_name, base_name, 0.2) is not None
+        assert sample.get_zone(second_zone_name, base_name) is not None
+        assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
+
+        # Testing the resulting from time 0.2
+        new_sample = Sample()
+        new_sample.add_tree(updated_cgns_tree)
+        assert new_sample.get_zone_names(base_name) == [zone_name]
+
+        # Deleting the last zone at time 0.0
+        updated_cgns_tree = sample.del_zone(second_zone_name, base_name, 0.)
+        assert sample.get_zone(second_zone_name, base_name) is None
+        assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
+
+        # Deleting the last zone at time 0.2
+        updated_cgns_tree = sample.del_zone(zone_name, base_name, 0.2)
+        assert sample.get_zone(zone_name, base_name) is None
+        assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
+
+    def test_del_zone_nonexistent_zone_nonexistent_time(self, sample, base_name, zone_shape, topological_dim, physical_dim):
+        sample.init_base(topological_dim, physical_dim, base_name, time=1.0)
+        zone_name = "test123"
+        sample.init_zone(
+            zone_shape,
+            CGK.Structured_s,
+            zone_name,
+            base_name=base_name,
+            time=1.0)
+        with pytest.raises(KeyError):
+            sample.del_zone(zone_name, base_name, 2.0)
+        with pytest.raises(KeyError):
+            sample.del_zone('unknown', base_name, 1.0)
+
+    def test_del_zone_no_cgns_tree(self, sample):
+        sample.init_base(2, 3, "only_base")
+        with pytest.raises(KeyError):
+            sample.del_zone('unknwon', "only_base", 0.0)
 
     def test_has_zone(self, sample, base_name, zone_name):
         sample.init_base(3, 3, base_name)
@@ -494,11 +651,35 @@ class Test_Sample():
         assert (sample_with_scalar.get_scalar('test_scalar_1') is not None)
 
     def test_add_scalar_empty(self, sample_with_scalar):
-        pass
+        assert isinstance(sample_with_scalar.get_scalar('test_scalar_1'), float)
 
     def test_add_scalar(self, sample_with_scalar):
         sample_with_scalar.add_scalar('test_scalar_2', np.random.randn())
 
+    def test_del_scalar_unknown_scalar(self, sample_with_scalar):
+        with pytest.raises(KeyError):
+            sample_with_scalar.del_scalar("non_existent_scalar")
+
+    def test_del_scalar_no_scalar(self):
+        sample = Sample()
+        with pytest.raises(KeyError):
+            sample.del_scalar("non_existent_scalar")
+
+    def test_del_scalar(self, sample_with_scalar):
+        assert len(sample_with_scalar.get_scalar_names()) == 1
+
+        sample_with_scalar.add_scalar('test_scalar_2', np.random.randn(5))
+        assert len(sample_with_scalar.get_scalar_names()) == 2
+
+        scalar = sample_with_scalar.del_scalar('test_scalar_1')
+        assert len(sample_with_scalar.get_scalar_names()) == 1
+        assert scalar is not None
+        assert isinstance(scalar, float)
+
+        scalar = sample_with_scalar.del_scalar('test_scalar_2')
+        assert len(sample_with_scalar.get_scalar_names()) == 0
+        assert scalar is not None
+        assert isinstance(scalar, np.ndarray)
     # -------------------------------------------------------------------------#
     def test_get_time_series_names_empty(self, sample):
         assert (sample.get_time_series_names() == [])
@@ -523,6 +704,40 @@ class Test_Sample():
         sample_with_time_series.add_time_series(
             'test_time_series_2', np.arange(
                 111, dtype=float), np.random.randn(111))
+
+    def test_del_time_series_unknown_scalar(self, sample_with_time_series):
+        with pytest.raises(KeyError):
+            sample_with_time_series.del_time_series("non_existent_scalar")
+
+    def test_del_time_series_no_scalar(self):
+        sample = Sample()
+        with pytest.raises(KeyError):
+            sample.del_time_series("non_existent_scalar")
+
+    def test_del_time_series(self, sample_with_time_series):
+        assert len(sample_with_time_series.get_time_series_names()) == 1
+
+        sample_with_time_series.add_time_series(
+            'test_time_series_2',
+            np.arange(
+                222,
+                dtype=float),
+            np.random.randn(222))
+        assert len(sample_with_time_series.get_time_series_names()) == 2
+
+        time_series = sample_with_time_series.del_time_series('test_time_series_1')
+        assert len(sample_with_time_series.get_time_series_names()) == 1
+        assert time_series is not None
+        assert isinstance(time_series, tuple)
+        assert isinstance(time_series[0], np.ndarray)
+        assert isinstance(time_series[1], np.ndarray)
+
+        time_series = sample_with_time_series.del_time_series('test_time_series_2')
+        assert len(sample_with_time_series.get_time_series_names()) == 0
+        assert time_series is not None
+        assert isinstance(time_series, tuple)
+        assert isinstance(time_series[0], np.ndarray)
+        assert isinstance(time_series[1], np.ndarray)
 
     # -------------------------------------------------------------------------#
     def test_get_nodes_empty(self, sample):
@@ -636,6 +851,106 @@ class Test_Sample():
             'Zone',
             'Base_2_2',
             location='CellCenter')
+
+    def test_del_field_existing(self, sample_with_tree):
+        with pytest.raises(KeyError):
+            sample_with_tree.del_field(
+                'unknown',
+                'Zone',
+                'Base_2_2',
+                location='CellCenter')
+        with pytest.raises(KeyError):
+            sample_with_tree.del_field(
+                'unknown',
+                'unknown_zone',
+                'Base_2_2',
+                location='CellCenter')
+
+    def test_del_field_nonexistent(self, base_name):
+        sample = Sample()
+        sample.init_base(2, 2, base_name)
+        with pytest.raises(KeyError):
+            sample.del_field(
+                'unknown',
+                'unknown_zone',
+                base_name,
+                location='CellCenter')
+
+    def test_del_field_in_zone(
+            self, zone_name, base_name, cell_center_field):
+        sample = Sample()
+        sample.init_base(3, 3, base_name)
+        sample.init_zone(
+            np.random.randint(0, 10, size=3),
+            zone_name=zone_name,
+            base_name=base_name)
+        sample.add_field(
+            'test_elem_field_1',
+            cell_center_field,
+            zone_name,
+            base_name,
+            location='CellCenter')
+
+        # Add field 'test_elem_field_2'
+        sample.add_field(
+            'test_elem_field_2',
+            cell_center_field,
+            zone_name,
+            base_name,
+            location='CellCenter')
+        assert isinstance(sample.get_field(
+                'test_elem_field_2',
+                zone_name,
+                base_name,
+                location='CellCenter'), np.ndarray)
+
+        # Del field 'test_elem_field_2'
+        new_tree = sample.del_field(
+                'test_elem_field_2',
+                zone_name,
+                base_name,
+                location='CellCenter')
+
+        # Testing new tree on field 'test_elem_field_2'
+        new_sample = Sample()
+        new_sample.add_tree(new_tree)
+
+        assert new_sample.get_field(
+                'test_elem_field_2',
+                zone_name,
+                base_name,
+                location='CellCenter') is None
+        fields = new_sample.get_field_names(
+                zone_name,
+                base_name,
+                location='CellCenter'
+        )
+
+        assert 'test_elem_field_2' not in fields
+        assert 'test_elem_field_1' in fields
+
+        # Del field 'test_elem_field_1'
+        new_tree = sample.del_field(
+            'test_elem_field_1',
+            zone_name,
+            base_name,
+            location='CellCenter')
+
+        # Testing new tree on field 'test_elem_field_1'
+        new_sample = Sample()
+        new_sample.add_tree(new_tree)
+
+        assert new_sample.get_field(
+                'test_elem_field_1',
+                zone_name,
+                base_name,
+                location='CellCenter') is None
+        fields = new_sample.get_field_names(
+                zone_name,
+                base_name,
+                location='CellCenter'
+        )
+        assert len(fields) == 0
 
     # -------------------------------------------------------------------------#
     def test_save(self, sample_with_tree_and_scalar_and_time_series, tmp_path):

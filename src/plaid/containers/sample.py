@@ -190,7 +190,7 @@ class Sample(object):
         self._mesh_zone_name: str = mesh_zone_name
 
         if directory_path is not None:
-            self.load(directory_path)
+            self.load(str(directory_path))
 
         self._defaults: dict = {
             "active_base": None,
@@ -210,6 +210,10 @@ class Sample(object):
         Raises:
             ValueError: If the specified base does not exist at the given time.
 
+        Note:
+            - Setting the default base and is important for synchronizing operations with a specific base in the system's data.
+            - The available mesh base can be obtained using the `get_base_names` method.
+
         Example:
             .. code-block:: python
 
@@ -217,9 +221,15 @@ class Sample(object):
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
+                print(sample.get_physical_dim("BaseA", 0.5))
+                >>> 3
 
                 # Set "BaseA" as the default base for the default time
                 sample.set_default_base("BaseA")
+
+                # You can now use class functions with "BaseA" as default base
+                print(sample.get_physical_dim(0.5))
+                >>> 3
 
                 # Set "BaseB" as the default base for a specific time
                 sample.set_default_base("BaseB", 0.5)
@@ -237,17 +247,21 @@ class Sample(object):
 
         self._defaults["active_base"] = base_name
 
-    def set_default_base_zone(self, base_name: str, zone_name: str, time: float = None) -> None:
+    def set_default_zone_base(self, zone_name: str, base_name: str, time: float = None) -> None:
         """Set the default base and active zone for the specified time (that will also be set as default if provided).
         The default base and active zone serve as reference points for various operations in the system.
 
         Args:
-            base_name (str): The name of the base to be set as the default.
             zone_name (str): The name of the zone to be set as the active zone.
+            base_name (str): The name of the base to be set as the default.
             time (float, optional): The time at which the base and zone should be set as default. If not provided, the default base and active zone will be set with the default time.
 
         Raises:
             ValueError: If the specified base or zone does not exist at the given time
+
+        Note:
+            - Setting the default base and zone are important for synchronizing operations with a specific base/zone in the system's data.
+            - The available mesh bases and zones can be obtained using the `get_base_names` and `get_base_zones` methods, respectively.
 
         Example:
             .. code-block:: python
@@ -256,12 +270,18 @@ class Sample(object):
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
+                print(sample.get_zone_type("ZoneX", "BaseA", 0.5))
+                >>> Structured
 
                 # Set "BaseA" as the default base and "ZoneX" as the active zone for the default time
-                sample.default_base_zone("BaseA", "ZoneX")
+                sample.set_default_zone_base("ZoneX", "BaseA")
+
+                # You can now use class functions with "BaseA" as default base with "ZoneX" as default zone
+                print(sample.get_zone_type(0.5)) # type of the zone "ZoneX" of base "BaseA"
+                >>> Structured
 
                 # Set "BaseB" as the default base and "ZoneY" as the active zone for a specific time
-                sample.default_base_zone("BaseB", "ZoneY", 0.5)
+                sample.set_default_zone_base("ZoneY", "BaseB", 0.5)
 
                 # You can now use class functions with "BaseB" as default base with "ZoneY" as default zone and 0.5 as default time
                 print(sample.get_zone_type()) # type of the zone "ZoneY" of base "BaseB" at 0.5
@@ -296,8 +316,10 @@ class Sample(object):
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
+                print(sample.show_tree(0.5))
+                >>> ...
 
-                 # Set the default time to 0.5 seconds
+                # Set the default time to 0.5 seconds
                 sample.set_default_time(0.5)
 
                 # You can now use class functions with 0.5 as default time
@@ -316,7 +338,7 @@ class Sample(object):
         If there are available time steps, it will return the first one; otherwise, it will return 0.0.
 
         Args:
-            base_name (str, optional): The time value provided for the operation. Defaults to None.
+            time (str, optional): The time value provided for the operation. If not provided, the default time set in the system will be used.
 
         Returns:
             float: The attributed time.
@@ -330,29 +352,32 @@ class Sample(object):
             return sorted(timestamps)[0] if len(timestamps) > 0 else 0.0
         return self._defaults["active_time"] if time is None else time
 
-    def get_base_assignment(self, base_name: str = None) -> str:
+    def get_base_assignment(self, base_name: str = None, time: float = None) -> str:
         """Retrieve the default base name for the CGNS operations.
         This function calculates the attributed base for a specific operation based on the
         default base set in the system.
 
         Args:
             base_name (str, optional): The name of the base to attribute the operation to. If not provided, the default base set in the system will be used.
+            time (str, optional): The time value provided for the operation. If not provided, the default time set in the system will be used.
 
         Raises:
-            KeyError: If no default base can be determined based on the provided or default value.
+            KeyError: If no default base can be determined based on the provided or default.
+            KeyError: If no base node is found after following given and default parameters.
 
         Returns:
             str: The attributed base name.
 
         Note:
-            If no specific base name is provided, the function will use the default base provided to the system.
+            - If no specific base name is provided, the function will use the default base provided by the user.
+            - In case the default base does not exist: If no specific time is provided, the function will use the default time provided by the user.
         """
         base_name = base_name or self._defaults.get("active_base")
 
         if base_name:
             return base_name
 
-        base_names = self.get_base_names()
+        base_names = self.get_base_names(time=time)
         if len(base_names) == 0:
             return None
         elif len(base_names) == 1:
@@ -361,7 +386,7 @@ class Sample(object):
 
         raise KeyError(f"No default base provided among {base_names}")
 
-    def get_zone_assignment(self, zone_name: str = None, base_name: str = None) -> str:
+    def get_zone_assignment(self, zone_name: str = None, base_name: str = None, time: float = None) -> str:
         """Retrieve the default zone name for the CGNS operations.
         This function calculates the attributed zone for a specific operation based on the
         default zone set in the system, within the specified base.
@@ -369,23 +394,26 @@ class Sample(object):
         Args:
             zone_name (str, optional): The name of the zone to attribute the operation to. If not provided, the default zone set in the system within the specified base will be used.
             base_name (str, optional): The name of the base within which the zone should be attributed. If not provided, the default base set in the system will be used.
+            time (str, optional): The time value provided for the operation. If not provided, the default time set in the system will be used.
 
         Raises:
             KeyError: If no default zone can be determined based on the provided or default values.
+            KeyError: If no zone node is found after following given and default parameters.
 
         Returns:
             str: The attributed zone name.
 
         Note:
-            If neither a specific zone name nor a specific base name is provided, the function will use the default zone provided to the system.
+            - If neither a specific zone name nor a specific base name is provided, the function will use the default zone provided by the user.
+            - In case the default zone does not exist: If no specific time is provided, the function will use the default time provided by the user.
         """
         zone_name = zone_name or self._defaults.get("active_zone")
 
         if zone_name:
             return zone_name
 
-        base_name = self.get_base_assignment(base_name)
-        zone_names = self.get_zone_names(base_name)
+        base_name = self.get_base_assignment(base_name, time)
+        zone_names = self.get_zone_names(base_name, time=time)
         if len(zone_names) == 0:
             return None
         elif len(zone_names) == 1:
@@ -479,9 +507,15 @@ class Sample(object):
             tree (CGNSTree): The CGNS tree to be merged. If a Base node already exists, it is ignored.
             time (float, optional): The time step for which to add the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
 
+        Raises:
+            ValueError: If the provided CGNS tree is an empty list.
+
         Returns:
             CGNSTree: The merged CGNS tree.
         """
+        if tree == []:
+            raise ValueError("CGNS Tree should not be an empty list")
+
         time = self.get_time_assignment(time)
 
         if self._meshes is None:
@@ -515,6 +549,28 @@ class Sample(object):
                 CGU.setValue(TimeValues_node, np.array([time]))
 
         return self._meshes[time]
+
+    def del_tree(self, time: float) -> CGNSTree:
+        """Delete the CGNS tree for a specific time.
+
+        Args:
+            time (float): The time step for which to delete the CGNS tree structure.
+
+        Raises:
+            KeyError: There is no CGNS tree in this Sample / There is no CGNS tree for the provided time.
+
+        Returns:
+            CGNSTree: The deleted CGNS tree.
+        """
+        if self._meshes is None:
+            raise KeyError(f"There is no CGNS tree in this sample.")
+
+        if not time in self._meshes:
+            raise KeyError(f"There is no CGNS tree for time {time}.")
+
+        self._links.pop(time, None)
+        self._paths.pop(time, None)
+        return self._meshes.pop(time)
 
     """def link_(self, sample:Sample, sample_index:int, time_index:int) -> CGNSTree:
         #NOT IMPLEMENTED YET
@@ -597,7 +653,7 @@ class Sample(object):
                 str(topological_dim) + "_" + str(physical_dim)
 
         self.init_tree(time)
-        if not (self.has_base(base_name)):
+        if not (self.has_base(base_name, time)):
             base_node = CGL.newCGNSBase(
                 self._meshes[time],
                 base_name,
@@ -608,13 +664,41 @@ class Sample(object):
         for base_name in base_names:
             base_node = self.get_base(base_name, time=time)
             if CGU.getValueByPath(base_node, "Time/TimeValues") is None:
-                baseIterativeData_node = CGL.newBaseIterativeData(
+                base_iterative_data_node = CGL.newBaseIterativeData(
                     base_node, 'Time', 1)
-                TimeValues_node = CGU.newNode(
-                    'TimeValues', None, [], CGK.DataArray_ts, baseIterativeData_node)
-                CGU.setValue(TimeValues_node, np.array([time]))
+                time_values_node = CGU.newNode(
+                    'TimeValues', None, [], CGK.DataArray_ts, base_iterative_data_node)
+                CGU.setValue(time_values_node, np.array([time]))
 
         return base_node
+
+    def del_base(self, base_name: str, time: float) -> CGNSTree:
+        """Delete a CGNS base node for a specific time.
+
+        Args:
+            base_name (str): The name of the base node to be deleted.
+            time (float): The time step for which to delete the CGNS base node.
+
+        Raises:
+            KeyError: There is no CGNS tree in this sample / There is no CGNS tree for the provided time.
+            KeyError: If there is no base node with the given base name or time.
+
+        Returns:
+            CGNSTree: The tree at the provided time (without the deleted node)
+        """
+        if self._meshes is None:
+            raise KeyError(f"There is no CGNS tree in this sample.")
+
+        if not time in self._meshes:
+            raise KeyError(f"There is no CGNS tree for time {time}.")
+
+        base_node = self.get_base(base_name, time)
+        mesh_tree = self._meshes[time]
+
+        if base_node is None:
+            raise KeyError(f"There is no base node with name {base_name} for time {time}.")
+
+        return CGU.nodeDelete(mesh_tree, base_node)
 
     def get_base_names(self, full_path: bool = False,
                        unique: bool = False, time: float = None) -> list[str]:
@@ -663,9 +747,10 @@ class Sample(object):
             CGNSNode or None: The Base node with the specified name or None if it is not found.
         """
         time = self.get_time_assignment(time)
-        base_name = self.get_base_assignment(base_name)
+        base_name = self.get_base_assignment(base_name, time)
 
         if (self._meshes is None) or (self._meshes[time] is None):
+            logger.warning(f"No base with name {base_name} and this tree")
             return None
 
         return CGU.getNodeByPath(self._meshes[time], f'/CGNSTree/{base_name}')
@@ -696,12 +781,41 @@ class Sample(object):
             raise KeyError(
                 f"there is no base <{base_name}>, you should first create one with `Sample.init_base({base_name=})`")
 
-        zone_name = self.get_zone_assignment(zone_name, base_name)
+        zone_name = self.get_zone_assignment(zone_name, base_name, time)
         if zone_name is None:
             zone_name = self._mesh_zone_name
 
         zone_node = CGL.newZone(base_node, zone_name, zone_shape, zone_type)
         return zone_node
+
+    def del_zone(self, zone_name: str, base_name: str, time: float) -> CGNSTree:
+        """Delete a zone within a CGNS base.
+
+        Args:
+            zone_name (str): The name of the zone to be deleted.
+            base_name (str, optional): The name of the base from which the zone will be deleted. If not provided, the zone will be deleted from the currently active base. Defaults to None.
+            time (float, optional): The time step for which to delete the zone. Defaults to None.
+
+        Raises:
+            KeyError: There is no CGNS tree in this sample / There is no CGNS tree for the provided time.
+            KeyError: If there is no base node with the given base name or time.
+
+        Returns:
+            CGNSTree: The tree at the provided time (without the deleted node)
+        """
+        if self._meshes is None:
+            raise KeyError(f"There is no CGNS tree in this sample.")
+
+        if not time in self._meshes:
+            raise KeyError(f"There is no CGNS tree for time {time}.")
+
+        zone_node = self.get_zone(zone_name, base_name, time)
+        mesh_tree = self._meshes[time]
+
+        if zone_node is None:
+            raise KeyError(f"There is no zone node with name {zone_name} or base node with name {base_name}.")
+
+        return CGU.nodeDelete(mesh_tree, zone_node)
 
     def get_zone_names(self, base_name: str = None, full_path: bool = False,
                        unique: bool = False, time: float = None) -> list[str]:
@@ -766,11 +880,13 @@ class Sample(object):
         # get_base will look for default base_name and time
         base_node = self.get_base(base_name, time)
         if base_node is None:
+            logger.warning(f"No base with name {base_name} and this tree")
             return None
 
         # _zone_attribution will look for default base_name
-        zone_name = self.get_zone_assignment(zone_name, base_name)
+        zone_name = self.get_zone_assignment(zone_name, base_name, time)
         if zone_name is None:
+            logger.warning(f"No zone with name {zone_name} and this base ({base_name})")
             return None
 
         return CGU.getNodeByPath(base_node, zone_name)
@@ -837,6 +953,26 @@ class Sample(object):
         else:
             self._scalars[name] = value
 
+    def del_scalar(self, name: str) -> ScalarType:
+        """Delete a scalar value from the dictionary.
+
+        Args:
+            name (str): The name of the scalar value to be deleted.
+
+        Raises:
+            KeyError: Raised when there is no scalar / there is no scalar with the provided name.
+
+        Returns:
+            ScalarType: The value of the deleted scalar.
+        """
+        if self._scalars is None:
+            raise KeyError(f"There is no scalar inside this sample.")
+
+        if not name in self._scalars:
+            raise KeyError(f"There is no scalar value with name {name}.")
+
+        return self._scalars.pop(name)
+
     # -------------------------------------------------------------------------#
     def get_time_series_names(self) -> set[str]:
         """Get the names of time series associated with the object.
@@ -866,7 +1002,7 @@ class Sample(object):
 
     def add_time_series(
             self, name: str, time_sequence: TimeSequenceType, values: FieldType) -> None:
-        """Add a time series to the sample (Sample).
+        """Add a time series to the sample.
 
         Args:
             name (str): A descriptive name for the time series.
@@ -889,6 +1025,26 @@ class Sample(object):
             self._time_series = {name: (time_sequence, values)}
         else:
             self._time_series[name] = (time_sequence, values)
+
+    def del_time_series(self, name: str) -> tuple[TimeSequenceType, FieldType]:
+        """Delete a time series from the sample.
+
+        Args:
+            name (str): The name of the time series to be deleted.
+
+        Raises:
+            KeyError: Raised when there is no time series / there is no time series with the provided name.
+
+        Returns:
+            Tuple[TimeSequenceType, FieldType]: A tuple containing the time sequence and values of the deleted time series.
+        """
+        if self._time_series is None:
+            raise KeyError(f"There is no time series inside this sample.")
+
+        if not name in self._time_series:
+            raise KeyError(f"There is no time series with name {name}.")
+
+        return self._time_series.pop(name)
 
     # -------------------------------------------------------------------------#
     def get_nodes(self, zone_name: str = None, base_name: str = None,
@@ -1024,10 +1180,8 @@ class Sample(object):
             set[str]: A set containing the names of the fields that match the specified criteria.
         """
         def get_field_names_one_base(base_name: str) -> list[str]:
-
             # get_zone will look for default zone_name, base_name, time
             search_node = self.get_zone(zone_name, base_name, time)
-
             if search_node is None:
                 return []
 
@@ -1037,14 +1191,12 @@ class Sample(object):
                 if CGU.getValueByPath(
                         search_node, f_path + '/GridLocation').tobytes().decode() != location:
                     continue
-
                 f_node = CGU.getNodeByPath(search_node, f_path)
                 for path in CGU.getPathByTypeFilter(
                         f_node, CGK.DataArray_t):
                     field_name = path.split('/')[-1]
                     if not (field_name == 'GridLocation'):
                         names.append(field_name)
-
             return names
 
         if base_name is None:
@@ -1166,6 +1318,47 @@ class Sample(object):
                 logger.warning(
                     f"field node with name {name} already exists -> data will be replaced")
                 CGU.setValue(field_node, np.asfortranarray(field))
+
+    def del_field(self, name: str, zone_name: str = None, base_name: str = None, location: str = 'Vertex', time: float = None) -> CGNSTree:
+        """Delete a field from a specified zone in the grid.
+
+        Args:
+            name (str): The name of the field to be deleted.
+            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
+            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
+            location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
+            time (float, optional): The time associated with the field. Defaults to 0.
+
+        Raises:
+            KeyError: Raised if the specified zone or field does not exist in the given base.
+
+        Returns:
+            CGNSTree: The tree at the provided time (without the deleted node)
+        """
+        # get_zone will look for default zone_name, base_name, and time
+        zone_node = self.get_zone(zone_name, base_name, time)
+        time = self.get_time_assignment(time)
+        mesh_tree = self._meshes[time]
+
+        if zone_node is None:
+            raise KeyError(f"There is no Zone with name {zone_name} in base {base_name}.")
+
+        solution_paths = CGU.getPathsByTypeSet(zone_node, [CGK.FlowSolution_t])
+
+        updated_tree = None
+        for s_path in solution_paths:
+            if CGU.getValueByPath(
+                    zone_node, f'{s_path}/GridLocation').tobytes().decode() == location:
+
+                field_node = CGU.getNodeByPath(zone_node, f'{s_path}/{name}')
+                if field_node is not None:
+                    updated_tree = CGU.nodeDelete(mesh_tree, field_node)
+
+        # If the function reaches here, the field was not found
+        if updated_tree is None:
+            raise KeyError(f"There is no field with name {name} in the specified zone.")
+
+        return updated_tree
 
     # -------------------------------------------------------------------------#
     def save(self, dir_path: str) -> None:
@@ -1357,5 +1550,3 @@ class Sample(object):
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
         return str_repr
-
-# %%
