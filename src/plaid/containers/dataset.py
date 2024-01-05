@@ -7,17 +7,17 @@
 
 # %% Imports
 
-try: # pragma: no cover
+try:  # pragma: no cover
     from typing import Self
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     from typing import Any as Self
 
 import glob
 import logging
 import os
 import subprocess
+from multiprocessing import Pool
 from typing import Union
-from pathlib import Path
 
 import numpy as np
 import yaml
@@ -44,12 +44,26 @@ authorized_info_keys = {
 # %% Functions
 
 
+def process_sample(sample_path: str, *args, **kwargs) -> tuple:
+    """Load Sample from path
+
+    Args:
+        sample_path (str): The path of the Sample.
+
+    Returns:
+        tuple: The loaded Sample and its ID.
+    """
+    id = int(sample_path.split('_')[-1])
+    return id, Sample(sample_path)
+
 # %% Classes
+
 
 class Dataset(object):
     """A set of samples, and optionnaly some other informations about the Dataset."""
 
-    def __init__(self, directory_path: str = None, verbose: bool = False) -> None:
+    def __init__(self, directory_path: str = None,
+                 verbose: bool = False, processes_number: int = 2) -> None:
         """Initialize an empty :class:`Dataset <plaid.containers.dataset.Dataset>` that should be fed with :class:`Samples <plaid.containers.sample.Sample>.`
 
         Use :meth:`add_sample <plaid.containers.dataset.Dataset.add_sample>` or :meth:`add_samples <plaid.containers.dataset.Dataset.add_samples>` to feed the :class:`Dataset`
@@ -57,6 +71,7 @@ class Dataset(object):
         Args:
             directory_path (str, optional): The path from which to load PLAID dataset files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
 
         Example:
             .. code-block:: python
@@ -91,9 +106,15 @@ class Dataset(object):
 
             splits = directory_path.split(".")
             if len(splits) > 1 and splits[-1] == "plaid":
-                self.load(directory_path, verbose=verbose)
+                self.load(
+                    directory_path,
+                    verbose=verbose,
+                    processes_number=processes_number)
             else:
-                self._load_from_dir_(directory_path, verbose=verbose)
+                self._load_from_dir_(
+                    directory_path,
+                    verbose=verbose,
+                    processes_number=processes_number)
 
     # -------------------------------------------------------------------------#
     def get_samples(self, ids: list[int] = None,
@@ -171,8 +192,8 @@ class Dataset(object):
                 >>> Dataset(0 samples, 0 scalars, 0 fields)
         """
         if sample_id < 0 or sample_id >= len(self._samples):
-            raise ValueError(f"Invalid ID {sample_id}, it must be within [0, len(dataset)]")
-
+            raise ValueError(
+                f"Invalid ID {sample_id}, it must be within [0, len(dataset)]")
 
         if sample_id == len(self) - 1:
             return self._samples.pop(sample_id)
@@ -274,7 +295,8 @@ class Dataset(object):
 
         for id in sample_ids:
             if id < 0 or id >= len(self._samples):
-                raise ValueError(f"Invalid ID {id}, it must be within [0, len(dataset)]")
+                raise ValueError(
+                    f"Invalid ID {id}, it must be within [0, len(dataset)]")
 
         if len(set(sample_ids)) != len(sample_ids):
             raise ValueError(f"Sample with IDs must be unique")
@@ -289,7 +311,8 @@ class Dataset(object):
         # from the min index of sample_ids to delete
         del_idx_min = min(sample_ids)
         remaining_ids = list(self._samples.keys())
-        for new_id, old_id in enumerate(remaining_ids[del_idx_min:], start=del_idx_min):
+        for new_id, old_id in enumerate(
+                remaining_ids[del_idx_min:], start=del_idx_min):
             if new_id != old_id:
                 self._samples[new_id] = self._samples.pop(old_id)
 
@@ -339,7 +362,7 @@ class Dataset(object):
         Returns:
             list[str]: List of all fields names.
         """
-        if ids is not None and len(set(ids)) != len(ids): # pragma: no cover
+        if ids is not None and len(set(ids)) != len(ids):  # pragma: no cover
             logger.warning("Provided ids are not unique")
 
         fields_names = []
@@ -618,7 +641,7 @@ class Dataset(object):
         savedir = os.path.join(
             os.path.dirname(fname),
             f'tmpsavedir_{generate_random_ASCII()}')
-        if os.path.isdir(savedir): # pragma: no cover
+        if os.path.isdir(savedir):  # pragma: no cover
             raise ValueError(
                 "temporary intermediate directory <{}> already exits".format(savedir))
         os.makedirs(savedir)
@@ -639,40 +662,50 @@ class Dataset(object):
         subprocess.call(ARGUMENTS)
 
     @classmethod
-    def load_from_file(cls, fname: str) -> Self:
+    def load_from_file(cls, fname: str, verbose: bool = False, processes_number: int = 2) -> Self:
         """Load data from a specified TAR (Tape Archive) file.
 
         Args:
             fname (str): The path to the data file to be loaded.
+            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
 
         Returns:
             Self: The loaded dataset (Dataset).
         """
         instance = cls()
-        instance.load(fname)
+        instance.load(fname, verbose, processes_number)
         return instance
 
     @classmethod
-    def load_from_dir(cls, dname: str) -> Self:
+    def load_from_dir(cls, dname: str, verbose: bool = False,
+                      processes_number: int = 2) -> Self:
         """Load data from a specified directory.
 
         Args:
             dname (str): The path from which to load files.
+            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
 
         Returns:
             Self: The loaded dataset (Dataset).
         """
         instance = cls()
-        instance._load_from_dir_(dname)
+        instance._load_from_dir_(
+            dname,
+            verbose=verbose,
+            processes_number=processes_number)
         return instance
 
-    def load(self, fname: str, verbose: bool = False) -> None:
+    def load(self, fname: str, verbose: bool = False,
+             processes_number: int = 2) -> None:
         """Load data from a specified TAR (Tape Archive) file. It
         creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             fname (str): The path to the data file to be loaded.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
 
         Raises:
             ValueError: If a randomly generated temporary directory already exists,
@@ -681,7 +714,7 @@ class Dataset(object):
         inputdir = os.path.join(
             os.path.dirname(fname),
             f'tmploaddir_{generate_random_ASCII()}')
-        if os.path.isdir(inputdir): # pragma: no cover
+        if os.path.isdir(inputdir):  # pragma: no cover
             raise ValueError(
                 "temporary intermediate directory <{}> already exits".format(inputdir))
         os.makedirs(inputdir)
@@ -691,7 +724,10 @@ class Dataset(object):
         subprocess.call(arguments)
 
         # Then : load data from directory <inputdir>
-        self._load_from_dir_(inputdir, verbose=verbose)
+        self._load_from_dir_(
+            inputdir,
+            verbose=verbose,
+            processes_number=processes_number)
 
         # Finally : removes directory <inputdir>
         arguments = ['rm', '-rf', f'{inputdir}']
@@ -708,7 +744,7 @@ class Dataset(object):
         if not (os.path.isdir(savedir)):
             os.makedirs(savedir)
 
-        if verbose: # pragma: no cover
+        if verbose:  # pragma: no cover
             print(f"Saving database to: {savedir}")
 
         samples_dir = os.path.join(savedir, 'samples')
@@ -716,7 +752,8 @@ class Dataset(object):
             os.makedirs(samples_dir)
 
         # ---# save samples
-        for i_sample, sample in tqdm(self._samples.items(), disable=not (verbose)):
+        for i_sample, sample in tqdm(
+                self._samples.items(), disable=not (verbose)):
             sample_fname = os.path.join(samples_dir, f'sample_{i_sample:09d}')
             sample.save(sample_fname)
 
@@ -738,18 +775,20 @@ class Dataset(object):
         # flags_fname = os.path.join(savedir, 'flags.yaml')
         # self._flags.save(flags_fname)
 
-    def _load_from_dir_(self, savedir: str,
-                        ids: list[int] = None, verbose: bool = False) -> None:
+    def _load_from_dir_(self, savedir: str, ids: list[int] = None,
+                        verbose: bool = False, processes_number: int = 2) -> None:
         """Loads a dataset from a sample directory and retrieves additional information about the dataset from an 'infos.yaml' file, if available.
 
         Args:
             savedir (str): The path from which to load files.
             ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
             FileExistsError: Triggered if the provided path is a file instead of a directory.
+            ValueError: Triggered if the number of processes is < -1.
         """
         if not os.path.exists(savedir):
             raise FileNotFoundError(
@@ -757,8 +796,10 @@ class Dataset(object):
 
         if not os.path.isdir(savedir):
             raise FileExistsError(f"\"{savedir}\" is not a directory. Abort")
+        if processes_number < -1:
+            raise ValueError("Number of processes cannot be < -1")
 
-        if verbose: # pragma: no cover
+        if verbose:  # pragma: no cover
             print(f"Reading database located at: {savedir}")
 
         sample_paths = sorted([path for path in glob.glob(os.path.join(
@@ -772,11 +813,42 @@ class Dataset(object):
                     filtered_sample_paths.append(sample_path)
             sample_paths = filtered_sample_paths
 
-        for sample_path in tqdm(sample_paths, disable=not (verbose)):
-            id = int(sample_path.split('_')[-1])
-            sample = Sample()
-            sample.load(sample_path)
-            self.add_sample(sample, id)
+            if len(sample_paths) != len(set(ids)):
+                raise ValueError(
+                    "The length of the list of samples to add and the list of IDs are different")
+
+        if processes_number == -1:
+            logger.info(f"Number of processes set to maximum available: {os.cpu_count()}")
+            processes_number = os.cpu_count()
+        elif processes_number < 1:
+            logger.info("Processes number changed to 1 (0 and < -1 are not valid)")
+            processes_number = 1
+
+        """with Pool(processes_number) as p:
+            for id, sample in list(tqdm(p.imap(process_sample, sample_paths), total=len(sample_paths), disable=not(verbose))):
+                self.set_sample(id, sample)"""
+
+        samples_pool = Pool(processes_number)
+        pbar = tqdm(total=len(sample_paths), disable=not (verbose))
+
+        def update(self, *a):
+            pbar.update()
+
+        samples = [
+            samples_pool.apply_async(
+                process_sample,
+                args=(
+                    sample_paths[i],
+                    i),
+                callback=update) for i in range(
+                len(sample_paths))]
+
+        samples_pool.close()
+        samples_pool.join()
+
+        for s in samples:
+            id, sample = s.get()
+            self.set_sample(id, sample)
 
         """
         1./0.
@@ -804,7 +876,7 @@ class Dataset(object):
             with open(infos_fname, 'r') as file:
                 self._infos = yaml.safe_load(file)
 
-        if len(self) == 0: # pragma: no cover
+        if len(self) == 0:  # pragma: no cover
             print("Warning: dataset contains no sample")
 
     def _load_number_of_samples_(self, savedir: str) -> int:

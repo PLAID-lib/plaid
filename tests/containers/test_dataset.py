@@ -509,6 +509,30 @@ class Test_Dataset():
         for sample_1, sample_2 in zip(dataset_with_samples, n_dataset):
             compare_two_samples(sample_1, sample_2)
 
+    def test_load_multiprocessinf(self, dataset_with_samples, tmp_path):
+        fname = tmp_path / 'test.plaid'
+        dataset_with_samples.save(fname)
+
+        new_dataset = Dataset()
+        new_dataset.load(fname)
+        multi_process_new_dataset = Dataset()
+        multi_process_new_dataset.load(fname, processes_number = 3)
+        assert (len(new_dataset) == len(multi_process_new_dataset))
+        for sample_1, sample_2 in zip(multi_process_new_dataset, new_dataset):
+            compare_two_samples(sample_1, sample_2)
+
+        n_dataset = Dataset(str(fname))
+        multi_process_n_dataset = Dataset(str(fname), processes_number = 3)
+        assert (len(n_dataset) == len(multi_process_n_dataset))
+        for sample_1, sample_2 in zip(multi_process_n_dataset, n_dataset):
+            compare_two_samples(sample_1, sample_2)
+
+        loaded_dataset = Dataset.load_from_file(fname)
+        multi_process_loaded_dataset = Dataset.load_from_file(fname, processes_number = 3)
+        assert (len(loaded_dataset) == len(multi_process_loaded_dataset))
+        for sample_1, sample_2 in zip(multi_process_loaded_dataset, loaded_dataset):
+            compare_two_samples(sample_1, sample_2)
+
     def test_load_from_file(self, dataset_with_samples, tmp_path):
         fname = tmp_path / 'test_fname.plaid'
         dataset_with_samples.save(fname)
