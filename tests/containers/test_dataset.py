@@ -509,7 +509,7 @@ class Test_Dataset():
         for sample_1, sample_2 in zip(dataset_with_samples, n_dataset):
             compare_two_samples(sample_1, sample_2)
 
-    def test_load_multiprocessinf(self, dataset_with_samples, tmp_path):
+    def test_load_multiprocessing(self, dataset_with_samples, tmp_path):
         fname = tmp_path / 'test.plaid'
         dataset_with_samples.save(fname)
 
@@ -522,16 +522,22 @@ class Test_Dataset():
             compare_two_samples(sample_1, sample_2)
 
         n_dataset = Dataset(str(fname))
-        multi_process_n_dataset = Dataset(str(fname), processes_number = 3)
+        multi_process_n_dataset = Dataset(str(fname), processes_number = 0)
         assert (len(n_dataset) == len(multi_process_n_dataset))
         for sample_1, sample_2 in zip(multi_process_n_dataset, n_dataset):
             compare_two_samples(sample_1, sample_2)
 
         loaded_dataset = Dataset.load_from_file(fname)
-        multi_process_loaded_dataset = Dataset.load_from_file(fname, processes_number = 3)
+        multi_process_loaded_dataset = Dataset.load_from_file(fname, processes_number = -1)
         assert (len(loaded_dataset) == len(multi_process_loaded_dataset))
         for sample_1, sample_2 in zip(multi_process_loaded_dataset, loaded_dataset):
             compare_two_samples(sample_1, sample_2)
+
+    def test_load_process_eror(self, dataset_with_samples, tmp_path):
+        fname = tmp_path / 'test.plaid'
+        dataset_with_samples.save(fname)
+        with pytest.raises(ValueError):
+            Dataset(str(fname), processes_number = -3)
 
     def test_load_from_file(self, dataset_with_samples, tmp_path):
         fname = tmp_path / 'test_fname.plaid'

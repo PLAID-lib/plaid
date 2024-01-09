@@ -44,7 +44,7 @@ authorized_info_keys = {
 # %% Functions
 
 
-def process_sample(sample_path: str, *args, **kwargs) -> tuple:
+def process_sample(sample_path: str, *args, **kwargs) -> tuple:  # pragma: no cover
     """Load Sample from path
 
     Args:
@@ -63,7 +63,7 @@ class Dataset(object):
     """A set of samples, and optionnaly some other informations about the Dataset."""
 
     def __init__(self, directory_path: str = None,
-                 verbose: bool = False, processes_number: int = 2) -> None:
+                 verbose: bool = False, processes_number: int = 0) -> None:
         """Initialize an empty :class:`Dataset <plaid.containers.dataset.Dataset>` that should be fed with :class:`Samples <plaid.containers.sample.Sample>.`
 
         Use :meth:`add_sample <plaid.containers.dataset.Dataset.add_sample>` or :meth:`add_samples <plaid.containers.dataset.Dataset.add_samples>` to feed the :class:`Dataset`
@@ -71,7 +71,7 @@ class Dataset(object):
         Args:
             directory_path (str, optional): The path from which to load PLAID dataset files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
-            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
         Example:
             .. code-block:: python
@@ -662,13 +662,13 @@ class Dataset(object):
         subprocess.call(ARGUMENTS)
 
     @classmethod
-    def load_from_file(cls, fname: str, verbose: bool = False, processes_number: int = 2) -> Self:
+    def load_from_file(cls, fname: str, verbose: bool = False, processes_number: int = 0) -> Self:
         """Load data from a specified TAR (Tape Archive) file.
 
         Args:
             fname (str): The path to the data file to be loaded.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
-            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
         Returns:
             Self: The loaded dataset (Dataset).
@@ -679,13 +679,13 @@ class Dataset(object):
 
     @classmethod
     def load_from_dir(cls, dname: str, verbose: bool = False,
-                      processes_number: int = 2) -> Self:
+                      processes_number: int = 0) -> Self:
         """Load data from a specified directory.
 
         Args:
             dname (str): The path from which to load files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
-            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
         Returns:
             Self: The loaded dataset (Dataset).
@@ -698,14 +698,14 @@ class Dataset(object):
         return instance
 
     def load(self, fname: str, verbose: bool = False,
-             processes_number: int = 2) -> None:
+             processes_number: int = 0) -> None:
         """Load data from a specified TAR (Tape Archive) file. It
         creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             fname (str): The path to the data file to be loaded.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
-            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
         Raises:
             ValueError: If a randomly generated temporary directory already exists,
@@ -776,14 +776,14 @@ class Dataset(object):
         # self._flags.save(flags_fname)
 
     def _load_from_dir_(self, savedir: str, ids: list[int] = None,
-                        verbose: bool = False, processes_number: int = 2) -> None:
+                        verbose: bool = False, processes_number: int = 0) -> None:
         """Loads a dataset from a sample directory and retrieves additional information about the dataset from an 'infos.yaml' file, if available.
 
         Args:
             savedir (str): The path from which to load files.
             ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
-            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources). Defaults to 2.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
@@ -820,35 +820,40 @@ class Dataset(object):
         if processes_number == -1:
             logger.info(f"Number of processes set to maximum available: {os.cpu_count()}")
             processes_number = os.cpu_count()
-        elif processes_number < 1:
-            logger.info("Processes number changed to 1 (0 and < -1 are not valid)")
-            processes_number = 1
 
-        """with Pool(processes_number) as p:
-            for id, sample in list(tqdm(p.imap(process_sample, sample_paths), total=len(sample_paths), disable=not(verbose))):
-                self.set_sample(id, sample)"""
+        if processes_number == 0:
+            for sample_path in tqdm(sample_paths, disable=not(verbose)):
+                id = int(sample_path.split('_')[-1])
+                sample = Sample(sample_path)
+                self.add_sample(sample, id)
+        else:
+            """
+            with Pool(processes_number) as p:
+                for id, sample in list(tqdm(p.imap(process_sample, sample_paths), total=len(sample_paths), disable=not(verbose))):
+                    self.set_sample(id, sample)
+            """
 
-        samples_pool = Pool(processes_number)
-        pbar = tqdm(total=len(sample_paths), disable=not (verbose))
+            samples_pool = Pool(processes_number)
+            pbar = tqdm(total=len(sample_paths), disable=not (verbose))
 
-        def update(self, *a):
-            pbar.update()
+            def update(self, *a):
+                pbar.update()
 
-        samples = [
-            samples_pool.apply_async(
-                process_sample,
-                args=(
-                    sample_paths[i],
-                    i),
-                callback=update) for i in range(
-                len(sample_paths))]
+            samples = [
+                samples_pool.apply_async(
+                    process_sample,
+                    args=(
+                        sample_paths[i],
+                        i),
+                    callback=update) for i in range(
+                    len(sample_paths))]
 
-        samples_pool.close()
-        samples_pool.join()
+            samples_pool.close()
+            samples_pool.join()
 
-        for s in samples:
-            id, sample = s.get()
-            self.set_sample(id, sample)
+            for s in samples:
+                id, sample = s.get()
+                self.set_sample(id, sample)
 
         """
         1./0.
