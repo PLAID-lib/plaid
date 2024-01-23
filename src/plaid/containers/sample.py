@@ -81,7 +81,7 @@ CGNS_element_names = [
 # %% Functions
 
 
-def show_cgns_tree(tree, offset=''):
+def show_cgns_tree(tree: list, offset: str =''):
     """Recursively prints the CGNS Tree structure. It displays the hierarchy of nodes and branches in a CGNS tree.
 
     Args:

@@ -56,7 +56,7 @@ def binary_search_vectorized(
 
 
 def piece_wise_linear_interpolation(
-        item: float, item_indices: np.ndarray, vectors, tolerance: float = 1e-4) -> np.ndarray:
+        item: float, item_indices: np.ndarray, vectors: np.ndarray | dict, tolerance: float = 1e-4) -> np.ndarray:
     """
     Computes a item interpolation for temporal vectors defined either by item_indices  and vectors at these indices.
 
@@ -96,7 +96,7 @@ def piece_wise_linear_interpolation(
 
 
 def piece_wise_linear_interpolation_with_map(
-        item: float, item_indices: np.ndarray, vectors, vectors_map: list = None, tolerance=1e-4) -> float:
+        item: float, item_indices: np.ndarray, vectors: np.ndarray | dict, vectors_map: list = None, tolerance: float=1e-4) -> float:
     """
     Computes a item interpolation for temporal vectors defined either by
     item_indices, some tags at these item indices (vectors_map), and vectors at those tags.
@@ -140,7 +140,7 @@ def piece_wise_linear_interpolation_with_map(
 
 
 def piece_wise_linear_interpolation_vectorized(
-        items: list[float], item_indices: np.ndarray, vectors) -> list[np.ndarray]:
+        items: list[float], item_indices: np.ndarray, vectors: np.ndarray | dict) -> list[np.ndarray]:
     """piece_wise_linear_interpolation for more than one call (items is now a list or one-dimensional np.ndarray).
 
     Args:
@@ -157,8 +157,8 @@ def piece_wise_linear_interpolation_vectorized(
     # item_indices, vectors), items), dtype = type(vectors[0]))
 
 
-def piece_wise_linear_interpolation_vectorized_with_map(
-        items: list[float], item_indices: np.ndarray, vectors, vectors_map: list = None) -> list[np.ndarray]:
+def piece_wise_linear_interpolation_vectorized_with_map(items: list[float],
+        item_indices: np.ndarray, vectors: np.ndarray | dict, vectors_map: list = None) -> list[np.ndarray]:
     """piece_wise_linear_interpolation_with_map for more than one call (items is now a list or one-dimensional np.ndarray).
 
     Args:

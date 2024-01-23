@@ -499,8 +499,7 @@ class Dataset(object):
 
         Args:
             cat_key (str): Category key, choose among "legal," "data_production," and "data_description".
-            info_key (str): Information key, depending on the chosen category key, choose among "owner", "license", "type", "physics", "simulator", "hardware", "computation_duration", "script", "contact", "location", "number_of_samples", "number_of_splits", "DOE", "inputs" and "outputs".
-            info (str): Information content.
+            info_key (str): Information key with its related content.
 
         Raises:
             KeyError: Invalid category key.
@@ -607,7 +606,7 @@ class Dataset(object):
         print(tf)
 
     # -------------------------------------------------------------------------#
-    def merge_dataset(self, dataset) -> list[int]:
+    def merge_dataset(self, dataset: Self) -> list[int]:
         """Merges another Dataset into this one.
 
         Args:

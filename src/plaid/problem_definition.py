@@ -92,7 +92,7 @@ class ProblemDefinition(object):
         """Set the authorized task.
 
         Args:
-            The authorized task to be set, such as "regression" or "classification".
+            task (str): The authorized task to be set, such as "regression" or "classification".
         """
         if self._task is not None:
             raise ValueError(
