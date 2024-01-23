@@ -14,7 +14,7 @@ from Muscat.Containers.Filters.FilterObjects import ElementFilter, NodeFilter
 
 # %% Functions
 
-def generate_random_ASCII(size=16) -> str:
+def generate_random_ASCII(size: int = 16) -> str:
     """Generate a random ASCII string of the specified size.
 
     Args:
