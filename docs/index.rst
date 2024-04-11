@@ -41,7 +41,7 @@ The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
    :maxdepth: 1
    :caption: Going further
 
-   GCNS standard <http://cgns.github.io/>
+   CGNS standard <http://cgns.github.io/>
    Data Challenges <source/data_challenges.rst>
 
 Indices and tables
