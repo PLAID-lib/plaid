@@ -789,9 +789,7 @@ class Sample(object):
 
         if self._meshes is not None:
             if self._meshes[time] is not None:
-                # print(self._meshes[time][2][1][0])
-                return [bn.strip('/') for bn in CGH.get_base_names(
-                    self._meshes[time], full_path, unique)]
+                return CGH.get_base_names(self._meshes[time], full_path = full_path, unique = unique)
         else:
             return []
 
@@ -1275,7 +1273,7 @@ class Sample(object):
 
         if base_name is None:
             # get_base_names will look for default time
-            base_names = self.get_base_names(time)
+            base_names = self.get_base_names(time=time)
         else:
             base_names = [base_name]
 
