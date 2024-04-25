@@ -604,7 +604,7 @@ class Sample(object):
         self._paths.pop(time, None)
         return self._meshes.pop(time)
 
-    def link_tree(self, path_linked_sample, linked_sample, linked_time, time:int) -> CGNSTree:
+    def link_tree(self, path_linked_sample: str, linked_sample: Self, linked_time: float, time: float) -> CGNSTree:
         """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of
             another sample.
 
