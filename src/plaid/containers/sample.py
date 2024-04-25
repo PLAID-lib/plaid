@@ -17,6 +17,8 @@ import logging
 import os
 from typing import Optional, Union
 
+import copy
+
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
@@ -465,17 +467,47 @@ class Sample(object):
 
         return self._meshes[time]
 
-    def get_mesh(self, time: float = None) -> CGNSTree:
+    def get_mesh(self, time: float = None, apply_links: bool = False) -> CGNSTree:
         """Retrieve the CGNS tree structure for a specified time step, if available.
 
         Args:
             time (float, optional): The time step for which to retrieve the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
+            apply_links (bool, optional): Activates the following of the CGNS links to reconstruct the complete CGNS tree - in this case, a deepcopy of the tree is made to prevent from modifying the existing tree
 
         Returns:
             CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
         """
+        if self._meshes is None:
+            return None
+
         time = self.get_time_assignment(time)
-        return self._meshes[time] if (self._meshes is not None) else None
+        tree = self._meshes[time]
+
+        links = self.get_links(time)
+        if apply_links == False or links is None:
+            return tree
+
+        tree = copy.deepcopy(tree)
+        for link in links:
+            subtree, links, _ = CGM.load(os.path.join(link[0], link[1]), subtree=link[2])
+            node_path = '/'.join(link[2].split('/')[:-1])
+            node_to_append = CGU.getNodeByPath(tree, node_path)
+            assert node_to_append is not None, f"nodepath {node_path} not present in tree, cannot apply link"
+            node_to_append[2].append(CGU.getNodeByPath(subtree, link[2]))
+
+        return tree
+
+    def get_links(self, time: float = None) -> CGNSTree:
+        """Retrieve the CGNS links for a specified time step, if available.
+
+        Args:
+            time (float, optional): The time step for which to retrieve the CGNS links. If a specific time is not provided, the method will display the links for the default time step.
+
+        Returns:
+            list: The CGNS links for the specified time step if available; otherwise, returns None.
+        """
+        time = self.get_time_assignment(time)
+        return self._links[time] if (self._links is not None) else None
 
     def get_all_mesh_times(self) -> list[float]:
         """Retrieve all time steps corresponding to the meshes, if available.
@@ -572,26 +604,67 @@ class Sample(object):
         self._paths.pop(time, None)
         return self._meshes.pop(time)
 
-    """def link_(self, sample:Sample, sample_index:int, time_index:int) -> CGNSTree:
-        #NOT IMPLEMENTED YET
+    def link_tree(self, path_linked_sample, linked_sample, linked_time, time:int) -> CGNSTree:
+        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of
+            another sample.
+
+        Args:
+            path_linked_sample (str): The absolute path of the folder containing the linked CGNS
+            linked_sample (Sample): The linked sample
+            linked_time (float): The time step of the linked CGNS in the linked sample
+            time (float): The time step the current sample to which the CGNS tree is linked.
+
+        Returns:
+            CGNSTree: The deleted CGNS tree.
+        """
         #see https://pycgns.github.io/MAP/sids-to-python.html#links
         #difficulty is to link only the geometrical objects, which can be complex
 
         #https://pycgns.github.io/MAP/examples.html#save-with-links
-        #When you load a file all the linked-to files areresolved to produce a full CGNS/Python tree with actual node data.
+        #When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
 
-        tree = sample.get_tree(time)
-        self.add_tree(tree, time)
+        tree = CGL.newCGNSTree()
 
-        time_index = list[sample._meshes.keys()].index(time)
+        base_names = linked_sample.get_base_names(time=linked_time)
 
-        if self._links[time] == None:
-            self._links[time] = []
+        for bn in base_names:
+            base_node = linked_sample.get_base(bn, time=linked_time)
+            base = [bn, base_node[1], [], 'CGNSBase_t']
+            tree[2].append(base)
 
-        self._links[time].append([])
+            family = ['Bulk', np.array([b'B', b'u', b'l', b'k'], dtype='|S1'), [], 'FamilyName_t'] # maybe get this from linked_sample as well ?
+            base[2].append(family)
 
-        folder = "../../sample_"+str(sample_index).zfill(9)+os.sep+"mesh_"+str(time_index).zfill(9)+".cgns"
-        return tree"""
+            zone_names = linked_sample.get_zone_names(bn, time=linked_time)
+            for zn in zone_names:
+                zone_node = linked_sample.get_zone(zn, bn, time=linked_time)
+                grid = [zn, zone_node[1], [['ZoneType', np.array([b'U', b'n', b's', b't', b'r', b'u', b'c', b't', b'u', b'r', b'e',b'd'], dtype='|S1'), [], 'ZoneType_t']], 'Zone_t']
+                base[2].append(grid)
+                zone_family = ['FamilyName', np.array([b'B', b'u', b'l', b'k'], dtype='|S1'), [], 'FamilyName_t']
+                grid[2].append(zone_family)
+
+        def find_feature_roots(sample, time, Type_t):
+
+            Types_t = CGU.getAllNodesByTypeSet(sample.get_mesh(time), Type_t)
+            types = [Types_t[0]]
+            for t in Types_t[1:]:
+                for tt in types:
+                    if tt not in t:
+                        types.append(t)
+            return types
+
+        feature_paths = []
+        for feature in ["ZoneBC_t", "Elements_t", "GridCoordinates_t"]:
+            feature_paths += find_feature_roots(linked_sample, linked_time, feature)
+
+        self.add_tree(tree, time = time)
+
+        dname = os.path.dirname(path_linked_sample)
+        bname = os.path.basename(path_linked_sample)
+        self._links[time] = [[dname, bname, fp, fp] for fp in feature_paths]
+
+        return tree
+
 
     # -------------------------------------------------------------------------#
     def get_topological_dim(self, base_name: str = None, time: float = None) -> int:
@@ -716,8 +789,9 @@ class Sample(object):
 
         if self._meshes is not None:
             if self._meshes[time] is not None:
-                return CGH.get_base_names(
-                    self._meshes[time], full_path, unique)
+                # print(self._meshes[time][2][1][0])
+                return [bn.strip('/') for bn in CGH.get_base_names(
+                    self._meshes[time], full_path, unique)]
         else:
             return []
 
@@ -1205,6 +1279,7 @@ class Sample(object):
         else:
             base_names = [base_name]
 
+
         all_names = []
         for bn in base_names:
             all_names += get_field_names_one_base(bn)
@@ -1483,6 +1558,8 @@ class Sample(object):
                     os.path.join(meshes_dir, f"mesh_{i:09d}.cgns"))
                 time = CGH.get_time_values(tree)
                 self._meshes[time], self._links[time], self._paths[time] = tree, links, paths
+                for i in range(len(self._links[time])):
+                    self._links[time][i][0] = os.path.join(meshes_dir, self._links[time][i][0])
 
         scalars_fname = os.path.join(dir_path, 'scalars.csv')
         if os.path.isfile(scalars_fname):
