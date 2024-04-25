@@ -11,6 +11,7 @@ import os
 
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnsutils as CGU
+import CGNS.PAT.cgnslib as CGL
 import numpy as np
 import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
@@ -123,6 +124,15 @@ def tree(nodes, triangles, vertex_field, cell_center_field):
     tree = MeshToCGNS(Mesh)
     return tree
 
+@pytest.fixture()
+def sample_with_linked_tree(tree, tmp_path):
+    sample_with_linked_tree = Sample()
+    sample_with_linked_tree.add_tree(tree)
+    save_dir = tmp_path / 'test_dir'
+    sample_with_linked_tree.save(save_dir)
+    path_linked_sample = os.path.join(save_dir, "meshes/mesh_000000000.cgns")
+    sample_with_linked_tree.link_tree(path_linked_sample, sample_with_linked_tree, linked_time=0., time=1.)
+    return sample_with_linked_tree
 
 @pytest.fixture()
 def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
@@ -321,6 +331,12 @@ class Test_Sample():
     def test_get_mesh(self, sample_with_tree_and_scalar_and_time_series):
         sample_with_tree_and_scalar_and_time_series.get_mesh()
 
+    def test_get_mesh_without_links(self, sample_with_linked_tree):
+        sample_with_linked_tree.get_mesh(time=1.,apply_links=False)
+
+    def test_get_mesh_with_links(self, sample_with_linked_tree):
+        sample_with_linked_tree.get_mesh(time=1.,apply_links=True)
+
     def test_set_meshes_empty(self, sample, tree):
         sample.set_meshes(tree)
 
@@ -349,6 +365,13 @@ class Test_Sample():
         assert list(sample._meshes.keys()) == []
         assert list(sample._links.keys()) == []
         assert list(sample._paths.keys()) == []
+
+    def test_link_tree(self, sample_with_linked_tree):
+        link_checks = ['/Base_2_2/Zone/Elements_Selections', '/Base_2_2/Zone/Elements_TRI_3', '/Base_2_2/Zone/GridCoordinates']
+        for link in sample_with_linked_tree._links[1.]:
+            assert link[1] == "mesh_000000000.cgns"
+            assert link[2] == link[3]
+            assert link[2] in link_checks
 
     def test_on_error_del_tree(self, sample, tree):
         with pytest.raises(KeyError):
