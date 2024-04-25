@@ -238,8 +238,8 @@ class ProblemDefinition(object):
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
-                input_scalars_names = ['omega', 'pressure', 'temperature']
-                input_features = problem.filter_input_scalars_names(input_scalars_names)
+                scalars_names = ['omega', 'pressure', 'temperature']
+                input_features = problem.filter_input_scalars_names(scalars_names)
                 print(input_features)
                 >>> ['omega', 'pressure']
         """
@@ -322,8 +322,8 @@ class ProblemDefinition(object):
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
-                output_scalars_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-                output_features = problem.filter_output_scalars_names(output_scalars_names)
+                scalars_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                output_features = problem.filter_output_scalars_names(scalars_names)
                 print(output_features)
                 >>> ['in_massflow']
         """
