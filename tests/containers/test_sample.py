@@ -130,7 +130,7 @@ def sample_with_linked_tree(tree, tmp_path):
     sample_with_linked_tree.add_tree(tree)
     save_dir = tmp_path / 'test_dir'
     sample_with_linked_tree.save(save_dir)
-    path_linked_sample = os.path.join(save_dir, "meshes/mesh_000000000.cgns")
+    path_linked_sample = save_dir / "meshes/mesh_000000000.cgns"
     sample_with_linked_tree.link_tree(path_linked_sample, sample_with_linked_tree, linked_time=0., time=1.)
     return sample_with_linked_tree
 
@@ -979,7 +979,7 @@ class Test_Sample():
     def test_save(self, sample_with_tree_and_scalar_and_time_series, tmp_path):
         save_dir = tmp_path / 'test_dir'
         sample_with_tree_and_scalar_and_time_series.save(save_dir)
-        assert (os.path.isdir(save_dir))
+        assert (save_dir.is_dir())
         with pytest.raises(ValueError):
             sample_with_tree_and_scalar_and_time_series.save(save_dir)
 
