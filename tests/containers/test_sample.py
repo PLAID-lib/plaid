@@ -338,13 +338,13 @@ class Test_Sample():
         sample_with_linked_tree.get_mesh(time=1.,apply_links=True)
 
     def test_set_meshes_empty(self, sample, tree):
-        sample.set_meshes(tree)
+        sample.set_meshes({0.:tree})
 
     def test_set_meshes(self, sample_with_tree, tree):
         with pytest.raises(KeyError):
-            sample_with_tree.set_meshes(tree)
+            sample_with_tree.set_meshes({0.:tree})
 
-    def test_add_tree_empty(self, sample_with_tree, tree):
+    def test_add_tree_empty(self, sample_with_tree):
         with pytest.raises(ValueError):
             sample_with_tree.add_tree([])
 

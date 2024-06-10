@@ -528,6 +528,11 @@ class Sample(object):
         """
         if self._meshes is None:
             self._meshes = meshes
+            self._links = {}
+            self._paths = {}
+            for time in self._meshes.keys():
+                self._links[time] = None
+                self._paths[time] = None
         else:
             raise KeyError(
                 "meshes is already set, you cannot overwrite it, delete it first or extend it with `Sample.add_tree`")
@@ -622,6 +627,13 @@ class Sample(object):
 
         #https://pycgns.github.io/MAP/examples.html#save-with-links
         #When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
+
+
+        if not linked_time in linked_sample._meshes:
+            raise KeyError(f"There is no CGNS tree for time {linked_time} in linked_sample.")
+
+        if time in self._meshes:
+            raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
 
         tree = CGL.newCGNSTree()
 
