@@ -7,10 +7,7 @@
 
 # %% Imports
 
-from typing import Union
-
 import numpy as np
-from Muscat.Containers.Filters.FilterObjects import ElementFilter, NodeFilter
 
 # %% Functions
 
@@ -33,10 +30,6 @@ def generate_random_ASCII(size: int = 16) -> str:
             rnd_ += str(val_)
     return rnd_
 
-# %% Classes
-Filter = Union[ElementFilter, NodeFilter]
-"""A Filter is an Union[ElementFilter, NodeFilter]
-"""
 
 class NotAllowedError(Exception):
     """Exception for not allowed usage."""
