@@ -42,9 +42,22 @@ pip setup.py install
 
 ## 2. Test installation
 
-To check the installation, you can run
+To check the installation, you can run the unit test suite
 
 ```bash
 cd tests
 python -m pytest
 ```
+
+To test further and learn about simple use cases, you can run the examples:
+```bash
+cd examples
+bash run_examples.sh
+```
+
+---
+**Note**
+
+[pytest](https://anaconda.org/conda-forge/pytest) and [Muscat](https://anaconda.org/conda-forge/muscat) are two dependencies not distributed in the plaid conda-forge package, but can found on conda-forge as well.
+
+---

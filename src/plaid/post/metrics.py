@@ -91,25 +91,16 @@ def pretty_metrics(metrics: dict) -> None:
         metrics (dict): The metrics dictionary to print.
     """
     metrics_keys = list(metrics.keys())
-    from Muscat.Helpers.TextFormatHelper import TFormat
-    tf = TFormat.Center(TFormat.InBlue("comparision metrics")) + '\n'
+    tf = '******************** \x1b[34;1mcomparision metrics\x1b[0m *******************\n'
     for metric_key in metrics_keys:
-        tf += TFormat.GetIndent() + TFormat.InYellow(metric_key) + '\n'
+        tf += '\x1b[33;1m'+str(metric_key)+'\x1b[0m\n'
         splits = list(metrics[metric_key].keys())
-        TFormat.II()
-
         for split in splits:
-            tf += TFormat.GetIndent() + TFormat.InGreen(split) + '\n'
+            tf += '  \x1b[32;1m'+str(split)+'\x1b[0m\n'
             scalars = list(metrics[metric_key][split].keys())
-            TFormat.II()
-
             for scalar in scalars:
-                tf += TFormat.GetIndent() + TFormat.InBlue(scalar) + ": " + \
-                    str(metrics[metric_key][split][scalar]) + '\n'
-
-            TFormat.DI()
-        TFormat.DI()
-    tf += TFormat.Center('') + '\n'
+                tf += '    \x1b[34;1m'+str(scalar)+'\x1b[0m: '+str(metrics[metric_key][split][scalar])+'\n'
+    tf += '************************************************************\n'
     print(tf)
 
 
