@@ -592,17 +592,13 @@ class Dataset(object):
         """Prints information in a readable format (pretty print).
         """
         infos_cats = list(self._infos.keys())
-        from Muscat.Helpers.TextFormatHelper import TFormat
-        tf = TFormat.Center(TFormat.InBlue("dataset infos")) + '\n'
+        tf = '*********************** \x1b[34;1mdataset infos\x1b[0m **********************\n'
         for cat in infos_cats:
-            tf += TFormat.GetIndent() + TFormat.InYellow(cat) + '\n'
+            tf += '\x1b[33;1m'+str(cat)+'\x1b[0m\n'
             infos = list(self._infos[cat].keys())
-            TFormat.II()
             for info in infos:
-                tf += TFormat.GetIndent() + TFormat.InGreen(info) + ":" + \
-                    str(self._infos[cat][info]) + '\n'
-            TFormat.DI()
-        tf += TFormat.Center('') + '\n'
+                tf += '  \x1b[32;1m'+str(cat)+'\x1b[0m:'+str(self._infos[cat][info])+'\n'
+        tf += '************************************************************\n'
         print(tf)
 
     # -------------------------------------------------------------------------#
