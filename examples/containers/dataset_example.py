@@ -339,8 +339,7 @@ dataset._save_to_dir_(tmpdir)
 # ### Get the number of Samples that can be loaded from a directory
 
 # %%
-empty_ds = Dataset()
-nb_samples = empty_ds._load_number_of_samples_(tmpdir)
+nb_samples = Dataset._load_number_of_samples_(tmpdir)
 
 print(f"{nb_samples = }")
 
