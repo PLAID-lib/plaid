@@ -878,8 +878,9 @@ class Dataset(object):
 
         if len(self) == 0:  # pragma: no cover
             print("Warning: dataset contains no sample")
-
-    def _load_number_of_samples_(self, savedir: str) -> int:
+            
+    @staticmethod
+    def _load_number_of_samples_(savedir: str) -> int:
         """This function counts the number of sample files in a specified directory, which is
         useful for determining the total number of samples in a dataset.
 
