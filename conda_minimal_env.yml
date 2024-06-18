@@ -9,7 +9,7 @@ dependencies:
   - tqdm
   - pyyaml
   - pycgns
-  - muscat>=2.0.0
+  - matplotlib
   - pytest
   - rich
   - scikit-learn
