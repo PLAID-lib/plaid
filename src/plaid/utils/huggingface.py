@@ -69,18 +69,7 @@ def convert_dataset_to_huggingface(dataset:Dataset, problem_definition:ProblemDe
                 "sample" : pickle.dumps(dataset[id]),
             }
 
-    hf_ds = datasets.Dataset.from_generator(
-            generator,
-            num_proc = processes_number)
-
-    hf_ds._split = datasets.splits.NamedSplit("all_samples")
-
-    hf_ds._info = datasets.DatasetInfo(
-        features = datasets.Features({"sample":datasets.Value("binary")}),
-        description = generate_huggingface_description(dataset.get_infos(), problem_definition),
-        )
-
-    return hf_ds
+    return generate_huggingface_dataset(generator, dataset.get_infos(), problem_definition, processes_number)
 
 
 def generate_huggingface_dataset(generator:Callable, infos:dict, problem_definition:ProblemDefinition, processes_number:int = 1) -> datasets.Dataset:
