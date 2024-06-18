@@ -8,7 +8,7 @@ from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.utils.split import split_dataset
-from plaid.utils import huggingface
+from plaid.bridges import huggingface_bridge
 
 ##############################################
 # CONSTRUCT A PLAID DATASET
@@ -145,7 +145,7 @@ print(f"{problem = }")
 # EXAMPLE OF HUGGINGFACE utils
 ##############################################
 
-hf_dataset = huggingface.convert_dataset_to_huggingface(dataset, problem)
+hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset, problem)
 print()
 print(f"{hf_dataset = }")
 print(f"{hf_dataset.description = }")
@@ -157,18 +157,18 @@ def generator():
             "sample" : pickle.dumps(dataset[id]),
         }
 
-hf_dataset_gen = huggingface.generate_huggingface_dataset(generator, infos, problem)
+hf_dataset_gen = huggingface_bridge.plaid_generator_to_huggingface(generator, infos, problem)
 print()
 print(f"{hf_dataset_gen = }")
 print(f"{hf_dataset_gen.description = }")
 
 
-dataset_2, problem_2 = huggingface.convert_huggingface_to_dataset(hf_dataset)
+dataset_2, problem_2 = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
 print()
 print(f"{dataset_2 = }")
 print(f"{problem_2 = }")
 
-card_text = huggingface.create_string_for_huggingface_dataset_card(
+card_text = huggingface_bridge.create_string_for_huggingface_dataset_card(
     hf_dataset.description,
     download_size_bytes = 395462557,
     dataset_size_bytes = 864904041,
