@@ -15,9 +15,16 @@ Convention with hf (huggingface) datasets:
 - problem_definition info is stored in hf-datasets "description" parameter
 """
 
-def generate_huggingface_description(infos:dict, problem_definition:ProblemDefinition) -> dict:
-    """Generates a huggungface dataset description field from a plaid dataset infos and problem definition.
+def generate_huggingface_description(infos:dict, problem_definition:ProblemDefinition) -> dict[str]:
+    """Generates a huggingface dataset description field from a plaid dataset infos and problem definition.
     The conventions chosen here ensure working conversion to and from huggingset datasets.
+
+    Args:
+        infos (dict): infos entry of the plaid dataset from which the huggingface description is to be generated
+        problem_definition (ProblemDefinition): of which the huggingface description is to be generated
+
+    Returns:
+        dict[str]: huggingface dataset description
     """
     description = {}
 
@@ -40,6 +47,14 @@ def generate_huggingface_description(infos:dict, problem_definition:ProblemDefin
 def convert_dataset_to_huggingface(dataset:Dataset, problem_definition:ProblemDefinition, processes_number:int = 1) -> datasets.Dataset:
     """Use this function for converting a huggingface dataset from a plaid dataset.
     The dataset can then be saved to disk, or pushed to the huggingface hub.
+
+    Args:
+        dataset (Dataset): the plaid dataset to be converted in huggingface format
+        problem_definition (ProblemDefinition): from which the huggingface dataset is to be generated
+        processes_number (int, optional): The number of processes used to generate the huggingface dataset
+
+    Returns:
+        datasets.Dataset: dataset in huggingface format
 
     Example:
     .. code-block:: python
@@ -74,6 +89,14 @@ def generate_huggingface_dataset(generator:Callable, infos:dict, problem_definit
     The generator enables loading samples one by one.
     The dataset can then be saved to disk, or pushed to the huggingface hub.
 
+    Args:
+        generator (Callable): a function yielding a dict {"sample" : sample}, where sample is of type 'bytes'
+        problem_definition (ProblemDefinition): from which the huggingface dataset is to be generated
+        processes_number (int, optional): The number of processes used to generate the huggingface dataset
+
+    Returns:
+        datasets.Dataset: dataset in huggingface format
+
     Example:
     .. code-block:: python
 
@@ -99,6 +122,13 @@ def convert_huggingface_to_dataset(ds:datasets.Dataset)->tuple[Self, ProblemDefi
     A huggingface dataset can be read from disk or the hub. From the hub, the
     split = "all_samples" options is important to get a dataset and not a datasetdict.
     Many options from loading are available (caching, streaming, etc...)
+
+    Args:
+        ds (datasets.Dataset): the dataset in huggingface format to be converted
+
+    Returns:
+        dataset (Dataset): the converted dataset.
+        problem_definition (ProblemDefinition): the problem definition generated from th huggingface dataset
 
     Example:
     .. code-block:: python
@@ -136,7 +166,7 @@ def convert_huggingface_to_dataset(ds:datasets.Dataset)->tuple[Self, ProblemDefi
     return dataset, problem_definition
 
 def create_string_for_huggingface_dataset_card(
-        description:list,
+        description:dict,
         download_size_bytes:int,
         dataset_size_bytes:int,
         nb_samples:int,
@@ -145,22 +175,46 @@ def create_string_for_huggingface_dataset_card(
         zenodo_url:str = None,
         arxiv_paper_url:str = None,
         pretty_name:str = None,
-        size_categories:list = None,
-        task_categories:list = None,
-        tags:list = None,
+        size_categories:list[str] = None,
+        task_categories:list[str] = None,
+        tags:list[str] = None,
         dataset_long_description:str = None,
         url_illustration:str = None
-    ):
+    ) -> str:
     """Use this function for creating a dataset card, to upload together with the dataset
     on the huggingface hub. Doing so ensure that load_dataset from the hub will populate
     the hf-dataset.description field, and be compatible for conversion to plaid.
     Wihtout a dataset_card, the description field is lost.
 
-    The parameters download_size_bytes and dataset_size_bytes can be determined after a 
-    dataset has been uploaded on huggingface: 
+    The parameters download_size_bytes and dataset_size_bytes can be determined after a
+    dataset has been uploaded on huggingface:
     - manually by reading their values on the dataset page README.md,
     - automatically as shown in the example below
-    
+
+    See `the hugginface examples <https://gitlab.com/drti/plaid/-/blob/main/examples/utils/huggingface_example.py>`__ for a concrete use.
+
+    Args:
+        description (dict): huggingface dataset description. Obtained from
+        - description = hf_dataset.description
+        - description = generate_huggingface_description(infos, problem_definition)
+        download_size_bytes (int)
+        dataset_size_bytes (int)
+        nb_samples (int)
+        owner (str)
+        license (str)
+        zenodo_url (str, optional)
+        arxiv_paper_url (str, optional)
+        pretty_name (str, optional)
+        size_categories (list[str], optional)
+        task_categories (list[str], optional)
+        tags (list[str], optional)
+        dataset_long_description (str, optional)
+        url_illustration (str, optional)
+
+    Returns:
+        dataset (Dataset): the converted dataset
+        problem_definition (ProblemDefinition): the problem definition generated from th huggingface dataset
+
     Example:
     .. code-block:: python
 
@@ -217,7 +271,7 @@ dataset_info:
     num_bytes: {dataset_size_bytes}
     num_examples: {nb_samples}
   download_size: {download_size_bytes}
-  dataset_size: {dataset_size_bytes} 
+  dataset_size: {dataset_size_bytes}
 ---
 
 # Dataset Card
