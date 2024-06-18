@@ -58,6 +58,6 @@ bash run_examples.sh
 ---
 **Note**
 
-[pytest](https://anaconda.org/conda-forge/pytest) and [Muscat](https://anaconda.org/conda-forge/muscat) are two dependencies not distributed in the plaid conda-forge package, but can found on conda-forge as well.
+[pytest](https://anaconda.org/conda-forge/pytest) and [Muscat](https://anaconda.org/conda-forge/muscat) are two dependencies not distributed in the plaid conda-forge package, but can be found on conda-forge as well.
 
 ---
