@@ -114,7 +114,7 @@ class Test_Huggingface_Bridge():
         arxiv_paper_url = "https://arxiv.org/pdf/2305.12871",
         pretty_name = "2D quasistatic non-linear structural mechanics solutions",
         size_categories = ["n<1K"],
-        task_categories = ["other"],
+        task_categories = ["graph-ml"],
         tags = ["physics learning", "geometry learning"],
         dataset_long_description = "my long description",
         url_illustration = "url3"
