@@ -99,7 +99,7 @@ for cgns_tree in tqdm(CGNS_meshes):
 
 dataset = Dataset()
 
-infos: dict = {
+infos = {
         "legal": {
             "owner": "Bob",
             "license": "my_license"},
@@ -172,14 +172,14 @@ card_text = huggingface.create_string_for_huggingface_dataset_card(
     hf_dataset.description,
     download_size_bytes = 395462557,
     dataset_size_bytes = 864904041,
-    nb_samples = 702,    
+    nb_samples = 702,
     owner = "Safran",
     license = "cc-by-sa-4.0",
     zenodo_url = "https://zenodo.org/records/10124594",
     arxiv_paper_url = "https://arxiv.org/pdf/2305.12871",
     pretty_name = "2D quasistatic non-linear structural mechanics solutions",
-    size_categories = "n<1K",
-    task_categories = "other",
+    size_categories = ["n<1K"],
+    task_categories = ["other"],
     tags = ["physics learning", "geometry learning"],
     dataset_long_description = """
 This dataset contains 2D quasistatic non-linear structural mechanics solutions, under geometrical variations.
