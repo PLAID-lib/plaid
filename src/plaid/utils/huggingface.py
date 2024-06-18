@@ -281,7 +281,7 @@ dataset_info:
 
 This dataset contains a single huggingface split, named 'all_samples'.
 
-The samples contains a single huggingface feature, named called "sample".
+The samples contains a single huggingface feature, named "sample".
 
 Samples are instances of [plaid.containers.sample.Sample](https://plaid-lib.readthedocs.io/en/latest/autoapi/plaid/containers/sample/index.html#plaid.containers.sample.Sample).
 Mesh objects included in samples follow the [CGNS](https://cgns.github.io/) standard, and can be converted in
