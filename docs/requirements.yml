@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python>=3.11
+  - python=3.11
 #---# io
   - pyyaml
 #---# doc
@@ -14,6 +14,8 @@ dependencies:
 #---# mesh/graph libs
   - muscat>=2.0.0
   - pycgns
+#---# other
+  - scikit-learn
   - pip
   - pip:
     - furo

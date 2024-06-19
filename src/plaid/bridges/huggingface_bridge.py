@@ -57,11 +57,11 @@ def plaid_dataset_to_huggingface(dataset:Dataset, problem_definition:ProblemDefi
         datasets.Dataset: dataset in huggingface format
 
     Example:
-    .. code-block:: python
+        .. code-block:: python
 
-        dataset = convert_dataset_to_huggingface(dataset, problem_definition)
-        dataset.save_to_disk("path/to/dir)
-        dataset.push_to_hub("chanel/dataset")
+            dataset = convert_dataset_to_huggingface(dataset, problem_definition)
+            dataset.save_to_disk("path/to/dir)
+            dataset.push_to_hub("chanel/dataset")
     """
     def generator():
         for id in range(len(dataset)):
@@ -87,11 +87,11 @@ def plaid_generator_to_huggingface(generator:Callable, infos:dict, problem_defin
         datasets.Dataset: dataset in huggingface format
 
     Example:
-    .. code-block:: python
+        .. code-block:: python
 
-        dataset = convert_dataset_to_huggingface(generator, infos, problem_definition)
-        dataset.push_to_hub("chanel/dataset")
-        dataset.save_to_disk("path/to/dir")
+            dataset = convert_dataset_to_huggingface(generator, infos, problem_definition)
+            dataset.push_to_hub("chanel/dataset")
+            dataset.save_to_disk("path/to/dir")
     """
     ds = datasets.Dataset.from_generator(
             generator,
@@ -120,13 +120,13 @@ def huggingface_dataset_to_plaid(ds:datasets.Dataset)->tuple[Self, ProblemDefini
         problem_definition (ProblemDefinition): the problem definition generated from th huggingface dataset
 
     Example:
-    .. code-block:: python
+        .. code-block:: python
 
-        from datasets import load_dataset, load_from_disk
+            from datasets import load_dataset, load_from_disk
 
-        dataset = load_dataset("path/to/dir", split = "all_samples")
-        dataset = load_from_disk("chanel/dataset")
-        plaid_dataset, plaid_problem = convert_huggingface_to_dataset(dataset)
+            dataset = load_dataset("path/to/dir", split = "all_samples")
+            dataset = load_from_disk("chanel/dataset")
+            plaid_dataset, plaid_problem = convert_huggingface_to_dataset(dataset)
     """
 
     dataset = Dataset()
@@ -206,21 +206,21 @@ def create_string_for_huggingface_dataset_card(
         problem_definition (ProblemDefinition): the problem definition generated from th huggingface dataset
 
     Example:
-    .. code-block:: python
+        .. code-block:: python
 
-        from datasets import load_dataset_builder
+            from datasets import load_dataset_builder
 
-        datasetInfo = load_dataset_builder("fabiencasenave/Rotor37").__getstate__()['info']
+            datasetInfo = load_dataset_builder("fabiencasenave/Rotor37").__getstate__()['info']
 
-        from huggingface_hub import DatasetCard
+            from huggingface_hub import DatasetCard
 
-        card_text = create_string_for_huggingface_dataset_card(
-            description = description,
-            download_size_bytes = datasetInfo.download_size,
-            dataset_size_bytes = datasetInfo.dataset_size,
-            ...)
-        dataset_card = DatasetCard(card_text)
-        dataset_card.push_to_hub("chanel/dataset")
+            card_text = create_string_for_huggingface_dataset_card(
+                description = description,
+                download_size_bytes = datasetInfo.download_size,
+                dataset_size_bytes = datasetInfo.dataset_size,
+                ...)
+            dataset_card = DatasetCard(card_text)
+            dataset_card.push_to_hub("chanel/dataset")
     """
 
     str__ = f"""---

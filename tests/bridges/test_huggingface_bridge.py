@@ -60,20 +60,17 @@ class Test_Huggingface_Bridge():
         assert hfds.description['task'] == "regression"
         assert hfds.description['in_scalars_names'][0] == "feature_name_1"
         assert hfds.description['in_scalars_names'][1] == "feature_name_2"
-
-        sample = pickle.loads(hfds[0]['sample'])
-        assert isinstance(sample, Sample)
-        assert sample.get_scalar_names()[0] == "test_scalar"
-        assert "test_field_same_size" in sample.get_field_names()
-        assert sample.get_field("test_field_same_size").shape[0] == 17
+        self.assert_sample(pickle.loads(hfds[0]['sample']))
 
 
-    def assert_dataset(self, ds, pbdef):
+    def assert_plaid_dataset(self, ds, pbdef):
         assert ds.get_infos()['legal'] == {'owner': 'PLAID2', 'license': 'BSD-3'}
         assert pbdef.get_input_scalars_names()[0] == "feature_name_1"
         assert pbdef.get_input_scalars_names()[1] == "feature_name_2"
+        self.assert_sample(ds[0])
 
-        sample =ds[0]
+
+    def assert_sample(self, sample):
         assert isinstance(sample, Sample)
         assert sample.get_scalar_names()[0] == "test_scalar"
         assert "test_field_same_size" in sample.get_field_names()
@@ -99,8 +96,8 @@ class Test_Huggingface_Bridge():
 
     def test_huggingface_dataset_to_plaid(self, hf_dataset):
         ds, pbdef = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
-        print(ds, pbdef)
-        self.assert_dataset(ds, pbdef)
+        self.assert_plaid_dataset(ds, pbdef)
+
 
     def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
         huggingface_bridge.create_string_for_huggingface_dataset_card(
