@@ -3,6 +3,7 @@
 import datasets
 from plaid.problem_definition import ProblemDefinition
 from plaid.containers.dataset import Dataset
+from plaid.containers.sample import Sample
 import pickle
 from typing import Callable, Self
 
@@ -66,7 +67,7 @@ def plaid_dataset_to_huggingface(dataset:Dataset, problem_definition:ProblemDefi
     def generator():
         for id in range(len(dataset)):
             yield {
-                "sample" : pickle.dumps(dataset[id]),
+                "sample" : pickle.dumps(dataset[id].model_dump()),
             }
 
     return plaid_generator_to_huggingface(generator, dataset.get_infos(), problem_definition, processes_number)
@@ -131,7 +132,7 @@ def huggingface_dataset_to_plaid(ds:datasets.Dataset)->tuple[Self, ProblemDefini
 
     dataset = Dataset()
     for i in range(len(ds)):
-        dataset.add_sample(pickle.loads(ds[i]["sample"]))
+        dataset.add_sample(Sample.model_validate(pickle.loads(ds[i]["sample"])))
 
     infos = {}
     if "legal" in ds.description:
@@ -208,9 +209,11 @@ def create_string_for_huggingface_dataset_card(
     Example:
         .. code-block:: python
 
+            hf_dataset.push_to_hub("chanel/dataset")
+
             from datasets import load_dataset_builder
 
-            datasetInfo = load_dataset_builder("fabiencasenave/Rotor37").__getstate__()['info']
+            datasetInfo = load_dataset_builder("chanel/dataset").__getstate__()['info']
 
             from huggingface_hub import DatasetCard
 
@@ -229,12 +232,12 @@ license: {license}
 
     if size_categories:
         str__ += f"""size_categories:
-  - {size_categories}
+  {size_categories}
 """
 
     if task_categories:
         str__ += f"""task_categories:
-  - {task_categories}
+  {task_categories}
 """
 
     if pretty_name:
@@ -282,6 +285,7 @@ Example of commands:
 ```python
 import pickle
 from datasets import load_dataset
+from plaid.containers.sample import Sample
 
 # Load the dataset
 dataset = load_dataset("chanel/dataset", split="all_samples")
@@ -290,7 +294,7 @@ dataset = load_dataset("chanel/dataset", split="all_samples")
 split_names = list(dataset.description["split"].keys())
 ids_split_0 = dataset.description["split"][split_names[0]]
 sample_0_split_0 = dataset[ids_split_0[0]]["sample"]
-plaid_sample = pickle.loads(sample_0_split_0)
+plaid_sample = Sample.model_validate(pickle.loads(sample_0_split_0))
 print("type(plaid_sample) =", type(plaid_sample))
 
 print("plaid_sample =", plaid_sample)

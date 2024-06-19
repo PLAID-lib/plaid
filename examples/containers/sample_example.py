@@ -542,3 +542,10 @@ new_sample = Sample()
 new_sample.load(sample_save_fname)
 
 show_sample(new_sample)
+
+new_sample.add_scalar("a", 2.1)
+serialized_sample  = new_sample.model_dump()
+
+unserialized_sample = Sample.model_validate(serialized_sample)
+print()
+show_sample(unserialized_sample)

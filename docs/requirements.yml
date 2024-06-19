@@ -16,6 +16,8 @@ dependencies:
   - pycgns
 #---# other
   - scikit-learn
+  - datasets
+  - pydantic
   - pip
   - pip:
     - furo
