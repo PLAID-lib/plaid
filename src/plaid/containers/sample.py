@@ -146,8 +146,9 @@ TimeSeriesType = tuple[TimeSequenceType, FieldType]
 """A TimeSeriesType is a tuple[TimeSequenceType,FieldType]
 """
 
+from pydantic import BaseModel, model_serializer
 
-class Sample(object):
+class Sample(BaseModel):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
     """
 
@@ -155,6 +156,11 @@ class Sample(object):
                  directory_path: str = None,
                  mesh_base_name: str = 'Base',
                  mesh_zone_name: str = 'Zone',
+                 meshes: dict[float, CGNSTree] = None,
+                 scalars: dict[str, ScalarType] = None,
+                 time_series: dict[str, TimeSeriesType] = None,
+                 links: dict[float, list[LinkType]] = None,
+                 paths: dict[float, list[PathType]] = None,
                  ) -> None:
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
@@ -181,15 +187,17 @@ class Sample(object):
         Caution:
             It is assumed that you provided a compatible PLAID sample.
         """
-        self._meshes: dict[float, CGNSTree] = None
-        self._scalars: dict[str, ScalarType] = None
-        self._time_series: dict[str, TimeSeriesType] = None
-
-        self._links: dict[float, list[LinkType]] = None
-        self._paths: dict[float, list[PathType]] = None
+        super().__init__()
 
         self._mesh_base_name: str = mesh_base_name
         self._mesh_zone_name: str = mesh_zone_name
+
+        self._meshes: dict[float, CGNSTree] = meshes
+        self._scalars: dict[str, ScalarType] = scalars
+        self._time_series: dict[str, TimeSeriesType] = time_series
+
+        self._links: dict[float, list[LinkType]] = links
+        self._paths: dict[float, list[PathType]] = paths
 
         if directory_path is not None:
             self.load(str(directory_path))
@@ -1602,8 +1610,8 @@ class Sample(object):
             self.add_time_series(
                 names[1], times_and_val[:, 0], times_and_val[:, 1])
 
-    # -------------------------------------------------------------------------#
-    def __repr__(self) -> str:
+    # # -------------------------------------------------------------------------#
+    def __str__(self) -> str:
         """Return a string representation of the sample.
 
         Returns:
@@ -1636,4 +1644,17 @@ class Sample(object):
         if str_repr[-2:] == ', ':
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
+
         return str_repr
+
+    @model_serializer()
+    def serialize_model(self):
+        return {
+            'mesh_base_name': self._mesh_base_name,
+            'mesh_zone_name': self._mesh_zone_name,
+            'meshes': self._meshes,
+            'scalars': self._scalars,
+            'time_series': self._time_series,
+            'links': self._links,
+            'paths': self._paths,
+        }

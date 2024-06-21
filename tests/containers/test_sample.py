@@ -598,10 +598,10 @@ class Test_Sample():
             base_name=base_name)
         sample.show_tree()
         assert (sample.has_zone(zone_name, base_name))
-        assert (~sample.has_zone('not_present_zone_name', base_name))
-        assert (~sample.has_zone(zone_name, 'not_present_base_name'))
+        assert (not sample.has_zone('not_present_zone_name', base_name))
+        assert (not sample.has_zone(zone_name, 'not_present_base_name'))
         assert (
-            ~sample.has_zone(
+            not sample.has_zone(
                 'not_present_zone_name',
                 'not_present_base_name'))
 
