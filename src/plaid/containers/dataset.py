@@ -731,8 +731,44 @@ class Dataset(object):
         shutil.rmtree(inputdir)
 
     # -------------------------------------------------------------------------#
+    def add_to_dir(self, sample:Sample, savedir:str=None, verbose:bool=False) -> None:
+        """
+
+        Notes:
+         --- if savedir is None, will look for self.savedir which will be retrieved from last previous call to load or save
+        """
+        if self.savedir is None:
+            if savedir is None:
+                raise ValueError(f'self.savedir and savedir are None, we don’t know where to save, specify one of them before')
+            else:
+                self.savedir = savedir
+
+        # --- sample is not only saved to dir, but also added to the dataset
+        # self.add_sample(sample)
+        # --- if dataset already contains other Samples, they will all be saved to savedir
+        # self._save_to_dir_(self.savedir)
+
+        if not (os.path.isdir(self.savedir)):
+            os.makedirs(self.savedir)
+
+        if verbose:  # pragma: no cover
+            print(f"Saving database to: {self.savedir}")
+
+        samples_dir = os.path.join(self.savedir, 'samples')
+        if not (os.path.isdir(samples_dir)):
+            os.makedirs(samples_dir)
+
+        # find i_sample
+        # if there are already samples in the instance, we should not take an already existing id
+        # if there are already samples in the path, we should not take an already existing id
+        sample_ids_in_path = [int(d.split('_')[-1]) for d in glob.glob(os.path.join(samples_dir, 'sample_*')) if os.path.isdir(d)]
+        i_sample = max(len(self), max(sample_ids_in_path)+1)
+
+        sample_fname = os.path.join(samples_dir, f'sample_{i_sample:09d}')
+        sample.save(sample_fname)
+
     def _save_to_dir_(self, savedir: Union[str,Path], verbose: bool = False) -> None:
-        """Saves the dataset into a created sample directory and creates an 'infos.yaml' file to store additional information about the dataset.
+        """Saves the dataset into a sub-directory `samples` and creates an 'infos.yaml' file to store additional information about the dataset.
 
         Args:
             savedir (Union[str,Path]): The path in which to save the files.
@@ -741,6 +777,8 @@ class Dataset(object):
         savedir = Path(savedir)
         if not (savedir.is_dir()):
             savedir.mkdir(parents=True)
+
+        self.savedir = savedir
 
         if verbose:  # pragma: no cover
             print(f"Saving database to: {savedir}")
@@ -794,6 +832,8 @@ class Dataset(object):
 
         if processes_number < -1:
             raise ValueError("Number of processes cannot be < -1")
+
+        self.savedir = savedir
 
         if verbose:  # pragma: no cover
             print(f"Reading database located at: {savedir}")
