@@ -96,7 +96,8 @@ def plaid_generator_to_huggingface(generator:Callable, infos:dict, problem_defin
     """
     ds = datasets.Dataset.from_generator(
             generator,
-            num_proc = processes_number)
+            num_proc = processes_number,
+            writer_batch_size = 1)
 
     ds._split = datasets.splits.NamedSplit("all_samples")
 
