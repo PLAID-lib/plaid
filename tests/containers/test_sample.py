@@ -124,15 +124,15 @@ def tree(nodes, triangles, vertex_field, cell_center_field):
     tree = MeshToCGNS(Mesh)
     return tree
 
+
 @pytest.fixture()
 def sample_with_linked_tree(tree, tmp_path):
     sample_with_linked_tree = Sample()
     sample_with_linked_tree.add_tree(tree)
-    save_dir = tmp_path / 'test_dir'
-    sample_with_linked_tree.save(save_dir)
-    path_linked_sample = save_dir / "meshes/mesh_000000000.cgns"
+    path_linked_sample = tmp_path / 'test_dir' / "meshes/mesh_000000000.cgns"
     sample_with_linked_tree.link_tree(path_linked_sample, sample_with_linked_tree, linked_time=0., time=1.)
     return sample_with_linked_tree
+
 
 @pytest.fixture()
 def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
@@ -334,7 +334,11 @@ class Test_Sample():
     def test_get_mesh_without_links(self, sample_with_linked_tree):
         sample_with_linked_tree.get_mesh(time=1.,apply_links=False)
 
-    def test_get_mesh_with_links(self, sample_with_linked_tree):
+    def test_get_mesh_with_links_in_memory(self, sample_with_linked_tree):
+        sample_with_linked_tree.get_mesh(time=1.,apply_links=True, in_memory=True)
+
+    def test_get_mesh_with_links(self, sample_with_linked_tree, tmp_path):
+        sample_with_linked_tree.save(tmp_path / 'test_dir')
         sample_with_linked_tree.get_mesh(time=1.,apply_links=True)
 
     def test_set_meshes_empty(self, sample, tree):

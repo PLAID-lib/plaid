@@ -475,12 +475,13 @@ class Sample(BaseModel):
 
         return self._meshes[time]
 
-    def get_mesh(self, time: float = None, apply_links: bool = False) -> CGNSTree:
+    def get_mesh(self, time: float = None, apply_links: bool = False, in_memory = False) -> CGNSTree:
         """Retrieve the CGNS tree structure for a specified time step, if available.
 
         Args:
             time (float, optional): The time step for which to retrieve the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
-            apply_links (bool, optional): Activates the following of the CGNS links to reconstruct the complete CGNS tree - in this case, a deepcopy of the tree is made to prevent from modifying the existing tree
+            apply_links (bool, optional): Activates the following of the CGNS links to reconstruct the complete CGNS tree - in this case, a deepcopy of the tree is made to prevent from modifying the existing tree.
+            in_memory (bool, optional): Active if apply_links == True, ONLY WORKING if linked mesh is in the current sample. This option follows the link in memory from current sample.
 
         Returns:
             CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
@@ -497,7 +498,12 @@ class Sample(BaseModel):
 
         tree = copy.deepcopy(tree)
         for link in links:
-            subtree, links, _ = CGM.load(os.path.join(link[0], link[1]), subtree=link[2])
+            if in_memory == False:
+                subtree, _, _ = CGM.load(os.path.join(link[0], link[1]), subtree=link[2])
+            else:
+                linked_timestep = int(link[1].split(".cgns")[0].split("_")[1])
+                linked_timestamp = list(self._meshes.keys())[linked_timestep]
+                subtree = self.get_mesh(linked_timestamp)
             node_path = '/'.join(link[2].split('/')[:-1])
             node_to_append = CGU.getNodeByPath(tree, node_path)
             assert node_to_append is not None, f"nodepath {node_path} not present in tree, cannot apply link"
@@ -505,7 +511,7 @@ class Sample(BaseModel):
 
         return tree
 
-    def get_links(self, time: float = None) -> CGNSTree:
+    def get_links(self, time: float = None) -> list[LinkType]:
         """Retrieve the CGNS links for a specified time step, if available.
 
         Args:
