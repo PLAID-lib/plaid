@@ -816,18 +816,17 @@ class Dataset(object):
             logger.info(f"Number of processes set to maximum available: {os.cpu_count()}")
             processes_number = os.cpu_count()
 
-        if processes_number == 0:
+        if processes_number == 0 or processes_number == 1:
             for sample_path in tqdm(sample_paths, disable=not(verbose)):
                 id = int(sample_path.split('_')[-1])
                 sample = Sample(sample_path)
                 self.add_sample(sample, id)
         else:
-            """
             with Pool(processes_number) as p:
                 for id, sample in list(tqdm(p.imap(process_sample, sample_paths), total=len(sample_paths), disable=not(verbose))):
                     self.set_sample(id, sample)
-            """
 
+            """
             samples_pool = Pool(processes_number)
             pbar = tqdm(total=len(sample_paths), disable=not (verbose))
 
@@ -849,27 +848,7 @@ class Dataset(object):
             for s in samples:
                 id, sample = s.get()
                 self.set_sample(id, sample)
-
-        """
-        1./0.
-        if os.path.isdir(samples_dir):
-            cgns_fnames = glob.glob(samples_dir+os.sep+"*")
-            #cgns_fnames = glob.glob(os.path.join(samples_dir, '/*/*.cgns'))
-            # csv_fnames = glob.glob(os.path.join(samples_dir, '*.csv'))
-            print(samples_dir)
-            print(cgns_fnames)
-            for fname in cgns_fnames:
-                noextname, ext = os.path.splitext(fname)
-                basename = os.path.basename(noextname)
-                sbname = basename.split('_')
-                assert(len(sbname) == 2)
-                assert(sbname[0] == 'sample')
-                id = int(sbname[1])
-                self._set_sample(id, Sample.load_from_file(noextname))
-
-                # id = self.add_sample(Sample())
-                # self(id).load(basename)
-        """
+            """
 
         infos_fname = os.path.join(savedir, 'infos.yaml')
         if os.path.isfile(infos_fname):
@@ -878,7 +857,7 @@ class Dataset(object):
 
         if len(self) == 0:  # pragma: no cover
             print("Warning: dataset contains no sample")
-            
+
     @staticmethod
     def _load_number_of_samples_(savedir: str) -> int:
         """This function counts the number of sample files in a specified directory, which is
