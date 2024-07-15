@@ -44,7 +44,7 @@ def tabular(nb_samples, nb_scalars):
 @pytest.fixture()
 def scalar_names(nb_scalars):
     return [
-        f'test_scalar_{np.random.randint(1e10,1e12)}' for _ in range(nb_scalars)]
+        f'test_scalar_{np.random.randint(1e8,1e9)}' for _ in range(nb_scalars)]
 
 
 @pytest.fixture()
@@ -59,7 +59,7 @@ def sample(zone_name, base_name):
         zone_name,
         base_name)
     sample.add_field(
-        f'test_field_{np.random.randint(1e10,1e12)}',
+        f'test_field_{np.random.randint(1e8,1e9)}',
         np.random.randn(
             np.random.randint(
                 10,
@@ -83,7 +83,7 @@ def samples(nb_samples, zone_name, base_name):
             zone_name,
             base_name)
         sample.add_field(
-            f'test_field_{np.random.randint(1e10,1e12)}',
+            f'test_field_{np.random.randint(1e8,1e9)}',
             np.random.randn(
                 np.random.randint(
                     10,
@@ -108,7 +108,7 @@ def other_samples(nb_samples, zone_name, base_name):
             zone_name,
             base_name)
         sample.add_field(
-            f'test_field_{np.random.randint(1e10,1e12)}',
+            f'test_field_{np.random.randint(1e8,1e9)}',
             np.random.randn(
                 np.random.randint(
                     10,

@@ -2,7 +2,7 @@
 public/
 tests/post/*.png
 tests/post/*.yaml
-examples/post/*.png
+examples/**/*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
