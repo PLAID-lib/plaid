@@ -672,6 +672,9 @@ class Sample(BaseModel):
         def find_feature_roots(sample, time, Type_t):
 
             Types_t = CGU.getAllNodesByTypeSet(sample.get_mesh(time), Type_t)
+            # in case the type is not present in the tree
+            if Types_t==[]:
+                return []
             types = [Types_t[0]]
             for t in Types_t[1:]:
                 for tt in types:
