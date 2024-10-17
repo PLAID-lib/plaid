@@ -60,7 +60,7 @@ def plaid_dataset_to_huggingface(dataset:Dataset, problem_definition:ProblemDefi
     Example:
         .. code-block:: python
 
-            dataset = convert_dataset_to_huggingface(dataset, problem_definition)
+            dataset = plaid_dataset_to_huggingface(dataset, problem_definition)
             dataset.save_to_disk("path/to/dir)
             dataset.push_to_hub("chanel/dataset")
     """
@@ -90,7 +90,7 @@ def plaid_generator_to_huggingface(generator:Callable, infos:dict, problem_defin
     Example:
         .. code-block:: python
 
-            dataset = convert_dataset_to_huggingface(generator, infos, problem_definition)
+            dataset = plaid_generator_to_huggingface(generator, infos, problem_definition)
             dataset.push_to_hub("chanel/dataset")
             dataset.save_to_disk("path/to/dir")
     """
@@ -128,7 +128,7 @@ def huggingface_dataset_to_plaid(ds:datasets.Dataset)->tuple[Self, ProblemDefini
 
             dataset = load_dataset("path/to/dir", split = "all_samples")
             dataset = load_from_disk("chanel/dataset")
-            plaid_dataset, plaid_problem = convert_huggingface_to_dataset(dataset)
+            plaid_dataset, plaid_problem = huggingface_dataset_to_plaid(dataset)
     """
 
     dataset = Dataset()
