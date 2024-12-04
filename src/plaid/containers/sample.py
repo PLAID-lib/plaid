@@ -1222,9 +1222,9 @@ class Sample(BaseModel):
                 f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`")
 
         coord_type = [CGK.CoordinateX_s, CGK.CoordinateY_s, CGK.CoordinateZ_s]
-        for i_dim in range(nodes.shape[1]):
+        for i_dim in range(nodes.shape[-1]):
             CGL.newCoordinates(
-                zone_node, coord_type[i_dim], np.asfortranarray(nodes[:, i_dim]))
+                zone_node, coord_type[i_dim], np.asfortranarray(nodes[..., i_dim]))
 
     set_points = set_nodes
     set_vertices = set_nodes
