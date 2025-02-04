@@ -1639,7 +1639,12 @@ class Sample(BaseModel):
 
         field_names = set()
         for time in times:
-            field_names = field_names.union(self.get_field_names(time=time))
+            ## Need to include all possible location within the count
+            field_names = field_names.union(self.get_field_names(time=time,location="Vertex")
+                                            + self.get_field_names(time=time,location="EdgeCenter")
+                                            + self.get_field_names(time=time,location="FaceCenter")
+                                            +  self.get_field_names(time=time,location="CellCenter")
+                                             )
         nb_fields = len(field_names)
         str_repr += f"{nb_fields} field{'' if nb_fields==1 else 's'}, "
 
