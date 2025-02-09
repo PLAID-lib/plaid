@@ -379,7 +379,7 @@ class Test_Sample():
         assert list(sample._paths.keys()) == []
 
     def test_link_tree(self, sample_with_linked_tree):
-        link_checks = ['/Base_2_2/Zone/Elements_Selections', '/Base_2_2/Zone/Elements_TRI_3', '/Base_2_2/Zone/GridCoordinates', '/Base_2_2/Zone/ZoneBC']
+        link_checks = ['/Base_2_2/Zone/Elements_Selections', '/Base_2_2/Zone/Points_Selections', '/Base_2_2/Zone/Points_Selections/tag', '/Base_2_2/Zone/Elements_TRI_3', '/Base_2_2/Zone/GridCoordinates', '/Base_2_2/Zone/ZoneBC']
         for link in sample_with_linked_tree._links[1]:
             assert link[1] == "mesh_000000000.cgns"
             assert link[2] == link[3]
