@@ -146,6 +146,73 @@ TimeSeriesType = tuple[TimeSequenceType, FieldType]
 """A TimeSeriesType is a tuple[TimeSequenceType,FieldType]
 """
 
+def ReadIndex(pyTree: list, dim: list[int]):
+    """Read Index Array or Index Range from CGNS
+
+    Args:
+        pyTree (list): CGNS node which has a child Index to read
+        dim (list): dimensions of the coordinates
+
+    Returns:
+        indices
+    """
+    a = ReadIndexArray(pyTree)
+    b = ReadIndexRange(pyTree, dim)
+    return np.hstack((a, b))
+
+def ReadIndexArray(pyTree: list):
+    """Read Index Array from CGNS
+
+    Args:
+        pyTree (list): CGNS node which has a child of type IndexArray_t to read
+
+    Returns:
+        indices
+    """
+    indexArrayPaths = CGU.getPathsByTypeSet(pyTree, ['IndexArray_t'])
+    res = []
+    for indexArrayPath in indexArrayPaths:
+        data = CGU.getNodeByPath(pyTree, indexArrayPath)
+        if data[1] is None:
+            continue
+        else:
+            res.extend(data[1].ravel())
+    return np.array(res, dtype=int).ravel()
+
+def ReadIndexRange(pyTree: list, dim: list[int]):
+    """Read Index Range from CGNS
+
+    Args:
+        pyTree (list): CGNS node which has a child of type IndexRange_t to read
+        dim (List[str]): dimensions of the coordinates
+
+    Returns:
+        indices
+    """
+    indexRangePaths = CGU.getPathsByTypeSet(pyTree, ['IndexRange_t'])
+    res = []
+
+    for indexRangePath in indexRangePaths:  # Is it possible there are several ?
+        indexRange = CGU.getValueByPath(pyTree, indexRangePath)
+
+        if indexRange.shape == (3, 2):  # 3D
+            for k in range(indexRange[:, 0][2], indexRange[:, 1][2]+1):
+                for j in range(indexRange[:, 0][1], indexRange[:, 1][1]+1):
+                    global_id = np.arange(indexRange[:, 0][0], indexRange[:, 1][0]+1) + dim[0] * (j - 1) + dim[0] * dim[1] * (k - 1)
+                    res.extend(global_id)
+
+        elif indexRange.shape == (2, 2):  # 2D
+            for j in range(indexRange[:, 0][1], indexRange[:, 1][1]):
+                for i in range(indexRange[:, 0][0], indexRange[:, 1][0]):
+                    global_id = i + dim[0] * (j - 1)
+                    res.append(global_id)
+        else:
+            begin = indexRange[0]
+            end = indexRange[1]
+            res.extend(np.arange(begin, end+1).ravel())
+
+    return np.array(res, dtype=int).ravel()
+
 from pydantic import BaseModel, model_serializer
 
 class Sample(BaseModel):
@@ -1147,6 +1214,59 @@ class Sample(BaseModel):
 
         return self._time_series.pop(name)
 
+
+    # -------------------------------------------------------------------------#
+    def get_nodal_tags(self, zone_name: str = None, base_name: str = None,
+                  time: float = None) -> dict[str, np.ndarray]:
+        # get_zone will look for default base_name, zone_name and time
+
+        zone_node = self.get_zone(zone_name, base_name, time)
+
+        if zone_node is None:
+            return {}
+
+        nodal_tags = {}
+
+        gridCoordinatesPath = CGU.getPathsByTypeSet(zone_node, ["GridCoordinates_t"])[0]
+        gx = CGU.getNodeByPath(zone_node, gridCoordinatesPath+'/CoordinateX')[1]
+        dim = gx.shape
+
+        BCPaths = CGU.getPathsByTypeList(zone_node, ["Zone_t", "ZoneBC_t", "BC_t"])
+
+        for BCPath in BCPaths:
+            BCNode = CGU.getNodeByPath(zone_node, BCPath)
+            BCName = BCNode[0]
+            indices = ReadIndex(BCNode, dim)
+            if len(indices) == 0:
+                continue
+
+            gl = CGU.getPathsByTypeSet(BCNode, ["GridLocation_t"])
+            if gl:
+                location = CGU.getValueAsString(CGU.getNodeByPath(BCNode, gl[0]))
+            else:
+                location = "Vertex"
+            if location == "Vertex":
+                nodal_tags[BCName] = indices-1
+
+        ZSRPaths = CGU.getPathsByTypeList(zone_node, ["Zone_t", "ZoneSubRegion_t"])
+        for path in ZSRPaths:
+            ZSRNode = CGU.getNodeByPath(zone_node, path)
+            fnpath = CGU.getPathsByTypeList(ZSRNode, ['ZoneSubRegion_t', 'FamilyName_t'])
+            if fnpath:
+                fn = CGU.getNodeByPath(ZSRNode, fnpath[0])
+                familyName = CGU.getValueAsString(fn)
+            indices = ReadIndex(ZSRNode, dim)
+            if len(indices) == 0:
+                continue
+            gl = CGU.getPathsByTypeSet(ZSRNode, ["GridLocation_t"])[0]
+            location = CGU.getValueAsString(CGU.getNodeByPath(ZSRNode, gl))
+            if not gl or location == "Vertex":
+                nodal_tags[BCName] = indices-1
+
+        sorted_nodal_tags = {key: np.sort(value) for key, value in nodal_tags.items()}
+
+        return sorted_nodal_tags
+
     # -------------------------------------------------------------------------#
     def get_nodes(self, zone_name: str = None, base_name: str = None,
                   time: float = None) -> Optional[np.ndarray]:
@@ -1647,7 +1767,7 @@ class Sample(BaseModel):
                     field_names = field_names.union(self.get_field_names(zone_name=zn,time=time,location="Vertex")
                                                     + self.get_field_names(zone_name=zn,time=time,location="EdgeCenter")
                                                     + self.get_field_names(zone_name=zn,time=time,location="FaceCenter")
-                                                    +  self.get_field_names(zone_name=zn,time=time,location="CellCenter")
+                                                    + self.get_field_names(zone_name=zn,time=time,location="CellCenter")
                                                     )
         nb_fields = len(field_names)
         str_repr += f"{nb_fields} field{'' if nb_fields==1 else 's'}, "
