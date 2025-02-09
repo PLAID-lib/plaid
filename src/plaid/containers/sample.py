@@ -1218,8 +1218,18 @@ class Sample(BaseModel):
     # -------------------------------------------------------------------------#
     def get_nodal_tags(self, zone_name: str = None, base_name: str = None,
                   time: float = None) -> dict[str, np.ndarray]:
-        # get_zone will look for default base_name, zone_name and time
+        """Get the nodal tags for a specified base and zone at a given time.
 
+        Args:
+            zone_name (str, optional): The name of the zone for which element connectivity data is requested. Defaults to None, indicating the default zone.
+            base_name (str, optional): The name of the base for which element connectivity data is requested. Defaults to None, indicating the default base.
+            time (float, optional): The time at which element connectivity data is requested. If a specific time is not provided, the method will display the tree structure for the default time step.
+
+        Returns:
+            dict[str,np.ndarray]: A dictionary where keys are nodal tags names and values are NumPy arrays containing the corresponding tag indices.
+            The NumPy arrays have shape (num_nodal_tags).
+        """
+        # get_zone will look for default base_name, zone_name and time
         zone_node = self.get_zone(zone_name, base_name, time)
 
         if zone_node is None:
@@ -1360,7 +1370,7 @@ class Sample(BaseModel):
             time (float, optional): The time at which element connectivity data is requested. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-            dict[str,np.ndarray]: A dictionary where keys are element type namesand values are NumPy arrays representing the element connectivity data.
+            dict[str,np.ndarray]: A dictionary where keys are element type names and values are NumPy arrays representing the element connectivity data.
             The NumPy arrays have shape (num_elements, num_nodes_per_element), and element indices are 0-based.
         """
         # get_zone will look for default base_name, zone_name and time
