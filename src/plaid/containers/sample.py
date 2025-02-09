@@ -1640,11 +1640,15 @@ class Sample(BaseModel):
         field_names = set()
         for time in times:
             ## Need to include all possible location within the count
-            field_names = field_names.union(self.get_field_names(time=time,location="Vertex")
-                                            + self.get_field_names(time=time,location="EdgeCenter")
-                                            + self.get_field_names(time=time,location="FaceCenter")
-                                            +  self.get_field_names(time=time,location="CellCenter")
-                                             )
+            base_names = self.get_base_names(time=time)
+            for bn in base_names:
+                zone_names = self.get_zone_names(base_name=bn)
+                for zn in zone_names:
+                    field_names = field_names.union(self.get_field_names(zone_name=zn,time=time,location="Vertex")
+                                                    + self.get_field_names(zone_name=zn,time=time,location="EdgeCenter")
+                                                    + self.get_field_names(zone_name=zn,time=time,location="FaceCenter")
+                                                    +  self.get_field_names(zone_name=zn,time=time,location="CellCenter")
+                                                    )
         nb_fields = len(field_names)
         str_repr += f"{nb_fields} field{'' if nb_fields==1 else 's'}, "
 
