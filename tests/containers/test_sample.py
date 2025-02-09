@@ -97,6 +97,13 @@ def nodes3d():
 
 
 @pytest.fixture()
+def nodal_tags():
+    return np.array([
+        0, 1,
+    ])
+
+
+@pytest.fixture()
 def triangles():
     return np.array([
         [0, 1, 2],
@@ -116,8 +123,9 @@ def cell_center_field():
 
 
 @pytest.fixture()
-def tree(nodes, triangles, vertex_field, cell_center_field):
+def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
     Mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
+    Mesh.GetNodalTag("tag").AddToTag(nodal_tags)
     Mesh.nodeFields['test_node_field_1'] = vertex_field
     Mesh.nodeFields['big_node_field'] = np.random.randn(50)
     Mesh.elemFields['test_elem_field_1'] = cell_center_field
@@ -371,8 +379,8 @@ class Test_Sample():
         assert list(sample._paths.keys()) == []
 
     def test_link_tree(self, sample_with_linked_tree):
-        link_checks = ['/Base_2_2/Zone/Elements_Selections', '/Base_2_2/Zone/Elements_TRI_3', '/Base_2_2/Zone/GridCoordinates']
-        for link in sample_with_linked_tree._links[1.]:
+        link_checks = ['/Base_2_2/Zone/Elements_Selections', '/Base_2_2/Zone/Elements_TRI_3', '/Base_2_2/Zone/GridCoordinates', '/Base_2_2/Zone/ZoneBC']
+        for link in sample_with_linked_tree._links[1]:
             assert link[1] == "mesh_000000000.cgns"
             assert link[2] == link[3]
             assert link[2] in link_checks
@@ -765,6 +773,13 @@ class Test_Sample():
         assert isinstance(time_series, tuple)
         assert isinstance(time_series[0], np.ndarray)
         assert isinstance(time_series[1], np.ndarray)
+
+    # -------------------------------------------------------------------------#
+    def test_get_nodal_tags_empty(self, sample):
+        assert (sample.get_nodal_tags() == {})
+
+    def test_get_nodal_tags(self, sample_with_tree, nodal_tags):
+        assert (np.all(sample_with_tree.get_nodal_tags()["tag"] == nodal_tags))
 
     # -------------------------------------------------------------------------#
     def test_get_nodes_empty(self, sample):
