@@ -12,7 +12,7 @@ dependencies:
   - myst-parser
   - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
 #---# mesh/graph libs
-  - muscat>=2.0.0
+  - muscat=2.4.1
   - pycgns
 #---# other
   - scikit-learn

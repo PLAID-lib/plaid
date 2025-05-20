@@ -5,7 +5,7 @@ channels:
   - nodefaults
 
 dependencies:
-  - python>=3.11
+  - python=3.11
   - tqdm
   - pyyaml
   - pycgns
@@ -13,3 +13,5 @@ dependencies:
   - pytest
   - rich
   - scikit-learn
+  - datasets
+  - pydantic
