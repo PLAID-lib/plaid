@@ -15,16 +15,18 @@ except ImportError:  # pragma: no cover
 import glob
 import logging
 import os
+import shutil
 import subprocess
 from multiprocessing import Pool
 from typing import Union
+from pathlib import Path
 
 import numpy as np
 import yaml
 from tqdm import tqdm
 
 from plaid.containers.sample import Sample
-from plaid.utils.base import ShapeError, generate_random_ASCII
+from plaid.utils.base import ShapeError, DeprecatedError, generate_random_ASCII
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -44,16 +46,17 @@ authorized_info_keys = {
 # %% Functions
 
 
-def process_sample(sample_path: str, *args, **kwargs) -> tuple:  # pragma: no cover
+def process_sample(sample_path: Union[str,Path], *args, **kwargs) -> tuple:  # pragma: no cover
     """Load Sample from path
 
     Args:
-        sample_path (str): The path of the Sample.
+        sample_path (Union[str,Path]): The path of the Sample.
 
     Returns:
         tuple: The loaded Sample and its ID.
     """
-    id = int(sample_path.split('_')[-1])
+    sample_path = Path(sample_path)
+    id = int(sample_path.stem.split('_')[-1])
     return id, Sample(sample_path)
 
 # %% Classes
@@ -62,14 +65,16 @@ def process_sample(sample_path: str, *args, **kwargs) -> tuple:  # pragma: no co
 class Dataset(object):
     """A set of samples, and optionnaly some other informations about the Dataset."""
 
-    def __init__(self, directory_path: str = None,
+    def __init__(self, directory_path: Union[str,Path] = None,
                  verbose: bool = False, processes_number: int = 0) -> None:
-        """Initialize an empty :class:`Dataset <plaid.containers.dataset.Dataset>` that should be fed with :class:`Samples <plaid.containers.sample.Sample>.`
+        """Initialize a :class:`Dataset <plaid.containers.dataset.Dataset>`.
+
+        If `directory_path` is not specified it initializes an empty :class:`Dataset <plaid.containers.dataset.Dataset>` that should be fed with :class:`Samples <plaid.containers.sample.Sample>`.
 
         Use :meth:`add_sample <plaid.containers.dataset.Dataset.add_sample>` or :meth:`add_samples <plaid.containers.dataset.Dataset.add_samples>` to feed the :class:`Dataset`
 
         Args:
-            directory_path (str, optional): The path from which to load PLAID dataset files.
+            directory_path (Union[str,Path], optional): The path from which to load PLAID dataset files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
@@ -101,11 +106,9 @@ class Dataset(object):
         self._infos: dict[str, dict[str, str]] = {}
 
         if directory_path is not None:
-            if not isinstance(directory_path, str):
-                directory_path = str(directory_path)
+            directory_path = Path(directory_path)
 
-            splits = directory_path.split(".")
-            if len(splits) > 1 and splits[-1] == "plaid":
+            if directory_path.suffix == '.plaid':
                 self.load(
                     directory_path,
                     verbose=verbose,
@@ -621,64 +624,61 @@ class Dataset(object):
         return self.add_samples(dataset.get_samples(as_list=True))
 
     # -------------------------------------------------------------------------#
-    def save(self, fname: str) -> None:
+    def save(self, fname: Union[str,Path]) -> None:
         """Saves the data set to a TAR (Tape Archive) file. It
         creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
-            fname (str): The path to which the data set will be saved.
+            fname (Union[str,Path]): The path to which the data set will be saved.
 
         Raises:
             ValueError: If the randomly generated temporary dir name is already used (extremely unlikely!).
         """
+        fname = Path(fname)
+
         # First : creates a directory <savedir> to save everything in an
         # arborescence on disk
-        savedir = os.path.join(
-            os.path.dirname(fname),
-            f'tmpsavedir_{generate_random_ASCII()}')
-        if os.path.isdir(savedir):  # pragma: no cover
-            raise ValueError(
-                "temporary intermediate directory <{}> already exits".format(savedir))
-        os.makedirs(savedir)
+        savedir = fname.parent / f'tmpsavedir_{generate_random_ASCII()}'
+        if savedir.is_dir():  # pragma: no cover
+            raise ValueError(f"temporary intermediate directory <{savedir}> already exits")
+        savedir.mkdir(parents=True)
 
         self._save_to_dir_(savedir)
 
         curdir = os.getcwd()
-        os.chdir(savedir)
 
         # Then : tar dir in file <fname>
-        ARGUMENTS = ['tar', '-cf', fname, '.']
+        # TODO: avoid using subprocess by using lib tarfile
+        ARGUMENTS = ['tar', '-cf', fname, '-C', savedir, '.']
         subprocess.call(ARGUMENTS)
-
-        os.chdir(curdir)
 
         # Finally : removes directory <savedir>
-        ARGUMENTS = ['rm', '-rf', f'{savedir}']
-        subprocess.call(ARGUMENTS)
+        shutil.rmtree(savedir)
 
     @classmethod
-    def load_from_file(cls, fname: str, verbose: bool = False, processes_number: int = 0) -> Self:
+    def load_from_file(cls, fname: Union[str,Path], verbose: bool = False, processes_number: int = 0) -> Self:
         """Load data from a specified TAR (Tape Archive) file.
 
         Args:
-            fname (str): The path to the data file to be loaded.
+            fname (Union[str,Path]): The path to the data file to be loaded.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
         Returns:
             Self: The loaded dataset (Dataset).
         """
+        fname = Path(fname)
         instance = cls()
         instance.load(fname, verbose, processes_number)
         return instance
 
     @classmethod
-    def load_from_dir(cls, dname: str, ids: list[int] = None,
+    def load_from_dir(cls, dname: Union[str,Path],  ids: list[int] = None,
                       verbose: bool = False, processes_number: int = 0) -> Self:
         """Load data from a specified directory.
 
         Args:
-            dname (str): The path from which to load files.
+            dname (Union[str,Path]): The path from which to load files.
             ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
@@ -686,6 +686,7 @@ class Dataset(object):
         Returns:
             Self: The loaded dataset (Dataset).
         """
+        dname = Path(dname)
         instance = cls()
         instance._load_from_dir_(
             dname,
@@ -694,13 +695,13 @@ class Dataset(object):
             processes_number=processes_number)
         return instance
 
-    def load(self, fname: str, verbose: bool = False,
+    def load(self, fname: Union[str,Path], verbose: bool = False,
              processes_number: int = 0) -> None:
         """Load data from a specified TAR (Tape Archive) file. It
         creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
-            fname (str): The path to the data file to be loaded.
+            fname (Union[str,Path]): The path to the data file to be loaded.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
@@ -708,15 +709,15 @@ class Dataset(object):
             ValueError: If a randomly generated temporary directory already exists,
             indicating a potential conflict during the loading process (extremely unlikely).
         """
-        inputdir = os.path.join(
-            os.path.dirname(fname),
-            f'tmploaddir_{generate_random_ASCII()}')
-        if os.path.isdir(inputdir):  # pragma: no cover
-            raise ValueError(
-                "temporary intermediate directory <{}> already exits".format(inputdir))
-        os.makedirs(inputdir)
+        fname = Path(fname)
+
+        inputdir = fname.parent / f'tmploaddir_{generate_random_ASCII()}'
+        if inputdir.is_dir():  # pragma: no cover
+            raise ValueError(f"temporary intermediate directory <{inputdir}> already exits")
+        inputdir.mkdir(parents=True)
 
         # First : untar file <fname> to a directory <inputdir>
+        # TODO: avoid using subprocess by using a lib tarfile
         arguments = ['tar', '-xf', fname, '-C', inputdir]
         subprocess.call(arguments)
 
@@ -727,36 +728,36 @@ class Dataset(object):
             processes_number=processes_number)
 
         # Finally : removes directory <inputdir>
-        arguments = ['rm', '-rf', f'{inputdir}']
-        subprocess.call(arguments)
+        shutil.rmtree(inputdir)
 
     # -------------------------------------------------------------------------#
-    def _save_to_dir_(self, savedir: str, verbose: bool = False) -> None:
+    def _save_to_dir_(self, savedir: Union[str,Path], verbose: bool = False) -> None:
         """Saves the dataset into a created sample directory and creates an 'infos.yaml' file to store additional information about the dataset.
 
         Args:
-            savedir (str): The path in which to save the files.
+            savedir (Union[str,Path]): The path in which to save the files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
         """
-        if not (os.path.isdir(savedir)):
-            os.makedirs(savedir)
+        savedir = Path(savedir)
+        if not (savedir.is_dir()):
+            savedir.mkdir(parents=True)
 
         if verbose:  # pragma: no cover
             print(f"Saving database to: {savedir}")
 
-        samples_dir = os.path.join(savedir, 'samples')
-        if not (os.path.isdir(samples_dir)):
-            os.makedirs(samples_dir)
+        samples_dir = savedir / 'samples'
+        if not (samples_dir.is_dir()):
+            samples_dir.mkdir(parents=True)
 
         # ---# save samples
         for i_sample, sample in tqdm(
                 self._samples.items(), disable=not (verbose)):
-            sample_fname = os.path.join(samples_dir, f'sample_{i_sample:09d}')
+            sample_fname = samples_dir / f'sample_{i_sample:09d}'
             sample.save(sample_fname)
 
         # ---# save infos
         if len(self._infos) > 0:
-            infos_fname = os.path.join(savedir, 'infos.yaml')
+            infos_fname = savedir /'infos.yaml'
             with open(infos_fname, 'w') as file:
                 yaml.dump(
                     self._infos,
@@ -765,19 +766,19 @@ class Dataset(object):
                     sort_keys=False)
 
         # #---# save stats
-        # stats_fname = os.path.join(savedir, 'stats.yaml')
+        # stats_fname = savedir / 'stats.yaml'
         # self._stats.save(stats_fname)
 
         # #---# save flags
-        # flags_fname = os.path.join(savedir, 'flags.yaml')
+        # flags_fname = savedir / 'flags.yaml'
         # self._flags.save(flags_fname)
 
-    def _load_from_dir_(self, savedir: str, ids: list[int] = None,
+    def _load_from_dir_(self, savedir: Union[str,Path], ids: list[int] = None,
                         verbose: bool = False, processes_number: int = 0) -> None:
         """Loads a dataset from a sample directory and retrieves additional information about the dataset from an 'infos.yaml' file, if available.
 
         Args:
-            savedir (str): The path from which to load files.
+            savedir (Union[str,Path]): The path from which to load files.
             ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
@@ -787,25 +788,22 @@ class Dataset(object):
             FileExistsError: Triggered if the provided path is a file instead of a directory.
             ValueError: Triggered if the number of processes is < -1.
         """
-        if not os.path.exists(savedir):
-            raise FileNotFoundError(
-                f"Directory \"{savedir}\" does not exist. Abort")
+        savedir = Path(savedir)
+        if not savedir.is_dir():
+            raise FileNotFoundError(f"\"{savedir}\" is not a directory or does not exist. Abort")
 
-        if not os.path.isdir(savedir):
-            raise FileExistsError(f"\"{savedir}\" is not a directory. Abort")
         if processes_number < -1:
             raise ValueError("Number of processes cannot be < -1")
 
         if verbose:  # pragma: no cover
             print(f"Reading database located at: {savedir}")
 
-        sample_paths = sorted([path for path in glob.glob(os.path.join(
-            savedir, 'samples', 'sample_*')) if os.path.isdir(path)])
+        sample_paths = sorted([path for path in (savedir/'samples').glob('sample_*') if path.is_dir()])
 
         if ids is not None:
             filtered_sample_paths = []
             for sample_path in sample_paths:
-                id = int(sample_path.split('_')[-1])
+                id = int(sample_path.stem.split('_')[-1])
                 if id in ids:
                     filtered_sample_paths.append(sample_path)
             sample_paths = filtered_sample_paths
@@ -820,7 +818,7 @@ class Dataset(object):
 
         if processes_number == 0 or processes_number == 1:
             for sample_path in tqdm(sample_paths, disable=not(verbose)):
-                id = int(sample_path.split('_')[-1])
+                id = int(sample_path.stem.split('_')[-1])
                 sample = Sample(sample_path)
                 self.add_sample(sample, id)
         else:
@@ -852,7 +850,7 @@ class Dataset(object):
                 self.set_sample(id, sample)
             """
 
-        infos_fname = os.path.join(savedir, 'infos.yaml')
+        infos_fname = savedir / 'infos.yaml'
         if os.path.isfile(infos_fname):
             with open(infos_fname, 'r') as file:
                 self._infos = yaml.safe_load(file)
@@ -861,18 +859,22 @@ class Dataset(object):
             print("Warning: dataset contains no sample")
 
     @staticmethod
-    def _load_number_of_samples_(savedir: str) -> int:
-        """This function counts the number of sample files in a specified directory, which is
+    def _load_number_of_samples_(savedir: Union[str,Path]) -> int:
+        """
+
+        Warning:
+            This method is deprecated, use instead :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>`
+
+        This function counts the number of sample files in a specified directory, which is
         useful for determining the total number of samples in a dataset.
 
         Args:
-            savedir (str): The path to the directory where sample files are stored.
+            savedir (Union[str,Path]): The path to the directory where sample files are stored.
 
         Returns:
             int: The number of sample files found in the specified directory.
         """
-        sample_paths = glob.glob(os.path.join(savedir, 'samples', '*'))
-        return (len(sample_paths))
+        raise DeprecatedError('use instead: plaid.get_number_of_samples("path-to-my-dataset")')
 
     # -------------------------------------------------------------------------#
     def set_samples(self, samples: dict[int, Sample]) -> None:
