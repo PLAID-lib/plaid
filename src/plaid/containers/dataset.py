@@ -673,7 +673,7 @@ class Dataset(object):
         return instance
 
     @classmethod
-    def load_from_dir(cls, dname: Union[str,Path],  ids: list[int] = None,
+    def load_from_dir(cls, dname: Union[str,Path], ids: list[int] = None,
                       verbose: bool = False, processes_number: int = 0) -> Self:
         """Load data from a specified directory.
 
