@@ -673,12 +673,13 @@ class Dataset(object):
         return instance
 
     @classmethod
-    def load_from_dir(cls, dname: str, verbose: bool = False,
-                      processes_number: int = 0) -> Self:
+    def load_from_dir(cls, dname: str, ids: list[int] = None,
+                      verbose: bool = False, processes_number: int = 0) -> Self:
         """Load data from a specified directory.
 
         Args:
             dname (str): The path from which to load files.
+            ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
@@ -688,6 +689,7 @@ class Dataset(object):
         instance = cls()
         instance._load_from_dir_(
             dname,
+            ids=ids,
             verbose=verbose,
             processes_number=processes_number)
         return instance
