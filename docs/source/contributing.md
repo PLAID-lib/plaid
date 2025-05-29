@@ -55,7 +55,7 @@ as well without repeat).
 
 ## 2. Reporting Issues
 
-If you encounter a problem with PLAID Project or have found a bug, please check the [existing issues](https://gitlab.com/drti/plaid/-/issues) to see if it has already been reported. If not, feel free to [open a new issue](https://gitlab.com/drti/plaid/-/issues/new) with the following information:
+If you encounter a problem with PLAID Project or have found a bug, please check the [existing issues](https://github.com/PLAID-lib/plaid/issues) to see if it has already been reported. If not, feel free to [open a new issue](https://github.com/PLAID-lib/plaid/issues/new) with the following information:
 
 - A clear and concise description of the issue.
 - Steps to reproduce the issue.
@@ -65,7 +65,7 @@ If you encounter a problem with PLAID Project or have found a bug, please check 
 
 ## 3. Feature Requests
 
-If you have an idea for a new feature or enhancement, please [open a new issue](https://gitlab.com/drti/plaid/-/issues/new) and provide the following details:
+If you have an idea for a new feature or enhancement, please [open a new issue](https://github.com/PLAID-lib/plaid/issues/new) and provide the following details:
 
 - A clear and concise description of the feature.
 - Any additional context or use cases.

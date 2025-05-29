@@ -9,7 +9,7 @@ PLAID documentation
 PLAID (Physics Learning AI Datamodel) is a library proposing an implementation for a datamodel tailored for AI and ML learning of physics problems.
 It has been developped at SafranTech, the research center of `Safran group <https://www.safran-group.com/>`_
 
-The code is hosted on `Safran Gitlab <https://gitlab.com/drti/plaid>`_
+The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
 .. toctree::
    :glob:

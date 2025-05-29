@@ -19,12 +19,11 @@ This library proposes an implementation for a datamodel tailored for AI and ML l
 It has been developped at SafranTech, the research center of [Safran group](https://www.safran-group.com/).
 
 - **Documentation:** https://plaid-lib.readthedocs.io/
-- **Source code:** https://gitlab.com/drti/plaid/-/tree/main/src/plaid
-- **Contributing:** https://gitlab.com/drti/plaid/-/blob/main/CONTRIBUTING.md
-- **License:** https://gitlab.com/drti/plaid/-/blob/main/LICENSE.txt
-- **Bug reports:** https://gitlab.com/drti/plaid/-/issues
-- **Report a security vulnerability:** https://gitlab.com/drti/plaid/-/issues
-
+- **Source code:** https://github.com/PLAID-lib/plaid
+- **Contributing:** https://github.com/PLAID-lib/plaid/blob/main/CONTRIBUTING.md
+- **License:** https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
+- **Bug reports:** https://github.com/PLAID-lib/plaid/issues
+- **Report a security vulnerability:** https://github.com/PLAID-lib/plaid/issues
 
 ## 2. Getting started
 

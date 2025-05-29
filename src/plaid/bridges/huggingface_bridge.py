@@ -183,7 +183,7 @@ def create_string_for_huggingface_dataset_card(
     - manually by reading their values on the dataset page README.md,
     - automatically as shown in the example below
 
-    See `the hugginface examples <https://gitlab.com/drti/plaid/-/blob/main/examples/utils/huggingface_example.py>`__ for a concrete use.
+    See `the hugginface examples <https://github.com/PLAID-lib/plaid/blob/main/examples/bridges/huggingface_bridge_example.py>`__ for a concrete use.
 
     Args:
         description (dict): huggingface dataset description. Obtained from

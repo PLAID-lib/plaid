@@ -109,7 +109,6 @@ myst_enable_extensions = [
 ]
 myst_heading_anchors = 7  # max 7
 # ---------------------------------------------------------#
-# all those options are set in sphinx-apidoc commands in .gitlab-ci.yml
 # # sphinxcontrib.apidoc options
 # apidoc_module_dir = '../{}'.format(project)
 # apidoc_output_dir = 'api_reference'
@@ -191,8 +190,8 @@ html_logo = "source/images/plaid.jpg"
 
 # cf https://pradyunsg.me/furo/customisation/edit-button/
 html_theme_options = {
-    "source_edit_link": "https://gitlab.com/drti/plaid",
-    # "source_repository": "https://gitlab.com/drti/plaid",
+    "source_edit_link": "https://github.com/PLAID-lib/plaid",
+    # "source_repository": "https://github.com/PLAID-lib/plaid",
     "source_branch": "main",
     "source_directory": "docs/",
     # "source_directory": "docs/source",
@@ -200,7 +199,7 @@ html_theme_options = {
     # 'logo_only': True,
 }
 
-github_url = 'https://gitlab.com/drti/plaid'
+github_url = 'https://github.com/PLAID-lib/plaid'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

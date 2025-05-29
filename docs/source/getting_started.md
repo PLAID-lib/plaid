@@ -30,7 +30,7 @@ Alternatively, you can configure an environment manually following the dependenc
 To contribute to the library, you need to clone the repo using git:
 
 ```bash
-git clone https://gitlab.com/drti/plaid.git
+git clone https://github.com/PLAID-lib/plaid.git
 ```
 
 configure an environment manually following the dependencies listed in ``conda_dev_env.yml``
