@@ -25,10 +25,10 @@ if __name__ == "__main__":
 
 # name = 'plaid'
 # version = '0.1'
-# release = '0.1.0'
+# release = '0.1'
 # author = "Safran"
 # copyright = "2023-{}, {}".format(datetime.date.today().year, author)
-# url = "https://gitlab.com/drti/plaid"
+# url = "https://github.com/PLAID-lib/plaid"
 
 # # %% Script
 

@@ -38,9 +38,9 @@ dynamic = ["version"]
 write_to = "src/plaid/_version.py"
 
 [project.urls]
-homepage = "https://gitlab.com/drti/plaid"
-documentation = "https://plaid.readthedocs.io/en/latest/"
-repository = "https://gitlab.com/drti/plaid"
+homepage = "https://github.com/PLAID-lib/plaid"
+documentation = "https://plaid-lib.readthedocs.io"
+repository = "https://github.com/PLAID-lib/plaid"
 
 [project.license]
 text="BSD 3-Clause License"
