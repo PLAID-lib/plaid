@@ -915,7 +915,7 @@ class ProblemDefinition(object):
 
         split_fname = os.path.join(savedir, 'split.csv')
         if self._split is not None:
-            with open(split_fname, 'w') as file:
+            with open(split_fname, 'w', newline='') as file:
                 write = csv.writer(file)
                 for name, indices in self._split.items():
                     write.writerow([name] + list(indices))
