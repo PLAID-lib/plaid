@@ -330,7 +330,7 @@ dataset.print_infos()
 # ### Save a Dataset as a file tree
 
 # %%
-tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}'
+tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}'
 print(f"Save dataset in: {tmpdir}")
 
 dataset._save_to_dir_(tmpdir)
@@ -372,7 +372,7 @@ print(f"{loaded_dataset_from_instance = }")
 # ### Save the dataset to a TAR (Tape Archive) file
 
 # %%
-tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(1e10,1e12)}'
+tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}'
 tmpfile = os.path.join(tmpdir, 'test_file.plaid')
 
 print(f"Save dataset in: {tmpfile}")

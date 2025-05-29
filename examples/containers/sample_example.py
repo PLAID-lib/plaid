@@ -510,7 +510,7 @@ print(f"{sample.get_zone_type('new_zone') = }") # Print the 'new_zone' type inst
 # ### Save Sample to as a file tree
 
 # %%
-test_pth = f'/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}'
+test_pth = f'/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}'
 os.makedirs(test_pth)
 
 sample_save_fname = os.path.join(test_pth, 'test')
