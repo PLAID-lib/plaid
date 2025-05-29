@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "plaid"
 authors = [{name = "Safran", email = "fabien.casenave@safrangroup.com"}]
 description = "A package that implements a data model tailored for AI and ML in the context of physics problems"
-requires-python = ">=3.11"
+requires-python = ">=3.11, <3.13"
 keywords=[
     "machine learning",
     "physics",
@@ -20,7 +20,9 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Operating System :: MacOS",
     "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -30,6 +32,11 @@ dependencies = [
     "pyyaml",
     "pycgns",
     "numpy",
+    "matplotlib",
+    "rich",
+    "scikit-learn",
+    "datasets",
+    "pydantic",
 ]
 
 dynamic = ["version"]
