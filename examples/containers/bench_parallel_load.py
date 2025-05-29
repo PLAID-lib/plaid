@@ -32,13 +32,13 @@ if __name__=='__main__':
     parser.add_argument('-n','--number_of_samples',
                         # dest='number_of_samples',
                         type=int,
-                        default=1000,
+                        default=100,
                         help='number of samples to test parallel load',
                         )
     parser.add_argument('-t','--number_of_tests',
                         # dest='number_of_tests',
                         type=int,
-                        default=25,
+                        default=5,
                         help='number of tests to perform to compute statistics',
                         )
     parser.add_argument('-c','--number_of_cores_max',
