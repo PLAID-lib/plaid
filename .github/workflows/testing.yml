@@ -34,6 +34,8 @@ jobs:
         run: |
           export PYTHONPATH=$(pwd)/src
           mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+          cd examples
+          bash run_examples.sh
 
       - name: Run tests (Windows)
         if: runner.os == 'Windows'
@@ -41,6 +43,9 @@ jobs:
         run: |
           $env:PYTHONPATH = "$(Get-Location)\src"
           mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
+          cd examples
+          .\run_examples.ps1
 
     #   - name: Set up Miniconda
     #     uses: conda-incubator/setup-miniconda@v2
