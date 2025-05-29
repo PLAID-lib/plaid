@@ -171,7 +171,7 @@ print(f"{problem.filter_output_meshes_names(['out_mesh', 'out_mesh3', 'out_mesh5
 # ### Save a Problem Definition to a directory
 
 # %%
-test_pth = f"/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}"
+test_pth = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
 pb_def_save_fname = os.path.join(test_pth, 'test')
 os.makedirs(test_pth)
 print()

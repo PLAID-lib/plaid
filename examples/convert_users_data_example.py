@@ -62,7 +62,7 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 
 # Show the plot
-plt.show()
+# plt.show()
 
 # %% [markdown]
 # ## Create Meshes Dataset from external data
