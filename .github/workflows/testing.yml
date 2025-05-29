@@ -44,7 +44,7 @@ jobs:
           $env:PYTHONPATH = "$(Get-Location)\src"
           mamba run -n plaid_python${{ matrix.python-version }} pytest tests
           cd examples
-          mamba run -n plaid_python${{ matrix.python-version }} powershell -ExecutionPolicy Bypass -File .\run_examples.ps1 -pythonPath "$(mamba run -n plaid_python${{ matrix.python-version }} where python | Select-Object -First 1)"
+          mamba run -n plaid_python${{ matrix.python-version }} run_examples.bat
 
     #   - name: Set up Miniconda
     #     uses: conda-incubator/setup-miniconda@v2
