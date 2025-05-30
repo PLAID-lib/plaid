@@ -1,5 +1,5 @@
 ---
-title: "PLAID: A Unified Datamodel for Sharing and Manipulating Physics Simulation Datasets"
+title: "PLAID: Physics Learning AI Datamodel"
 tags:
 - python
 - scientific machine learning
@@ -17,9 +17,9 @@ authors:
 - name: Alexandre Devaux-Rivière
   affiliation: 1,2
 affiliations:
-- name: SafranTech, France
+- name: SafranTech, Safran Tech, Digital Sciences & Technologies, 78114 Magny-Les-Hameaux, France
   index: 1
-- name: EPITA, France
+- name: EPITA, 14-16 Rue Voltaire, 94270 Le Kremlin-Bicêtre, France
   index: 2
 bibliography: paper.bib
 ---
@@ -27,7 +27,7 @@ bibliography: paper.bib
 
 # Summary
 
-PLAID (Physics-Learning AI Datamodel) is a Python library and data format for representing, storing, and sharing physics simulation datasets for machine learning. It defines a unified, extensible schema (building on the CGNS standard) that can capture complex simulation data across domains. Unlike domain-specific formats, PLAID accommodates **time-dependent**, **multi-resolution** simulations and **heterogeneous meshes**. For example, a PLAID dataset directory has a `dataset` folder with subfolders for each sample; each sample contains one or more CGNS files (meshes and fields for each time step) and a `scalars.csv` for any global variables. Dataset metadata (descriptions, problem definitions, train/val/test splits) are stored in human-readable YAML and CSV files, making the format transparent and self-describing.
+PLAID (Physics-Learning AI Datamodel) is a Python library and data format for representing, storing, and sharing physics simulation datasets for machine learning. It defines a unified, extensible schema (building on the CGNS standard [@poinot2018seven]) that can capture complex simulation data across domains. Unlike domain-specific formats, PLAID accommodates **time-dependent**, **multi-resolution** simulations and **heterogeneous meshes**. For example, a PLAID dataset directory has a `dataset` folder with subfolders for each sample; each sample contains one or more CGNS files (meshes and fields for each time step) and a `scalars.csv` for any global variables. Dataset metadata (descriptions, problem definitions, train/val/test splits) are stored in human-readable YAML and CSV files, making the format transparent and self-describing.
 
 The library provides a high-level **API**: the core `Dataset` and `Sample` classes let users easily load, inspect, and save data. For instance, one can load an entire dataset with `dataset = Dataset("path_to_plaid_dataset")`, which automatically parses the PLAID folder or archive and reports the number of samples, fields, and scalars. The `Sample` class offers methods like `get_mesh(time, apply_links=True)` to retrieve a CGNS tree for a specific timestep, or `get_field(name, ...)` to access a particular field array.  PLAID also supports efficient I/O: datasets can be packaged into a single TAR file or directory; methods like `Dataset.load_from_file(...)` and `load_from_dir(...)` handle parallel loading of samples (with multi-processing).
 
@@ -57,7 +57,7 @@ The PLAID library implements the full datamodel as a Python package with modular
 
 # Usage and Applications
 
-PLAID is designed for AI/ML researchers and practitioners working with simulation data. Its broad feature set has already enabled various applications. The original PLAID paper released six datasets (2D/3D fluid and structural simulations) under this format and demonstrated baseline learning methods on them. These datasets are publicly available (e.g. on Zenodo and Hugging Face), and PLAID is used as the data backend in ongoing benchmarks like the NeurIPS ML4CFD competition. Beyond datasets, recent research has directly incorporated PLAID-based workflows. For example, Casenave *et al.* (2023) used PLAID to store data for a Gaussian-process regression with mesh morphing, while Kabalan *et al.* (2025) applied PLAID datasets in elasticity-based shape modeling. Likewise, Carpintero Perez *et al.* leveraged PLAID data in graph-kernel regression studies of fluid/solid mechanics. These uses illustrate the library’s flexibility. In practice, users find that PLAID significantly reduces the overhead of data wrangling: once a simulation run is converted into PLAID format, standard ML libraries (PyTorch, TensorFlow, Scikit-learn) can consume the data via simple Python loaders, and all preprocessing (splits, normalization) can be managed within the PLAID ecosystem. This promotes **reproducible pipelines**: all geometry, fields, and metadata are captured in one place.
+PLAID is designed for AI/ML researchers and practitioners working with simulation data. Its broad feature set has already enabled various applications. The original PLAID paper released six datasets (2D/3D fluid and structural simulations) under this format and demonstrated baseline learning methods on them. These datasets are publicly available (e.g. on Zenodo and Hugging Face), and PLAID is used as the data backend in ongoing benchmarks like the NeurIPS ML4CFD competition. Beyond datasets, recent research has directly incorporated PLAID-based workflows. For example, [@casenave2024mmgp] used PLAID to store data for a Gaussian-process regression with mesh morphing, while [@kabalan2025elasticity, @kabalan2025ommgp] applied PLAID datasets in elasticity-based shape modeling. Likewise, [@perez2025learningsignalsdefinedgraphs; @perez2024gaussianprocessregressionsliced] leveraged PLAID data in graph-kernel regression studies of fluid/solid mechanics. These uses illustrate the library’s flexibility. In practice, users find that PLAID significantly reduces the overhead of data wrangling: once a simulation run is converted into PLAID format, standard ML libraries (PyTorch, TensorFlow, Scikit-learn) can consume the data via simple Python loaders, and all preprocessing (splits, normalization) can be managed within the PLAID ecosystem. This promotes **reproducible pipelines**: all geometry, fields, and metadata are captured in one place.
 
 In summary, PLAID provides a **comprehensive framework** for physics-based ML data. By combining a unified schema, support for advanced mesh features, and helpful utilities, it addresses the longstanding need for interoperable, high-fidelity simulation datasets. We anticipate that PLAID will continue to accelerate ML research in engineering and the physical sciences by making complex simulation data more accessible and reusable.
 
