@@ -7,7 +7,7 @@ PLAID documentation
 ===================
 
 .. ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social)
-.. [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions)
+.. [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml)
 .. [![License](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt)
 .. [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest)
 .. [![Conda Version](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid)
@@ -19,7 +19,7 @@ PLAID documentation
    :target: https://github.com/PLAID-lib/plaid
    :alt: GitHub Stars
 .. image:: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg
-   :target: https://github.com/PLAID-lib/plaid/actions
+   :target: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml
    :alt: CI Status
 .. image:: https://anaconda.org/conda-forge/plaid/badges/license.svg
    :target: https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
