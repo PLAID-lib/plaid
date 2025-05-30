@@ -146,7 +146,7 @@ TimeSeriesType = tuple[TimeSequenceType, FieldType]
 """A TimeSeriesType is a tuple[TimeSequenceType,FieldType]
 """
 
-def ReadIndex(pyTree: list, dim: list[int]):
+def read_index(pyTree: list, dim: list[int]):
     """Read Index Array or Index Range from CGNS
 
     Args:
@@ -156,11 +156,11 @@ def ReadIndex(pyTree: list, dim: list[int]):
     Returns:
         indices
     """
-    a = ReadIndexArray(pyTree)
-    b = ReadIndexRange(pyTree, dim)
+    a = read_index_array(pyTree)
+    b = read_index_range(pyTree, dim)
     return np.hstack((a, b))
 
-def ReadIndexArray(pyTree: list):
+def read_index_array(pyTree: list):
     """Read Index Array from CGNS
 
     Args:
@@ -179,7 +179,7 @@ def ReadIndexArray(pyTree: list):
             res.extend(data[1].ravel())
     return np.array(res, dtype=int).ravel()
 
-def ReadIndexRange(pyTree: list, dim: list[int]):
+def read_index_range(pyTree: list, dim: list[int]):
     """Read Index Range from CGNS
 
     Args:
@@ -1246,7 +1246,7 @@ class Sample(BaseModel):
         for BCPath in BCPaths:
             BCNode = CGU.getNodeByPath(zone_node, BCPath)
             BCName = BCNode[0]
-            indices = ReadIndex(BCNode, dim)
+            indices = read_index(BCNode, dim)
             if len(indices) == 0:
                 continue
 
@@ -1265,7 +1265,7 @@ class Sample(BaseModel):
             if fnpath:
                 fn = CGU.getNodeByPath(ZSRNode, fnpath[0])
                 familyName = CGU.getValueAsString(fn)
-            indices = ReadIndex(ZSRNode, dim)
+            indices = read_index(ZSRNode, dim)
             if len(indices) == 0:
                 continue
             gl = CGU.getPathsByTypeSet(ZSRNode, ["GridLocation_t"])[0]
