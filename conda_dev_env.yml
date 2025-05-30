@@ -37,6 +37,9 @@ dependencies:
   - datasets
   - pip:
     - furo
+    - ruff
+    - pyright
+    - pre-commit
     - sphinx-autoapi
     - sphinx-tabs
     - sphinxcontrib.bibtex
