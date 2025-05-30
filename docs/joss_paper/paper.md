@@ -7,7 +7,7 @@ tags:
 - physics simulation
 date: "30 May 2025"
 
-uthors:
+authors:
 - name: Fabien Casenave
   orcid: 0000-0002-8810-9128
   affiliation: 1
