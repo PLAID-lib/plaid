@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.0
+    hooks:
+      - id: ruff
+        # args: ["--fix"]
+        exclude: ^(examples/)
+
+  - repo: local
+    hooks:
+      - id: run-pyright
+        name: pyright
+        entry: pyright
+        language: system
+        types: [python]
+        exclude: ^(examples/)
+
+      - id: run-pytest
+        name: pytest
+        entry: pytest tests
+        language: system
+        types: [python]
+        exclude: ^(examples/)
