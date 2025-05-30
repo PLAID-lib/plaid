@@ -3,7 +3,7 @@ repos:
     rev: v0.3.0
     hooks:
       - id: ruff
-        # args: ["--fix"]
+        args: ["--fix"]
         exclude: ^(examples/)
 
   - repo: local
