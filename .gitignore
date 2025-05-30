@@ -3,6 +3,7 @@ public/
 tests/post/*.png
 tests/post/*.yaml
 examples/**/*.png
+tests/problem_definition/split.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
