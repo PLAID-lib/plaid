@@ -1083,11 +1083,11 @@ class Sample(BaseModel):
         return CGU.getValueByPath(zone_node, "ZoneType").tobytes().decode()
 
     # -------------------------------------------------------------------------#
-    def get_scalar_names(self) -> set[str]:
+    def get_scalar_names(self) -> list[str]:
         """Get a set of scalar names available in the object.
 
         Returns:
-            set[str]: A set containing the names of the available scalars.
+            A list containing the names of the available scalars.
         """
         if self._scalars is None:
             return []
@@ -1397,8 +1397,8 @@ class Sample(BaseModel):
         return elements
 
     # -------------------------------------------------------------------------#
-    def get_field_names(self, zone_name: str = None, base_name: str = None,
-                        location: str = 'Vertex', time: float = None) -> set[str]:
+    def get_field_names(self, zone_name: Optional[str] = None, base_name: Optional[str] = None,
+                        location: Optional[str] = 'Vertex', time: Optional[float] = None) -> list[str]:
         """Get a set of field names associated with a specified zone, base, location, and time.
 
         Args:
