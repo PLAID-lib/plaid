@@ -7,34 +7,33 @@
 
 # %% Imports
 
-try: # pragma: no cover
+try:  # pragma: no cover
     from typing import Self
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     from typing import Any as Self
 
+import copy
 import glob
 import logging
 import os
 from typing import Optional, Union
-
-import copy
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-from CGNS.PAT.cgnsutils import __CHILDREN__
+from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 from CGNS.PAT.cgnsutils import __LABEL__ as __TYPE__
-from CGNS.PAT.cgnsutils import __NAME__
 from CGNS.PAT.cgnsutils import __VALUE__ as __DATA__
 
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    format='[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s',
-    level=logging.INFO)
+    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
+    level=logging.INFO,
+)
 
 # %% Globals
 
@@ -78,12 +77,13 @@ CGNS_element_names = [
     "PENTA_40",
     "HEXA_32",
     "HEXA_56",
-    "HEXA_64"]
+    "HEXA_64",
+]
 """List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
 # %% Functions
 
 
-def show_cgns_tree(tree: list, offset: str =''):
+def show_cgns_tree(tree: list, offset: str = ""):
     """Recursively prints the CGNS Tree structure. It displays the hierarchy of nodes and branches in a CGNS tree.
 
     Args:
@@ -91,13 +91,13 @@ def show_cgns_tree(tree: list, offset: str =''):
         offset (str, optional): The character used for indentation between tree branches. Defaults to an empty string ('').
     """
     if not (isinstance(tree, list)):
-        if tree is None: # pragma: no cover
+        if tree is None:  # pragma: no cover
             return True
         else:
             raise TypeError(f"{type(tree)=}, but should be a list or None")
-    assert (len(tree) == 4)
+    assert len(tree) == 4
     if isinstance(tree[__DATA__], np.ndarray):
-        if '|S' in str(tree[__DATA__].dtype):
+        if "|S" in str(tree[__DATA__].dtype):
             data = tree[__DATA__].tobytes()
         elif tree[__DATA__].size < 10:
             data = tree[__DATA__]
@@ -106,10 +106,12 @@ def show_cgns_tree(tree: list, offset: str =''):
     else:
         data = tree[__DATA__]
     print(
-        offset +
-        f"""- "{tree[__NAME__]}"({tree[__TYPE__]}), {len(tree[__CHILDREN__])} children, data({type(tree[__DATA__])}): {data}""")
+        offset
+        + f"""- "{tree[__NAME__]}"({tree[__TYPE__]}), {len(tree[__CHILDREN__])} children, data({type(tree[__DATA__])}): {data}"""
+    )
     for stree in tree[__CHILDREN__]:
-        show_cgns_tree(stree, offset=offset + '    ')
+        show_cgns_tree(stree, offset=offset + "    ")
+
 
 # %% Classes
 
@@ -146,8 +148,9 @@ TimeSeriesType = tuple[TimeSequenceType, FieldType]
 """A TimeSeriesType is a tuple[TimeSequenceType,FieldType]
 """
 
+
 def read_index(pyTree: list, dim: list[int]):
-    """Read Index Array or Index Range from CGNS
+    """Read Index Array or Index Range from CGNS.
 
     Args:
         pyTree (list): CGNS node which has a child Index to read
@@ -160,8 +163,9 @@ def read_index(pyTree: list, dim: list[int]):
     b = read_index_range(pyTree, dim)
     return np.hstack((a, b))
 
+
 def read_index_array(pyTree: list):
-    """Read Index Array from CGNS
+    """Read Index Array from CGNS.
 
     Args:
         pyTree (list): CGNS node which has a child of type IndexArray_t to read
@@ -169,7 +173,7 @@ def read_index_array(pyTree: list):
     Returns:
         indices
     """
-    indexArrayPaths = CGU.getPathsByTypeSet(pyTree, ['IndexArray_t'])
+    indexArrayPaths = CGU.getPathsByTypeSet(pyTree, ["IndexArray_t"])
     res = []
     for indexArrayPath in indexArrayPaths:
         data = CGU.getNodeByPath(pyTree, indexArrayPath)
@@ -179,8 +183,9 @@ def read_index_array(pyTree: list):
             res.extend(data[1].ravel())
     return np.array(res, dtype=int).ravel()
 
+
 def read_index_range(pyTree: list, dim: list[int]):
-    """Read Index Range from CGNS
+    """Read Index Range from CGNS.
 
     Args:
         pyTree (list): CGNS node which has a child of type IndexRange_t to read
@@ -189,16 +194,20 @@ def read_index_range(pyTree: list, dim: list[int]):
     Returns:
         indices
     """
-    indexRangePaths = CGU.getPathsByTypeSet(pyTree, ['IndexRange_t'])
+    indexRangePaths = CGU.getPathsByTypeSet(pyTree, ["IndexRange_t"])
     res = []
 
     for indexRangePath in indexRangePaths:  # Is it possible there are several ?
         indexRange = CGU.getValueByPath(pyTree, indexRangePath)
 
         if indexRange.shape == (3, 2):  # 3D
-            for k in range(indexRange[:, 0][2], indexRange[:, 1][2]+1):
-                for j in range(indexRange[:, 0][1], indexRange[:, 1][1]+1):
-                    global_id = np.arange(indexRange[:, 0][0], indexRange[:, 1][0]+1) + dim[0] * (j - 1) + dim[0] * dim[1] * (k - 1)
+            for k in range(indexRange[:, 0][2], indexRange[:, 1][2] + 1):
+                for j in range(indexRange[:, 0][1], indexRange[:, 1][1] + 1):
+                    global_id = (
+                        np.arange(indexRange[:, 0][0], indexRange[:, 1][0] + 1)
+                        + dim[0] * (j - 1)
+                        + dim[0] * dim[1] * (k - 1)
+                    )
                     res.extend(global_id)
 
         elif indexRange.shape == (2, 2):  # 2D
@@ -209,26 +218,28 @@ def read_index_range(pyTree: list, dim: list[int]):
         else:
             begin = indexRange[0]
             end = indexRange[1]
-            res.extend(np.arange(begin, end+1).ravel())
+            res.extend(np.arange(begin, end + 1).ravel())
 
     return np.array(res, dtype=int).ravel()
 
+
 from pydantic import BaseModel, model_serializer
 
-class Sample(BaseModel):
-    """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
-    """
 
-    def __init__(self,
-                 directory_path: str = None,
-                 mesh_base_name: str = 'Base',
-                 mesh_zone_name: str = 'Zone',
-                 meshes: dict[float, CGNSTree] = None,
-                 scalars: dict[str, ScalarType] = None,
-                 time_series: dict[str, TimeSeriesType] = None,
-                 links: dict[float, list[LinkType]] = None,
-                 paths: dict[float, list[PathType]] = None,
-                 ) -> None:
+class Sample(BaseModel):
+    """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset."""
+
+    def __init__(
+        self,
+        directory_path: str = None,
+        mesh_base_name: str = "Base",
+        mesh_zone_name: str = "Zone",
+        meshes: dict[float, CGNSTree] = None,
+        scalars: dict[str, ScalarType] = None,
+        time_series: dict[str, TimeSeriesType] = None,
+        links: dict[float, list[LinkType]] = None,
+        paths: dict[float, list[PathType]] = None,
+    ) -> None:
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
         Args:
@@ -272,12 +283,13 @@ class Sample(BaseModel):
         self._defaults: dict = {
             "active_base": None,
             "active_zone": None,
-            "active_time": None
+            "active_time": None,
         }
 
     # -------------------------------------------------------------------------#
     def set_default_base(self, base_name: str, time: float = None) -> None:
         """Set the default base for the specified time (that will also be set as default if provided).
+
         The default base is a reference point for various operations in the system.
 
         Args:
@@ -324,8 +336,11 @@ class Sample(BaseModel):
 
         self._defaults["active_base"] = base_name
 
-    def set_default_zone_base(self, zone_name: str, base_name: str, time: float = None) -> None:
+    def set_default_zone_base(
+        self, zone_name: str, base_name: str, time: float = None
+    ) -> None:
         """Set the default base and active zone for the specified time (that will also be set as default if provided).
+
         The default base and active zone serve as reference points for various operations in the system.
 
         Args:
@@ -368,12 +383,15 @@ class Sample(BaseModel):
         if zone_name in (self._defaults["active_zone"], None):
             return
         if not self.has_zone(zone_name, base_name, time):
-            raise ValueError(f"zone {zone_name} does not exist for the base {base_name} at time {time}")
+            raise ValueError(
+                f"zone {zone_name} does not exist for the base {base_name} at time {time}"
+            )
 
         self._defaults["active_zone"] = zone_name
 
     def set_default_time(self, time: float) -> None:
         """Set the default time for the system.
+
         This function sets the default time to be used for various operations in the system.
 
         Args:
@@ -405,13 +423,14 @@ class Sample(BaseModel):
         """
         if time in (self._defaults["active_time"], None):
             return
-        if not time in self.get_all_mesh_times():
+        if time not in self.get_all_mesh_times():
             raise ValueError(f"time {time} does not exist in mesh times")
 
         self._defaults["active_time"] = time
 
     def get_time_assignment(self, time: float = None) -> float:
         """Retrieve the default time for the CGNS operations.
+
         If there are available time steps, it will return the first one; otherwise, it will return 0.0.
 
         Args:
@@ -431,8 +450,8 @@ class Sample(BaseModel):
 
     def get_base_assignment(self, base_name: str = None, time: float = None) -> str:
         """Retrieve the default base name for the CGNS operations.
-        This function calculates the attributed base for a specific operation based on the
-        default base set in the system.
+
+        This function calculates the attributed base for a specific operation based on the default base set in the system.
 
         Args:
             base_name (str, optional): The name of the base to attribute the operation to. If not provided, the default base set in the system will be used.
@@ -463,10 +482,12 @@ class Sample(BaseModel):
 
         raise KeyError(f"No default base provided among {base_names}")
 
-    def get_zone_assignment(self, zone_name: str = None, base_name: str = None, time: float = None) -> str:
+    def get_zone_assignment(
+        self, zone_name: str = None, base_name: str = None, time: float = None
+    ) -> str:
         """Retrieve the default zone name for the CGNS operations.
-        This function calculates the attributed zone for a specific operation based on the
-        default zone set in the system, within the specified base.
+
+        This function calculates the attributed zone for a specific operation based on the default zone set in the system, within the specified base.
 
         Args:
             zone_name (str, optional): The name of the zone to attribute the operation to. If not provided, the default zone set in the system within the specified base will be used.
@@ -497,7 +518,9 @@ class Sample(BaseModel):
             # logging.info(f"No default zone provided. Taking the only zone available: {zone_names[0]} in default base: {base_name}")
             return zone_names[0]
 
-        raise KeyError(f"No default zone provided among {zone_names} in the default base: {base_name}")
+        raise KeyError(
+            f"No default zone provided among {zone_names} in the default base: {base_name}"
+        )
 
     # -------------------------------------------------------------------------#
     def show_tree(self, time: float = None) -> None:
@@ -542,7 +565,9 @@ class Sample(BaseModel):
 
         return self._meshes[time]
 
-    def get_mesh(self, time: float = None, apply_links: bool = False, in_memory = False) -> CGNSTree:
+    def get_mesh(
+        self, time: float = None, apply_links: bool = False, in_memory=False
+    ) -> CGNSTree:
         """Retrieve the CGNS tree structure for a specified time step, if available.
 
         Args:
@@ -566,14 +591,18 @@ class Sample(BaseModel):
         tree = copy.deepcopy(tree)
         for link in links:
             if in_memory == False:
-                subtree, _, _ = CGM.load(os.path.join(link[0], link[1]), subtree=link[2])
+                subtree, _, _ = CGM.load(
+                    os.path.join(link[0], link[1]), subtree=link[2]
+                )
             else:
                 linked_timestep = int(link[1].split(".cgns")[0].split("_")[1])
                 linked_timestamp = list(self._meshes.keys())[linked_timestep]
                 subtree = self.get_mesh(linked_timestamp)
-            node_path = '/'.join(link[2].split('/')[:-1])
+            node_path = "/".join(link[2].split("/")[:-1])
             node_to_append = CGU.getNodeByPath(tree, node_path)
-            assert node_to_append is not None, f"nodepath {node_path} not present in tree, cannot apply link"
+            assert node_to_append is not None, (
+                f"nodepath {node_path} not present in tree, cannot apply link"
+            )
             node_to_append[2].append(CGU.getNodeByPath(subtree, link[2]))
 
         return tree
@@ -616,7 +645,8 @@ class Sample(BaseModel):
                 self._paths[time] = None
         else:
             raise KeyError(
-                "meshes is already set, you cannot overwrite it, delete it first or extend it with `Sample.add_tree`")
+                "meshes is already set, you cannot overwrite it, delete it first or extend it with `Sample.add_tree`"
+            )
 
     def add_tree(self, tree: CGNSTree, time: float = None) -> CGNSTree:
         """Merge a CGNS tree to the already existing tree.
@@ -648,22 +678,23 @@ class Sample(BaseModel):
             # TODO: gérer le cas où il y a des bases de mêmes noms... + merge
             # récursif des nœuds
             local_bases = self.get_base_names(time=time)
-            base_nodes = CGU.getNodesFromTypeSet(tree, 'CGNSBase_t')
+            base_nodes = CGU.getNodesFromTypeSet(tree, "CGNSBase_t")
             for _, node in base_nodes:
-                if (node[__NAME__] not in local_bases):
+                if node[__NAME__] not in local_bases:
                     self._meshes[time][__CHILDREN__].append(node)
                 else:
                     logger.warning(
-                        f"base <{node[__NAME__]}> already exists in self._tree --> ignored")
+                        f"base <{node[__NAME__]}> already exists in self._tree --> ignored"
+                    )
 
         base_names = self.get_base_names(time=time)
         for base_name in base_names:
             base_node = self.get_base(base_name, time=time)
             if CGU.getValueByPath(base_node, "Time/TimeValues") is None:
-                baseIterativeData_node = CGL.newBaseIterativeData(
-                    base_node, 'Time', 1)
+                baseIterativeData_node = CGL.newBaseIterativeData(base_node, "Time", 1)
                 TimeValues_node = CGU.newNode(
-                    'TimeValues', None, [], CGK.DataArray_ts, baseIterativeData_node)
+                    "TimeValues", None, [], CGK.DataArray_ts, baseIterativeData_node
+                )
                 CGU.setValue(TimeValues_node, np.array([time]))
 
         return self._meshes[time]
@@ -681,18 +712,23 @@ class Sample(BaseModel):
             CGNSTree: The deleted CGNS tree.
         """
         if self._meshes is None:
-            raise KeyError(f"There is no CGNS tree in this sample.")
+            raise KeyError("There is no CGNS tree in this sample.")
 
-        if not time in self._meshes:
+        if time not in self._meshes:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
         self._links.pop(time, None)
         self._paths.pop(time, None)
         return self._meshes.pop(time)
 
-    def link_tree(self, path_linked_sample: str, linked_sample: Self, linked_time: float, time: float) -> CGNSTree:
-        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of
-            another sample.
+    def link_tree(
+        self,
+        path_linked_sample: str,
+        linked_sample: Self,
+        linked_time: float,
+        time: float,
+    ) -> CGNSTree:
+        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
 
         Args:
             path_linked_sample (str): The absolute path of the folder containing the linked CGNS
@@ -703,15 +739,16 @@ class Sample(BaseModel):
         Returns:
             CGNSTree: The deleted CGNS tree.
         """
-        #see https://pycgns.github.io/MAP/sids-to-python.html#links
-        #difficulty is to link only the geometrical objects, which can be complex
+        # see https://pycgns.github.io/MAP/sids-to-python.html#links
+        # difficulty is to link only the geometrical objects, which can be complex
 
-        #https://pycgns.github.io/MAP/examples.html#save-with-links
-        #When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
+        # https://pycgns.github.io/MAP/examples.html#save-with-links
+        # When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
 
-
-        if not linked_time in linked_sample._meshes:
-            raise KeyError(f"There is no CGNS tree for time {linked_time} in linked_sample.")
+        if linked_time not in linked_sample._meshes:
+            raise KeyError(
+                f"There is no CGNS tree for time {linked_time} in linked_sample."
+            )
 
         if time in self._meshes:
             raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
@@ -722,25 +759,62 @@ class Sample(BaseModel):
 
         for bn in base_names:
             base_node = linked_sample.get_base(bn, time=linked_time)
-            base = [bn, base_node[1], [], 'CGNSBase_t']
+            base = [bn, base_node[1], [], "CGNSBase_t"]
             tree[2].append(base)
 
-            family = ['Bulk', np.array([b'B', b'u', b'l', b'k'], dtype='|S1'), [], 'FamilyName_t'] # maybe get this from linked_sample as well ?
+            family = [
+                "Bulk",
+                np.array([b"B", b"u", b"l", b"k"], dtype="|S1"),
+                [],
+                "FamilyName_t",
+            ]  # maybe get this from linked_sample as well ?
             base[2].append(family)
 
             zone_names = linked_sample.get_zone_names(bn, time=linked_time)
             for zn in zone_names:
                 zone_node = linked_sample.get_zone(zn, bn, time=linked_time)
-                grid = [zn, zone_node[1], [['ZoneType', np.array([b'U', b'n', b's', b't', b'r', b'u', b'c', b't', b'u', b'r', b'e',b'd'], dtype='|S1'), [], 'ZoneType_t']], 'Zone_t']
+                grid = [
+                    zn,
+                    zone_node[1],
+                    [
+                        [
+                            "ZoneType",
+                            np.array(
+                                [
+                                    b"U",
+                                    b"n",
+                                    b"s",
+                                    b"t",
+                                    b"r",
+                                    b"u",
+                                    b"c",
+                                    b"t",
+                                    b"u",
+                                    b"r",
+                                    b"e",
+                                    b"d",
+                                ],
+                                dtype="|S1",
+                            ),
+                            [],
+                            "ZoneType_t",
+                        ]
+                    ],
+                    "Zone_t",
+                ]
                 base[2].append(grid)
-                zone_family = ['FamilyName', np.array([b'B', b'u', b'l', b'k'], dtype='|S1'), [], 'FamilyName_t']
+                zone_family = [
+                    "FamilyName",
+                    np.array([b"B", b"u", b"l", b"k"], dtype="|S1"),
+                    [],
+                    "FamilyName_t",
+                ]
                 grid[2].append(zone_family)
 
         def find_feature_roots(sample, time, Type_t):
-
             Types_t = CGU.getAllNodesByTypeSet(sample.get_mesh(time), Type_t)
             # in case the type is not present in the tree
-            if Types_t==[]:
+            if Types_t == []:
                 return []
             types = [Types_t[0]]
             for t in Types_t[1:]:
@@ -753,14 +827,13 @@ class Sample(BaseModel):
         for feature in ["ZoneBC_t", "Elements_t", "GridCoordinates_t"]:
             feature_paths += find_feature_roots(linked_sample, linked_time, feature)
 
-        self.add_tree(tree, time = time)
+        self.add_tree(tree, time=time)
 
         dname = os.path.dirname(path_linked_sample)
         bname = os.path.basename(path_linked_sample)
         self._links[time] = [[dname, bname, fp, fp] for fp in feature_paths]
 
         return tree
-
 
     # -------------------------------------------------------------------------#
     def get_topological_dim(self, base_name: str = None, time: float = None) -> int:
@@ -779,7 +852,9 @@ class Sample(BaseModel):
         # get_base will look for default time and base_name
         base_node = self.get_base(base_name, time)
         if base_node is None:
-            raise ValueError(f"there is no base called {base_name} at the time {time} in this sample")
+            raise ValueError(
+                f"there is no base called {base_name} at the time {time} in this sample"
+            )
 
         return base_node[1][0]
 
@@ -798,12 +873,19 @@ class Sample(BaseModel):
         """
         base_node = self.get_base(base_name, time)
         if base_node is None:
-            raise ValueError(f"there is no base called {base_name} at the time {time} in this sample")
+            raise ValueError(
+                f"there is no base called {base_name} at the time {time} in this sample"
+            )
 
         return base_node[1][1]
 
-    def init_base(self, topological_dim: int, physical_dim: int,
-                  base_name: str = None, time: float = None) -> CGNSNode:
+    def init_base(
+        self,
+        topological_dim: int,
+        physical_dim: int,
+        base_name: str = None,
+        time: float = None,
+    ) -> CGNSNode:
         """Create a Base node named `base_name` if it doesn't already exists.
 
         Args:
@@ -818,25 +900,30 @@ class Sample(BaseModel):
         time = self.get_time_assignment(time)
 
         if base_name is None:
-            base_name = self._mesh_base_name + "_" + \
-                str(topological_dim) + "_" + str(physical_dim)
+            base_name = (
+                self._mesh_base_name
+                + "_"
+                + str(topological_dim)
+                + "_"
+                + str(physical_dim)
+            )
 
         self.init_tree(time)
         if not (self.has_base(base_name, time)):
             base_node = CGL.newCGNSBase(
-                self._meshes[time],
-                base_name,
-                topological_dim,
-                physical_dim)
+                self._meshes[time], base_name, topological_dim, physical_dim
+            )
 
         base_names = self.get_base_names(time=time)
         for base_name in base_names:
             base_node = self.get_base(base_name, time=time)
             if CGU.getValueByPath(base_node, "Time/TimeValues") is None:
                 base_iterative_data_node = CGL.newBaseIterativeData(
-                    base_node, 'Time', 1)
+                    base_node, "Time", 1
+                )
                 time_values_node = CGU.newNode(
-                    'TimeValues', None, [], CGK.DataArray_ts, base_iterative_data_node)
+                    "TimeValues", None, [], CGK.DataArray_ts, base_iterative_data_node
+                )
                 CGU.setValue(time_values_node, np.array([time]))
 
         return base_node
@@ -856,21 +943,24 @@ class Sample(BaseModel):
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         if self._meshes is None:
-            raise KeyError(f"There is no CGNS tree in this sample.")
+            raise KeyError("There is no CGNS tree in this sample.")
 
-        if not time in self._meshes:
+        if time not in self._meshes:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
         base_node = self.get_base(base_name, time)
         mesh_tree = self._meshes[time]
 
         if base_node is None:
-            raise KeyError(f"There is no base node with name {base_name} for time {time}.")
+            raise KeyError(
+                f"There is no base node with name {base_name} for time {time}."
+            )
 
         return CGU.nodeDelete(mesh_tree, base_node)
 
-    def get_base_names(self, full_path: bool = False,
-                       unique: bool = False, time: float = None) -> list[str]:
+    def get_base_names(
+        self, full_path: bool = False, unique: bool = False, time: float = None
+    ) -> list[str]:
         """Return Base names.
 
         Args:
@@ -885,7 +975,9 @@ class Sample(BaseModel):
 
         if self._meshes is not None:
             if self._meshes[time] is not None:
-                return CGH.get_base_names(self._meshes[time], full_path = full_path, unique = unique)
+                return CGH.get_base_names(
+                    self._meshes[time], full_path=full_path, unique=unique
+                )
         else:
             return []
 
@@ -900,7 +992,7 @@ class Sample(BaseModel):
             bool: `True` if the CGNS tree has a Base called `base_name`, else return `False`.
         """
         # get_base_names will look for the default time
-        return (base_name in self.get_base_names(time=time))
+        return base_name in self.get_base_names(time=time)
 
     def get_base(self, base_name: str = None, time: float = None) -> CGNSNode:
         """Return Base node named `base_name`.
@@ -921,11 +1013,17 @@ class Sample(BaseModel):
             logger.warning(f"No base with name {base_name} and this tree")
             return None
 
-        return CGU.getNodeByPath(self._meshes[time], f'/CGNSTree/{base_name}')
+        return CGU.getNodeByPath(self._meshes[time], f"/CGNSTree/{base_name}")
 
     # -------------------------------------------------------------------------#
-    def init_zone(self, zone_shape: np.ndarray, zone_type: str = CGK.Unstructured_s,
-                  zone_name: str = None, base_name: str = None, time: float = None) -> CGNSNode:
+    def init_zone(
+        self,
+        zone_shape: np.ndarray,
+        zone_type: str = CGK.Unstructured_s,
+        zone_name: str = None,
+        base_name: str = None,
+        time: float = None,
+    ) -> CGNSNode:
         """Initialize a new zone within a CGNS base.
 
         Args:
@@ -947,7 +1045,8 @@ class Sample(BaseModel):
         base_node = self.get_base(base_name, time)
         if base_node is None:
             raise KeyError(
-                f"there is no base <{base_name}>, you should first create one with `Sample.init_base({base_name=})`")
+                f"there is no base <{base_name}>, you should first create one with `Sample.init_base({base_name=})`"
+            )
 
         zone_name = self.get_zone_assignment(zone_name, base_name, time)
         if zone_name is None:
@@ -972,21 +1071,28 @@ class Sample(BaseModel):
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         if self._meshes is None:
-            raise KeyError(f"There is no CGNS tree in this sample.")
+            raise KeyError("There is no CGNS tree in this sample.")
 
-        if not time in self._meshes:
+        if time not in self._meshes:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
         zone_node = self.get_zone(zone_name, base_name, time)
         mesh_tree = self._meshes[time]
 
         if zone_node is None:
-            raise KeyError(f"There is no zone node with name {zone_name} or base node with name {base_name}.")
+            raise KeyError(
+                f"There is no zone node with name {zone_name} or base node with name {base_name}."
+            )
 
         return CGU.nodeDelete(mesh_tree, zone_node)
 
-    def get_zone_names(self, base_name: str = None, full_path: bool = False,
-                       unique: bool = False, time: float = None) -> list[str]:
+    def get_zone_names(
+        self,
+        base_name: str = None,
+        full_path: bool = False,
+        unique: bool = False,
+        time: float = None,
+    ) -> list[str]:
         """Return list of Zone names in Base named `base_name` with specific time.
 
         Args:
@@ -1003,11 +1109,11 @@ class Sample(BaseModel):
         # get_base will look for default base_name and time
         base_node = self.get_base(base_name, time)
         if base_node is not None:
-            z_paths = CGU.getPathsByTypeSet(base_node, 'CGNSZone_t')
+            z_paths = CGU.getPathsByTypeSet(base_node, "CGNSZone_t")
             for pth in z_paths:
-                s_pth = pth.split('/')
-                assert (len(s_pth) == 2)
-                assert (s_pth[0] == base_name or base_name is None)
+                s_pth = pth.split("/")
+                assert len(s_pth) == 2
+                assert s_pth[0] == base_name or base_name is None
                 if full_path:
                     zone_paths.append(pth)
                 else:
@@ -1018,8 +1124,9 @@ class Sample(BaseModel):
         else:
             return zone_paths
 
-    def has_zone(self, zone_name: str, base_name: str = None,
-                 time: float = None) -> bool:
+    def has_zone(
+        self, zone_name: str, base_name: str = None, time: float = None
+    ) -> bool:
         """Check if the CGNS tree contains a Zone with the specified name within a specific Base and time.
 
         Args:
@@ -1031,10 +1138,11 @@ class Sample(BaseModel):
             bool: `True` if the CGNS tree has a Zone called `zone_name` in a Base called `base_name`, else return `False`.
         """
         # get_zone_names will look for default base_name and time
-        return (zone_name in self.get_zone_names(base_name, time=time))
+        return zone_name in self.get_zone_names(base_name, time=time)
 
-    def get_zone(self, zone_name: str = None, base_name: str = None,
-                 time: float = None) -> CGNSNode:
+    def get_zone(
+        self, zone_name: str = None, base_name: str = None, time: float = None
+    ) -> CGNSNode:
         """Retrieve a CGNS Zone node by its name within a specific Base and time.
 
         Args:
@@ -1059,9 +1167,10 @@ class Sample(BaseModel):
 
         return CGU.getNodeByPath(base_node, zone_name)
 
-    def get_zone_type(self, zone_name: str = None,
-                      base_name: str = None, time: float = None) -> str:
-        """ Get the type of a specific zone at a specified time.
+    def get_zone_type(
+        self, zone_name: str = None, base_name: str = None, time: float = None
+    ) -> str:
+        """Get the type of a specific zone at a specified time.
 
         Args:
             zone_name (str, optional): The name of the zone whose type you want to retrieve. Default is None.
@@ -1079,7 +1188,8 @@ class Sample(BaseModel):
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`")
+                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`"
+            )
         return CGU.getValueByPath(zone_node, "ZoneType").tobytes().decode()
 
     # -------------------------------------------------------------------------#
@@ -1134,9 +1244,9 @@ class Sample(BaseModel):
             ScalarType: The value of the deleted scalar.
         """
         if self._scalars is None:
-            raise KeyError(f"There is no scalar inside this sample.")
+            raise KeyError("There is no scalar inside this sample.")
 
-        if not name in self._scalars:
+        if name not in self._scalars:
             raise KeyError(f"There is no scalar value with name {name}.")
 
         return self._scalars.pop(name)
@@ -1169,7 +1279,8 @@ class Sample(BaseModel):
             return self._time_series[name]
 
     def add_time_series(
-            self, name: str, time_sequence: TimeSequenceType, values: FieldType) -> None:
+        self, name: str, time_sequence: TimeSequenceType, values: FieldType
+    ) -> None:
         """Add a time series to the sample.
 
         Args:
@@ -1184,11 +1295,13 @@ class Sample(BaseModel):
                 sample.add_time_series('stuff', np.arange(2), np.random.randn(2))
                 print(sample.get_time_series('stuff'))
                 >>> (array([0, 1]), array([-0.59630135, -1.15572306]))
+
         Raises:
             TypeError: Raised if the length of `time_sequence` is not equal to the length of `values`.
         """
-        assert (len(time_sequence) == len(values)
-                ), "time sequence and values do not have the same size"
+        assert len(time_sequence) == len(values), (
+            "time sequence and values do not have the same size"
+        )
         if self._time_series is None:
             self._time_series = {name: (time_sequence, values)}
         else:
@@ -1207,17 +1320,17 @@ class Sample(BaseModel):
             Tuple[TimeSequenceType, FieldType]: A tuple containing the time sequence and values of the deleted time series.
         """
         if self._time_series is None:
-            raise KeyError(f"There is no time series inside this sample.")
+            raise KeyError("There is no time series inside this sample.")
 
-        if not name in self._time_series:
+        if name not in self._time_series:
             raise KeyError(f"There is no time series with name {name}.")
 
         return self._time_series.pop(name)
 
-
     # -------------------------------------------------------------------------#
-    def get_nodal_tags(self, zone_name: str = None, base_name: str = None,
-                  time: float = None) -> dict[str, np.ndarray]:
+    def get_nodal_tags(
+        self, zone_name: str = None, base_name: str = None, time: float = None
+    ) -> dict[str, np.ndarray]:
         """Get the nodal tags for a specified base and zone at a given time.
 
         Args:
@@ -1238,7 +1351,7 @@ class Sample(BaseModel):
         nodal_tags = {}
 
         gridCoordinatesPath = CGU.getPathsByTypeSet(zone_node, ["GridCoordinates_t"])[0]
-        gx = CGU.getNodeByPath(zone_node, gridCoordinatesPath+'/CoordinateX')[1]
+        gx = CGU.getNodeByPath(zone_node, gridCoordinatesPath + "/CoordinateX")[1]
         dim = gx.shape
 
         BCPaths = CGU.getPathsByTypeList(zone_node, ["Zone_t", "ZoneBC_t", "BC_t"])
@@ -1256,12 +1369,14 @@ class Sample(BaseModel):
             else:
                 location = "Vertex"
             if location == "Vertex":
-                nodal_tags[BCName] = indices-1
+                nodal_tags[BCName] = indices - 1
 
         ZSRPaths = CGU.getPathsByTypeList(zone_node, ["Zone_t", "ZoneSubRegion_t"])
         for path in ZSRPaths:
             ZSRNode = CGU.getNodeByPath(zone_node, path)
-            fnpath = CGU.getPathsByTypeList(ZSRNode, ['ZoneSubRegion_t', 'FamilyName_t'])
+            fnpath = CGU.getPathsByTypeList(
+                ZSRNode, ["ZoneSubRegion_t", "FamilyName_t"]
+            )
             if fnpath:
                 fn = CGU.getNodeByPath(ZSRNode, fnpath[0])
                 familyName = CGU.getValueAsString(fn)
@@ -1271,15 +1386,16 @@ class Sample(BaseModel):
             gl = CGU.getPathsByTypeSet(ZSRNode, ["GridLocation_t"])[0]
             location = CGU.getValueAsString(CGU.getNodeByPath(ZSRNode, gl))
             if not gl or location == "Vertex":
-                nodal_tags[BCName] = indices-1
+                nodal_tags[BCName] = indices - 1
 
         sorted_nodal_tags = {key: np.sort(value) for key, value in nodal_tags.items()}
 
         return sorted_nodal_tags
 
     # -------------------------------------------------------------------------#
-    def get_nodes(self, zone_name: str = None, base_name: str = None,
-                  time: float = None) -> Optional[np.ndarray]:
+    def get_nodes(
+        self, zone_name: str = None, base_name: str = None, time: float = None
+    ) -> Optional[np.ndarray]:
         """Get grid node coordinates from a specified base, zone, and time.
 
         Args:
@@ -1303,32 +1419,41 @@ class Sample(BaseModel):
         if search_node is None:
             return None
 
-        grid_paths = CGU.getAllNodesByTypeSet(
-            search_node, ['GridCoordinates_t'])
+        grid_paths = CGU.getAllNodesByTypeSet(search_node, ["GridCoordinates_t"])
         if len(grid_paths) == 1:
             grid_node = CGU.getNodeByPath(search_node, grid_paths[0])
-            array_x = CGU.getValueByPath(
-                grid_node, 'GridCoordinates/CoordinateX')
-            array_y = CGU.getValueByPath(
-                grid_node, 'GridCoordinates/CoordinateY')
-            array_z = CGU.getValueByPath(
-                grid_node, 'GridCoordinates/CoordinateZ')
+            array_x = CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateX")
+            array_y = CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateY")
+            array_z = CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateZ")
             if array_z is None:
                 array = np.concatenate(
-                    (array_x.reshape((-1, 1)), array_y.reshape((-1, 1))), axis=1)
+                    (array_x.reshape((-1, 1)), array_y.reshape((-1, 1))), axis=1
+                )
             else:
-                array = np.concatenate((array_x.reshape(
-                    (-1, 1)), array_y.reshape((-1, 1)), array_z.reshape((-1, 1))), axis=1)
+                array = np.concatenate(
+                    (
+                        array_x.reshape((-1, 1)),
+                        array_y.reshape((-1, 1)),
+                        array_z.reshape((-1, 1)),
+                    ),
+                    axis=1,
+                )
             return array
         elif len(grid_paths) > 1:
             raise TypeError(
-                f"Found {len(grid_paths)} <GridCoordinates> nodes, should find only one")
+                f"Found {len(grid_paths)} <GridCoordinates> nodes, should find only one"
+            )
 
     get_points = get_nodes
     get_vertices = get_nodes
 
-    def set_nodes(self, nodes: np.ndarray, zone_name: str = None,
-                  base_name: str = None, time: float = None) -> None:
+    def set_nodes(
+        self,
+        nodes: np.ndarray,
+        zone_name: str = None,
+        base_name: str = None,
+        time: float = None,
+    ) -> None:
         """Set the coordinates of nodes for a specified base and zone at a given time.
 
         Args:
@@ -1349,19 +1474,22 @@ class Sample(BaseModel):
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`")
+                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`"
+            )
 
         coord_type = [CGK.CoordinateX_s, CGK.CoordinateY_s, CGK.CoordinateZ_s]
         for i_dim in range(nodes.shape[-1]):
             CGL.newCoordinates(
-                zone_node, coord_type[i_dim], np.asfortranarray(nodes[..., i_dim]))
+                zone_node, coord_type[i_dim], np.asfortranarray(nodes[..., i_dim])
+            )
 
     set_points = set_nodes
     set_vertices = set_nodes
 
     # -------------------------------------------------------------------------#
-    def get_elements(self, zone_name: str = None, base_name: str = None,
-                     time: float = None) -> dict[str, np.ndarray]:
+    def get_elements(
+        self, zone_name: str = None, base_name: str = None, time: float = None
+    ) -> dict[str, np.ndarray]:
         """Retrieve element connectivity data for a specified zone, base, and time.
 
         Args:
@@ -1380,25 +1508,34 @@ class Sample(BaseModel):
             return {}
 
         elements = {}
-        elem_paths = CGU.getAllNodesByTypeSet(zone_node, ['Elements_t'])
+        elem_paths = CGU.getAllNodesByTypeSet(zone_node, ["Elements_t"])
 
         for elem in elem_paths:
             elem_node = CGU.getNodeByPath(zone_node, elem)
             val = CGU.getValue(elem_node)
             elem_type = CGNS_element_names[val[0]]
-            elem_size = int(elem_type.split('_')[-1])
+            elem_size = int(elem_type.split("_")[-1])
             elem_range = CGU.getValueByPath(
-                elem_node, 'ElementRange')  # TODO elem_range is unused
+                elem_node, "ElementRange"
+            )  # TODO elem_range is unused
             # -1 is to get back indexes starting at 0
-            elements[elem_type] = CGU.getValueByPath(
-                elem_node, 'ElementConnectivity').reshape(
-                (-1, elem_size)) - 1
+            elements[elem_type] = (
+                CGU.getValueByPath(elem_node, "ElementConnectivity").reshape(
+                    (-1, elem_size)
+                )
+                - 1
+            )
 
         return elements
 
     # -------------------------------------------------------------------------#
-    def get_field_names(self, zone_name: Optional[str] = None, base_name: Optional[str] = None,
-                        location: Optional[str] = 'Vertex', time: Optional[float] = None) -> list[str]:
+    def get_field_names(
+        self,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
+        location: Optional[str] = "Vertex",
+        time: Optional[float] = None,
+    ) -> list[str]:
         """Get a set of field names associated with a specified zone, base, location, and time.
 
         Args:
@@ -1410,6 +1547,7 @@ class Sample(BaseModel):
         Returns:
             set[str]: A set containing the names of the fields that match the specified criteria.
         """
+
         def get_field_names_one_base(base_name: str) -> list[str]:
             # get_zone will look for default zone_name, base_name, time
             search_node = self.get_zone(zone_name, base_name, time)
@@ -1419,14 +1557,17 @@ class Sample(BaseModel):
             names = []
             solution_paths = CGU.getPathsByTypeSet(search_node, [CGK.FlowSolution_t])
             for f_path in solution_paths:
-                if CGU.getValueByPath(
-                        search_node, f_path + '/GridLocation').tobytes().decode() != location:
+                if (
+                    CGU.getValueByPath(search_node, f_path + "/GridLocation")
+                    .tobytes()
+                    .decode()
+                    != location
+                ):
                     continue
                 f_node = CGU.getNodeByPath(search_node, f_path)
-                for path in CGU.getPathByTypeFilter(
-                        f_node, CGK.DataArray_t):
-                    field_name = path.split('/')[-1]
-                    if not (field_name == 'GridLocation'):
+                for path in CGU.getPathByTypeFilter(f_node, CGK.DataArray_t):
+                    field_name = path.split("/")[-1]
+                    if not (field_name == "GridLocation"):
                         names.append(field_name)
             return names
 
@@ -1435,7 +1576,6 @@ class Sample(BaseModel):
             base_names = self.get_base_names(time=time)
         else:
             base_names = [base_name]
-
 
         all_names = []
         for bn in base_names:
@@ -1446,8 +1586,14 @@ class Sample(BaseModel):
 
         return all_names
 
-    def get_field(self, name: str, zone_name: str = None, base_name: str = None,
-                  location: str = 'Vertex', time: float = None) -> FieldType:
+    def get_field(
+        self,
+        name: str,
+        zone_name: str = None,
+        base_name: str = None,
+        location: str = "Vertex",
+        time: float = None,
+    ) -> FieldType:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
 
         Args:
@@ -1471,9 +1617,13 @@ class Sample(BaseModel):
         solution_paths = CGU.getPathsByTypeSet(search_node, [CGK.FlowSolution_t])
 
         for f_path in solution_paths:
-            if CGU.getValueByPath(
-                    search_node, f_path + '/GridLocation').tobytes().decode() == location:
-                field = CGU.getValueByPath(search_node, f_path + '/' + name)
+            if (
+                CGU.getValueByPath(search_node, f_path + "/GridLocation")
+                .tobytes()
+                .decode()
+                == location
+            ):
+                field = CGU.getValueByPath(search_node, f_path + "/" + name)
 
                 if field is None:
                     field = np.empty((0,))
@@ -1486,8 +1636,15 @@ class Sample(BaseModel):
         else:
             return np.concatenate(full_field)
 
-    def add_field(self, name: str, field: FieldType, zone_name: str = None,
-                  base_name: str = None, location: str = 'Vertex', time: float = None) -> None:
+    def add_field(
+        self,
+        name: str,
+        field: FieldType,
+        zone_name: str = None,
+        base_name: str = None,
+        location: str = "Vertex",
+        time: float = None,
+    ) -> None:
         """Add a field to a specified zone in the grid.
 
         Args:
@@ -1508,50 +1665,61 @@ class Sample(BaseModel):
 
         if zone_node is None:
             raise KeyError(
-                f"there is no Zone with name {zone_name} in base {base_name}. Did you check topological and physical dimensions ?")
+                f"there is no Zone with name {zone_name} in base {base_name}. Did you check topological and physical dimensions ?"
+            )
 
         # solution_paths = CGU.getPathsByTypeOrNameList(self._tree, '/.*/.*/FlowSolution_t')
-        solution_paths = CGU.getPathsByTypeSet(zone_node, 'FlowSolution_t')
+        solution_paths = CGU.getPathsByTypeSet(zone_node, "FlowSolution_t")
         has_FlowSolution_with_location = False
         if len(solution_paths) > 0:
             for s_path in solution_paths:
-                val_location = CGU.getValueByPath(
-                    zone_node, f'{s_path}/GridLocation').tobytes().decode()
+                val_location = (
+                    CGU.getValueByPath(zone_node, f"{s_path}/GridLocation")
+                    .tobytes()
+                    .decode()
+                )
                 if val_location == location:
                     has_FlowSolution_with_location = True
 
         if not (has_FlowSolution_with_location):
-            CGL.newFlowSolution(
-                zone_node,
-                f'{location}Fields',
-                gridlocation=location)
+            CGL.newFlowSolution(zone_node, f"{location}Fields", gridlocation=location)
 
-        solution_paths = CGU.getPathsByTypeSet(zone_node, 'FlowSolution_t')
-        assert (len(solution_paths) > 0)
+        solution_paths = CGU.getPathsByTypeSet(zone_node, "FlowSolution_t")
+        assert len(solution_paths) > 0
 
         for s_path in solution_paths:
-            val_location = CGU.getValueByPath(
-                zone_node, f'{s_path}/GridLocation').tobytes().decode()
+            val_location = (
+                CGU.getValueByPath(zone_node, f"{s_path}/GridLocation")
+                .tobytes()
+                .decode()
+            )
 
             if val_location != location:
                 continue
 
-            field_node = CGU.getNodeByPath(zone_node, f'{s_path}/{name}')
+            field_node = CGU.getNodeByPath(zone_node, f"{s_path}/{name}")
 
             if field_node is None:
                 flow_solution_node = CGU.getNodeByPath(zone_node, s_path)
                 # CGL.newDataArray(flow_solution_node, name, np.asfortranarray(np.copy(field), dtype=np.float64))
-                CGL.newDataArray(
-                    flow_solution_node, name, np.asfortranarray(field))
+                CGL.newDataArray(flow_solution_node, name, np.asfortranarray(field))
                 # res =  [name, np.asfortranarray(field, dtype=np.float32), [], 'DataArray_t']
                 # print(field.shape)
                 # flow_solution_node[2].append(res)
             else:
                 logger.warning(
-                    f"field node with name {name} already exists -> data will be replaced")
+                    f"field node with name {name} already exists -> data will be replaced"
+                )
                 CGU.setValue(field_node, np.asfortranarray(field))
 
-    def del_field(self, name: str, zone_name: str = None, base_name: str = None, location: str = 'Vertex', time: float = None) -> CGNSTree:
+    def del_field(
+        self,
+        name: str,
+        zone_name: str = None,
+        base_name: str = None,
+        location: str = "Vertex",
+        time: float = None,
+    ) -> CGNSTree:
         """Delete a field from a specified zone in the grid.
 
         Args:
@@ -1573,16 +1741,21 @@ class Sample(BaseModel):
         mesh_tree = self._meshes[time]
 
         if zone_node is None:
-            raise KeyError(f"There is no Zone with name {zone_name} in base {base_name}.")
+            raise KeyError(
+                f"There is no Zone with name {zone_name} in base {base_name}."
+            )
 
         solution_paths = CGU.getPathsByTypeSet(zone_node, [CGK.FlowSolution_t])
 
         updated_tree = None
         for s_path in solution_paths:
-            if CGU.getValueByPath(
-                    zone_node, f'{s_path}/GridLocation').tobytes().decode() == location:
-
-                field_node = CGU.getNodeByPath(zone_node, f'{s_path}/{name}')
+            if (
+                CGU.getValueByPath(zone_node, f"{s_path}/GridLocation")
+                .tobytes()
+                .decode()
+                == location
+            ):
+                field_node = CGU.getNodeByPath(zone_node, f"{s_path}/{name}")
                 if field_node is not None:
                     updated_tree = CGU.nodeDelete(mesh_tree, field_node)
 
@@ -1600,9 +1773,10 @@ class Sample(BaseModel):
             dir_path (str): relative or absolute directory path.
         """
         if os.path.isdir(dir_path):
-            if len(glob.glob(os.path.join(dir_path, '*'))):
+            if len(glob.glob(os.path.join(dir_path, "*"))):
                 raise ValueError(
-                    f"directory {dir_path} already exists and is not empty")
+                    f"directory {dir_path} already exists and is not empty"
+                )
         else:
             os.makedirs(dir_path)
 
@@ -1612,10 +1786,7 @@ class Sample(BaseModel):
             os.makedirs(mesh_dir)
             for i, time in enumerate(self._meshes.keys()):
                 outfname = os.path.join(mesh_dir, f"mesh_{i:09d}.cgns")
-                status = CGM.save(
-                    outfname,
-                    self._meshes[time],
-                    links=self._links[time])
+                status = CGM.save(outfname, self._meshes[time], links=self._links[time])
                 logger.debug(f"save -> {status=}")
 
         scalars_names = self.get_scalar_names()
@@ -1624,30 +1795,28 @@ class Sample(BaseModel):
             for s_name in scalars_names:
                 scalars.append(self.get_scalar(s_name))
             scalars = np.array(scalars).reshape((1, -1))
-            header = ','.join(scalars_names)
+            header = ",".join(scalars_names)
             np.savetxt(
-                os.path.join(
-                    dir_path,
-                    'scalars.csv'),
+                os.path.join(dir_path, "scalars.csv"),
                 scalars,
                 header=header,
-                delimiter=',',
-                comments='')
+                delimiter=",",
+                comments="",
+            )
 
         time_series_names = self.get_time_series_names()
         if len(time_series_names) > 0:
             for ts_name in time_series_names:
                 ts = self.get_time_series(ts_name)
                 data = np.vstack((ts[0], ts[1])).T
-                header = ','.join(['t', ts_name])
+                header = ",".join(["t", ts_name])
                 np.savetxt(
-                    os.path.join(
-                        dir_path,
-                        f'time_series_{ts_name}.csv'),
+                    os.path.join(dir_path, f"time_series_{ts_name}.csv"),
                     data,
                     header=header,
-                    delimiter=',',
-                    comments='')
+                    delimiter=",",
+                    comments="",
+                )
 
     @classmethod
     def load_from_dir(cls, dir_path: str) -> Self:
@@ -1697,57 +1866,52 @@ class Sample(BaseModel):
 
         """
         if not os.path.exists(dir_path):
-            raise FileNotFoundError(
-                f"Directory \"{dir_path}\" does not exist. Abort")
+            raise FileNotFoundError(f'Directory "{dir_path}" does not exist. Abort')
 
         if not os.path.isdir(dir_path):
-            raise FileExistsError(f"\"{dir_path}\" is not a directory. Abort")
+            raise FileExistsError(f'"{dir_path}" is not a directory. Abort')
 
-        meshes_dir = os.path.join(dir_path, 'meshes')
+        meshes_dir = os.path.join(dir_path, "meshes")
         if os.path.isdir(meshes_dir):
-            meshes_names = glob.glob(os.path.join(meshes_dir, '*'))
+            meshes_names = glob.glob(os.path.join(meshes_dir, "*"))
             nb_meshes = len(meshes_names)
             self._meshes = {}
             self._links = {}
             self._paths = {}
             for i in range(nb_meshes):
                 tree, links, paths = CGM.load(
-                    os.path.join(meshes_dir, f"mesh_{i:09d}.cgns"))
+                    os.path.join(meshes_dir, f"mesh_{i:09d}.cgns")
+                )
                 time = CGH.get_time_values(tree)
-                self._meshes[time], self._links[time], self._paths[time] = tree, links, paths
+                self._meshes[time], self._links[time], self._paths[time] = (
+                    tree,
+                    links,
+                    paths,
+                )
                 for i in range(len(self._links[time])):
-                    self._links[time][i][0] = os.path.join(meshes_dir, self._links[time][i][0])
+                    self._links[time][i][0] = os.path.join(
+                        meshes_dir, self._links[time][i][0]
+                    )
 
-        scalars_fname = os.path.join(dir_path, 'scalars.csv')
+        scalars_fname = os.path.join(dir_path, "scalars.csv")
         if os.path.isfile(scalars_fname):
             names = np.loadtxt(
-                scalars_fname,
-                dtype=str,
-                max_rows=1,
-                delimiter=',').reshape(
-                (-1,
-                 ))
+                scalars_fname, dtype=str, max_rows=1, delimiter=","
+            ).reshape((-1,))
             scalars = np.loadtxt(
-                scalars_fname,
-                dtype=float,
-                skiprows=1,
-                delimiter=',').reshape(
-                (-1,
-                 ))
+                scalars_fname, dtype=float, skiprows=1, delimiter=","
+            ).reshape((-1,))
             for name, value in zip(names, scalars):
                 self.add_scalar(name, value)
 
-        time_series_files = glob.glob(
-            os.path.join(dir_path, 'time_series_*.csv'))
+        time_series_files = glob.glob(os.path.join(dir_path, "time_series_*.csv"))
         for ts_fname in time_series_files:
-            names = np.loadtxt(
-                ts_fname, dtype=str, max_rows=1, delimiter=',').reshape(
-                (-1,))
+            names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
+                (-1,)
+            )
             assert names[0] == "t"
-            times_and_val = np.loadtxt(
-                ts_fname, dtype=float, skiprows=1, delimiter=',')
-            self.add_time_series(
-                names[1], times_and_val[:, 0], times_and_val[:, 1])
+            times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
+            self.add_time_series(names[1], times_and_val[:, 0], times_and_val[:, 1])
 
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:
@@ -1760,12 +1924,12 @@ class Sample(BaseModel):
 
         # scalars
         nb_scalars = len(self.get_scalar_names())
-        str_repr += f"{nb_scalars} scalar{'' if nb_scalars==1 else 's'}, "
+        str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
 
         # fields
         times = self.get_all_mesh_times()
         nb_timestamps = len(times)
-        str_repr += f"{nb_timestamps} timestamp{'' if nb_timestamps==1 else 's'}, "
+        str_repr += f"{nb_timestamps} timestamp{'' if nb_timestamps == 1 else 's'}, "
 
         field_names = set()
         for time in times:
@@ -1774,13 +1938,20 @@ class Sample(BaseModel):
             for bn in base_names:
                 zone_names = self.get_zone_names(base_name=bn)
                 for zn in zone_names:
-                    field_names = field_names.union(self.get_field_names(zone_name=zn,time=time,location="Vertex")
-                                                    + self.get_field_names(zone_name=zn,time=time,location="EdgeCenter")
-                                                    + self.get_field_names(zone_name=zn,time=time,location="FaceCenter")
-                                                    + self.get_field_names(zone_name=zn,time=time,location="CellCenter")
-                                                    )
+                    field_names = field_names.union(
+                        self.get_field_names(zone_name=zn, time=time, location="Vertex")
+                        + self.get_field_names(
+                            zone_name=zn, time=time, location="EdgeCenter"
+                        )
+                        + self.get_field_names(
+                            zone_name=zn, time=time, location="FaceCenter"
+                        )
+                        + self.get_field_names(
+                            zone_name=zn, time=time, location="CellCenter"
+                        )
+                    )
         nb_fields = len(field_names)
-        str_repr += f"{nb_fields} field{'' if nb_fields==1 else 's'}, "
+        str_repr += f"{nb_fields} field{'' if nb_fields == 1 else 's'}, "
 
         # CGNS tree
         if self._meshes is None:
@@ -1789,7 +1960,7 @@ class Sample(BaseModel):
             # TODO
             pass
 
-        if str_repr[-2:] == ', ':
+        if str_repr[-2:] == ", ":
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
 
@@ -1798,11 +1969,11 @@ class Sample(BaseModel):
     @model_serializer()
     def serialize_model(self):
         return {
-            'mesh_base_name': self._mesh_base_name,
-            'mesh_zone_name': self._mesh_zone_name,
-            'meshes': self._meshes,
-            'scalars': self._scalars,
-            'time_series': self._time_series,
-            'links': self._links,
-            'paths': self._paths,
+            "mesh_base_name": self._mesh_base_name,
+            "mesh_zone_name": self._mesh_zone_name,
+            "meshes": self._meshes,
+            "scalars": self._scalars,
+            "time_series": self._time_series,
+            "links": self._links,
+            "paths": self._paths,
         }
