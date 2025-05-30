@@ -2,6 +2,7 @@
 public/
 tests/post/*.png
 tests/post/*.yaml
+tests/problem_definition/*.csv
 examples/**/*.png
 
 # Byte-compiled / optimized / DLL files
