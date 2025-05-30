@@ -11,3 +11,5 @@ except ImportError:
     __version__ = "None"
 
 __all__ = ["__version__"]
+
+from .containers.utils import get_number_of_samples, get_sample_ids
