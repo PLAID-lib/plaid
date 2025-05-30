@@ -23,6 +23,9 @@ dependencies:
   - pip
   - pip:
     - furo
+    - ruff
+    - pyright
+    - pre-commit
     - sphinx-autoapi
     - sphinx-tabs
     - sphinxcontrib.bibtex
