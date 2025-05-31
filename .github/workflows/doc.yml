@@ -24,9 +24,9 @@ jobs:
       - name: Create environment
         run: |
           mamba env create -f docs/requirements.yml
+          pip install -e .
 
       - name: Compile documentation
         run: |
-          export PYTHONPATH=$(pwd)/src
           cd docs
           mamba run -n plaid bash generate_doc.sh
