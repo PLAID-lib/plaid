@@ -28,7 +28,7 @@ jobs:
         run: |
           pip install .
           RELEASE_VER=${GITHUB_REF#refs/*/}
-          PACKAGE_VER="v$(python -c 'import plaid; print(plaid.__version__)')"
+          PACKAGE_VER="$(python -c 'import plaid; print(plaid.__version__)')"
           if [ "$RELEASE_VER" != "$PACKAGE_VER" ]; then
             echo "Package version ($PACKAGE_VER) doesn't match tag ($RELEASE_VER)"
             exit 1
