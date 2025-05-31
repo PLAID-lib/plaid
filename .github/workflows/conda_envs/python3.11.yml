@@ -1,9 +1,9 @@
-name: plaid_python3.12
+name: plaid_python3.11
 channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python=3.12
+  - python=3.11
 #---# io
   - pyyaml
 #---# doc
@@ -13,7 +13,7 @@ dependencies:
   - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
 #---# mesh/graph libs
   - muscat=2.4.1
-  - pycgns
+  - pycgns-core
 #---# other
   - scikit-learn
   - datasets
