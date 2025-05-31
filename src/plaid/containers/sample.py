@@ -8,21 +8,22 @@ try:  # pragma: no cover
     from typing import Self
 except ImportError:  # pragma: no cover
     from typing import Any as Self
-
 import copy
 import glob
 import logging
 import os
-from typing import Optional, Union
+from typing import Any, Optional, Union, cast
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
+import numpy.typing as npt
+from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__, TreeNode
 from CGNS.PAT.cgnsutils import __LABEL__ as __TYPE__
 from CGNS.PAT.cgnsutils import __VALUE__ as __DATA__
+from pydantic import BaseModel, model_serializer
 
 from plaid.utils import cgns_helper as CGH
 
@@ -76,51 +77,8 @@ CGNS_element_names = [
 ]
 """List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
 
-# from dataclasses import dataclass, field
-# from typing import Union, List
-# import numpy as np
 
-# @dataclass
-# class CGNSNode:
-#     name: str
-#     type: str
-#     data: Union[np.ndarray, str, int, float, None] = None
-#     children: List["CGNSNode"] = field(default_factory=list)
-
-
-# def show_cgns_tree(node: CGNSNode, offset: str = "") -> None:
-#     """Recursively prints the CGNS Tree structure, starting from the root node.
-
-#     Args:
-#         node: The root CGNS node to display.
-#         offset: The indentation string for nested levels (used internally).
-#     """
-#     if node is None:
-#         return
-
-#     # Format data depending on its type
-#     if isinstance(node.data, np.ndarray):
-#         if "|S" in str(node.data.dtype):
-#             data = node.data.tobytes()
-#         elif node.data.size < 10:
-#             data = node.data
-#         else:
-#             data = f"[{node.data.dtype}; {node.data.shape}]"
-#     else:
-#         data = node.data
-
-#     # Print node info
-#     print(
-#         offset
-#         + f'- "{node.name}"({node.type}), {len(node.children)} children, data({type(node.data)}): {data}'
-#     )
-
-#     # Recurse on children
-#     for child in node.children:
-#         show_cgns_tree(child, offset=offset + "    ")
-
-
-def show_cgns_tree(tree: list, offset: str = ""):
+def show_cgns_tree(tree: TreeNode, offset: str = ""):
     """Recursively prints the CGNS Tree structure. It displays the hierarchy of nodes and branches in a CGNS tree.
 
     Args:
@@ -133,24 +91,25 @@ def show_cgns_tree(tree: list, offset: str = ""):
         else:
             raise TypeError(f"{type(tree)=}, but should be a list or None")
     assert len(tree) == 4
-    if isinstance(tree[__DATA__], np.ndarray):
-        if "|S" in str(tree[__DATA__].dtype):
-            data = tree[__DATA__].tobytes()
-        elif tree[__DATA__].size < 10:
-            data = tree[__DATA__]
+
+    tree_data: Optional[npt.NDArray[Any]] = tree[__DATA__]  # pyright: ignore[reportAssignmentType]
+    tree_children: list[TreeNode] = tree[__CHILDREN__]  # pyright: ignore[reportAssignmentType]
+    if isinstance(tree_data, np.ndarray):
+        if "|S" in str(tree_data.dtype):
+            data = tree_data.tobytes()
+        elif tree_data.size < 10:
+            data = tree_data
         else:
-            data = f"[{tree[__DATA__].dtype};{tree[__DATA__].shape}]"
+            data = f"[{tree_data.dtype};{tree_data.shape}]"
     else:
         data = tree[__DATA__]
+
     print(
         offset
-        + f"""- "{tree[__NAME__]}"({tree[__TYPE__]}), {len(tree[__CHILDREN__])} children, data({type(tree[__DATA__])}): {data}"""
+        + f"""- "{tree[__NAME__]}"({tree[__TYPE__]}), {len(tree_children)} children, data({type(tree[__DATA__])}): {data}"""
     )
-    for stree in tree[__CHILDREN__]:
+    for stree in tree_children:
         show_cgns_tree(stree, offset=offset + "    ")
-
-
-# %% Classes
 
 
 CGNSTree = list
@@ -186,12 +145,12 @@ TimeSeriesType = tuple[TimeSequenceType, FieldType]
 """
 
 
-def read_index(pyTree: list, dim: list[int]):
+def read_index(pyTree: TreeNode, dim: list[int]):
     """Read Index Array or Index Range from CGNS.
 
     Args:
-        pyTree (list): CGNS node which has a child Index to read
-        dim (list): dimensions of the coordinates
+        pyTree: CGNS node which has a child Index to read
+        dim: dimensions of the coordinates
 
     Returns:
         indices
@@ -201,23 +160,23 @@ def read_index(pyTree: list, dim: list[int]):
     return np.hstack((a, b))
 
 
-def read_index_array(pyTree: list):
+def read_index_array(pyTree: TreeNode):
     """Read Index Array from CGNS.
 
     Args:
-        pyTree (list): CGNS node which has a child of type IndexArray_t to read
+        pyTree: CGNS node which has a child of type IndexArray_t to read
 
     Returns:
         indices
     """
-    indexArrayPaths = CGU.getPathsByTypeSet(pyTree, ["IndexArray_t"])
-    res = []
+    indexArrayPaths: list[str] = CGU.getPathsByTypeSet(pyTree, ["IndexArray_t"])  # pyright: ignore[reportUnknownMemberType]
+    res: list[npt.NDArray[np.int_]] = []
     for indexArrayPath in indexArrayPaths:
-        data = CGU.getNodeByPath(pyTree, indexArrayPath)
-        if data[1] is None:
+        data: Optional[TreeNode] = CGU.getNodeByPath(pyTree, indexArrayPath)  # pyright: ignore[reportUnknownMemberType]
+        if data is None or data[1] is None:
             continue
         else:
-            res.extend(data[1].ravel())
+            res.extend(cast(npt.NDArray[np.int_], data[1]).ravel())
     return np.array(res, dtype=int).ravel()
 
 
@@ -258,9 +217,6 @@ def read_index_range(pyTree: list, dim: list[int]):
             res.extend(np.arange(begin, end + 1).ravel())
 
     return np.array(res, dtype=int).ravel()
-
-
-from pydantic import BaseModel, model_serializer
 
 
 class Sample(BaseModel):
