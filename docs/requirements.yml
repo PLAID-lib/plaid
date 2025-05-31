@@ -18,6 +18,7 @@ dependencies:
   - scikit-learn
   - datasets
   - pydantic
+  - matplotlib
   - pip
   - pip:
     - furo
