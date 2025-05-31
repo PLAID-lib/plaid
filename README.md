@@ -42,22 +42,33 @@ It has been developped at SafranTech, the research center of [Safran group](http
 
 ## 2. Getting started
 
+
+### 2.1 Using the library
+
 To use the library, the simplest way is to install the conda package:
 
 ```bash
 conda install -c conda-forge plaid
 ```
 
-Consider also installing and exploring the examples folder.
+### 2.2 Contributing to the library
+
+To contribute to the library, you need to clone the repo using git:
+
+```bash
+git clone https://github.com/PLAID-lib/plaid.git
+```
+
+Configure an environment manually following the dependencies listed in ``conda_dev_env.yml``, or generate it using conda:
+
+```bash
+conda env create -f conda_dev_env'
+```
+
+Then, to install the library:
 
 ```bash
 pip install -e .
-```
-
-To configure a compatible environment, consider using the provided conda yaml files.
-
-```bash
-conda env create -f '<environment_you_need>.yml'
 ```
 
 To check the installation, you can run the unit test suite:

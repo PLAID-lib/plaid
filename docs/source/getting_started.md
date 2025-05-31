@@ -22,9 +22,6 @@ To use the library, the simplest way is to install the conda package:
 conda install -c conda-forge plaid
 ```
 
-Alternatively, you can configure an environment manually following the dependencies listed in ``conda_minimal_env.yml``, and installing the library, see the next section.
-
-
 ### 1.2 Contributing to the library
 
 To contribute to the library, you need to clone the repo using git:
@@ -33,16 +30,19 @@ To contribute to the library, you need to clone the repo using git:
 git clone https://github.com/PLAID-lib/plaid.git
 ```
 
-configure an environment manually following the dependencies listed in ``conda_dev_env.yml``
-and install the package by either updating you PYTHONPATH, or using
+Configure an environment manually following the dependencies listed in ``conda_dev_env.yml``, or generate it using conda:
+
+```bash
+conda env create -f conda_dev_env'
+```
+
+Then, to install the library:
 
 ```bash
 pip install -e .
 ```
 
-## 2. Test installation
-
-To check the installation, you can run the unit test suite
+To check the installation, you can run the unit test suite:
 
 ```bash
 pytest tests
