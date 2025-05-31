@@ -30,7 +30,7 @@ classifiers = [
 dependencies = [
     "tqdm",
     "pyyaml",
-    "pycgns-core",
+    "pycgns",
     "numpy",
     "matplotlib",
     "rich",
