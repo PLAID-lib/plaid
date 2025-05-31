@@ -1,3 +1,17 @@
+![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social)
+[![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml)
+[![License](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt)
+[![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest)
+[![Conda Version](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid)
+[![Conda Release Date](https://anaconda.org/conda-forge/plaid/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/plaid)
+[![Conda Platforms](https://anaconda.org/conda-forge/plaid/badges/platforms.svg)](https://anaconda.org/conda-forge/plaid)
+[![Conda Downloads](https://anaconda.org/conda-forge/plaid/badges/downloads.svg)](https://anaconda.org/conda-forge/plaid)
+<!-- ![Python Version](https://img.shields.io/pypi/pyversions/plaid-lib)
+[![PyPI Version](https://img.shields.io/pypi/v/plaid-lib)](https://pypi.org/project/plaid-lib/)
+[![codecov](https://codecov.io/gh/PLAID-lib/plaid/branch/main/graph/badge.svg)](https://codecov.io/gh/PLAID-lib/plaid) -->
+
+
+
 <div align="center">
 <img src="docs/source/images/plaid.jpg" width="70">
 
