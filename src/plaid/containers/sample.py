@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
-#
+"""Sample container for PLAID.
+
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
-# %% Imports
+"""
 
 try:  # pragma: no cover
     from typing import Self
@@ -34,8 +31,6 @@ logging.basicConfig(
     format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
     level=logging.INFO,
 )
-
-# %% Globals
 
 CGNS_element_names = [
     "ElementTypeNull",
@@ -80,7 +75,49 @@ CGNS_element_names = [
     "HEXA_64",
 ]
 """List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
-# %% Functions
+
+# from dataclasses import dataclass, field
+# from typing import Union, List
+# import numpy as np
+
+# @dataclass
+# class CGNSNode:
+#     name: str
+#     type: str
+#     data: Union[np.ndarray, str, int, float, None] = None
+#     children: List["CGNSNode"] = field(default_factory=list)
+
+
+# def show_cgns_tree(node: CGNSNode, offset: str = "") -> None:
+#     """Recursively prints the CGNS Tree structure, starting from the root node.
+
+#     Args:
+#         node: The root CGNS node to display.
+#         offset: The indentation string for nested levels (used internally).
+#     """
+#     if node is None:
+#         return
+
+#     # Format data depending on its type
+#     if isinstance(node.data, np.ndarray):
+#         if "|S" in str(node.data.dtype):
+#             data = node.data.tobytes()
+#         elif node.data.size < 10:
+#             data = node.data
+#         else:
+#             data = f"[{node.data.dtype}; {node.data.shape}]"
+#     else:
+#         data = node.data
+
+#     # Print node info
+#     print(
+#         offset
+#         + f'- "{node.name}"({node.type}), {len(node.children)} children, data({type(node.data)}): {data}'
+#     )
+
+#     # Recurse on children
+#     for child in node.children:
+#         show_cgns_tree(child, offset=offset + "    ")
 
 
 def show_cgns_tree(tree: list, offset: str = ""):
