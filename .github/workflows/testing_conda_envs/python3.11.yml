@@ -19,3 +19,4 @@ dependencies:
   - datasets
   - pydantic
   - pytest
+  - pytest-cov
