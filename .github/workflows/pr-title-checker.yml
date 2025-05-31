@@ -17,11 +17,11 @@ jobs:
           echo "Checking PR title: $PR_TITLE"
 
           # Define the allowed emojis using Unicode characters
-          VALID_EMOJIS="🐛|📄|🎉|🚀|♻️|📦"
+          VALID_EMOJIS="🐛|📄|🎉|🚀|♻️|📦|:bug:|:page_facing_up:|:tada:|:rocket:|:recycle:|:package:"
 
           # Check if the PR title starts with one of the valid emojis
           if [[ ! "$PR_TITLE" =~ ^[[:space:]]*($VALID_EMOJIS) ]]; then
-            echo "PR title must start with one of the accepted emojis: 🐛, 📄, 🎉, 🚀, ♻️, 📦."
+            echo "PR title must start with one of the accepted emojis: 🐛, 📄, 🎉, 🚀, ♻️, 📦 or their aliases."
             exit 1
           else
             echo "PR title format is correct."
