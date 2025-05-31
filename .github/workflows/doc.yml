@@ -24,7 +24,7 @@ jobs:
       - name: Create environment
         run: |
           mamba env create -f docs/requirements.yml
-          pip install -e .
+          mamba run -n plaid pip install -e .
 
       - name: Compile documentation
         run: |
