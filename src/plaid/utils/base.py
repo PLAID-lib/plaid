@@ -30,12 +30,14 @@ def generate_random_ASCII(size: int = 16) -> str:
             rnd_ += str(val_)
     return rnd_
 
-
 class NotAllowedError(Exception):
     """Exception for not allowed usage."""
     pass
 
-
 class ShapeError(Exception):
     """Exception for badly shaped tensors."""
+    pass
+
+class DeprecatedError(Exception):
+    """Exception for deprecated methods."""
     pass

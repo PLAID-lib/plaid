@@ -23,6 +23,7 @@ import Muscat.Containers.ElementsDescription as ElementsDescription
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
+import plaid
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 
@@ -339,9 +340,17 @@ dataset._save_to_dir_(tmpdir)
 # ### Get the number of Samples that can be loaded from a directory
 
 # %%
-nb_samples = Dataset._load_number_of_samples_(tmpdir)
+nb_samples = plaid.get_number_of_samples(tmpdir)
 
 print(f"{nb_samples = }")
+
+# %% [markdown]
+# ### Get the Samples ids that can be loaded from a directory
+
+# %%
+sample_ids = plaid.get_sample_ids(tmpdir)
+
+print(f"{sample_ids = }")
 
 # %% [markdown]
 # ### Load a Dataset from a directory via initialization

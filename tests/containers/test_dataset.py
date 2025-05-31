@@ -7,11 +7,12 @@
 
 # %% Imports
 
-import os
-
-import numpy as np
 import pytest
 
+from pathlib import Path
+import numpy as np
+
+import plaid
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.utils.base import ShapeError
@@ -136,7 +137,7 @@ def dataset():
 
 @pytest.fixture()
 def current_directory():
-    return os.path.dirname(os.path.abspath(__file__))
+    return Path(__file__).absolute().parent
 
 
 @pytest.fixture()
@@ -178,23 +179,23 @@ class Test_Dataset():
             dataset.add_sample(None)
 
     def test___init__load(self, current_directory):
-        dataset_path = os.path.join(current_directory, "dataset")
+        dataset_path = current_directory / "dataset"
         dataset_already_filled = Dataset(dataset_path)
         assert len(dataset_already_filled) == 3
 
-    def test__init__load_path_object(self, current_directory):
-        from pathlib import Path
-        my_dir = Path(current_directory)
-        Dataset(my_dir / 'dataset')
+    def test__init__load_with_str(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        dataset_already_filled = Dataset(str(dataset_path))
+        assert len(dataset_already_filled) == 3
 
     def test___init__unknown_directory(self, current_directory):
-        dataset_path = os.path.join(current_directory, "dataset_unknown")
+        dataset_path = current_directory / "dataset_unknown"
         with pytest.raises(FileNotFoundError):
             Dataset(dataset_path)
 
     def test___init__file_provided(self, current_directory):
-        dataset_path = os.path.join(current_directory, "bad_dataset_test")
-        with pytest.raises(FileExistsError):
+        dataset_path = current_directory / "bad_dataset_test"
+        with pytest.raises(FileNotFoundError):
             Dataset(dataset_path)
 
     # -------------------------------------------------------------------------#
@@ -372,6 +373,10 @@ class Test_Dataset():
     def test_get_sample_ids(self, dataset):
         dataset.get_sample_ids()
 
+    def test_get_sample_ids_from_disk(self, dataset, current_directory):
+        dataset_path = current_directory / "dataset"
+        assert plaid.get_number_of_samples(dataset_path) == 3
+
     # -------------------------------------------------------------------------#
     def test_get_scalar_names(self, dataset_with_samples, nb_samples):
         dataset_with_samples.get_scalar_names()
@@ -493,7 +498,7 @@ class Test_Dataset():
     def test_save(self, dataset_with_samples, tmp_path):
         fname = tmp_path / 'test.plaid'
         dataset_with_samples.save(fname)
-        assert (os.path.isfile(fname))
+        assert fname.is_file()
 
     def test_load(self, dataset_with_samples, tmp_path):
         fname = tmp_path / 'test.plaid'
@@ -555,9 +560,9 @@ class Test_Dataset():
     def test__save_to_dir_(self, dataset_with_samples, tmp_path):
         savedir = tmp_path / 'testdir'
         dataset_with_samples._save_to_dir_(savedir)
-        assert dataset_with_samples._load_number_of_samples_(savedir) == len(dataset_with_samples)
-        assert (os.path.isdir(savedir))
-        assert (os.path.isfile(savedir / 'infos.yaml'))
+        assert plaid.get_number_of_samples(savedir) == len(dataset_with_samples)
+        assert savedir.is_dir()
+        assert (savedir / 'infos.yaml').is_file()
 
     def test__load_from_dir_(self, dataset_with_samples, infos, tmp_path):
         savedir = tmp_path / 'testdir'
