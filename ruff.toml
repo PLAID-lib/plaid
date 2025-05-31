@@ -1,0 +1,21 @@
+line-length = 88
+
+[lint]
+select = [
+  "D",
+  "E", "W",
+  "F",
+  "ARG",
+  "I",
+]
+ignore = [
+  "E501", 
+  "D107" # missing docstring in __init__
+]
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.per-file-ignores]
+"*tests/*" = ["D", "S101"]
+"__init__.py" = ["F401"]

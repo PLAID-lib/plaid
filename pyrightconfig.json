@@ -1,0 +1,16 @@
+{
+    "include": [
+      "projects"
+    ],
+    "exclude": [
+      "**/venv",
+      "**/.venv",
+      "**/__pycache__",
+      "examples",
+    ],
+    "typeCheckingMode": "standard",
+    "reportUnusedVariable": "warning",
+    "reportMissingImports": "error",
+    "reportUnknownMemberType": "warning",
+    "useLibraryCodeForTypes": true
+  }
