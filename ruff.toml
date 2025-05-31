@@ -10,8 +10,6 @@ select = [
 ]
 ignore = [
   "E501", 
-  "F821",
-  "F722",
   "D107" # missing docstring in __init__
 ]
 
