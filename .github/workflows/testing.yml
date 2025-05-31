@@ -28,24 +28,22 @@ jobs:
       - name: Create environment
         run: |
           mamba env create -f .github/workflows/conda_envs/python${{ matrix.python-version }}.yml
+          mamba run -n plaid_python${{ matrix.python-version }} pip install -e .
 
       - name: Run tests on Unix
         if: runner.os != 'Windows'
         run: |
-          export PYTHONPATH=$(pwd)/src
           mamba run -n plaid_python${{ matrix.python-version }} pytest tests --cov=src --cov-report=xml --cov-report=term
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $env:PYTHONPATH = "$(Get-Location)\src"
           mamba run -n plaid_python${{ matrix.python-version }} pytest tests
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
         run: |
-          export PYTHONPATH=$(pwd)/src
           cd examples
           mamba run -n plaid_python${{ matrix.python-version }} bash run_examples.sh
 
@@ -53,7 +51,6 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $env:PYTHONPATH = "$(Get-Location)\src"
           cd examples
           mamba run -n plaid_python${{ matrix.python-version }} run_examples.bat
 

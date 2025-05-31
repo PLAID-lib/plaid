@@ -1,25 +1,9 @@
 name: plaid
-
 channels:
   - conda-forge
   - nodefaults
-
 dependencies:
   - python=3.11
-#---# basic python
-  - pip
-  - tqdm
-  - setuptools
-#---# formatting
-  - autopep8
-  - black
-  - yapf
-  - rich
-#---# test
-  - pytest
-  - pytest-cov
-  - pytest-xdist
-  - hypothesis
 #---# io
   - pyyaml
 #---# doc
@@ -27,14 +11,16 @@ dependencies:
   - myst-nb
   - myst-parser
   - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
-#---# serialization
-  - pydantic
 #---# mesh/graph libs
   - muscat=2.4.1
-  - pycgns
+  - pycgns-core
+#---# other
   - scikit-learn
-#---# AI
   - datasets
+  - pydantic
+  - pytest
+  - pytest-cov
+  - pip
   - pip:
     - furo
     - sphinx-autoapi
