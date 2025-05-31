@@ -23,7 +23,7 @@ PLAID documentation
    :target: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml
    :alt: CI Status
 .. image:: https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg
-   :target: https://app.codecov.io/gh/plaid-lib/plaid/tree/main
+   :target: https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list
    :alt: codecov
 .. image:: https://anaconda.org/conda-forge/plaid/badges/license.svg
    :target: https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
