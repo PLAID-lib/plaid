@@ -33,7 +33,7 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           export PYTHONPATH=$(pwd)/src
-          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+          mamba run -n plaid_python${{ matrix.python-version }} pytest tests --cov=src --cov-report=xml --cov-report=term
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
@@ -56,6 +56,14 @@ jobs:
           $env:PYTHONPATH = "$(Get-Location)\src"
           cd examples
           mamba run -n plaid_python${{ matrix.python-version }} run_examples.bat
+
+      - name: Upload coverage to Codecov (Linux only)
+        if: runner.os == 'Linux'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          name: python-${{ matrix.python-version }}
+          verbose: true
 
     #   - name: Set up Miniconda
     #     uses: conda-incubator/setup-miniconda@v2
