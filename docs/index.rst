@@ -8,6 +8,7 @@ PLAID documentation
 
 .. ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social)
 .. [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml)
+.. [![codecov](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main)
 .. [![License](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt)
 .. [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest)
 .. [![Conda Version](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid)
@@ -21,6 +22,9 @@ PLAID documentation
 .. image:: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg
    :target: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml
    :alt: CI Status
+.. image:: https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg
+   :target: https://app.codecov.io/gh/plaid-lib/plaid/tree/main
+   :alt: codecov
 .. image:: https://anaconda.org/conda-forge/plaid/badges/license.svg
    :target: https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
    :alt: License
