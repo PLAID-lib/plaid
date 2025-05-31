@@ -25,3 +25,7 @@ Please explain what your PR does:
 - How was it tested?
 
 ---
+
+### 🔗 Related issues (optional)
+
+Closes #___
