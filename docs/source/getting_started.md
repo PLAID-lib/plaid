@@ -37,7 +37,7 @@ configure an environment manually following the dependencies listed in ``conda_d
 and install the package by either updating you PYTHONPATH, or using
 
 ```bash
-pip setup.py install
+pip install -e .
 ```
 
 ## 2. Test installation
@@ -45,14 +45,15 @@ pip setup.py install
 To check the installation, you can run the unit test suite
 
 ```bash
-cd tests
-python -m pytest
+pytest tests
 ```
 
 To test further and learn about simple use cases, you can run the examples:
+
 ```bash
 cd examples
-bash run_examples.sh
+bash run_examples.sh  # [unix]
+run_examples.bat      # [win]
 ```
 
 ---
