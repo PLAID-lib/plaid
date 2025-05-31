@@ -54,7 +54,7 @@ def is_dvipng_available(verbose: bool) -> bool:
     """
     try:
         subprocess.run(["dvipng", "--version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return True
+        return True # pragma: no cover
     except FileNotFoundError: # pragma: no cover
         print('dvipng module not installed. Using the default matplotlib options instead') if verbose else None
         return False
@@ -99,7 +99,7 @@ def plot_bisect(ref_dataset: Dataset | str, pred_dataset: Dataset | str,
                 f"The scalar name provided ({scalar}) is not part of '{out_scalars_names = }'")
 
     # Matplotlib plotting options
-    if is_dvipng_available(verbose):
+    if is_dvipng_available(verbose): # pragma: no cover
         plt.rcParams.update({
             "text.usetex": True,
             "font.family": "sans-serif",
