@@ -7,7 +7,7 @@ on:
     - cron: '0 0 * * *'  # Every day at 00:00 UTC
 
 jobs:
-  test:
+  doc:
     runs-on: ubuntu-latest
 
     steps:
