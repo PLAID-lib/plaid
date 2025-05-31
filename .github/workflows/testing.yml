@@ -28,7 +28,7 @@ jobs:
       - name: Create environment
         run: |
           mamba env create -f .github/workflows/conda_envs/python${{ matrix.python-version }}.yml
-          pip install -e .
+          mamba run -n plaid_python${{ matrix.python-version }} pip install -e .
 
       - name: Run tests on Unix
         if: runner.os != 'Windows'
