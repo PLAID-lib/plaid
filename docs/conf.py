@@ -213,7 +213,7 @@ github_url = 'https://github.com/PLAID-lib/plaid'
 # They will overwrite any existing file of the same name.
 # As these files are not meant to be built, they are automatically
 # excluded from source files.
-html_extra_path = ['_extra']
+# html_extra_path = ['_extra']
 
 # -----------------------------------------------------------------------------#
 
