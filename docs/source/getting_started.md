@@ -33,7 +33,7 @@ git clone https://github.com/PLAID-lib/plaid.git
 Configure an environment manually following the dependencies listed in ``conda_dev_env.yml``, or generate it using conda:
 
 ```bash
-conda env create -f conda_dev_env'
+conda env create -f conda_dev_env.yml
 ```
 
 Then, to install the library:
@@ -48,7 +48,7 @@ To check the installation, you can run the unit test suite:
 pytest tests
 ```
 
-To test further and learn about simple use cases, you can run the examples:
+To test further and learn about simple use cases, you can run and explore the examples:
 
 ```bash
 cd examples
