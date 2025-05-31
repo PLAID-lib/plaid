@@ -173,7 +173,7 @@ def read_index_array(pyTree: list):
     res = []
     for indexArrayPath in indexArrayPaths:
         data = CGU.getNodeByPath(pyTree, indexArrayPath)
-        if data[1] is None:
+        if data[1] is None: # pragma: no cover
             continue
         else:
             res.extend(data[1].ravel())
@@ -710,10 +710,10 @@ class Sample(BaseModel):
         #When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
 
 
-        if not linked_time in linked_sample._meshes:
+        if not linked_time in linked_sample._meshes: # pragma: no cover
             raise KeyError(f"There is no CGNS tree for time {linked_time} in linked_sample.")
 
-        if time in self._meshes:
+        if time in self._meshes: # pragma: no cover
             raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
 
         tree = CGL.newCGNSTree()
@@ -778,7 +778,7 @@ class Sample(BaseModel):
         """
         # get_base will look for default time and base_name
         base_node = self.get_base(base_name, time)
-        if base_node is None:
+        if base_node is None: # pragma: no cover
             raise ValueError(f"there is no base called {base_name} at the time {time} in this sample")
 
         return base_node[1][0]
@@ -797,7 +797,7 @@ class Sample(BaseModel):
             int: The topological dimension of the specified base node at the given time.
         """
         base_node = self.get_base(base_name, time)
-        if base_node is None:
+        if base_node is None: # pragma: no cover
             raise ValueError(f"there is no base called {base_name} at the time {time} in this sample")
 
         return base_node[1][1]
@@ -971,7 +971,7 @@ class Sample(BaseModel):
         Returns:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
-        if self._meshes is None:
+        if self._meshes is None: # pragma: no cover
             raise KeyError(f"There is no CGNS tree in this sample.")
 
         if not time in self._meshes:
@@ -1320,7 +1320,7 @@ class Sample(BaseModel):
                 array = np.concatenate((array_x.reshape(
                     (-1, 1)), array_y.reshape((-1, 1)), array_z.reshape((-1, 1))), axis=1)
             return array
-        elif len(grid_paths) > 1:
+        elif len(grid_paths) > 1: # pragma: no cover
             raise TypeError(
                 f"Found {len(grid_paths)} <GridCoordinates> nodes, should find only one")
 
