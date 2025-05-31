@@ -75,13 +75,13 @@ class OnlineStatistics(object):
         """
         if x.ndim == 1:
             if not (self.min is None):
-                if self.min.size == 1:
+                if self.min.shape[1] == 1:
                     # n_samples x 1
                     x = x.reshape((-1, 1))
                 else:
                     # 1 x n_features
                     x = x.reshape((1, -1))
-            else:
+            else: #pragma: no cover
                 raise ShapeError(
                     "can't determine if input array with ndim=1, is 1 x n_features or n_samples x 1")
         elif x.ndim > 2:
@@ -204,7 +204,7 @@ class Stats(object):
 
             if has_same_shape:
                 new_data[name] = np.array(new_data[name])
-            else:
+            else: #pragma: no cover  ### remove "no cover" when "has_same_shape = True" is no longer used
                 if name in self._stats:
                     self._stats[name].flatten_array()
                 new_data[name] = np.concatenate(
