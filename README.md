@@ -47,10 +47,10 @@ To use the library, the simplest way is to install the conda package:
 conda install -c conda-forge plaid
 ```
 
-Consider using setup.py for install, and exploring the examples folder.
+Consider also installing and exploring the examples folder.
 
 ```bash
-pip setup.py install
+pip install -e .
 ```
 
 To configure a compatible environment, consider using the provided conda yaml files.
@@ -59,10 +59,18 @@ To configure a compatible environment, consider using the provided conda yaml fi
 conda env create -f '<environment_you_need>.yml'
 ```
 
-To check the installation, you can run:
+To check the installation, you can run the unit test suite:
+
 ```bash
-cd tests
-python -m pytest
+pytest tests
+```
+
+To test further and learn about simple use cases, you can run the examples:
+
+```bash
+cd examples
+bash run_examples.sh  # [unix]
+run_examples.bat      # [win]
 ```
 
 ## 3. Call for Contributions
