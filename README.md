@@ -1,15 +1,15 @@
-![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social)
-[![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml)
-[![codecov](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list)
-[![License](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt)
-[![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest)
-[![Conda Version](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid)
-[![Conda Release Date](https://anaconda.org/conda-forge/plaid/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/plaid)
-[![Conda Platforms](https://anaconda.org/conda-forge/plaid/badges/platforms.svg)](https://anaconda.org/conda-forge/plaid)
-[![Conda Downloads](https://anaconda.org/conda-forge/plaid/badges/downloads.svg)](https://anaconda.org/conda-forge/plaid)
-<!-- ![Python Version](https://img.shields.io/pypi/pyversions/plaid-lib)
-[![PyPI Version](https://img.shields.io/pypi/v/plaid-lib)](https://pypi.org/project/plaid-lib/)
-[![codecov](https://codecov.io/gh/PLAID-lib/plaid/branch/main/graph/badge.svg)](https://codecov.io/gh/PLAID-lib/plaid) -->
+<div align="center">
+<img src="https://plaid-lib.github.io/assets/images/PLAID-large-logo.png" width="300">
+</div>
+
+| | |
+| --- | --- |
+| Testing | [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml) [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest) [![Coverage](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list) ![Last Commit](https://img.shields.io/github/last-commit/PLAID-lib/plaid/main) |
+| Package | [![PyPI Latest Release](https://img.shields.io/pypi/v/pyplaid.svg)](https://pypi.org/project/pyplaid/) [![Conda Latest Release](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid) ![Platform](https://img.shields.io/badge/platform-any-blue) ![Python Version](https://img.shields.io/pypi/pyversions/pyplaid) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/plaid) |
+| Meta | [![License - BSD 3-Clause](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt) ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social) |
+
+<!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/pyplaid.svg?label=PyPI%20downloads)](https://pypi.org/project/pyplaid/) -->
+<!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3509134.svg)](https://doi.org/10.5281/zenodo.3509134)  -->
 
 
 # Physics Learning AI Datamodel (PLAID)

@@ -5,16 +5,12 @@ Everything you need to know to start using the PLAID.
 ---
 
 - [Getting Started](#getting-started)
-  - [1. Install guide](#1-install-guide)
-    - [1.1 Using the library](#11-using-the-library)
-    - [1.2 Contributing to the library](#12-contributing-to-the-library)
-  - [2. Test installation](#2-test-installation)
+  - [1. Using the library](#1-using-the-library)
+  - [2. Contributing to the library](#2-contributing-to-the-library)
 
 ---
 
-## 1. Install guide
-
-### 1.1 Using the library
+## 1 Using the library
 
 To use the library, the simplest way is to install the conda-forge or PyPi package:
 
@@ -23,7 +19,7 @@ conda install -c conda-forge plaid
 pip install pyplaid
 ```
 
-### 1.2 Contributing to the library
+## 2 Contributing to the library
 
 To contribute to the library, you need to clone the repo using git:
 
