@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    name: Run Tests and Examples
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
