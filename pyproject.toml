@@ -45,7 +45,7 @@ dynamic = ["version"]
 write_to = "src/plaid/_version.py"
 
 [project.urls]
-homepage = "https://github.com/PLAID-lib/plaid"
+homepage = "https://plaid-lib.github.io"
 documentation = "https://plaid-lib.readthedocs.io"
 repository = "https://github.com/PLAID-lib/plaid"
 
