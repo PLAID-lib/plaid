@@ -16,10 +16,11 @@ Everything you need to know to start using the PLAID.
 
 ### 1.1 Using the library
 
-To use the library, the simplest way is to install the conda package:
+To use the library, the simplest way is to install the conda-forge or PyPi package:
 
 ```bash
 conda install -c conda-forge plaid
+pip install pyplaid
 ```
 
 ### 1.2 Contributing to the library
@@ -56,7 +57,6 @@ bash run_examples.sh  # [unix]
 run_examples.bat      # [win]
 ```
 
----
 **Note**
 
-[pytest](https://anaconda.org/conda-forge/pytest) and [Muscat](https://anaconda.org/conda-forge/muscat) are two dependencies not distributed in the plaid conda-forge package, but can be found on conda-forge as well.
+[pytest](https://anaconda.org/conda-forge/pytest) and [Muscat](https://anaconda.org/conda-forge/muscat) are two dependencies not included in the packages ``plaid`` on conda-forge or ``pyplaid`` on PyPi, but required to run the tests and examples. [pytest](https://pypi.org/project/pytest) is available on PyPi, mais not [Muscat](https://pypi.org/project/pytest).
