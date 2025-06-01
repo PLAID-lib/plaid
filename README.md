@@ -12,10 +12,6 @@
 [![codecov](https://codecov.io/gh/PLAID-lib/plaid/branch/main/graph/badge.svg)](https://codecov.io/gh/PLAID-lib/plaid) -->
 
 
-
-<div align="center">
-<img src="docs/source/images/plaid.jpg" width="70">
-
 # Physics Learning AI Datamodel (PLAID)
 
 </div>
