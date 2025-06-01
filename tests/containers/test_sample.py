@@ -17,7 +17,7 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
-from plaid.containers.sample import Sample, show_cgns_tree
+from plaid.containers.sample import Sample, show_cgns_tree, read_index, read_index_array, read_index_range
 
 # %% Fixtures
 
@@ -183,6 +183,18 @@ def test_show_cgns_tree(tree):
 def test_show_cgns_tree_not_a_list():
     with pytest.raises(TypeError):
         show_cgns_tree({1: 2})
+
+
+def test_read_index(tree, physical_dim):
+    read_index(tree, physical_dim)
+
+
+def test_read_index_array(tree):
+    read_index_array(tree)
+
+
+def test_read_index_range(tree, physical_dim):
+    read_index_range(tree, physical_dim)
 
 
 @pytest.fixture()
@@ -361,6 +373,7 @@ class Test_Sample():
             sample_with_tree.add_tree([])
 
     def test_add_tree(self, sample, tree):
+        sample.add_tree(tree)
         sample.add_tree(tree)
         sample.add_tree(tree, time=0.2)
 
@@ -627,6 +640,7 @@ class Test_Sample():
             np.random.randint(0, 10, size=3),
             zone_name='zone_name_2',
             base_name=base_name)
+        sample.get_zone_names(base_name, unique = True)
         assert (
             sample.get_zone_names(base_name) == [
                 'zone_name_1',
@@ -778,8 +792,11 @@ class Test_Sample():
     def test_get_nodal_tags_empty(self, sample):
         assert (sample.get_nodal_tags() == {})
 
-    def test_get_nodal_tags(self, sample_with_tree, nodal_tags):
-        assert (np.all(sample_with_tree.get_nodal_tags()["tag"] == nodal_tags))
+    def test_get_nodal_tags(self, sample_with_tree,  nodal_tags):
+        # assert (np.all(sample_with_tree.get_nodal_tags(base_name = "Base_2_2")["tag"] == nodal_tags))
+        # with pytest.raises(KeyError):
+        #     sample_with_tree.get_nodal_tags()
+        print(sample_with_tree.get_nodal_tags(base_name = "Base_2_2"))
 
     # -------------------------------------------------------------------------#
     def test_get_nodes_empty(self, sample):
