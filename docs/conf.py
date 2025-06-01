@@ -187,6 +187,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # html_theme = 'sphinx_rtd_theme'
 html_theme = 'furo'
 html_logo = "source/images/plaid.jpg"
+html_favicon = "source/images/plaid.jpg"
 
 # cf https://pradyunsg.me/furo/customisation/edit-button/
 html_theme_options = {
@@ -204,7 +205,7 @@ github_url = 'https://github.com/PLAID-lib/plaid'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+# html_static_path = ["_static"]
 
 # A list of paths that contain extra files not directly related to the documentation,
 # such as robots.txt or .htaccess.

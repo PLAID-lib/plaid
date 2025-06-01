@@ -6,43 +6,51 @@
 PLAID documentation
 ===================
 
-.. ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social)
-.. [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml)
-.. [![codecov](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main)
-.. [![License](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt)
-.. [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest)
-.. [![Conda Version](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid)
-.. [![Conda Release Date](https://anaconda.org/conda-forge/plaid/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/plaid)
-.. [![Conda Platforms](https://anaconda.org/conda-forge/plaid/badges/platforms.svg)](https://anaconda.org/conda-forge/plaid)
-.. [![Conda Downloads](https://anaconda.org/conda-forge/plaid/badges/downloads.svg)](https://anaconda.org/conda-forge/plaid)
+.. image:: https://plaid-lib.github.io/assets/images/PLAID-large-logo.png
+   :align: center
+   :width: 300px
 
-.. image:: https://img.shields.io/github/stars/PLAID-lib/plaid?style=social
-   :target: https://github.com/PLAID-lib/plaid
-   :alt: GitHub Stars
-.. image:: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg
++-------------+-------------------------------------------------------------------------------+
+| **Testing** | |CI Status| |Docs| |Coverage| |Last Commit|                                   |
++-------------+-------------------------------------------------------------------------------+
+| **Package** | |PyPI Version| |Conda Version| |Platform| |Python Version| |Conda Downloads|  |
++-------------+-------------------------------------------------------------------------------+
+| **Meta**    | |License| |GitHub Stars|                                                      |
++-------------+-------------------------------------------------------------------------------+
+
+
+.. |CI Status| image:: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg
    :target: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml
-   :alt: CI Status
-.. image:: https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg
-   :target: https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list
-   :alt: codecov
-.. image:: https://anaconda.org/conda-forge/plaid/badges/license.svg
-   :target: https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
-   :alt: License
-.. image:: https://readthedocs.org/projects/plaid-lib/badge/?version=latest
+
+.. |Docs| image:: https://readthedocs.org/projects/plaid-lib/badge/?version=latest
    :target: https://plaid-lib.readthedocs.io/en/latest/?badge=latest
-   :alt: Docs Status
-.. image:: https://anaconda.org/conda-forge/plaid/badges/version.svg
+
+.. |Coverage| image:: https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg
+   :target: https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list
+
+.. |Last Commit| image:: https://img.shields.io/github/last-commit/PLAID-lib/plaid/main
+   :target: https://github.com/PLAID-lib/plaid/commits/main
+
+.. |PyPI Version| image:: https://img.shields.io/pypi/v/pyplaid.svg
+   :target: https://pypi.org/project/pyplaid/
+
+.. |Conda Version| image:: https://anaconda.org/conda-forge/plaid/badges/version.svg
    :target: https://anaconda.org/conda-forge/plaid
-   :alt: Conda Version
-.. image:: https://anaconda.org/conda-forge/plaid/badges/latest_release_date.svg
+
+.. |Platform| image:: https://img.shields.io/badge/platform-any-blue
+   :target: https://github.com/PLAID-lib/plaid
+
+.. |Python Version| image:: https://img.shields.io/pypi/pyversions/pyplaid
+   :target: https://github.com/PLAID-lib/plaid
+
+.. |Conda Downloads| image:: https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads
    :target: https://anaconda.org/conda-forge/plaid
-   :alt: Conda Release Date
-.. image:: https://anaconda.org/conda-forge/plaid/badges/platforms.svg
-   :target: https://anaconda.org/conda-forge/plaid
-   :alt: Conda Platforms
-.. image:: https://anaconda.org/conda-forge/plaid/badges/downloads.svg
-   :target: https://anaconda.org/conda-forge/plaid
-   :alt: Conda Downloads
+
+.. |License| image:: https://anaconda.org/conda-forge/plaid/badges/license.svg
+   :target: https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
+
+.. |GitHub Stars| image:: https://img.shields.io/github/stars/PLAID-lib/plaid?style=social
+   :target: https://github.com/PLAID-lib/plaid
 
 
 PLAID (Physics Learning AI Datamodel) is a library proposing an implementation for a datamodel tailored for AI and ML learning of physics problems.

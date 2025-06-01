@@ -1,20 +1,16 @@
-![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social)
-[![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml)
-[![codecov](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list)
-[![License](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt)
-[![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest)
-[![Conda Version](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid)
-[![Conda Release Date](https://anaconda.org/conda-forge/plaid/badges/latest_release_date.svg)](https://anaconda.org/conda-forge/plaid)
-[![Conda Platforms](https://anaconda.org/conda-forge/plaid/badges/platforms.svg)](https://anaconda.org/conda-forge/plaid)
-[![Conda Downloads](https://anaconda.org/conda-forge/plaid/badges/downloads.svg)](https://anaconda.org/conda-forge/plaid)
-<!-- ![Python Version](https://img.shields.io/pypi/pyversions/plaid-lib)
-[![PyPI Version](https://img.shields.io/pypi/v/plaid-lib)](https://pypi.org/project/plaid-lib/)
-[![codecov](https://codecov.io/gh/PLAID-lib/plaid/branch/main/graph/badge.svg)](https://codecov.io/gh/PLAID-lib/plaid) -->
-
-
-
 <div align="center">
-<img src="docs/source/images/plaid.jpg" width="70">
+<img src="https://plaid-lib.github.io/assets/images/PLAID-large-logo.png" width="300">
+</div>
+
+| | |
+| --- | --- |
+| Testing | [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml) [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest) [![Coverage](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list) ![Last Commit](https://img.shields.io/github/last-commit/PLAID-lib/plaid/main) |
+| Package | [![PyPI Latest Release](https://img.shields.io/pypi/v/pyplaid.svg)](https://pypi.org/project/pyplaid/) [![Conda Latest Release](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid) ![Platform](https://img.shields.io/badge/platform-any-blue) ![Python Version](https://img.shields.io/pypi/pyversions/pyplaid) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/plaid) |
+| Meta | [![License - BSD 3-Clause](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt) ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social) |
+
+<!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/pyplaid.svg?label=PyPI%20downloads)](https://pypi.org/project/pyplaid/) -->
+<!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3509134.svg)](https://doi.org/10.5281/zenodo.3509134)  -->
+
 
 # Physics Learning AI Datamodel (PLAID)
 
@@ -45,10 +41,11 @@ It has been developped at SafranTech, the research center of [Safran group](http
 
 ### 2.1 Using the library
 
-To use the library, the simplest way is to install the conda package:
+To use the library, the simplest way is to install the conda-forge or PyPi package:
 
 ```bash
 conda install -c conda-forge plaid
+pip install pyplaid
 ```
 
 ### 2.2 Contributing to the library
@@ -62,7 +59,7 @@ git clone https://github.com/PLAID-lib/plaid.git
 Configure an environment manually following the dependencies listed in ``conda_dev_env.yml``, or generate it using conda:
 
 ```bash
-conda env create -f conda_dev_env'
+conda env create -f conda_dev_env.yml
 ```
 
 Then, to install the library:
@@ -77,13 +74,18 @@ To check the installation, you can run the unit test suite:
 pytest tests
 ```
 
-To test further and learn about simple use cases, you can run the examples:
+To test further and learn about simple use cases, you can run and explore the examples:
 
 ```bash
 cd examples
 bash run_examples.sh  # [unix]
 run_examples.bat      # [win]
 ```
+
+**Note**
+
+[pytest](https://anaconda.org/conda-forge/pytest) and [Muscat](https://anaconda.org/conda-forge/muscat) are two dependencies not included in the packages ``plaid`` on conda-forge or ``pyplaid`` on PyPi, but required to run the tests and examples. [pytest](https://pypi.org/project/pytest) is available on PyPi, mais not [Muscat](https://pypi.org/project/pytest).
+
 
 ## 3. Call for Contributions
 
