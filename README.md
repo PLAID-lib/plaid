@@ -41,10 +41,11 @@ It has been developped at SafranTech, the research center of [Safran group](http
 
 ### 2.1 Using the library
 
-To use the library, the simplest way is to install the conda package:
+To use the library, the simplest way is to install the conda-forge or PyPi package:
 
 ```bash
 conda install -c conda-forge plaid
+pip install pyplaid
 ```
 
 ### 2.2 Contributing to the library
@@ -80,6 +81,11 @@ cd examples
 bash run_examples.sh  # [unix]
 run_examples.bat      # [win]
 ```
+
+**Note**
+
+[pytest](https://anaconda.org/conda-forge/pytest) and [Muscat](https://anaconda.org/conda-forge/muscat) are two dependencies not included in the packages ``plaid`` on conda-forge or ``pyplaid`` on PyPi, but required to run the tests and examples. [pytest](https://pypi.org/project/pytest) is available on PyPi, mais not [Muscat](https://pypi.org/project/pytest).
+
 
 ## 3. Call for Contributions
 
