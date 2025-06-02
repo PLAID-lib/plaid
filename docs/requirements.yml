@@ -13,7 +13,7 @@ dependencies:
   - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
 #---# mesh/graph libs
   - muscat=2.4.1
-  - pycgns
+  - pycgns-core
 #---# other
   - scikit-learn
   - datasets

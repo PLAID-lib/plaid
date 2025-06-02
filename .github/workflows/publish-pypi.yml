@@ -1,0 +1,119 @@
+name: Publish to PyPI
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  test:
+    name: test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: [3.11, 3.12]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Conda with Mamba
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          use-mamba: true
+          auto-activate-base: false
+          miniforge-variant: Miniforge3
+
+      - name: Create environment
+        run: |
+          mamba env create -f .github/workflows/conda_envs/python${{ matrix.python-version }}.yml
+          mamba run -n plaid_python${{ matrix.python-version }} pip install -e .
+
+      - name: Run tests on Unix
+        if: runner.os != 'Windows'
+        run: |
+          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+
+      - name: Run tests on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+
+      - name: Run examples on Unix
+        if: runner.os != 'Windows'
+        run: |
+          cd examples
+          mamba run -n plaid_python${{ matrix.python-version }} bash run_examples.sh
+
+      - name: Run examples on Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          cd examples
+          mamba run -n plaid_python${{ matrix.python-version }} run_examples.bat
+
+  build:
+    name: Build wheels for multiple Python versions
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install HDF5 dev libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libhdf5-dev
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Check version consistency
+        run: |
+          pip install .
+          RELEASE_VER=${GITHUB_REF#refs/*/}
+          PACKAGE_VER="$(python -c 'import plaid; print(plaid.__version__)')"
+          if [ "$RELEASE_VER" != "$PACKAGE_VER" ]; then
+            echo "Package version ($PACKAGE_VER) doesn't match tag ($RELEASE_VER)"
+            exit 1
+          fi
+
+      - name: Build package
+        run: |
+          python -m build --wheel --outdir dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-3.12
+          path: dist/*.whl
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
