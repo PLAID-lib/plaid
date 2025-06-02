@@ -18,18 +18,22 @@ from plaid.utils.base import ShapeError
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    format='[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s',
-    level=logging.INFO)
+    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
+    level=logging.INFO,
+)
 
 # %% Functions
 
 
-def aggregate_stats(sizes: np.ndarray, means: np.ndarray,
-                    vars: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def aggregate_stats(
+    sizes: np.ndarray, means: np.ndarray, vars: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute aggregated statistics of a batch of already computed statistics (without original samples information).
+
         This function calculates aggregated statistics, such as the total number of samples, mean, and variance, by taking into account the statistics computed for each batch of data.
 
     cf: https://fr.wikipedia.org/wiki/Variance_(math%C3%A9matiques)
+
     Args:
         sizes (np.ndarray): An array containing the sizes (number of samples) of each batch.
         means (np.ndarray): An array containing the means of each batch.
@@ -43,20 +47,21 @@ def aggregate_stats(sizes: np.ndarray, means: np.ndarray,
     """
     total_n_samples = np.sum(sizes, keepdims=True)
     total_mean = np.sum(sizes * means, keepdims=True) / total_n_samples
-    total_var = np.sum(sizes * (vars + (total_mean - means)
-                       ** 2), keepdims=True) / total_n_samples
+    total_var = (
+        np.sum(sizes * (vars + (total_mean - means) ** 2), keepdims=True)
+        / total_n_samples
+    )
     return total_n_samples, total_mean, total_var
+
 
 # %% Classes
 
 
 class OnlineStatistics(object):
-    """OnlineStatistics is a class for computing online statistics (e.g., min, max, mean, variance, and standard deviation) of numpy arrays.
-    """
+    """OnlineStatistics is a class for computing online statistics (e.g., min, max, mean, variance, and standard deviation) of numpy arrays."""
 
     def __init__(self) -> None:
-        """Initialize an empty OnlineStatistics object.
-        """
+        """Initialize an empty OnlineStatistics object."""
         self.n_samples: int = 0
         self.min: np.ndarray = None
         self.max: np.ndarray = None
@@ -74,7 +79,7 @@ class OnlineStatistics(object):
             ShapeError: Raised when there is an inconsistency in the shape of the input array.
         """
         if x.ndim == 1:
-            if not (self.min is None):
+            if self.min is not None:
                 if self.min.size == 1:
                     # n_samples x 1
                     x = x.reshape((-1, 1))
@@ -83,7 +88,8 @@ class OnlineStatistics(object):
                     x = x.reshape((1, -1))
             else:
                 raise ShapeError(
-                    "can't determine if input array with ndim=1, is 1 x n_features or n_samples x 1")
+                    "can't determine if input array with ndim=1, is 1 x n_features or n_samples x 1"
+                )
         elif x.ndim > 2:
             # suppose last dim is features dim, all previous dims are space
             # dims and are aggregated
@@ -95,27 +101,32 @@ class OnlineStatistics(object):
         added_mean = np.mean(x, axis=0, keepdims=True)
         added_var = np.var(x, axis=0, keepdims=True)
 
-        if (self.n_samples == 0) or (self.min is None) or (
-                self.max is None) or (self.mean is None) or (self.var is None):
+        if (
+            (self.n_samples == 0)
+            or (self.min is None)
+            or (self.max is None)
+            or (self.mean is None)
+            or (self.var is None)
+        ):
             self.n_samples = added_n_samples
             self.min = added_min
             self.max = added_max
             self.mean = added_mean
             self.var = added_var
         else:
-            self.min = np.min(
-                np.concatenate(
-                    (self.min, added_min), axis=0), axis=0)
-            self.max = np.max(
-                np.concatenate(
-                    (self.max, added_max), axis=0), axis=0)
+            self.min = np.min(np.concatenate((self.min, added_min), axis=0), axis=0)
+            self.max = np.max(np.concatenate((self.max, added_max), axis=0), axis=0)
             new_n_samples = self.n_samples + added_n_samples
-            new_mean = (self.n_samples * self.mean +
-                        added_n_samples * added_mean) / new_n_samples
+            new_mean = (
+                self.n_samples * self.mean + added_n_samples * added_mean
+            ) / new_n_samples
             self.n_samples, self.mean, self.var = aggregate_stats(
-                np.concatenate([self.n_samples +
-                                np.zeros(self.mean.shape, dtype=int), added_n_samples +
-                                np.zeros(added_mean.shape, dtype=int)]),
+                np.concatenate(
+                    [
+                        self.n_samples + np.zeros(self.mean.shape, dtype=int),
+                        added_n_samples + np.zeros(added_mean.shape, dtype=int),
+                    ]
+                ),
                 np.concatenate([self.mean, added_mean]),
                 np.concatenate([self.var, added_var]),
             )
@@ -131,9 +142,10 @@ class OnlineStatistics(object):
         """When a shape incoherence is detected, you should call this function."""
         self.min = np.min(self.min, keepdims=True)
         self.max = np.max(self.max, keepdims=True)
-        assert (self.mean.shape == self.var.shape)
+        assert self.mean.shape == self.var.shape
         self.n_samples, self.mean, self.var = aggregate_stats(
-            np.zeros(self.mean.shape, dtype=int) + self.n_samples, self.mean, self.var)
+            np.zeros(self.mean.shape, dtype=int) + self.n_samples, self.mean, self.var
+        )
         self.std = np.sqrt(self.var)
 
     def get_stats(self) -> dict[str, np.ndarray]:
@@ -143,22 +155,20 @@ class OnlineStatistics(object):
             dict[str,np.ndarray]:  A dictionary containing computed statistics.
         """
         return {
-            'n_samples': self.n_samples,
-            'min': self.min,
-            'max': self.max,
-            'mean': self.mean,
-            'var': self.var,
-            'std': self.std,
+            "n_samples": self.n_samples,
+            "min": self.min,
+            "max": self.max,
+            "mean": self.mean,
+            "var": self.var,
+            "std": self.std,
         }
 
 
 class Stats(object):
-    """Stats is a class for aggregating and computing statistics for datasets.
-    """
+    """Stats is a class for aggregating and computing statistics for datasets."""
 
     def __init__(self):
-        """Initialize an empty Stats object.
-        """
+        """Initialize an empty Stats object."""
         self._stats = {}
 
     def add_dataset(self, dset: Dataset) -> None:
@@ -208,7 +218,8 @@ class Stats(object):
                 if name in self._stats:
                     self._stats[name].flatten_array()
                 new_data[name] = np.concatenate(
-                    [np.ravel(value) for value in new_data[name]])
+                    [np.ravel(value) for value in new_data[name]]
+                )
 
             if new_data[name].ndim == 1:
                 new_data[name] = new_data[name].reshape((-1, 1))
@@ -227,8 +238,7 @@ class Stats(object):
         stats = {}
         for identifier in self._stats:
             stats[identifier] = {}
-            for stat_name, stat_value in self._stats[identifier].get_stats(
-            ).items():
+            for stat_name, stat_value in self._stats[identifier].get_stats().items():
                 stats[identifier][stat_name] = np.squeeze(stat_value)
 
         return stats

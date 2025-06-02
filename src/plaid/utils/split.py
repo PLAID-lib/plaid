@@ -16,8 +16,9 @@ from plaid.containers.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    format='[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s',
-    level=logging.INFO)
+    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
+    level=logging.INFO,
+)
 
 # %% Functions
 
@@ -67,45 +68,52 @@ def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
     # Verify that split option validity
     def check_options_validity(split_option: dict):
         assert isinstance(split_option, dict), "split option must be a dictionary"
-        if 'other' in split_option:
+        if "other" in split_option:
             raise ValueError("name 'other' is not authorized for a split")
 
     # Check that the keys in options are among authorized keys
-    authorized_task = ['split_ids', 'split_ratios', 'split_sizes', 'shuffle']
+    authorized_task = ["split_ids", "split_ratios", "split_sizes", "shuffle"]
     for task in options:
         if task in authorized_task:
             continue
         logger.warning(f"option {task} is not authorized. {task} key will be ignored")
 
-    f_case = len(set(['split_ids']).intersection(set(options.keys())))
-    s_case = len(set(['split_ratios', 'split_sizes']).intersection(set(options.keys())))
-    assert f_case == 0 or s_case == 0, "split by id cannot exist with split by ratios or sizes"
+    f_case = len(set(["split_ids"]).intersection(set(options.keys())))
+    s_case = len(set(["split_ratios", "split_sizes"]).intersection(set(options.keys())))
+    assert f_case == 0 or s_case == 0, (
+        "split by id cannot exist with split by ratios or sizes"
+    )
 
     # First case
-    if 'split_ids' in options:
-        check_options_validity(options['split_ids'])
+    if "split_ids" in options:
+        check_options_validity(options["split_ids"])
 
         if len(options) > 1:
-            logger.warning("options has key 'split_ids' and 'shuffle' -> 'shuffle' key will be ignored")
+            logger.warning(
+                "options has key 'split_ids' and 'shuffle' -> 'shuffle' key will be ignored"
+            )
 
         # all_ids = np.arange(total_size)
-        used_ids = np.unique(np.concatenate([ids for ids in options['split_ids'].values()]))
+        used_ids = np.unique(
+            np.concatenate([ids for ids in options["split_ids"].values()])
+        )
 
         if np.min(used_ids) < 0 or np.max(used_ids) >= total_size:
             raise ValueError(
                 "there are some ids out of bounds -> min/max:{}/{} | dataset len:{}".format(
-                    np.min(used_ids), np.max(used_ids), total_size))
+                    np.min(used_ids), np.max(used_ids), total_size
+                )
+            )
 
         other_ids = np.setdiff1d(all_ids, used_ids)
         if len(other_ids) > 0:
-            options['split_ids']['other'] = other_ids
+            options["split_ids"]["other"] = other_ids
 
-        if len(used_ids) < np.sum([len(ids)
-                                   for ids in options['split_ids'].values()]):
+        if len(used_ids) < np.sum([len(ids) for ids in options["split_ids"].values()]):
             logger.warning("there are some ids present in several splits")
 
-        for name in options['split_ids']:
-            _splits[name] = options['split_ids'][name]
+        for name in options["split_ids"]:
+            _splits[name] = options["split_ids"][name]
             # split_samples = []
             # for id in options['split_ids'][name]:
             #     split_samples.append(dset[id])
@@ -113,34 +121,34 @@ def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
             # dset._splits[name].add_samples(split_samples)
         return _splits
 
-    if 'shuffle' in options:
-        shuffle = options['shuffle']
+    if "shuffle" in options:
+        shuffle = options["shuffle"]
     else:
         shuffle = False
 
     split_sizes = [0]
     split_names = []
     # Second case
-    if 'split_ratios' in options:
-        check_options_validity(options['split_ratios'])
+    if "split_ratios" in options:
+        check_options_validity(options["split_ratios"])
 
-        for key, value in options['split_ratios'].items():
-            assert (isinstance(value, float))
+        for key, value in options["split_ratios"].items():
+            assert isinstance(value, float)
             split_names.append(key)
             split_sizes.append(int(total_size * value))
 
-    if 'split_sizes' in options:
-        check_options_validity(options['split_sizes'])
+    if "split_sizes" in options:
+        check_options_validity(options["split_sizes"])
 
-        for key, value in options['split_sizes'].items():
-            assert (not ('split_ratios' in options) or not (key in options['split_ratios']))
-            assert (isinstance(value, int))
+        for key, value in options["split_sizes"].items():
+            assert "split_ratios" not in options or key not in options["split_ratios"]
+            assert isinstance(value, int)
             split_names.append(key)
             split_sizes.append(value)
 
-    assert (np.sum(split_sizes) <= total_size)
+    assert np.sum(split_sizes) <= total_size
     if np.sum(split_sizes) < total_size:
-        split_names.append('other')
+        split_names.append("other")
         split_sizes.append(total_size - np.sum(split_sizes))
     slices = np.cumsum(split_sizes)
 
@@ -149,8 +157,7 @@ def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
         all_ids = np.random.permutation(all_ids)
 
     for i_split in range(len(split_names)):
-        _splits[split_names[i_split]
-                ] = all_ids[slices[i_split]:slices[i_split + 1]]
+        _splits[split_names[i_split]] = all_ids[slices[i_split] : slices[i_split + 1]]
         # split_samples = []
         # for id in all_ids[slices[i_split]:slices[i_split+1]]:
         #     split_samples.append(dset[id])
@@ -158,5 +165,6 @@ def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
         # dset._splits[split_names[i_split]].add_samples(split_samples)
 
     return _splits
+
 
 # %% Classes
