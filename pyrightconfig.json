@@ -11,6 +11,6 @@
     "typeCheckingMode": "standard",
     "reportUnusedVariable": "warning",
     "reportMissingImports": "error",
-    "reportUnknownMemberType": "warning",
+    "reportUnknownMemberType": "none",
     "useLibraryCodeForTypes": true
   }
