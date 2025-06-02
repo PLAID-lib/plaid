@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    name: Run Tests and Examples
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -27,25 +28,23 @@ jobs:
 
       - name: Create environment
         run: |
-          mamba env create -f .github/workflows/testing_conda_envs/python${{ matrix.python-version }}.yml
+          mamba env create -f .github/workflows/conda_envs/python${{ matrix.python-version }}.yml
+          mamba run -n plaid_python${{ matrix.python-version }} pip install -e .
 
       - name: Run tests on Unix
         if: runner.os != 'Windows'
         run: |
-          export PYTHONPATH=$(pwd)/src
-          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+          mamba run -n plaid_python${{ matrix.python-version }} pytest tests --cov=src --cov-report=xml --cov-report=term
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $env:PYTHONPATH = "$(Get-Location)\src"
           mamba run -n plaid_python${{ matrix.python-version }} pytest tests
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
         run: |
-          export PYTHONPATH=$(pwd)/src
           cd examples
           mamba run -n plaid_python${{ matrix.python-version }} bash run_examples.sh
 
@@ -53,9 +52,17 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $env:PYTHONPATH = "$(Get-Location)\src"
           cd examples
           mamba run -n plaid_python${{ matrix.python-version }} run_examples.bat
+
+      - name: Upload coverage to Codecov (Linux only)
+        if: runner.os == 'Linux'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: python-${{ matrix.python-version }}
+          verbose: true
 
     #   - name: Set up Miniconda
     #     uses: conda-incubator/setup-miniconda@v2
@@ -66,4 +73,4 @@ jobs:
     #       auto-activate-base: false
     #       auto-update-conda: true
     #       activate-environment: plaid_python${{ matrix.python-version }}
-    #       environment-file: .github/workflows/testing_conda_envs/python${{ matrix.python-version }}.yml
+    #       environment-file: .github/workflows/conda_envs/python${{ matrix.python-version }}.yml

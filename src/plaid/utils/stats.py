@@ -52,14 +52,6 @@ def aggregate_stats(sizes: np.ndarray, means: np.ndarray,
 
 class OnlineStatistics(object):
     """OnlineStatistics is a class for computing online statistics (e.g., min, max, mean, variance, and standard deviation) of numpy arrays.
-
-    Attributes:
-        n_samples (int): The total number of samples added to the statistics.
-        min (np.ndarray): The minimum values of the input arrays.
-        max (np.ndarray): The maximum values of the input arrays.
-        mean (np.ndarray): The mean values of the input arrays.
-        var (np.ndarray): The variance values of the input arrays.
-        std (np.ndarray): The standard deviation values of the input arrays.
     """
 
     def __init__(self) -> None:
