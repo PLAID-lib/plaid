@@ -17,7 +17,7 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
-from plaid.containers.sample import Sample, show_cgns_tree
+from plaid.containers.sample import Sample
 
 # %% Fixtures
 
@@ -173,22 +173,13 @@ def sample_with_tree_and_scalar_and_time_series(sample_with_tree, ):
             111, dtype=float), np.random.randn(111))
     return sample_with_tree
 
-# %% Tests
-
-
-def test_show_cgns_tree(tree):
-    show_cgns_tree(tree)
-
-
-def test_show_cgns_tree_not_a_list():
-    with pytest.raises(TypeError):
-        show_cgns_tree({1: 2})
-
 
 @pytest.fixture()
 def current_directory():
     return os.path.dirname(os.path.abspath(__file__))
 
+
+# %% Tests
 
 class Test_Sample():
 
