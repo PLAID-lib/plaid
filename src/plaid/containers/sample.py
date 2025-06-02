@@ -1,29 +1,27 @@
-"""Sample container for PLAID.
+"""PLAID Sample Container.
 
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
+This file is subject to the terms and conditions defined in file 'LICENSE.txt', which is part of this source code package.
 """
 
 try:  # pragma: no cover
     from typing import Self
 except ImportError:  # pragma: no cover
     from typing import Any as Self
+
 import copy
 import glob
 import logging
 import os
-from typing import Any, Optional, Union, cast
+from typing import Optional, Union
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-import numpy.typing as npt
-from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__, TreeNode
+from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 from CGNS.PAT.cgnsutils import __LABEL__ as __TYPE__
 from CGNS.PAT.cgnsutils import __VALUE__ as __DATA__
-from pydantic import BaseModel, model_serializer
 
 from plaid.utils import cgns_helper as CGH
 
@@ -78,7 +76,7 @@ CGNS_element_names = [
 """List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
 
 
-def show_cgns_tree(tree: TreeNode, offset: str = ""):
+def show_cgns_tree(tree: list, offset: str = ""):
     """Recursively prints the CGNS Tree structure. It displays the hierarchy of nodes and branches in a CGNS tree.
 
     Args:
@@ -91,24 +89,20 @@ def show_cgns_tree(tree: TreeNode, offset: str = ""):
         else:
             raise TypeError(f"{type(tree)=}, but should be a list or None")
     assert len(tree) == 4
-
-    tree_data: Optional[npt.NDArray[Any]] = tree[__DATA__]  # pyright: ignore[reportAssignmentType]
-    tree_children: list[TreeNode] = tree[__CHILDREN__]  # pyright: ignore[reportAssignmentType]
-    if isinstance(tree_data, np.ndarray):
-        if "|S" in str(tree_data.dtype):
-            data = tree_data.tobytes()
-        elif tree_data.size < 10:
-            data = tree_data
+    if isinstance(tree[__DATA__], np.ndarray):
+        if "|S" in str(tree[__DATA__].dtype):
+            data = tree[__DATA__].tobytes()
+        elif tree[__DATA__].size < 10:
+            data = tree[__DATA__]
         else:
-            data = f"[{tree_data.dtype};{tree_data.shape}]"
+            data = f"[{tree[__DATA__].dtype};{tree[__DATA__].shape}]"
     else:
         data = tree[__DATA__]
-
     print(
         offset
-        + f"""- "{tree[__NAME__]}"({tree[__TYPE__]}), {len(tree_children)} children, data({type(tree[__DATA__])}): {data}"""
+        + f"""- "{tree[__NAME__]}"({tree[__TYPE__]}), {len(tree[__CHILDREN__])} children, data({type(tree[__DATA__])}): {data}"""
     )
-    for stree in tree_children:
+    for stree in tree[__CHILDREN__]:
         show_cgns_tree(stree, offset=offset + "    ")
 
 
@@ -145,48 +139,42 @@ TimeSeriesType = tuple[TimeSequenceType, FieldType]
 """
 
 
-def read_index(pyTree: TreeNode, dim: list[int]) -> np.ndarray:
+def read_index(pyTree: list, dim: list[int]):
     """Read Index Array or Index Range from CGNS.
 
-    Parameters
-    ----------
-    pyTree : TreeNode
-        CGNS node which has a child Index to read
-    dim: list of int
-        Dimensions of the coordinates
+    Args:
+        pyTree (list): CGNS node which has a child Index to read
+        dim (list): dimensions of the coordinates
 
     Returns:
-    -------
-    np.ndnarray
-        Indices.
+        indices
     """
     a = read_index_array(pyTree)
     b = read_index_range(pyTree, dim)
     return np.hstack((a, b))
 
 
-def read_index_array(pyTree: TreeNode) -> npt.NDArray[np.int_]:
+def read_index_array(pyTree: list):
     """Read Index Array from CGNS.
 
     Args:
-        pyTree: CGNS node which has a child of type IndexArray_t to read
+        pyTree (list): CGNS node which has a child of type IndexArray_t to read
 
     Returns:
-    -------
         indices
     """
-    indexArrayPaths: list[str] = CGU.getPathsByTypeSet(pyTree, ["IndexArray_t"])  # pyright: ignore[reportUnknownMemberType]
-    res: list[npt.NDArray[np.int_]] = []
+    indexArrayPaths = CGU.getPathsByTypeSet(pyTree, ["IndexArray_t"])
+    res = []
     for indexArrayPath in indexArrayPaths:
-        data: Optional[TreeNode] = CGU.getNodeByPath(pyTree, indexArrayPath)  # pyright: ignore[reportUnknownMemberType]
-        if data is None or data[1] is None:
+        data = CGU.getNodeByPath(pyTree, indexArrayPath)
+        if data[1] is None:
             continue
         else:
-            res.extend(cast(npt.NDArray[np.int_], data[1]).ravel())
+            res.extend(data[1].ravel())
     return np.array(res, dtype=int).ravel()
 
 
-def read_index_range(pyTree: TreeNode, dim: list[int]) -> npt.NDArray[np.int_]:
+def read_index_range(pyTree: list, dim: list[int]):
     """Read Index Range from CGNS.
 
     Args:
@@ -194,18 +182,14 @@ def read_index_range(pyTree: TreeNode, dim: list[int]) -> npt.NDArray[np.int_]:
         dim (List[str]): dimensions of the coordinates
 
     Returns:
-    -------
         indices
     """
-    indexRangePaths: list[str] = CGU.getPathsByTypeSet(pyTree, ["IndexRange_t"])  # pyright: ignore[reportUnknownMemberType]
-    res: list[int] = []
+    indexRangePaths = CGU.getPathsByTypeSet(pyTree, ["IndexRange_t"])
+    res = []
 
     for indexRangePath in indexRangePaths:  # Is it possible there are several ?
-        indexRange: Optional[npt.NDArray[np.int_]] = CGU.getValueByPath(
-            pyTree, indexRangePath
-        )  # pyright: ignore[reportUnknownMemberType]
-        if indexRange is None:
-            continue
+        indexRange = CGU.getValueByPath(pyTree, indexRangePath)
+
         if indexRange.shape == (3, 2):  # 3D
             for k in range(indexRange[:, 0][2], indexRange[:, 1][2] + 1):
                 for j in range(indexRange[:, 0][1], indexRange[:, 1][1] + 1):
@@ -224,10 +208,12 @@ def read_index_range(pyTree: TreeNode, dim: list[int]) -> npt.NDArray[np.int_]:
         else:
             begin = indexRange[0]
             end = indexRange[1]
-            indices: npt.NDArray[np.int_] = np.arange(begin, end + 1).ravel()
-            res.extend(indices)
+            res.extend(np.arange(begin, end + 1).ravel())
 
     return np.array(res, dtype=int).ravel()
+
+
+from pydantic import BaseModel, model_serializer
 
 
 class Sample(BaseModel):
@@ -235,14 +221,14 @@ class Sample(BaseModel):
 
     def __init__(
         self,
-        directory_path: Optional[str] = None,
+        directory_path: str = None,
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
-        meshes: Optional[dict[float, CGNSTree]] = None,
-        scalars: Optional[dict[str, ScalarType]] = None,
-        time_series: Optional[dict[str, TimeSeriesType]] = None,
-        links: Optional[dict[float, list[LinkType]]] = None,
-        paths: Optional[dict[float, list[PathType]]] = None,
+        meshes: dict[float, CGNSTree] = None,
+        scalars: dict[str, ScalarType] = None,
+        time_series: dict[str, TimeSeriesType] = None,
+        links: dict[float, list[LinkType]] = None,
+        paths: dict[float, list[PathType]] = None,
     ) -> None:
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
@@ -274,12 +260,12 @@ class Sample(BaseModel):
         self._mesh_base_name: str = mesh_base_name
         self._mesh_zone_name: str = mesh_zone_name
 
-        self._meshes: Optional[dict[float, CGNSTree]] = meshes
-        self._scalars: Optional[dict[str, ScalarType]] = scalars
-        self._time_series: Optional[dict[str, TimeSeriesType]] = time_series
+        self._meshes: dict[float, CGNSTree] = meshes
+        self._scalars: dict[str, ScalarType] = scalars
+        self._time_series: dict[str, TimeSeriesType] = time_series
 
-        self._links: Optional[dict[float, list[LinkType]]] = links
-        self._paths: Optional[dict[float, list[PathType]]] = paths
+        self._links: dict[float, list[LinkType]] = links
+        self._paths: dict[float, list[PathType]] = paths
 
         if directory_path is not None:
             self.load(str(directory_path))
@@ -291,7 +277,7 @@ class Sample(BaseModel):
         }
 
     # -------------------------------------------------------------------------#
-    def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
+    def set_default_base(self, base_name: str, time: float = None) -> None:
         """Set the default base for the specified time (that will also be set as default if provided).
 
         The default base is a reference point for various operations in the system.
@@ -301,7 +287,6 @@ class Sample(BaseModel):
             time (float, optional): The time at which the base should be set as default. If not provided, the default base and active zone will be set with the default time.
 
         Raises:
-        ------
             ValueError: If the specified base does not exist at the given time.
 
         Note:
@@ -342,7 +327,7 @@ class Sample(BaseModel):
         self._defaults["active_base"] = base_name
 
     def set_default_zone_base(
-        self, zone_name: str, base_name: str, time: Optional[float] = None
+        self, zone_name: str, base_name: str, time: float = None
     ) -> None:
         """Set the default base and active zone for the specified time (that will also be set as default if provided).
 
@@ -354,7 +339,6 @@ class Sample(BaseModel):
             time (float, optional): The time at which the base and zone should be set as default. If not provided, the default base and active zone will be set with the default time.
 
         Raises:
-        ------
             ValueError: If the specified base or zone does not exist at the given time
 
         Note:
@@ -404,7 +388,6 @@ class Sample(BaseModel):
             time (float): The time value to be set as the default.
 
         Raises:
-        ------
             ValueError: If the specified time does not exist in the available mesh times.
 
         Note:
@@ -435,7 +418,7 @@ class Sample(BaseModel):
 
         self._defaults["active_time"] = time
 
-    def get_time_assignment(self, time: Optional[float] = None) -> float:
+    def get_time_assignment(self, time: float = None) -> float:
         """Retrieve the default time for the CGNS operations.
 
         If there are available time steps, it will return the first one; otherwise, it will return 0.0.
@@ -444,7 +427,6 @@ class Sample(BaseModel):
             time (str, optional): The time value provided for the operation. If not provided, the default time set in the system will be used.
 
         Returns:
-        -------
             float: The attributed time.
 
         Note:
@@ -456,24 +438,21 @@ class Sample(BaseModel):
             return sorted(timestamps)[0] if len(timestamps) > 0 else 0.0
         return self._defaults["active_time"] if time is None else time
 
-    def get_base_assignment(
-        self, base_name: Optional[str] = None, time: Optional[float] = None
-    ) -> Optional[str]:
+    def get_base_assignment(self, base_name: str = None, time: float = None) -> str:
         """Retrieve the default base name for the CGNS operations.
 
-        This function calculates the attributed base for a specific operation based on the default base set in the system.
+        This function calculates the attributed base for a specific operation based on the
+        default base set in the system.
 
         Args:
             base_name (str, optional): The name of the base to attribute the operation to. If not provided, the default base set in the system will be used.
             time (str, optional): The time value provided for the operation. If not provided, the default time set in the system will be used.
 
         Raises:
-        ------
             KeyError: If no default base can be determined based on the provided or default.
             KeyError: If no base node is found after following given and default parameters.
 
         Returns:
-        -------
             str: The attributed base name.
 
         Note:
@@ -495,14 +474,12 @@ class Sample(BaseModel):
         raise KeyError(f"No default base provided among {base_names}")
 
     def get_zone_assignment(
-        self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> Optional[str]:
+        self, zone_name: str = None, base_name: str = None, time: float = None
+    ) -> str:
         """Retrieve the default zone name for the CGNS operations.
 
-        This function calculates the attributed zone for a specific operation based on the default zone set in the system, within the specified base.
+        This function calculates the attributed zone for a specific operation based on the
+        default zone set in the system, within the specified base.
 
         Args:
             zone_name (str, optional): The name of the zone to attribute the operation to. If not provided, the default zone set in the system within the specified base will be used.
@@ -510,12 +487,10 @@ class Sample(BaseModel):
             time (str, optional): The time value provided for the operation. If not provided, the default time set in the system will be used.
 
         Raises:
-        ------
             KeyError: If no default zone can be determined based on the provided or default values.
             KeyError: If no zone node is found after following given and default parameters.
 
         Returns:
-        -------
             str: The attributed zone name.
 
         Note:
@@ -540,14 +515,13 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    def show_tree(self, time: Optional[float] = None) -> None:
+    def show_tree(self, time: float = None) -> None:
         """Display the structure of the CGNS tree for a specified time.
 
         Args:
             time (float, optional): The time step for which you want to display the CGNS tree structure. Defaults to None. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Examples:
-        --------
             .. code-block:: python
 
                 # To display the CGNS tree structure for the default time step:
@@ -561,14 +535,13 @@ class Sample(BaseModel):
         if self._meshes is not None:
             show_cgns_tree(self._meshes[time])
 
-    def init_tree(self, time: Optional[float] = None) -> CGNSTree:
+    def init_tree(self, time: float = None) -> CGNSTree:
         """Initialize a CGNS tree structure at a specified time step or create a new one if it doesn't exist.
 
         Args:
             time (float, optional): The time step for which to initialize the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             CGNSTree (list): The initialized or existing CGNS tree structure for the specified time step.
         """
         time = self.get_time_assignment(time)
@@ -585,8 +558,8 @@ class Sample(BaseModel):
         return self._meshes[time]
 
     def get_mesh(
-        self, time: Optional[float] = None, apply_links: bool = False, in_memory=False
-    ) -> Optional[CGNSTree]:
+        self, time: float = None, apply_links: bool = False, in_memory=False
+    ) -> CGNSTree:
         """Retrieve the CGNS tree structure for a specified time step, if available.
 
         Args:
@@ -595,7 +568,6 @@ class Sample(BaseModel):
             in_memory (bool, optional): Active if apply_links == True, ONLY WORKING if linked mesh is in the current sample. This option follows the link in memory from current sample.
 
         Returns:
-        -------
             CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
         """
         if self._meshes is None:
@@ -627,14 +599,13 @@ class Sample(BaseModel):
 
         return tree
 
-    def get_links(self, time: Optional[float] = None) -> list[LinkType]:
+    def get_links(self, time: float = None) -> list[LinkType]:
         """Retrieve the CGNS links for a specified time step, if available.
 
         Args:
             time (float, optional): The time step for which to retrieve the CGNS links. If a specific time is not provided, the method will display the links for the default time step.
 
         Returns:
-        -------
             list: The CGNS links for the specified time step if available; otherwise, returns None.
         """
         time = self.get_time_assignment(time)
@@ -644,7 +615,6 @@ class Sample(BaseModel):
         """Retrieve all time steps corresponding to the meshes, if available.
 
         Returns:
-        -------
             list[float]: A list of all available time steps.
         """
         return list(self._meshes.keys()) if (self._meshes is not None) else []
@@ -656,7 +626,6 @@ class Sample(BaseModel):
             meshes (dict[float,CGNSTree]): Collection of time step with its corresponding CGNSTree.
 
         Raises:
-        ------
             KeyError: If there is already a CGNS tree set.
         """
         if self._meshes is None:
@@ -671,7 +640,7 @@ class Sample(BaseModel):
                 "meshes is already set, you cannot overwrite it, delete it first or extend it with `Sample.add_tree`"
             )
 
-    def add_tree(self, tree: CGNSTree, time: Optional[float] = None) -> CGNSTree:
+    def add_tree(self, tree: CGNSTree, time: float = None) -> CGNSTree:
         """Merge a CGNS tree to the already existing tree.
 
         Args:
@@ -679,11 +648,9 @@ class Sample(BaseModel):
             time (float, optional): The time step for which to add the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Raises:
-        ------
             ValueError: If the provided CGNS tree is an empty list.
 
         Returns:
-        -------
             CGNSTree: The merged CGNS tree.
         """
         if tree == []:
@@ -731,11 +698,9 @@ class Sample(BaseModel):
             time (float): The time step for which to delete the CGNS tree structure.
 
         Raises:
-        ------
             KeyError: There is no CGNS tree in this Sample / There is no CGNS tree for the provided time.
 
         Returns:
-        -------
             CGNSTree: The deleted CGNS tree.
         """
         if self._meshes is None:
@@ -764,7 +729,6 @@ class Sample(BaseModel):
             time (float): The time step the current sample to which the CGNS tree is linked.
 
         Returns:
-        -------
             CGNSTree: The deleted CGNS tree.
         """
         # see https://pycgns.github.io/MAP/sids-to-python.html#links
@@ -864,9 +828,7 @@ class Sample(BaseModel):
         return tree
 
     # -------------------------------------------------------------------------#
-    def get_topological_dim(
-        self, base_name: Optional[str] = None, time: Optional[float] = None
-    ) -> int:
+    def get_topological_dim(self, base_name: str = None, time: float = None) -> int:
         """Get the topological dimension of a base node at a specific time.
 
         Args:
@@ -874,11 +836,9 @@ class Sample(BaseModel):
             time (float, optional): The time at which to retrieve the topological dimension. Defaults to None.
 
         Raises:
-        ------
             ValueError: If there is no base node with the specified `base_name` at the given `time` in this sample.
 
         Returns:
-        -------
             int: The topological dimension of the specified base node at the given time.
         """
         # get_base will look for default time and base_name
@@ -890,9 +850,7 @@ class Sample(BaseModel):
 
         return base_node[1][0]
 
-    def get_physical_dim(
-        self, base_name: Optional[str] = None, time: Optional[float] = None
-    ) -> int:
+    def get_physical_dim(self, base_name: str = None, time: float = None) -> int:
         """Get the physical dimension of a base node at a specific time.
 
         Args:
@@ -900,11 +858,9 @@ class Sample(BaseModel):
             time (float, optional): The time at which to retrieve the topological dimension. Defaults to None.
 
         Raises:
-        ------
             ValueError: If there is no base node with the specified `base_name` at the given `time` in this sample.
 
         Returns:
-        -------
             int: The topological dimension of the specified base node at the given time.
         """
         base_node = self.get_base(base_name, time)
@@ -919,8 +875,8 @@ class Sample(BaseModel):
         self,
         topological_dim: int,
         physical_dim: int,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
+        base_name: str = None,
+        time: float = None,
     ) -> CGNSNode:
         """Create a Base node named `base_name` if it doesn't already exists.
 
@@ -931,7 +887,6 @@ class Sample(BaseModel):
             time (float, optional): The time at which to initialize the base. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             CGNSNode: The created Base node.
         """
         time = self.get_time_assignment(time)
@@ -973,12 +928,10 @@ class Sample(BaseModel):
             time (float): The time step for which to delete the CGNS base node.
 
         Raises:
-        ------
             KeyError: There is no CGNS tree in this sample / There is no CGNS tree for the provided time.
             KeyError: If there is no base node with the given base name or time.
 
         Returns:
-        -------
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         if self._meshes is None:
@@ -998,10 +951,7 @@ class Sample(BaseModel):
         return CGU.nodeDelete(mesh_tree, base_node)
 
     def get_base_names(
-        self,
-        full_path: bool = False,
-        unique: bool = False,
-        time: Optional[float] = None,
+        self, full_path: bool = False, unique: bool = False, time: float = None
     ) -> list[str]:
         """Return Base names.
 
@@ -1011,7 +961,6 @@ class Sample(BaseModel):
             time (float, optional): The time at which to check for the Base. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             list[str]:
         """
         time = self.get_time_assignment(time)
@@ -1024,7 +973,7 @@ class Sample(BaseModel):
         else:
             return []
 
-    def has_base(self, base_name: str, time: Optional[float] = None) -> bool:
+    def has_base(self, base_name: str, time: float = None) -> bool:
         """Check if a CGNS tree contains a Base with a given name at a specified time.
 
         Args:
@@ -1032,15 +981,12 @@ class Sample(BaseModel):
             time (float, optional): The time at which to check for the Base. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             bool: `True` if the CGNS tree has a Base called `base_name`, else return `False`.
         """
         # get_base_names will look for the default time
         return base_name in self.get_base_names(time=time)
 
-    def get_base(
-        self, base_name: Optional[str] = None, time: Optional[float] = None
-    ) -> Optional[CGNSNode]:
+    def get_base(self, base_name: str = None, time: float = None) -> CGNSNode:
         """Return Base node named `base_name`.
 
         If `base_name` is not specified, checks that there is **at most** one base, else raises an error.
@@ -1050,7 +996,6 @@ class Sample(BaseModel):
             time (float, optional): Time at which you want to retrieve the Base node. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             CGNSNode or None: The Base node with the specified name or None if it is not found.
         """
         time = self.get_time_assignment(time)
@@ -1067,9 +1012,9 @@ class Sample(BaseModel):
         self,
         zone_shape: np.ndarray,
         zone_type: str = CGK.Unstructured_s,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
+        zone_name: str = None,
+        base_name: str = None,
+        time: float = None,
     ) -> CGNSNode:
         """Initialize a new zone within a CGNS base.
 
@@ -1081,11 +1026,9 @@ class Sample(BaseModel):
             time (float, optional): The time at which to initialize the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Raises:
-        ------
             KeyError: If the specified base does not exist. You can create a base using `Sample.init_base(base_name)`.
 
         Returns:
-        -------
             CGLNode: The newly initialized zone node within the CGNS tree.
         """
         # init_tree will look for default time
@@ -1113,12 +1056,10 @@ class Sample(BaseModel):
             time (float, optional): The time step for which to delete the zone. Defaults to None.
 
         Raises:
-        ------
             KeyError: There is no CGNS tree in this sample / There is no CGNS tree for the provided time.
             KeyError: If there is no base node with the given base name or time.
 
         Returns:
-        -------
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         if self._meshes is None:
@@ -1139,10 +1080,10 @@ class Sample(BaseModel):
 
     def get_zone_names(
         self,
-        base_name: Optional[str] = None,
+        base_name: str = None,
         full_path: bool = False,
         unique: bool = False,
-        time: Optional[float] = None,
+        time: float = None,
     ) -> list[str]:
         """Return list of Zone names in Base named `base_name` with specific time.
 
@@ -1153,7 +1094,6 @@ class Sample(BaseModel):
             time (float, optional): The time at which to check for the Zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             list[str]: List of Zone names in Base named `base_name`, empty if there is none or if the Base doesn't exist.
         """
         zone_paths = []
@@ -1177,10 +1117,7 @@ class Sample(BaseModel):
             return zone_paths
 
     def has_zone(
-        self,
-        zone_name: str,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
+        self, zone_name: str, base_name: str = None, time: float = None
     ) -> bool:
         """Check if the CGNS tree contains a Zone with the specified name within a specific Base and time.
 
@@ -1190,18 +1127,14 @@ class Sample(BaseModel):
             time (float, optional): The time at which to check for the Zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             bool: `True` if the CGNS tree has a Zone called `zone_name` in a Base called `base_name`, else return `False`.
         """
         # get_zone_names will look for default base_name and time
         return zone_name in self.get_zone_names(base_name, time=time)
 
     def get_zone(
-        self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> Optional[CGNSNode]:
+        self, zone_name: str = None, base_name: str = None, time: float = None
+    ) -> CGNSNode:
         """Retrieve a CGNS Zone node by its name within a specific Base and time.
 
         Args:
@@ -1210,7 +1143,6 @@ class Sample(BaseModel):
             time (float, optional): Time at which you want to retrieve the Zone node.
 
         Returns:
-        -------
             CGNSNode: Returns a CGNS Zone node if found; otherwise, returns None.
         """
         # get_base will look for default base_name and time
@@ -1228,10 +1160,7 @@ class Sample(BaseModel):
         return CGU.getNodeByPath(base_node, zone_name)
 
     def get_zone_type(
-        self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
+        self, zone_name: str = None, base_name: str = None, time: float = None
     ) -> str:
         """Get the type of a specific zone at a specified time.
 
@@ -1241,11 +1170,9 @@ class Sample(BaseModel):
             time (float, optional): The timestamp for which you want to retrieve the zone type. Default is 0.0.
 
         Raises:
-        ------
             KeyError: Raised when the specified zone or base does not exist. You should first create the base/zone using `Sample.init_zone(zone_name, base_name)`.
 
         Returns:
-        -------
             str: The type of the specified zone as a string.
         """
         # get_zone will look for default base_name, zone_name and time
@@ -1258,12 +1185,11 @@ class Sample(BaseModel):
         return CGU.getValueByPath(zone_node, "ZoneType").tobytes().decode()
 
     # -------------------------------------------------------------------------#
-    def get_scalar_names(self) -> list[str]:
+    def get_scalar_names(self) -> set[str]:
         """Get a set of scalar names available in the object.
 
         Returns:
-        -------
-            A list containing the names of the available scalars.
+            set[str]: A set containing the names of the available scalars.
         """
         if self._scalars is None:
             return []
@@ -1271,14 +1197,13 @@ class Sample(BaseModel):
             res = sorted(self._scalars.keys())
             return res
 
-    def get_scalar(self, name: str) -> Optional[ScalarType]:
+    def get_scalar(self, name: str) -> ScalarType:
         """Retrieve a scalar value associated with the given name.
 
         Args:
             name (str): The name of the scalar value to retrieve.
 
         Returns:
-        -------
             ScalarType or None: The scalar value associated with the given name, or None if the name is not found.
         """
         if (self._scalars is None) or (name not in self._scalars):
@@ -1305,11 +1230,9 @@ class Sample(BaseModel):
             name (str): The name of the scalar value to be deleted.
 
         Raises:
-        ------
             KeyError: Raised when there is no scalar / there is no scalar with the provided name.
 
         Returns:
-        -------
             ScalarType: The value of the deleted scalar.
         """
         if self._scalars is None:
@@ -1321,11 +1244,10 @@ class Sample(BaseModel):
         return self._scalars.pop(name)
 
     # -------------------------------------------------------------------------#
-    def get_time_series_names(self) -> list[str]:
+    def get_time_series_names(self) -> set[str]:
         """Get the names of time series associated with the object.
 
         Returns:
-        -------
             set[str]: A set of strings containing the names of the time series.
         """
         if self._time_series is None:
@@ -1333,14 +1255,13 @@ class Sample(BaseModel):
         else:
             return list(self._time_series.keys())
 
-    def get_time_series(self, name: str) -> Optional[TimeSeriesType]:
+    def get_time_series(self, name: str) -> TimeSeriesType:
         """Retrieve a time series by name.
 
         Args:
             name (str): The name of the time series to retrieve.
 
         Returns:
-        -------
             TimeSeriesType or None: If a time series with the given name exists, it returns the corresponding time series, or None otherwise.
 
         """
@@ -1368,7 +1289,6 @@ class Sample(BaseModel):
                 >>> (array([0, 1]), array([-0.59630135, -1.15572306]))
 
         Raises:
-        ------
             TypeError: Raised if the length of `time_sequence` is not equal to the length of `values`.
         """
         assert len(time_sequence) == len(values), (
@@ -1386,11 +1306,9 @@ class Sample(BaseModel):
             name (str): The name of the time series to be deleted.
 
         Raises:
-        ------
             KeyError: Raised when there is no time series / there is no time series with the provided name.
 
         Returns:
-        -------
             Tuple[TimeSequenceType, FieldType]: A tuple containing the time sequence and values of the deleted time series.
         """
         if self._time_series is None:
@@ -1403,10 +1321,7 @@ class Sample(BaseModel):
 
     # -------------------------------------------------------------------------#
     def get_nodal_tags(
-        self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
+        self, zone_name: str = None, base_name: str = None, time: float = None
     ) -> dict[str, np.ndarray]:
         """Get the nodal tags for a specified base and zone at a given time.
 
@@ -1416,7 +1331,6 @@ class Sample(BaseModel):
             time (float, optional): The time at which element connectivity data is requested. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             dict[str,np.ndarray]: A dictionary where keys are nodal tags names and values are NumPy arrays containing the corresponding tag indices.
             The NumPy arrays have shape (num_nodal_tags).
         """
@@ -1472,10 +1386,7 @@ class Sample(BaseModel):
 
     # -------------------------------------------------------------------------#
     def get_nodes(
-        self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
+        self, zone_name: str = None, base_name: str = None, time: float = None
     ) -> Optional[np.ndarray]:
         """Get grid node coordinates from a specified base, zone, and time.
 
@@ -1485,11 +1396,9 @@ class Sample(BaseModel):
             time (float, optional):  The time value to consider when searching for the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Raises:
-        ------
             TypeError: Raised if multiple <GridCoordinates> nodes are found. Only one is expected.
 
         Returns:
-        -------
             Optional[np.ndarray]: A NumPy array containing the grid node coordinates.
             If no matching zone or grid coordinates are found, None is returned.
 
@@ -1533,9 +1442,9 @@ class Sample(BaseModel):
     def set_nodes(
         self,
         nodes: np.ndarray,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
+        zone_name: str = None,
+        base_name: str = None,
+        time: float = None,
     ) -> None:
         """Set the coordinates of nodes for a specified base and zone at a given time.
 
@@ -1546,7 +1455,6 @@ class Sample(BaseModel):
             time (float, optional): The time at which the node coordinates should be updated. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Raises:
-        ------
             KeyError: Raised if the specified base or zone do not exist. You should first
             create the base and zone using the `Sample.init_zone(zone_name,base_name)` method.
 
@@ -1572,10 +1480,7 @@ class Sample(BaseModel):
 
     # -------------------------------------------------------------------------#
     def get_elements(
-        self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
+        self, zone_name: str = None, base_name: str = None, time: float = None
     ) -> dict[str, np.ndarray]:
         """Retrieve element connectivity data for a specified zone, base, and time.
 
@@ -1585,7 +1490,6 @@ class Sample(BaseModel):
             time (float, optional): The time at which element connectivity data is requested. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             dict[str,np.ndarray]: A dictionary where keys are element type names and values are NumPy arrays representing the element connectivity data.
             The NumPy arrays have shape (num_elements, num_nodes_per_element), and element indices are 0-based.
         """
@@ -1619,11 +1523,11 @@ class Sample(BaseModel):
     # -------------------------------------------------------------------------#
     def get_field_names(
         self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        location: Optional[str] = "Vertex",
-        time: Optional[float] = None,
-    ) -> list[str]:
+        zone_name: str = None,
+        base_name: str = None,
+        location: str = "Vertex",
+        time: float = None,
+    ) -> set[str]:
         """Get a set of field names associated with a specified zone, base, location, and time.
 
         Args:
@@ -1633,7 +1537,6 @@ class Sample(BaseModel):
             time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             set[str]: A set containing the names of the fields that match the specified criteria.
         """
 
@@ -1678,11 +1581,11 @@ class Sample(BaseModel):
     def get_field(
         self,
         name: str,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone_name: str = None,
+        base_name: str = None,
         location: str = "Vertex",
-        time: Optional[float] = None,
-    ) -> Optional[FieldType]:
+        time: float = None,
+    ) -> FieldType:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
 
         Args:
@@ -1693,7 +1596,6 @@ class Sample(BaseModel):
             time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-        -------
             FieldType: A set containing the names of the fields that match the specified criteria.
         """
         # get_zone will look for default time
@@ -1730,10 +1632,10 @@ class Sample(BaseModel):
         self,
         name: str,
         field: FieldType,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone_name: str = None,
+        base_name: str = None,
         location: str = "Vertex",
-        time: Optional[float] = None,
+        time: float = None,
     ) -> None:
         """Add a field to a specified zone in the grid.
 
@@ -1746,7 +1648,6 @@ class Sample(BaseModel):
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
-        ------
             KeyError: Raised if the specified zone does not exist in the given base.
         """
         # init_tree will look for default time
@@ -1806,10 +1707,10 @@ class Sample(BaseModel):
     def del_field(
         self,
         name: str,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone_name: str = None,
+        base_name: str = None,
         location: str = "Vertex",
-        time: Optional[float] = None,
+        time: float = None,
     ) -> CGNSTree:
         """Delete a field from a specified zone in the grid.
 
@@ -1821,11 +1722,9 @@ class Sample(BaseModel):
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
-        ------
             KeyError: Raised if the specified zone or field does not exist in the given base.
 
         Returns:
-        -------
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         # get_zone will look for default zone_name, base_name, and time
@@ -1921,7 +1820,6 @@ class Sample(BaseModel):
             dir_path (str): Relative or absolute directory path.
 
         Returns:
-        -------
             Sample
 
         Example:
@@ -1946,7 +1844,6 @@ class Sample(BaseModel):
             dir_path (str): Relative or absolute directory path.
 
         Raises:
-        ------
             FileNotFoundError: Triggered if the provided directory does not exist.
             FileExistsError: Triggered if the provided path is a file instead of a directory.
 
@@ -2013,7 +1910,6 @@ class Sample(BaseModel):
         """Return a string representation of the sample.
 
         Returns:
-        -------
             str: A string representation of the overview of sample content.
         """
         str_repr = "Sample("

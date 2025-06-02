@@ -1,7 +1,6 @@
-"""Dataset container for PLAID.
+"""PLAID Dataset Container.
 
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
+This file is subject to the terms and conditions defined in file 'LICENSE.txt', which is part of this source code package.
 """
 
 try:  # pragma: no cover
@@ -15,7 +14,7 @@ import shutil
 import subprocess
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import Union
 
 import numpy as np
 import yaml
@@ -58,18 +57,19 @@ authorized_info_keys = {
 
 
 def process_sample(
-    sample_path: Path,
-) -> Tuple[int, Sample]:
+    sample_path: Union[str, Path], *args, **kwargs
+) -> tuple:  # pragma: no cover
     """Load Sample from path.
 
     Args:
-        sample_path: The path of the Sample.
+        sample_path (Union[str,Path]): The path of the Sample.
 
     Returns:
-        A tuple containing the id of the Sample and the Sample itself.
+        tuple: The loaded Sample and its ID.
     """
+    sample_path = Path(sample_path)
     id = int(sample_path.stem.split("_")[-1])
-    return id, Sample(sample_path.as_posix())
+    return id, Sample(sample_path)
 
 
 class Dataset(object):
@@ -77,7 +77,7 @@ class Dataset(object):
 
     def __init__(
         self,
-        directory_path: Optional[Path] = None,
+        directory_path: Union[str, Path] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> None:
@@ -88,9 +88,9 @@ class Dataset(object):
         Use :meth:`add_sample <plaid.containers.dataset.Dataset.add_sample>` or :meth:`add_samples <plaid.containers.dataset.Dataset.add_samples>` to feed the :class:`Dataset`
 
         Args:
-            directory_path: The path from which to load PLAID dataset files.
-            verbose: Explicitly displays the operations performed. Defaults to False.
-            processes_number: Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
+            directory_path (Union[str,Path], optional): The path from which to load PLAID dataset files.
+            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
+            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
         Example:
             .. code-block:: python
@@ -119,6 +119,8 @@ class Dataset(object):
         self._infos: dict[str, dict[str, str]] = {}
 
         if directory_path is not None:
+            directory_path = Path(directory_path)
+
             if directory_path.suffix == ".plaid":
                 self.load(
                     directory_path, verbose=verbose, processes_number=processes_number
@@ -128,17 +130,18 @@ class Dataset(object):
                     directory_path, verbose=verbose, processes_number=processes_number
                 )
 
+    # -------------------------------------------------------------------------#
     def get_samples(
-        self, ids: Optional[list[int]] = None, as_list: bool = False
-    ) -> Union[list[Sample], dict[int, Sample]]:
+        self, ids: list[int] = None, as_list: bool = False
+    ) -> dict[int, Sample]:
         """Return dictionnary of samples with ids corresponding to :code:`ids` if specified, else all samples.
 
         Args:
-            ids: If None, take all samples. Defaults to None.
-            as_list: If False, return a dict ``id -> sample``, else return a list on ``Sample`` in the same order as ``ids``. Defaults to False.
+            ids (list[int], optional): If None, take all samples. Defaults to None.
+            as_list (bool, optional): If False, return a dict ``id -> sample``, else return a list on ``Sample`` in the same order as ``ids``. Defaults to False.
 
         Returns:
-            List or dict of :class:`Sample <plaid.containers.sample.Sample>`.
+            dict[int,Sample]: Samples with corresponding ids.
         """
         if ids is None:
             ids = sorted(list(self._samples.keys()))
@@ -147,12 +150,12 @@ class Dataset(object):
         else:
             return {id: self._samples[id] for id in ids}
 
-    def add_sample(self, sample: Sample, id: Optional[int] = None) -> int:
+    def add_sample(self, sample: Sample, id: int = None) -> int:
         """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`.
 
         Args:
-            sample: The sample to add.
-            id: An optional ID for the new sample. If not provided, the ID will be automatically generated based on the current number of samples in the dataset.
+            sample (Sample): The sample to add.
+            id (int, optional): An optional ID for the new sample. If not provided, the ID will be automatically generated based on the current number of samples in the dataset.
 
         Raises:
             TypeError: If ``sample`` is not a :class:`Sample <plaid.containers.sample.Sample>`.
@@ -169,22 +172,25 @@ class Dataset(object):
                 print(dataset)
                 >>> Dataset(3 samples, 0 scalars, 2 fields)
         """
+        if not (isinstance(sample, Sample)):
+            raise TypeError(f"sample should be of type Sample but {type(sample)=}")
+
         if id is None:
             id = len(self)
         self.set_sample(id=id, sample=sample)
         return id
 
-    def del_sample(self, sample_id: int) -> Sample:
+    def del_sample(self, sample_id: int) -> None:
         """Delete a :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>` and reorganize the remaining sample IDs to eliminate gaps.
 
         Args:
-            sample_id: The ID of the sample to delete.
+            sample_id (int): The ID of the sample to delete.
 
         Raises:
             ValueError: If the provided sample ID is not present in the dataset.
 
         Returns:
-            The new list of sample ids.
+            list[int]: The new list of sample ids.
 
         Example:
             .. code-block:: python
@@ -215,14 +221,12 @@ class Dataset(object):
 
         return deleted_sample
 
-    def add_samples(
-        self, samples: list[Sample], ids: Optional[list[int]] = None
-    ) -> list[int]:
+    def add_samples(self, samples: list[Sample], ids: list[int] = None) -> list[int]:
         """Add new :class:`Samples <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
         Args:
-            samples: The list of samples to add.
-            ids: An optional list of IDs for the new samples. If not provided, the IDs will be automatically generated based on the current number of samples in the dataset.
+            samples (list[Sample]): The list of samples to add.
+            ids (list[int], optional): An optional list of IDs for the new samples. If not provided, the IDs will be automatically generated based on the current number of samples in the dataset.
 
         Raises:
             TypeError: If ``samples`` is not a list or if one of the ``samples`` is not a :class:`Sample <plaid.containers.sample.Sample>`.
@@ -244,6 +248,8 @@ class Dataset(object):
                 print(dataset)
                 >>> Dataset(n samples, 0 scalars, x fields)
         """
+        if not (isinstance(samples, list)):
+            raise TypeError(f"samples should be of type list but {type(samples)=}")
         if samples == []:
             raise ValueError("The list of samples to add is empty")
 
@@ -254,7 +260,7 @@ class Dataset(object):
                 )
 
         if ids is None:
-            ids = np.arange(len(self), len(self) + len(samples)).tolist()
+            ids = np.arange(len(self), len(self) + len(samples))
         else:
             if len(samples) != len(ids):
                 raise ValueError(
@@ -263,10 +269,10 @@ class Dataset(object):
             if len(set(ids)) != len(ids):
                 raise ValueError("IDS must be unique")
 
-        self._samples.update(dict(zip(ids, samples)))  # pyright: ignore[reportArgumentType]
-        return ids  # pyright: ignore[reportReturnType]
+        self._samples.update(dict(zip(ids, samples)))
+        return ids
 
-    def del_samples(self, sample_ids: list[int]) -> list[Sample]:
+    def del_samples(self, sample_ids: list[int]) -> None:
         """Delete  :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>` and reorganize the remaining sample IDs to eliminate gaps.
 
         Args:
@@ -293,6 +299,11 @@ class Dataset(object):
                 print(dataset)
                 >>> Dataset(3 samples, y scalars, x fields)
         """
+        if not isinstance(sample_ids, list):
+            raise TypeError(
+                f"sample_ids should be of type list but {type(sample_ids)=}"
+            )
+
         if sample_ids == []:
             raise ValueError("The list of sample IDs to delete is empty")
 
@@ -306,7 +317,7 @@ class Dataset(object):
             raise ValueError("Sample with IDs must be unique")
 
         # Delete samples
-        deleted_samples: list[Sample] = []
+        deleted_samples = []
         for id in sample_ids:
             deleted_samples.append(self._samples[id])
             del self._samples[id]
@@ -321,47 +332,47 @@ class Dataset(object):
 
         return deleted_samples
 
+    # -------------------------------------------------------------------------#
     def get_sample_ids(self) -> list[int]:
         """Return list of sample ids.
 
         Returns:
-            List of sample ids.
+            list[int]: List of sample ids.
         """
         return list(self._samples.keys())
 
-    def get_scalar_names(self, ids: Optional[list[int]] = None) -> list[str]:
+    # -------------------------------------------------------------------------#
+    def get_scalar_names(self, ids: list[int] = None) -> list[str]:
         """Return union of scalars names in all samples with id in ids.
 
         Args:
-            ids: Select scalars depending on sample id. If None, take all samples. Defaults to None.
+            ids (list[int], optional): Select scalars depending on sample id. If None, take all samples. Defaults to None.
 
         Returns:
-            List of all scalars names
+            list[str]: List of all scalars names
         """
         if ids is not None and len(set(ids)) != len(ids):
             logger.warning("Provided ids are not unique")
 
-        scalars_names: list[str] = []
+        scalars_names = []
         for sample in self.get_samples(ids, as_list=True):
-            s_names = sample.get_scalar_names()  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue] # this one is tricky because of the return type of get_samples.
+            s_names = sample.get_scalar_names()
             for s_name in s_names:
                 if s_name not in scalars_names:
                     scalars_names.append(s_name)
         scalars_names.sort()
         return scalars_names
 
+    # -------------------------------------------------------------------------#
     def get_field_names(
-        self,
-        ids: Optional[list[int]] = None,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        self, ids: list[int] = None, zone_name: str = None, base_name: str = None
     ) -> list[str]:
         """Return union of fields names in all samples with id in ids.
 
         Args:
-            ids: Select fields depending on sample id. If None, take all samples. Defaults to None.
-            zone_name: If provided, only field names from this zone will be included. Defaults to None.
-            base_name: If provided, only field names containing this base name will be included. Defaults to None.
+            ids (list[int], optional): Select fields depending on sample id. If None, take all samples. Defaults to None.
+            zone_name (str, optional): If provided, only field names from this zone will be included. Defaults to None.
+            base_name (str, optional): If provided, only field names containing this base name will be included. Defaults to None.
 
         Returns:
             list[str]: List of all fields names.
@@ -369,11 +380,11 @@ class Dataset(object):
         if ids is not None and len(set(ids)) != len(ids):  # pragma: no cover
             logger.warning("Provided ids are not unique")
 
-        fields_names: list[str] = []
+        fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = sample.get_all_mesh_times()  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue] # this one is tricky because of the return type of get_samples.
+            times = sample.get_all_mesh_times()
             for time in times:
-                f_names = sample.get_field_names(  # pyright: ignore[reportUnknownMemberType, reportAttributeAccessIssue] # this one is tricky because of the return type of get_samples.
+                f_names = sample.get_field_names(
                     zone_name=zone_name, base_name=base_name, time=time
                 )
                 for f_name in f_names:
@@ -382,14 +393,13 @@ class Dataset(object):
         fields_names.sort()
         return fields_names
 
-    def add_tabular_scalars(
-        self, tabular: np.ndarray, names: Optional[list[str]] = None
-    ) -> None:
+    # -------------------------------------------------------------------------#
+    def add_tabular_scalars(self, tabular: np.ndarray, names: list[str] = None) -> None:
         """Add tabular scalar data to the summary.
 
         Args:
-            tabular: A 2D NumPy array containing tabular scalar data.
-            names: A list of column names for the tabular data. Defaults to None.
+            tabular (np.ndarray): A 2D NumPy array containing tabular scalar data.
+            names (list[str], optional): A list of column names for the tabular data. Defaults to None.
 
         Raises:
             ShapeError: Raised if the input tabular array does not have the correct shape (2D).
@@ -411,7 +421,7 @@ class Dataset(object):
 
         # ---# For efficiency, first add values to storage
         name_to_ids = {}
-        for col, name in zip(np.transpose(tabular), names):
+        for col, name in zip(tabular.T, names):
             name_to_ids[name] = col
 
         # ---# Then add data in sample
@@ -423,16 +433,16 @@ class Dataset(object):
 
     def get_scalars_to_tabular(
         self,
-        scalar_names: Optional[list[str]] = None,
-        sample_ids: Optional[list[int]] = None,
+        scalar_names: list[str] = None,
+        sample_ids: list[int] = None,
         as_nparray=False,
     ) -> Union[dict[str, np.ndarray], np.ndarray]:
         """Return a dict containing scalar values as tabulars/arrays.
 
         Args:
-            scalar_names: Scalars to work on. If None, all scalars will be returned. Defaults to None.
-            sample_ids: Filter by sample id. If None, take all samples. Defaults to None.
-            as_nparray: If True, return the data as a single numpy ndarray. If False, return a dictionary mapping scalar names to their respective tabular values. Defaults to False.
+            scalar_names (str, optional): Scalars to work on. If None, all scalars will be returned. Defaults to None.
+            sample_ids (list[int], optional): Filter by sample id. If None, take all samples. Defaults to None.
+            as_nparray (bool, optional): If True, return the data as a single numpy ndarray. If False, return a dictionary mapping scalar names to their respective tabular values. Defaults to False.
 
         Returns:
             np.ndarray: if as_nparray is True.
@@ -460,9 +470,10 @@ class Dataset(object):
             named_tabular[s_name] = res
 
         if as_nparray:
-            named_tabular = np.transpose(np.array(list(named_tabular.values())))
+            named_tabular = np.array(list(named_tabular.values())).T
         return named_tabular
 
+    # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
         """Add information to the :class:`Dataset <plaid.containers.dataset.Dataset>`, overwriting existing information if there's a conflict.
 
@@ -510,8 +521,8 @@ class Dataset(object):
         """Add information to the :class:`Dataset <plaid.containers.dataset.Dataset>`, overwriting existing information if there's a conflict.
 
         Args:
-            cat_key: Category key, choose among "legal," "data_production," and "data_description".
-            infos: Information key with its related content.
+            cat_key (str): Category key, choose among "legal," "data_production," and "data_description".
+            info_key (str): Information key with its related content.
 
         Raises:
             KeyError: Invalid category key.
@@ -544,8 +555,10 @@ class Dataset(object):
 
         if cat_key not in self._infos:
             self._infos[cat_key] = {}
-        elif infos in self._infos[cat_key]:
-            logger.warning(f"{cat_key=} and {infos=} already set, replacing it anyway")
+        elif info_key in self._infos[cat_key]:
+            logger.warning(
+                f"{cat_key=} and {info_key=} already set, replacing it anyway"
+            )
 
         for key, value in infos.items():
             self._infos[cat_key][key] = value
@@ -621,6 +634,7 @@ class Dataset(object):
         tf += "************************************************************\n"
         print(tf)
 
+    # -------------------------------------------------------------------------#
     def merge_dataset(self, dataset: Self) -> list[int]:
         """Merges another Dataset into this one.
 
@@ -637,8 +651,9 @@ class Dataset(object):
             return
         if not isinstance(dataset, Dataset):
             raise ValueError("dataset must be an instance of Dataset")
-        return self.add_samples(dataset.get_samples(as_list=True))  # pyright: ignore[reportArgumentType] # this one is tricky because of the return type of get_samples.
+        return self.add_samples(dataset.get_samples(as_list=True))
 
+    # -------------------------------------------------------------------------#
     def save(self, fname: Union[str, Path]) -> None:
         """Saves the data set to a TAR (Tape Archive) file. It creates a temporary intermediate directory to store temporary files during the loading process.
 
@@ -660,6 +675,8 @@ class Dataset(object):
         savedir.mkdir(parents=True)
 
         self._save_to_dir_(savedir)
+
+        curdir = os.getcwd()
 
         # Then : tar dir in file <fname>
         # TODO: avoid using subprocess by using lib tarfile
@@ -692,7 +709,7 @@ class Dataset(object):
     def load_from_dir(
         cls,
         dname: Union[str, Path],
-        ids: Optional[list[int]] = None,
+        ids: list[int] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> Self:
@@ -717,7 +734,7 @@ class Dataset(object):
     def load(
         self, fname: Union[str, Path], verbose: bool = False, processes_number: int = 0
     ) -> None:
-        """Load data from a specified TAR file. It creates a temporary intermediate directory to store temporary files during the loading process.
+        """Load data from a specified TAR (Tape Archive) file. It creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             fname (Union[str,Path]): The path to the data file to be loaded.
@@ -750,6 +767,7 @@ class Dataset(object):
         # Finally : removes directory <inputdir>
         shutil.rmtree(inputdir)
 
+    # -------------------------------------------------------------------------#
     def _save_to_dir_(self, savedir: Union[str, Path], verbose: bool = False) -> None:
         """Saves the dataset into a created sample directory and creates an 'infos.yaml' file to store additional information about the dataset.
 
@@ -771,7 +789,7 @@ class Dataset(object):
         # ---# save samples
         for i_sample, sample in tqdm(self._samples.items(), disable=not (verbose)):
             sample_fname = samples_dir / f"sample_{i_sample:09d}"
-            sample.save(sample_fname.as_posix())
+            sample.save(sample_fname)
 
         # ---# save infos
         if len(self._infos) > 0:
@@ -790,7 +808,7 @@ class Dataset(object):
     def _load_from_dir_(
         self,
         savedir: Union[str, Path],
-        ids: Optional[list[int]] = None,
+        ids: list[int] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> None:
@@ -824,7 +842,7 @@ class Dataset(object):
         )
 
         if ids is not None:
-            filtered_sample_paths: list[Path] = []
+            filtered_sample_paths = []
             for sample_path in sample_paths:
                 id = int(sample_path.stem.split("_")[-1])
                 if id in ids:
@@ -840,12 +858,12 @@ class Dataset(object):
             logger.info(
                 f"Number of processes set to maximum available: {os.cpu_count()}"
             )
-            processes_number = os.cpu_count()  # pyright: ignore[reportAssignmentType]
+            processes_number = os.cpu_count()
 
         if processes_number == 0 or processes_number == 1:
             for sample_path in tqdm(sample_paths, disable=not (verbose)):
                 id = int(sample_path.stem.split("_")[-1])
-                sample = Sample(sample_path.as_posix())
+                sample = Sample(sample_path)
                 self.add_sample(sample, id)
         else:
             with Pool(processes_number) as p:
@@ -891,7 +909,7 @@ class Dataset(object):
             print("Warning: dataset contains no sample")
 
     @staticmethod
-    def _load_number_of_samples_(_savedir: Union[str, Path]) -> int:
+    def _load_number_of_samples_(savedir: Union[str, Path]) -> int:
         """Warning: This method is deprecated, use instead :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>`.
 
         This function counts the number of sample files in a specified directory, which is
@@ -907,6 +925,7 @@ class Dataset(object):
             'use instead: plaid.get_number_of_samples("path-to-my-dataset")'
         )
 
+    # -------------------------------------------------------------------------#
     def set_samples(self, samples: dict[int, Sample]) -> None:
         """Set the samples of the data set, overwriting the existing ones.
 
@@ -976,6 +995,7 @@ class Dataset(object):
             )
         self._samples[id] = sample
 
+    # -------------------------------------------------------------------------#
     def __len__(self) -> int:
         """Return the number of samples in the dataset.
 
