@@ -24,7 +24,13 @@ def current_directory() -> str:
 
 @pytest.fixture(scope="session", autouse=True)
 def clean_tests():
-    subprocess.call(['sh', './tests/clean.sh'])
+    if os.name == 'nt':
+        # Windows
+        retcode = subprocess.call(['cmd', '/c', 'tests\\clean.bat'])
+    else:
+        # Unix
+        retcode = subprocess.call(['sh', './tests/clean.sh'])
+
 
 # %% Tests
 
