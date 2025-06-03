@@ -17,8 +17,6 @@ from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.utils.base import ShapeError
 
-from .test_sample import base_name, zone_name  # noqa: F401
-
 # %% Fixtures
 
 
@@ -44,7 +42,7 @@ def tabular(nb_samples, nb_scalars):
 
 @pytest.fixture()
 def scalar_names(nb_scalars):
-    return [f"test_scalar_{np.random.randint(1e8, 1e9)}" for _ in range(nb_scalars)]
+    return [f"test_scalar_{np.random.randint(int(1e8), int(1e9))}" for _ in range(nb_scalars)]
 
 
 @pytest.fixture()
@@ -55,7 +53,7 @@ def sample(zone_name, base_name):
     sample.add_scalar("test_scalar", np.random.randn())
     sample.add_field("test_field_same_size", np.random.randn(17), zone_name, base_name)
     sample.add_field(
-        f"test_field_{np.random.randint(1e8, 1e9)}",
+        f"test_field_{np.random.randint(int(1e8), int(1e9))}",
         np.random.randn(np.random.randint(10, 20)),
         zone_name,
         base_name,
@@ -75,7 +73,7 @@ def samples(nb_samples, zone_name, base_name):
             "test_field_same_size", np.random.randn(17), zone_name, base_name
         )
         sample.add_field(
-            f"test_field_{np.random.randint(1e8, 1e9)}",
+            f"test_field_{np.random.randint(int(1e8), int(1e9))}",
             np.random.randn(np.random.randint(10, 20)),
             zone_name,
             base_name,
@@ -96,7 +94,7 @@ def other_samples(nb_samples, zone_name, base_name):
             "test_field_same_size", np.random.randn(17), zone_name, base_name
         )
         sample.add_field(
-            f"test_field_{np.random.randint(1e8, 1e9)}",
+            f"test_field_{np.random.randint(int(1e8), int(1e9))}",
             np.random.randn(np.random.randint(10, 20)),
             zone_name,
             base_name,
@@ -146,7 +144,9 @@ def compare_two_samples(sample_1: Sample, sample_2: Sample):
     assert set(sample_1.get_time_series_names()) == set(
         sample_2.get_time_series_names()
     )
-    assert np.array_equal(sample_1.get_nodes(), sample_2.get_nodes())
+    nodes1: np.ndarray = sample_1.get_nodes()  # pyright: ignore[reportAssignmentType]
+    nodes2: np.ndarray = sample_2.get_nodes()  # pyright: ignore[reportAssignmentType]
+    assert np.array_equal(nodes1, nodes2)
     assert set(sample_1.get_base_names()) == set(sample_2.get_base_names())
     for base_name in sample_1.get_base_names():
         assert set(sample_1.get_zone_names(base_name)) == set(
@@ -362,7 +362,7 @@ class Test_Dataset:
     def test_get_sample_ids(self, dataset):
         dataset.get_sample_ids()
 
-    def test_get_sample_ids_from_disk(self, dataset, current_directory):
+    def test_get_sample_ids_from_disk(self, current_directory):
         dataset_path = current_directory / "dataset"
         assert plaid.get_number_of_samples(dataset_path) == 3
 
@@ -371,7 +371,7 @@ class Test_Dataset:
         dataset_with_samples.get_scalar_names()
         dataset_with_samples.get_scalar_names(np.random.randint(2, nb_samples, size=2))
 
-    def test_get_scalar_names_same_ids(self, dataset_with_samples, nb_samples):
+    def test_get_scalar_names_same_ids(self, dataset_with_samples):
         dataset_with_samples.get_scalar_names()
         dataset_with_samples.get_scalar_names([0, 0])
 

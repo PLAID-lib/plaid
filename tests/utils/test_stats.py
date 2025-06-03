@@ -12,9 +12,6 @@ import pytest
 
 from plaid.utils.stats import OnlineStatistics, Stats
 
-from ..containers.test_dataset import nb_samples, samples  # noqa: F401
-from ..containers.test_sample import base_name, zone_name  # noqa: F401
-
 # %% Fixtures
 
 
