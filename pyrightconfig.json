@@ -12,5 +12,4 @@
     "reportUnusedVariable": "warning",
     "reportMissingImports": "error",
     "reportUnknownMemberType": "none",
-    "useLibraryCodeForTypes": true
   }
