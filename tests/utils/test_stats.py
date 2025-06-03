@@ -12,9 +12,6 @@ import pytest
 
 from plaid.utils.stats import OnlineStatistics, Stats
 
-from ..containers.test_dataset import nb_samples, samples
-from ..containers.test_sample import base_name, zone_name
-
 # %% Fixtures
 
 
@@ -35,7 +32,8 @@ def stats():
 
 # %% Tests
 
-class Test_OnlineStatistics():
+
+class Test_OnlineStatistics:
     def test__init__(self, online_stats):
         pass
 
@@ -51,7 +49,7 @@ class Test_OnlineStatistics():
         online_stats.get_stats()
 
 
-class Test_Stats():
+class Test_Stats:
     def test__init__(self, stats):
         pass
 
