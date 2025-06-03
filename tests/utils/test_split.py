@@ -52,7 +52,7 @@ class Test_split_dataset:
                 "test": 0.1,
             },
         }
-        split = split_dataset(dataset, options)
+        split: dict = split_dataset(dataset, options)
         assert len(split["train"]) == 56
         assert len(split["val"]) == 7
         assert len(split["test"]) == 7

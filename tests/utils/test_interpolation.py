@@ -191,7 +191,7 @@ class Test_sinterpolation:
         self, time_indices_bis, coefficients, vals
     ):
         result = piece_wise_linear_interpolation_vectorized(
-            np.array(vals), time_indices_bis, coefficients
+            vals, time_indices_bis, coefficients
         )
 
         expected_result = [

@@ -23,7 +23,7 @@ logging.basicConfig(
 # %% Functions
 
 
-def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
+def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, list[int]]:
     """Splits a Dataset in several sub Datasets.
 
     Args:
