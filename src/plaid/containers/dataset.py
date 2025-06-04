@@ -1,3 +1,5 @@
+"""Implementation of the `Dataset` container."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -62,10 +64,8 @@ authorized_info_keys = {
 # %% Functions
 
 
-def process_sample(
-    sample_path: Union[str, Path], *args, **kwargs
-) -> tuple:  # pragma: no cover
-    """Load Sample from path
+def process_sample(sample_path: Union[str, Path]) -> tuple:  # pragma: no cover
+    """Load Sample from path.
 
     Args:
         sample_path (Union[str,Path]): The path of the Sample.
@@ -160,7 +160,7 @@ class Dataset(object):
             return {id: self._samples[id] for id in ids}
 
     def add_sample(self, sample: Sample, id: int = None) -> int:
-        """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`
+        """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`.
 
         Args:
             sample (Sample): The sample to add.
@@ -190,8 +190,7 @@ class Dataset(object):
         return id
 
     def del_sample(self, sample_id: int) -> None:
-        """Delete a :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>`.
-        and reorganize the remaining sample IDs to eliminate gaps.
+        """Delete a :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>` and reorganize the remaining sample IDs to eliminate gaps.
 
         Args:
             sample_id (int): The ID of the sample to delete.
@@ -283,8 +282,7 @@ class Dataset(object):
         return ids
 
     def del_samples(self, sample_ids: list[int]) -> None:
-        """Delete  :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>`
-        and reorganize the remaining sample IDs to eliminate gaps.
+        """Delete  :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>` and reorganize the remaining sample IDs to eliminate gaps.
 
         Args:
             sample_ids (list[int]): The list of IDs of samples to delete.
@@ -533,7 +531,7 @@ class Dataset(object):
 
         Args:
             cat_key (str): Category key, choose among "legal," "data_production," and "data_description".
-            info_key (str): Information key with its related content.
+            infos (str): Information key with its related content.
 
         Raises:
             KeyError: Invalid category key.
@@ -666,8 +664,9 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def save(self, fname: Union[str, Path]) -> None:
-        """Saves the data set to a TAR (Tape Archive) file. It
-        creates a temporary intermediate directory to store temporary files during the loading process.
+        """Saves the data set to a TAR (Tape Archive) file.
+
+        It creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             fname (Union[str,Path]): The path to which the data set will be saved.
@@ -687,8 +686,6 @@ class Dataset(object):
         savedir.mkdir(parents=True)
 
         self._save_to_dir_(savedir)
-
-        curdir = os.getcwd()
 
         # Then : tar dir in file <fname>
         # TODO: avoid using subprocess by using lib tarfile
@@ -746,8 +743,9 @@ class Dataset(object):
     def load(
         self, fname: Union[str, Path], verbose: bool = False, processes_number: int = 0
     ) -> None:
-        """Load data from a specified TAR (Tape Archive) file. It
-        creates a temporary intermediate directory to store temporary files during the loading process.
+        """Load data from a specified TAR (Tape Archive) file.
+
+        It creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             fname (Union[str,Path]): The path to the data file to be loaded.
@@ -922,9 +920,8 @@ class Dataset(object):
             print("Warning: dataset contains no sample")
 
     @staticmethod
-    def _load_number_of_samples_(savedir: Union[str, Path]) -> int:
-        """Warning:
-            This method is deprecated, use instead :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>`
+    def _load_number_of_samples_(_savedir: Union[str, Path]) -> int:
+        """Warning: This method is deprecated, use instead :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>`.
 
         This function counts the number of sample files in a specified directory, which is
         useful for determining the total number of samples in a dataset.

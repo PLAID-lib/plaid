@@ -1,3 +1,5 @@
+"""Implementation of the `Sample` container."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -26,6 +28,7 @@ import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 from CGNS.PAT.cgnsutils import __LABEL__ as __TYPE__
 from CGNS.PAT.cgnsutils import __VALUE__ as __DATA__
+from pydantic import BaseModel, model_serializer
 
 from plaid.utils import cgns_helper as CGH
 
@@ -150,7 +153,7 @@ TimeSeriesType = tuple[TimeSequenceType, FieldType]
 
 
 def read_index(pyTree: list, dim: list[int]):
-    """Read Index Array or Index Range from CGNS
+    """Read Index Array or Index Range from CGNS.
 
     Args:
         pyTree (list): CGNS node which has a child Index to read
@@ -165,7 +168,7 @@ def read_index(pyTree: list, dim: list[int]):
 
 
 def read_index_array(pyTree: list):
-    """Read Index Array from CGNS
+    """Read Index Array from CGNS.
 
     Args:
         pyTree (list): CGNS node which has a child of type IndexArray_t to read
@@ -185,7 +188,7 @@ def read_index_array(pyTree: list):
 
 
 def read_index_range(pyTree: list, dim: list[int]):
-    """Read Index Range from CGNS
+    """Read Index Range from CGNS.
 
     Args:
         pyTree (list): CGNS node which has a child of type IndexRange_t to read
@@ -221,9 +224,6 @@ def read_index_range(pyTree: list, dim: list[int]):
             res.extend(np.arange(begin, end + 1).ravel())
 
     return np.array(res, dtype=int).ravel()
-
-
-from pydantic import BaseModel, model_serializer
 
 
 class Sample(BaseModel):
@@ -289,6 +289,7 @@ class Sample(BaseModel):
     # -------------------------------------------------------------------------#
     def set_default_base(self, base_name: str, time: float = None) -> None:
         """Set the default base for the specified time (that will also be set as default if provided).
+
         The default base is a reference point for various operations in the system.
 
         Args:
@@ -339,6 +340,7 @@ class Sample(BaseModel):
         self, zone_name: str, base_name: str, time: float = None
     ) -> None:
         """Set the default base and active zone for the specified time (that will also be set as default if provided).
+
         The default base and active zone serve as reference points for various operations in the system.
 
         Args:
@@ -389,6 +391,7 @@ class Sample(BaseModel):
 
     def set_default_time(self, time: float) -> None:
         """Set the default time for the system.
+
         This function sets the default time to be used for various operations in the system.
 
         Args:
@@ -427,6 +430,7 @@ class Sample(BaseModel):
 
     def get_time_assignment(self, time: float = None) -> float:
         """Retrieve the default time for the CGNS operations.
+
         If there are available time steps, it will return the first one; otherwise, it will return 0.0.
 
         Args:
@@ -446,6 +450,7 @@ class Sample(BaseModel):
 
     def get_base_assignment(self, base_name: str = None, time: float = None) -> str:
         """Retrieve the default base name for the CGNS operations.
+
         This function calculates the attributed base for a specific operation based on the
         default base set in the system.
 
@@ -482,6 +487,7 @@ class Sample(BaseModel):
         self, zone_name: str = None, base_name: str = None, time: float = None
     ) -> str:
         """Retrieve the default zone name for the CGNS operations.
+
         This function calculates the attributed zone for a specific operation based on the
         default zone set in the system, within the specified base.
 
@@ -581,12 +587,12 @@ class Sample(BaseModel):
         tree = self._meshes[time]
 
         links = self.get_links(time)
-        if apply_links == False or links is None:
+        if not apply_links or links is None:
             return tree
 
         tree = copy.deepcopy(tree)
         for link in links:
-            if in_memory == False:
+            if not in_memory:
                 subtree, _, _ = CGM.load(
                     os.path.join(link[0], link[1]), subtree=link[2]
                 )
@@ -724,8 +730,7 @@ class Sample(BaseModel):
         linked_time: float,
         time: float,
     ) -> CGNSTree:
-        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of
-            another sample.
+        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
 
         Args:
             path_linked_sample (str): The absolute path of the folder containing the linked CGNS
@@ -1371,12 +1376,12 @@ class Sample(BaseModel):
         ZSRPaths = CGU.getPathsByTypeList(zone_node, ["Zone_t", "ZoneSubRegion_t"])
         for path in ZSRPaths:
             ZSRNode = CGU.getNodeByPath(zone_node, path)
-            fnpath = CGU.getPathsByTypeList(
-                ZSRNode, ["ZoneSubRegion_t", "FamilyName_t"]
-            )
-            if fnpath:
-                fn = CGU.getNodeByPath(ZSRNode, fnpath[0])
-                familyName = CGU.getValueAsString(fn)
+            # fnpath = CGU.getPathsByTypeList(
+            #     ZSRNode, ["ZoneSubRegion_t", "FamilyName_t"]
+            # )
+            # if fnpath:
+            #     fn = CGU.getNodeByPath(ZSRNode, fnpath[0])
+            #     familyName = CGU.getValueAsString(fn)
             indices = read_index(ZSRNode, dim)
             if len(indices) == 0:
                 continue
@@ -1512,9 +1517,9 @@ class Sample(BaseModel):
             val = CGU.getValue(elem_node)
             elem_type = CGNS_element_names[val[0]]
             elem_size = int(elem_type.split("_")[-1])
-            elem_range = CGU.getValueByPath(
-                elem_node, "ElementRange"
-            )  # TODO elem_range is unused
+            # elem_range = CGU.getValueByPath(
+            #     elem_node, "ElementRange"
+            # )  # TODO elem_range is unused
             # -1 is to get back indexes starting at 0
             elements[elem_type] = (
                 CGU.getValueByPath(elem_node, "ElementConnectivity").reshape(
@@ -1965,6 +1970,7 @@ class Sample(BaseModel):
 
     @model_serializer()
     def serialize_model(self):
+        """Serialize the model to a dictionary."""
         return {
             "mesh_base_name": self._mesh_base_name,
             "mesh_zone_name": self._mesh_zone_name,
