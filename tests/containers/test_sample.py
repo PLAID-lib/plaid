@@ -16,7 +16,7 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
-from plaid.containers.sample import Sample, show_cgns_tree
+from plaid.containers.sample import Sample, show_cgns_tree, read_index, read_index_array, read_index_range
 
 # %% Fixtures
 
@@ -185,6 +185,18 @@ def test_show_cgns_tree_not_a_list():
         show_cgns_tree({1: 2})
 
 
+def test_read_index(tree, physical_dim):
+    read_index(tree, physical_dim)
+
+
+def test_read_index_array(tree):
+    read_index_array(tree)
+
+
+def test_read_index_range(tree, physical_dim):
+    read_index_range(tree, physical_dim)
+
+
 @pytest.fixture()
 def current_directory():
     return os.path.dirname(os.path.abspath(__file__))
@@ -347,6 +359,7 @@ class Test_Sample:
             sample_with_tree.add_tree([])
 
     def test_add_tree(self, sample, tree):
+        sample.add_tree(tree)
         sample.add_tree(tree)
         sample.add_tree(tree, time=0.2)
 
@@ -599,14 +612,19 @@ class Test_Sample:
         )
         sample.init_zone(
             np.random.randint(0, 10, size=3),
-            zone_name="zone_name_2",
-            base_name=base_name,
-        )
-        assert sample.get_zone_names(base_name) == ["zone_name_1", "zone_name_2"]
-        assert sample.get_zone_names(base_name, full_path=True) == [
-            f"{base_name}/zone_name_1",
-            f"{base_name}/zone_name_2",
-        ]
+            zone_name='zone_name_2',
+            base_name=base_name)
+        sample.get_zone_names(base_name, unique = True)
+        assert (
+            sample.get_zone_names(base_name) == [
+                'zone_name_1',
+                'zone_name_2'])
+        assert (
+            sample.get_zone_names(
+                base_name,
+                full_path=True) == [
+                f'{base_name}/zone_name_1',
+                f'{base_name}/zone_name_2'])
 
     def test_get_zone_type(self, sample, zone_name, base_name):
         with pytest.raises(KeyError):
