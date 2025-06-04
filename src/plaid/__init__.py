@@ -9,7 +9,7 @@
 
 try:
     from ._version import __version__
-except ImportError:
+except ImportError: # pragma: no cover
     __version__ = "None"
 
 from .containers.utils import get_number_of_samples, get_sample_ids

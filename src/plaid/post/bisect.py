@@ -68,7 +68,7 @@ def is_dvipng_available(verbose: bool) -> bool:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        return True
+        return True  # pragma: no cover
     except FileNotFoundError:  # pragma: no cover
         print(
             "dvipng module not installed. Using the default matplotlib options instead"

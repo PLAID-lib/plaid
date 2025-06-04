@@ -62,11 +62,6 @@ def empty_dataset():
 
 
 @pytest.fixture()
-def dataset():
-    return Dataset()
-
-
-@pytest.fixture()
 def current_directory():
     return Path(__file__).absolute().parent
 

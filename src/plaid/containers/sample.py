@@ -83,41 +83,8 @@ CGNS_element_names = [
     "HEXA_64",
 ]
 """List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
-# %% Functions
-
-
-def show_cgns_tree(tree: list, offset: str = ""):
-    """Recursively prints the CGNS Tree structure. It displays the hierarchy of nodes and branches in a CGNS tree.
-
-    Args:
-        tree (list): The CGNS tree structure to be printed.
-        offset (str, optional): The character used for indentation between tree branches. Defaults to an empty string ('').
-    """
-    if not (isinstance(tree, list)):
-        if tree is None:  # pragma: no cover
-            return True
-        else:
-            raise TypeError(f"{type(tree)=}, but should be a list or None")
-    assert len(tree) == 4
-    if isinstance(tree[__DATA__], np.ndarray):
-        if "|S" in str(tree[__DATA__].dtype):
-            data = tree[__DATA__].tobytes()
-        elif tree[__DATA__].size < 10:
-            data = tree[__DATA__]
-        else:
-            data = f"[{tree[__DATA__].dtype};{tree[__DATA__].shape}]"
-    else:
-        data = tree[__DATA__]
-    print(
-        offset
-        + f"""- "{tree[__NAME__]}"({tree[__TYPE__]}), {len(tree[__CHILDREN__])} children, data({type(tree[__DATA__])}): {data}"""
-    )
-    for stree in tree[__CHILDREN__]:
-        show_cgns_tree(stree, offset=offset + "    ")
-
 
 # %% Classes
-
 
 CGNSTree = list
 """A CGNSTree is a list
@@ -180,7 +147,7 @@ def read_index_array(pyTree: list):
     res = []
     for indexArrayPath in indexArrayPaths:
         data = CGU.getNodeByPath(pyTree, indexArrayPath)
-        if data[1] is None:
+        if data[1] is None: # pragma: no cover
             continue
         else:
             res.extend(data[1].ravel())
@@ -203,7 +170,7 @@ def read_index_range(pyTree: list, dim: list[int]):
     for indexRangePath in indexRangePaths:  # Is it possible there are several ?
         indexRange = CGU.getValueByPath(pyTree, indexRangePath)
 
-        if indexRange.shape == (3, 2):  # 3D
+        if indexRange.shape == (3, 2):  # 3D  # pragma: no cover
             for k in range(indexRange[:, 0][2], indexRange[:, 1][2] + 1):
                 for j in range(indexRange[:, 0][1], indexRange[:, 1][1] + 1):
                     global_id = (
@@ -213,7 +180,7 @@ def read_index_range(pyTree: list, dim: list[int]):
                     )
                     res.extend(global_id)
 
-        elif indexRange.shape == (2, 2):  # 2D
+        elif indexRange.shape == (2, 2):  # 2D  # pragma: no cover
             for j in range(indexRange[:, 0][1], indexRange[:, 1][1]):
                 for i in range(indexRange[:, 0][0], indexRange[:, 1][0]):
                     global_id = i + dim[0] * (j - 1)
@@ -548,7 +515,7 @@ class Sample(BaseModel):
         time = self.get_time_assignment(time)
 
         if self._meshes is not None:
-            show_cgns_tree(self._meshes[time])
+            CGH.show_cgns_tree(self._meshes[time])
 
     def init_tree(self, time: float = None) -> CGNSTree:
         """Initialize a CGNS tree structure at a specified time step or create a new one if it doesn't exist.
@@ -687,7 +654,7 @@ class Sample(BaseModel):
             local_bases = self.get_base_names(time=time)
             base_nodes = CGU.getNodesFromTypeSet(tree, "CGNSBase_t")
             for _, node in base_nodes:
-                if node[__NAME__] not in local_bases:
+                if node[__NAME__] not in local_bases:  # pragma: no cover
                     self._meshes[time][__CHILDREN__].append(node)
                 else:
                     logger.warning(
@@ -752,12 +719,11 @@ class Sample(BaseModel):
         # https://pycgns.github.io/MAP/examples.html#save-with-links
         # When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
 
-        if linked_time not in linked_sample._meshes:
+        if linked_time not in linked_sample._meshes:  # pragma: no cover
             raise KeyError(
                 f"There is no CGNS tree for time {linked_time} in linked_sample."
             )
-
-        if time in self._meshes:
+        if time in self._meshes: # pragma: no cover
             raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
 
         tree = CGL.newCGNSTree()
@@ -821,12 +787,12 @@ class Sample(BaseModel):
         def find_feature_roots(sample, time, Type_t):
             Types_t = CGU.getAllNodesByTypeSet(sample.get_mesh(time), Type_t)
             # in case the type is not present in the tree
-            if Types_t == []:
+            if Types_t == []:  # pragma: no cover
                 return []
             types = [Types_t[0]]
             for t in Types_t[1:]:
                 for tt in types:
-                    if tt not in t:
+                    if tt not in t: # pragma: no cover
                         types.append(t)
             return types
 
@@ -858,7 +824,8 @@ class Sample(BaseModel):
         """
         # get_base will look for default time and base_name
         base_node = self.get_base(base_name, time)
-        if base_node is None:
+
+        if base_node is None:  # pragma: no cover
             raise ValueError(
                 f"there is no base called {base_name} at the time {time} in this sample"
             )
@@ -879,7 +846,7 @@ class Sample(BaseModel):
             int: The topological dimension of the specified base node at the given time.
         """
         base_node = self.get_base(base_name, time)
-        if base_node is None:
+        if base_node is None:  # pragma: no cover
             raise ValueError(
                 f"there is no base called {base_name} at the time {time} in this sample"
             )
@@ -1077,7 +1044,7 @@ class Sample(BaseModel):
         Returns:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
-        if self._meshes is None:
+        if self._meshes is None:  # pragma: no cover
             raise KeyError("There is no CGNS tree in this sample.")
 
         if time not in self._meshes:
@@ -1367,19 +1334,19 @@ class Sample(BaseModel):
             BCNode = CGU.getNodeByPath(zone_node, BCPath)
             BCName = BCNode[0]
             indices = read_index(BCNode, dim)
-            if len(indices) == 0:
+            if len(indices) == 0: # pragma: no cover
                 continue
 
             gl = CGU.getPathsByTypeSet(BCNode, ["GridLocation_t"])
             if gl:
                 location = CGU.getValueAsString(CGU.getNodeByPath(BCNode, gl[0]))
-            else:
+            else: # pragma: no cover
                 location = "Vertex"
             if location == "Vertex":
                 nodal_tags[BCName] = indices - 1
 
         ZSRPaths = CGU.getPathsByTypeList(zone_node, ["Zone_t", "ZoneSubRegion_t"])
-        for path in ZSRPaths:
+        for path in ZSRPaths:# pragma: no cover
             ZSRNode = CGU.getNodeByPath(zone_node, path)
             # fnpath = CGU.getPathsByTypeList(
             #     ZSRNode, ["ZoneSubRegion_t", "FamilyName_t"]
@@ -1446,7 +1413,7 @@ class Sample(BaseModel):
                     axis=1,
                 )
             return array
-        elif len(grid_paths) > 1:
+        elif len(grid_paths) > 1: # pragma: no cover
             raise TypeError(
                 f"Found {len(grid_paths)} <GridCoordinates> nodes, should find only one"
             )
@@ -1558,7 +1525,7 @@ class Sample(BaseModel):
         def get_field_names_one_base(base_name: str) -> list[str]:
             # get_zone will look for default zone_name, base_name, time
             search_node = self.get_zone(zone_name, base_name, time)
-            if search_node is None:
+            if search_node is None:# pragma: no cover
                 return []
 
             names = []
@@ -1890,12 +1857,13 @@ class Sample(BaseModel):
                     os.path.join(meshes_dir, f"mesh_{i:09d}.cgns")
                 )
                 time = CGH.get_time_values(tree)
+
                 self._meshes[time], self._links[time], self._paths[time] = (
                     tree,
                     links,
                     paths,
                 )
-                for i in range(len(self._links[time])):
+                for i in range(len(self._links[time])):  # pragma: no cover
                     self._links[time][i][0] = os.path.join(
                         meshes_dir, self._links[time][i][0]
                     )

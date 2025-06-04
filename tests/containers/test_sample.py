@@ -16,7 +16,7 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
-from plaid.containers.sample import Sample, show_cgns_tree
+from plaid.containers.sample import Sample, read_index, read_index_array, read_index_range
 
 # %% Fixtures
 
@@ -37,11 +37,6 @@ def zone_shape():
 
 
 @pytest.fixture()
-def sample():
-    return Sample()
-
-
-@pytest.fixture()
 def other_sample():
     return Sample()
 
@@ -58,19 +53,6 @@ def sample_with_time_series(sample):
         "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
     )
     return sample
-
-
-@pytest.fixture()
-def nodes():
-    return np.array(
-        [
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [1.0, 1.0],
-            [0.0, 1.0],
-            [0.5, 1.5],
-        ]
-    )
 
 
 @pytest.fixture()
@@ -149,11 +131,6 @@ def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
     return tree
 
 
-@pytest.fixture()
-def sample_with_tree(sample, tree):
-    sample.add_tree(tree)
-    return sample
-
 
 @pytest.fixture()
 def sample_with_tree3d(sample, tree3d):
@@ -172,23 +149,28 @@ def sample_with_tree_and_scalar_and_time_series(
     )
     return sample_with_tree
 
+ 
+# %% Test
 
-# %% Tests
+def test_read_index(tree, physical_dim):
+    read_index(tree, physical_dim)
 
 
-def test_show_cgns_tree(tree):
-    show_cgns_tree(tree)
+def test_read_index_array(tree):
+    read_index_array(tree)
 
 
-def test_show_cgns_tree_not_a_list():
-    with pytest.raises(TypeError):
-        show_cgns_tree({1: 2})
+def test_read_index_range(tree, physical_dim):
+    read_index_range(tree, physical_dim)
+
 
 
 @pytest.fixture()
 def current_directory():
     return os.path.dirname(os.path.abspath(__file__))
 
+
+# %% Tests
 
 class Test_Sample:
     # -------------------------------------------------------------------------#
@@ -347,6 +329,7 @@ class Test_Sample:
             sample_with_tree.add_tree([])
 
     def test_add_tree(self, sample, tree):
+        sample.add_tree(tree)
         sample.add_tree(tree)
         sample.add_tree(tree, time=0.2)
 
