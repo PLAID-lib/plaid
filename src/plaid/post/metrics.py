@@ -1,3 +1,5 @@
+"""Utility functions for computing and printing metrics for regression problems in PLAID."""
+
 import numpy as np
 import yaml
 from sklearn.metrics import r2_score
@@ -54,7 +56,7 @@ def compute_R2(
 
     Args:
         metrics (dict): Dictionary to store the computed metrics.
-        r2OutScalars (dict): Dictionary containing R2 scores for scalar outputs.
+        r2_out_scalars (dict): Dictionary containing R2 scores for scalar outputs.
         problem_split (dict): Dictionary specifying how the problem is split.
         out_scalars_names (list[str]): List of names of scalar outputs.
     """

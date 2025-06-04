@@ -1,3 +1,5 @@
+"""Utiliy function to plot bisect graphs comparing predictions vs. targets dataset."""
+
 import subprocess
 
 import matplotlib as mpl
@@ -20,7 +22,7 @@ def prepare_datasets(
     Args:
         ref_dataset (Dataset): The reference dataset.
         pred_dataset (Dataset): The predicted dataset.
-        problem_def (ProblemDefinition): The common problem for the reference and predicted dataset
+        problem_definition (ProblemDefinition): The common problem for the reference and predicted dataset
         verbose (bool, optional): Verbose mode. Defaults to False.
 
     Returns:
