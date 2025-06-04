@@ -3,6 +3,9 @@
 import numpy as np
 import pytest
 
+from Muscat.Bridges.CGNSBridge import MeshToCGNS
+from Muscat.Containers import MeshCreationTools as MCT
+
 from plaid.containers.sample import Sample
 
 
@@ -61,3 +64,69 @@ def other_samples(nb_samples: int, zone_name: str, base_name: str) -> list[Sampl
 def infos() -> dict:
     """Legal metadata used in test datasets."""
     return {"legal": {"owner": "PLAID2", "license": "BSD-3"}}
+
+
+@pytest.fixture()
+def nodes():
+    return np.array(
+        [
+            [0.0, 0.0],
+            [1.0, 0.0],
+            [1.0, 1.0],
+            [0.0, 1.0],
+            [0.5, 1.5],
+        ]
+    )
+
+
+@pytest.fixture()
+def triangles():
+    return np.array(
+        [
+            [0, 1, 2],
+            [0, 2, 3],
+            [2, 4, 3],
+        ]
+    )
+
+
+@pytest.fixture()
+def nodal_tags():
+    return np.array(
+        [
+            0,
+            1,
+        ]
+    )
+
+
+@pytest.fixture()
+def vertex_field():
+    return np.random.randn(5)
+
+
+@pytest.fixture()
+def cell_center_field():
+    return np.random.randn(3)
+
+
+@pytest.fixture()
+def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
+    Mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
+    Mesh.GetNodalTag("tag").AddToTag(nodal_tags)
+    Mesh.nodeFields["test_node_field_1"] = vertex_field
+    Mesh.nodeFields["big_node_field"] = np.random.randn(50)
+    Mesh.elemFields["test_elem_field_1"] = cell_center_field
+    tree = MeshToCGNS(Mesh)
+    return tree
+
+
+@pytest.fixture()
+def sample_with_tree(sample, tree):
+    sample.add_tree(tree)
+    return sample
+
+
+@pytest.fixture()
+def sample():
+    return Sample()

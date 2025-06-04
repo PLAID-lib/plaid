@@ -5,17 +5,15 @@
 #
 #
 
+# %% Imports
 
 import pytest
 
 from plaid.utils.cgns_helper import (
     get_base_names, get_time_values, show_cgns_tree)
 
-from ..containers.test_dataset import samples, other_samples, infos, nb_samples
-from ..containers.test_sample import (sample_with_tree, tree, sample,
-    nodes, triangles, vertex_field, cell_center_field, nodal_tags)
 
-
+# %% Tests
 class Test_cgns_helper():
 
     def test_get_base_names(self, sample_with_tree):
