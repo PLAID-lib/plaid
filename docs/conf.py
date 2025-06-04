@@ -35,7 +35,7 @@ print(sys.path)
 
 # -- Project information -----------------------------------------------------
 root_doc = 'index'  # default is already <index>
-project = 'plaid-lib'
+project = 'plaid'
 copyright = '2023-{}, Safran'.format(datetime.date.today().year)
 author = 'Safran'
 

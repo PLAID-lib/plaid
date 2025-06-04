@@ -54,7 +54,7 @@ def vals():
     return np.array([-10., 0., 100., 150., 200., 300., 400., 500., 600., 700.,
                     800., 900., 1000., 3000., 701.4752695491923])
 
-class Test_sinterpolation():
+class Test_sinterpolation:
     def test_piece_wise_linear_interpolation_1(self, time_indices, vectors):
         result = piece_wise_linear_interpolation(-1.0, time_indices, vectors)
         np.testing.assert_almost_equal(result, [1., 1., 1., 1., 1.])
