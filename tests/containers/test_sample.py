@@ -37,11 +37,6 @@ def zone_shape():
 
 
 @pytest.fixture()
-def sample():
-    return Sample()
-
-
-@pytest.fixture()
 def other_sample():
     return Sample()
 
