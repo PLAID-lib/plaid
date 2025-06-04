@@ -7,18 +7,15 @@
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-from CGNS.PAT.cgnsutils import __CHILDREN__
-from CGNS.PAT.cgnsutils import __LABEL__ as __TYPE__
-from CGNS.PAT.cgnsutils import __NAME__
-from CGNS.PAT.cgnsutils import __VALUE__ as __DATA__
 
 CGNSTree = list
 """A CGNSTree is a list
 """
 
 
-def get_base_names(tree: CGNSTree, full_path: bool = False,
-                   unique: bool = False) -> list[str]:
+def get_base_names(
+    tree: CGNSTree, full_path: bool = False, unique: bool = False
+) -> list[str]:
     """Get a list of base names from a CGNSTree.
 
     Args:
@@ -31,11 +28,11 @@ def get_base_names(tree: CGNSTree, full_path: bool = False,
     """
     base_paths = []
     if tree is not None:
-        b_paths = CGU.getPathsByTypeSet(tree, 'CGNSBase_t')
+        b_paths = CGU.getPathsByTypeSet(tree, "CGNSBase_t")
         for pth in b_paths:
-            s_pth = pth.split('/')
-            assert (len(s_pth) == 2)
-            assert (s_pth[0] == '')
+            s_pth = pth.split("/")
+            assert len(s_pth) == 2
+            assert s_pth[0] == ""
             if full_path:
                 base_paths.append(pth)
             else:
@@ -63,7 +60,8 @@ def get_time_values(tree: CGNSTree) -> np.ndarray:
     time_values = []
     for bp in base_paths:
         base_node = CGU.getNodeByPath(tree, bp)
-        time_values.append(CGU.getValueByPath(base_node, 'Time/TimeValues')[0])
-    assert time_values.count(time_values[0]) == len(
-        time_values), "times values are not consistent in bases"
+        time_values.append(CGU.getValueByPath(base_node, "Time/TimeValues")[0])
+    assert time_values.count(time_values[0]) == len(time_values), (
+        "times values are not consistent in bases"
+    )
     return time_values[0]

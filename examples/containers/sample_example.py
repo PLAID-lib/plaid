@@ -14,15 +14,17 @@
 
 # %%
 # Import required libraries
-import numpy as np
 import os
 
 # %%
 # Import necessary libraries and functions
 import CGNS.PAT.cgnskeywords as CGK
+import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
+
 from plaid.containers.sample import Sample, show_cgns_tree
+
 
 # %%
 # Print Sample util
@@ -31,6 +33,7 @@ def show_sample(sample: Sample):
     sample.show_tree()
     print(f"{sample.get_scalar_names() = }")
     print(f"{sample.get_field_names() = }")
+
 
 # %% [markdown]
 # ## Section 1: Initializing an Empty Sample and Adding Data
@@ -42,23 +45,27 @@ def show_sample(sample: Sample):
 
 # %%
 # Input data
-points = np.array([
-    [0.0, 0.0],
-    [1.0, 0.0],
-    [1.0, 1.0],
-    [0.0, 1.0],
-    [0.5, 1.5],
-])
+points = np.array(
+    [
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 1.0],
+        [0.0, 1.0],
+        [0.5, 1.5],
+    ]
+)
 
-triangles = np.array([
-    [0, 1, 2],
-    [0, 2, 3],
-    [2, 4, 3],
-])
+triangles = np.array(
+    [
+        [0, 1, 2],
+        [0, 2, 3],
+        [2, 4, 3],
+    ]
+)
 
 Mesh = MCT.CreateMeshOfTriangles(points, triangles)
-Mesh.nodeFields['test_node_field_1'] = np.random.randn(5)
-Mesh.elemFields['test_elem_field_1'] = np.random.randn(3)
+Mesh.nodeFields["test_node_field_1"] = np.random.randn(5)
+Mesh.elemFields["test_elem_field_1"] = np.random.randn(3)
 tree = MeshToCGNS(Mesh)
 
 # Display CGNS Tree
@@ -80,14 +87,14 @@ show_sample(sample)
 
 # %%
 # Add a rotation scalar to this Sample
-sample.add_scalar('rotation', np.random.randn())
+sample.add_scalar("rotation", np.random.randn())
 
 show_sample(sample)
 
 # %%
 # Add a more scalars to this Sample
-sample.add_scalar('speed', np.random.randn())
-sample.add_scalar('other', np.random.randn())
+sample.add_scalar("speed", np.random.randn())
+sample.add_scalar("other", np.random.randn())
 
 show_sample(sample)
 
@@ -96,10 +103,10 @@ show_sample(sample)
 
 # %%
 # Add a time series named 'stuff'
-sample.add_time_series('stuff', np.arange(10), np.random.randn(10))
+sample.add_time_series("stuff", np.arange(10), np.random.randn(10))
 
 # Add a time series named 'bluff'
-sample.add_time_series('bluff', np.arange(2, 6), np.random.randn(4))
+sample.add_time_series("bluff", np.arange(2, 6), np.random.randn(4))
 
 # As you can see it is not displayed when printing
 show_sample(sample)
@@ -122,11 +129,7 @@ sample.show_tree()
 new_sample_mult_mesh = Sample()
 
 # All meshes with their corresponding time step
-meshes_dict = {
-    0. : tree,
-    0.5 : tree,
-    1. : tree
-    }
+meshes_dict = {0.0: tree, 0.5: tree, 1.0: tree}
 
 # Set meshes in the Sample
 new_sample_mult_mesh.set_meshes(meshes_dict)
@@ -149,7 +152,7 @@ sample = Sample()
 print(sample, end="\n\n")
 
 # Init CGNS tree base at time 0.
-sample.init_base(2, 3, 'SurfaceMesh', time=0.)
+sample.init_base(2, 3, "SurfaceMesh", time=0.0)
 
 show_sample(sample)
 
@@ -159,11 +162,7 @@ show_sample(sample)
 # %%
 # Init CGNS tree zone to a base at time 0.
 shape = np.array((len(points), len(triangles), 0))
-sample.init_zone(
-    shape,
-    zone_name='TestZoneName',
-    base_name='SurfaceMesh',
-    time=0.)
+sample.init_zone(shape, zone_name="TestZoneName", base_name="SurfaceMesh", time=0.0)
 
 show_sample(sample)
 
@@ -171,21 +170,19 @@ show_sample(sample)
 # ### Set the coordinates of nodes for a specified base and zone
 
 # %%
-points = np.array([
-    [0.0, 0.0],
-    [1.0, 0.0],
-    [1.0, 1.0],
-    [0.0, 1.0],
-    [0.5, 1.5],
-])
+points = np.array(
+    [
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [1.0, 1.0],
+        [0.0, 1.0],
+        [0.5, 1.5],
+    ]
+)
 
 # Set the coordinates of nodes for a specified base and zone at a given time.
 # set_points == set_nodes == set_vertices
-sample.set_nodes(
-    points,
-    base_name='SurfaceMesh',
-    zone_name='TestZoneName',
-    time=0.)
+sample.set_nodes(points, base_name="SurfaceMesh", zone_name="TestZoneName", time=0.0)
 
 show_sample(sample)
 
@@ -195,24 +192,24 @@ show_sample(sample)
 # %%
 # Add a field to a specified zone
 sample.add_field(
-    'Pressure',
-    np.random.randn(
-        len(points)),
-    base_name='SurfaceMesh',
-    zone_name='TestZoneName',
-    time=0.)
+    "Pressure",
+    np.random.randn(len(points)),
+    base_name="SurfaceMesh",
+    zone_name="TestZoneName",
+    time=0.0,
+)
 
 show_sample(sample)
 
 # %%
 # Add another field
 sample.add_field(
-    'Temperature',
-    np.random.randn(
-        len(points)),
-    base_name='SurfaceMesh',
-    zone_name='TestZoneName',
-    time=0.)
+    "Temperature",
+    np.random.randn(len(points)),
+    base_name="SurfaceMesh",
+    zone_name="TestZoneName",
+    time=0.0,
+)
 
 show_sample(sample)
 
@@ -239,7 +236,7 @@ print(f"{sample.get_field('Temperature') = }")
 
 # %%
 # It will look for a default base if no base and zone are given
-sample.add_time_series('stuff', np.arange(10), np.random.randn(10))
+sample.add_time_series("stuff", np.arange(10), np.random.randn(10))
 
 print(f"{sample.get_time_series_names() = }")
 print(f"{sample.get_time_series('S') = }")
@@ -251,8 +248,8 @@ print(f"{sample.get_time_series('stuff') = }")
 # %%
 # It will look for a default base if no base and zone are given
 print(f"{sample.get_nodes() = }")
-print(f"{sample.get_points() = }") # same as get_nodes
-print(f"{sample.get_vertices() = }") # same as get_nodes
+print(f"{sample.get_points() = }")  # same as get_nodes
+print(f"{sample.get_vertices() = }")  # same as get_nodes
 
 # %% [markdown]
 # ### Retrieve element connectivity data
@@ -355,7 +352,7 @@ print(sample_mesh)
 print(f"{sample.get_all_mesh_times() = }")
 
 # Add one CGNS tree at time 1.
-sample.add_tree(tree, 1.)
+sample.add_tree(tree, 1.0)
 
 # After adding new tree
 print(f"{sample.get_all_mesh_times() = }")
@@ -375,7 +372,8 @@ for b_name in bases_names:
     print(f" - Base : {b_name}")
     for z_name, f_z_name in zip(zones_names, full_zones_names):
         print(
-            f"    - {z_name} -> type: {sample.get_zone_type(z_name, b_name)} | full: {f_z_name}")
+            f"    - {z_name} -> type: {sample.get_zone_type(z_name, b_name)} | full: {f_z_name}"
+        )
 
 # %% [markdown]
 # ## Section 3: Set and Get default values
@@ -396,11 +394,11 @@ sample.set_default_time(1.0)
 print(f"{sample.get_time_assignment() = }", end="\n\n")
 
 # Print the tree at time 1.0
-sample.show_tree() # == sample.show_tree(1.0)
+sample.show_tree()  # == sample.show_tree(1.0)
 
 # %%
 # If time is specified as an argument in a function, it takes precedence over the default time.
-sample.show_tree(0.0) # Print the tree at time 0.0 even if default time is 1.0
+sample.show_tree(0.0)  # Print the tree at time 0.0 even if default time is 1.0
 
 # %% [markdown]
 # ### Set and use default base and time in a Sample
@@ -413,7 +411,7 @@ sample._defaults["active_time"] = None
 print(f"{sample.get_time_assignment() = }", end="\n\n")
 
 # Create new bases
-sample.init_base(1, 1, 'new_base', 0.0)
+sample.init_base(1, 1, "new_base", 0.0)
 print(f"{sample.get_topological_dim('new_base', 0.0) = }")
 print(f"{sample.get_physical_dim('new_base', 0.0) = }")
 
@@ -427,7 +425,7 @@ except KeyError as e:
 
 # %%
 # Set default base and time
-sample.set_default_base('SurfaceMesh', 0.0)
+sample.set_default_base("SurfaceMesh", 0.0)
 
 # Now that default base and time have been assigned, it is no longer necessary to specify them in function calls.
 print(f"{sample.get_time_assignment() = }")
@@ -439,7 +437,9 @@ print(f"{sample.get_physical_dim() = }")
 
 # %%
 # If base is specified as an argument in a function, it takes precedence over the default base.
-print(f"{sample.get_physical_dim('new_base') = }") # Print the 'new_base' physical dim instead of the default base physical dim
+print(
+    f"{sample.get_physical_dim('new_base') = }"
+)  # Print the 'new_base' physical dim instead of the default base physical dim
 
 # %% [markdown]
 # ### Set and use default base, zone and time in a Sample
@@ -456,14 +456,15 @@ print(f"{sample.get_time_assignment() = }", end="\n\n")
 sample.init_zone(
     zone_shape=np.array([5, 3, 0]),
     zone_type=CGK.Structured_s,
-    zone_name='new_zone',
-    base_name='SurfaceMesh')
+    zone_name="new_zone",
+    base_name="SurfaceMesh",
+)
 print(f"{sample.get_zone_type('TestZoneName', 'SurfaceMesh') = }")
 print(f"{sample.get_zone_type('new_zone', 'SurfaceMesh') = }")
 
 # %%
 # Set default base
-sample.set_default_base('SurfaceMesh')
+sample.set_default_base("SurfaceMesh")
 
 # Attempting to get a zone when the default zone is not set, and there are multiple zones available in the default base.
 print(f"{sample.get_zone_names() = }", end="\n\n")
@@ -478,7 +479,7 @@ sample._defaults["active_time"] = None
 sample._defaults["active_base"] = None
 
 # Set default base, zone and time
-sample.set_default_zone_base('TestZoneName', 'SurfaceMesh', 0.0)
+sample.set_default_zone_base("TestZoneName", "SurfaceMesh", 0.0)
 
 # Now that default base, zone and time have been assigned, it is no longer necessary to specify them in function calls.
 print(f"{sample.get_time_assignment() = }")
@@ -493,7 +494,9 @@ print(f"{sample.get_zone() = }")
 
 # %%
 # If zone is specified as an argument in a function, it takes precedence over the default zone.
-print(f"{sample.get_zone_type('new_zone') = }") # Print the 'new_zone' type instead of the default zone type
+print(
+    f"{sample.get_zone_type('new_zone') = }"
+)  # Print the 'new_zone' type instead of the default zone type
 
 # %% [markdown]
 # ### More information on how default values work
@@ -510,10 +513,10 @@ print(f"{sample.get_zone_type('new_zone') = }") # Print the 'new_zone' type inst
 # ### Save Sample to as a file tree
 
 # %%
-test_pth = f'/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}'
+test_pth = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
 os.makedirs(test_pth)
 
-sample_save_fname = os.path.join(test_pth, 'test')
+sample_save_fname = os.path.join(test_pth, "test")
 print(f"saving path: {sample_save_fname}")
 
 sample.save(sample_save_fname)
@@ -530,7 +533,7 @@ show_sample(new_sample)
 # ### Load a Sample from a directory via the Sample class
 
 # %%
-new_sample_2 = Sample.load_from_dir(os.path.join(test_pth, 'test'))
+new_sample_2 = Sample.load_from_dir(os.path.join(test_pth, "test"))
 
 show_sample(new_sample)
 
@@ -544,7 +547,7 @@ new_sample.load(sample_save_fname)
 show_sample(new_sample)
 
 new_sample.add_scalar("a", 2.1)
-serialized_sample  = new_sample.model_dump()
+serialized_sample = new_sample.model_dump()
 
 unserialized_sample = Sample.model_validate(serialized_sample)
 print()

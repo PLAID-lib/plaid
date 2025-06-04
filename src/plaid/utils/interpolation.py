@@ -16,7 +16,8 @@ import numpy as np
 
 
 def binary_search(
-        ordered_list: Union[list, np.ndarray], item: Union[float, int]) -> int:
+    ordered_list: Union[list, np.ndarray], item: Union[float, int]
+) -> int:
     """Find the rank of the largest element smaller or equal to the given item in a sorted list.
 
     Inspects the sorted list "ordered_list" and returns:
@@ -31,7 +32,7 @@ def binary_search(
     item : float or int
         the item for which the previous rank is searched.
 
-    Returns
+    Returns:
     -------
     int
         0 or the rank of the largest element smaller or equal than item in\
@@ -41,7 +42,8 @@ def binary_search(
 
 
 def binary_search_vectorized(
-        ordered_list: Union[list, np.ndarray], items: Union[list, np.ndarray]) -> np.ndarray:
+    ordered_list: Union[list, np.ndarray], items: Union[list, np.ndarray]
+) -> np.ndarray:
     """Vectorized binary search for multiple items in a sorted list (items is now a list or one-dimensional np.ndarray).
 
     Args:
@@ -51,14 +53,18 @@ def binary_search_vectorized(
     Returns:
         np.ndarray: An array containing the ranks of the largest elements smaller or equal to each item.
     """
-    return np.fromiter(map(lambda item: binary_search(
-        ordered_list, item), items), dtype=int)
+    return np.fromiter(
+        map(lambda item: binary_search(ordered_list, item), items), dtype=int
+    )
 
 
 def piece_wise_linear_interpolation(
-        item: float, item_indices: np.ndarray, vectors: np.ndarray | dict, tolerance: float = 1e-4) -> np.ndarray:
-    """
-    Computes a item interpolation for temporal vectors defined either by item_indices  and vectors at these indices.
+    item: float,
+    item_indices: np.ndarray,
+    vectors: np.ndarray | dict,
+    tolerance: float = 1e-4,
+) -> np.ndarray:
+    """Computes a item interpolation for temporal vectors defined either by item_indices  and vectors at these indices.
 
     Parameters
     ----------
@@ -71,34 +77,33 @@ def piece_wise_linear_interpolation(
     tolerance : float
         tolerance for deciding when using the closest timestep value instead of carrying out the linear interpolation, default to 1e-4.
 
-    Returns
+    Returns:
     -------
     np.ndarray
         interpolated vector, of size (numberOfDofs).
     """
-
     if item <= item_indices[0]:
         return vectors[0]
     if item >= item_indices[-1]:
         return vectors[-1]
 
     prev = binary_search(item_indices, item)
-    coef = (item - item_indices[prev]) / \
-        (item_indices[prev + 1] - item_indices[prev])
+    coef = (item - item_indices[prev]) / (item_indices[prev + 1] - item_indices[prev])
 
     if 0.5 - abs(coef - 0.5) < tolerance:
         coef = round(coef)
 
-    return (
-        coef * vectors[prev + 1]
-        + (1 - coef) * vectors[prev]
-    )
+    return coef * vectors[prev + 1] + (1 - coef) * vectors[prev]
 
 
 def piece_wise_linear_interpolation_with_map(
-        item: float, item_indices: np.ndarray, vectors: np.ndarray | dict, vectors_map: list = None, tolerance: float=1e-4) -> float:
-    """
-    Computes a item interpolation for temporal vectors defined either by
+    item: float,
+    item_indices: np.ndarray,
+    vectors: np.ndarray | dict,
+    vectors_map: list = None,
+    tolerance: float = 1e-4,
+) -> float:
+    """Computes a item interpolation for temporal vectors defined either by
     item_indices, some tags at these item indices (vectors_map), and vectors at those tags.
 
     Parameters
@@ -114,12 +119,11 @@ def piece_wise_linear_interpolation_with_map(
     tolerance : float
         tolerance for deciding when using the closest timestep value instead of carrying out the linear interpolation, default to 1e-4.
 
-    Returns
+    Returns:
     -------
     np.ndarray
         interpolated vector, of size (numberOfDofs).
     """
-
     # TODO What if vectorsMap = None ??? it will crash
     if item <= item_indices[0]:
         return vectors[vectors_map[0]]
@@ -127,20 +131,19 @@ def piece_wise_linear_interpolation_with_map(
         return vectors[vectors_map[-1]]
 
     prev = binary_search(item_indices, item)
-    coef = (item - item_indices[prev]) / \
-        (item_indices[prev + 1] - item_indices[prev])
+    coef = (item - item_indices[prev]) / (item_indices[prev + 1] - item_indices[prev])
 
     if 0.5 - abs(coef - 0.5) < tolerance:
         coef = round(coef)
 
     return (
-        coef * vectors[vectors_map[prev + 1]]
-        + (1 - coef) * vectors[vectors_map[prev]]
+        coef * vectors[vectors_map[prev + 1]] + (1 - coef) * vectors[vectors_map[prev]]
     )
 
 
 def piece_wise_linear_interpolation_vectorized(
-        items: list[float], item_indices: np.ndarray, vectors: np.ndarray | dict) -> list[np.ndarray]:
+    items: list[float], item_indices: np.ndarray, vectors: np.ndarray | dict
+) -> list[np.ndarray]:
     """piece_wise_linear_interpolation for more than one call (items is now a list or one-dimensional np.ndarray).
 
     Args:
@@ -151,14 +154,19 @@ def piece_wise_linear_interpolation_vectorized(
     Returns:
         list[np.ndarray]: List of interpolated vectors, each of size (numberOfDofs).
     """
-    return [piece_wise_linear_interpolation(
-        item, item_indices, vectors) for item in items]
+    return [
+        piece_wise_linear_interpolation(item, item_indices, vectors) for item in items
+    ]
     # return np.fromiter(map(lambda item: piece_wise_linear_interpolation(item,
     # item_indices, vectors), items), dtype = type(vectors[0]))
 
 
-def piece_wise_linear_interpolation_vectorized_with_map(items: list[float],
-        item_indices: np.ndarray, vectors: np.ndarray | dict, vectors_map: list = None) -> list[np.ndarray]:
+def piece_wise_linear_interpolation_vectorized_with_map(
+    items: list[float],
+    item_indices: np.ndarray,
+    vectors: np.ndarray | dict,
+    vectors_map: list = None,
+) -> list[np.ndarray]:
     """piece_wise_linear_interpolation_with_map for more than one call (items is now a list or one-dimensional np.ndarray).
 
     Args:
@@ -170,8 +178,12 @@ def piece_wise_linear_interpolation_vectorized_with_map(items: list[float],
     Returns:
         list[np.ndarray]: List of interpolated vectors, each of size (numberOfDofs).
     """
-    return [piece_wise_linear_interpolation_with_map(
-        item, item_indices, vectors, vectors_map) for item in items]
+    return [
+        piece_wise_linear_interpolation_with_map(
+            item, item_indices, vectors, vectors_map
+        )
+        for item in items
+    ]
     # return np.fromiter(map(lambda item:
     # piece_wise_linear_interpolation_with_map(item, item_indices, vectors,
     # vectors_map), items), dtype = np.float)
