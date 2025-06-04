@@ -1,3 +1,5 @@
+"""PLAID package public API."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
