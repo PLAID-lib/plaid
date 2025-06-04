@@ -6,7 +6,16 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
+from Muscat.Bridges.CGNSBridge import MeshToCGNS
+from Muscat.Containers import MeshCreationTools as MCT
+
+from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
+
+
+@pytest.fixture()
+def dataset():
+    return Dataset()
 
 
 def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
