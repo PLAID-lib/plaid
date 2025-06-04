@@ -1,3 +1,5 @@
+"""Implementation of the `ProblemDefinition` class."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -44,7 +46,7 @@ class ProblemDefinition(object):
     """Gathers all necessary informations to define a learning problem."""
 
     def __init__(self, directory_path: str = None) -> None:
-        """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`
+        """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`.
 
         Use :meth:`add_inputs <plaid.problem_definition.ProblemDefinition.add_inputs>` or :meth:`add_output_scalars_names <plaid.problem_definition.ProblemDefinition.add_output_scalars_names>` to feed the :class:`ProblemDefinition`
 
@@ -109,8 +111,7 @@ class ProblemDefinition(object):
     def get_split(
         self, indices_name: str = None
     ) -> Union[IndexType, dict[str, IndexType]]:
-        """Get the split indices. This function returns the split indices, either for a specific split
-            with the provided `indices_name` or all split indices if `indices_name` is not specified.
+        """Get the split indices. This function returns the split indices, either for a specific split with the provided `indices_name` or all split indices if `indices_name` is not specified.
 
         Args:
             indices_name (str, optional): The name of the split for which indices are requested. Defaults to None.
@@ -147,8 +148,7 @@ class ProblemDefinition(object):
             return self._split[indices_name]
 
     def set_split(self, split: dict[str, IndexType]) -> None:
-        """Set the split indices. This function allows you to set the split indices by providing a dictionary
-        mapping split names (str) to their respective indices (IndexType).
+        """Set the split indices. This function allows you to set the split indices by providing a dictionary mapping split names (str) to their respective indices (IndexType).
 
         Args:
             split (dict[str,IndexType]):  A dictionary containing split names and their indices.
@@ -947,7 +947,7 @@ class ProblemDefinition(object):
         """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
 
         Args:
-            savedir (str): The directory from which to load the problem information.
+            save_dir (str): The directory from which to load the problem information.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
