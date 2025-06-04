@@ -43,7 +43,7 @@ def quantity_tabular_data(nb_samples):
 # %% Tests
 
 
-class Test_initialize_dataset_with_tabular_data():
+class Test_initialize_dataset_with_tabular_data:
     def test_initialize_dataset_with_tabular_data(
             self, scalar_tabular_data, nb_samples):
         dataset = initialize_dataset_with_tabular_data(scalar_tabular_data)
