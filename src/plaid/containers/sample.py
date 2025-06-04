@@ -246,6 +246,11 @@ class Sample(BaseModel):
             directory_path (str, optional): The path from which to load PLAID sample files.
             mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
             mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
+            meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
+            scalars (dict[str, ScalarType], optional): A dictionary mapping scalar names to their values. Defaults to None.
+            time_series (dict[str, TimeSeriesType], optional): A dictionary mapping time series names to their values. Defaults to None.
+            links (dict[float, list[LinkType]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
+            paths (dict[float, list[PathType]], optional): A dictionary mapping time steps to lists of paths. Defaults to None.
 
         Example:
             .. code-block:: python
