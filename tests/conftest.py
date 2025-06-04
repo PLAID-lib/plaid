@@ -3,7 +3,13 @@
 import numpy as np
 import pytest
 
+from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
+
+
+@pytest.fixture()
+def dataset():
+    return Dataset()
 
 
 def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:

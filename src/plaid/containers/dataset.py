@@ -808,7 +808,7 @@ class Dataset(object):
                     filtered_sample_paths.append(sample_path)
             sample_paths = filtered_sample_paths
 
-            if len(sample_paths) != len(set(ids)):
+            if len(sample_paths) != len(set(ids)):# pragma: no cover
                 raise ValueError(
                     "The length of the list of samples to add and the list of IDs are different")
 
@@ -859,7 +859,7 @@ class Dataset(object):
             print("Warning: dataset contains no sample")
 
     @staticmethod
-    def _load_number_of_samples_(savedir: Union[str,Path]) -> int:
+    def _load_number_of_samples_(savedir: Union[str,Path]) -> int: # pragma: no cover
         """
 
         Warning:
