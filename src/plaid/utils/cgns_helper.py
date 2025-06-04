@@ -69,15 +69,15 @@ def get_time_values(tree: CGNSTree) -> np.ndarray:
     return time_values[0]
 
 
-def show_cgns_tree(pyTree: list, pre: str = ''):
-    """Pretty print for CGNS Tree
+def show_cgns_tree(pyTree: list, pre: str = ""):
+    """Pretty print for CGNS Tree.
 
     Args:
         pyTree (list): CGNS tree to print
         pre (str, optional): indentation of print. Defaults to ''.
     """
     if not (isinstance(pyTree, list)):
-        if pyTree is None: # pragma: no cover
+        if pyTree is None:  # pragma: no cover
             return True
         else:
             raise TypeError(f"{type(pyTree)=}, but should be a list or None")
@@ -92,10 +92,18 @@ def show_cgns_tree(pyTree: list, pre: str = ''):
 
     for child in pyTree[2]:
         try:
-            print(pre, child[0], ":", child[1].shape, printValue(child), child[1].dtype, child[3])
+            print(
+                pre,
+                child[0],
+                ":",
+                child[1].shape,
+                printValue(child),
+                child[1].dtype,
+                child[3],
+            )
         except AttributeError:
             print(pre, child[0], ":", child[1], child[3])
 
         if child[2]:
-            show_cgns_tree(child, ' '*len(pre)+'|_ ')
+            show_cgns_tree(child, " " * len(pre) + "|_ ")
     np.set_printoptions(edgeitems=3, threshold=1000)

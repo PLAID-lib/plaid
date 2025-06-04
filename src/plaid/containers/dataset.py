@@ -860,7 +860,7 @@ class Dataset(object):
                     filtered_sample_paths.append(sample_path)
             sample_paths = filtered_sample_paths
 
-            if len(sample_paths) != len(set(ids)):# pragma: no cover
+            if len(sample_paths) != len(set(ids)):  # pragma: no cover
                 raise ValueError(
                     "The length of the list of samples to add and the list of IDs are different"
                 )

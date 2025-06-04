@@ -16,6 +16,7 @@ from plaid.problem_definition import ProblemDefinition
 
 # %% Fixtures
 
+
 @pytest.fixture()
 def problem_definition() -> ProblemDefinition:
     return ProblemDefinition()
@@ -38,6 +39,7 @@ def clean_tests():
 
 
 # %% Tests
+
 
 class Test_ProblemDefinition:
     def test__init__(self, problem_definition):

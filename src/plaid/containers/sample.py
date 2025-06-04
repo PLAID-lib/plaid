@@ -26,8 +26,6 @@ import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
-from CGNS.PAT.cgnsutils import __LABEL__ as __TYPE__
-from CGNS.PAT.cgnsutils import __VALUE__ as __DATA__
 from pydantic import BaseModel, model_serializer
 
 from plaid.utils import cgns_helper as CGH
@@ -147,7 +145,7 @@ def read_index_array(pyTree: list):
     res = []
     for indexArrayPath in indexArrayPaths:
         data = CGU.getNodeByPath(pyTree, indexArrayPath)
-        if data[1] is None: # pragma: no cover
+        if data[1] is None:  # pragma: no cover
             continue
         else:
             res.extend(data[1].ravel())
@@ -723,7 +721,7 @@ class Sample(BaseModel):
             raise KeyError(
                 f"There is no CGNS tree for time {linked_time} in linked_sample."
             )
-        if time in self._meshes: # pragma: no cover
+        if time in self._meshes:  # pragma: no cover
             raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
 
         tree = CGL.newCGNSTree()
@@ -792,7 +790,7 @@ class Sample(BaseModel):
             types = [Types_t[0]]
             for t in Types_t[1:]:
                 for tt in types:
-                    if tt not in t: # pragma: no cover
+                    if tt not in t:  # pragma: no cover
                         types.append(t)
             return types
 
@@ -1334,19 +1332,19 @@ class Sample(BaseModel):
             BCNode = CGU.getNodeByPath(zone_node, BCPath)
             BCName = BCNode[0]
             indices = read_index(BCNode, dim)
-            if len(indices) == 0: # pragma: no cover
+            if len(indices) == 0:  # pragma: no cover
                 continue
 
             gl = CGU.getPathsByTypeSet(BCNode, ["GridLocation_t"])
             if gl:
                 location = CGU.getValueAsString(CGU.getNodeByPath(BCNode, gl[0]))
-            else: # pragma: no cover
+            else:  # pragma: no cover
                 location = "Vertex"
             if location == "Vertex":
                 nodal_tags[BCName] = indices - 1
 
         ZSRPaths = CGU.getPathsByTypeList(zone_node, ["Zone_t", "ZoneSubRegion_t"])
-        for path in ZSRPaths:# pragma: no cover
+        for path in ZSRPaths:  # pragma: no cover
             ZSRNode = CGU.getNodeByPath(zone_node, path)
             # fnpath = CGU.getPathsByTypeList(
             #     ZSRNode, ["ZoneSubRegion_t", "FamilyName_t"]
@@ -1413,7 +1411,7 @@ class Sample(BaseModel):
                     axis=1,
                 )
             return array
-        elif len(grid_paths) > 1: # pragma: no cover
+        elif len(grid_paths) > 1:  # pragma: no cover
             raise TypeError(
                 f"Found {len(grid_paths)} <GridCoordinates> nodes, should find only one"
             )
@@ -1525,7 +1523,7 @@ class Sample(BaseModel):
         def get_field_names_one_base(base_name: str) -> list[str]:
             # get_zone will look for default zone_name, base_name, time
             search_node = self.get_zone(zone_name, base_name, time)
-            if search_node is None:# pragma: no cover
+            if search_node is None:  # pragma: no cover
                 return []
 
             names = []

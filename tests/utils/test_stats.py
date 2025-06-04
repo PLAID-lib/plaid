@@ -19,25 +19,31 @@ from plaid.utils.stats import OnlineStatistics, Stats
 def np_samples_1():
     return np.random.randn(400, 7)
 
+
 @pytest.fixture()
 def np_samples_2():
     return np.random.randn(20, 5, 7)
+
 
 @pytest.fixture()
 def np_samples_3():
     return np.random.randn(400, 1)
 
+
 @pytest.fixture()
 def np_samples_4():
     return np.random.randn(1, 400)
+
 
 @pytest.fixture()
 def np_samples_5():
     return np.random.randn(400)
 
+
 @pytest.fixture()
 def online_stats():
     return OnlineStatistics()
+
 
 @pytest.fixture()
 def stats():

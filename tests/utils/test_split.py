@@ -36,7 +36,6 @@ def dataset(nb_scalars, nb_samples):
 
 # %% Tests
 
-class Test_split_dataset:
 
 class Test_split_dataset:
     def test_ratios(self, dataset):

@@ -16,7 +16,12 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
-from plaid.containers.sample import Sample, read_index, read_index_array, read_index_range
+from plaid.containers.sample import (
+    Sample,
+    read_index,
+    read_index_array,
+    read_index_range,
+)
 
 # %% Fixtures
 
@@ -131,7 +136,6 @@ def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
     return tree
 
 
-
 @pytest.fixture()
 def sample_with_tree3d(sample, tree3d):
     sample.add_tree(tree3d)
@@ -149,8 +153,9 @@ def sample_with_tree_and_scalar_and_time_series(
     )
     return sample_with_tree
 
- 
+
 # %% Test
+
 
 def test_read_index(tree, physical_dim):
     read_index(tree, physical_dim)
@@ -164,13 +169,13 @@ def test_read_index_range(tree, physical_dim):
     read_index_range(tree, physical_dim)
 
 
-
 @pytest.fixture()
 def current_directory():
     return os.path.dirname(os.path.abspath(__file__))
 
 
 # %% Tests
+
 
 class Test_Sample:
     # -------------------------------------------------------------------------#
