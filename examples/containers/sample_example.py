@@ -22,7 +22,8 @@ import os
 import CGNS.PAT.cgnskeywords as CGK
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
-from plaid.containers.sample import Sample, show_cgns_tree
+from plaid.containers.sample import Sample
+from plaid.utils import cgns_helper as CGH
 
 # %%
 # Print Sample util
@@ -62,7 +63,7 @@ Mesh.elemFields['test_elem_field_1'] = np.random.randn(3)
 tree = MeshToCGNS(Mesh)
 
 # Display CGNS Tree
-show_cgns_tree(tree)
+CGH.show_cgns_tree(tree)
 
 # %% [markdown]
 # ### Initialize a new empty Sample and print it

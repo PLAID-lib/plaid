@@ -10,8 +10,6 @@
 import numpy as np
 import pytest
 
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
 from plaid.utils.init_with_tabular import initialize_dataset_with_tabular_data
 from plaid.utils.split import split_dataset
 

@@ -80,39 +80,8 @@ CGNS_element_names = [
     "HEXA_56",
     "HEXA_64"]
 """List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
-# %% Functions
-
-
-def show_cgns_tree(tree: list, offset: str =''):
-    """Recursively prints the CGNS Tree structure. It displays the hierarchy of nodes and branches in a CGNS tree.
-
-    Args:
-        tree (list): The CGNS tree structure to be printed.
-        offset (str, optional): The character used for indentation between tree branches. Defaults to an empty string ('').
-    """
-    if not (isinstance(tree, list)):
-        if tree is None: # pragma: no cover
-            return True
-        else:
-            raise TypeError(f"{type(tree)=}, but should be a list or None")
-    assert (len(tree) == 4)
-    if isinstance(tree[__DATA__], np.ndarray):
-        if '|S' in str(tree[__DATA__].dtype):
-            data = tree[__DATA__].tobytes()
-        elif tree[__DATA__].size < 10:
-            data = tree[__DATA__]
-        else:
-            data = f"[{tree[__DATA__].dtype};{tree[__DATA__].shape}]"
-    else:
-        data = tree[__DATA__]
-    print(
-        offset +
-        f"""- "{tree[__NAME__]}"({tree[__TYPE__]}), {len(tree[__CHILDREN__])} children, data({type(tree[__DATA__])}): {data}""")
-    for stree in tree[__CHILDREN__]:
-        show_cgns_tree(stree, offset=offset + '    ')
 
 # %% Classes
-
 
 CGNSTree = list
 """A CGNSTree is a list
@@ -518,7 +487,7 @@ class Sample(BaseModel):
         time = self.get_time_assignment(time)
 
         if self._meshes is not None:
-            show_cgns_tree(self._meshes[time])
+            CGH.show_cgns_tree(self._meshes[time])
 
     def init_tree(self, time: float = None) -> CGNSTree:
         """Initialize a CGNS tree structure at a specified time step or create a new one if it doesn't exist.

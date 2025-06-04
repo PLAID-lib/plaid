@@ -16,7 +16,7 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
-from plaid.containers.sample import Sample, show_cgns_tree, read_index, read_index_array, read_index_range
+from plaid.containers.sample import Sample, read_index, read_index_array, read_index_range
 
 # %% Fixtures
 
@@ -34,11 +34,6 @@ def physical_dim():
 @pytest.fixture()
 def zone_shape():
     return np.array([5, 3, 0])
-
-
-@pytest.fixture()
-def sample():
-    return Sample()
 
 
 @pytest.fixture()
@@ -61,19 +56,6 @@ def sample_with_time_series(sample):
 
 
 @pytest.fixture()
-def nodes():
-    return np.array(
-        [
-            [0.0, 0.0],
-            [1.0, 0.0],
-            [1.0, 1.0],
-            [0.0, 1.0],
-            [0.5, 1.5],
-        ]
-    )
-
-
-@pytest.fixture()
 def nodes3d():
     return np.array(
         [
@@ -84,48 +66,6 @@ def nodes3d():
             [0.5, 1.5, 1.0],
         ]
     )
-
-
-@pytest.fixture()
-def nodal_tags():
-    return np.array(
-        [
-            0,
-            1,
-        ]
-    )
-
-
-@pytest.fixture()
-def triangles():
-    return np.array(
-        [
-            [0, 1, 2],
-            [0, 2, 3],
-            [2, 4, 3],
-        ]
-    )
-
-
-@pytest.fixture()
-def vertex_field():
-    return np.random.randn(5)
-
-
-@pytest.fixture()
-def cell_center_field():
-    return np.random.randn(3)
-
-
-@pytest.fixture()
-def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
-    Mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
-    Mesh.GetNodalTag("tag").AddToTag(nodal_tags)
-    Mesh.nodeFields["test_node_field_1"] = vertex_field
-    Mesh.nodeFields["big_node_field"] = np.random.randn(50)
-    Mesh.elemFields["test_elem_field_1"] = cell_center_field
-    tree = MeshToCGNS(Mesh)
-    return tree
 
 
 @pytest.fixture()
@@ -149,11 +89,6 @@ def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
     return tree
 
 
-@pytest.fixture()
-def sample_with_tree(sample, tree):
-    sample.add_tree(tree)
-    return sample
-
 
 @pytest.fixture()
 def sample_with_tree3d(sample, tree3d):
@@ -173,16 +108,7 @@ def sample_with_tree_and_scalar_and_time_series(
     return sample_with_tree
 
 
-# %% Tests
-
-
-def test_show_cgns_tree(tree):
-    show_cgns_tree(tree)
-
-
-def test_show_cgns_tree_not_a_list():
-    with pytest.raises(TypeError):
-        show_cgns_tree({1: 2})
+# %% Test
 
 
 def test_read_index(tree, physical_dim):
@@ -197,10 +123,13 @@ def test_read_index_range(tree, physical_dim):
     read_index_range(tree, physical_dim)
 
 
+
 @pytest.fixture()
 def current_directory():
     return os.path.dirname(os.path.abspath(__file__))
 
+
+# %% Tests
 
 class Test_Sample:
     # -------------------------------------------------------------------------#

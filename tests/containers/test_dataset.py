@@ -26,11 +26,6 @@ def nb_scalars():
 
 
 @pytest.fixture()
-def infos():
-    return {"legal": {"owner": "PLAID2", "license": "BSD-3"}, "data_production": {"type":"simulation", "simulator":"Z-set"}}
-
-
-@pytest.fixture()
 def tabular(nb_samples, nb_scalars):
     return np.random.randn(nb_samples, nb_scalars)
 
