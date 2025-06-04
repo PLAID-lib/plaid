@@ -1,5 +1,5 @@
-# HUGGINGFACE support
-# -------------------------------------------------------------------------#
+"""Huggingface bridge for PLAID datasets."""
+
 import pickle
 from typing import Callable, Self
 
@@ -23,6 +23,7 @@ def generate_huggingface_description(
     infos: dict, problem_definition: ProblemDefinition
 ) -> dict[str]:
     """Generates a huggingface dataset description field from a plaid dataset infos and problem definition.
+
     The conventions chosen here ensure working conversion to and from huggingset datasets.
 
     Args:
@@ -54,6 +55,7 @@ def plaid_dataset_to_huggingface(
     dataset: Dataset, problem_definition: ProblemDefinition, processes_number: int = 1
 ) -> datasets.Dataset:
     """Use this function for converting a huggingface dataset from a plaid dataset.
+
     The dataset can then be saved to disk, or pushed to the huggingface hub.
 
     Args:
@@ -90,12 +92,14 @@ def plaid_generator_to_huggingface(
     processes_number: int = 1,
 ) -> datasets.Dataset:
     """Use this function for creating a huggingface dataset from a sample generator function.
+
     This function can be used when the plaid dataset cannot be loaded in RAM all at once due to its size.
     The generator enables loading samples one by one.
     The dataset can then be saved to disk, or pushed to the huggingface hub.
 
     Args:
         generator (Callable): a function yielding a dict {"sample" : sample}, where sample is of type 'bytes'
+        infos (dict): infos entry of the plaid dataset from which the huggingface dataset is to be generated
         problem_definition (ProblemDefinition): from which the huggingface dataset is to be generated
         processes_number (int, optional): The number of processes used to generate the huggingface dataset
 
@@ -127,6 +131,7 @@ def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
 ) -> tuple[Self, ProblemDefinition]:
     """Use this function for converting a plaid dataset from a huggingface dataset.
+
     A huggingface dataset can be read from disk or the hub. From the hub, the
     split = "all_samples" options is important to get a dataset and not a datasetdict.
     Many options from loading are available (caching, streaming, etc...)
@@ -192,10 +197,11 @@ def create_string_for_huggingface_dataset_card(
     dataset_long_description: str = None,
     url_illustration: str = None,
 ) -> str:
-    """Use this function for creating a dataset card, to upload together with the dataset
-    on the huggingface hub. Doing so ensure that load_dataset from the hub will populate
-    the hf-dataset.description field, and be compatible for conversion to plaid.
-    Wihtout a dataset_card, the description field is lost.
+    """Use this function for creating a dataset card, to upload together with the datase on the huggingface hub.
+
+    Doing so ensure that load_dataset from the hub will populate the hf-dataset.description field, and be compatible for conversion to plaid.
+
+    Without a dataset_card, the description field is lost.
 
     The parameters download_size_bytes and dataset_size_bytes can be determined after a
     dataset has been uploaded on huggingface:
@@ -208,19 +214,19 @@ def create_string_for_huggingface_dataset_card(
         description (dict): huggingface dataset description. Obtained from
         - description = hf_dataset.description
         - description = generate_huggingface_description(infos, problem_definition)
-        download_size_bytes (int)
-        dataset_size_bytes (int)
-        nb_samples (int)
-        owner (str)
-        license (str)
-        zenodo_url (str, optional)
-        arxiv_paper_url (str, optional)
-        pretty_name (str, optional)
-        size_categories (list[str], optional)
-        task_categories (list[str], optional)
-        tags (list[str], optional)
-        dataset_long_description (str, optional)
-        url_illustration (str, optional)
+        download_size_bytes (int): the size of the dataset when downloaded from the hub
+        dataset_size_bytes (int): the size of the dataset when loaded in RAM
+        nb_samples (int): the number of samples in the dataset
+        owner (str): the owner of the dataset, usually a username or organization name on huggingface
+        license (str): the license of the dataset, e.g. "CC-BY-4.0", "CC0-1.0", etc.
+        zenodo_url (str, optional): the Zenodo URL of the dataset, if available
+        arxiv_paper_url (str, optional): the arxiv paper URL of the dataset, if available
+        pretty_name (str, optional): a human-readable name for the dataset, e.g. "PLAID Dataset"
+        size_categories (list[str], optional): size categories of the dataset, e.g. ["small", "medium", "large"]
+        task_categories (list[str], optional): task categories of the dataset, e.g. ["image-classification", "text-generation"]
+        tags (list[str], optional): tags for the dataset, e.g. ["3D", "simulation", "mesh"]
+        dataset_long_description (str, optional): a long description of the dataset, providing more details about its content and purpose
+        url_illustration (str, optional): a URL to an illustration image for the dataset, e.g. a screenshot or a sample mesh
 
     Returns:
         dataset (Dataset): the converted dataset
