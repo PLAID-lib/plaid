@@ -1,3 +1,5 @@
+"""Utility functions for working with CGNS trees and nodes."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in

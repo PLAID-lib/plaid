@@ -1,3 +1,5 @@
+"""Interpolation utilities for working with ordered lists and vectors."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -103,8 +105,7 @@ def piece_wise_linear_interpolation_with_map(
     vectors_map: list = None,
     tolerance: float = 1e-4,
 ) -> float:
-    """Computes a item interpolation for temporal vectors defined either by
-    item_indices, some tags at these item indices (vectors_map), and vectors at those tags.
+    """Computes a item interpolation for temporal vectors defined either by item_indices, some tags at these item indices (vectors_map), and vectors at those tags.
 
     Parameters
     ----------

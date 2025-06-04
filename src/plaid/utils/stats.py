@@ -1,3 +1,5 @@
+"""Utility functions for computing statistics on datasets."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -29,7 +31,8 @@ def aggregate_stats(
     sizes: np.ndarray, means: np.ndarray, vars: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute aggregated statistics of a batch of already computed statistics (without original samples information).
-        This function calculates aggregated statistics, such as the total number of samples, mean, and variance, by taking into account the statistics computed for each batch of data.
+
+    This function calculates aggregated statistics, such as the total number of samples, mean, and variance, by taking into account the statistics computed for each batch of data.
 
     cf: https://fr.wikipedia.org/wiki/Variance_(math%C3%A9matiques)
 
@@ -115,10 +118,10 @@ class OnlineStatistics(object):
         else:
             self.min = np.min(np.concatenate((self.min, added_min), axis=0), axis=0)
             self.max = np.max(np.concatenate((self.max, added_max), axis=0), axis=0)
-            new_n_samples = self.n_samples + added_n_samples
-            new_mean = (
-                self.n_samples * self.mean + added_n_samples * added_mean
-            ) / new_n_samples
+            # new_n_samples = self.n_samples + added_n_samples
+            # new_mean = (
+            #     self.n_samples * self.mean + added_n_samples * added_mean
+            # ) / new_n_samples
             self.n_samples, self.mean, self.var = aggregate_stats(
                 np.concatenate(
                     [

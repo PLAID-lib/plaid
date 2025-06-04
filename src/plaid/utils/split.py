@@ -1,3 +1,5 @@
+"""Utility function for splitting a Dataset."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
