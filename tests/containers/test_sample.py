@@ -74,48 +74,6 @@ def nodes3d():
 
 
 @pytest.fixture()
-def nodal_tags():
-    return np.array(
-        [
-            0,
-            1,
-        ]
-    )
-
-
-@pytest.fixture()
-def triangles():
-    return np.array(
-        [
-            [0, 1, 2],
-            [0, 2, 3],
-            [2, 4, 3],
-        ]
-    )
-
-
-@pytest.fixture()
-def vertex_field():
-    return np.random.randn(5)
-
-
-@pytest.fixture()
-def cell_center_field():
-    return np.random.randn(3)
-
-
-@pytest.fixture()
-def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
-    Mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
-    Mesh.GetNodalTag("tag").AddToTag(nodal_tags)
-    Mesh.nodeFields["test_node_field_1"] = vertex_field
-    Mesh.nodeFields["big_node_field"] = np.random.randn(50)
-    Mesh.elemFields["test_elem_field_1"] = cell_center_field
-    tree = MeshToCGNS(Mesh)
-    return tree
-
-
-@pytest.fixture()
 def sample_with_linked_tree(tree, tmp_path):
     sample_with_linked_tree = Sample()
     sample_with_linked_tree.add_tree(tree)
