@@ -22,10 +22,10 @@ import sys
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
 
-sys.path.insert(0, '.')
-sys.path.insert(0, '../')
+sys.path.insert(0, ".")
+sys.path.insert(0, "../")
 
-basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, basedir)
 sys.path.insert(0, os.path.join(basedir, "src/plaid"))
 # sys.path.insert(0, os.path.join(basedir, "tests"))
@@ -34,10 +34,10 @@ print(sys.path)
 
 
 # -- Project information -----------------------------------------------------
-root_doc = 'index'  # default is already <index>
-project = 'plaid'
-copyright = '2023-{}, Safran'.format(datetime.date.today().year)
-author = 'Safran'
+root_doc = "index"  # default is already <index>
+project = "plaid"
+copyright = "2023-{}, Safran".format(datetime.date.today().year)
+author = "Safran"
 
 # -- General configuration ---------------------------------------------------
 
@@ -45,36 +45,36 @@ author = 'Safran'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.todo',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.doctest',
-    'sphinx.ext.coverage',
-    'sphinx.ext.inheritance_diagram',
-    'sphinx.ext.ifconfig',
-    'sphinx.ext.duration',
-    'sphinx.ext.extlinks',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.graphviz',
-    'myst_nb',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.todo",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.doctest",
+    "sphinx.ext.coverage",
+    "sphinx.ext.inheritance_diagram",
+    "sphinx.ext.ifconfig",
+    "sphinx.ext.duration",
+    "sphinx.ext.extlinks",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.graphviz",
+    "myst_nb",
     # 'myst_parser', # imported by myst_nb
     # 'sphinxcontrib.apidoc', # autoapi is better
-    'sphinx.ext.autosummary',
-    'sphinxcontrib.bibtex'
+    "sphinx.ext.autosummary",
+    "sphinxcontrib.bibtex",
 ]
 
-bibtex_bibfiles = ['refs.bib']
-bibtex_encoding = 'latin'
-bibtex_default_style = 'unsrt'
+bibtex_bibfiles = ["refs.bib"]
+bibtex_encoding = "latin"
+bibtex_default_style = "unsrt"
 
 # -----------------------------------------------------------------------------#
 # sphinx.ext.intersphinx options
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/3/', None),
-    'pytest': ('https://pytest.org/en/stable/', None),
+    "python": ("https://docs.python.org/3/", None),
+    "pytest": ("https://pytest.org/en/stable/", None),
     # 'ipykernel': ('https://ipykernel.readthedocs.io/en/latest/', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
     # 'scipy': ('https://docs.scipy.org/doc/scipy/', None),
     # 'matplotlib': ('http://matplotlib.org/', None),
     # 'torch': ('https://pytorch.org/docs/stable/', None),
@@ -84,13 +84,13 @@ intersphinx_mapping = {
 # sphinx.ext.extlinks options
 extlinks_detect_hardcoded_links = True
 # sphinx.ext.graphviz options
-graphviz_output_format = 'svg'
+graphviz_output_format = "svg"
 # myst_parser options
 source_suffix = {
-    '.rst': 'restructuredtext',
-    '.ipynb': 'myst-nb',
-    '.myst': 'myst-nb',
-    '.md': 'myst-nb',
+    ".rst": "restructuredtext",
+    ".ipynb": "myst-nb",
+    ".myst": "myst-nb",
+    ".md": "myst-nb",
 }
 myst_enable_extensions = [
     "amsmath",
@@ -120,18 +120,18 @@ myst_heading_anchors = 7  # max 7
 # autosummary options
 autosummary_generate = True
 
-extensions.append('sphinx_tabs.tabs')
-sphinx_tabs_valid_builders = ['linkcheck']
+extensions.append("sphinx_tabs.tabs")
+sphinx_tabs_valid_builders = ["linkcheck"]
 
 # -----------------------------------------------------------------------------#
 # autoapi options :
 # https://sphinx-autoapi.readthedocs.io/en/latest/tutorials.html#setting-up-automatic-api-documentation-generation
-extensions.append('autoapi.extension')
+extensions.append("autoapi.extension")
 
-autoapi_dirs = ['../src/plaid']
+autoapi_dirs = ["../src/plaid"]
 # autoapi_dirs = ['../src/plaid', '../tests', '../examples']
-autoapi_type = 'python'
-autoapi_options = ['show-inheritance', 'show-module-summary', 'undoc-members']
+autoapi_type = "python"
+autoapi_options = ["show-inheritance", "show-module-summary", "undoc-members"]
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members']
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members', 'inherited-members', 'undoc-members', 'private-members', 'special-members', 'imported-members']
 # 'members': Display children of an object
@@ -146,7 +146,7 @@ autoapi_options = ['show-inheritance', 'show-module-summary', 'undoc-members']
 # autodoc_typehints = "signature"
 autoapi_keep_files = True
 autoapi_add_toctree_entry = False
-autoapi_python_class_content = 'both'  # default is 'class'
+autoapi_python_class_content = "both"  # default is 'class'
 # 'class': Use only the class docstring.
 # 'both': Use the concatenation of the class docstring and the __init__ docstring.
 # 'init': Use only the __init__ docstring.
@@ -171,12 +171,12 @@ numfig = True
 add_module_names = False
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_templates']
+templates_path = ["_templates"]
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -185,7 +185,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #
 # html_theme = 'alabaster'
 # html_theme = 'sphinx_rtd_theme'
-html_theme = 'furo'
+html_theme = "furo"
 html_logo = "source/images/plaid.jpg"
 html_favicon = "source/images/plaid.jpg"
 
@@ -200,7 +200,7 @@ html_theme_options = {
     # 'logo_only': True,
 }
 
-github_url = 'https://github.com/PLAID-lib/plaid'
+github_url = "https://github.com/PLAID-lib/plaid"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -220,7 +220,7 @@ github_url = 'https://github.com/PLAID-lib/plaid'
 
 
 def skip_logger_attribute(app, what, name, obj, skip, options):
-    if what == 'data' and "logger" in name:
+    if what == "data" and "logger" in name:
         print(f"WILL SKIP: {what=}, {name=}")
         skip = True
     return skip

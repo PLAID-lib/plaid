@@ -1,3 +1,5 @@
+"""Implementation of the `Dataset` container."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -12,33 +14,49 @@ try:  # pragma: no cover
 except ImportError:  # pragma: no cover
     from typing import Any as Self
 
-import glob
 import logging
 import os
 import shutil
 import subprocess
 from multiprocessing import Pool
-from typing import Union
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 import yaml
 from tqdm import tqdm
 
 from plaid.containers.sample import Sample
-from plaid.utils.base import ShapeError, DeprecatedError, generate_random_ASCII
+from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    format='[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s',
-    level=logging.INFO)
+    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
+    level=logging.INFO,
+)
 
 
 authorized_info_keys = {
     "legal": ["owner", "license"],
-    "data_production": ["owner", "license", "type", "physics", "simulator", "hardware",
-                        "computation_duration", "script", "contact", "location"],
-    "data_description": ["number_of_samples", "number_of_splits", "DOE", "inputs", "outputs"]
+    "data_production": [
+        "owner",
+        "license",
+        "type",
+        "physics",
+        "simulator",
+        "hardware",
+        "computation_duration",
+        "script",
+        "contact",
+        "location",
+    ],
+    "data_description": [
+        "number_of_samples",
+        "number_of_splits",
+        "DOE",
+        "inputs",
+        "outputs",
+    ],
 }
 """Configuration dictionary that specifies authorized information keys and their respective categories.
 """
@@ -46,8 +64,8 @@ authorized_info_keys = {
 # %% Functions
 
 
-def process_sample(sample_path: Union[str,Path], *args, **kwargs) -> tuple:  # pragma: no cover
-    """Load Sample from path
+def process_sample(sample_path: Union[str, Path]) -> tuple:  # pragma: no cover
+    """Load Sample from path.
 
     Args:
         sample_path (Union[str,Path]): The path of the Sample.
@@ -56,8 +74,9 @@ def process_sample(sample_path: Union[str,Path], *args, **kwargs) -> tuple:  # p
         tuple: The loaded Sample and its ID.
     """
     sample_path = Path(sample_path)
-    id = int(sample_path.stem.split('_')[-1])
+    id = int(sample_path.stem.split("_")[-1])
     return id, Sample(sample_path)
+
 
 # %% Classes
 
@@ -65,8 +84,12 @@ def process_sample(sample_path: Union[str,Path], *args, **kwargs) -> tuple:  # p
 class Dataset(object):
     """A set of samples, and optionnaly some other informations about the Dataset."""
 
-    def __init__(self, directory_path: Union[str,Path] = None,
-                 verbose: bool = False, processes_number: int = 0) -> None:
+    def __init__(
+        self,
+        directory_path: Union[str, Path] = None,
+        verbose: bool = False,
+        processes_number: int = 0,
+    ) -> None:
         """Initialize a :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
         If `directory_path` is not specified it initializes an empty :class:`Dataset <plaid.containers.dataset.Dataset>` that should be fed with :class:`Samples <plaid.containers.sample.Sample>`.
@@ -100,7 +123,6 @@ class Dataset(object):
         Caution:
             It is assumed that you provided a compatible PLAID dataset.
         """
-
         self._samples: dict[int, Sample] = {}  # sample_id -> sample
         # info_name -> description
         self._infos: dict[str, dict[str, str]] = {}
@@ -108,20 +130,19 @@ class Dataset(object):
         if directory_path is not None:
             directory_path = Path(directory_path)
 
-            if directory_path.suffix == '.plaid':
+            if directory_path.suffix == ".plaid":
                 self.load(
-                    directory_path,
-                    verbose=verbose,
-                    processes_number=processes_number)
+                    directory_path, verbose=verbose, processes_number=processes_number
+                )
             else:
                 self._load_from_dir_(
-                    directory_path,
-                    verbose=verbose,
-                    processes_number=processes_number)
+                    directory_path, verbose=verbose, processes_number=processes_number
+                )
 
     # -------------------------------------------------------------------------#
-    def get_samples(self, ids: list[int] = None,
-                    as_list: bool = False) -> dict[int, Sample]:
+    def get_samples(
+        self, ids: list[int] = None, as_list: bool = False
+    ) -> dict[int, Sample]:
         """Return dictionnary of samples with ids corresponding to :code:`ids` if specified, else all samples.
 
         Args:
@@ -139,7 +160,7 @@ class Dataset(object):
             return {id: self._samples[id] for id in ids}
 
     def add_sample(self, sample: Sample, id: int = None) -> int:
-        """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`
+        """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`.
 
         Args:
             sample (Sample): The sample to add.
@@ -161,8 +182,7 @@ class Dataset(object):
                 >>> Dataset(3 samples, 0 scalars, 2 fields)
         """
         if not (isinstance(sample, Sample)):
-            raise TypeError(
-                f"sample should be of type Sample but {type(sample)=}")
+            raise TypeError(f"sample should be of type Sample but {type(sample)=}")
 
         if id is None:
             id = len(self)
@@ -170,8 +190,7 @@ class Dataset(object):
         return id
 
     def del_sample(self, sample_id: int) -> None:
-        """Delete a :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>`.
-        and reorganize the remaining sample IDs to eliminate gaps.
+        """Delete a :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>` and reorganize the remaining sample IDs to eliminate gaps.
 
         Args:
             sample_id (int): The ID of the sample to delete.
@@ -196,7 +215,8 @@ class Dataset(object):
         """
         if sample_id < 0 or sample_id >= len(self._samples):
             raise ValueError(
-                f"Invalid ID {sample_id}, it must be within [0, len(dataset)]")
+                f"Invalid ID {sample_id}, it must be within [0, len(dataset)]"
+            )
 
         if sample_id == len(self) - 1:
             return self._samples.pop(sample_id)
@@ -210,8 +230,7 @@ class Dataset(object):
 
         return deleted_sample
 
-    def add_samples(self, samples: list[Sample],
-                    ids: list[int] = None) -> list[int]:
+    def add_samples(self, samples: list[Sample], ids: list[int] = None) -> list[int]:
         """Add new :class:`Samples <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
         Args:
@@ -239,22 +258,23 @@ class Dataset(object):
                 >>> Dataset(n samples, 0 scalars, x fields)
         """
         if not (isinstance(samples, list)):
-            raise TypeError(
-                f"samples should be of type list but {type(samples)=}")
+            raise TypeError(f"samples should be of type list but {type(samples)=}")
         if samples == []:
             raise ValueError("The list of samples to add is empty")
 
         for i_sample, sample in enumerate(samples):
             if not (isinstance(sample, Sample)):
                 raise TypeError(
-                    f"element {i_sample} of samples should be of type Sample but {type(sample)=}")
+                    f"element {i_sample} of samples should be of type Sample but {type(sample)=}"
+                )
 
         if ids is None:
             ids = np.arange(len(self), len(self) + len(samples))
         else:
             if len(samples) != len(ids):
                 raise ValueError(
-                    "The length of the list of samples to add and the list of IDs are different")
+                    "The length of the list of samples to add and the list of IDs are different"
+                )
             if len(set(ids)) != len(ids):
                 raise ValueError("IDS must be unique")
 
@@ -262,8 +282,7 @@ class Dataset(object):
         return ids
 
     def del_samples(self, sample_ids: list[int]) -> None:
-        """Delete  :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>`
-        and reorganize the remaining sample IDs to eliminate gaps.
+        """Delete  :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>` and reorganize the remaining sample IDs to eliminate gaps.
 
         Args:
             sample_ids (list[int]): The list of IDs of samples to delete.
@@ -291,7 +310,8 @@ class Dataset(object):
         """
         if not isinstance(sample_ids, list):
             raise TypeError(
-                f"sample_ids should be of type list but {type(sample_ids)=}")
+                f"sample_ids should be of type list but {type(sample_ids)=}"
+            )
 
         if sample_ids == []:
             raise ValueError("The list of sample IDs to delete is empty")
@@ -299,10 +319,11 @@ class Dataset(object):
         for id in sample_ids:
             if id < 0 or id >= len(self._samples):
                 raise ValueError(
-                    f"Invalid ID {id}, it must be within [0, len(dataset)]")
+                    f"Invalid ID {id}, it must be within [0, len(dataset)]"
+                )
 
         if len(set(sample_ids)) != len(sample_ids):
-            raise ValueError(f"Sample with IDs must be unique")
+            raise ValueError("Sample with IDs must be unique")
 
         # Delete samples
         deleted_samples = []
@@ -314,8 +335,7 @@ class Dataset(object):
         # from the min index of sample_ids to delete
         del_idx_min = min(sample_ids)
         remaining_ids = list(self._samples.keys())
-        for new_id, old_id in enumerate(
-                remaining_ids[del_idx_min:], start=del_idx_min):
+        for new_id, old_id in enumerate(remaining_ids[del_idx_min:], start=del_idx_min):
             if new_id != old_id:
                 self._samples[new_id] = self._samples.pop(old_id)
 
@@ -354,7 +374,8 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def get_field_names(
-            self, ids: list[int] = None, zone_name: str = None, base_name: str = None) -> list[str]:
+        self, ids: list[int] = None, zone_name: str = None, base_name: str = None
+    ) -> list[str]:
         """Return union of fields names in all samples with id in ids.
 
         Args:
@@ -373,7 +394,8 @@ class Dataset(object):
             times = sample.get_all_mesh_times()
             for time in times:
                 f_names = sample.get_field_names(
-                    zone_name=zone_name, base_name=base_name, time=time)
+                    zone_name=zone_name, base_name=base_name, time=time
+                )
                 for f_name in f_names:
                     if f_name not in fields_names:
                         fields_names.append(f_name)
@@ -381,8 +403,7 @@ class Dataset(object):
         return fields_names
 
     # -------------------------------------------------------------------------#
-    def add_tabular_scalars(self, tabular: np.ndarray,
-                            names: list[str] = None) -> None:
+    def add_tabular_scalars(self, tabular: np.ndarray, names: list[str] = None) -> None:
         """Add tabular scalar data to the summary.
 
         Args:
@@ -401,10 +422,11 @@ class Dataset(object):
         if tabular.ndim != 2:
             raise ShapeError(f"{tabular.ndim=}!=2, should be == 2")
         if names is None:
-            names = [f'X{i}' for i in range(tabular.shape[1])]
+            names = [f"X{i}" for i in range(tabular.shape[1])]
         if tabular.shape[1] != len(names):
             raise ShapeError(
-                f"tabular should have as many columns as there are names, but {tabular.shape[1]=} and {len(names)=}")
+                f"tabular should have as many columns as there are names, but {tabular.shape[1]=} and {len(names)=}"
+            )
 
         # ---# For efficiency, first add values to storage
         name_to_ids = {}
@@ -418,8 +440,12 @@ class Dataset(object):
                 sample.add_scalar(name, name_to_ids[name][i_samp])
             self.add_sample(sample)
 
-    def get_scalars_to_tabular(self, scalar_names: list[str] = None, sample_ids: list[int]
-                               = None, as_nparray=False) -> Union[dict[str, np.ndarray], np.ndarray]:
+    def get_scalars_to_tabular(
+        self,
+        scalar_names: list[str] = None,
+        sample_ids: list[int] = None,
+        as_nparray=False,
+    ) -> Union[dict[str, np.ndarray], np.ndarray]:
         """Return a dict containing scalar values as tabulars/arrays.
 
         Args:
@@ -485,16 +511,19 @@ class Dataset(object):
         """
         if cat_key not in authorized_info_keys:
             raise KeyError(
-                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}")
+                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+            )
         if info_key not in authorized_info_keys[cat_key]:
             raise KeyError(
-                f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}")
+                f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+            )
 
         if cat_key not in self._infos:
             self._infos[cat_key] = {}
         elif info_key in self._infos[cat_key]:
             logger.warning(
-                f"{cat_key=} and {info_key=} already set, replacing it anyway")
+                f"{cat_key=} and {info_key=} already set, replacing it anyway"
+            )
         self._infos[cat_key][info_key] = info
 
     def add_infos(self, cat_key: str, infos: dict[str, str]) -> None:
@@ -502,7 +531,7 @@ class Dataset(object):
 
         Args:
             cat_key (str): Category key, choose among "legal," "data_production," and "data_description".
-            info_key (str): Information key with its related content.
+            infos (str): Information key with its related content.
 
         Raises:
             KeyError: Invalid category key.
@@ -525,17 +554,20 @@ class Dataset(object):
         """
         if cat_key not in authorized_info_keys:  # Format checking on "infos"
             raise KeyError(
-                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}")
+                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+            )
         for info_key in infos.keys():
             if info_key not in authorized_info_keys[cat_key]:
                 raise KeyError(
-                    f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}")
+                    f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+                )
 
         if cat_key not in self._infos:
             self._infos[cat_key] = {}
         elif info_key in self._infos[cat_key]:
             logger.warning(
-                f"{cat_key=} and {info_key=} already set, replacing it anyway")
+                f"{cat_key=} and {info_key=} already set, replacing it anyway"
+            )
 
         for key, value in infos.items():
             self._infos[cat_key][key] = value
@@ -563,11 +595,13 @@ class Dataset(object):
         for cat_key in infos.keys():  # Format checking on "infos"
             if cat_key not in authorized_info_keys:
                 raise KeyError(
-                    f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}")
+                    f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+                )
             for info_key in infos[cat_key].keys():
                 if info_key not in authorized_info_keys[cat_key]:
                     raise KeyError(
-                        f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}")
+                        f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+                    )
 
         if len(self._infos) > 0:
             logger.warning("infos not empty, replacing it anyway")
@@ -592,16 +626,21 @@ class Dataset(object):
         return self._infos
 
     def print_infos(self) -> None:
-        """Prints information in a readable format (pretty print).
-        """
+        """Prints information in a readable format (pretty print)."""
         infos_cats = list(self._infos.keys())
-        tf = '*********************** \x1b[34;1mdataset infos\x1b[0m **********************\n'
+        tf = "*********************** \x1b[34;1mdataset infos\x1b[0m **********************\n"
         for cat in infos_cats:
-            tf += '\x1b[33;1m'+str(cat)+'\x1b[0m\n'
+            tf += "\x1b[33;1m" + str(cat) + "\x1b[0m\n"
             infos = list(self._infos[cat].keys())
             for info in infos:
-                tf += '  \x1b[32;1m'+str(cat)+'\x1b[0m:'+str(self._infos[cat][info])+'\n'
-        tf += '************************************************************\n'
+                tf += (
+                    "  \x1b[32;1m"
+                    + str(cat)
+                    + "\x1b[0m:"
+                    + str(self._infos[cat][info])
+                    + "\n"
+                )
+        tf += "************************************************************\n"
         print(tf)
 
     # -------------------------------------------------------------------------#
@@ -624,9 +663,10 @@ class Dataset(object):
         return self.add_samples(dataset.get_samples(as_list=True))
 
     # -------------------------------------------------------------------------#
-    def save(self, fname: Union[str,Path]) -> None:
-        """Saves the data set to a TAR (Tape Archive) file. It
-        creates a temporary intermediate directory to store temporary files during the loading process.
+    def save(self, fname: Union[str, Path]) -> None:
+        """Saves the data set to a TAR (Tape Archive) file.
+
+        It creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             fname (Union[str,Path]): The path to which the data set will be saved.
@@ -638,25 +678,27 @@ class Dataset(object):
 
         # First : creates a directory <savedir> to save everything in an
         # arborescence on disk
-        savedir = fname.parent / f'tmpsavedir_{generate_random_ASCII()}'
+        savedir = fname.parent / f"tmpsavedir_{generate_random_ASCII()}"
         if savedir.is_dir():  # pragma: no cover
-            raise ValueError(f"temporary intermediate directory <{savedir}> already exits")
+            raise ValueError(
+                f"temporary intermediate directory <{savedir}> already exits"
+            )
         savedir.mkdir(parents=True)
 
         self._save_to_dir_(savedir)
 
-        curdir = os.getcwd()
-
         # Then : tar dir in file <fname>
         # TODO: avoid using subprocess by using lib tarfile
-        ARGUMENTS = ['tar', '-cf', fname, '-C', savedir, '.']
+        ARGUMENTS = ["tar", "-cf", fname, "-C", savedir, "."]
         subprocess.call(ARGUMENTS)
 
         # Finally : removes directory <savedir>
         shutil.rmtree(savedir)
 
     @classmethod
-    def load_from_file(cls, fname: Union[str,Path], verbose: bool = False, processes_number: int = 0) -> Self:
+    def load_from_file(
+        cls, fname: Union[str, Path], verbose: bool = False, processes_number: int = 0
+    ) -> Self:
         """Load data from a specified TAR (Tape Archive) file.
 
         Args:
@@ -673,8 +715,13 @@ class Dataset(object):
         return instance
 
     @classmethod
-    def load_from_dir(cls, dname: Union[str,Path], ids: list[int] = None,
-                      verbose: bool = False, processes_number: int = 0) -> Self:
+    def load_from_dir(
+        cls,
+        dname: Union[str, Path],
+        ids: list[int] = None,
+        verbose: bool = False,
+        processes_number: int = 0,
+    ) -> Self:
         """Load data from a specified directory.
 
         Args:
@@ -689,16 +736,16 @@ class Dataset(object):
         dname = Path(dname)
         instance = cls()
         instance._load_from_dir_(
-            dname,
-            ids=ids,
-            verbose=verbose,
-            processes_number=processes_number)
+            dname, ids=ids, verbose=verbose, processes_number=processes_number
+        )
         return instance
 
-    def load(self, fname: Union[str,Path], verbose: bool = False,
-             processes_number: int = 0) -> None:
-        """Load data from a specified TAR (Tape Archive) file. It
-        creates a temporary intermediate directory to store temporary files during the loading process.
+    def load(
+        self, fname: Union[str, Path], verbose: bool = False, processes_number: int = 0
+    ) -> None:
+        """Load data from a specified TAR (Tape Archive) file.
+
+        It creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             fname (Union[str,Path]): The path to the data file to be loaded.
@@ -711,27 +758,28 @@ class Dataset(object):
         """
         fname = Path(fname)
 
-        inputdir = fname.parent / f'tmploaddir_{generate_random_ASCII()}'
+        inputdir = fname.parent / f"tmploaddir_{generate_random_ASCII()}"
         if inputdir.is_dir():  # pragma: no cover
-            raise ValueError(f"temporary intermediate directory <{inputdir}> already exits")
+            raise ValueError(
+                f"temporary intermediate directory <{inputdir}> already exits"
+            )
         inputdir.mkdir(parents=True)
 
         # First : untar file <fname> to a directory <inputdir>
         # TODO: avoid using subprocess by using a lib tarfile
-        arguments = ['tar', '-xf', fname, '-C', inputdir]
+        arguments = ["tar", "-xf", fname, "-C", inputdir]
         subprocess.call(arguments)
 
         # Then : load data from directory <inputdir>
         self._load_from_dir_(
-            inputdir,
-            verbose=verbose,
-            processes_number=processes_number)
+            inputdir, verbose=verbose, processes_number=processes_number
+        )
 
         # Finally : removes directory <inputdir>
         shutil.rmtree(inputdir)
 
     # -------------------------------------------------------------------------#
-    def _save_to_dir_(self, savedir: Union[str,Path], verbose: bool = False) -> None:
+    def _save_to_dir_(self, savedir: Union[str, Path], verbose: bool = False) -> None:
         """Saves the dataset into a created sample directory and creates an 'infos.yaml' file to store additional information about the dataset.
 
         Args:
@@ -745,25 +793,20 @@ class Dataset(object):
         if verbose:  # pragma: no cover
             print(f"Saving database to: {savedir}")
 
-        samples_dir = savedir / 'samples'
+        samples_dir = savedir / "samples"
         if not (samples_dir.is_dir()):
             samples_dir.mkdir(parents=True)
 
         # ---# save samples
-        for i_sample, sample in tqdm(
-                self._samples.items(), disable=not (verbose)):
-            sample_fname = samples_dir / f'sample_{i_sample:09d}'
+        for i_sample, sample in tqdm(self._samples.items(), disable=not (verbose)):
+            sample_fname = samples_dir / f"sample_{i_sample:09d}"
             sample.save(sample_fname)
 
         # ---# save infos
         if len(self._infos) > 0:
-            infos_fname = savedir /'infos.yaml'
-            with open(infos_fname, 'w') as file:
-                yaml.dump(
-                    self._infos,
-                    file,
-                    default_flow_style=False,
-                    sort_keys=False)
+            infos_fname = savedir / "infos.yaml"
+            with open(infos_fname, "w") as file:
+                yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
 
         # #---# save stats
         # stats_fname = savedir / 'stats.yaml'
@@ -773,8 +816,13 @@ class Dataset(object):
         # flags_fname = savedir / 'flags.yaml'
         # self._flags.save(flags_fname)
 
-    def _load_from_dir_(self, savedir: Union[str,Path], ids: list[int] = None,
-                        verbose: bool = False, processes_number: int = 0) -> None:
+    def _load_from_dir_(
+        self,
+        savedir: Union[str, Path],
+        ids: list[int] = None,
+        verbose: bool = False,
+        processes_number: int = 0,
+    ) -> None:
         """Loads a dataset from a sample directory and retrieves additional information about the dataset from an 'infos.yaml' file, if available.
 
         Args:
@@ -790,7 +838,9 @@ class Dataset(object):
         """
         savedir = Path(savedir)
         if not savedir.is_dir():
-            raise FileNotFoundError(f"\"{savedir}\" is not a directory or does not exist. Abort")
+            raise FileNotFoundError(
+                f'"{savedir}" is not a directory or does not exist. Abort'
+            )
 
         if processes_number < -1:
             raise ValueError("Number of processes cannot be < -1")
@@ -798,32 +848,43 @@ class Dataset(object):
         if verbose:  # pragma: no cover
             print(f"Reading database located at: {savedir}")
 
-        sample_paths = sorted([path for path in (savedir/'samples').glob('sample_*') if path.is_dir()])
+        sample_paths = sorted(
+            [path for path in (savedir / "samples").glob("sample_*") if path.is_dir()]
+        )
 
         if ids is not None:
             filtered_sample_paths = []
             for sample_path in sample_paths:
-                id = int(sample_path.stem.split('_')[-1])
+                id = int(sample_path.stem.split("_")[-1])
                 if id in ids:
                     filtered_sample_paths.append(sample_path)
             sample_paths = filtered_sample_paths
 
-            if len(sample_paths) != len(set(ids)):# pragma: no cover
+            if len(sample_paths) != len(set(ids)):  # pragma: no cover
                 raise ValueError(
-                    "The length of the list of samples to add and the list of IDs are different")
+                    "The length of the list of samples to add and the list of IDs are different"
+                )
 
         if processes_number == -1:
-            logger.info(f"Number of processes set to maximum available: {os.cpu_count()}")
+            logger.info(
+                f"Number of processes set to maximum available: {os.cpu_count()}"
+            )
             processes_number = os.cpu_count()
 
         if processes_number == 0 or processes_number == 1:
-            for sample_path in tqdm(sample_paths, disable=not(verbose)):
-                id = int(sample_path.stem.split('_')[-1])
+            for sample_path in tqdm(sample_paths, disable=not (verbose)):
+                id = int(sample_path.stem.split("_")[-1])
                 sample = Sample(sample_path)
                 self.add_sample(sample, id)
         else:
             with Pool(processes_number) as p:
-                for id, sample in list(tqdm(p.imap(process_sample, sample_paths), total=len(sample_paths), disable=not(verbose))):
+                for id, sample in list(
+                    tqdm(
+                        p.imap(process_sample, sample_paths),
+                        total=len(sample_paths),
+                        disable=not (verbose),
+                    )
+                ):
                     self.set_sample(id, sample)
 
             """
@@ -850,20 +911,17 @@ class Dataset(object):
                 self.set_sample(id, sample)
             """
 
-        infos_fname = savedir / 'infos.yaml'
+        infos_fname = savedir / "infos.yaml"
         if os.path.isfile(infos_fname):
-            with open(infos_fname, 'r') as file:
+            with open(infos_fname, "r") as file:
                 self._infos = yaml.safe_load(file)
 
         if len(self) == 0:  # pragma: no cover
             print("Warning: dataset contains no sample")
 
     @staticmethod
-    def _load_number_of_samples_(savedir: Union[str,Path]) -> int: # pragma: no cover
-        """
-
-        Warning:
-            This method is deprecated, use instead :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>`
+    def _load_number_of_samples_(_savedir: Union[str, Path]) -> int:  # pragma: no cover
+        """Warning: This method is deprecated, use instead :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>`.
 
         This function counts the number of sample files in a specified directory, which is
         useful for determining the total number of samples in a dataset.
@@ -874,7 +932,9 @@ class Dataset(object):
         Returns:
             int: The number of sample files found in the specified directory.
         """
-        raise DeprecatedError('use instead: plaid.get_number_of_samples("path-to-my-dataset")')
+        raise DeprecatedError(
+            'use instead: plaid.get_number_of_samples("path-to-my-dataset")'
+        )
 
     # -------------------------------------------------------------------------#
     def set_samples(self, samples: dict[int, Sample]) -> None:
@@ -891,22 +951,24 @@ class Dataset(object):
         """
         if not (isinstance(samples, dict)):
             raise TypeError(
-                f"samples should be of type dict[int,Sample] but is {type(samples)=}")
+                f"samples should be of type dict[int,Sample] but is {type(samples)=}"
+            )
 
         ids = list(samples.keys())
         for id in ids:
             if not (isinstance(id, int)):
-                raise TypeError(
-                    f"id should be of type {int.__class__} but {type(id)=}")
+                raise TypeError(f"id should be of type {int.__class__} but {type(id)=}")
             if not (id >= 0):
                 raise ValueError(f"id should be positive (id>=0) but {id=}")
             if not (isinstance(samples[id], Sample)):
                 raise TypeError(
-                    f"samples[{id=}] should be of type {Sample.__class__} but {type(samples[id])=}")
+                    f"samples[{id=}] should be of type {Sample.__class__} but {type(samples[id])=}"
+                )
 
         if len(self._samples) > 0:
             logger.warning(
-                f"{len(self._samples)} samples are already present in dataset, replacing them anyway")
+                f"{len(self._samples)} samples are already present in dataset, replacing them anyway"
+            )
         self._samples = samples
 
     # TODO: on veut vraiment faire ça ?
@@ -930,17 +992,18 @@ class Dataset(object):
             In case of conflict, the existing samples will be overwritten.
         """
         if not (isinstance(id, int)):
-            raise TypeError(
-                f"id should be of type {int.__class__} but {type(id)=}")
+            raise TypeError(f"id should be of type {int.__class__} but {type(id)=}")
         if not (id >= 0):
             raise ValueError(f"id should be positive (id>=0) but {id=}")
         if not (isinstance(sample, Sample)):
             raise TypeError(
-                f"sample should be of type {Sample.__class__} but {type(sample)=}")
+                f"sample should be of type {Sample.__class__} but {type(sample)=}"
+            )
 
         if id in self._samples:
             logger.warning(
-                f"sample with {id=} already present in dataset, replacing it anyway")
+                f"sample with {id=} already present in dataset, replacing it anyway"
+            )
         self._samples[id] = sample
 
     # -------------------------------------------------------------------------#
@@ -986,7 +1049,8 @@ class Dataset(object):
             return self._samples[id]
         else:
             raise IndexError(
-                f"sample with {id=} not set -> use 'Dataset.add_sample' or 'Dataset.add_samples'")
+                f"sample with {id=} not set -> use 'Dataset.add_sample' or 'Dataset.add_samples'"
+            )
 
     __call__ = __getitem__
 
@@ -1008,19 +1072,20 @@ class Dataset(object):
 
         # samples
         nb_samples = len(self._samples)
-        str_repr += f"{nb_samples} sample{'' if nb_samples==1 else 's'}, "
+        str_repr += f"{nb_samples} sample{'' if nb_samples == 1 else 's'}, "
 
         # scalars
         nb_scalars = len(self.get_scalar_names())
-        str_repr += f"{nb_scalars} scalar{'' if nb_scalars==1 else 's'}, "
+        str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
 
         # fields
         nb_fields = len(self.get_field_names())
-        str_repr += f"{nb_fields} field{'' if nb_fields==1 else 's'}, "
+        str_repr += f"{nb_fields} field{'' if nb_fields == 1 else 's'}, "
 
-        if str_repr[-2:] == ', ':
+        if str_repr[-2:] == ", ":
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
         return str_repr
+
 
 # %%

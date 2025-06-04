@@ -22,14 +22,16 @@ import numpy as np
 from plaid.utils.init_with_tabular import initialize_dataset_with_tabular_data
 from plaid.utils.split import split_dataset
 
+
 # %%
 # Print dict util
 def dprint(name: str, dictio: dict):
-    print(name, '{')
+    print(name, "{")
     for key, value in dictio.items():
-	    print("    ", key, ':', value)
+        print("    ", key, ":", value)
 
-    print('}')
+    print("}")
+
 
 # %% [markdown]
 # ## Section 1: Initialize Dataset
@@ -40,7 +42,7 @@ def dprint(name: str, dictio: dict):
 # Create a dataset with random tabular data for testing purposes
 nb_scalars = 7
 nb_samples = 70
-tabular_data = {f'scalar_{j}': np.random.randn(nb_samples) for j in range(nb_scalars)}
+tabular_data = {f"scalar_{j}": np.random.randn(nb_samples) for j in range(nb_scalars)}
 dataset = initialize_dataset_with_tabular_data(tabular_data)
 
 print(f"{dataset = }")
@@ -53,10 +55,10 @@ print(f"{dataset = }")
 # %%
 print("# First split")
 options = {
-    'shuffle': True,
-    'split_ratios': {
-        'train': 0.8,
-        'val': 0.1,
+    "shuffle": True,
+    "split_ratios": {
+        "train": 0.8,
+        "val": 0.1,
     },
 }
 
@@ -71,11 +73,11 @@ dprint("split =", split)
 # %%
 print("# Second split")
 options = {
-    'shuffle': True,
-    'split_sizes': {
-        'train': 14,
-        'val': 8,
-        'test': 5,
+    "shuffle": True,
+    "split_sizes": {
+        "train": 14,
+        "val": 8,
+        "test": 5,
     },
 }
 
@@ -90,14 +92,12 @@ dprint("split =", split)
 # %%
 print("# Third split")
 options = {
-    'shuffle': True,
-    'split_ratios': {
-        'train': 0.7,
-        'test': 0.1,
+    "shuffle": True,
+    "split_ratios": {
+        "train": 0.7,
+        "test": 0.1,
     },
-    'split_sizes': {
-        'val': 7
-    }
+    "split_sizes": {"val": 7},
 }
 
 split = split_dataset(dataset, options)
@@ -112,14 +112,12 @@ dprint("split =", split)
 
 print("# Fourth split")
 options = {
-    'split_ids': {
-        'train': np.arange(20),
-        'val': np.arange(30, 60),
-        'predict': np.arange(25, 35),
+    "split_ids": {
+        "train": np.arange(20),
+        "val": np.arange(30, 60),
+        "predict": np.arange(25, 35),
     },
 }
 
 split = split_dataset(dataset, options)
 dprint("split =", split)
-
-

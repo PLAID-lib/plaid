@@ -8,7 +8,6 @@
 # %% Imports
 
 import os
-import time
 
 # %% Functions
 
@@ -29,8 +28,8 @@ def replace_toctree(blocks: list[list[str]]) -> list[list[str]]:
         print("----------------------------")
         is_toctree = False
         for line in block:
-            print(line, end='')
-            if 'toctree::' in line:
+            print(line, end="")
+            if "toctree::" in line:
                 toctree_block_id = i_block
 
     blocks[0] = []
@@ -52,8 +51,8 @@ def clean_toctree(blocks: list[list[str]]) -> list[list[str]]:
         print("----------------------------")
         is_toctree = False
         for line in block:
-            print(line, end='')
-            if 'toctree::' in line:
+            print(line, end="")
+            if "toctree::" in line:
                 toctree_block_id = i_block
 
     blocks[0] = []
@@ -69,13 +68,13 @@ def clean_toctree(blocks: list[list[str]]) -> list[list[str]]:
 
 
 def read_lines(in_fname: str) -> list[str]:
-    with open(in_fname, 'r') as in_mfile:
+    with open(in_fname, "r") as in_mfile:
         lines = in_mfile.readlines()
     return lines
 
 
 def write_blocks(out_fname: str, blocks: list[list[str]]) -> None:
-    with open(out_fname, 'w') as out_mfile:
+    with open(out_fname, "w") as out_mfile:
         for i_block, block in enumerate(blocks):
             for line in block:
                 out_mfile.write(line)
@@ -84,7 +83,7 @@ def write_blocks(out_fname: str, blocks: list[list[str]]) -> None:
 
 
 def fix_module(fname: str) -> None:
-    assert (os.path.isfile(in_fname))
+    assert os.path.isfile(in_fname)
     parent_dir = os.path.dirname(fname)
 
     lines = read_lines(fname)
@@ -100,12 +99,12 @@ def fix_module(fname: str) -> None:
     write_blocks(out_fname, blocks)
 
     blocks = replace_toctree(original_blocks)
-    out_fname = os.path.join(parent_dir, 'modules_autosummary.rst')
+    out_fname = os.path.join(parent_dir, "modules_autosummary.rst")
     write_blocks(out_fname, blocks)
 
 
 # %% Main Script
-if __name__ == '__main__':
-    for package_name in ['plaid', 'tests', 'examples']:
-        in_fname = os.path.join('api_reference', package_name, 'modules.rst')
+if __name__ == "__main__":
+    for package_name in ["plaid", "tests", "examples"]:
+        in_fname = os.path.join("api_reference", package_name, "modules.rst")
         fix_module(in_fname)

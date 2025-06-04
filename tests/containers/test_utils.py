@@ -7,24 +7,25 @@
 
 # %% Imports
 
-import pytest
+from pathlib import Path
 
 import numpy as np
-
-from pathlib import Path
+import pytest
 
 from plaid.containers.utils import get_number_of_samples, get_sample_ids
 
 # %% Fixtures
 
+
 @pytest.fixture()
 def current_directory():
     return Path(__file__).absolute().parent
 
+
 # %% Tests
 
-class Test_Container_Utils():
 
+class Test_Container_Utils:
     def test_get_sample_ids(self, current_directory):
         dataset_path = current_directory / "dataset"
         assert get_sample_ids(dataset_path) == list(np.arange(0, 3))

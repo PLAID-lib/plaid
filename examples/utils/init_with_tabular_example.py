@@ -20,14 +20,16 @@ import numpy as np
 # Import necessary libraries and functions
 from plaid.utils.init_with_tabular import initialize_dataset_with_tabular_data
 
+
 # %%
 # Print dict util
 def dprint(name: str, dictio: dict):
-    print(name, '{')
+    print(name, "{")
     for key, value in dictio.items():
-	    print("    ", key, ':', value)
+        print("    ", key, ":", value)
 
-    print('}')
+    print("}")
+
 
 # %% [markdown]
 # ## Section 1: Initializing a Dataset with Tabular Data
@@ -69,5 +71,3 @@ scalar_names = ["scalar_1", "scalar_3", "scalar_5"]
 tabular_data_subset = dataset.get_scalars_to_tabular(scalar_names)
 print("Tabular Data Subset for Scalars 1, 3, and 5:")
 dprint("tabular_data_subset", tabular_data_subset)
-
-

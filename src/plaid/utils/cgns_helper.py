@@ -1,3 +1,5 @@
+"""Utility functions for working with CGNS trees and nodes."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -7,18 +9,15 @@
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-from CGNS.PAT.cgnsutils import __CHILDREN__
-from CGNS.PAT.cgnsutils import __LABEL__ as __TYPE__
-from CGNS.PAT.cgnsutils import __NAME__
-from CGNS.PAT.cgnsutils import __VALUE__ as __DATA__
 
 CGNSTree = list
 """A CGNSTree is a list
 """
 
 
-def get_base_names(tree: CGNSTree, full_path: bool = False,
-                   unique: bool = False) -> list[str]:
+def get_base_names(
+    tree: CGNSTree, full_path: bool = False, unique: bool = False
+) -> list[str]:
     """Get a list of base names from a CGNSTree.
 
     Args:
@@ -31,11 +30,11 @@ def get_base_names(tree: CGNSTree, full_path: bool = False,
     """
     base_paths = []
     if tree is not None:
-        b_paths = CGU.getPathsByTypeSet(tree, 'CGNSBase_t')
+        b_paths = CGU.getPathsByTypeSet(tree, "CGNSBase_t")
         for pth in b_paths:
-            s_pth = pth.split('/')
-            assert (len(s_pth) == 2)
-            assert (s_pth[0] == '')
+            s_pth = pth.split("/")
+            assert len(s_pth) == 2
+            assert s_pth[0] == ""
             if full_path:
                 base_paths.append(pth)
             else:
@@ -63,21 +62,22 @@ def get_time_values(tree: CGNSTree) -> np.ndarray:
     time_values = []
     for bp in base_paths:
         base_node = CGU.getNodeByPath(tree, bp)
-        time_values.append(CGU.getValueByPath(base_node, 'Time/TimeValues')[0])
-    assert time_values.count(time_values[0]) == len(
-        time_values), "times values are not consistent in bases"
+        time_values.append(CGU.getValueByPath(base_node, "Time/TimeValues")[0])
+    assert time_values.count(time_values[0]) == len(time_values), (
+        "times values are not consistent in bases"
+    )
     return time_values[0]
 
 
-def show_cgns_tree(pyTree: list, pre: str = ''):
-    """Pretty print for CGNS Tree
+def show_cgns_tree(pyTree: list, pre: str = ""):
+    """Pretty print for CGNS Tree.
 
     Args:
         pyTree (list): CGNS tree to print
         pre (str, optional): indentation of print. Defaults to ''.
     """
     if not (isinstance(pyTree, list)):
-        if pyTree is None: # pragma: no cover
+        if pyTree is None:  # pragma: no cover
             return True
         else:
             raise TypeError(f"{type(pyTree)=}, but should be a list or None")
@@ -92,10 +92,18 @@ def show_cgns_tree(pyTree: list, pre: str = ''):
 
     for child in pyTree[2]:
         try:
-            print(pre, child[0], ":", child[1].shape, printValue(child), child[1].dtype, child[3])
+            print(
+                pre,
+                child[0],
+                ":",
+                child[1].shape,
+                printValue(child),
+                child[1].dtype,
+                child[3],
+            )
         except AttributeError:
             print(pre, child[0], ":", child[1], child[3])
 
         if child[2]:
-            show_cgns_tree(child, ' '*len(pre)+'|_ ')
+            show_cgns_tree(child, " " * len(pre) + "|_ ")
     np.set_printoptions(edgeitems=3, threshold=1000)
