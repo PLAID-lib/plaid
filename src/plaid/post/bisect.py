@@ -123,7 +123,7 @@ def plot_bisect(
             )
 
     # Matplotlib plotting options
-    if is_dvipng_available(verbose):
+    if is_dvipng_available(verbose):  # pragma: no cover
         plt.rcParams.update(
             {
                 "text.usetex": True,
