@@ -308,7 +308,7 @@ class Test_Dataset:
     def test_get_sample_ids(self, dataset):
         dataset.get_sample_ids()
 
-    def test_get_sample_ids_from_disk(self, dataset, current_directory):
+    def test_get_sample_ids_from_disk(self, current_directory):
         dataset_path = current_directory / "dataset"
         assert plaid.get_number_of_samples(dataset_path) == 3
 
@@ -317,7 +317,7 @@ class Test_Dataset:
         dataset_with_samples.get_scalar_names()
         dataset_with_samples.get_scalar_names(np.random.randint(2, nb_samples, size=2))
 
-    def test_get_scalar_names_same_ids(self, dataset_with_samples, nb_samples):
+    def test_get_scalar_names_same_ids(self, dataset_with_samples):
         dataset_with_samples.get_scalar_names()
         dataset_with_samples.get_scalar_names([0, 0])
 

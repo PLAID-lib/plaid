@@ -61,7 +61,7 @@ class Test_Bisect:
             os.path.join(current_directory, "converge_bisect_plot.png"),
         )
 
-    def test_bisect_error(self, current_directory, working_directory):
+    def test_bisect_error(self, current_directory):
         ref_path = os.path.join(current_directory, "dataset_ref")
         pred_path = os.path.join(current_directory, "dataset_near_pred")
         problem_path = ProblemDefinition(

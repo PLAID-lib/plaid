@@ -35,6 +35,7 @@ def clean_tests():
     else:
         # Unix
         retcode = subprocess.call(["sh", "./tests/clean.sh"])
+    assert retcode == 0, "Test cleanup script failed"
 
 
 # %% Tests
