@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+
 from plaid.containers.dataset import Dataset
 from plaid.post.metrics import compute_metrics
 from plaid.problem_definition import ProblemDefinition
@@ -13,7 +21,7 @@ def current_directory() -> str:
 def working_directory() -> str:
     return os.getcwd()
 
-class Test_Metrics():
+class Test_Metrics:
     def test_compute_metrics_with_paths(self, current_directory, working_directory):
         ref_ds = os.path.join(current_directory, "dataset_ref")
         pred_ds = os.path.join(current_directory, "dataset_near_pred")

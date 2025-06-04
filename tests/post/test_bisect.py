@@ -1,3 +1,11 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+
 from plaid.containers.dataset import Dataset
 from plaid.post.bisect import plot_bisect
 from plaid.problem_definition import ProblemDefinition
@@ -12,7 +20,7 @@ def current_directory() -> str:
 def working_directory() -> str:
     return os.getcwd()
 
-class Test_Bisect():
+class Test_Bisect:
     def test_bisect_with_paths(self, current_directory, working_directory):
         ref_path = os.path.join(current_directory, "dataset_ref")
         pred_path = os.path.join(current_directory, "dataset_pred")
