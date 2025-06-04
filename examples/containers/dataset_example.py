@@ -14,12 +14,12 @@
 
 # %%
 # Import required libraries
-import numpy as np
 import os
 
 # %%
 # Import necessary libraries and functions
 import Muscat.Containers.ElementsDescription as ElementsDescription
+import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
@@ -27,14 +27,16 @@ import plaid
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 
+
 # %%
 # Print dict util
 def dprint(name: str, dictio: dict, end: str = "\n"):
-    print(name, '{')
+    print(name, "{")
     for key, value in dictio.items():
-	    print("    ", key, ':', value)
+        print("    ", key, ":", value)
 
-    print('}', end=end)
+    print("}", end=end)
+
 
 # %% [markdown]
 # ## Section 1: Initializing an Empty Dataset and Samples construction
@@ -54,24 +56,25 @@ print(f"{dataset=}")
 
 # %%
 # Create Sample
-points = np.array([
+points = np.array(
+    [
         [0.0, 0.0],
         [1.0, 0.0],
         [1.0, 1.0],
         [0.0, 1.0],
         [0.5, 1.5],
-    ])
+    ]
+)
 
-triangles = np.array([
+triangles = np.array(
+    [
         [0, 1, 2],
         [0, 2, 3],
         [2, 4, 3],
-    ])
+    ]
+)
 
-bars = np.array([
-        [0, 1],
-        [0, 2]
-    ])
+bars = np.array([[0, 1], [0, 2]])
 
 Mesh = MCT.CreateMeshOfTriangles(points, triangles)
 elbars = Mesh.GetElementsOfType(ElementsDescription.Bar_2)
@@ -90,7 +93,7 @@ print(f"{sample_01 = }")
 
 # %%
 # Add a scalar to the Sample
-sample_01.add_scalar('rotation', np.random.randn())
+sample_01.add_scalar("rotation", np.random.randn())
 print(f"{sample_01 = }")
 
 # %% [markdown]
@@ -104,7 +107,7 @@ print(f"{sample_02 = }")
 
 # %%
 # Add a scalar to the second Sample
-sample_02.add_scalar('rotation', np.random.randn())
+sample_02.add_scalar("rotation", np.random.randn())
 print(f"{sample_02 = }")
 
 # %% [markdown]
@@ -114,8 +117,8 @@ print(f"{sample_02 = }")
 # Initialize a third empty Sample
 print("#---# Empty Sample")
 sample_03 = Sample()
-sample_03.add_scalar('speed', np.random.randn())
-sample_03.add_scalar('rotation', sample_01.get_scalar('rotation'))
+sample_03.add_scalar("speed", np.random.randn())
+sample_03.add_scalar("rotation", sample_01.get_scalar("rotation"))
 sample_03.add_tree(cgns_mesh)
 
 # Show Sample CGNS content
@@ -123,7 +126,7 @@ sample_03.show_tree()
 
 # %%
 # Add a field to the third empty Sample
-sample_03.add_field('temperature', np.random.rand(5), "Zone", "Base_2_2")
+sample_03.add_field("temperature", np.random.rand(5), "Zone", "Base_2_2")
 sample_03.show_tree()
 
 # %% [markdown]
@@ -168,6 +171,7 @@ dataset.add_info("legal", "owner", "Safran")
 
 # Retrive dataset information
 import json
+
 dataset_info = dataset.get_infos()
 print("dataset info =", json.dumps(dataset_info, sort_keys=False, indent=4), end="\n\n")
 
@@ -180,7 +184,7 @@ dataset_info = dataset.get_infos()
 print("dataset info =", json.dumps(dataset_info, sort_keys=False, indent=4), end="\n\n")
 
 # Add tree information to the Dataset (logger will display warnings)
-dataset.add_infos("data_description", {"number_of_samples" : 0, "number_of_splits": 0})
+dataset.add_infos("data_description", {"number_of_samples": 0, "number_of_splits": 0})
 
 # Pretty print dataset information
 dataset.print_infos()
@@ -223,8 +227,8 @@ print(f"{dataset = }")
 
 # %%
 # Access Sample data with indexes through the Dataset
-print(f"{dataset(0) = }") # call strategy
-print(f"{dataset[1] = }") # getitem strategy
+print(f"{dataset(0) = }")  # call strategy
+print(f"{dataset[1] = }")  # getitem strategy
 print(f"{dataset[2] = }", end="\n\n")
 
 print("scalar of the first sample = ", dataset[0].get_scalar_names())
@@ -244,11 +248,11 @@ print(f"{dataset[2].get_scalar('rotation') = }")
 # Print scalars in tabular format
 print(f"{dataset.get_scalar_names() = }", end="\n\n")
 
-dprint("get rotation scalar = ", dataset.get_scalars_to_tabular(['rotation']))
-dprint("get speed scalar = ", dataset.get_scalars_to_tabular(['speed']), end="\n\n")
+dprint("get rotation scalar = ", dataset.get_scalars_to_tabular(["rotation"]))
+dprint("get speed scalar = ", dataset.get_scalars_to_tabular(["speed"]), end="\n\n")
 
 # Get specific scalars in tabular format
-dprint("get specific scalars =", dataset.get_scalars_to_tabular(['speed', 'rotation']))
+dprint("get specific scalars =", dataset.get_scalars_to_tabular(["speed", "rotation"]))
 dprint("get all scalars =", dataset.get_scalars_to_tabular())
 
 # %%
@@ -277,8 +281,8 @@ nb_samples = 3
 samples = []
 for _ in range(nb_samples):
     sample = Sample()
-    sample.add_scalar('rotation', np.random.rand() + 1.0)
-    sample.add_scalar('random_name', np.random.rand() - 1.0)
+    sample.add_scalar("rotation", np.random.rand() + 1.0)
+    sample.add_scalar("random_name", np.random.rand() - 1.0)
     samples.append(sample)
 
 # Add a list of Samples
@@ -302,7 +306,7 @@ dprint("dataset scalars = ", dataset.get_scalars_to_tabular())
 # %%
 # Adding tabular scalars to the dataset
 new_scalars = np.random.rand(3, 2)
-dataset.add_tabular_scalars(new_scalars, names=['Tu', 'random_name'])
+dataset.add_tabular_scalars(new_scalars, names=["Tu", "random_name"])
 
 print(f"{dataset = }")
 dprint("dataset scalars =", dataset.get_scalars_to_tabular())
@@ -312,12 +316,8 @@ dprint("dataset scalars =", dataset.get_scalars_to_tabular())
 
 # %%
 infos = {
-    "legal": {
-        "owner": "Safran",
-        "license": "CC0"},
-    "data_production": {
-        "type": "simulation",
-        "simulator": "dummy"}
+    "legal": {"owner": "Safran", "license": "CC0"},
+    "data_production": {"type": "simulation", "simulator": "dummy"},
 }
 dataset.set_infos(infos)
 dataset.print_infos()
@@ -331,7 +331,7 @@ dataset.print_infos()
 # ### Save a Dataset as a file tree
 
 # %%
-tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}'
+tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
 print(f"Save dataset in: {tmpdir}")
 
 dataset._save_to_dir_(tmpdir)
@@ -381,8 +381,8 @@ print(f"{loaded_dataset_from_instance = }")
 # ### Save the dataset to a TAR (Tape Archive) file
 
 # %%
-tmpdir = f'/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}'
-tmpfile = os.path.join(tmpdir, 'test_file.plaid')
+tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
+tmpfile = os.path.join(tmpdir, "test_file.plaid")
 
 print(f"Save dataset in: {tmpfile}")
 dataset.save(tmpfile)

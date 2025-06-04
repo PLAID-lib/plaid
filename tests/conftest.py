@@ -2,10 +2,6 @@
 
 import numpy as np
 import pytest
-
-from Muscat.Bridges.CGNSBridge import MeshToCGNS
-from Muscat.Containers import MeshCreationTools as MCT
-
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
 
@@ -71,9 +67,10 @@ def other_samples(nb_samples: int, zone_name: str, base_name: str) -> list[Sampl
 
 @pytest.fixture()
 def infos():
-    return {"legal": {"owner": "PLAID2", "license": "BSD-3"}, "data_production": {"type":"simulation", "simulator":"Z-set"}}
-
-
+    return {
+        "legal": {"owner": "PLAID2", "license": "BSD-3"},
+        "data_production": {"type": "simulation", "simulator": "Z-set"},
+    }
 
 
 @pytest.fixture()

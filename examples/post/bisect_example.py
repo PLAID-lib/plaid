@@ -8,12 +8,14 @@
 # %%
 # Importing Required Libraries
 import os
+
 from plaid.containers.dataset import Dataset
 from plaid.post.bisect import plot_bisect, prepare_datasets
 from plaid.problem_definition import ProblemDefinition
 
+
 # %%
-def get_project_root(path: str, index = 3) -> str:
+def get_project_root(path: str, index=3) -> str:
     """Find the project root path
 
     Args:
@@ -27,10 +29,13 @@ def get_project_root(path: str, index = 3) -> str:
         return path
     return get_project_root(os.path.dirname(path), index - 1)
 
+
 # Setting up Directories
 current_directory = os.getcwd()
 # dataset_directory = os.path.join(get_project_root(current_directory), "tests", "post")
-dataset_directory = os.path.join(get_project_root(current_directory, 1), "tests", "post")
+dataset_directory = os.path.join(
+    get_project_root(current_directory, 1), "tests", "post"
+)
 # %% [markdown]
 # ## Prepare Datasets for comparision
 #
@@ -44,12 +49,9 @@ pred_ds = Dataset(os.path.join(dataset_directory, "dataset_near_pred"))
 problem = ProblemDefinition(os.path.join(dataset_directory, "problem_definition"))
 
 # Get output scalars from reference and prediction dataset
-ref_out_scalars, pred_out_scalars, out_scalars_names = \
-prepare_datasets(
-    ref_ds,
-    pred_ds,
-    problem,
-    verbose=True)
+ref_out_scalars, pred_out_scalars, out_scalars_names = prepare_datasets(
+    ref_ds, pred_ds, problem, verbose=True
+)
 
 print(f"{out_scalars_names = }\n")
 
@@ -63,7 +65,9 @@ print(f"ID{' ' * 5}--REF_out_scalars--{' ' * 7}--PRED_out_scalars--")
 # Print output scalar values for both datasets
 index = 0
 for item1, item2 in zip(ref_out_scalars[key], pred_out_scalars[key]):
-    print(f"{str(index).ljust(2)}  |  {str(item1).ljust(20)}  |   {str(item2).ljust(20)}")
+    print(
+        f"{str(index).ljust(2)}  |  {str(item1).ljust(20)}  |   {str(item2).ljust(20)}"
+    )
     index += 1
 
 # %% [markdown]
@@ -80,12 +84,7 @@ pred_path = os.path.join(dataset_directory, "dataset_pred")
 problem_path = os.path.join(dataset_directory, "problem_definition")
 
 # Using file paths to generate bisect plot on scalar_2
-plot_bisect(
-    ref_path,
-    pred_path,
-    problem_path,
-    "scalar_2",
-    "differ_bisect_plot")
+plot_bisect(ref_path, pred_path, problem_path, "scalar_2", "differ_bisect_plot")
 
 # %% [markdown]
 # ## Plotting with PLAID
@@ -101,12 +100,7 @@ pred_path = Dataset(os.path.join(dataset_directory, "dataset_ref"))
 problem_path = ProblemDefinition(os.path.join(dataset_directory, "problem_definition"))
 
 # Using PLAID objects to generate bisect plot on scalar_2
-plot_bisect(
-    ref_path,
-    pred_path,
-    problem_path,
-    "scalar_2",
-    "equal_bisect_plot")
+plot_bisect(ref_path, pred_path, problem_path, "scalar_2", "equal_bisect_plot")
 
 # %% [markdown]
 # ## Mixing with Scalar Index and Verbose
@@ -129,11 +123,22 @@ plot_bisect(
     problem_path,
     scalar_index,
     "converge_bisect_plot",
-    verbose=True)
+    verbose=True,
+)
 
 # %%
 # Move generated files to post/ directory
 import shutil
-shutil.move(os.path.join(current_directory, "differ_bisect_plot.png"), os.path.join(current_directory, "post", "differ_bisect_plot.png"))
-shutil.move(os.path.join(current_directory, "equal_bisect_plot.png"), os.path.join(current_directory, "post", "equal_bisect_plot.png"))
-shutil.move(os.path.join(current_directory, "converge_bisect_plot.png"), os.path.join(current_directory, "post", "converge_bisect_plot.png"))
+
+shutil.move(
+    os.path.join(current_directory, "differ_bisect_plot.png"),
+    os.path.join(current_directory, "post", "differ_bisect_plot.png"),
+)
+shutil.move(
+    os.path.join(current_directory, "equal_bisect_plot.png"),
+    os.path.join(current_directory, "post", "equal_bisect_plot.png"),
+)
+shutil.move(
+    os.path.join(current_directory, "converge_bisect_plot.png"),
+    os.path.join(current_directory, "post", "converge_bisect_plot.png"),
+)

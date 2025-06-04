@@ -1,35 +1,40 @@
-import numpy as np
-from tqdm import tqdm
 import pickle
 
+import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
+from tqdm import tqdm
+
+from plaid.bridges import huggingface_bridge
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.utils.split import split_dataset
-from plaid.bridges import huggingface_bridge
 
 ##############################################
 # CONSTRUCT A PLAID DATASET
 ##############################################
 
-nodes_3D = np.array([
+nodes_3D = np.array(
+    [
         [0.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
         [1.0, 1.0, 0.0],
         [0.0, 1.0, 0.0],
         [0.5, 1.5, 1.0],
-    ])
+    ]
+)
 
-triangles = np.array([
+triangles = np.array(
+    [
         [0, 1, 2],
         [0, 1, 4],
         [0, 2, 3],
         [0, 3, 4],
         [1, 2, 4],
         [2, 4, 3],
-    ])
+    ]
+)
 
 for triangle in triangles:
     triangle_nodes = nodes_3D[triangle]
@@ -50,12 +55,12 @@ for _ in tqdm(range(nb_meshes)):
     """ Add field defined over the nodes (all the nodes).
         The keys are the names of the fields
         the values are the actual data of size (nb nodes, nb of components)"""
-    Mesh.nodeFields['node_field'] = np.random.randn(5)
+    Mesh.nodeFields["node_field"] = np.random.randn(5)
 
     """ Add field defined over the elements (all the elements).
         The keys are the names of the fields
         the values are the actual data of size (nb elements, nb of components)"""
-    Mesh.elemFields['elem_field'] = np.random.randn(6)
+    Mesh.elemFields["elem_field"] = np.random.randn(6)
 
     meshes.append(Mesh)
 
@@ -74,7 +79,7 @@ for mesh in tqdm(meshes):
 
 # %%
 in_scalars_names = ["P", "p1", "p2", "p3", "p4", "p5"]
-out_scalars_names = ["max_von_mises","max_q","max_U2_top","max_sig22_top"]
+out_scalars_names = ["max_von_mises", "max_q", "max_U2_top", "max_sig22_top"]
 out_fields_names = ["U1", "U2", "q", "sig11", "sig22", "sig12"]
 
 samples = []
@@ -100,13 +105,9 @@ for cgns_tree in tqdm(CGNS_meshes):
 dataset = Dataset()
 
 infos = {
-        "legal": {
-            "owner": "Bob",
-            "license": "my_license"},
-        "data_production": {
-            "type": "simulation",
-            "physics": "3D example"}
-    }
+    "legal": {"owner": "Bob", "license": "my_license"},
+    "data_production": {"type": "simulation", "physics": "3D example"},
+}
 
 # Set information for the PLAID dataset
 dataset.set_infos(infos)
@@ -120,16 +121,16 @@ problem = ProblemDefinition()
 problem.add_input_scalars_names(in_scalars_names)
 problem.add_output_scalars_names(out_scalars_names)
 problem.add_output_fields_names(out_fields_names)
-problem.add_input_meshes_names(['/Base_2_2/Zone'])
+problem.add_input_meshes_names(["/Base_2_2/Zone"])
 
-problem.set_task('regression')
+problem.set_task("regression")
 
 # Set startegy options for the split
 options = {
-    'shuffle': False,
-    'split_sizes': {
-        'train': 12,
-        'test': 8,
+    "shuffle": False,
+    "split_sizes": {
+        "train": 12,
+        "test": 8,
     },
 }
 
@@ -154,10 +155,13 @@ print(f"{hf_dataset.description = }")
 def generator():
     for id in range(len(dataset)):
         yield {
-            "sample" : pickle.dumps(dataset[id]),
+            "sample": pickle.dumps(dataset[id]),
         }
 
-hf_dataset_gen = huggingface_bridge.plaid_generator_to_huggingface(generator, infos, problem)
+
+hf_dataset_gen = huggingface_bridge.plaid_generator_to_huggingface(
+    generator, infos, problem
+)
 print()
 print(f"{hf_dataset_gen = }")
 print(f"{hf_dataset_gen.description = }")
@@ -170,18 +174,18 @@ print(f"{problem_2 = }")
 
 card_text = huggingface_bridge.create_string_for_huggingface_dataset_card(
     hf_dataset.description,
-    download_size_bytes = 395462557,
-    dataset_size_bytes = 864904041,
-    nb_samples = 702,
-    owner = "Safran",
-    license = "cc-by-sa-4.0",
-    zenodo_url = "https://zenodo.org/records/10124594",
-    arxiv_paper_url = "https://arxiv.org/pdf/2305.12871",
-    pretty_name = "2D quasistatic non-linear structural mechanics solutions",
-    size_categories = ["n<1K"],
-    task_categories = ["graph-ml"],
-    tags = ["physics learning", "geometry learning"],
-    dataset_long_description = """
+    download_size_bytes=395462557,
+    dataset_size_bytes=864904041,
+    nb_samples=702,
+    owner="Safran",
+    license="cc-by-sa-4.0",
+    zenodo_url="https://zenodo.org/records/10124594",
+    arxiv_paper_url="https://arxiv.org/pdf/2305.12871",
+    pretty_name="2D quasistatic non-linear structural mechanics solutions",
+    size_categories=["n<1K"],
+    task_categories=["graph-ml"],
+    tags=["physics learning", "geometry learning"],
+    dataset_long_description="""
 This dataset contains 2D quasistatic non-linear structural mechanics solutions, under geometrical variations.
 
 A description is provided in the [MMGP paper ](https://arxiv.org/pdf/2305.12871) Sections 4.1 and A.2.
@@ -192,7 +196,7 @@ Seven nested training sets of sizes 8 to 500 are provided, with complete input-o
 
 Dataset created using the [PLAID](https://plaid-lib.readthedocs.io/) library and datamodel.
     """,
-    url_illustration = "https://i.ibb.co/Js062hF/preview.png"
+    url_illustration="https://i.ibb.co/Js062hF/preview.png",
 )
 
 print("========================================")
