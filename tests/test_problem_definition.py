@@ -11,8 +11,9 @@ import pytest
 import os
 import subprocess
 from plaid.problem_definition import ProblemDefinition
-# %% Fixtures
 
+
+# %% Fixtures
 
 @pytest.fixture()
 def problem_definition() -> ProblemDefinition:
@@ -34,7 +35,7 @@ def clean_tests():
 
 # %% Tests
 
-class Test_ProblemDefinition():
+class Test_ProblemDefinition:
     def test__init__(self, problem_definition):
         assert problem_definition.get_task() is None
         print(problem_definition)
