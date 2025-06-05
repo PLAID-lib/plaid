@@ -10,18 +10,25 @@ dependencies:
   - sphinx
   - myst-nb
   - myst-parser
-  - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
 #---# mesh/graph libs
   - muscat=2.4.1
   - pycgns-core
-#---# other
+#---# ML
   - scikit-learn
   - datasets
+#---# data validation
   - pydantic
+#---# testing
   - pytest
   - pytest-cov
+#---# code formatters
+  - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
+  - ruff
+#---# dev
+  - pre-commit
   - pip
   - pip:
+#---# doc
     - furo
     - sphinx-autoapi
     - sphinx-tabs
