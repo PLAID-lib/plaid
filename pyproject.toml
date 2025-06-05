@@ -67,3 +67,18 @@ platforms = [
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["plaid*"]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "ruff",
+    "pytest",
+    "pytest-cov",
+    "sphinx",
+    "myst-nb",
+    "myst-parser",
+    "furo",
+    "sphinx-autoapi",
+    "sphinx-tabs",
+    "sphinxcontrib.bibtex",
+]
