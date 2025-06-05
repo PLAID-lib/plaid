@@ -11,7 +11,6 @@ dependencies:
   - pyyaml
 #---# mesh/graph libs
   - pycgns-core
-  - muscat=2.4.1
 #---# SciML
   - scikit-learn
   - datasets >=3.0
@@ -19,7 +18,9 @@ dependencies:
   - matplotlib-base
 #---# data validation
   - pydantic
-##### DEV #####
+##### DEV/TESTS/EXAMPLES #####
+#---# mesh/graph libs
+  - muscat=2.4.1
 #---# testing
   - pytest
   - pytest-cov
