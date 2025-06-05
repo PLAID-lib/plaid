@@ -4,31 +4,35 @@ channels:
   - nodefaults
 dependencies:
   - python=3.11
+##### RUN #####
+#---# base
+  - tqdm
 #---# io
   - pyyaml
-#---# doc
-  - sphinx
-  - myst-nb
-  - myst-parser
 #---# mesh/graph libs
-  - muscat=2.4.1
   - pycgns-core
-#---# ML
+  - muscat=2.4.1
+#---# SciML
   - scikit-learn
-  - datasets
+  - datasets >=3.0
+  - numpy
+  - matplotlib-base
 #---# data validation
   - pydantic
+##### DEV #####
 #---# testing
   - pytest
   - pytest-cov
 #---# code formatters
-  - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
   - ruff
 #---# dev
   - pre-commit
+#---# doc
+  - sphinx
+  - myst-nb
+  - myst-parser
   - pip
   - pip:
-#---# doc
     - furo
     - sphinx-autoapi
     - sphinx-tabs

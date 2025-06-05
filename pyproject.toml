@@ -71,8 +71,8 @@ include = ["plaid*"]
 [project.optional-dependencies]
 dev = [
     "pre-commit",
-    "pytest",
     "ruff",
+    "pytest",
     "pytest-cov",
     "sphinx",
     "myst-nb",

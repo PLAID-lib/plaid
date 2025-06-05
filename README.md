@@ -36,15 +36,21 @@ It has been developped at SafranTech, the research center of [Safran group](http
 - **Bug reports:** https://github.com/PLAID-lib/plaid/issues
 - **Report a security vulnerability:** https://github.com/PLAID-lib/plaid/issues
 
+
 ## 2. Getting started
 
 
 ### 2.1 Using the library
 
-To use the library, the simplest way is to install the conda-forge or PyPi package:
+To use the library, the simplest way is to install it as follows:
 
 ```bash
 conda install -c conda-forge plaid
+```
+
+or
+
+```bash
 pip install pyplaid
 ```
 
@@ -56,7 +62,9 @@ To contribute to the library, you need to clone the repo using git:
 git clone https://github.com/PLAID-lib/plaid.git
 ```
 
-Configure an environment manually following the dependencies listed in ``conda_dev_env.yml``, or generate it using conda:
+#### 2.2.1 Development dependencies
+
+To configure an environment manually, you can follow the dependencies listed in ``conda_dev_env.yml``, or generate it using conda:
 
 ```bash
 conda env create -f conda_dev_env.yml
@@ -65,8 +73,14 @@ conda env create -f conda_dev_env.yml
 Then, to install the library:
 
 ```bash
-pip install -e .
+pip install -e .[dev]
 ```
+
+**Note**
+
+The development dependency [**Muscat**](https://muscat.readthedocs.io/) is available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) but not on [``PyPi``](https://pypi.org/project/muscat).
+
+#### 2.2.2 Tests and examples
 
 To check the installation, you can run the unit test suite:
 
@@ -82,7 +96,18 @@ bash run_examples.sh  # [unix]
 run_examples.bat      # [win]
 ```
 
-## 2.3 Formatting and linting with Ruff
+#### 2.2.3 Documentation
+
+To compile locally the documentation, you can run:
+
+```bash
+cd docs
+make html
+```
+
+Various notebooks are executed during compilation. The documentation can then be explored in ``docs/_build/html``.
+
+#### 2.2.4 Formatting and linting with Ruff
 
 We use [**Ruff**](https://docs.astral.sh/ruff/) for linting and formatting.
 
@@ -95,21 +120,15 @@ ruff --config ruff.toml check . --fix      # auto-fix linting issues
 ruff --config ruff.toml format .           # auto-format code
 ```
 
-## 2.4 Setting up pre-commit
+#### 2.2.5 Setting up pre-commit
 
-If you’re contributing code, it is recommended to use pre-commit, which is configured to run the following hooks:
+Pre-commit is configured to run the following hooks:
 
 * Ruff check
 * Ruff format
 * Pytest
 
 The selected hooks are defined in the `.pre-commit-config.yaml` file.
-
-First, install pre-commit:
-
-```bash
-pip install pre-commit
-```
 
 To run all hooks manually on the full codebase:
 
@@ -124,23 +143,6 @@ pre-commit install
 ```
 
 This ensures that every time you commit, all the hooks are executed automatically on the staged files.
-
-**Note**
-
-[**ruff**](https://docs.astral.sh/ruff/), [**pytest**](https://anaconda.org/conda-forge/pytest) and [**Muscat**](https://anaconda.org/conda-forge/muscat) are development dependencies not included in the packages ``plaid`` on conda-forge or ``pyplaid`` on PyPi, but required to run the tests and examples. 
-
-To install [**ruff**](https://docs.astral.sh/ruff/) and [**pytest**](https://anaconda.org/conda-forge/pytest):
-
-```bash
-pip install ruff pytest
-``` 
-
-[**Muscat**](https://pypi.org/project/muscat) is only available on conda-forge and can be installed as follows:
-
-```bash
-conda install -c -conda-forge muscat
-```
-
 
 ## 3. Call for Contributions
 
@@ -160,4 +162,4 @@ and how to successfully get involved.
 
 ## 4. Documentation
 
-A documentation is available in [readthedocs](https://plaid-lib.readthedocs.io/).
+The documentation is deployed on [readthedocs](https://plaid-lib.readthedocs.io/).
