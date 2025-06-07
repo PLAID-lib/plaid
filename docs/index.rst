@@ -3,8 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-PLAID documentation
-===================
+.. raw:: html
+
+    <br>
 
 .. image:: https://plaid-lib.github.io/assets/images/PLAID-large-logo.png
    :align: center

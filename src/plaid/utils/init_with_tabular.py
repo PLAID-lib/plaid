@@ -1,3 +1,5 @@
+"""Utility functions to initialize a Dataset with tabular data."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -18,18 +20,21 @@ from plaid.containers.sample import Sample
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    format='[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s',
-    level=logging.INFO)
+    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
+    level=logging.INFO,
+)
 
 # %% Functions
 
 
 def initialize_dataset_with_tabular_data(
-        tabular_data: dict[str, np.ndarray]) -> Dataset:
+    tabular_data: dict[str, np.ndarray],
+) -> Dataset:
     """Initialize a Dataset with tabular data.
-        This function takes a dictionary of tabular data where keys represent scalar names,
-        and values are numpy arrays of the same length. It creates a Dataset and adds samples
-        to it based on the provided tabular data.
+
+    This function takes a dictionary of tabular data where keys represent scalar names,
+    and values are numpy arrays of the same length. It creates a Dataset and adds samples
+    to it based on the provided tabular data.
 
     Args:
         tabular_data (dict[str,np.ndarray]): A dictionary of scalar names and corresponding numpy arrays.
@@ -64,6 +69,7 @@ def initialize_dataset_with_tabular_data(
     # logger.info("Pour l'instant on boucle sur les samples, il y a probablement mieux à faire, mais l'API est simple")
 
     return dataset
+
 
 # def initialize_quantity_dataset_with_tabular_data(tabular_data:dict[str,Union[list[QuantityValueType],np.ndarray]]) -> Dataset:
 #     """_summary_

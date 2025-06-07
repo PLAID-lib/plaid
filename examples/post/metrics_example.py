@@ -8,12 +8,14 @@
 # %%
 # Importing Required Libraries
 import os
+
 from plaid.containers.dataset import Dataset
 from plaid.post.metrics import compute_metrics, prepare_datasets, pretty_metrics
 from plaid.problem_definition import ProblemDefinition
 
+
 # %%
-def get_project_root(path: str, index = 3) -> str:
+def get_project_root(path: str, index=3) -> str:
     """Find the project root path
 
     Args:
@@ -27,10 +29,13 @@ def get_project_root(path: str, index = 3) -> str:
         return path
     return get_project_root(os.path.dirname(path), index - 1)
 
+
 # Setting up Directories
 current_directory = os.getcwd()
 # dataset_directory = os.path.join(get_project_root(current_directory), "tests", "post")
-dataset_directory = os.path.join(get_project_root(current_directory, 1), "tests", "post")
+dataset_directory = os.path.join(
+    get_project_root(current_directory, 1), "tests", "post"
+)
 
 # %% [markdown]
 # ## Prepare Datasets for comparision
@@ -44,12 +49,9 @@ pred_ds = Dataset(os.path.join(dataset_directory, "dataset_near_pred"))
 problem = ProblemDefinition(os.path.join(dataset_directory, "problem_definition"))
 
 # Get output scalars from reference and prediction dataset
-ref_out_scalars, pred_out_scalars, out_scalars_names = \
-prepare_datasets(
-    ref_ds,
-    pred_ds,
-    problem,
-    verbose=True)
+ref_out_scalars, pred_out_scalars, out_scalars_names = prepare_datasets(
+    ref_ds, pred_ds, problem, verbose=True
+)
 
 print(f"{out_scalars_names = }\n")
 
@@ -63,7 +65,9 @@ print(f"ID{' ' * 5}--REF_out_scalars--{' ' * 7}--PRED_out_scalars--")
 # Print output scalar values for both datasets
 index = 0
 for item1, item2 in zip(ref_out_scalars[key], pred_out_scalars[key]):
-    print(f"{str(index).ljust(2)}  |  {str(item1).ljust(20)}  |   {str(item2).ljust(20)}")
+    print(
+        f"{str(index).ljust(2)}  |  {str(item1).ljust(20)}  |   {str(item2).ljust(20)}"
+    )
     index += 1
 
 # %% [markdown]
@@ -80,13 +84,10 @@ pred_ds = os.path.join(dataset_directory, "dataset_near_pred")
 problem = os.path.join(dataset_directory, "problem_definition")
 
 # Using file paths to generate metrics
-metrics = compute_metrics(
-            ref_ds,
-            pred_ds,
-            problem,
-            "first_metrics")
+metrics = compute_metrics(ref_ds, pred_ds, problem, "first_metrics")
 
 import json
+
 # Print the resulting metrics
 print("output dictionary =", json.dumps(metrics, indent=4))
 
@@ -104,12 +105,7 @@ pred_ds = Dataset(os.path.join(dataset_directory, "dataset_pred"))
 problem = ProblemDefinition(os.path.join(dataset_directory, "problem_definition"))
 
 # Pretty print activated with verbose mode
-metrics = compute_metrics(
-            ref_ds,
-            pred_ds,
-            problem,
-            "second_metrics",
-            verbose=True)
+metrics = compute_metrics(ref_ds, pred_ds, problem, "second_metrics", verbose=True)
 
 # %% [markdown]
 # ## Print metrics in a beautiful way
@@ -119,14 +115,8 @@ metrics = compute_metrics(
 # %%
 dictionary: dict = {
     "RMSE:": {
-        "train": {
-            "scalar_1": 0.12345,
-            "scalar_2": 0.54321
-        },
-        "test": {
-            "scalar_1": 0.56789,
-            "scalar_2": 0.98765
-        }
+        "train": {"scalar_1": 0.12345, "scalar_2": 0.54321},
+        "test": {"scalar_1": 0.56789, "scalar_2": 0.98765},
     }
 }
 
@@ -135,5 +125,12 @@ pretty_metrics(dictionary)
 # %%
 # Move generated files to post/ directory
 import shutil
-shutil.move(os.path.join(current_directory, "first_metrics.yaml"), os.path.join(current_directory, "post", "first_metrics.yaml"))
-shutil.move(os.path.join(current_directory, "second_metrics.yaml"), os.path.join(current_directory, "post", "second_metrics.yaml"))
+
+shutil.move(
+    os.path.join(current_directory, "first_metrics.yaml"),
+    os.path.join(current_directory, "post", "first_metrics.yaml"),
+)
+shutil.move(
+    os.path.join(current_directory, "second_metrics.yaml"),
+    os.path.join(current_directory, "post", "second_metrics.yaml"),
+)

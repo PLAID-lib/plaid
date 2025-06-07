@@ -13,8 +13,9 @@
 
 # %%
 # Import required libraries
-import numpy as np
 import os
+
+import numpy as np
 
 # %%
 # Import necessary libraries and functions
@@ -40,55 +41,63 @@ print(f"{problem = }")
 
 # %%
 # Add unique input and output scalar variables
-problem.add_input_scalar_name('in_scalar')
-problem.add_output_scalar_name('out_scalar')
+problem.add_input_scalar_name("in_scalar")
+problem.add_output_scalar_name("out_scalar")
 
 # Add list of input and output scalar variables
-problem.add_input_scalars_names(['in_scalar2', 'in_scalar3'])
-problem.add_output_scalars_names(['out_scalar2'])
+problem.add_input_scalars_names(["in_scalar2", "in_scalar3"])
+problem.add_output_scalars_names(["out_scalar2"])
 
 print()
 print(f"{problem.get_input_scalars_names() = }")
-print(f"{problem.get_output_scalars_names() = }", )
+print(
+    f"{problem.get_output_scalars_names() = }",
+)
 
 # %%
 # Add unique input and output field variables
-problem.add_input_field_name('in_field')
-problem.add_output_field_name('out_field')
+problem.add_input_field_name("in_field")
+problem.add_output_field_name("out_field")
 
 # Add list of input and output field variables
-problem.add_input_fields_names(['in_field2', 'in_field3'])
-problem.add_output_fields_names(['out_field2'])
+problem.add_input_fields_names(["in_field2", "in_field3"])
+problem.add_output_fields_names(["out_field2"])
 
 print()
 print(f"{problem.get_input_fields_names() = }")
-print(f"{problem.get_output_fields_names() = }", )
+print(
+    f"{problem.get_output_fields_names() = }",
+)
 
 # %%
 # Add unique input and output timeseries variables
-problem.add_input_timeseries_name('in_timeseries')
-problem.add_output_timeseries_name('out_timeseries')
+problem.add_input_timeseries_name("in_timeseries")
+problem.add_output_timeseries_name("out_timeseries")
 
 # Add list of input and output timeserie variables
-problem.add_input_timeseries_names(['in_timeseries2', 'in_timeseries3'])
-problem.add_output_timeseries_names(['out_timeseries2'])
+problem.add_input_timeseries_names(["in_timeseries2", "in_timeseries3"])
+problem.add_output_timeseries_names(["out_timeseries2"])
 
 print()
 print(f"{problem.get_input_timeseries_names() = }")
-print(f"{problem.get_output_timeseries_names() = }", )
+print(
+    f"{problem.get_output_timeseries_names() = }",
+)
 
 # %%
 # Add unique input and output mesh variables
-problem.add_input_mesh_name('in_mesh')
-problem.add_output_mesh_name('out_mesh')
+problem.add_input_mesh_name("in_mesh")
+problem.add_output_mesh_name("out_mesh")
 
 # Add list of input and output meshe variables
-problem.add_input_meshes_names(['in_mesh2', 'in_mesh3'])
-problem.add_output_meshes_names(['out_mesh2'])
+problem.add_input_meshes_names(["in_mesh2", "in_mesh3"])
+problem.add_output_meshes_names(["out_mesh2"])
 
 print()
 print(f"{problem.get_input_meshes_names() = }")
-print(f"{problem.get_output_meshes_names() = }", )
+print(
+    f"{problem.get_output_meshes_names() = }",
+)
 
 # %% [markdown]
 # ## Section 2: Configuring Problem Characteristics and retrieve data
@@ -100,7 +109,7 @@ print(f"{problem.get_output_meshes_names() = }", )
 
 # %%
 # Set the task type (e.g., regression)
-problem.set_task('regression')
+problem.set_task("regression")
 print()
 print(f"{problem.get_task() = }")
 
@@ -121,10 +130,10 @@ print(f"{dataset = }")
 # %%
 # Set startegy options for the split
 options = {
-    'shuffle': False,
-    'split_sizes': {
-        'train': 2,
-        'val': 1,
+    "shuffle": False,
+    "split_sizes": {
+        "train": 2,
+        "val": 1,
     },
 }
 
@@ -150,17 +159,29 @@ print(f"{problem.get_all_indices() = }")
 
 # %%
 print()
-print(f"{problem.filter_input_scalars_names(['in_scalar', 'in_scalar3', 'in_scalar5']) = }")
-print(f"{problem.filter_output_scalars_names(['out_scalar', 'out_scalar3', 'out_scalar5']) = }")
+print(
+    f"{problem.filter_input_scalars_names(['in_scalar', 'in_scalar3', 'in_scalar5']) = }"
+)
+print(
+    f"{problem.filter_output_scalars_names(['out_scalar', 'out_scalar3', 'out_scalar5']) = }"
+)
 print()
 print(f"{problem.filter_input_fields_names(['in_field', 'in_field3', 'in_field5']) = }")
-print(f"{problem.filter_output_fields_names(['out_field', 'out_field3', 'out_field5']) = }")
+print(
+    f"{problem.filter_output_fields_names(['out_field', 'out_field3', 'out_field5']) = }"
+)
 print()
-print(f"{problem.filter_input_timeseries_names(['in_timeseries', 'in_timeseries3', 'in_timeseries5']) = }")
-print(f"{problem.filter_output_timeseries_names(['out_timeseries', 'out_timeseries3', 'out_timeseries5']) = }")
+print(
+    f"{problem.filter_input_timeseries_names(['in_timeseries', 'in_timeseries3', 'in_timeseries5']) = }"
+)
+print(
+    f"{problem.filter_output_timeseries_names(['out_timeseries', 'out_timeseries3', 'out_timeseries5']) = }"
+)
 print()
 print(f"{problem.filter_input_meshes_names(['in_mesh', 'in_mesh3', 'in_mesh5']) = }")
-print(f"{problem.filter_output_meshes_names(['out_mesh', 'out_mesh3', 'out_mesh5']) = }")
+print(
+    f"{problem.filter_output_meshes_names(['out_mesh', 'out_mesh3', 'out_mesh5']) = }"
+)
 
 # %% [markdown]
 # ## Section 3: Saving and Loading Problem Definitions
@@ -172,7 +193,7 @@ print(f"{problem.filter_output_meshes_names(['out_mesh', 'out_mesh3', 'out_mesh5
 
 # %%
 test_pth = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
-pb_def_save_fname = os.path.join(test_pth, 'test')
+pb_def_save_fname = os.path.join(test_pth, "test")
 os.makedirs(test_pth)
 print()
 print(f"saving path: {pb_def_save_fname}")

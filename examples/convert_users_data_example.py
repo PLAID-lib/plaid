@@ -4,12 +4,12 @@
 # This code provides an example for converting user data into the PLAID (Physics Informed AI Datamodel) format.
 
 # %%
-import numpy as np
-from tqdm import tqdm
 import matplotlib.pyplot as plt
-
+import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.Containers import MeshCreationTools as MCT
+from tqdm import tqdm
+
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 
@@ -23,22 +23,26 @@ from plaid.containers.sample import Sample
 # Define nodes and triangles to create a 3D mesh.
 
 # %%
-nodes_3D = np.array([
+nodes_3D = np.array(
+    [
         [0.0, 0.0, 0.0],
         [1.0, 0.0, 0.0],
         [1.0, 1.0, 0.0],
         [0.0, 1.0, 0.0],
         [0.5, 1.5, 1.0],
-    ])
+    ]
+)
 
-triangles = np.array([
+triangles = np.array(
+    [
         [0, 1, 2],
         [0, 1, 4],
         [0, 2, 3],
         [0, 3, 4],
         [1, 2, 4],
         [2, 4, 3],
-    ])
+    ]
+)
 
 # %% [markdown]
 # ### Visualize the Mesh
@@ -48,18 +52,18 @@ triangles = np.array([
 # %%
 # Create a 3D plot
 fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
+ax = fig.add_subplot(111, projection="3d")
 
-ax.scatter(nodes_3D[:, 0], nodes_3D[:, 1], nodes_3D[:, 2], c='b', marker='o')
+ax.scatter(nodes_3D[:, 0], nodes_3D[:, 1], nodes_3D[:, 2], c="b", marker="o")
 
 for triangle in triangles:
     triangle_nodes = nodes_3D[triangle]
     triangle_nodes = np.concatenate((triangle_nodes, [triangle_nodes[0]]))
-    ax.plot(triangle_nodes[:, 0], triangle_nodes[:, 1], triangle_nodes[:, 2], c='g')
+    ax.plot(triangle_nodes[:, 0], triangle_nodes[:, 1], triangle_nodes[:, 2], c="g")
 
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.set_zlabel("Z")
 
 # Show the plot
 # plt.show()
@@ -85,12 +89,12 @@ for _ in tqdm(range(nb_meshes)):
     """ Add field defined over the nodes (all the nodes).
         The keys are the names of the fields
         the values are the actual data of size (nb nodes, nb of components)"""
-    Mesh.nodeFields['node_field'] = np.random.randn(5)
+    Mesh.nodeFields["node_field"] = np.random.randn(5)
 
     """ Add field defined over the elements (all the elements).
         The keys are the names of the fields
         the values are the actual data of size (nb elements, nb of components)"""
-    Mesh.elemFields['elem_field'] = np.random.randn(6)
+    Mesh.elemFields["elem_field"] = np.random.randn(6)
 
     meshes.append(Mesh)
 
@@ -109,7 +113,7 @@ for mesh in tqdm(meshes):
 
 # %%
 in_scalars_names = ["P", "p1", "p2", "p3", "p4", "p5"]
-out_scalars_names = ["max_von_mises","max_q","max_U2_top","max_sig22_top"]
+out_scalars_names = ["max_von_mises", "max_q", "max_U2_top", "max_sig22_top"]
 out_fields_names = ["U1", "U2", "q", "sig11", "sig22", "sig12"]
 
 samples = []
@@ -139,13 +143,9 @@ print(samples[0])
 
 # %%
 infos: dict = {
-        "legal": {
-            "owner": "Bob",
-            "license": "my_license"},
-        "data_production": {
-            "type": "simulation",
-            "physics": "3D example"}
-    }
+    "legal": {"owner": "Bob", "license": "my_license"},
+    "data_production": {"type": "simulation", "physics": "3D example"},
+}
 
 
 dataset = Dataset()
