@@ -50,6 +50,9 @@ By promoting a common standard, PLAID makes physics data interoperable across pr
 
 * **Utilities:** PLAID includes helper modules for common tasks in data science workflows. The `plaid.utils.split` module provides a `split_dataset` function to partition data into training/validation/testing subsets according to user-defined ratios. The `plaid.utils.interpolation` module implements piecewise linear interpolation routines (and fast vectorized search) to resample time series fields or align datasets with different timesteps. The `plaid.utils.stats` module offers an `OnlineStatistics` class to compute running statistics (min, mean, variance, etc.) on arrays, which can be used to analyze dataset distributions. Moreover, a “Hugging Face bridge” (`plaid.bridges.huggingface_bridge`) enables converting PLAID datasets to/from Hugging Face Dataset objects.
 
+<br>
+<br>
+
 # Usage and Applications
 
 PLAID is designed for AI/ML researchers and practitioners working with simulation data. Various datasets, including 2D/3D fluid and structural simulations, are provided in PLAID format in [Hugging Face](https://huggingface.co/PLAID-datasets) and [Zenodo](https://zenodo.org/communities/plaid_datasets). Interactive benchmarks are hosted in a [Hugging Face community](https://huggingface.co/PLAIDcompetitions) on these datasets, providing detailed instructions and PLAID commands for data retrieval and manipulation (see [@casenave2025physics]). These datasets are also used in recent publications to illustrate the performance of the proposed scientific ML methods. In [@casenave2024mmgp; @kabalan2025elasticity; @kabalan2025ommgp],  Gaussian-process regression methods with mesh morphing are applied to these datasets. In [@perez2024gaussian; @perez2024learning] the datasets are leveraged in graph-kernel regression methods applied to fluid/solid mechanics.
