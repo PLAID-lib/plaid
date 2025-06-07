@@ -1,3 +1,5 @@
+"""Common utilities for the PLAID package."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
