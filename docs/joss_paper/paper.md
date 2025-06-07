@@ -42,7 +42,7 @@ By promoting a common standard, PLAID makes physics data interoperable across pr
 
 * **Data Model and Formats:** A PLAID dataset is organized within a root folder (or archive), distinctly separating simulation data from machine learning task definitions, as illustrated in \autoref{fig:plaid_dataset_architecture}. The `dataset/` directory contains numbered sample subfolders (`sample_000...`), each holding one or more `.cgns` files under `meshes/` and a `scalars.csv`. The `dataset/infos.yaml` file contains human-readable descriptions and metadata.  A `problem_definition/` folder includes `problem_infos.yaml` (specifying the ML task inputs/outputs) and `split.csv` (defining train/test splits).  This design supports time evolution and multi-block/multi-geometry problems out of the box.
 
-![Overview of the PLAID dataset architecture.\label{fig:plaid_dataset_architecture}](plaid_architecture.png)
+![Overview of the PLAID dataset architecture.\label{fig:plaid_dataset_architecture}](plaid_architecture.png){ width=80% }
 
 * **Supported Data Types:** PLAID handles scalar, time-series and vector field data on meshes, as well as sample-specific metadata. The `get_mesh(time)` method reconstructs the full CGNS tree for a given timestep, with links resolved if requested (thereby returning the complete mesh). Thus PLAID naturally supports mesh-based simulation outputs with arbitrary element types and remeshing between time steps. Heterogeneity is allowed: missing data is supported, and outputs on testing sets may be missing on purpose to facilitate benchmark initiatives.
 
