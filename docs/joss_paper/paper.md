@@ -40,7 +40,7 @@ By promoting a common standard, PLAID makes physics data interoperable across pr
 
 # Functionality
 
-* **Data Model and Formats:** A PLAID dataset is organized within a root folder (or archive), distinctly separating simulation data from machine learning task definitions, as illustrated in Figure \autoref{fig:plaid_dataset_architecture}. The `dataset/` directory contains numbered sample subfolders (`sample_000...`), each holding one or more `.cgns` files under `meshes/` and a `scalars.csv`. The `dataset/infos.yaml` file contains human-readable descriptions and metadata.  A `problem_definition/` folder includes `problem_infos.yaml` (specifying the ML task inputs/outputs) and `split.csv` (defining train/test splits).  This design supports time evolution and multi-block/multi-geometry problems out of the box.
+* **Data Model and Formats:** A PLAID dataset is organized within a root folder (or archive), distinctly separating simulation data from machine learning task definitions, as illustrated in \autoref{fig:plaid_dataset_architecture}. The `dataset/` directory contains numbered sample subfolders (`sample_000...`), each holding one or more `.cgns` files under `meshes/` and a `scalars.csv`. The `dataset/infos.yaml` file contains human-readable descriptions and metadata.  A `problem_definition/` folder includes `problem_infos.yaml` (specifying the ML task inputs/outputs) and `split.csv` (defining train/test splits).  This design supports time evolution and multi-block/multi-geometry problems out of the box.
 
 ![Overview of the PLAID dataset architecture.\label{fig:plaid_dataset_architecture}](plaid_architecture.png)
 
