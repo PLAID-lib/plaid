@@ -40,7 +40,7 @@ By promoting a common standard, PLAID makes physics data interoperable across pr
 
 # Functionality
 
-* **Data Model and Formats:** A PLAID dataset is organized within a root folder (or archive), distinctly separating simulation data from machine learning task definitions, as illustrated in \autoref{fig:plaid_dataset_architecture}. The `dataset/` directory contains numbered sample subfolders (`sample_000...`), each holding one or more `.cgns` files under `meshes/` and a `scalars.csv`. The `dataset/infos.yaml` file contains human-readable descriptions and metadata.  A `problem_definition/` folder includes `problem_infos.yaml` (specifying the ML task inputs/outputs) and `split.csv` (defining train/test splits).  This design supports time evolution and multi-block/multi-geometry problems out of the box.
+* **Data Model and Formats:** A PLAID dataset is organized within a root folder (or archive), distinctly separating simulation data from machine learning task definitions, as illustrated in \autoref{fig:plaid_dataset_architecture}. The `dataset/` directory contains numbered sample subfolders (`sample_000...`), each holding one or more `.cgns` files under `meshes/` and a `scalars.csv`. The `dataset/infos.yaml` file contains human-readable descriptions and metadata.  The `problem_definition/` folder provides machine learning context. It includes `problem_infos.yaml` (specifying the ML task inputs/outputs) and `split.csv` (defining train/test splits).  This design supports time evolution and multi-block/multi-geometry problems out of the box.
 
 ![Overview of the PLAID dataset architecture.\label{fig:plaid_dataset_architecture}](plaid_architecture.png){ width=80% }
 
@@ -49,9 +49,6 @@ By promoting a common standard, PLAID makes physics data interoperable across pr
 * **High-Level API:** The top-level `Dataset` class manages multiple `Sample` objects. Users can create an empty `Dataset()` and add samples via `add_sample()`, or load an existing PLAID data archive by calling `Dataset("path_to_plaid_dataset")`. The `Dataset` object summarizes itself (e.g. printing “Dataset(3 samples, 2 scalars, 5 fields)”) and provides access to samples by ID. Batch operations are supported: one can `dataset.add_samples(...)` to append many samples, or use the classmethods `Dataset.load_from_dir()` and `load_from_file()` to load data from disk, with optional parallel workers. This high-level interface abstracts away low-level I/O, letting users focus on ML pipelines.
 
 * **Utilities:** PLAID includes helper modules for common tasks in data science workflows. The `plaid.utils.split` module provides a `split_dataset` function to partition data into training/validation/testing subsets according to user-defined ratios. The `plaid.utils.interpolation` module implements piecewise linear interpolation routines (and fast vectorized search) to resample time series fields or align datasets with different timesteps. The `plaid.utils.stats` module offers an `OnlineStatistics` class to compute running statistics (min, mean, variance, etc.) on arrays, which can be used to analyze dataset distributions. Moreover, a “Hugging Face bridge” (`plaid.bridges.huggingface_bridge`) enables converting PLAID datasets to/from Hugging Face Dataset objects.
-
-<br>
-<br>
 
 # Usage and Applications
 
