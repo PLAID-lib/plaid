@@ -82,7 +82,7 @@ class OnlineStatistics(object):
         """
         if x.ndim == 1:
             if self.min is not None:
-                if self.min.size == 1:
+                if self.min.shape[1] == 1:
                     # n_samples x 1
                     x = x.reshape((-1, 1))
                 else:
