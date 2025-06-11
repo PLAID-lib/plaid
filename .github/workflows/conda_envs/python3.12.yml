@@ -6,11 +6,6 @@ dependencies:
   - python=3.12
 #---# io
   - pyyaml
-#---# doc
-  - sphinx
-  - myst-nb
-  - myst-parser
-  - pylint # to use https://pylint.readthedocs.io/en/latest/pyreverse.html
 #---# mesh/graph libs
   - muscat=2.4.1
   - pycgns-core

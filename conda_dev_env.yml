@@ -30,11 +30,9 @@ dependencies:
   - pre-commit
 #---# doc
   - sphinx
+  - sphinx-autoapi
+  - sphinx-tabs
+  - sphinxcontrib-bibtex
   - myst-nb
   - myst-parser
-  - pip
-  - pip:
-    - furo
-    - sphinx-autoapi
-    - sphinx-tabs
-    - sphinxcontrib.bibtex
+  - furo
