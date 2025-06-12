@@ -35,10 +35,10 @@ git clone https://github.com/PLAID-lib/plaid.git
 
 ### 2.1 Development dependencies
 
-To configure an environment manually, you can follow the dependencies listed in ``conda_dev_env.yml``, or generate it using conda:
+To configure an environment manually, you can follow the dependencies listed in ``environment.yml``, or generate it using conda:
 
 ```bash
-conda env create -f conda_dev_env.yml
+conda env create -f environment.yml
 ```
 
 Then, to install the library:
