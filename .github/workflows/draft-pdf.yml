@@ -15,7 +15,7 @@ jobs:
       - name: Build joss draft PDF
         uses: xuanxu/paper-action@main
         with:
-          repository_url: http://github.com/orgs/PLAID-lib/plaid
+          repository_url: http://github.com/PLAID-lib/plaid
           branch: main
           issue_id: 8393
           journal: joss
