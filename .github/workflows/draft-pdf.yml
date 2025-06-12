@@ -1,4 +1,8 @@
 name: Draft JOSS PDF
+
+permissions:
+  contents: read
+
 on:
   push:
     paths:

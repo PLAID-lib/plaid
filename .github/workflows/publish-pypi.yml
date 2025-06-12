@@ -7,6 +7,8 @@ on:
 jobs:
   test:
     name: test
+    permissions:
+      contents: read
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -56,6 +58,8 @@ jobs:
   build:
     name: Build wheels for multiple Python versions
     needs: test
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
 
     steps:

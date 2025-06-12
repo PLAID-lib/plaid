@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: '0 0 * * *'  # Every day at 00:00 UTC
 
+permissions:
+  contents: read
+
 jobs:
   doc:
     runs-on: ubuntu-latest
