@@ -37,17 +37,24 @@ jobs:
       - name: Create environment
         run: |
           conda create -n plaid-dev python=${{ matrix.python-version }} muscat=2.4.1 poetry
+
+      - name: Install HDF5 for Windows
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          conda install -n plaid-dev -y hdf5 pkg-config
+
+      - name: Install Python dependencies and plaid
+        run: |
           conda run -n plaid-dev poetry install
 
       - name: Run tests on Linux
         if: runner.os == 'Linux'
-        shell: bash
         run: |
           conda run -n plaid-dev pytest tests --cov=src --cov-report=xml --cov-report=term
 
       - name: Run tests on macOS
         if: runner.os == 'macOS'
-        shell: bash
         run: |
           conda run -n plaid-dev pytest tests
 
@@ -59,7 +66,6 @@ jobs:
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
-        shell: bash
         run: |
           cd examples
           conda run -n plaid-dev bash run_examples.sh
