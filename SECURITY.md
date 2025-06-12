@@ -1,6 +1,6 @@
 # Security Policy
 
-This security policy applies to public projects under the [plaid] project on GitHub.
+This security policy applies to the [plaid] project on GitHub.
 
 ## Security/Bugfix Versions
 
