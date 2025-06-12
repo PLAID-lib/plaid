@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           activate-environment: plaid-dev
-          channels: conda-forge
+          channels: conda-forge, nodefaults
           channel-priority: strict
           miniforge-variant: Miniforge3
           auto-update-conda: true
@@ -37,39 +37,39 @@ jobs:
       - name: Create environment
         run: |
           conda install -n plaid-dev -c conda-forge muscat=2.4.1 poetry
-          poetry install
+          conda run -n plaid-dev poetry install
 
       - name: Run tests on Linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          pytest tests --cov=src --cov-report=xml --cov-report=term
+          conda run -n plaid-dev pytest tests --cov=src --cov-report=xml --cov-report=term
 
       - name: Run tests on macOS
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          pytest tests
+          conda run -n plaid-dev pytest tests
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          pytest tests
+          conda run -n plaid-dev pytest tests
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
         shell: bash
         run: |
           cd examples
-          bash run_examples.sh
+          conda run -n plaid-dev bash run_examples.sh
 
       - name: Run examples on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           cd examples
-          run_examples.bat
+          conda run -n plaid-dev run_examples.bat
 
       - name: Upload coverage to Codecov (Linux only)
         if: runner.os == 'Linux'
