@@ -22,7 +22,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Conda with Mamba
+      - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
           use-mamba: true
@@ -32,7 +32,7 @@ jobs:
       - name: Create environment
         run: |
           conda create -n plaid-dev python=${{ matrix.python-version }} muscat=2.4.1 poetry
-          poetry install
+          conda run -n plaid-dev poetry install
 
       - name: Run tests on Linux
         if: runner.os == 'Linux'
