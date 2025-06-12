@@ -18,9 +18,9 @@ authors:
   orcid: 0009-0001-7474-944X
   affiliation: [1, 2]
 affiliations:
-- name: SafranTech, Safran Tech, Digital Sciences & Technologies, 78114 Magny-Les-Hameaux, France
+- name: SafranTech, Safran Tech, Digital Sciences \& Technologies, 78114 Magny-Les-Hameaux, France
   index: 1
-- name: EPITA, 14-16 Rue Voltaire, 94270 Le Kremlin-Bicêtre, France
+- name: EPITA, 14-16 Rue Voltaire, 94270 Le Kremlin-Bic\hat{e}tre, France
   index: 2
 bibliography: paper.bib
 ---
