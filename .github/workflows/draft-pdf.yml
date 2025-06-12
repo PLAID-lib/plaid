@@ -13,12 +13,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Build joss draft PDF
-        uses: openjournals/openjournals-draft-action@master
+        id: generate-files
+        uses: xuanxu/paper-action@main
         with:
+          repository_url: http://github.com/PLAID-lib/plaid
+          branch: action_paper
+          issue_id: 8393
           journal: joss
-          paper-path: docs/joss_paper/paper.md
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: paper
-          path: docs/joss_paper/paper.pdf
+          path: ${{ steps.generate-files.outputs.pdf_path}}

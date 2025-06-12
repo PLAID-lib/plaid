@@ -549,7 +549,9 @@ class Test_Sample:
             base_name=base_name,
         )
         assert sample.get_zone_names(base_name) == ["zone_name_1", "zone_name_2"]
-        assert sorted(sample.get_zone_names(base_name, unique = True)) == sorted(["zone_name_1", "zone_name_2"])
+        assert sorted(sample.get_zone_names(base_name, unique=True)) == sorted(
+            ["zone_name_1", "zone_name_2"]
+        )
         assert sample.get_zone_names(base_name, full_path=True) == [
             f"{base_name}/zone_name_1",
             f"{base_name}/zone_name_2",
