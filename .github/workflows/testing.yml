@@ -22,42 +22,53 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: plaid-dev
+          channels: conda-forge
+          miniforge-variant: Miniforge3
+          auto-update-conda: true
+          auto-activate-base: false
+          use-mamba: false
+
       - name: Create environment
         run: |
-          conda create -n plaid-dev python=${{ matrix.python-version }} muscat=2.4.1 poetry
-          conda run -n plaid-dev poetry install
+          conda install -n plaid-dev muscat=2.4.1 poetry
+          plaid-dev poetry install
 
       - name: Run tests on Linux
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          conda run -n plaid-dev pytest tests --cov=src --cov-report=xml --cov-report=term
+          pytest tests --cov=src --cov-report=xml --cov-report=term
 
       - name: Run tests on macOS
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          conda run -n plaid-dev pytest tests
+          plaid-dev pytest tests
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          mamba run -n plaid-dev pytest tests
+          plaid-dev pytest tests
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
         shell: bash
         run: |
           cd examples
-          mamba run -n plaid-dev bash run_examples.sh
+          plaid-dev bash run_examples.sh
 
       - name: Run examples on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           cd examples
-          mamba run -n plaid-dev run_examples.bat
+          plaid-dev run_examples.bat
 
       - name: Upload coverage to Codecov (Linux only)
         if: runner.os == 'Linux'

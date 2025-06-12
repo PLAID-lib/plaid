@@ -17,12 +17,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: 3.11
+          activate-environment: plaid-dev
+          channels: conda-forge
+          miniforge-variant: Miniforge3
+          auto-update-conda: true
+          auto-activate-base: false
+          use-mamba: false
+
       - name: Create environment
         run: |
-          conda create -n plaid-dev python=3.11 muscat=2.4.1 poetry
-          conda run -n plaid-dev poetry install --with docs
+          conda install -n plaid-dev muscat=2.4.1 poetry
+          poetry install --with docs
 
       - name: Compile documentation
         run: |
           cd docs
-          conda run -n plaid-dev bash generate_doc.sh
+          plaid-dev bash generate_doc.sh
