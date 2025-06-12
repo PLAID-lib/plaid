@@ -25,18 +25,13 @@ jobs:
       - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: ${{ matrix.python-version }}
-          activate-environment: plaid-dev
-          channels: conda-forge, nodefaults
-          channel-priority: strict
-          miniforge-variant: Miniforge3
-          auto-update-conda: true
-          auto-activate-base: false
           use-mamba: false
+          auto-activate-base: false
+          miniforge-variant: Miniforge3
 
       - name: Create environment
         run: |
-          conda install -n plaid-dev -c conda-forge muscat=2.4.1 poetry
+          conda create -n plaid-dev python=${{ matrix.python-version }} muscat=2.4.1 poetry
           conda run -n plaid-dev poetry install
 
       - name: Run tests on Linux
