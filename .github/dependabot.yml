@@ -7,11 +7,3 @@ updates:
     open-pull-requests-limit: 5
     allow:
       - dependency-type: "direct"
-
-  - package-ecosystem: "conda"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
-    allow:
-      - dependency-type: "direct"
