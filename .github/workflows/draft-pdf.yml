@@ -16,7 +16,7 @@ jobs:
         uses: xuanxu/paper-action@main
         with:
           repository_url: http://github.com/PLAID-lib/plaid
-          branch: main
+          branch: action_paper
           issue_id: 8393
           journal: joss
       - name: Upload
