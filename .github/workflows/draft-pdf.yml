@@ -20,11 +20,8 @@ jobs:
           branch: action_paper
           issue_id: 8393
           journal: joss
-      - name: Upload PDF
-        id: upload-pdf
-        uses: xuanxu/upload-files-action@main
+      - name: Upload
+        uses: actions/upload-artifact@v4
         with:
-          papers_repo: openjournals/joss-papers
-          branch_prefix: joss
-          issue_id: 8393
-          pdf_path: ${{ steps.generate-files.outputs.pdf_path}}
+          name: paper
+          path: ${{ steps.generate-files.outputs.pdf_path}}
