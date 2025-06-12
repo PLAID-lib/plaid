@@ -57,6 +57,8 @@ jobs:
     name: Build wheels for multiple Python versions
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
