@@ -10,13 +10,13 @@ date: "07 June 2025"
 authors:
 - name: Fabien Casenave
   orcid: 0000-0002-8810-9128
-  affiliation: 1
+  affiliation: "1"
 - name: Xavier Roynard
   orcid: 0000-0001-7840-2120
-  affiliation: 1
+  affiliation: "1"
 - name: Alexandre Devaux--Rivière
   orcid: 0009-0001-7474-944X
-  affiliation: [1, 2]
+  affiliation: ["1", "2"]
 affiliations:
 - name: SafranTech, Safran Tech, Digital Sciences & Technologies, 78114 Magny-Les-Hameaux, France
   index: 1
