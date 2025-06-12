@@ -26,10 +26,11 @@ jobs:
 
       - name: Create environment
         run: |
-          mamba env create -f docs/requirements.yml
-          mamba run -n plaid pip install -e .
+          conda create -n plaid-dev python=3.11 muscat=2.4.1 poetry
+          conda activate plaid-dev
+          poetry install --with docs
 
       - name: Compile documentation
         run: |
           cd docs
-          mamba run -n plaid bash generate_doc.sh
+          conda run -n plaid-dev bash generate_doc.sh

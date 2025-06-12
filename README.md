@@ -64,16 +64,12 @@ git clone https://github.com/PLAID-lib/plaid.git
 
 #### 2.2.1 Development dependencies
 
-To configure an environment manually, you can follow the dependencies listed in ``environment.yml``, or generate it using conda:
+Conda (or mamba) is needed to configure an environment development:
 
 ```bash
-conda env create -f environment.yml
-```
-
-Then, to install the library:
-
-```bash
-pip install -e .[dev]
+conda create -n plaid-dev python=3.11 muscat=2.4.1 poetry
+conda activate plaid-dev
+poetry install
 ```
 
 **Note**

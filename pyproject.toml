@@ -3,19 +3,42 @@ name = "pyplaid"
 version = "0.1.5"
 description = "A package that implements a data model tailored for AI and ML in the context of physics problems"
 authors = ["Safran <fabien.casenave@safrangroup.com>"]
-license = "BSD-3-Clause"
 readme = "README.md"
+license = "BSD-3-Clause"
+
+keywords = ["machine learning", "physics", "data-model", "Safran"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+homepage = "https://plaid-lib.github.io"
+repository = "https://github.com/PLAID-lib/plaid"
+documentation = "https://plaid-lib.readthedocs.io"
+
 packages = [
     { include = "plaid", from = "src" }
 ]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
 tqdm = "*"
 pyyaml = "*"
-pycgns-core = "*"
-numpy = "*"
-matplotlib-base = "*"
+pycgns = "*"
+numpy = "<2.0"
+matplotlib = "*"
 rich = "*"
 scikit-learn = "*"
 datasets = ">=3.0"
@@ -35,6 +58,3 @@ furo = "*"
 sphinx-autoapi = "*"
 sphinx-tabs = "*"
 sphinxcontrib-bibtex = "*"
-
-[build-system]
-requires = ["poetry"]
