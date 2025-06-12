@@ -23,6 +23,7 @@ jobs:
           python-version: 3.11
           activate-environment: plaid-dev
           channels: conda-forge
+          channel-priority: strict
           miniforge-variant: Miniforge3
           auto-update-conda: true
           auto-activate-base: false
@@ -30,10 +31,10 @@ jobs:
 
       - name: Create environment
         run: |
-          conda install -n plaid-dev muscat=2.4.1 poetry
+          conda install -n plaid-dev -c conda-forge muscat=2.4.1 poetry
           poetry install --with docs
 
       - name: Compile documentation
         run: |
           cd docs
-          plaid-dev bash generate_doc.sh
+          bash generate_doc.sh

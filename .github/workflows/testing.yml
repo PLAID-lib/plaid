@@ -28,6 +28,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
           activate-environment: plaid-dev
           channels: conda-forge
+          channel-priority: strict
           miniforge-variant: Miniforge3
           auto-update-conda: true
           auto-activate-base: false
@@ -35,8 +36,8 @@ jobs:
 
       - name: Create environment
         run: |
-          conda install -n plaid-dev muscat=2.4.1 poetry
-          plaid-dev poetry install
+          conda install -n plaid-dev -c conda-forge muscat=2.4.1 poetry
+          poetry install
 
       - name: Run tests on Linux
         if: runner.os == 'Linux'
@@ -48,27 +49,27 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          plaid-dev pytest tests
+          pytest tests
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          plaid-dev pytest tests
+          pytest tests
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
         shell: bash
         run: |
           cd examples
-          plaid-dev bash run_examples.sh
+          bash run_examples.sh
 
       - name: Run examples on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           cd examples
-          plaid-dev run_examples.bat
+          run_examples.bat
 
       - name: Upload coverage to Codecov (Linux only)
         if: runner.os == 'Linux'
