@@ -27,7 +27,6 @@ jobs:
       - name: Create environment
         run: |
           conda create -n plaid-dev python=3.11 muscat=2.4.1 poetry
-          conda activate plaid-dev
           poetry install --with docs
 
       - name: Compile documentation
