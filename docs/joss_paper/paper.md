@@ -16,7 +16,7 @@ authors:
   affiliation: 1
 - name: Alexandre Devaux--Rivi\`{e}re
   orcid: 0009-0001-7474-944X
-  affiliation: 1,2
+  affiliation: [1, 2]
 affiliations:
 - name: SafranTech, Safran Tech, Digital Sciences & Technologies, 78114 Magny-Les-Hameaux, France
   index: 1
