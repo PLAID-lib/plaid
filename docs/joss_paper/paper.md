@@ -14,7 +14,7 @@ authors:
 - name: Xavier Roynard
   orcid: 0000-0001-7840-2120
   affiliation: 1
-- name: Alexandre Devaux--Rivière
+- name: Alexandre Devaux--Rivi\`{e}re
   orcid: 0009-0001-7474-944X
   affiliation: 1,2
 affiliations:
