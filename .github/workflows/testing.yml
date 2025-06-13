@@ -39,8 +39,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          python_version=${{ matrix.python-version }}
-          sed -i.bak "s/^  - python=.*/  - python=${python_version}/" environment.yml
+          $python_version = '${{ matrix.python-version }}'
+          $file = 'environment.yml'
+          (Get-Content $file) -replace '^\s+- python=.*', "  - python=$python_version" | Set-Content $file
 
       - name: Create environment
         run: |
