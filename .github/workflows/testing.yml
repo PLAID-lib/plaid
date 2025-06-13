@@ -22,41 +22,55 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Conda with Mamba
-        uses: conda-incubator/setup-miniconda@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
         with:
-          use-mamba: true
-          auto-activate-base: false
-          miniforge-variant: Miniforge3
+          python-version: ${{ matrix.python-version }}
+
+      - name: Modify environment.yml with matrix Python version
+        run: |
+          python_version=${{ matrix.python-version }}
+          # Replace python=... line in environment.yml or add it if missing
+          if grep -q "^  - python=" environment.yml; then
+            sed -i "s/^  - python=.*/  - python=${python_version}/" environment.yml
+          else
+            # Insert python=version after 'dependencies:' line
+            sed -i "/dependencies:/a\  - python=${python_version}" environment.yml
+          fi
 
       - name: Create environment
         run: |
-          mamba env create -f .github/workflows/conda_envs/python${{ matrix.python-version }}.yml
-          mamba run -n plaid_python${{ matrix.python-version }} pip install -e .
+          conda env create -n plaid-dev -f environment.yml
+          conda run -n n plaid-dev pip install -e .
 
-      - name: Run tests on Unix
-        if: runner.os != 'Windows'
+      - name: Run tests on Linux
+        if: runner.os == 'Linux'
         run: |
-          mamba run -n plaid_python${{ matrix.python-version }} pytest tests --cov=src --cov-report=xml --cov-report=term
+          conda run -n plaid-dev pytest tests --cov=src --cov-report=xml --cov-report=term
+
+      - name: Run tests on macOS
+        if: runner.os == 'macOS'
+        run: |
+          conda run -n plaid-dev pytest tests
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+          conda run -n plaid-dev pytest tests
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
         run: |
           cd examples
-          mamba run -n plaid_python${{ matrix.python-version }} bash run_examples.sh
+          conda run -n plaid-dev bash run_examples.sh
 
       - name: Run examples on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           cd examples
-          mamba run -n plaid_python${{ matrix.python-version }} run_examples.bat
+          conda run -n plaid-dev run_examples.bat
 
       - name: Upload coverage to Codecov (Linux only)
         if: runner.os == 'Linux'
@@ -72,7 +86,7 @@ jobs:
     #     with:
     #       miniforge-variant: Miniforge3
     #       miniforge-version: latest
-    #       use-mamba: true
+    #       use-conda: true
     #       auto-activate-base: false
     #       auto-update-conda: true
     #       activate-environment: plaid_python${{ matrix.python-version }}
