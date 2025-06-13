@@ -8,10 +8,10 @@ sphinx:
   configuration: docs/conf.py
 
 conda:
-  environment: docs/requirements.yml
+  environment: environment.yml
 
 build:
-  os: "ubuntu-20.04"
+  os: "ubuntu-22.04"
   tools:
     python: "mambaforge-4.10"
 
