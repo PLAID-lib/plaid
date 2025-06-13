@@ -86,14 +86,3 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           name: python-${{ matrix.python-version }}
           verbose: true
-
-    #   - name: Set up Miniconda
-    #     uses: conda-incubator/setup-miniconda@v2
-    #     with:
-    #       miniforge-variant: Miniforge3
-    #       miniforge-version: latest
-    #       use-conda: true
-    #       auto-activate-base: false
-    #       auto-update-conda: true
-    #       activate-environment: plaid_python${{ matrix.python-version }}
-    #       environment-file: .github/workflows/conda_envs/python${{ matrix.python-version }}.yml

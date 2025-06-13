@@ -5,59 +5,8 @@ on:
     types: [created]
 
 jobs:
-  test:
-    name: test
-    permissions:
-      contents: read
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [3.11, 3.12]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Conda with Mamba
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          use-mamba: true
-          auto-activate-base: false
-          miniforge-variant: Miniforge3
-
-      - name: Create environment
-        run: |
-          mamba env create -f .github/workflows/conda_envs/python${{ matrix.python-version }}.yml
-          mamba run -n plaid_python${{ matrix.python-version }} pip install -e .
-
-      - name: Run tests on Unix
-        if: runner.os != 'Windows'
-        run: |
-          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
-
-      - name: Run tests on Windows
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
-
-      - name: Run examples on Unix
-        if: runner.os != 'Windows'
-        run: |
-          cd examples
-          mamba run -n plaid_python${{ matrix.python-version }} bash run_examples.sh
-
-      - name: Run examples on Windows
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          cd examples
-          mamba run -n plaid_python${{ matrix.python-version }} run_examples.bat
-
   build:
-    name: Build wheels for multiple Python versions
-    needs: test
+    name: Build wheels
     permissions:
       contents: read
     runs-on: ubuntu-latest
