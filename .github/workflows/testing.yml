@@ -27,16 +27,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Modify environment.yml with matrix Python version
+      - name: Modify environment.yml with matrix Python version (Linux/macOS)
+        if: runner.os != 'Windows'
         run: |
           python_version=${{ matrix.python-version }}
-          # Replace python=... line in environment.yml or add it if missing
-          if grep -q "^  - python=" environment.yml; then
-            sed -i "s/^  - python=.*/  - python=${python_version}/" environment.yml
-          else
-            # Insert python=version after 'dependencies:' line
-            sed -i "/dependencies:/a\  - python=${python_version}" environment.yml
-          fi
+          sed -i.bak "s/^  - python=.*/  - python=${python_version}/" environment.yml
+
+          - name: Modify environment.yml with matrix Python version (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          python_version=${{ matrix.python-version }}
+          sed -i.bak "s/^  - python=.*/  - python=${python_version}/" environment.yml
 
       - name: Create environment
         run: |
