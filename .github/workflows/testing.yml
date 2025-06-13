@@ -22,10 +22,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          use-mamba: false
+          auto-activate-base: false
+          miniforge-variant: Miniforge3
 
       - name: Modify environment.yml with matrix Python version (Linux/macOS)
         if: runner.os != 'Windows'
@@ -43,7 +45,7 @@ jobs:
       - name: Create environment
         run: |
           conda env create -n plaid-dev -f environment.yml
-          conda run -n n plaid-dev pip install -e .
+          conda run -n plaid-dev pip install -e .
 
       - name: Run tests on Linux
         if: runner.os == 'Linux'
