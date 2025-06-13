@@ -1,0 +1,31 @@
+[workspace]
+authors = ["Fabien Casenave <fabien.casenave@safrangroup.com>"]
+channels = ["conda-forge", "nodefaults"]
+platforms = ["linux-64", "osx-64", "win-64"]
+name = "plaid"
+version = "0.1.0"
+
+[tasks]
+
+[dependencies]
+python = "3.11.*"
+tqdm = "*"
+pyyaml = "*"
+pycgns-core = "*"
+scikit-learn = "*"
+datasets = ">=3.0"
+numpy = "*"
+matplotlib-base = "*"
+pydantic = "*"
+muscat = "2.4.1.*"
+pytest = "*"
+pytest-cov = "*"
+ruff = "*"
+pre-commit = "*"
+sphinx = "*"
+sphinx-autoapi = "*"
+sphinx-tabs = "*"
+sphinxcontrib-bibtex = "*"
+myst-nb = "*"
+myst-parser = "*"
+furo = "*"

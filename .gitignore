@@ -73,6 +73,10 @@ docs/source/notebooks/*.yaml
 *.cgns
 !notebooks/ex_rotor37_pv.cgns
 
+# pixi environments
+.pixi
+*.egg-info
+
 ###############################################################################
 # .gitignore PATTERN FORMAT:
 #  - A blank line matches no files, so it can serve as a separator for readability.
@@ -107,3 +111,4 @@ docs/source/notebooks/*.yaml
 #  - A slash followed by two consecutive asterisks then a slash matches zero or more directories.
 #    For example, "a/**/b" matches "a/b", "a/x/b", "a/x/y/b" and so on.
 #  - Other consecutive asterisks are considered regular asterisks and will match according to the previous rules.
+
