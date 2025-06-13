@@ -44,7 +44,7 @@ conda env create -f environment.yml
 Then, to install the library:
 
 ```bash
-pip install -e .[dev]
+pip install -e .
 ```
 
 **Note**
