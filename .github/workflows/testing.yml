@@ -33,7 +33,7 @@ jobs:
       - name: Modify environment.yml with matrix Python version (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
-          python_version=${{ matrix.python-version }}
+          python_version = '${{ matrix.python-version }}''
           sed -i.bak "s/^  - python=.*/  - python=${python_version}/" environment.yml
 
       - name: Modify environment.yml with matrix Python version (Windows)
