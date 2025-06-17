@@ -26,18 +26,6 @@ jobs:
             echo "range=${{ github.event.before }}..${{ github.sha }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Parse sensitive scan config
-        id: config
-        run: |
-          echo '${{ secrets.SENSITIVE_PATTERNS }}' > config.json
-
-          # Extract regex
-          regex=$(jq -r '.regex' config.json)
-          echo "regex=$regex" >> $GITHUB_ENV
-
-          # Extract strings to a bash array
-          jq -r '.strings[]' config.json > strings.txt
-
       - name: Scan code and commits for sensitive patterns
         run: |
           set -e
@@ -45,9 +33,11 @@ jobs:
           echo "Scanning commits in $range"
 
           has_violation=0
-          regex="$regex"
 
-          mapfile -t strings < strings.txt
+          echo '${{ secrets.SENSITIVE_PATTERNS }}' > config.json
+
+          regex=$(jq -r '.regex' config.json)
+          jq -r '.strings[]' config.json > strings.txt
 
           git log "$range" --pretty=format:'%H|%s|%an|%ae|%cn|%ce' | while IFS='|' read -r hash msg an ae cn ce; do
             for field in "$msg" "$an" "$ae" "$cn" "$ce"; do
