@@ -10,7 +10,7 @@
 # %% Imports
 
 import logging
-from typing import Union
+from typing import List, Union
 
 import numpy as np
 
@@ -60,7 +60,18 @@ def aggregate_stats(
 
 
 class OnlineStatistics(object):
-    """OnlineStatistics is a class for computing online statistics (e.g., min, max, mean, variance, and standard deviation) of numpy arrays."""
+    """OnlineStatistics is a class for computing online statistics of numpy arrays.
+
+    This class computes running statistics (min, max, mean, variance, std) for streaming data
+    without storing all samples in memory.
+
+    Example:
+        >>> stats = OnlineStatistics()
+        >>> stats.add_samples(np.array([[1, 2], [3, 4]]))
+        >>> stats.add_samples(np.array([[5, 6]]))
+        >>> print(stats.get_stats()['mean'])
+        [[3. 4.]]
+    """
 
     def __init__(self) -> None:
         """Initialize an empty OnlineStatistics object."""
@@ -70,6 +81,7 @@ class OnlineStatistics(object):
         self.mean: np.ndarray = None
         self.var: np.ndarray = None
         self.std: np.ndarray = None
+        self._n_features: int = None  # Add feature dimension tracking
 
     def add_samples(self, x: np.ndarray) -> None:
         """Add samples to compute statistics for.
@@ -79,23 +91,36 @@ class OnlineStatistics(object):
 
         Raises:
             ShapeError: Raised when there is an inconsistency in the shape of the input array.
+            ValueError: Raised when input contains NaN or Inf values.
         """
+        # Validate input
+        if not isinstance(x, np.ndarray):
+            raise TypeError("Input must be a numpy array")
+
+        if np.any(~np.isfinite(x)):
+            raise ValueError("Input contains NaN or Inf values")
+
+        # Handle 1D arrays
         if x.ndim == 1:
             if self.min is not None:
                 if self.min.shape[1] == 1:
-                    # n_samples x 1
                     x = x.reshape((-1, 1))
                 else:
-                    # 1 x n_features
                     x = x.reshape((1, -1))
-            else:  # pragma: no cover
-                raise ShapeError(
-                    "can't determine if input array with ndim=1, is 1 x n_features or n_samples x 1"
-                )
+            else:
+                x = x.reshape((-1, 1))  # Default to column vector
+
+        # Handle n-dimensional arrays
         elif x.ndim > 2:
-            # suppose last dim is features dim, all previous dims are space
-            # dims and are aggregated
             x = x.reshape((-1, x.shape[-1]))
+
+        # Validate feature dimension
+        if self._n_features is not None and x.shape[1] != self._n_features:
+            raise ShapeError(
+                f"Input has {x.shape[1]} features but expected {self._n_features}"
+            )
+        else:
+            self._n_features = x.shape[1]
 
         added_n_samples = len(x)
         added_min = np.min(x, axis=0, keepdims=True)
@@ -166,12 +191,19 @@ class OnlineStatistics(object):
         }
 
 
-class Stats(object):
-    """Stats is a class for aggregating and computing statistics for datasets."""
+class Stats:
+    """Class for aggregating and computing statistics across datasets.
+
+    The Stats class processes both scalar and field data from samples or datasets,
+    computing running statistics like min, max, mean, variance and standard deviation.
+
+    Attributes:
+        _stats (dict[str, OnlineStatistics]): Dictionary mapping data identifiers to their statistics
+    """
 
     def __init__(self):
         """Initialize an empty Stats object."""
-        self._stats = {}
+        self._stats: dict[str, OnlineStatistics] = {}
 
     def add_dataset(self, dset: Dataset) -> None:
         """Add a dataset to compute statistics for.
@@ -181,23 +213,32 @@ class Stats(object):
         """
         self.add_samples(dset)
 
-    def add_samples(self, samples: Union[list[Sample], Dataset]) -> None:
-        """Add samples (or a dataset) to compute statistics for.
+    def add_samples(self, samples: Union[List[Sample], Dataset]) -> None:
+        """Add samples or a dataset to compute statistics for.
+
+        Processes both scalar and field data from the provided samples,
+        computing running statistics for each data identifier.
 
         Args:
-            samples (Union[list[Sample],Dataset]): The list of samples or a dataset to add.
-        """
-        # ---# Aggregate
-        new_data = {}
-        for sample in samples:
-            # ---# Scalars
-            for s_name in sample.get_scalar_names():
-                if s_name not in new_data:
-                    new_data[s_name] = []
-                new_data[s_name].append(sample.get_scalar(s_name))
+            samples (Union[List[Sample], Dataset]): List of samples or dataset to process
 
-            # ---# Fields
-            # TODO
+        Raises:
+            TypeError: If samples is not a List[Sample] or Dataset
+            ValueError: If a sample contains invalid data
+        """
+        # Input validation
+        if not isinstance(samples, (list, Dataset)):
+            raise TypeError("samples must be a List[Sample] or Dataset")
+
+        # Process each sample
+        new_data: dict[str, list] = {}
+
+        for sample in samples:
+            # Process scalars
+            self._process_scalar_data(sample, new_data)
+
+            # Process fields
+            self._process_field_data(sample, new_data)
 
             # ---# Categorical
             # TODO
@@ -208,42 +249,137 @@ class Stats(object):
             # ---# TemporalSupport
             # TODO
 
-        # ---# Process
-        for name in new_data:
-            # new_shapes = [value.shape for value in new_data[name] if value.shape!=new_data[name][0].shape]
-            # has_same_shape = (len(new_shapes)==0)
-            has_same_shape = True
+        # Update statistics
+        self._update_statistics(new_data)
 
-            if has_same_shape:
-                new_data[name] = np.array(new_data[name])
-            else:  # pragma: no cover  ### remove "no cover" when "has_same_shape = True" is no longer used
-                if name in self._stats:
-                    self._stats[name].flatten_array()
-                new_data[name] = np.concatenate(
-                    [np.ravel(value) for value in new_data[name]]
-                )
+    def get_stats(
+        self, identifiers: list[str] = None
+    ) -> dict[str, dict[str, np.ndarray]]:
+        """Get computed statistics for specified data identifiers.
 
-            if new_data[name].ndim == 1:
-                new_data[name] = new_data[name].reshape((-1, 1))
-
-            if name not in self._stats:
-                self._stats[name] = OnlineStatistics()
-
-            self._stats[name].add_samples(new_data[name])
-
-    def get_stats(self) -> dict[str, dict[str, np.ndarray]]:
-        """Get computed statistics for different data identifiers.
+        Args:
+            identifiers (list[str], optional): List of data identifiers to retrieve.
+                If None, returns statistics for all identifiers.
 
         Returns:
-            dict[str,dict[str,np.ndarray]]: A dictionary containing computed statistics for different data identifiers.
+            dict[str, dict[str, np.ndarray]]: Dictionary mapping identifiers to their statistics
         """
+        if identifiers is None:
+            identifiers = self.get_available_statistics()
+
         stats = {}
-        for identifier in self._stats:
-            stats[identifier] = {}
-            for stat_name, stat_value in self._stats[identifier].get_stats().items():
-                stats[identifier][stat_name] = np.squeeze(stat_value)
+        for identifier in identifiers:
+            if identifier in self._stats:
+                stats[identifier] = {}
+                for stat_name, stat_value in (
+                    self._stats[identifier].get_stats().items()
+                ):
+                    stats[identifier][stat_name] = np.squeeze(stat_value)
 
         return stats
+
+    def get_available_statistics(self) -> list[str]:
+        """Get list of data identifiers with computed statistics.
+
+        Returns:
+            list[str]: List of data identifiers
+        """
+        return sorted(self._stats.keys())
+
+    def clear_statistics(self) -> None:
+        """Clear all computed statistics."""
+        self._stats.clear()
+
+    def merge_stats(self, other: "Stats") -> None:
+        """Merge statistics from another Stats object.
+
+        Args:
+            other (Stats): Stats object to merge with
+        """
+        for name, stats in other._stats.items():
+            if name not in self._stats:
+                self._stats[name] = OnlineStatistics()
+            for time_series in stats.get_stats().values():
+                self._stats[name].add_samples(time_series)
+
+    def _process_scalar_data(self, sample: Sample, data_dict: dict[str, list]) -> None:
+        """Process scalar data from a sample.
+
+        Args:
+            sample (Sample): Sample containing scalar data
+            data_dict (dict[str, list]): Dictionary to store processed data
+        """
+        for name in sample.get_scalar_names():
+            if name not in data_dict:
+                data_dict[name] = []
+            value = sample.get_scalar(name)
+            if value is not None:
+                data_dict[name].append(value)
+
+    def _process_field_data(self, sample: Sample, data_dict: dict[str, list]) -> None:
+        """Process field data from a sample.
+
+        Args:
+            sample (Sample): Sample containing field data
+            data_dict (dict[str, list]): Dictionary to store processed data
+        """
+        for time in sample.get_all_mesh_times():
+            for base in sample.get_base_names(time=time):
+                for zone in sample.get_zone_names(base_name=base, time=time):
+                    for field_name in sample.get_field_names(
+                        zone_name=zone, base_name=base, time=time
+                    ):
+                        if field_name not in data_dict:
+                            data_dict[field_name] = []
+                        field = sample.get_field(
+                            field_name, zone_name=zone, base_name=base, time=time
+                        )
+                        if field is not None:
+                            data_dict[field_name].append(field)
+
+    def _update_statistics(self, new_data: dict[str, list]) -> None:
+        """Update running statistics with new data.
+
+        Args:
+            new_data (dict[str, list]): Dictionary containing new data to process
+        """
+        for name, values in new_data.items():
+            if len(values) > 0:
+                if name not in self._stats:
+                    self._stats[name] = OnlineStatistics()
+
+                # Convert to numpy array and reshape if needed
+                data = np.asarray(values)
+                if data.ndim == 1:
+                    data = data.reshape(-1, 1)
+
+                try:
+                    self._stats[name].add_samples(data)
+                except Exception as e:
+                    logging.warning(f"Failed to process {name}: {str(e)}")
+
+        # # old version of _update_statistics logic
+        # for name in new_data:
+        #     # new_shapes = [value.shape for value in new_data[name] if value.shape!=new_data[name][0].shape]
+        #     # has_same_shape = (len(new_shapes)==0)
+        #     has_same_shape = True
+
+        #     if has_same_shape:
+        #         new_data[name] = np.array(new_data[name])
+        #     else:  # pragma: no cover  ### remove "no cover" when "has_same_shape = True" is no longer used
+        #         if name in self._stats:
+        #             self._stats[name].flatten_array()
+        #         new_data[name] = np.concatenate(
+        #             [np.ravel(value) for value in new_data[name]]
+        #         )
+
+        #     if new_data[name].ndim == 1:
+        #         new_data[name] = new_data[name].reshape((-1, 1))
+
+        #     if name not in self._stats:
+        #         self._stats[name] = OnlineStatistics()
+
+        #     self._stats[name].add_samples(new_data[name])
 
     # TODO : FAIRE DEUX FONCTIONS :
     # - compute_stats(samples) -> stats
