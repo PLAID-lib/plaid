@@ -6,8 +6,9 @@ from typing import Callable
 
 if sys.version_info >= (3, 11):
     from typing import Self
-else: # pragma: no cover
+else:  # pragma: no cover
     from typing import TypeVar
+
     Self = TypeVar("Self")
 
 import datasets

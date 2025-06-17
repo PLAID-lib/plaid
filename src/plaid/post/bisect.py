@@ -1,12 +1,12 @@
 """Utiliy function to plot bisect graphs comparing predictions vs. targets dataset."""
 
 import subprocess
+from typing import Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-from typing import Union
 
 from plaid.containers.dataset import Dataset
 from plaid.problem_definition import ProblemDefinition

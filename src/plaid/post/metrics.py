@@ -1,10 +1,11 @@
 """Utility functions for computing and printing metrics for regression problems in PLAID."""
 
+from typing import Union
+
 import numpy as np
 import yaml
 from sklearn.metrics import r2_score
 from tqdm import tqdm
-from typing import Union
 
 from plaid.containers.dataset import Dataset
 from plaid.post.bisect import prepare_datasets
