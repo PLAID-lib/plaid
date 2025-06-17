@@ -1,0 +1,72 @@
+name: Detect Sensitive Info
+
+permissions:
+  contents: read
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check-pattern:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Récupère tous les commits nécessaires
+
+      - name: Get commit range
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "range=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          else
+            echo "range=${{ github.event.before }}..${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Parse sensitive scan config
+        id: config
+        run: |
+          echo '${{ secrets.SENSITIVE_PATTERNS }}' > config.json
+
+          # Extract regex
+          regex=$(jq -r '.regex' config.json)
+          echo "regex=$regex" >> $GITHUB_ENV
+
+          # Extract strings to a bash array
+          jq -r '.strings[]' config.json > strings.txt
+
+      - name: Scan code and commits for sensitive patterns
+        run: |
+          set -e
+          range="${{ steps.range.outputs.range }}"
+          echo "Scanning commits in $range"
+
+          has_violation=0
+          regex="$regex"
+
+          mapfile -t strings < strings.txt
+
+          git log "$range" --pretty=format:'%H|%s|%an|%ae|%cn|%ce' | while IFS='|' read -r hash msg an ae cn ce; do
+            for field in "$msg" "$an" "$ae" "$cn" "$ce"; do
+              if echo "$field" | grep -E "$regex"; then
+                echo "::error::❌ Regex match in commit $hash: '$field'"
+                has_violation=1
+              fi
+              for s in "${strings[@]}"; do
+                if echo "$field" | grep -F "$s"; then
+                  echo "::error::❌ String '$s' found in commit $hash: '$field'"
+                  has_violation=1
+                fi
+              done
+            done
+          done
+
+          if [ "$has_violation" = 1 ]; then
+            echo "❌ Sensitive content found."
+            exit 1
+          fi
+
+          echo "✅ No sensitive content found."
