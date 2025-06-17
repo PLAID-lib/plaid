@@ -63,7 +63,6 @@ jobs:
           done < <(git log "$range" --pretty=format:'%H|%s|%an|%ae|%cn|%ce')
 
           #######################
-          # test string Checkout
           # check in added lines of code
 
           git diff "$range" --unified=0 > diff.patch
