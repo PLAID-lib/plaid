@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Récupère tous les commits nécessaires
+          fetch-depth: 0
 
       - name: Get commit range
         id: range
@@ -36,22 +36,40 @@ jobs:
 
           echo '${{ secrets.SENSITIVE_PATTERNS }}' > config.json
 
+          # imported regex
           regex=$(jq -r '.regex' config.json)
-          jq -r '.strings[]' config.json > strings.txt
 
-          git log "$range" --pretty=format:'%H|%s|%an|%ae|%cn|%ce' | while IFS='|' read -r hash msg an ae cn ce; do
+          # imported list of string
+          mapfile -t patterns < <(jq -r '.strings[]' config.json)
+
+          has_violation=0
+
+          # check commit messages and author info
+          while IFS='|' read -r hash msg an ae cn ce; do
             for field in "$msg" "$an" "$ae" "$cn" "$ce"; do
+              echo "$field"
               if echo "$field" | grep -E "$regex"; then
                 echo "::error::❌ Regex match in commit $hash: '$field'"
                 has_violation=1
               fi
-              for s in "${strings[@]}"; do
+              for s in "${patterns[@]}"; do
                 if echo "$field" | grep -F "$s"; then
                   echo "::error::❌ String '$s' found in commit $hash: '$field'"
                   has_violation=1
                 fi
               done
             done
+          done < <(git log "$range" --pretty=format:'%H|%s|%an|%ae|%cn|%ce')
+
+          # check in added lines of code
+          diff_output=$(git diff "$range" --unified=0 | grep '^+' | grep -v '^+++')
+
+          for pattern in "${patterns[@]}"; do
+            matches=$(echo "$diff_output" | grep -F "$pattern" || true)
+            if [[ -n "$matches" ]]; then
+                echo "Pattern found: $pattern"
+                has_violation=1
+            fi
           done
 
           if [ "$has_violation" = 1 ]; then
