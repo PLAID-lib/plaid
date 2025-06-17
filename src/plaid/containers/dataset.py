@@ -35,7 +35,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-
 authorized_info_keys = {
     "legal": ["owner", "license"],
     "data_production": [
