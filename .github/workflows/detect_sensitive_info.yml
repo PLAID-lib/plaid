@@ -44,6 +44,7 @@ jobs:
 
           has_violation=0
 
+          #######################
           # check commit messages and author info
           while IFS='|' read -r hash msg an ae cn ce; do
             for field in "$msg" "$an" "$ae" "$cn" "$ce"; do
@@ -61,20 +62,37 @@ jobs:
             done
           done < <(git log "$range" --pretty=format:'%H|%s|%an|%ae|%cn|%ce')
 
+          #######################
           # check in added lines of code
-          diff_output=$(git diff "$range" --unified=0 | grep '^+' | grep -v '^+++')
 
-          for pattern in "${patterns[@]}"; do
-            matches=$(echo "$diff_output" | grep -F "$pattern" || true)
-            if [[ -n "$matches" ]]; then
-                echo "Pattern found: $pattern"
-                has_violation=1
+          git diff "$range" --unified=0 > diff.patch
+          current_file=""
+
+          while IFS= read -r line; do
+          if [[ $line =~ ^\+\+\+\ b/(.*) ]]; then
+            current_file="${BASH_REMATCH[1]}"
+          fi
+
+          # Process only added lines (ignore "+++" headers)
+          if [[ $line =~ ^\+[^+]{1} ]]; then
+            content="${line:1}"
+            for pattern in "${patterns[@]}"; do
+            if grep -q -E "$pattern" <<< "$content"; then
+              matches=$(grep -n -o "$pattern" "$current_file" | cut -d: -f1)
+              formatted=$(echo $matches | sed 's/ /, /g')
+              echo "❌ Pattern '$pattern' found in $current_file at lines: [$formatted]"
+              has_violation=1
             fi
-          done
+            done
+          fi
+          done < diff.patch
+
+          #######################
+          rm diff.patch config.json
 
           if [ "$has_violation" = 1 ]; then
             echo "❌ Sensitive content found."
             exit 1
+          else
+            echo "✅ No sensitive content found."
           fi
-
-          echo "✅ No sensitive content found."
