@@ -8,11 +8,12 @@
 #
 
 # %% Imports
-
-try:  # pragma: no cover
+import sys
+if sys.version_info >= (3, 11):
     from typing import Self
-except ImportError:  # pragma: no cover
-    from typing import Any as Self
+else: # pragma: no cover
+    from typing import TypeVar
+    Self = TypeVar("Self")
 
 import copy
 import glob

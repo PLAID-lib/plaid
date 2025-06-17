@@ -4,6 +4,7 @@ import numpy as np
 import yaml
 from sklearn.metrics import r2_score
 from tqdm import tqdm
+from typing import Union
 
 from plaid.containers.dataset import Dataset
 from plaid.post.bisect import prepare_datasets
@@ -125,9 +126,9 @@ def pretty_metrics(metrics: dict) -> None:
 
 
 def compute_metrics(
-    ref_dataset: Dataset | str,
-    pred_dataset: Dataset | str,
-    problem: ProblemDefinition | str,
+    ref_dataset: Union[Dataset, str],
+    pred_dataset: Union[Dataset, str],
+    problem: Union[ProblemDefinition, str],
     save_file_name: str = "test_metrics",
     verbose: bool = False,
 ) -> None:
