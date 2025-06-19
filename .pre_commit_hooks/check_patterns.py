@@ -1,4 +1,4 @@
-"""Hook to check for confidential patterns in staged changes."""
+"""Hook to check for patterns in staged changes."""
 
 import argparse
 import re
@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Function to check for confidential patterns in staged changes."""
+    """Function to check for patterns in staged changes."""
     parser = argparse.ArgumentParser()
     parser.add_argument("filenames", nargs="*", help="Filenames to check")
     args = parser.parse_args(argv)
@@ -45,7 +45,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if violations or violations_commiter:
         print("--")
-        print("Confidential pattern(s) found:")
+        print("Pattern(s) found:")
         print("--")
         for filename, lineno, pattern_str, line in violations:
             print(f"Match in {filename}:{lineno} -> pattern: '{pattern_str}'")
