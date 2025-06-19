@@ -1,3 +1,4 @@
+# List patterns to find in files, can be regex
 ##################
 # hard coded paths
 ##################
