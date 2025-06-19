@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [3.11, 3.12]
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - name: Checkout code
@@ -33,16 +33,14 @@ jobs:
       - name: Modify environment.yml with matrix Python version (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
-          python_version=${{ matrix.python-version }}
-          sed -i.bak "s/^  - python=.*/  - python=${python_version}/" environment.yml
+          sed -i.bak "s/^  - python=.*/  - python=${{ matrix.python-version }}/" environment.yml
 
       - name: Modify environment.yml with matrix Python version (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $python_version = '${{ matrix.python-version }}'
           $file = 'environment.yml'
-          (Get-Content $file) -replace '^\s+- python=.*', "  - python=$python_version" | Set-Content $file
+          (Get-Content $file) -replace '^\s+- python=.*', "  - python=${{ matrix.python-version }}" | Set-Content $file
 
       - name: Create environment
         run: |

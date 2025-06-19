@@ -1,6 +1,7 @@
 """Utiliy function to plot bisect graphs comparing predictions vs. targets dataset."""
 
 import subprocess
+from typing import Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -77,10 +78,10 @@ def is_dvipng_available(verbose: bool) -> bool:
 
 
 def plot_bisect(
-    ref_dataset: Dataset | str,
-    pred_dataset: Dataset | str,
-    problem_def: ProblemDefinition | str,
-    scalar: str | int,
+    ref_dataset: Union[Dataset, str],
+    pred_dataset: Union[Dataset, str],
+    problem_def: Union[ProblemDefinition, str],
+    scalar: Union[str, int],
     save_file_name: str = "bissec_plots",
     verbose: bool = False,
 ) -> None:
