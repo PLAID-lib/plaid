@@ -30,7 +30,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-
 # %% Functions
 
 # %% Classes
