@@ -5,9 +5,10 @@ import re
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Union
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Union[Sequence[str], None] = None) -> int:
     """Function to check for patterns in staged changes."""
     parser = argparse.ArgumentParser()
     parser.add_argument("filenames", nargs="*", help="Filenames to check")
