@@ -1,0 +1,31 @@
+name: Draft JOSS PDF
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - docs/joss_paper/**
+      - .github/workflows/draft-pdf.yml
+
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    name: Paper Draft
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build joss draft PDF
+        id: generate-files
+        uses: xuanxu/paper-action@main
+        with:
+          repository_url: http://github.com/PLAID-lib/plaid
+          branch: joss_paper_workflow
+          issue_id: 8393
+          journal: joss
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper
+          path: ${{ steps.generate-files.outputs.pdf_path}}
