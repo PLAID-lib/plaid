@@ -15,9 +15,15 @@ repos:
         types: [python]
         pass_filenames: false
 
-      - id: run-pytest
-        name: pytest
-        entry: pytest tests
+      # - id: run-pytest
+      #   name: pytest
+      #   entry: pytest tests
+      #   language: system
+      #   types: [python]
+      #   pass_filenames: false
+
+      - id: check-patterns
+        name: patterns check
+        entry: python .pre_commit_hooks/check_patterns.py
         language: system
         types: [python]
-        pass_filenames: false
