@@ -19,7 +19,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     # Get patterns
     with pattern_file.open("r") as f:
-        lines = [line.strip() for line in f if line.strip()]
+        lines = [line.partition("#")[0].rstrip() for line in f if line.strip()]
         COMPILED_PATTERN = [(line, re.compile(line)) for line in lines]
 
     violations = []

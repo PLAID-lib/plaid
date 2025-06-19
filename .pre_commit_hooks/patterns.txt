@@ -1,3 +1,10 @@
+##################
+# hard coded paths
+##################
+# Unix
 /data/
 /gpfs/
 /apps/
+# Windows
+C:\
+D:\
