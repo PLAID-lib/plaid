@@ -1,5 +1,7 @@
 """Utility functions for computing and printing metrics for regression problems in PLAID."""
 
+from typing import Union
+
 import numpy as np
 import yaml
 from sklearn.metrics import r2_score
@@ -125,9 +127,9 @@ def pretty_metrics(metrics: dict) -> None:
 
 
 def compute_metrics(
-    ref_dataset: Dataset | str,
-    pred_dataset: Dataset | str,
-    problem: ProblemDefinition | str,
+    ref_dataset: Union[Dataset, str],
+    pred_dataset: Union[Dataset, str],
+    problem: Union[ProblemDefinition, str],
     save_file_name: str = "test_metrics",
     verbose: bool = False,
 ) -> None:
