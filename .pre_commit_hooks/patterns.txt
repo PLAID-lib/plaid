@@ -6,5 +6,5 @@
 /gpfs/
 /apps/
 # Windows
-C:
-D:
+C:\\
+D:\\
