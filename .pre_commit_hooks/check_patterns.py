@@ -25,8 +25,6 @@ def main(argv: Union[Sequence[str], None] = None) -> int:
             for line in f
             if line.partition("#")[0].rstrip()
         ]
-        for line in lines:
-            print(line, re.compile(line))
         COMPILED_PATTERN = [(line, re.compile(line)) for line in lines]
 
     violations = []

@@ -6,6 +6,7 @@
 /data/
 /gpfs/
 /apps/
+/softs/
 # Windows
 C:\\
 D:\\
