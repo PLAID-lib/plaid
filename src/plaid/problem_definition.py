@@ -485,7 +485,7 @@ class ProblemDefinition(object):
         if output in self.out_fields_names:
             raise ValueError(f"{output} is already in self.out_fields_names")
         self.out_fields_names.append(output)
-        self.in_fields_names.sort()
+        self.out_fields_names.sort()
 
     def filter_output_fields_names(self, names: list[str]) -> list[str]:
         """Filter and get output features corresponding to a sorted list of names.
