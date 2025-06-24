@@ -135,6 +135,25 @@ def plaid_generator_to_huggingface(
     return ds
 
 
+def huggingface_description_to_problem_definition(
+    description: dict,
+) -> ProblemDefinition:
+    """Docstring to complete."""
+    problem_definition = ProblemDefinition()
+    problem_definition.set_task(description["task"])
+    problem_definition.set_split(description["split"])
+    problem_definition.add_input_scalars_names(description["in_scalars_names"])
+    problem_definition.add_output_scalars_names(description["out_scalars_names"])
+    problem_definition.add_input_timeseries_names(description["in_timeseries_names"])
+    problem_definition.add_output_timeseries_names(description["out_timeseries_names"])
+    problem_definition.add_input_fields_names(description["in_fields_names"])
+    problem_definition.add_output_fields_names(description["out_fields_names"])
+    problem_definition.add_input_meshes_names(description["in_meshes_names"])
+    problem_definition.add_output_meshes_names(description["out_meshes_names"])
+
+    return problem_definition
+
+
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
 ) -> tuple[Self, ProblemDefinition]:
@@ -172,19 +191,7 @@ def huggingface_dataset_to_plaid(
 
     dataset.set_infos(infos)
 
-    problem_definition = ProblemDefinition()
-    problem_definition.set_task(ds.description["task"])
-    problem_definition.set_split(ds.description["split"])
-    problem_definition.add_input_scalars_names(ds.description["in_scalars_names"])
-    problem_definition.add_output_scalars_names(ds.description["out_scalars_names"])
-    problem_definition.add_input_timeseries_names(ds.description["in_timeseries_names"])
-    problem_definition.add_output_timeseries_names(
-        ds.description["out_timeseries_names"]
-    )
-    problem_definition.add_input_fields_names(ds.description["in_fields_names"])
-    problem_definition.add_output_fields_names(ds.description["out_fields_names"])
-    problem_definition.add_input_meshes_names(ds.description["in_meshes_names"])
-    problem_definition.add_output_meshes_names(ds.description["out_meshes_names"])
+    problem_definition = huggingface_description_to_problem_definition(ds.description)
 
     return dataset, problem_definition
 
