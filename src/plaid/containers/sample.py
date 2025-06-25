@@ -1900,7 +1900,7 @@ class Sample(BaseModel):
 
         # scalars
         nb_scalars = len(self.get_scalar_names())
-        str_repr += f"{nb_scalars} scalar{'' if nb_scalars <= 1 else 's'}, "
+        str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
 
         # time series
         nb_ts = len(self.get_time_series_names())
@@ -1909,7 +1909,7 @@ class Sample(BaseModel):
         # fields
         times = self.get_all_mesh_times()
         nb_timestamps = len(times)
-        str_repr += f"{nb_timestamps} timestamp{'' if nb_timestamps <= 1 else 's'}, "
+        str_repr += f"{nb_timestamps} timestamp{'' if nb_timestamps == 1 else 's'}, "
 
         field_names = set()
         for time in times:
@@ -1931,7 +1931,7 @@ class Sample(BaseModel):
                         )
                     )
         nb_fields = len(field_names)
-        str_repr += f"{nb_fields} field{'' if nb_fields <= 1 else 's'}, "
+        str_repr += f"{nb_fields} field{'' if nb_fields == 1 else 's'}, "
 
         # CGNS tree
         if self._meshes is None:
