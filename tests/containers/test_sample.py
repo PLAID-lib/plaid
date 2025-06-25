@@ -105,6 +105,7 @@ def sample_with_tree_and_scalar_and_time_series(
     sample_with_tree,
 ):
     sample_with_tree.add_scalar("r", np.random.randn())
+    sample_with_tree.add_scalar("a/b", np.random.randn())
     sample_with_tree.add_scalar("test_scalar_1", np.random.randn())
     sample_with_tree.add_time_series(
         "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
