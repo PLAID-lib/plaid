@@ -92,7 +92,7 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
    :caption: Going further
 
    CGNS standard <http://cgns.github.io/>
-   Data Challenges <source/data_challenges.rst>
+   PLAID Benchmarks <source/plaid_benchmarks.rst>
 
 Indices and tables
 ==================
