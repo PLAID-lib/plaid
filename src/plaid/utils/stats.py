@@ -352,10 +352,7 @@ class Stats:
         Args:
             other (Stats): Stats object to merge with
         """
-        for name, stats in self._stats.items():
-            print(f"=== self {name=} -> {stats.get_stats()=}")
         for name, stats in other._stats.items():
-            print(f"=== other {name=} -> {stats.get_stats()=}")
             if name not in self._stats:
                 self._stats[name] = copy.deepcopy(stats)
             else:
