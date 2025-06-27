@@ -11,13 +11,13 @@
    :align: center
    :width: 300px
 
-+-------------+-------------------------------------------------------------------------------+
-| **Testing** | |CI Status| |Docs| |Coverage| |Last Commit|                                   |
-+-------------+-------------------------------------------------------------------------------+
-| **Package** | |PyPI Version| |Conda Version| |Platform| |Python Version| |Conda Downloads|  |
-+-------------+-------------------------------------------------------------------------------+
-| **Meta**    | |License| |GitHub Stars| |JOSS paper|                                         |
-+-------------+-------------------------------------------------------------------------------+
++-------------+-----------------------------------------------------------------------------------------------+
+| **Testing** | |CI Status| |Docs| |Coverage| |Last Commit|                                                   |
++-------------+-----------------------------------------------------------------------------------------------+
+| **Package** | |Conda Version| |Conda Downloads| |PyPI Version| |PyPi Downloads| |Platform| |Python Version| |
++-------------+-----------------------------------------------------------------------------------------------+
+| **Meta**    | |License| |GitHub Stars| |JOSS paper|                                                         |
++-------------+-----------------------------------------------------------------------------------------------+
 
 
 .. |CI Status| image:: https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg
@@ -46,6 +46,9 @@
 
 .. |Conda Downloads| image:: https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads
    :target: https://anaconda.org/conda-forge/plaid
+
+.. |PyPi Downloads| image:: https://static.pepy.tech/badge/pyplaid
+   :target: https://pepy.tech/projects/pyplaid
 
 .. |License| image:: https://anaconda.org/conda-forge/plaid/badges/license.svg
    :target: https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
