@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "pyplaid"
 authors = [{name = "Safran", email = "fabien.casenave@safrangroup.com"}]
 description = "A package that implements a data model tailored for AI and ML in the context of physics problems"
-requires-python = ">=3.9, <=3.13"
+requires-python = ">=3.9, <3.14"
 keywords=[
     "machine learning",
     "physics",
