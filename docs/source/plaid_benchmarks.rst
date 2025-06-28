@@ -7,15 +7,15 @@ PLAID Benchmarks
     :alt: PLAID Benchmarks
 
 
-We provide interactive benchmark hosted on Hugging Face, in which anyone can test their own SciML method.
-These benchmarks involve regression problem posed on datasets provided in PLAID format.
+We provide interactive benchmarks hosted on Hugging Face, in which anyone can test their own SciML method.
+These benchmarks involve regression problems posed on datasets provided in PLAID format.
 Some of these datasets have been introduced in the MMGP (Mesh Morphing Gaussian Process) paper :cite:p:`casenave2023mmgp`,
 and the PLAID paper :cite:p:`casenave2025plaid`.
 A ranking is automatically updated based on a score computed on the testing set of each dataset.
 For the benchmarks to be meaningful, the outputs on the testing sets are not made public.
 
 The relative RMSE is the considered metric for comparing methods. Let :math:`\{ \mathbf{U}^i_{\rm ref} \}_{i=1}^{n_\star}`
-and :math:`\{ \mathbf{U}^i_{\rm pred} \}_{i=1}^{n_\star}` be respectively test observations and predictions of a given field of interest.
+and :math:`\{ \mathbf{U}^i_{\rm pred} \}_{i=1}^{n_\star}` be the test observations and predictions, respectively, of a given field of interest.
 The relative RMSE is defined as
 
 .. math::
