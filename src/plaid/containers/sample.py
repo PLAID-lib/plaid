@@ -8,11 +8,14 @@
 #
 
 # %% Imports
+import sys
 
-try:  # pragma: no cover
+if sys.version_info >= (3, 11):
     from typing import Self
-except ImportError:  # pragma: no cover
-    from typing import Any as Self
+else:  # pragma: no cover
+    from typing import TypeVar
+
+    Self = TypeVar("Self")
 
 import copy
 import glob
@@ -1898,6 +1901,10 @@ class Sample(BaseModel):
         # scalars
         nb_scalars = len(self.get_scalar_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
+
+        # time series
+        nb_ts = len(self.get_time_series_names())
+        str_repr += f"{nb_ts} time series, "
 
         # fields
         times = self.get_all_mesh_times()

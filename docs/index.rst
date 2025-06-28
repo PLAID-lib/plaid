@@ -16,7 +16,7 @@
 +-------------+-------------------------------------------------------------------------------+
 | **Package** | |PyPI Version| |Conda Version| |Platform| |Python Version| |Conda Downloads|  |
 +-------------+-------------------------------------------------------------------------------+
-| **Meta**    | |License| |GitHub Stars|                                                      |
+| **Meta**    | |License| |GitHub Stars| |JOSS paper|                                         |
 +-------------+-------------------------------------------------------------------------------+
 
 
@@ -53,6 +53,8 @@
 .. |GitHub Stars| image:: https://img.shields.io/github/stars/PLAID-lib/plaid?style=social
    :target: https://github.com/PLAID-lib/plaid
 
+.. |JOSS paper| image:: https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg
+   :target: https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e
 
 PLAID (Physics Learning AI Datamodel) is a library proposing an implementation for a datamodel tailored for AI and ML learning of physics problems.
 It has been developped at SafranTech, the research center of `Safran group <https://www.safran-group.com/>`_

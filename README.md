@@ -6,7 +6,7 @@
 | --- | --- |
 | Testing | [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml) [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest) [![Coverage](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list) ![Last Commit](https://img.shields.io/github/last-commit/PLAID-lib/plaid/main) |
 | Package | [![PyPI Latest Release](https://img.shields.io/pypi/v/pyplaid.svg)](https://pypi.org/project/pyplaid/) [![Conda Latest Release](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid) ![Platform](https://img.shields.io/badge/platform-any-blue) ![Python Version](https://img.shields.io/pypi/pyversions/pyplaid) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/plaid) |
-| Meta | [![License - BSD 3-Clause](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt) ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social) |
+| Meta | [![License - BSD 3-Clause](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt) ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social) [![status](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg)](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e) |
 
 <!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/pyplaid.svg?label=PyPI%20downloads)](https://pypi.org/project/pyplaid/) -->
 <!-- [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3509134.svg)](https://doi.org/10.5281/zenodo.3509134)  -->
@@ -64,16 +64,16 @@ git clone https://github.com/PLAID-lib/plaid.git
 
 #### 2.2.1 Development dependencies
 
-To configure an environment manually, you can follow the dependencies listed in ``conda_dev_env.yml``, or generate it using conda:
+To configure an environment manually, you can follow the dependencies listed in ``environment.yml``, or generate it using conda:
 
 ```bash
-conda env create -f conda_dev_env.yml
+conda env create -f environment.yml
 ```
 
 Then, to install the library:
 
 ```bash
-pip install -e .[dev]
+pip install -e .
 ```
 
 **Note**

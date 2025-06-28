@@ -9,10 +9,14 @@
 
 # %% Imports
 
-try:  # pragma: no cover
+import sys
+
+if sys.version_info >= (3, 11):
     from typing import Self
-except ImportError:  # pragma: no cover
-    from typing import Any as Self
+else:  # pragma: no cover
+    from typing import TypeVar
+
+    Self = TypeVar("Self")
 
 import csv
 import logging
@@ -481,7 +485,7 @@ class ProblemDefinition(object):
         if output in self.out_fields_names:
             raise ValueError(f"{output} is already in self.out_fields_names")
         self.out_fields_names.append(output)
-        self.in_fields_names.sort()
+        self.out_fields_names.sort()
 
     def filter_output_fields_names(self, names: list[str]) -> list[str]:
         """Filter and get output features corresponding to a sorted list of names.
