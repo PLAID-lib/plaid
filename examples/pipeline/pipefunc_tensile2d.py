@@ -1,81 +1,79 @@
-from datasets import load_from_disk
+from datasets import load_from_disk, load_dataset
 from plaid.containers.sample import Sample
 from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, huggingface_description_to_problem_definition
 import os, pickle
+import numpy as np
 from safetensors.numpy import save_file
 
 from pipefunc import Pipeline, pipefunc
 from sklearn.preprocessing import StandardScaler
 
 import yaml
+import time
 
 
 @pipefunc(output_name=("dataset", "prob_def"))
 def load_hf_from_disk(path):
     return huggingface_dataset_to_plaid(load_from_disk(path))
 
-@pipefunc(output_name="scalar_scalers")
-def scale_scalars(dataset, prob_def, train_split_name, test_split_name):
+@pipefunc(output_name=("dataset", "prob_def"))
+def load_hf_from_hub(path):
+    return huggingface_dataset_to_plaid(load_dataset(path, split="all_samples"))
 
-    print(">>", dataset[0].get_scalar("p1"))
+@pipefunc(output_name=("scalar_data"))
+def scale_scalars(dataset, prob_def, train_split_name, test_split_name, out_path):
 
     ids_train = prob_def.get_split(train_split_name)
-    train_scalars = dataset.get_scalars_to_tabular(
-        sample_ids = ids_train
+    input_scalars_train = dataset.get_scalars_to_tabular(
+        scalar_names = prob_def.get_input_scalars_names(),
+        sample_ids = ids_train,
+        as_nparray = True
+    )
+    output_scalars_train = dataset.get_scalars_to_tabular(
+        scalar_names = prob_def.get_output_scalars_names(),
+        sample_ids = ids_train,
+        as_nparray = True
     )
 
     ids_test = prob_def.get_split(test_split_name)
-    test_scalars = dataset.get_scalars_to_tabular(
-        sample_ids = ids_test
+    input_scalars_test = dataset.get_scalars_to_tabular(
+        scalar_names = prob_def.get_input_scalars_names(),
+        sample_ids = ids_test,
+        as_nparray = True
     )
 
-    scalar_scalers = {}
+    input_scalar_scaler = StandardScaler()
+    input_scalars_train = input_scalar_scaler.fit_transform(input_scalars_train)
+    input_scalars_test = input_scalar_scaler.transform(input_scalars_test)
 
-    print(prob_def.get_input_scalars_names())
+    output_scalar_scaler = StandardScaler()
+    output_scalars_train = output_scalar_scaler.fit_transform(output_scalars_train)
 
-    for sn in prob_def.get_input_scalars_names():
-        scaler = StandardScaler()
-        scaler.fit_transform(train_scalars[sn].reshape(-1, 1))
-        scaler.transform(test_scalars[sn].reshape(-1, 1))
-        scalar_scalers[sn] = scaler
-
-    for sn in prob_def.get_output_scalars_names():
-        scaler = StandardScaler()
-        scaler.fit_transform(train_scalars[sn].reshape(-1, 1))
-        scalar_scalers[sn] = scaler
-
-    for j, i in enumerate(ids_train):
-        sample = dataset[i]
-        for sn, scaler in scalar_scalers.items():
-            if sn in sample.get_scalar_names():
-                sample.add_scalar(sn, train_scalars[sn][j])
-
-    for j, i in enumerate(ids_test):
-        sample = dataset[i]
-        for sn, scaler in scalar_scalers.items():
-            if sn in sample.get_scalar_names():
-                sample.add_scalar(sn, test_scalars[sn][j])
-
-
-    print(">>", dataset[0].get_scalar("p1"))
-
-    return scalar_scalers
-
-@pipefunc(output_name="saved_path")
-def save(scalar_scalers, out_path, dataset):
+    scalar_data = [
+        input_scalar_scaler,
+        output_scalar_scaler,
+        input_scalars_train,
+        input_scalars_test,
+        output_scalars_train
+    ]
 
     os.makedirs(out_path, exist_ok=True)
 
-    # Save only NumPy-compatible parameters
-    for sn, scaler in scalar_scalers.items():
-        tensors = {
-            "scaler_mean": scaler.mean_,
-            "scaler_scale": scaler.scale_,
-        }
-        saved_path = os.path.join(out_path, f"scaler_{sn}.safetensors")
-        save_file(tensors, saved_path)
+    tensors = {
+        "scaler_mean": input_scalar_scaler.mean_,
+        "scaler_scale": input_scalar_scaler.scale_,
+    }
+    saved_path = os.path.join(out_path, f"input_scalar_scaler.safetensors")
+    save_file(tensors, saved_path)
 
-    return dataset
+    tensors = {
+        "scaler_mean": output_scalar_scaler.mean_,
+        "scaler_scale": output_scalar_scaler.scale_,
+    }
+    saved_path = os.path.join(out_path, f"output_scalar_scaler.safetensors")
+    save_file(tensors, saved_path)
+
+    return scalar_data
 
 
 def extract_leaf_keys(d):
@@ -93,12 +91,13 @@ def extract_leaf_keys(d):
 
 
 if __name__ == "__main__":
-    # Create the pipeline
+
+    start = time.time()
+
     pipeline = Pipeline(
         [
-            load_hf_from_disk,
+            load_hf_from_hub,
             scale_scalars,
-            save,
         ],
         profile=True
     )
@@ -109,15 +108,13 @@ if __name__ == "__main__":
         config = yaml.safe_load(f)
 
     parameters = extract_leaf_keys(config)
-    print(parameters)
+
+    scalar_data = pipeline(**parameters)
+
+    print("Pipeline execution time:", time.time() - start)
 
 
-    # Run the pipeline
-    dataset = pipeline(**parameters)
-    # pipeline.print_profiling_stats()
+    pipeline.print_profiling_stats()
     # print("Dataset:", type(dataset[0:10]), type(dataset))
 
-    print(dataset)
-
-    print(">>", dataset[0].get_scalar("p1"))
-
+    # print(scalar_data)
