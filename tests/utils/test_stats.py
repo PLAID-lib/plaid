@@ -42,6 +42,11 @@ def np_samples_5():
 
 
 @pytest.fixture()
+def np_samples_6():
+    return np.random.randn(50, 1)
+
+
+@pytest.fixture()
 def online_stats():
     return OnlineStatistics()
 
@@ -52,34 +57,24 @@ def stats():
 
 
 @pytest.fixture()
-def sample_data_1():
-    return np.random.randn(100, 1)
-
-
-@pytest.fixture()
-def sample_data_2():
-    return np.random.randn(50, 1)
-
-
-@pytest.fixture()
-def sample_with_scalar(sample_data_1):
+def sample_with_scalar(np_samples_3):
     s = Sample()
-    s.add_scalar("foo", float(sample_data_1.mean()))
+    s.add_scalar("foo", float(np_samples_3.mean()))
     return s
 
 
 @pytest.fixture()
-def sample_with_field(sample_data_2):
+def sample_with_field(np_samples_6):
     s = Sample()
     # 1. Initialize the CGNS tree
     s.init_tree()
     # 2. Create a base and a zone
     s.init_base(topological_dim=3, physical_dim=3)
-    s.init_zone(zone_shape=np.array([sample_data_2.shape[0], 0, 0]))
+    s.init_zone(zone_shape=np.array([np_samples_6.shape[0], 0, 0]))
     # 3. Set node coordinates (required for a valid zone)
-    s.set_nodes(np.zeros((sample_data_2.shape[0], 3)))
+    s.set_nodes(np.zeros((np_samples_6.shape[0], 3)))
     # 4. Add a field named "bar"
-    s.add_field(name="bar", field=sample_data_2)
+    s.add_field(name="bar", field=np_samples_6)
     return s
 
 
@@ -134,6 +129,9 @@ class Test_OnlineStatistics:
         online_stats.min = np_samples_3
         online_stats.add_samples(np_samples_5)
 
+    def test_add_samples_4(self, online_stats, np_samples_5):
+        online_stats.add_samples(np_samples_5)
+
     def test_add_samples_already_present(self, online_stats, np_samples_1):
         online_stats.add_samples(np_samples_1)
         online_stats.add_samples(np_samples_1)
@@ -157,18 +155,19 @@ class Test_OnlineStatistics:
         with pytest.raises(ValueError):
             online_stats.add_samples(np.array([1, np.inf, 3]))
 
-    def test_merge_stats(self, sample_data_1, sample_data_2):
+    def test_merge_stats(self, np_samples_3, np_samples_4, np_samples_6):
         stats1 = OnlineStatistics()
         stats2 = OnlineStatistics()
-        stats1.add_samples(sample_data_1)
-        stats2.add_samples(sample_data_2)
+        stats1.add_samples(np_samples_3)
+        stats2.add_samples(np_samples_6)
         n_samples_before = stats1.n_samples
         n_samples_other = stats2.n_samples
         mean_before = stats1.mean.copy()
         other_mean = stats2.mean.copy()
+        stats3 = OnlineStatistics()
+        stats3.add_samples(np_samples_4)
         # do the merging
         stats1.merge_stats(stats2)
-        # check results
         assert stats1.n_samples == n_samples_before + stats2.n_samples
         print(f"{n_samples_before=}, {n_samples_other=}")
         print(f"{mean_before=}, {other_mean=}")
@@ -178,7 +177,10 @@ class Test_OnlineStatistics:
         print(f"{expected_mean=}")
         print(f"{stats1.mean=}")
         assert np.allclose(stats1.mean, expected_mean)
-
+        # other merging tests
+        with pytest.raises(TypeError):
+            stats1.merge_stats(0.)
+        stats1.merge_stats(stats3)
 
 class Test_Stats:
     def test__init__(self, stats):
