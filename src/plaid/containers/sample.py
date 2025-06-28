@@ -1902,6 +1902,10 @@ class Sample(BaseModel):
         nb_scalars = len(self.get_scalar_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
 
+        # time series
+        nb_ts = len(self.get_time_series_names())
+        str_repr += f"{nb_ts} time series, "
+
         # fields
         times = self.get_all_mesh_times()
         nb_timestamps = len(times)
