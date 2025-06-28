@@ -199,7 +199,9 @@ class OnlineStatistics(object):
             self.flatten_array()
             other = copy.deepcopy(other)
             other.flatten_array()
-            assert self.min.shape == other.min.shape, f"Shape mismatch in OnlineStatistics merging"
+            assert self.min.shape == other.min.shape, (
+                "Shape mismatch in OnlineStatistics merging"
+            )
 
         self.min = np.min(np.concatenate((self.min, other.min), axis=0), axis=0)
         self.max = np.max(np.concatenate((self.max, other.max), axis=0), axis=0)
@@ -423,7 +425,9 @@ class Stats:
                                     # set this stat as flattened
                                     self._field_is_flattened[stat_key] = True
                                     # flatten corresponding stat
-                                    if stat_key in self._stats: # TODO: ADD THIS IN TESTS
+                                    if (
+                                        stat_key in self._stats
+                                    ):  # TODO: ADD THIS IN TESTS
                                         self._stats[stat_key].flatten_array()
 
                             if self._field_is_flattened.get(stat_key, False):
@@ -448,7 +452,7 @@ class Stats:
                     if (
                         isinstance(list_of_arrays[i], np.ndarray)
                         and list_of_arrays[i].ndim == 1
-                    ): # TODO: ADD THIS IN TESTS
+                    ):  # TODO: ADD THIS IN TESTS
                         list_of_arrays[i] = list_of_arrays[i].reshape((-1, 1))
 
                 if self._field_is_flattened.get(name, False):

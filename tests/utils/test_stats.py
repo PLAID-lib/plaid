@@ -179,8 +179,9 @@ class Test_OnlineStatistics:
         assert np.allclose(stats1.mean, expected_mean)
         # other merging tests
         with pytest.raises(TypeError):
-            stats1.merge_stats(0.)
+            stats1.merge_stats(0.0)
         stats1.merge_stats(stats3)
+
 
 class Test_Stats:
     def test__init__(self, stats):
