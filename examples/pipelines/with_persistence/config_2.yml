@@ -1,7 +1,8 @@
-dataset_path: "PLAID-datasets/VKI-LS59"
-save_path: "./artifacts"
-train_split_name: "train"
-test_split_name: "test"
+global:
+  dataset_path: "PLAID-datasets/VKI-LS59"
+  save_path: "./artifacts"
+  train_split_name: "train"
+  test_split_name: "test"
 
 input_scalar_scaler:
   type: "MinMaxScaler"
@@ -57,4 +58,5 @@ tabular_regressor:
       - reduced_mach_0
       - reduced_mach_1
       - reduced_mach_2
+      - reduced_mach_3
       - reduced_mach_4

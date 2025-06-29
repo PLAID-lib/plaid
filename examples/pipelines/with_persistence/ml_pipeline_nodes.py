@@ -9,11 +9,54 @@ from sklearn.linear_model import Ridge
 from sklearn.decomposition import PCA
 
 
+# def flatten_dict(d, prefix=''):
+#     items = {}
+#     for k, v in d.items():
+#         new_key = f'{prefix}__{k}' if prefix else k
+#         if isinstance(v, dict):
+#             items.update(flatten_dict(v, new_key))
+#         else:
+#             items[f'param__{new_key}'] = v
+#     return items
+
+# def unflatten_dict(flat):
+#     nested = {}
+#     for flat_key, value in flat.items():
+#         keys = flat_key.split('__')
+#         d = nested
+#         for k in keys[:-1]:
+#             d = d.setdefault(k, {})
+#         d[keys[-1]] = value
+#     return nested
+
+
 class PersistentNode(BaseEstimator, RegressorMixin, TransformerMixin):
-    def __init__(self, save_path):
-        self.save_path = Path(save_path)
+    def __init__(self, name, global_params, params):
+        self.name = name
+        self.global_params = global_params
+        self.params = params
+        self.save_path = Path(os.path.join(global_params['save_path'], f"{name}.joblib"))
         self.fitted_ = False
         self.model = None
+
+    # def get_params(self, deep=True):
+    #     return flatten_dict(self.params[self.name])
+
+    # def set_params(self, **kwargs):
+    #     if 'name' in kwargs:
+    #         self.name = kwargs.pop('name')
+    #     if 'params' in kwargs:
+    #         self.params.update(kwargs.pop('params'))
+
+    #     # Extract param__ keys and merge into self.params
+    #     flat = {}
+    #     for k, v in kwargs.items():
+    #         if k.startswith('param__'):
+    #             flat_key = k[len('param__'):]
+    #             flat[flat_key] = v
+    #     nested_update = unflatten_dict(flat)
+    #     self.params = self._deep_merge(self.params, nested_update)
+    #     return self
 
     def save(self, obj):
         self.save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -91,10 +134,10 @@ available_scalers = {
 
 class ScalarScalerNode(PersistentNode):
 
-    def __init__(self, name, params):
-        super().__init__(os.path.join(params['save_path'], f"{name}.joblib"))
-        self.scalar_names = params[name]['scalar_names']
-        self.model = available_scalers[params[name]['type']]()
+    def __init__(self, name, global_params, params):
+        super().__init__(name, global_params, params)
+        self.scalar_names = params['scalar_names']
+        self.model = available_scalers[params['type']]()
 
     def get_scalars(self, dataset):
         return dataset.get_scalars_to_tabular(
@@ -128,18 +171,21 @@ class ScalarScalerNode(PersistentNode):
 
 class PCAEmbeddingNode(PersistentNode):
 
-    def __init__(self, name:str, params:dict):
-        super().__init__(os.path.join(params['save_path'], f"{name}.joblib"))
+    def __init__(self, name, global_params, params):
+        super().__init__(name, global_params, params)
 
-        self.zone_name = params[name]["zone_name"] if "zone_name" in params[name] else None
-        self.base_name = params[name]["base_name"] if "base_name" in params[name] else None
-        self.time      = params[name]["time"]      if "time"      in params[name] else None
-        self.location  = params[name]["location"]  if "location"  in params[name] else "Vertex"
+        self.zone_name = params["zone_name"] if "zone_name" in params else None
+        self.base_name = params["base_name"] if "base_name" in params else None
+        self.time      = params["time"]      if "time"      in params else None
+        self.location  = params["location"]  if "location"  in params else "Vertex"
 
-        assert params[name]['type'] == "PCA"
-        self.n_components = params[name]['n_components']
+        assert params['type'] == "PCA"
+        self.n_components = params['n_components']
         self.field_names = list(self.n_components.keys())
         self.model = {name: PCA(n_components = nc) for name, nc in self.n_components.items()}
+
+    def get_params(self, deep=True):
+        return {f"n_components__{key}":val for key, val in self.n_components.items()}
 
     def get_all_fields(self, dataset, fn):
         all_fields = []
@@ -206,7 +252,7 @@ class PCAEmbeddingNode(PersistentNode):
 
 # class TutteMorphing(PersistentNode):
 #     def __init__(self, name, params):
-#         super().__init__(os.path.join(params['save_path'], f"{name}.joblib"))
+#         super().__init__(params['save_path'], name)
 #         self.prob_def = params['prob_def']
 #         self.loc_params = params[name]
 #         self.model = {}
@@ -261,10 +307,10 @@ available_kernel_classes = {
 
 class GPRegressorNode(PersistentNode):
 
-    def __init__(self, name, params):
+    def __init__(self, name, global_params, params):
+        super().__init__(name, global_params, params)
 
-        super().__init__(os.path.join(params['save_path'], f"{name}.joblib"))
-        self.loc_params = params[name]
+        self.loc_params = params
         assert self.loc_params['type'] == "GaussianProcessRegressor"
 
         options = self.loc_params['options']
@@ -343,7 +389,8 @@ class GPRegressorNode(PersistentNode):
 
 class ScalerNode(PersistentNode):
     def __init__(self, name, save_path):
-        super().__init__(os.path.join(save_path, f"{name}.joblib"))
+        super().__init__(save_path, name)
+
         self.model = StandardScaler()
 
     def _fit(self, X, y=None):
@@ -361,7 +408,7 @@ class ScalerNode(PersistentNode):
 
 class RegressorNode(PersistentNode):
     def __init__(self, name, save_path, alpha=1.0):
-        super().__init__(os.path.join(save_path, f"{name}.joblib"))
+        super().__init__(save_path, name)
         self.model = Ridge(alpha=alpha)
 
     def _fit(self, X, y):
