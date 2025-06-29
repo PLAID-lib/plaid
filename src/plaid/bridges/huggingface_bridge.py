@@ -1,8 +1,14 @@
 """Huggingface bridge for PLAID datasets."""
 
+import os
 import pickle
+import shutil
 import sys
+from multiprocessing import Pool
 from typing import Callable
+
+from datasets import load_from_disk
+from tqdm import tqdm
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -83,7 +89,7 @@ def plaid_dataset_to_huggingface(
     """
 
     def generator():
-        for id in range(len(dataset)):
+        for id in tqdm(range(len(dataset))):
             yield {
                 "sample": pickle.dumps(dataset[id].model_dump()),
             }
@@ -97,7 +103,7 @@ def plaid_generator_to_huggingface(
     generator: Callable,
     infos: dict,
     problem_definition: ProblemDefinition,
-    processes_number: int = 1,
+    processes_number: int = os.cpu_count(),
 ) -> datasets.Dataset:
     """Use this function for creating a huggingface dataset from a sample generator function.
 
@@ -138,7 +144,14 @@ def plaid_generator_to_huggingface(
 def huggingface_description_to_problem_definition(
     description: dict,
 ) -> ProblemDefinition:
-    """Docstring to complete."""
+    """Converts a huggingface dataset description to a plaid problem definition.
+
+    Args:
+        description (dict): the description field of a huggingface dataset, containing the problem definition
+
+    Returns:
+        problem_definition (ProblemDefinition): the plaid problem definition initialized from the huggingface dataset description
+    """
     problem_definition = ProblemDefinition()
     problem_definition.set_task(description["task"])
     problem_definition.set_split(description["split"])
@@ -154,8 +167,34 @@ def huggingface_description_to_problem_definition(
     return problem_definition
 
 
+class HFToPlaidSampleConverter:
+    """Class to convert a huggingface dataset sample to a plaid sample."""
+
+    def __init__(self, ds):
+        self.ds = ds
+
+    def __call__(self, ind):
+        """Convert a single sample from the huggingface dataset to a plaid sample."""
+        return Sample.model_validate(pickle.loads(self.ds[ind]["sample"]))
+
+
+class HFShardToPlaidSampleConverter:
+    """Class to convert a huggingface dataset sample shard to a plaid sample."""
+
+    def __init__(self, shard_path):
+        self.ds = load_from_disk(shard_path)
+
+    def __call__(self, idx):
+        """Convert a sample shard from the huggingface dataset to a plaid sample."""
+        sample = self.ds[idx]
+        return Sample.model_validate(pickle.loads(sample["sample"]))
+
+
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
+    ids: list[int] = None,
+    processes_number: int = os.cpu_count(),
+    large_dataset=False,
 ) -> tuple[Self, ProblemDefinition]:
     """Use this function for converting a plaid dataset from a huggingface dataset.
 
@@ -165,6 +204,9 @@ def huggingface_dataset_to_plaid(
 
     Args:
         ds (datasets.Dataset): the dataset in huggingface format to be converted
+        ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
+        processes_number (int, optional): The number of processes used to generate the plaid dataset
+        large_dataset (bool, optional): if True, uses a variant where parallel worker do not each load the complete dataset
 
     Returns:
         dataset (Dataset): the converted dataset.
@@ -180,8 +222,50 @@ def huggingface_dataset_to_plaid(
             plaid_dataset, plaid_problem = huggingface_dataset_to_plaid(dataset)
     """
     dataset = Dataset()
-    for i in range(len(ds)):
-        dataset.add_sample(Sample.model_validate(pickle.loads(ds[i]["sample"])))
+
+    print("Converting huggingface dataset to plaid dataset...")
+
+    if large_dataset:
+        if ids:
+            NotImplementedError(
+                "ids selection not implemented with large_dataset option"
+            )
+        for i in range(processes_number):
+            shard = ds.shard(num_shards=processes_number, index=i)
+            shard.save_to_disk(f"shards/dataset_shard_{i}")
+
+        def parallel_convert(shard_path, n_workers):
+            converter = HFShardToPlaidSampleConverter(shard_path)
+            with Pool(processes=n_workers) as pool:
+                return list(
+                    tqdm(
+                        pool.imap(converter, range(len(converter.ds))),
+                        total=len(converter.ds),
+                    )
+                )
+
+        samples = []
+
+        for i in range(processes_number):
+            shard_path = os.path.join("shards", f"dataset_shard_{i}")
+            shard_samples = parallel_convert(shard_path, n_workers=processes_number)
+            samples.extend(shard_samples)
+
+        dataset.add_samples(samples)
+
+        if os.path.exists("shards"):
+            shutil.rmtree("shards")
+
+    else:
+        if ids:
+            indices = ids
+        else:
+            indices = range(len(ds))
+        with Pool(processes=processes_number) as pool:
+            for sample in tqdm(
+                pool.imap(HFToPlaidSampleConverter(ds), indices), total=len(indices)
+            ):
+                dataset.add_sample(sample)
 
     infos = {}
     if "legal" in ds.description:

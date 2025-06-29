@@ -4,21 +4,32 @@ from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, huggi
 import os, pickle
 import numpy as np
 from safetensors.numpy import save_file
+from sklearn.base import BaseEstimator, RegressorMixin
 
 from pipefunc import Pipeline, pipefunc
 from sklearn.preprocessing import StandardScaler
 
+from pathlib import Path
+import joblib
+
 import yaml
 import time
+
 
 
 @pipefunc(output_name=("dataset", "prob_def"))
 def load_hf_from_disk(path):
     return huggingface_dataset_to_plaid(load_from_disk(path))
 
+
 @pipefunc(output_name=("dataset", "prob_def"))
 def load_hf_from_hub(path):
-    return huggingface_dataset_to_plaid(load_dataset(path, split="all_samples"))
+    start = time.time()
+    hf_dataset = load_dataset(path, split="all_samples")
+    print(f"Loading dataset from HuggingFace Hub took: {time.time() - start:.2g} seconds")
+    dataset = huggingface_dataset_to_plaid(hf_dataset)
+    return dataset
+
 
 @pipefunc(output_name=("scalar_data"))
 def scale_scalars(dataset, prob_def, train_split_name, test_split_name, out_path):
@@ -95,10 +106,11 @@ if __name__ == "__main__":
     start = time.time()
 
     pipeline = Pipeline(
-        [
-            load_hf_from_hub,
-            scale_scalars,
-        ],
+            [
+                load_hf_from_hub,
+                scale_scalars,
+            ],
+        name="ML_Workflow",
         profile=True
     )
 
@@ -111,7 +123,7 @@ if __name__ == "__main__":
 
     scalar_data = pipeline(**parameters)
 
-    print("Pipeline execution time:", time.time() - start)
+    print(f"Pipeline execution time {time.time() - start:.2g} seconds")
 
 
     pipeline.print_profiling_stats()
