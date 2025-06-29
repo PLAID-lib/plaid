@@ -259,7 +259,7 @@ class Stats:
     def __init__(self):
         """Initialize an empty Stats object."""
         self._stats: dict[str, OnlineStatistics] = {}
-        self._field_is_flattened: dict[str, bool] = {}
+        self._feature_is_flattened: dict[str, bool] = {}
 
     def add_dataset(self, dset: Dataset) -> None:
         """Add a dataset to compute statistics for.
@@ -290,6 +290,7 @@ class Stats:
         new_data: dict[str, list] = {}
 
         for sample in samples:
+            print(f"{sample=}")
             # Process scalars
             self._process_scalar_data(sample, new_data)
 
@@ -385,13 +386,57 @@ class Stats:
             data_dict (dict[str, list]): Dictionary to store processed data
         """
         for name in sample.get_time_series_names():
-            if name not in data_dict:
-                data_dict[f"timestamps/{name}"] = []
-                data_dict[f"time_series/{name}"] = []
-            timestamps, values = sample.get_time_series(name)
-            if timestamps is not None and values is not None:
-                data_dict[f"timestamps/{name}"].append(timestamps.reshape((1, -1)))
-                data_dict[f"time_series/{name}"].append(values.reshape((1, -1)))
+            print(f" - {name=}")
+            timestamps, time_series = sample.get_time_series(name)
+            timestamps = timestamps.reshape((1, -1))
+            time_series = time_series.reshape((1, -1))
+
+            timestamps_name = f"timestamps/{name}"
+            time_series_name = f"time_series/{name}"
+            print(
+                f"    - {timestamps_name} is flattened -> {self._feature_is_flattened[timestamps_name] if timestamps_name in self._feature_is_flattened else None}"
+            )
+            print(
+                f"    - {time_series_name} is flattened -> {self._feature_is_flattened[time_series_name] if time_series_name in self._feature_is_flattened else None}"
+            )
+            if timestamps_name not in data_dict:
+                print(f"    - {timestamps_name} was not in {data_dict.keys()=}")
+                assert time_series_name not in data_dict
+                data_dict[timestamps_name] = []
+                data_dict[time_series_name] = []
+            if timestamps is not None and time_series is not None:
+                print(
+                    f"    - add timestamps and time_series to data_dict, {data_dict.keys()=}"
+                )
+
+                # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
+                if len(
+                    data_dict[time_series_name]
+                ) > 0 and not self._feature_is_flattened.get(time_series_name, False):
+                    prev_shape = data_dict[time_series_name][0].shape
+                    if time_series.shape != prev_shape:
+                        print(
+                            f"    - {timestamps.shape=} | {data_dict[timestamps_name][0].shape=}"
+                        )
+                        print(f"    - {time_series.shape=} | {prev_shape=}")
+                        # set this stat as flattened
+                        self._feature_is_flattened[timestamps_name] = True
+                        self._feature_is_flattened[time_series_name] = True
+                        # flatten corresponding stat
+                        if time_series_name in self._stats:  # TODO: ADD THIS IN TESTS
+                            self._stats[time_series_name].flatten_array()
+
+                if self._feature_is_flattened.get(time_series_name, False):
+                    print(f"    - {time_series_name} is flattened")
+                    timestamps = timestamps.reshape((-1, 1))
+                    time_series = time_series.reshape((-1, 1))
+                else:
+                    print(f"    - {time_series_name} is not flattened")
+                    timestamps = timestamps.reshape((1, -1))
+                    time_series = time_series.reshape((1, -1))
+
+                data_dict[timestamps_name].append(timestamps)
+                data_dict[time_series_name].append(time_series)
 
     def _process_field_data(self, sample: Sample, data_dict: dict[str, list]) -> None:
         """Process field data from a sample.
@@ -414,26 +459,27 @@ class Stats:
                             zone_name=zone_name,
                             base_name=base_name,
                             time=time,
-                        )
+                        ).reshape((1, -1))
                         if field is not None:
                             # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
                             if len(
                                 data_dict[stat_key]
-                            ) > 0 and not self._field_is_flattened.get(stat_key, False):
+                            ) > 0 and not self._feature_is_flattened.get(
+                                stat_key, False
+                            ):
                                 prev_shape = data_dict[stat_key][0].shape
                                 if field.shape != prev_shape:
+                                    print(f"    - {field.shape=} | {prev_shape=}")
                                     # set this stat as flattened
-                                    self._field_is_flattened[stat_key] = True
+                                    self._feature_is_flattened[stat_key] = True
                                     # flatten corresponding stat
                                     if (
                                         stat_key in self._stats
                                     ):  # TODO: ADD THIS IN TESTS
                                         self._stats[stat_key].flatten_array()
 
-                            if self._field_is_flattened.get(stat_key, False):
+                            if self._feature_is_flattened.get(stat_key, False):
                                 field = field.reshape((-1, 1))
-                            else:
-                                field = field.reshape((1, -1))
 
                             data_dict[stat_key].append(field)
 
@@ -455,7 +501,7 @@ class Stats:
                     ):  # TODO: ADD THIS IN TESTS
                         list_of_arrays[i] = list_of_arrays[i].reshape((-1, 1))
 
-                if self._field_is_flattened.get(name, False):
+                if self._feature_is_flattened.get(name, False):
                     # flatten all arrays in list_of_arrays
                     n_samples = len(list_of_arrays)
                     for i in range(len(list_of_arrays)):
