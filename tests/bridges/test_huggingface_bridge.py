@@ -22,7 +22,7 @@ from plaid.problem_definition import ProblemDefinition
 @pytest.fixture()
 def dataset(samples, infos) -> Dataset:
     dataset = Dataset()
-    dataset.add_samples(samples)
+    dataset.add_samples(samples[:2])
     dataset.set_infos(infos)
     return dataset
 
@@ -89,6 +89,14 @@ class Test_Huggingface_Bridge:
     def test_huggingface_dataset_to_plaid(self, hf_dataset):
         ds, pbdef = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
         self.assert_plaid_dataset(ds, pbdef)
+
+    def test_huggingface_dataset_to_plaid_with_ids(self, hf_dataset):
+        huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset, ids=[0, 1])
+
+    def test_huggingface_dataset_to_plaid_large(self, hf_dataset):
+        huggingface_bridge.huggingface_dataset_to_plaid(
+            hf_dataset, processes_number=2, large_dataset=True
+        )
 
     def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
         huggingface_bridge.create_string_for_huggingface_dataset_card(
