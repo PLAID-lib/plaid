@@ -128,6 +128,37 @@ def sample_with_time_series_of_different_size(
     return s
 
 
+# %% Functions
+
+
+def check_stats_dict(stats_dict):
+    # Check that all expected statistics keys are present
+    expected_keys = [
+        {"name": "mean", "type": np.ndarray, "ndim": 2},
+        {"name": "min", "type": np.ndarray, "ndim": 2},
+        {"name": "max", "type": np.ndarray, "ndim": 2},
+        {"name": "var", "type": np.ndarray, "ndim": 2},
+        {"name": "std", "type": np.ndarray, "ndim": 2},
+        {"name": "n_samples", "type": (int, np.integer)},
+        {"name": "n_points", "type": (int, np.integer)},
+        {"name": "n_features", "type": (int, np.integer)},
+    ]
+    for key_info in expected_keys:
+        key = key_info["name"]
+        assert key in stats_dict, f"Missing key: {key}"
+        if "type" in key_info:
+            assert isinstance(stats_dict[key], key_info["type"]), (
+                f"Key '{key}' has wrong type: {type(stats_dict[key])}, expected {key_info['type']}"
+            )
+        if "ndim" in key_info:
+            assert hasattr(stats_dict[key], "ndim"), (
+                f"Key '{key}' does not have 'ndim' attribute"
+            )
+            assert stats_dict[key].ndim == key_info["ndim"], (
+                f"Key '{key}' has wrong ndim: {stats_dict[key].ndim}, expected {key_info['ndim']}"
+            )
+
+
 # %% Tests
 
 
@@ -163,18 +194,7 @@ class Test_OnlineStatistics:
         online_stats.add_samples(np_samples_1)
         stats_dict = online_stats.get_stats()
         # Check that all expected statistics keys are present
-        expected_keys = {
-            "mean",
-            "min",
-            "max",
-            "var",
-            "std",
-            "n_samples",
-            "n_points",
-            "n_features",
-        }
-        for key in expected_keys:
-            assert key in stats_dict, f"Missing key: {key}"
+        check_stats_dict(stats_dict)
 
     def test_invalid_input_type(self, online_stats):
         with pytest.raises(TypeError):
@@ -200,13 +220,9 @@ class Test_OnlineStatistics:
         # do the merging
         stats1.merge_stats(stats2)
         assert stats1.n_samples == n_samples_before + stats2.n_samples
-        print(f"{n_samples_before=}, {n_samples_other=}")
-        print(f"{mean_before=}, {other_mean=}")
         expected_mean = (
             mean_before * n_samples_before + other_mean * n_samples_other
         ) / (n_samples_before + n_samples_other)
-        print(f"{expected_mean=}")
-        print(f"{stats1.mean=}")
         assert np.allclose(stats1.mean, expected_mean)
         # other merging tests
         with pytest.raises(TypeError):
@@ -227,34 +243,22 @@ class Test_Stats:
     def test_get_stats(self, stats, samples):
         stats.add_samples(samples)
         stats_dict = stats.get_stats()
-        sample: Sample = samples[0]
+
+        sample = samples[0]
         feature_names = sample.get_scalar_names()
+        feature_names.extend(sample.get_time_series_names())
         for base_name in sample.get_base_names():
             for zone_name in sample.get_zone_names(base_name=base_name):
                 for field_name in sample.get_field_names(
                     zone_name=zone_name, base_name=base_name
                 ):
                     feature_names.append(f"{base_name}/{zone_name}/{field_name}")
-        feature_names.extend(sample.get_time_series_names())
+
         for feat_name in feature_names:
             assert feat_name in stats_dict, (
                 f"Missing {feat_name=}, in {stats_dict.keys()}"
             )
-            # Check that all expected statistics keys are present
-            expected_keys = {
-                "mean",
-                "min",
-                "max",
-                "var",
-                "std",
-                "n_samples",
-                "n_points",
-                "n_features",
-            }
-            for key in expected_keys:
-                assert key in stats_dict[feat_name], (
-                    f"   Missing {key=}, in {feat_name=}, in {stats_dict[feat_name].keys()}"
-                )
+            check_stats_dict(stats_dict[feat_name])
 
     def test_invalid_input(self, stats):
         with pytest.raises(TypeError):
@@ -297,7 +301,7 @@ class Test_Stats:
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 202
         stats_dict = stat_field.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 101)
 
         assert "time_series/ts1" in keys
@@ -306,7 +310,7 @@ class Test_Stats:
         assert stat.n_samples == 2
         assert stat.n_points == 20
         stats_dict = stat.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 10)
 
     def test_add_samples_time_series_case_2(
@@ -323,7 +327,7 @@ class Test_Stats:
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 152
         stats_dict = stat_field.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)
 
         assert "time_series/ts1" in keys
@@ -332,7 +336,7 @@ class Test_Stats:
         assert stat.n_samples == 2
         assert stat.n_points == 15
         stats_dict = stat.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)
 
     def test_add_samples_time_series_case_3(self, sample_with_time_series):
@@ -346,17 +350,16 @@ class Test_Stats:
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 202
         stats_dict = stat_field.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 101)
 
         assert "time_series/ts1" in keys
         assert "timestamps/ts1" in keys
         stat = stats3._stats["time_series/ts1"]
-        print(stat.get_stats())
         assert stat.n_samples == 2
         assert stat.n_points == 20
         stats_dict = stat.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 10)
 
     def test_add_samples_time_series_case_4(
@@ -374,7 +377,7 @@ class Test_Stats:
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 152
         stats_dict = stat_field.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)
 
         assert "time_series/ts1" in keys
@@ -383,7 +386,7 @@ class Test_Stats:
         assert stat.n_samples == 2
         assert stat.n_points == 15
         stats_dict = stat.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)
 
     def test_add_samples_time_series_case_5(
@@ -402,7 +405,7 @@ class Test_Stats:
         assert stat_field.n_samples == 3
         assert stat_field.n_points == 253
         stats_dict = stat_field.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)
 
         assert "time_series/ts1" in keys
@@ -411,7 +414,7 @@ class Test_Stats:
         assert stat.n_samples == 3
         assert stat.n_points == 25
         stats_dict = stat.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)
 
     def test_merge_stats_with_same_sizes(self, sample_with_time_series):
@@ -419,9 +422,6 @@ class Test_Stats:
         stats2 = Stats()
         stats1.add_samples([sample_with_time_series])
         stats2.add_samples([sample_with_time_series])
-        print(
-            f"{stats1._stats['time_series/ts1'].n_samples=}, {stats2._stats['time_series/ts1'].n_samples=}"
-        )
         stats1.merge_stats(stats2)
         keys = stats1.get_available_statistics()
         assert "Base_1_1/Zone/field1" in keys
@@ -429,8 +429,9 @@ class Test_Stats:
         stat_field = stats1._stats["Base_1_1/Zone/field1"]
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 202
+        assert stat_field.n_features == 101
         stats_dict = stat_field.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 101)
 
         assert "time_series/ts1" in keys
@@ -438,8 +439,9 @@ class Test_Stats:
         stat = stats1._stats["time_series/ts1"]
         assert stat.n_samples == 2
         assert stat.n_points == 20
+        assert stat.n_features == 10
         stats_dict = stat.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 10)
 
     def test_merge_stats_with_different_sizes(
@@ -449,9 +451,6 @@ class Test_Stats:
         stats2 = Stats()
         stats1.add_samples([sample_with_time_series])
         stats2.add_samples([sample_with_time_series_of_different_size])
-        print(
-            f"{stats1._stats['time_series/ts1'].n_samples=}, {stats2._stats['time_series/ts1'].n_samples=}"
-        )
         stats1.merge_stats(stats2)
         keys = stats1.get_available_statistics()
         assert "Base_1_1/Zone/field1" in keys
@@ -460,7 +459,7 @@ class Test_Stats:
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 152
         stats_dict = stat_field.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)
 
         assert "time_series/ts1" in keys
@@ -469,5 +468,5 @@ class Test_Stats:
         assert stat.n_samples == 2
         assert stat.n_points == 15
         stats_dict = stat.get_stats()
-        assert "mean" in stats_dict
+        check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)

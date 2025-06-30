@@ -203,8 +203,12 @@ class OnlineStatistics(object):
                 "Shape mismatch in OnlineStatistics merging"
             )
 
-        self.min = np.min(np.concatenate((self.min, other.min), axis=0), axis=0)
-        self.max = np.max(np.concatenate((self.max, other.max), axis=0), axis=0)
+        self.min = np.min(
+            np.concatenate((self.min, other.min), axis=0), axis=0, keepdims=True
+        )
+        self.max = np.max(
+            np.concatenate((self.max, other.max), axis=0), axis=0, keepdims=True
+        )
         self.n_points += other.n_points
         self.n_samples, self.mean, self.var = aggregate_stats(
             np.array([self.n_samples, other.n_samples]),
@@ -215,8 +219,8 @@ class OnlineStatistics(object):
 
     def flatten_array(self) -> None:
         """When a shape incoherence is detected, you should call this function."""
-        self.min = np.min(self.min, keepdims=True).reshape(-1, 1)
-        self.max = np.max(self.max, keepdims=True).reshape(-1, 1)
+        self.min = np.min(self.min, keepdims=True).reshape(1, 1)
+        self.max = np.max(self.max, keepdims=True).reshape(1, 1)
         self.n_points = self.n_samples * self.n_features
         assert self.mean.shape == self.var.shape
         self.n_points, self.mean, self.var = aggregate_stats(
@@ -228,11 +232,12 @@ class OnlineStatistics(object):
 
         self.n_features = 1
 
-    def get_stats(self) -> dict[str, Union[int, np.ndarray[float]]]:
+    def get_stats(self) -> dict[str, Union[int, np.ndarray]]:
         """Get computed statistics.
 
         Returns:
-            dict[str,np.ndarray]:  A dictionary containing computed statistics.
+            dict[str, Union[int, np.ndarray]]: A dictionary containing computed statistics.
+            The shapes of the arrays depend on the input data and may vary.
         """
         return {
             "n_samples": self.n_samples,
@@ -290,7 +295,6 @@ class Stats:
         new_data: dict[str, list] = {}
 
         for sample in samples:
-            print(f"{sample=}")
             # Process scalars
             self._process_scalar_data(sample, new_data)
 
@@ -334,7 +338,8 @@ class Stats:
                 for stat_name, stat_value in (
                     self._stats[identifier].get_stats().items()
                 ):
-                    stats[identifier][stat_name] = np.squeeze(stat_value)
+                    stats[identifier][stat_name] = stat_value
+                    # stats[identifier][stat_name] = np.squeeze(stat_value)
 
         return stats
 
@@ -386,52 +391,34 @@ class Stats:
             data_dict (dict[str, list]): Dictionary to store processed data
         """
         for name in sample.get_time_series_names():
-            print(f" - {name=}")
             timestamps, time_series = sample.get_time_series(name)
             timestamps = timestamps.reshape((1, -1))
             time_series = time_series.reshape((1, -1))
 
             timestamps_name = f"timestamps/{name}"
             time_series_name = f"time_series/{name}"
-            print(
-                f"    - {timestamps_name} is flattened -> {self._feature_is_flattened[timestamps_name] if timestamps_name in self._feature_is_flattened else None}"
-            )
-            print(
-                f"    - {time_series_name} is flattened -> {self._feature_is_flattened[time_series_name] if time_series_name in self._feature_is_flattened else None}"
-            )
             if timestamps_name not in data_dict:
-                print(f"    - {timestamps_name} was not in {data_dict.keys()=}")
                 assert time_series_name not in data_dict
                 data_dict[timestamps_name] = []
                 data_dict[time_series_name] = []
             if timestamps is not None and time_series is not None:
-                print(
-                    f"    - add timestamps and time_series to data_dict, {data_dict.keys()=}"
-                )
-
                 # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
                 if len(
                     data_dict[time_series_name]
                 ) > 0 and not self._feature_is_flattened.get(time_series_name, False):
                     prev_shape = data_dict[time_series_name][0].shape
                     if time_series.shape != prev_shape:
-                        print(
-                            f"    - {timestamps.shape=} | {data_dict[timestamps_name][0].shape=}"
-                        )
-                        print(f"    - {time_series.shape=} | {prev_shape=}")
                         # set this stat as flattened
                         self._feature_is_flattened[timestamps_name] = True
                         self._feature_is_flattened[time_series_name] = True
                         # flatten corresponding stat
-                        if time_series_name in self._stats:  # TODO: ADD THIS IN TESTS
+                        if time_series_name in self._stats:
                             self._stats[time_series_name].flatten_array()
 
                 if self._feature_is_flattened.get(time_series_name, False):
-                    print(f"    - {time_series_name} is flattened")
                     timestamps = timestamps.reshape((-1, 1))
                     time_series = time_series.reshape((-1, 1))
                 else:
-                    print(f"    - {time_series_name} is not flattened")
                     timestamps = timestamps.reshape((1, -1))
                     time_series = time_series.reshape((1, -1))
 
@@ -469,13 +456,10 @@ class Stats:
                             ):
                                 prev_shape = data_dict[stat_key][0].shape
                                 if field.shape != prev_shape:
-                                    print(f"    - {field.shape=} | {prev_shape=}")
                                     # set this stat as flattened
                                     self._feature_is_flattened[stat_key] = True
                                     # flatten corresponding stat
-                                    if (
-                                        stat_key in self._stats
-                                    ):  # TODO: ADD THIS IN TESTS
+                                    if stat_key in self._stats:
                                         self._stats[stat_key].flatten_array()
 
                             if self._feature_is_flattened.get(stat_key, False):
@@ -498,7 +482,7 @@ class Stats:
                     if (
                         isinstance(list_of_arrays[i], np.ndarray)
                         and list_of_arrays[i].ndim == 1
-                    ):  # TODO: ADD THIS IN TESTS
+                    ):
                         list_of_arrays[i] = list_of_arrays[i].reshape((-1, 1))
 
                 if self._feature_is_flattened.get(name, False):

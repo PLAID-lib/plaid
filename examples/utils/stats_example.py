@@ -173,9 +173,6 @@ for sample in samples:
         zone_name="test_zone", base_name="test_base"
     )
 
-for sample in samples:
-    print(sample)
-print(f"{len(samples)=}")
 stats.add_samples(samples)
 
 # %% [markdown]
