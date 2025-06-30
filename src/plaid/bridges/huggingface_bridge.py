@@ -103,7 +103,7 @@ def plaid_generator_to_huggingface(
     generator: Callable,
     infos: dict,
     problem_definition: ProblemDefinition,
-    processes_number: int = os.cpu_count(),
+    processes_number: int = 1,
 ) -> datasets.Dataset:
     """Use this function for creating a huggingface dataset from a sample generator function.
 
@@ -193,7 +193,7 @@ class HFShardToPlaidSampleConverter:
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
     ids: list[int] = None,
-    processes_number: int = os.cpu_count(),
+    processes_number: int = 1,
     large_dataset=False,
 ) -> tuple[Self, ProblemDefinition]:
     """Use this function for converting a plaid dataset from a huggingface dataset.
@@ -221,13 +221,21 @@ def huggingface_dataset_to_plaid(
             dataset = load_from_disk("chanel/dataset")
             plaid_dataset, plaid_problem = huggingface_dataset_to_plaid(dataset)
     """
+    assert processes_number <= len(ds), (
+        "Trying to parallelize with more processes than samples in dataset"
+    )
+    if ids:
+        assert processes_number <= len(ids), (
+            "Trying to parallelize with more processes than selected samples in dataset"
+        )
+
     dataset = Dataset()
 
     print("Converting huggingface dataset to plaid dataset...")
 
     if large_dataset:
         if ids:
-            NotImplementedError(
+            raise NotImplementedError(
                 "ids selection not implemented with large_dataset option"
             )
         for i in range(processes_number):

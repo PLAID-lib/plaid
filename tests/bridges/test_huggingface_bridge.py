@@ -98,6 +98,24 @@ class Test_Huggingface_Bridge:
             hf_dataset, processes_number=2, large_dataset=True
         )
 
+    def test_huggingface_dataset_to_plaid_with_ids_large(self, hf_dataset):
+        with pytest.raises(NotImplementedError):
+            huggingface_bridge.huggingface_dataset_to_plaid(
+                hf_dataset, ids=[0, 1], processes_number=2, large_dataset=True
+            )
+
+    def test_huggingface_dataset_to_plaid_error_processes_number(self, hf_dataset):
+        with pytest.raises(AssertionError):
+            huggingface_bridge.huggingface_dataset_to_plaid(
+                hf_dataset, processes_number=128
+            )
+
+    def test_huggingface_dataset_to_plaid_error_processes_number_2(self, hf_dataset):
+        with pytest.raises(AssertionError):
+            huggingface_bridge.huggingface_dataset_to_plaid(
+                hf_dataset, ids=[0], processes_number=2
+            )
+
     def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
         huggingface_bridge.create_string_for_huggingface_dataset_card(
             description=hf_dataset.description,
