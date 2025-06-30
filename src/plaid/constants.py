@@ -7,7 +7,6 @@
 #
 #
 
-
 AUTHORIZED_TASKS = "regression", "classification"
 
 CGNS_ELEMENT_NAMES = [
