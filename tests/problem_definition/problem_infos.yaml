@@ -13,8 +13,8 @@ input_fields:
 - test_field
 output_fields:
 - field
-- predict_field
 - test_field
+- predict_field
 input_timeseries:
 - predict_timeseries
 - test_timeseries

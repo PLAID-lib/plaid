@@ -29,6 +29,7 @@ import numpy as np
 import yaml
 from tqdm import tqdm
 
+from plaid.constants import AUTHORIZED_INFO_KEYS
 from plaid.containers.sample import Sample
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 
@@ -38,30 +39,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-authorized_info_keys = {
-    "legal": ["owner", "license"],
-    "data_production": [
-        "owner",
-        "license",
-        "type",
-        "physics",
-        "simulator",
-        "hardware",
-        "computation_duration",
-        "script",
-        "contact",
-        "location",
-    ],
-    "data_description": [
-        "number_of_samples",
-        "number_of_splits",
-        "DOE",
-        "inputs",
-        "outputs",
-    ],
-}
-"""Configuration dictionary that specifies authorized information keys and their respective categories.
-"""
 
 # %% Functions
 
@@ -511,13 +488,13 @@ class Dataset(object):
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}, 'data_production': {'type': 'simulation'}}
 
         """
-        if cat_key not in authorized_info_keys:
+        if cat_key not in AUTHORIZED_INFO_KEYS:
             raise KeyError(
-                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
             )
-        if info_key not in authorized_info_keys[cat_key]:
+        if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
             raise KeyError(
-                f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+                f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
             )
 
         if cat_key not in self._infos:
@@ -554,14 +531,14 @@ class Dataset(object):
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}, 'data_production': {'type': 'simulation', 'simulator': 'Z-set'}}
 
         """
-        if cat_key not in authorized_info_keys:  # Format checking on "infos"
+        if cat_key not in AUTHORIZED_INFO_KEYS:  # Format checking on "infos"
             raise KeyError(
-                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
             )
         for info_key in infos.keys():
-            if info_key not in authorized_info_keys[cat_key]:
+            if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
                 raise KeyError(
-                    f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+                    f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
                 )
 
         if cat_key not in self._infos:
@@ -595,14 +572,14 @@ class Dataset(object):
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}}
         """
         for cat_key in infos.keys():  # Format checking on "infos"
-            if cat_key not in authorized_info_keys:
+            if cat_key not in AUTHORIZED_INFO_KEYS:
                 raise KeyError(
-                    f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+                    f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
                 )
             for info_key in infos[cat_key].keys():
-                if info_key not in authorized_info_keys[cat_key]:
+                if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
                     raise KeyError(
-                        f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+                        f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
                     )
 
         if len(self._infos) > 0:
