@@ -173,7 +173,7 @@ class HFToPlaidSampleConverter:
     def __init__(self, ds):
         self.ds = ds
 
-    def __call__(self, ind):
+    def __call__(self, ind):  # pragma: no cover  (not reported with multiprocessing)
         """Convert a single sample from the huggingface dataset to a plaid sample."""
         return Sample.model_validate(pickle.loads(self.ds[ind]["sample"]))
 
@@ -184,7 +184,7 @@ class HFShardToPlaidSampleConverter:
     def __init__(self, shard_path):
         self.ds = load_from_disk(shard_path)
 
-    def __call__(self, idx):
+    def __call__(self, idx):  # pragma: no cover (not reported with multiprocessing)
         """Convert a sample shard from the huggingface dataset to a plaid sample."""
         sample = self.ds[idx]
         return Sample.model_validate(pickle.loads(sample["sample"]))
