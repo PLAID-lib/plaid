@@ -7,11 +7,10 @@
 #
 #
 
-from typing import Literal
 
-AUTHORIZED_TASKS = Literal["regression", "classification"]
+AUTHORIZED_TASKS = "regression", "classification"
 
-CGNS_ELEMENT_NAMES = Literal[
+CGNS_ELEMENT_NAMES = [
     "ElementTypeNull",
     "ElementTypeUserDefined",
     "NODE",
