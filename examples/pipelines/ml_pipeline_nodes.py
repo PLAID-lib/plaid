@@ -1,11 +1,12 @@
-import os
-import json
-import joblib
-from joblib import Parallel, delayed
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
 import numpy as np
-from pathlib import Path
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin
-from sklearn.linear_model import Ridge
 from sklearn.decomposition import PCA
 from plaid.containers.dataset import Dataset
 import copy
