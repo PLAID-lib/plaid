@@ -14,7 +14,7 @@ try:
 except ImportError:
     from typing_extensions import TypeAlias
 
-from plaid.types import Array
+from plaid.types.common import Array
 
 # CGNS types inside a node
 NodeName: TypeAlias = str
