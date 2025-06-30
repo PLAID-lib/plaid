@@ -1,0 +1,9 @@
+load_hf_from_hub:
+  - path: "PLAID-datasets/Tensile2d"
+
+scale_scalars:
+  - train_split_name: "train_500"
+  - test_split_name: "test"
+
+save:
+  - out_path: "./artifacts"
