@@ -7,7 +7,12 @@
 #
 #
 
-from typing import TypeAlias, Union
+from typing import Union
+
+try:
+    from typing import TypeAlias  # Python 3.10+
+except ImportError:
+    from typing_extensions import TypeAlias
 
 import numpy as np
 from numpy.typing import NDArray
