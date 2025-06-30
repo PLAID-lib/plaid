@@ -14,12 +14,7 @@ try:
 except ImportError:
     from typing_extensions import TypeAlias
 
-import numpy as np
-from numpy.typing import NDArray
-
-# A generic float array type (float32 or float64)
-ArrayDType = Union[np.float32, np.float64]
-Array: TypeAlias = NDArray[ArrayDType]
+from plaid.types import Array
 
 # CGNS types inside a node
 NodeName: TypeAlias = str
