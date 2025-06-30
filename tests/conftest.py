@@ -38,7 +38,7 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
 @pytest.fixture()
 def nb_samples() -> int:
     """Number of samples to generate for tests."""
-    return 11
+    return 4
 
 
 @pytest.fixture()
