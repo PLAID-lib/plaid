@@ -17,7 +17,7 @@ from copy import copy
 import yaml
 import time
 
-from ml_pipeline_nodes import ScalarScalerNode, GPRegressorNode, PCAEmbeddingNode #, TutteMorphing
+from ml_pipeline_nodes import ScalarScalerNode, GPRegressorNode, PCAEmbeddingNode
 
 import warnings
 warnings.filterwarnings('ignore', module='sklearn')
