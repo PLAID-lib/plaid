@@ -276,8 +276,11 @@ class Stats:
     def add_samples(self, samples: Union[List[Sample], Dataset]) -> None:
         """Add samples or a dataset to compute statistics for.
 
-        Processes both scalar and field data from the provided samples,
-        computing running statistics for each data identifier.
+        Compute stats for each features present in the samples among scalars, fields and time_series.
+        For fields and time_series, as long as the added samples have the same shape as the existing ones,
+        the stats will be computed per-coordinates (n_features=x.shape[-1]).
+        But as soon as the shapes differ, the stats and added fields/time_series will be flattened (n_features=1),
+        then stats will be computed over all values of the field/time_series.
 
         Args:
             samples (Union[List[Sample], Dataset]): List of samples or dataset to process
