@@ -33,7 +33,7 @@ print(f"Loading dataset from HuggingFace Hub took: {time.time() - start:.2g} sec
 prob_def = huggingface_description_to_problem_definition(hf_dataset.description)
 
 train_split = prob_def.get_split(global_params['train_split_name'])[:100]
-dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, ids = train_split)
+dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, ids = train_split, processes_number = os.cpu_count())
 
 
 pipeline = Pipeline([
@@ -72,10 +72,10 @@ print("=================================")
 print("Direct pipeline example:")
 
 train_split = prob_def.get_split(global_params['train_split_name'])
-test_split = prob_def.get_split(global_params['train_split_name'])[:10]
+test_split = prob_def.get_split(global_params['train_split_name'])[:24]
 
-dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, ids = train_split)
-dataset_test, _ = huggingface_dataset_to_plaid(hf_dataset, ids = test_split)
+dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, ids = train_split, processes_number = os.cpu_count())
+dataset_test, _ = huggingface_dataset_to_plaid(hf_dataset, ids = test_split, processes_number = os.cpu_count())
 
 
 

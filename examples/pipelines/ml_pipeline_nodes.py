@@ -67,26 +67,25 @@ class ScalarScalerNode(BaseEstimator, TransformerMixin):
 
 class PCAEmbeddingNode(BaseEstimator, RegressorMixin, TransformerMixin):
 
-    def __init__(self, field_name = None, n_components = None, zone_name = None, base_name = None, time = None, location = "Vertex"):
-
-        self.zone_name = zone_name
-        self.base_name = base_name
-        self.time      = time
-        self.location  = location
+    def __init__(self, field_name = None, n_components = None, zone_name = None, base_name = None, location = "Vertex"):
 
         self.field_name   = field_name
         self.n_components = n_components
+        self.zone_name = zone_name
+        self.base_name = base_name
+        self.location  = location
 
         self.model = None
 
     def get_all_fields(self, dataset):
         all_fields = []
         for sample in dataset:
-            if self.field_name == "nodes":
-                field = sample.get_nodes(self.zone_name, self.base_name, self.time).flatten()
-            else:
-                field = sample.get_field(self.field_name, self.zone_name, self.base_name, self.location, self.time)
-            all_fields.append(field)
+            for time in sample.get_all_mesh_times():
+                if self.field_name == "nodes":
+                    field = sample.get_nodes(self.zone_name, self.base_name, time).flatten()
+                else:
+                    field = sample.get_field(self.field_name, self.zone_name, self.base_name, self.location, time)
+                all_fields.append(field)
         return np.array(all_fields)
 
     def set_reduced_fields(self, dataset, reduced_fields):
@@ -102,9 +101,10 @@ class PCAEmbeddingNode(BaseEstimator, RegressorMixin, TransformerMixin):
             as_nparray = True
         )
 
-    def set_fields(self, dataset, fields):
+    def set_fields(self, dataset, fields): # TODO: this will not work with multiple times step per sample
         for i in range(len(dataset)):
-            dataset[i].add_field(self.field_name, fields[i], self.zone_name, self.base_name, self.location, self.time)
+            for time in dataset[i].get_all_mesh_times():
+                dataset[i].add_field(self.field_name, fields[i], self.zone_name, self.base_name, self.location, time)
 
     def fit(self, dataset, y=None):
         self.model = PCA(n_components = self.n_components)
