@@ -1,4 +1,11 @@
-"""Common constants used across the PLAID library."""
+"""Common constants used across the PLAID library.
+
+AUTHORIZED_TASKS: Tuple of strings representing the types of tasks supported by PLAID.
+
+CGNS_ELEMENT_NAMES: List of strings representing the names of CGNS elements.
+
+AUTHORIZED_INFO_KEYS: Dictionary defining the keys allowed in different sections of metadata.
+"""
 
 # -*- coding: utf-8 -*-
 #
@@ -7,7 +14,7 @@
 #
 #
 
-AUTHORIZED_TASKS = "regression", "classification"
+AUTHORIZED_TASKS = ["regression", "classification"]
 
 CGNS_ELEMENT_NAMES = [
     "ElementTypeNull",
@@ -51,7 +58,6 @@ CGNS_ELEMENT_NAMES = [
     "HEXA_56",
     "HEXA_64",
 ]
-"""List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
 
 AUTHORIZED_INFO_KEYS = {
     "legal": ["owner", "license"],
@@ -75,5 +81,3 @@ AUTHORIZED_INFO_KEYS = {
         "outputs",
     ],
 }
-"""Configuration dictionary that specifies authorized information keys and their respective categories.
-"""
