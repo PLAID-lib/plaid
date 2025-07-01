@@ -37,10 +37,10 @@ dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, ids = train_split, p
 
 
 pipeline = Pipeline([
-    ('input_scalar_scaler', ScalarScalerNode(type = config['input_scalar_scaler']['type'], scalar_names = config['input_scalar_scaler']['scalar_names'])),
-    ('output_scalar_scaler', ScalarScalerNode(type = config['output_scalar_scaler']['type'], scalar_names = config['output_scalar_scaler']['scalar_names'])),
-    ('pca_nodes', PCAEmbeddingNode(field_name = config['pca_nodes']['field_name'], n_components = config['pca_nodes']['n_components'], base_name = config['pca_nodes']['base_name'])),
-    ('pca_mach', PCAEmbeddingNode(field_name = config['pca_mach']['field_name'], n_components = config['pca_mach']['n_components'], base_name = config['pca_mach']['base_name'])),
+    ('input_scalar_scaler', ScalarScalerNode(params = config['input_scalar_scaler'])),
+    ('output_scalar_scaler', ScalarScalerNode(params = config['output_scalar_scaler'])),
+    ('pca_nodes', PCAEmbeddingNode(params = config['pca_nodes'], n_components = config['pca_nodes']['n_components'])),
+    ('pca_mach', PCAEmbeddingNode(params = config['pca_mach'], n_components = config['pca_mach']['n_components'])),
     ('regressor_mach', GPRegressorNode(params = config['regressor_mach']))
 ])
 

@@ -20,14 +20,16 @@ available_scalers = {
 
 class ScalarScalerNode(BaseEstimator, TransformerMixin):
 
-    def __init__(self, type, scalar_names):
-        self.type = type
-        self.scalar_names = scalar_names
+    def __init__(self, params):
 
-        assert type in available_scalers.keys(), "Scaler "+type+" not available"
+        self.params = params
+
+        self.type_ = params['type']
+        self.scalar_names = params['scalar_names']
+
+        assert self.type_ in available_scalers.keys(), "Scaler "+self.type_+" not available"
 
         self.model = None
-
 
     def get_scalars(self, dataset):
         if isinstance(dataset, list):
@@ -43,7 +45,7 @@ class ScalarScalerNode(BaseEstimator, TransformerMixin):
                 dataset[i].add_scalar(sn, scalars[i, j])
 
     def fit(self, dataset, y=None):
-        self.model = available_scalers[self.type]()
+        self.model = available_scalers[self.type_]()
 
         scalars = self.get_scalars(dataset)
         self.model.fit(scalars)
@@ -67,13 +69,16 @@ class ScalarScalerNode(BaseEstimator, TransformerMixin):
 
 class PCAEmbeddingNode(BaseEstimator, RegressorMixin, TransformerMixin):
 
-    def __init__(self, field_name = None, n_components = None, zone_name = None, base_name = None, location = "Vertex"):
+    def __init__(self, params, n_components = None):
 
-        self.field_name   = field_name
-        self.n_components = n_components
-        self.zone_name = zone_name
-        self.base_name = base_name
-        self.location  = location
+        self.params = params
+
+        self.n_components = n_components if n_components is not None else params['n_components']
+
+        self.field_name = params['field_name']
+        self.zone_name  = params['zone_name'] if 'zone_name' in params else None
+        self.base_name  = params['base_name'] if 'base_name' in params else None
+        self.location   = params['location']  if 'location'  in params else "Vertex"
 
         self.model = None
 
@@ -142,8 +147,15 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
     def __init__(self, params):
 
         self.params = params
-        assert params['type'] == "GaussianProcessRegressor"
-        assert self.params['options']["kernel"] in available_kernel_classes.keys(), "scikit-learn kernel "+self.params['options']["kernel"]+" not available"
+
+        self.type_   = params['type']
+        self.input   = params['input']
+        self.output  = params['output']
+        self.options = params['options']
+
+
+        assert self.type_ == "GaussianProcessRegressor"
+        assert self.options['kernel'] in available_kernel_classes.keys(), "scikit-learn kernel "+self.options['kernel']+" not available"
 
         self.model = None
 
@@ -162,32 +174,32 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
         all_available_scalar = dataset.get_scalar_names()
 
         self.input_names = []
-        if "scalar_names" in self.params['input']:
-            self.input_names += self.params['input']["scalar_names"]
-        if "vector_names" in self.params['input']:
-            for vn in self.params['input']["vector_names"]:
+        if "scalar_names" in self.input:
+            self.input_names += self.input["scalar_names"]
+        if "vector_names" in self.input:
+            for vn in self.input["vector_names"]:
                 self.input_names += [s for s in all_available_scalar if s.startswith(vn)]
 
         self.output_names = []
-        if "scalar_names" in self.params['output']:
-            self.output_names += self.params['output']["scalar_names"]
-        if "vector_names" in self.params['output']:
-            for vn in self.params['output']["vector_names"]:
+        if "scalar_names" in self.output:
+            self.output_names += self.output["scalar_names"]
+        if "vector_names" in self.output:
+            for vn in self.output["vector_names"]:
                 self.output_names += [s for s in all_available_scalar if s.startswith(vn)]
 
-        kernel_class = available_kernel_classes[self.params['options']["kernel"]]
-        if self.params['options']["anisotropic"]:
+        kernel_class = available_kernel_classes[self.options['kernel']]
+        if self.options["anisotropic"]:
             kernel = ConstantKernel() * kernel_class(length_scale=np.ones(len(self.input_names)), length_scale_bounds=(1e-8, 1e8),
-                                    **self.params['options']["kernel_options"]) + WhiteKernel(noise_level_bounds=(1e-8, 1e8))
+                                    **self.options["kernel_options"]) + WhiteKernel(noise_level_bounds=(1e-8, 1e8))
         else:
-            kernel = kernel_class(length_scale_bounds=(1e-8, 1e8), **self.params['options']["kernel_options"]) \
+            kernel = kernel_class(length_scale_bounds=(1e-8, 1e8), **self.options["kernel_options"]) \
                 + WhiteKernel(noise_level_bounds=(1e-8, 1e8))
 
         gpr = GaussianProcessRegressor(
             kernel=kernel,
-            optimizer=self.params['options']["optim"],
-            n_restarts_optimizer=self.params['options']["num_restarts"],
-            random_state = self.params['options']["random_state"])
+            optimizer=self.options["optim"],
+            n_restarts_optimizer=self.options["num_restarts"],
+            random_state = self.options["random_state"])
 
         self.model = MultiOutputRegressor(gpr)
         if isinstance(dataset, list):
