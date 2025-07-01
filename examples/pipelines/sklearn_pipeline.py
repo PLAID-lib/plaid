@@ -35,7 +35,7 @@ prob_def = huggingface_description_to_problem_definition(hf_dataset.description)
 train_split = prob_def.get_split(global_params['train_split_name'])[:100]
 dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, ids = train_split, processes_number = os.cpu_count())
 
-
+# Pipeline with ``n_components`` specified in PCAEmbeddingNode for GridSearchCV
 pipeline = Pipeline([
     ('input_scalar_scaler', ScalarScalerNode(params = config['input_scalar_scaler'])),
     ('output_scalar_scaler', ScalarScalerNode(params = config['output_scalar_scaler'])),
@@ -77,6 +77,14 @@ test_split = prob_def.get_split(global_params['train_split_name'])[:24]
 dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, ids = train_split, processes_number = os.cpu_count())
 dataset_test, _ = huggingface_dataset_to_plaid(hf_dataset, ids = test_split, processes_number = os.cpu_count())
 
+# Pipeline with all arguments specified in ``config.yml``
+pipeline = Pipeline([
+    ('input_scalar_scaler', ScalarScalerNode(params = config['input_scalar_scaler'])),
+    ('output_scalar_scaler', ScalarScalerNode(params = config['output_scalar_scaler'])),
+    ('pca_nodes', PCAEmbeddingNode(params = config['pca_nodes'])),
+    ('pca_mach', PCAEmbeddingNode(params = config['pca_mach'])),
+    ('regressor_mach', GPRegressorNode(params = config['regressor_mach']))
+])
 
 
 pipeline.fit(dataset_train)
