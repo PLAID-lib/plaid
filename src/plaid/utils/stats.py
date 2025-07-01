@@ -102,7 +102,6 @@ class OnlineStatistics(object):
             n_samples (int, optional): The number of samples in the input array. If not provided, it will be inferred from the shape of `x`. Use this argument when the input array has already been flattened because of shape inconsistencies.
 
         Raises:
-            ShapeError: Raised when there is an inconsistency in the shape of the input array.
             ValueError: Raised when input contains NaN or Inf values.
         """
         # Validate input
@@ -478,12 +477,12 @@ class Stats:
                 if name not in self._stats:
                     self._stats[name] = OnlineStatistics()
 
-                for i in range(len(list_of_arrays)):
-                    if (
-                        isinstance(list_of_arrays[i], np.ndarray)
-                        and list_of_arrays[i].ndim == 1
-                    ):
-                        list_of_arrays[i] = list_of_arrays[i].reshape((-1, 1))
+                # internal check, should never happen if self._process_* functions work correctly
+                for sample_id in range(len(list_of_arrays)):
+                    assert isinstance(list_of_arrays[sample_id], np.ndarray)
+                    assert list_of_arrays[sample_id].ndim == 2, (
+                        f"for feature <{name}> -> {sample_id=}: {list_of_arrays[sample_id].ndim=} should be 2"
+                    )
 
                 if self._feature_is_flattened.get(name, False):
                     # flatten all arrays in list_of_arrays
