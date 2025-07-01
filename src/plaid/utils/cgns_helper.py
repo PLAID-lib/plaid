@@ -10,9 +10,7 @@
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 
-CGNSTree = list
-"""A CGNSTree is a list
-"""
+from plaid.types import CGNSTree
 
 
 def get_base_names(

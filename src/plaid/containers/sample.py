@@ -21,7 +21,7 @@ import copy
 import glob
 import logging
 import os
-from typing import Optional, Union
+from typing import Optional
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
@@ -31,6 +31,17 @@ import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 from pydantic import BaseModel, model_serializer
 
+from plaid.constants import CGNS_ELEMENT_NAMES
+from plaid.types import (
+    CGNSNode,
+    CGNSTree,
+    FieldType,
+    LinkType,
+    PathType,
+    ScalarType,
+    TimeSequenceType,
+    TimeSeriesType,
+)
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -41,83 +52,8 @@ logging.basicConfig(
 
 # %% Globals
 
-CGNS_element_names = [
-    "ElementTypeNull",
-    "ElementTypeUserDefined",
-    "NODE",
-    "BAR_2",
-    "BAR_3",
-    "TRI_3",
-    "TRI_6",
-    "QUAD_4",
-    "QUAD_8",
-    "QUAD_9",
-    "TETRA_4",
-    "TETRA_10",
-    "PYRA_5",
-    "PYRA_14",
-    "PENTA_6",
-    "PENTA_15",
-    "PENTA_18",
-    "HEXA_8",
-    "HEXA_20",
-    "HEXA_27",
-    "MIXED",
-    "PYRA_13",
-    "NGON_n",
-    "NFACE_n",
-    "BAR_4",
-    "TRI_9",
-    "TRI_10",
-    "QUAD_12",
-    "QUAD_16",
-    "TETRA_16",
-    "TETRA_20",
-    "PYRA_21",
-    "PYRA_29",
-    "PYRA_30",
-    "PENTA_24",
-    "PENTA_38",
-    "PENTA_40",
-    "HEXA_32",
-    "HEXA_56",
-    "HEXA_64",
-]
-"""List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
 
 # %% Classes
-
-CGNSTree = list
-"""A CGNSTree is a list
-"""
-CGNSNode = list
-"""A CGNSNode is a list
-"""
-LinkType = list[str]
-"""A link is a list containing 4 str [target_dir_path,target_file_name,target_node_name,local_node_name]
-
-        - target_dir_path (optional)
-        - target_file_name
-        - target_node_name: absolute tree path
-        - local_node_name: absolute tree path
-
-    See https://chlone.sourceforge.net/sids-to-python.html#links
-"""
-PathType = tuple
-"""A PathType is a tuple
-"""
-ScalarType = Union[float, int]
-"""A ScalarType is an Union[float,int]
-"""
-FieldType = np.ndarray
-"""A FieldType is a np.ndarray
-"""
-TimeSequenceType = np.ndarray
-"""A TimeSequenceType is a np.ndarray
-"""
-TimeSeriesType = tuple[TimeSequenceType, FieldType]
-"""A TimeSeriesType is a tuple[TimeSequenceType,FieldType]
-"""
 
 
 def read_index(pyTree: list, dim: list[int]):
@@ -1488,7 +1424,7 @@ class Sample(BaseModel):
         for elem in elem_paths:
             elem_node = CGU.getNodeByPath(zone_node, elem)
             val = CGU.getValue(elem_node)
-            elem_type = CGNS_element_names[val[0]]
+            elem_type = CGNS_ELEMENT_NAMES[val[0]]
             elem_size = int(elem_type.split("_")[-1])
             # elem_range = CGU.getValueByPath(
             #     elem_node, "ElementRange"
