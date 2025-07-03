@@ -1063,8 +1063,7 @@ class Dataset(object):
         Seealso:
             This function can also be called using `__call__()`.
         """
-        if isinstance(id, slice) or isinstance(id, list) or isinstance(id, np.ndarray):
-            print(">>>", type(id))
+        if isinstance(id, (slice, list, np.ndarray)):
             if isinstance(id, slice):
                 id = list(range(*id.indices(len(self))))
             dataset = Dataset()

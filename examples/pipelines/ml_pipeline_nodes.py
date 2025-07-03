@@ -76,9 +76,9 @@ class PCAEmbeddingNode(BaseEstimator, RegressorMixin, TransformerMixin):
         self.n_components = n_components if n_components is not None else params['n_components']
 
         self.field_name = params['field_name']
-        self.zone_name  = params['zone_name'] if 'zone_name' in params else None
-        self.base_name  = params['base_name'] if 'base_name' in params else None
-        self.location   = params['location']  if 'location'  in params else "Vertex"
+        self.zone_name  = params.get('zone_name')
+        self.base_name  = params.get('base_name')
+        self.location   = params.get('location', 'Vertex')
 
         self.model = None
 

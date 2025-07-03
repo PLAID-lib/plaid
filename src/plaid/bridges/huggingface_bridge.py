@@ -5,7 +5,7 @@ import pickle
 import shutil
 import sys
 from multiprocessing import Pool
-from typing import Callable
+from typing import Callable, Optional
 
 from datasets import load_from_disk
 from tqdm import tqdm
@@ -192,9 +192,9 @@ class HFShardToPlaidSampleConverter:
 
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
-    ids: list[int] = None,
+    ids: Optional[list[int]] = None,
     processes_number: int = 1,
-    large_dataset=False,
+    large_dataset: Optional[bool] = False,
 ) -> tuple[Self, ProblemDefinition]:
     """Use this function for converting a plaid dataset from a huggingface dataset.
 
