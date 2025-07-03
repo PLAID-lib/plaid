@@ -417,6 +417,12 @@ class Test_Dataset:
 
     # -------------------------------------------------------------------------#
 
+    def test_from_list_of_samples(self, samples):
+        loaded_dataset = Dataset.from_list_of_samples(samples)
+        assert len(loaded_dataset) == len(samples)
+
+    # -------------------------------------------------------------------------#
+
     def test_save(self, dataset_with_samples, tmp_path):
         fname = tmp_path / "test.plaid"
         dataset_with_samples.save(fname)
@@ -551,7 +557,10 @@ class Test_Dataset:
             dataset[0]
 
     def test___getitem__(self, dataset_with_samples, nb_samples):
-        dataset_with_samples[np.random.randint(nb_samples)]
+        assert isinstance(dataset_with_samples[np.random.randint(nb_samples)], Sample)
+        assert isinstance(dataset_with_samples[1 : nb_samples - 1], Dataset)
+        assert isinstance(dataset_with_samples[np.arange(1, nb_samples - 1)], Dataset)
+        assert isinstance(dataset_with_samples[list(range(1, nb_samples - 1))], Dataset)
 
     def test___call__empty(self, dataset):
         with pytest.raises(IndexError):
