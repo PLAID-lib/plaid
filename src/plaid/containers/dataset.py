@@ -139,7 +139,7 @@ class Dataset(object):
             return {id: self._samples[id] for id in ids}
 
     def add_sample(self, sample: Sample, id: int = None) -> int:
-        """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`.
+        """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
         Args:
             sample (Sample): The sample to add.
@@ -605,7 +605,7 @@ class Dataset(object):
         return self._infos
 
     def print_infos(self) -> None:
-        """Prints information in a readable format (pretty print)."""
+        """Print information in a readable format (pretty print)."""
         infos_cats = list(self._infos.keys())
         tf = "*********************** \x1b[34;1mdataset infos\x1b[0m **********************\n"
         for cat in infos_cats:
@@ -624,7 +624,7 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def merge_dataset(self, dataset: Self) -> list[int]:
-        """Merges another Dataset into this one.
+        """Merge another Dataset into this one.
 
         Args:
             dataset (Dataset): The data set to be merged into this one (self).
@@ -643,7 +643,7 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def save(self, fname: Union[str, Path]) -> None:
-        """Saves the data set to a TAR (Tape Archive) file.
+        """Save the data set to a TAR (Tape Archive) file.
 
         It creates a temporary intermediate directory to store temporary files during the loading process.
 
