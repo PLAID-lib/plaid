@@ -21,7 +21,7 @@ import copy
 import glob
 import logging
 import os
-from typing import Optional
+from typing import Any, Optional
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
@@ -143,6 +143,7 @@ class Sample(BaseModel):
         time_series: dict[str, TimeSeriesType] = None,
         links: dict[float, list[LinkType]] = None,
         paths: dict[float, list[PathType]] = None,
+        extra_data: dict[str, Any] = None,
     ) -> None:
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
@@ -155,6 +156,7 @@ class Sample(BaseModel):
             time_series (dict[str, TimeSeriesType], optional): A dictionary mapping time series names to their values. Defaults to None.
             links (dict[float, list[LinkType]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
             paths (dict[float, list[PathType]], optional): A dictionary mapping time steps to lists of paths. Defaults to None.
+            extra_data (dict[str, Any], optional): A dictionary for storing any additional data related to the sample. Defaults to None.
 
         Example:
             .. code-block:: python
@@ -185,6 +187,8 @@ class Sample(BaseModel):
 
         self._links: dict[float, list[LinkType]] = links
         self._paths: dict[float, list[PathType]] = paths
+
+        self._extra_data: dict[str] = extra_data
 
         if directory_path is not None:
             self.load(str(directory_path))
@@ -1893,4 +1897,5 @@ class Sample(BaseModel):
             "time_series": self._time_series,
             "links": self._links,
             "paths": self._paths,
+            "extra_data": self._extra_data,
         }
