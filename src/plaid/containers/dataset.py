@@ -1004,11 +1004,11 @@ class Dataset(object):
         """
         return len(self._samples)
 
-    def __getitem__(self, id: int) -> Sample:
+    def __getitem__(self, id: Union[int, slice]) -> Union[Sample, Self]:
         """Retrieve a specific sample by its ID int this dataset.
 
         Args:
-            id (int): The ID of the sample to retrieve.
+            id (Union[int,slice]): The ID of the sample to retrieve.
 
         Raises:
             IndexError: If the provided ID is out of bounds or does not exist in the dataset.
@@ -1026,12 +1026,24 @@ class Dataset(object):
         Seealso:
             This function can also be called using `__call__()`.
         """
-        if id in self._samples:
-            return self._samples[id]
+        if isinstance(id, int):
+            if id in self._samples:
+                return self._samples[id]
+            else:
+                raise IndexError(
+                    f"sample with {id=} not set -> use 'Dataset.add_sample' or 'Dataset.add_samples'"
+                )
         else:
-            raise IndexError(
-                f"sample with {id=} not set -> use 'Dataset.add_sample' or 'Dataset.add_samples'"
-            )
+            if isinstance(id, slice):
+                # TODO: check slice.stop is positive, if negative use len(dataset)+slice.stop
+                ids = np.arange(slice.start, slice.stop, slice.step)
+            samples = []
+            for id in ids:
+                if id in self._samples:
+                    samples.append(self._samples[id])
+            dset = Dataset()
+            dset.add_samples(samples)
+            return dset
 
     __call__ = __getitem__
 
