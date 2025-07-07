@@ -17,6 +17,7 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
+import copy
 import logging
 import os
 import shutil
@@ -679,6 +680,39 @@ class Dataset(object):
         if not isinstance(dataset, Dataset):
             raise ValueError("dataset must be an instance of Dataset")
         return self.add_samples(dataset.get_samples(as_list=True))
+
+    def merge_samples(self, dataset: Self) -> list[int]:
+        """Merge Samples of another dataset into samples of this one.
+
+        Args:
+            dataset (Self): The data set whom samples will be merged into those of this one (self).
+
+        Returns:
+            list[int]: ids of added :class:`Samples <plaid.containers.sample.Sample>` from input :class:`Dataset <plaid.containers.dataset.Dataset>` that were not already present in this dataset (self).
+
+        Raises:
+            ValueError: If the provided dataset value is not an instance of Dataset
+        """
+        if not isinstance(dataset, Dataset):
+            raise ValueError("dataset must be an instance of Dataset")
+        trg_samples = self.get_samples()
+        new_ids = []
+        for samp_id, samp in dataset.get_samples().items():
+            if samp_id in trg_samples:
+                for scalar_name in samp.get_scalar_names():
+                    trg_samples[samp_id].add_scalar(
+                        scalar_name, samp.get_scalar(scalar_name)
+                    )
+                for time_series_name in samp.get_time_series_names():
+                    trg_samples[samp_id].add_time_series(
+                        time_series_name, samp.get_time_series(time_series_name)
+                    )
+                trg_samples[samp_id].add_tree(samp.get_tree())
+            else:
+                # TODO: should we copy the sample before adding it ?
+                self.add_sample(copy.deepcopy(samp), id=samp_id)
+                new_ids.append(samp_id)
+        return new_ids
 
     # -------------------------------------------------------------------------#
     def save(self, fname: Union[str, Path]) -> None:
