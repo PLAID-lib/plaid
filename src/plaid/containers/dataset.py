@@ -449,7 +449,9 @@ class Dataset(object):
 
         named_tabular = {}
         for s_name in scalar_names:
-            res = np.empty(nb_samples)
+            first_scalar = self[sample_ids[0]].get_scalar(s_name)
+            s_dtype = first_scalar.dtype if first_scalar is not None else None
+            res = np.empty(nb_samples, dtype=s_dtype)
             res.fill(None)
             for i_, id in enumerate(sample_ids):
                 val = self[id].get_scalar(s_name)
