@@ -465,6 +465,119 @@ class Dataset(object):
         return named_tabular
 
     # -------------------------------------------------------------------------#
+    def add_tabular_fields(self, tabular: np.ndarray, names: list[str] = None) -> None:
+        """Add tabular field data to the summary.
+
+        Args:
+            tabular (np.ndarray): A 2D NumPy array containing tabular field data.
+            names (list[str], optional): A list of column names for the tabular data. Defaults to None.
+
+        Raises:
+            ShapeError: Raised if the input tabular array does not have the correct shape (2D).
+            ShapeError: Raised if the number of columns in the tabular data does not match the number of names provided.
+
+        Note:
+            If no names are provided, it will automatically create names based on the pattern 'X{number}'
+        """
+        nb_samples = len(tabular)
+
+        if tabular.ndim != 2:
+            raise ShapeError(f"{tabular.ndim=}!=2, should be == 2")
+        if names is None:
+            names = [f"X{i}" for i in range(tabular.shape[1])]
+        if tabular.shape[1] != len(names):
+            raise ShapeError(
+                f"tabular should have as many columns as there are names, but {tabular.shape[1]=} and {len(names)=}"
+            )
+
+        # ---# For efficiency, first add values to storage
+        name_to_ids = {}
+        for col, name in zip(tabular.T, names):
+            name_to_ids[name] = col
+
+        # ---# Then add data in sample
+        for i_samp in range(nb_samples):
+            sample = Sample()
+            for name in names:
+                sample.add_field(name, name_to_ids[name][i_samp])
+            self.add_sample(sample)
+
+    def get_fields_to_tabular(
+        self,
+        field_names: list[str] = None,
+        sample_ids: list[int] = None,
+        as_nparray=False,
+    ) -> Union[dict[str, np.ndarray], np.ndarray]:
+        """Return a dict containing field values as tabulars/arrays.
+
+        Args:
+            field_names (str, optional): fields to work on. If None, all fields will be returned. Defaults to None.
+            sample_ids (list[int], optional): Filter by sample id. If None, take all samples. Defaults to None.
+            as_nparray (bool, optional): If True, return the data as a single numpy ndarray. If False, return a dictionary mapping field names to their respective tabular values. Defaults to False.
+
+        Returns:
+            np.ndarray: if as_nparray is True.
+            dict[str,np.ndarray]: if as_nparray is False, field name -> tabular values.
+
+        Note:
+            This method won’t work if the fields does not have the same sizes in all samples specified by `sample_ids`.
+        """
+        if field_names is None:
+            field_names = self.get_field_names(sample_ids)
+        elif len(set(field_names)) != len(field_names):
+            logger.warning("Provided field names are not unique")
+
+        if sample_ids is None:
+            sample_ids = self.get_sample_ids()
+        elif len(set(sample_ids)) != len(sample_ids):
+            logger.warning("Provided sample ids are not unique")
+        nb_samples = len(sample_ids)
+
+        named_tabular = {}
+        for f_name in field_names:
+            first_field = self[sample_ids[0]].get_field(f_name)
+            if first_field is not None:
+                f_dtype = first_field.dtype
+                nb_points = first_field.shape[0]
+                if len(first_field.shape) == 1:
+                    field_size = 1
+                elif len(first_field.shape) == 2:
+                    field_size = first_field.shape[1]
+                else:
+                    raise ShapeError(
+                        f"Expects field as a 2-dim array, but field {f_name} from sample {sample_ids[0]} has shape: {first_field.shape}"
+                    )
+            else:
+                print("---")
+                print(f"Field {f_name} of sample {sample_ids[0]} is None")
+                print("---")
+            res = np.empty((nb_samples, nb_points, field_size), dtype=f_dtype)
+            # print(f"{nb_points=}")
+            # print(f"{field_size=}")
+            # print(f"{res.shape=}")
+            res.fill(None)
+            for i_, id in enumerate(sample_ids):
+                val = self[id].get_field(f_name)
+                # print(f"{val.shape=}")
+                if val is not None:
+                    if not (val.shape[0] == nb_points):
+                        # TODO: explain error
+                        raise ShapeError("")
+                    if len(val.shape) == 2 and not (val.shape[1] == field_size):
+                        # TODO: explain error
+                        raise ShapeError("")
+                    res[i_] = val.reshape((nb_points, field_size))
+            named_tabular[f_name] = res
+
+        if as_nparray:
+            all_tabs = list(named_tabular.values())
+            if all([t.shape[1] == all_tabs[0].shape[2] for t in all_tabs]):
+                named_tabular = np.stack(all_tabs, axis=2)
+            else:
+                named_tabular = np.concatenate(all_tabs, axis=2)
+        return named_tabular
+
+    # -------------------------------------------------------------------------#
     def extract_dataset(
         self,
         scalars: list[str] = [],
