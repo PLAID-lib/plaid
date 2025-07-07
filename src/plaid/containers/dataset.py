@@ -464,6 +464,43 @@ class Dataset(object):
         return named_tabular
 
     # -------------------------------------------------------------------------#
+    def extract_dataset(
+        self,
+        scalars: list[str] = [],
+        fields: list[str] = [],
+        time_series: list[str] = [],
+    ) -> Self:
+        """Extract a subset of the dataset containing only the specified scalars, fields, and time series.
+
+        Args:
+            scalars (list[str], optional): List of scalar names to include. Defaults to [].
+            fields (list[str], optional): List of field names to include. Defaults to [].
+            time_series (list[str], optional): List of time series names to include. Defaults to [].
+
+        Returns:
+            Self: A new dataset containing only the specified scalars, fields, and time series.
+        """
+        dataset = Dataset()
+
+        for id, sample in self.get_samples().items():
+            new_sample = Sample()
+
+            for scalar_name in scalars:
+                new_sample.add_scalar(scalar_name, sample.get_scalar(scalar_name))
+            for time_series_name in time_series:
+                new_sample.add_time_series(
+                    time_series_name, sample.get_time_series(time_series_name)
+                )
+            # TODO: extract only specified fields --> WON’T WORK: there is no Base/Zone specified
+            # TODO: use field names of type '<field_name>/<zone_name>/<base_name>' with optional zone/base names
+            for field_name in fields:
+                new_sample.add_field(field_name, sample.get_field(field_name))
+
+            dataset.add_sample(new_sample, id)
+
+        return dataset
+
+    # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
         """Add information to the :class:`Dataset <plaid.containers.dataset.Dataset>`, overwriting existing information if there's a conflict.
 
