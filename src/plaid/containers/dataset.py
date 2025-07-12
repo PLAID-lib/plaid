@@ -466,7 +466,7 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def add_tabular_fields(self, tabular: np.ndarray, names: list[str] = None) -> None:
-        """Add tabular field data to the summary.
+        """Add tabular field data to the dataset.
 
         Args:
             tabular (np.ndarray): A 2D NumPy array containing tabular field data.
@@ -1210,7 +1210,7 @@ class Dataset(object):
         Seealso:
             This function can also be called using `__call__()`.
         """
-        if isinstance(id, int):
+        if isinstance(id, (int, np.integer)):
             if id in self._samples:
                 return self._samples[id]
             else:
@@ -1221,6 +1221,10 @@ class Dataset(object):
             if isinstance(id, slice):
                 # TODO: check slice.stop is positive, if negative use len(dataset)+slice.stop
                 ids = np.arange(slice.start, slice.stop, slice.step)
+            else:
+                raise TypeError(
+                    f"Unsupported index type: {type(id)}, should be int or slice"
+                )
             samples = []
             for id in ids:
                 if id in self._samples:
