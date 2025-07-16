@@ -119,6 +119,15 @@ def sample_with_tree_and_scalar_and_time_series(
 # %% Test
 
 
+def test_check_names():
+    check_names('test name')
+    check_names(['test name', 'test_name_2'])
+    with pytest.raises(ValueError):
+        check_names(['test/name'])
+    with pytest.raises(ValueError):
+        check_names(['test\/name'])
+
+
 def test_read_index(tree, physical_dim):
     read_index(tree, physical_dim)
 
