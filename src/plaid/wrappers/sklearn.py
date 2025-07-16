@@ -347,16 +347,47 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
         Returns:
             Dataset: The updated PLAID dataset with new scalars/fields.
         """
+        # TODO: use https://scikit-learn.org/stable/glossary.html#term-get_feature_names_out avoid overwriting features
+        print(f"=== In <_convert_y_to_plaid>")
+        if hasattr(self.sklearn_block, "feature_names_in_"):
+            print(f"- {self.sklearn_block.feature_names_in_=}")
+        else:
+            print("- self.sklearn_block.feature_names_in_ not found")
+        print(f"- {self.sklearn_block.get_feature_names_out()=}")
+        print(f"- {self.output_scalars=}")
+        print(f"- {self.output_time_series=}")
+        print(f"- {self.output_fields=}")
+        print(f"- {dataset.get_scalar_names()=}")
+        print(f"- {dataset.get_time_series_names()=}")
+        print(f"- {dataset.get_field_names()=}")
+        print(f"- {y.shape=}")
+
         new_dset = Dataset()
-        if len(self.output_scalars) > 0:
-            new_dset.add_tabular_scalars(
-                y[:, : len(self.output_scalars)], self.output_scalars
-            )
-        if len(self.output_fields) > 0:
-            new_dset.add_tabular_fields(
-                y[:, len(self.output_scalars) :], self.output_fields
-            )
+        # TODO: define tests to determine if we write new features to scalars, fields, or time series
+        if y.ndim == 2 and y.shape[0] == len(self.sklearn_block.get_feature_names_out()):
+            new_dset.add_tabular_scalars(y, self.sklearn_block.get_feature_names_out())
+        elif len(self.output_scalars) > 0:
+            new_dset.add_tabular_scalars(y, self.output_scalars)
+
+        # if len(self.output_scalars) > 0:
+        #     new_dset.add_tabular_scalars(
+        #         y[:, : len(self.output_scalars)], self.output_scalars
+        #     )
+        # if len(self.output_time_series) > 0:
+        #     new_dset.add_tabular_time_series(
+        #         y[:, len(self.output_scalars) : len(self.output_scalars) + len(self.output_time_series)],
+        #         self.output_time_series
+        #     )
+        # if len(self.output_fields) > 0:
+        #     new_dset.add_tabular_fields(
+        #         y[:, len(self.output_scalars) + len(self.output_time_series) :],
+        #         self.output_fields
+        #     )
+
         dataset.merge_samples(new_dset)
+        print(f"- {dataset.get_scalar_names()=}")
+        print(f"- {dataset.get_time_series_names()=}")
+        print(f"- {dataset.get_field_names()=}")
         return dataset
 
     def __sklearn_is_fitted__(self):
