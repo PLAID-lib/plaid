@@ -362,6 +362,47 @@ class Test_Dataset:
         dataset.get_scalars_to_tabular(scalar_names=["test", "test"])
 
     # -------------------------------------------------------------------------#
+    def test_add_tabular_fields(self, dataset, tabular, field_names, nb_samples):
+        dataset.add_tabular_fields(tabular, field_names)
+        assert len(dataset) == nb_samples
+
+    def test_add_tabular_fields_no_names(self, dataset, tabular, nb_samples):
+        dataset.add_tabular_fields(tabular)
+        assert len(dataset) == nb_samples
+
+    def test_add_tabular_fields_bad_ndim(self, dataset, tabular, field_names):
+        with pytest.raises(ShapeError):
+            dataset.add_tabular_fields(tabular.reshape((-1)), field_names)
+
+    def test_add_tabular_fields_bad_shape(self, dataset, tabular, field_names):
+        tabular = np.concatenate((tabular, np.zeros((len(tabular), 1))), axis=1)
+        with pytest.raises(ShapeError):
+            dataset.add_tabular_fields(tabular, field_names)
+
+    def test_get_fields_to_tabular(self, dataset, tabular, field_names):
+        assert len(dataset.get_fields_to_tabular()) == 0
+        assert dataset.get_fields_to_tabular() == {}
+        dataset.add_tabular_fields(tabular, field_names)
+        assert dataset.get_fields_to_tabular(as_nparray=True).shape == (
+            len(tabular),
+            len(field_names),
+        )
+        dict_tabular = dataset.get_fields_to_tabular()
+        for i_s, sname in enumerate(field_names):
+            assert np.all(dict_tabular[sname] == tabular[:, i_s])
+
+    def test_get_fields_to_tabular_same_fields_name(
+        self, dataset, tabular, field_names
+    ):
+        dataset.add_tabular_fields(tabular, field_names)
+        assert dataset.get_fields_to_tabular(as_nparray=True).shape == (
+            len(tabular),
+            len(field_names),
+        )
+        dataset.get_fields_to_tabular(sample_ids=[0, 0])
+        dataset.get_fields_to_tabular(field_names=["test", "test"])
+
+    # -------------------------------------------------------------------------#
     def test_add_info(self, dataset):
         dataset.add_info("legal", "owner", "PLAID")
         with pytest.raises(KeyError):
@@ -414,6 +455,9 @@ class Test_Dataset:
     def test_merge_dataset_with_bad_type(self, dataset_with_samples):
         with pytest.raises(ValueError):
             dataset_with_samples.merge_dataset(3)
+
+    def test_merge_samples(self, dataset_with_samples, other_dataset_with_samples):
+        dataset_with_samples.merge_samples(other_dataset_with_samples)
 
     # -------------------------------------------------------------------------#
 

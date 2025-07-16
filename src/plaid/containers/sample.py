@@ -131,7 +131,7 @@ def read_index_range(pyTree: list, dim: list[int]):
 
 
 class Sample(BaseModel):
-    """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset."""
+    """Represent a single sample. It contains data and information related to a single observation or measurement within a dataset."""
 
     def __init__(
         self,

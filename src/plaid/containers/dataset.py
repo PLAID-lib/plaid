@@ -17,6 +17,7 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
+import copy
 import logging
 import os
 import shutil
@@ -139,7 +140,7 @@ class Dataset(object):
             return {id: self._samples[id] for id in ids}
 
     def add_sample(self, sample: Sample, id: int = None) -> int:
-        """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`.
+        """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
         Args:
             sample (Sample): The sample to add.
@@ -352,6 +353,28 @@ class Dataset(object):
         return scalars_names
 
     # -------------------------------------------------------------------------#
+    def get_time_series_names(self, ids: list[int] = None) -> list[str]:
+        """Return union of time series names in all samples with id in ids.
+
+        Args:
+            ids (list[int], optional): Select time_series depending on sample id. If None, take all samples. Defaults to None.
+
+        Returns:
+            list[str]: List of all time_series names
+        """
+        if ids is not None and len(set(ids)) != len(ids):
+            logger.warning("Provided ids are not unique")
+
+        time_series_names = []
+        for sample in self.get_samples(ids, as_list=True):
+            s_names = sample.get_time_series_names()
+            for s_name in s_names:
+                if s_name not in time_series_names:
+                    time_series_names.append(s_name)
+        time_series_names.sort()
+        return time_series_names
+
+    # -------------------------------------------------------------------------#
     def get_field_names(
         self, ids: list[int] = None, zone_name: str = None, base_name: str = None
     ) -> list[str]:
@@ -449,7 +472,9 @@ class Dataset(object):
 
         named_tabular = {}
         for s_name in scalar_names:
-            res = np.empty(nb_samples)
+            first_scalar = self[sample_ids[0]].get_scalar(s_name)
+            s_dtype = first_scalar.dtype if first_scalar is not None else None
+            res = np.empty(nb_samples, dtype=s_dtype)
             res.fill(None)
             for i_, id in enumerate(sample_ids):
                 val = self[id].get_scalar(s_name)
@@ -458,8 +483,286 @@ class Dataset(object):
             named_tabular[s_name] = res
 
         if as_nparray:
-            named_tabular = np.array(list(named_tabular.values())).T
+            named_tabular = np.array(
+                [named_tabular[s_name] for s_name in scalar_names]
+            ).T
         return named_tabular
+
+    # -------------------------------------------------------------------------#
+    def add_tabular_time_series(
+        self, tabular: np.ndarray, names: list[str] = None
+    ) -> None:
+        """Add tabular time_series data to the summary.
+
+        Args:
+            tabular (np.ndarray): A 2D NumPy array containing tabular time_series data, with shape (n_samples, max_n_timestamps, n_features, 2). Last dimension should contain (timestamp, value) pairs. Timestamps should be in strictly increasing order, and padded with decreasing values so that all features have same length.
+            names (list[str], optional): A list of column names for the tabular data. Defaults to None.
+
+        Raises:
+            ShapeError: Raised if the input tabular array does not have the correct shape (2D).
+            ShapeError: Raised if the number of columns in the tabular data does not match the number of names provided.
+
+        Note:
+            If no names are provided, it will automatically create names based on the pattern 'X{number}'
+        """
+        nb_samples = len(tabular)
+
+        if tabular.ndim != 4:
+            raise ShapeError(f"{tabular.ndim=}!=4, should be == 4")
+        if names is None:
+            names = [f"X{i}" for i in range(tabular.shape[2])]
+        if tabular.shape[2] != len(names):
+            raise ShapeError(
+                f"tabular's 3rd dimension should have same size as there are names, but {tabular.shape[2]=} and {len(names)=}"
+            )
+
+        # ---# For efficiency, first add values to storage
+        name_to_ids = {}
+        for i_col, name in enumerate(names):
+            name_to_ids[name] = tabular[:, :, i_col]
+
+        # ---# Then add data in sample
+        for i_samp in range(nb_samples):
+            sample = Sample()
+            for i_name, name in enumerate(names):
+                timestamps = name_to_ids[name][i_samp, :, 0]
+                values = name_to_ids[name][i_samp, :, 1]
+                # detect first decreasing timestamp
+                diff_ts = timestamps[1:] - timestamps[:-1]
+                decreasing_ts_ids = (diff_ts <= 0).nonzero()[0]
+                if len(decreasing_ts_ids) > 0:
+                    first_decreasing_ts_id = decreasing_ts_ids[0]
+                else:
+                    first_decreasing_ts_id = len(timestamps) - 1
+                # add only values and timestamps up to the first decreasing timestamp
+                sample.add_time_series(
+                    name,
+                    timestamps[: first_decreasing_ts_id + 1],
+                    values[: first_decreasing_ts_id + 1],
+                )
+            self.add_sample(sample)
+
+    def get_time_series_to_tabular(
+        self,
+        time_series_names: list[str] = None,
+        sample_ids: list[int] = None,
+        as_nparray=False,
+    ) -> Union[dict[str, np.ndarray], np.ndarray]:
+        """Return a dict containing time_series values as tabulars/arrays.
+
+        Args:
+            time_series_names (str, optional): time_series to work on. If None, all time_series will be returned. Defaults to None.
+            sample_ids (list[int], optional): Filter by sample id. If None, take all samples. Defaults to None.
+            as_nparray (bool, optional): If True, return the data as a single numpy ndarray. If False, return a dictionary mapping time_series names to their respective tabular values. Defaults to False.
+
+        Returns:
+            np.ndarray: if as_nparray is True.
+            dict[str,np.ndarray]: if as_nparray is False, time_series name -> tabular values.
+
+        Note:
+            Unlike the `get_field_to_tabular` method, this method does not require the all time_series in all samples to have the same length.
+            It will pad shorter time_series the following way:
+                - timestamps with the last known timestamp - 1, to trigger decreasing behavior
+                - values with NaNs
+            It is the users' responsibility to retrieve the data in a way that is compatible with this padding strategy.
+        """
+        if time_series_names is None:
+            time_series_names = self.get_time_series_names(sample_ids)
+        elif len(set(time_series_names)) != len(time_series_names):
+            logger.warning("Provided time_series names are not unique")
+
+        if sample_ids is None:
+            sample_ids = self.get_sample_ids()
+        elif len(set(sample_ids)) != len(sample_ids):
+            logger.warning("Provided sample ids are not unique")
+        nb_samples = len(sample_ids)
+
+        named_tabular = {}
+        for s_name in time_series_names:
+            _, first_time_series = self[sample_ids[0]].get_time_series(s_name)
+            t_dtype = first_time_series.dtype if first_time_series is not None else None
+            ts_list, val_list = [], []
+            for i_, id in enumerate(sample_ids):
+                ts, val = self[id].get_time_series(s_name)
+                ts_list.append(ts)
+                val_list.append(val)
+            max_n_timestamps = max(len(ts) for ts in ts_list)
+            res = np.empty((nb_samples, max_n_timestamps, 2), dtype=t_dtype)
+            res.fill(None)
+            for i_, (ts, val) in enumerate(zip(ts_list, val_list)):
+                t_len = len(ts)
+                if ts is not None:
+                    res[i_, :t_len, 0] = ts
+                    if t_len < max_n_timestamps:
+                        res[i_, t_len:, 0] = ts[-1] - 1
+                if val is not None:
+                    res[i_, :t_len, 1] = val
+            named_tabular[s_name] = res
+
+        if as_nparray:
+            res_list = [named_tabular[s_name] for s_name in time_series_names]
+            max_len = max(arr.shape[1] for arr in res_list)
+            # pad time_series
+            for i, arr in enumerate(res_list):
+                if arr.shape[0] < max_len:
+                    res_list[i] = np.pad(
+                        arr,
+                        (0, max_len - arr.shape[0]),
+                        mode="constant",
+                        constant_values=arr[-1] - 1,
+                    )
+            named_tabular = np.array(res_list).T
+        return named_tabular
+
+    # -------------------------------------------------------------------------#
+    def add_tabular_fields(self, tabular: np.ndarray, names: list[str] = None) -> None:
+        """Add tabular field data to the dataset.
+
+        Args:
+            tabular (np.ndarray): A 2D NumPy array containing tabular field data.
+            names (list[str], optional): A list of column names for the tabular data. Defaults to None.
+
+        Raises:
+            ShapeError: Raised if the input tabular array does not have the correct shape (2D).
+            ShapeError: Raised if the number of columns in the tabular data does not match the number of names provided.
+
+        Note:
+            If no names are provided, it will automatically create names based on the pattern 'X{number}'
+        """
+        nb_samples = len(tabular)
+
+        if tabular.ndim != 2:
+            raise ShapeError(f"{tabular.ndim=}!=2, should be == 2")
+        if names is None:
+            names = [f"X{i}" for i in range(tabular.shape[1])]
+        if tabular.shape[1] != len(names):
+            raise ShapeError(
+                f"tabular should have as many columns as there are names, but {tabular.shape[1]=} and {len(names)=}"
+            )
+
+        # ---# For efficiency, first add values to storage
+        name_to_ids = {}
+        for col, name in zip(tabular.T, names):
+            name_to_ids[name] = col
+
+        # ---# Then add data in sample
+        for i_samp in range(nb_samples):
+            sample = Sample()
+            for name in names:
+                sample.add_field(name, name_to_ids[name][i_samp])
+            self.add_sample(sample)
+
+    def get_fields_to_tabular(
+        self,
+        field_names: list[str] = None,
+        sample_ids: list[int] = None,
+        as_nparray=False,
+    ) -> Union[dict[str, np.ndarray], np.ndarray]:
+        """Return a dict containing field values as tabulars/arrays.
+
+        Args:
+            field_names (str, optional): fields to work on. If None, all fields will be returned. Defaults to None.
+            sample_ids (list[int], optional): Filter by sample id. If None, take all samples. Defaults to None.
+            as_nparray (bool, optional): If True, return the data as a single numpy ndarray. If False, return a dictionary mapping field names to their respective tabular values. Defaults to False.
+
+        Returns:
+            np.ndarray: if as_nparray is True.
+            dict[str,np.ndarray]: if as_nparray is False, field name -> tabular values.
+
+        Note:
+            This method won’t work if the fields does not have the same sizes in all samples specified by `sample_ids`.
+        """
+        if field_names is None:
+            field_names = self.get_field_names(sample_ids)
+        elif len(set(field_names)) != len(field_names):
+            logger.warning("Provided field names are not unique")
+
+        if sample_ids is None:
+            sample_ids = self.get_sample_ids()
+        elif len(set(sample_ids)) != len(sample_ids):
+            logger.warning("Provided sample ids are not unique")
+        nb_samples = len(sample_ids)
+
+        named_tabular = {}
+        for f_name in field_names:
+            first_field = self[sample_ids[0]].get_field(f_name)
+            if first_field is not None:
+                f_dtype = first_field.dtype
+                nb_points = first_field.shape[0]
+                if len(first_field.shape) == 1:
+                    field_size = 1
+                elif len(first_field.shape) == 2:
+                    field_size = first_field.shape[1]
+                else:
+                    raise ShapeError(
+                        f"Expects field as a 2-dim array, but field {f_name} from sample {sample_ids[0]} has shape: {first_field.shape}"
+                    )
+            else:
+                print("---")
+                print(f"Field {f_name} of sample {sample_ids[0]} is None")
+                print("---")
+            res = np.empty((nb_samples, nb_points, field_size), dtype=f_dtype)
+            # print(f"{nb_points=}")
+            # print(f"{field_size=}")
+            # print(f"{res.shape=}")
+            res.fill(None)
+            for i_, id in enumerate(sample_ids):
+                val = self[id].get_field(f_name)
+                # print(f"{val.shape=}")
+                if val is not None:
+                    if not (val.shape[0] == nb_points):
+                        # TODO: explain error
+                        raise ShapeError("")
+                    if len(val.shape) == 2 and not (val.shape[1] == field_size):
+                        # TODO: explain error
+                        raise ShapeError("")
+                    res[i_] = val.reshape((nb_points, field_size))
+            named_tabular[f_name] = res
+
+        if as_nparray:
+            all_tabs = [named_tabular[f_name] for f_name in field_names]
+            if all([t.shape[1] == all_tabs[0].shape[2] for t in all_tabs]):
+                named_tabular = np.stack(all_tabs, axis=2)
+            else:
+                named_tabular = np.concatenate(all_tabs, axis=2)
+        return named_tabular
+
+    # -------------------------------------------------------------------------#
+    def extract_dataset(
+        self,
+        scalars: list[str] = [],
+        fields: list[str] = [],
+        time_series: list[str] = [],
+    ) -> Self:
+        """Extract a subset of the dataset containing only the specified scalars, fields, and time series.
+
+        Args:
+            scalars (list[str], optional): List of scalar names to include. Defaults to [].
+            fields (list[str], optional): List of field names to include. Defaults to [].
+            time_series (list[str], optional): List of time series names to include. Defaults to [].
+
+        Returns:
+            Self: A new dataset containing only the specified scalars, fields, and time series.
+        """
+        dataset = Dataset()
+
+        for id, sample in self.get_samples().items():
+            new_sample = Sample()
+
+            for scalar_name in scalars:
+                new_sample.add_scalar(scalar_name, sample.get_scalar(scalar_name))
+            for time_series_name in time_series:
+                new_sample.add_time_series(
+                    time_series_name, sample.get_time_series(time_series_name)
+                )
+            # TODO: extract only specified fields --> WON’T WORK: there is no Base/Zone specified
+            # TODO: use field names of type '<field_name>/<zone_name>/<base_name>' with optional zone/base names
+            for field_name in fields:
+                new_sample.add_field(field_name, sample.get_field(field_name))
+
+            dataset.add_sample(new_sample, id)
+
+        return dataset
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
@@ -605,7 +908,7 @@ class Dataset(object):
         return self._infos
 
     def print_infos(self) -> None:
-        """Prints information in a readable format (pretty print)."""
+        """Print information in a readable format (pretty print)."""
         infos_cats = list(self._infos.keys())
         tf = "*********************** \x1b[34;1mdataset infos\x1b[0m **********************\n"
         for cat in infos_cats:
@@ -624,7 +927,7 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def merge_dataset(self, dataset: Self) -> list[int]:
-        """Merges another Dataset into this one.
+        """Merge another Dataset into this one.
 
         Args:
             dataset (Dataset): The data set to be merged into this one (self).
@@ -641,9 +944,42 @@ class Dataset(object):
             raise ValueError("dataset must be an instance of Dataset")
         return self.add_samples(dataset.get_samples(as_list=True))
 
+    def merge_samples(self, dataset: Self) -> list[int]:
+        """Merge Samples of another dataset into samples of this one.
+
+        Args:
+            dataset (Self): The data set whom samples will be merged into those of this one (self).
+
+        Returns:
+            list[int]: ids of added :class:`Samples <plaid.containers.sample.Sample>` from input :class:`Dataset <plaid.containers.dataset.Dataset>` that were not already present in this dataset (self).
+
+        Raises:
+            ValueError: If the provided dataset value is not an instance of Dataset
+        """
+        if not isinstance(dataset, Dataset):
+            raise ValueError("dataset must be an instance of Dataset")
+        trg_samples = self.get_samples()
+        new_ids = []
+        for samp_id, samp in dataset.get_samples().items():
+            if samp_id in trg_samples:
+                for scalar_name in samp.get_scalar_names():
+                    trg_samples[samp_id].add_scalar(
+                        scalar_name, samp.get_scalar(scalar_name)
+                    )
+                for time_series_name in samp.get_time_series_names():
+                    trg_samples[samp_id].add_time_series(
+                        time_series_name, samp.get_time_series(time_series_name)
+                    )
+                trg_samples[samp_id].add_tree(samp.get_tree())
+            else:
+                # TODO: should we copy the sample before adding it ?
+                self.add_sample(copy.deepcopy(samp), id=samp_id)
+                new_ids.append(samp_id)
+        return new_ids
+
     # -------------------------------------------------------------------------#
     def save(self, fname: Union[str, Path]) -> None:
-        """Saves the data set to a TAR (Tape Archive) file.
+        """Save the data set to a TAR (Tape Archive) file.
 
         It creates a temporary intermediate directory to store temporary files during the loading process.
 
@@ -1002,11 +1338,11 @@ class Dataset(object):
         """
         return len(self._samples)
 
-    def __getitem__(self, id: int) -> Sample:
+    def __getitem__(self, id: Union[int, slice]) -> Union[Sample, Self]:
         """Retrieve a specific sample by its ID int this dataset.
 
         Args:
-            id (int): The ID of the sample to retrieve.
+            id (Union[int,slice]): The ID of the sample to retrieve.
 
         Raises:
             IndexError: If the provided ID is out of bounds or does not exist in the dataset.
@@ -1024,12 +1360,28 @@ class Dataset(object):
         Seealso:
             This function can also be called using `__call__()`.
         """
-        if id in self._samples:
-            return self._samples[id]
+        if isinstance(id, (int, np.integer)):
+            if id in self._samples:
+                return self._samples[id]
+            else:
+                raise IndexError(
+                    f"sample with {id=} not set -> use 'Dataset.add_sample' or 'Dataset.add_samples'"
+                )
         else:
-            raise IndexError(
-                f"sample with {id=} not set -> use 'Dataset.add_sample' or 'Dataset.add_samples'"
-            )
+            if isinstance(id, slice):
+                # TODO: check slice.stop is positive, if negative use len(dataset)+slice.stop
+                ids = np.arange(slice.start, slice.stop, slice.step)
+            else:
+                raise TypeError(
+                    f"Unsupported index type: {type(id)}, should be int or slice"
+                )
+            samples = []
+            for id in ids:
+                if id in self._samples:
+                    samples.append(self._samples[id])
+            dset = Dataset()
+            dset.add_samples(samples)
+            return dset
 
     __call__ = __getitem__
 
