@@ -353,6 +353,28 @@ class Dataset(object):
         return scalars_names
 
     # -------------------------------------------------------------------------#
+    def get_time_series_names(self, ids: list[int] = None) -> list[str]:
+        """Return union of time series names in all samples with id in ids.
+
+        Args:
+            ids (list[int], optional): Select time_series depending on sample id. If None, take all samples. Defaults to None.
+
+        Returns:
+            list[str]: List of all time_series names
+        """
+        if ids is not None and len(set(ids)) != len(ids):
+            logger.warning("Provided ids are not unique")
+
+        time_series_names = []
+        for sample in self.get_samples(ids, as_list=True):
+            s_names = sample.get_time_series_names()
+            for s_name in s_names:
+                if s_name not in time_series_names:
+                    time_series_names.append(s_name)
+        time_series_names.sort()
+        return time_series_names
+
+    # -------------------------------------------------------------------------#
     def get_field_names(
         self, ids: list[int] = None, zone_name: str = None, base_name: str = None
     ) -> list[str]:
@@ -461,7 +483,135 @@ class Dataset(object):
             named_tabular[s_name] = res
 
         if as_nparray:
-            named_tabular = np.array(list(named_tabular.values())).T
+            named_tabular = np.array(
+                [named_tabular[s_name] for s_name in scalar_names]
+            ).T
+        return named_tabular
+
+    # -------------------------------------------------------------------------#
+    def add_tabular_time_series(
+        self, tabular: np.ndarray, names: list[str] = None
+    ) -> None:
+        """Add tabular time_series data to the summary.
+
+        Args:
+            tabular (np.ndarray): A 2D NumPy array containing tabular time_series data, with shape (n_samples, max_n_timestamps, n_features, 2). Last dimension should contain (timestamp, value) pairs. Timestamps should be in strictly increasing order, and padded with decreasing values so that all features have same length.
+            names (list[str], optional): A list of column names for the tabular data. Defaults to None.
+
+        Raises:
+            ShapeError: Raised if the input tabular array does not have the correct shape (2D).
+            ShapeError: Raised if the number of columns in the tabular data does not match the number of names provided.
+
+        Note:
+            If no names are provided, it will automatically create names based on the pattern 'X{number}'
+        """
+        nb_samples = len(tabular)
+
+        if tabular.ndim != 4:
+            raise ShapeError(f"{tabular.ndim=}!=4, should be == 4")
+        if names is None:
+            names = [f"X{i}" for i in range(tabular.shape[2])]
+        if tabular.shape[2] != len(names):
+            raise ShapeError(
+                f"tabular's 3rd dimension should have same size as there are names, but {tabular.shape[2]=} and {len(names)=}"
+            )
+
+        # ---# For efficiency, first add values to storage
+        name_to_ids = {}
+        for i_col, name in enumerate(names):
+            name_to_ids[name] = tabular[:, :, i_col]
+
+        # ---# Then add data in sample
+        for i_samp in range(nb_samples):
+            sample = Sample()
+            for i_name, name in enumerate(names):
+                timestamps = name_to_ids[name][i_samp, :, 0]
+                values = name_to_ids[name][i_samp, :, 1]
+                # detect first decreasing timestamp
+                diff_ts = timestamps[1:] - timestamps[:-1]
+                decreasing_ts_ids = (diff_ts <= 0).nonzero()[0]
+                if len(decreasing_ts_ids) > 0:
+                    first_decreasing_ts_id = decreasing_ts_ids[0]
+                else:
+                    first_decreasing_ts_id = len(timestamps) - 1
+                # add only values and timestamps up to the first decreasing timestamp
+                sample.add_time_series(
+                    name,
+                    timestamps[: first_decreasing_ts_id + 1],
+                    values[: first_decreasing_ts_id + 1],
+                )
+            self.add_sample(sample)
+
+    def get_time_series_to_tabular(
+        self,
+        time_series_names: list[str] = None,
+        sample_ids: list[int] = None,
+        as_nparray=False,
+    ) -> Union[dict[str, np.ndarray], np.ndarray]:
+        """Return a dict containing time_series values as tabulars/arrays.
+
+        Args:
+            time_series_names (str, optional): time_series to work on. If None, all time_series will be returned. Defaults to None.
+            sample_ids (list[int], optional): Filter by sample id. If None, take all samples. Defaults to None.
+            as_nparray (bool, optional): If True, return the data as a single numpy ndarray. If False, return a dictionary mapping time_series names to their respective tabular values. Defaults to False.
+
+        Returns:
+            np.ndarray: if as_nparray is True.
+            dict[str,np.ndarray]: if as_nparray is False, time_series name -> tabular values.
+
+        Note:
+            Unlike the `get_field_to_tabular` method, this method does not require the all time_series in all samples to have the same length.
+            It will pad shorter time_series the following way:
+                - timestamps with the last known timestamp - 1, to trigger decreasing behavior
+                - values with NaNs
+            It is the users' responsibility to retrieve the data in a way that is compatible with this padding strategy.
+        """
+        if time_series_names is None:
+            time_series_names = self.get_time_series_names(sample_ids)
+        elif len(set(time_series_names)) != len(time_series_names):
+            logger.warning("Provided time_series names are not unique")
+
+        if sample_ids is None:
+            sample_ids = self.get_sample_ids()
+        elif len(set(sample_ids)) != len(sample_ids):
+            logger.warning("Provided sample ids are not unique")
+        nb_samples = len(sample_ids)
+
+        named_tabular = {}
+        for s_name in time_series_names:
+            _, first_time_series = self[sample_ids[0]].get_time_series(s_name)
+            t_dtype = first_time_series.dtype if first_time_series is not None else None
+            ts_list, val_list = [], []
+            for i_, id in enumerate(sample_ids):
+                ts, val = self[id].get_time_series(s_name)
+                ts_list.append(ts)
+                val_list.append(val)
+            max_n_timestamps = max(len(ts) for ts in ts_list)
+            res = np.empty((nb_samples, max_n_timestamps, 2), dtype=t_dtype)
+            res.fill(None)
+            for i_, (ts, val) in enumerate(zip(ts_list, val_list)):
+                t_len = len(ts)
+                if ts is not None:
+                    res[i_, :t_len, 0] = ts
+                    if t_len < max_n_timestamps:
+                        res[i_, t_len:, 0] = ts[-1] - 1
+                if val is not None:
+                    res[i_, :t_len, 1] = val
+            named_tabular[s_name] = res
+
+        if as_nparray:
+            res_list = [named_tabular[s_name] for s_name in time_series_names]
+            max_len = max(arr.shape[1] for arr in res_list)
+            # pad time_series
+            for i, arr in enumerate(res_list):
+                if arr.shape[0] < max_len:
+                    res_list[i] = np.pad(
+                        arr,
+                        (0, max_len - arr.shape[0]),
+                        mode="constant",
+                        constant_values=arr[-1] - 1,
+                    )
+            named_tabular = np.array(res_list).T
         return named_tabular
 
     # -------------------------------------------------------------------------#
@@ -570,7 +720,7 @@ class Dataset(object):
             named_tabular[f_name] = res
 
         if as_nparray:
-            all_tabs = list(named_tabular.values())
+            all_tabs = [named_tabular[f_name] for f_name in field_names]
             if all([t.shape[1] == all_tabs[0].shape[2] for t in all_tabs]):
                 named_tabular = np.stack(all_tabs, axis=2)
             else:
