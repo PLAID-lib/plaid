@@ -54,6 +54,7 @@ else:  # pragma: no cover
     Self = TypeVar("Self")
 
 import logging
+from copy import copy
 from typing import Union
 
 import numpy as np
@@ -106,55 +107,29 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
         self,
         sklearn_block: SklearnBlock,
         fit_only_ones: bool = True,
-        in_keys: Union[list[str], str] = [],
-        out_keys: Union[list[str], str] = [],
+        in_features: Union[list[str], str] = [],
+        out_features: Union[list[str], str] = [],
     ):
         """Wrap a scikit-learn estimator or transformer.
 
         Args:
             sklearn_block (SklearnBlock): Any scikit-learn transform or predictor (e.g. PCA, StandardScaler, GPRegressor).
             fit_only_ones (bool, optional): If True, the model will only be fitted once. Defaults to True.
-            in_keys (Union[list[str],str], optional):
+            in_features (Union[list[str],str], optional):
                 Names of scalars and/or fields to take as input.
                 Scalar (resp. field) names should be given as 'scalar::<scalar-name>' (resp. 'field::<field-name>').
                 Use 'all' to use all available scalars and fields, or 'scalar::all'/'field::all' for all scalars/fields.
                 Defaults to [].
-            out_keys (Union[list[str],str], optional): Names of scalars and/or fields to take as output, using the same convention as for `in_keys`. Defaults to [].
+            out_features (Union[list[str],str], optional): Names of scalars and/or fields to take as output, using the same convention as for `in_features`. Defaults to [].
                 Additionally, if 'same', 'scalar::same' or 'field::same' is given, it will use as output the same names as for input.
         """
+        # TODO: check https://scikit-learn.org/stable/developers/develop.html#instantiation
         self.sklearn_block = sklearn_block
         self.fit_only_ones = fit_only_ones
-        self.in_keys = in_keys
-        self.out_keys = out_keys
+        self.in_features = copy(in_features)
+        self.out_features = copy(out_features)
 
-        # ---# Scalars
-        if in_keys == "all" or "scalar::all" in in_keys:
-            self.input_scalars = "all"
-        else:
-            self.input_scalars = [s[8:] for s in in_keys if s[:8] == "scalar::"]
-        #
-        if out_keys == "same" or "scalar::same" in out_keys:
-            self.output_scalars = self.input_scalars
-        else:
-            self.output_scalars = [s[8:] for s in out_keys if s[:8] == "scalar::"]
-
-        # ---# Fields
-        if in_keys == "all" or "field::all" in in_keys:
-            self.input_fields = "all"
-        else:
-            self.input_fields = [s[7:] for s in in_keys if s[:7] == "field::"]
-        #
-        if out_keys == "same" or "field::same" in out_keys:
-            self.output_fields = self.input_fields
-        else:
-            self.output_fields = [s[7:] for s in out_keys if s[:7] == "field::"]
-
-        print(f"{self.input_scalars=}")
-        print(f"{self.input_fields=}")
-        print(f"{self.output_scalars=}")
-        print(f"{self.output_fields=}")
-
-    def fit(self, dataset: Dataset, *args, **kwargs):
+    def fit(self, dataset: Dataset, **kwargs):
         """Fit the wrapped scikit-learn model on a PLAID dataset.
 
         Args:
@@ -166,11 +141,104 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
         if self.fit_only_ones and self.__sklearn_is_fitted__():
             return self
 
+        self._determine_input_output_names(dataset)
+
         X, y = self._extract_X_y_from_plaid(dataset)
-        self.sklearn_block.fit(X, y)
+        self.sklearn_block.fit(X, y, **kwargs)
 
         self._is_fitted = True
         return self
+
+    def _determine_input_output_names(self, dataset: Dataset):
+        """Determine the input/output names based on the in_features and out_features."""
+        self.in_features = (
+            self.in_features
+            if isinstance(self.in_features, list)
+            else [self.in_features]
+        )
+        self.out_features = (
+            self.out_features
+            if isinstance(self.out_features, list)
+            else [self.out_features]
+        )
+        self._determine_scalar_names(dataset)
+        self._determine_time_series_names(dataset)
+        self._determine_field_names(dataset)
+
+    def _determine_scalar_names(self, dataset: Dataset):
+        """Determine the input/output scalar names based on the in_features and out_features."""
+        # Input scalars
+        if ("all" in self.in_features) or ("scalar::all" in self.in_features):
+            self.input_scalars = dataset.get_scalar_names()
+        else:
+            self.input_scalars = [
+                s[8:] for s in self.in_features if s[:8] == "scalar::"
+            ]
+
+        # Output scalars
+        if ("all" in self.out_features) or ("scalar::all" in self.out_features):
+            assert "same" not in self.out_features
+            assert "scalar::same" not in self.out_features
+            self.output_scalars = dataset.get_scalar_names()
+        elif ("same" in self.out_features) or ("scalar::same" in self.out_features):
+            self.output_scalars = self.input_scalars
+        else:
+            self.output_scalars = [
+                s[8:] for s in self.out_features if s[:8] == "scalar::"
+            ]
+
+    def _determine_time_series_names(self, dataset: Dataset):
+        """Determine the input/output time_series names based on the in_features and out_features."""
+        # Input time_series
+        if ("all" in self.in_features) or ("time_series::all" in self.in_features):
+            self.input_time_series = dataset.get_time_series_names()
+        else:
+            self.input_time_series = [
+                s[8:] for s in self.in_features if s[:8] == "time_series::"
+            ]
+
+        # Output time_series
+        if ("all" in self.out_features) or ("time_series::all" in self.out_features):
+            assert "same" not in self.out_features
+            assert "time_series::same" not in self.out_features
+            self.output_time_series = dataset.get_time_series_names()
+        elif ("same" in self.out_features) or (
+            "time_series::same" in self.out_features
+        ):
+            self.output_time_series = self.input_time_series
+        else:
+            self.output_time_series = [
+                s[8:] for s in self.out_features if s[:8] == "time_series::"
+            ]
+
+    def _determine_field_names(self, dataset: Dataset):
+        """Determine the input/output field names based on the in_features and out_features."""
+        # default_time = dataset[dataset.get_sample_ids()[0]].get_time_assignment()
+        # default_base = dataset[dataset.get_sample_ids()[0]].get_base_assignment(time=default_time)
+        # has_no_default_base = (default_base is None)
+        # if has_no_default_base:
+        #     default_zone = dataset[dataset.get_sample_ids()[0]].get_zone_assignment(time=default_time)
+        # else:
+        #     default_zone = dataset[dataset.get_sample_ids()[0]].get_zone_assignment(base_name=default_base, time=default_time)
+        # has_no_default_zone = (default_zone is None)
+
+        # Input fields
+        if ("all" in self.in_features) or ("field::all" in self.in_features):
+            self.input_fields = dataset.get_field_names()
+        else:
+            self.input_fields = [s[7:] for s in self.in_features if s[:7] == "field::"]
+
+        # Output fields
+        if ("all" in self.out_features) or ("field::all" in self.out_features):
+            assert "same" not in self.out_features
+            assert "field::same" not in self.out_features
+            self.output_fields = dataset.get_field_names()
+        elif ("same" in self.out_features) or ("field::same" in self.out_features):
+            self.output_fields = self.input_fields
+        else:
+            self.output_fields = [
+                s[7:] for s in self.out_features if s[:7] == "field::"
+            ]
 
     def _extract_X_y_from_plaid(
         self, dataset: Dataset
@@ -183,6 +251,7 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
         Returns:
             tuple[np.ndarray, np.ndarray]: The extracted features and labels as numpy arrays.
         """
+        ### Inputs
         X = [
             dataset.get_scalars_to_tabular([input_scalar_name], as_nparray=True)
             for input_scalar_name in (
@@ -193,31 +262,37 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
         ]
         X.extend(
             [
-                dataset.get_fields_to_tabular([input_field_name], as_nparray=True)
-                for input_field_name in (
-                    dataset.get_field_names()
-                    if self.input_fields == "all"
-                    else self.input_fields
+                dataset.get_time_series_to_tabular(
+                    [input_time_series_name], as_nparray=True
                 )
+                for input_time_series_name in self.input_time_series
             ]
         )
-        # Reshape any 3D arrays to 2D, contracting the last two dimensions
+        X.extend(
+            [
+                dataset.get_fields_to_tabular([input_field_name], as_nparray=True)
+                for input_field_name in self.input_fields  # TODO: handle names with '/'
+            ]
+        )
+        # Check shapes
         for i_v, v in enumerate(X):
+            # Reshape any 3D arrays to 2D, contracting the last two dimensions
             if len(v.shape) >= 3:
                 X[i_v] = v.reshape((len(v), -1))
             # Reshape any 1D arrays to 2D, appending a singleton dimension
             if len(v.shape) == 1:
                 X[i_v] = v.reshape((-1, 1))
-        print(f"=== In <_extract_X_y_from_plaid> of {self.sklearn_block=}")
-        print(f"{self.input_scalars=}")
-        print(f"{self.input_fields=}")
-        print(f"{self.output_scalars=}")
-        print(f"{self.output_fields=}")
-        print(f"{type(X)=}")
-        print(f"{len(X)=}")
+        # print(f"=== In <_extract_X_y_from_plaid> of {self.sklearn_block=}")
+        # print(f"{self.input_scalars=}")
+        # print(f"{self.input_fields=}")
+        # print(f"{self.output_scalars=}")
+        # print(f"{self.output_fields=}")
+        # print(f"{type(X)=}")
+        # print(f"{len(X)=}")
         # Concatenate the input arrays into a 2D numpy array
         X = np.concatenate(X, axis=-1)
 
+        ### Outputs
         y = [
             dataset.get_scalars_to_tabular([output_scalar_name], as_nparray=True)
             for output_scalar_name in (
@@ -228,14 +303,19 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
         ]
         y.extend(
             [
-                dataset.get_fields_to_tabular([output_field_name], as_nparray=True)
-                for output_field_name in (
-                    dataset.get_field_names()
-                    if self.output_fields == "all"
-                    else self.output_fields
+                dataset.get_time_series_to_tabular(
+                    [output_time_series_name], as_nparray=True
                 )
+                for output_time_series_name in self.output_time_series
             ]
         )
+        y.extend(
+            [
+                dataset.get_fields_to_tabular([output_field_name], as_nparray=True)
+                for output_field_name in self.output_fields  # TODO: handle names with '/'
+            ]
+        )
+        # Check shapes
         for i_v, v in enumerate(y):
             # Reshape any 3D arrays to 2D, contracting the last two dimensions
             if len(v.shape) >= 3:
@@ -243,13 +323,13 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
             # Reshape any 1D arrays to 2D, appending a singleton dimension
             if len(v.shape) == 1:
                 y[i_v] = v.reshape((-1, 1))
+        # print(f"{self.input_scalars=}")
+        # print(f"{self.input_fields=}")
+        # print(f"{self.output_scalars=}")
+        # print(f"{self.output_fields=}")
+        # print(f"{type(y)=}")
+        # print(f"{len(y)=}")
         # Concatenate the output arrays into a 2D numpy array
-        print(f"{self.input_scalars=}")
-        print(f"{self.input_fields=}")
-        print(f"{self.output_scalars=}")
-        print(f"{self.output_fields=}")
-        print(f"{type(y)=}")
-        print(f"{len(y)=}")
         if len(y) > 0:
             y = np.concatenate(y, axis=-1)
         else:
