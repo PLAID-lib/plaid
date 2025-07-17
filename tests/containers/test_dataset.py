@@ -570,6 +570,7 @@ class Test_Dataset:
         assert isinstance(dataset_with_samples[1 : nb_samples - 1], Dataset)
         assert isinstance(dataset_with_samples[np.arange(1, nb_samples - 1)], Dataset)
         assert isinstance(dataset_with_samples[list(range(1, nb_samples - 1))], Dataset)
+        assert isinstance(dataset_with_samples[range(1, nb_samples - 1)], Dataset)
 
     def test___call__empty(self, dataset):
         with pytest.raises(IndexError):
