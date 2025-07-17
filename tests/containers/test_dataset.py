@@ -546,12 +546,31 @@ class Test_Dataset:
     def test___len__(self, dataset_with_samples, nb_samples):
         assert len(dataset_with_samples) == nb_samples
 
+    def test___iter__empty(self, dataset):
+        count = 0
+        for _ in dataset:
+            count += 1
+        assert count == 0
+
+    def test___iter__(self, dataset_with_samples):
+        sub_dataset = dataset_with_samples[range(0, len(dataset_with_samples), 2)]
+        length = len(sub_dataset)
+        count = 0
+        for sample in sub_dataset:
+            count += 1
+            assert isinstance(sample, Sample)
+        assert count == length
+
     def test___getitem__empty(self, dataset):
         with pytest.raises(IndexError):
             dataset[0]
 
     def test___getitem__(self, dataset_with_samples, nb_samples):
-        dataset_with_samples[np.random.randint(nb_samples)]
+        assert isinstance(dataset_with_samples[np.random.randint(nb_samples)], Sample)
+        assert isinstance(dataset_with_samples[1 : nb_samples - 1], Dataset)
+        assert isinstance(dataset_with_samples[np.arange(1, nb_samples - 1)], Dataset)
+        assert isinstance(dataset_with_samples[list(range(1, nb_samples - 1))], Dataset)
+        assert isinstance(dataset_with_samples[range(1, nb_samples - 1)], Dataset)
 
     def test___call__empty(self, dataset):
         with pytest.raises(IndexError):
