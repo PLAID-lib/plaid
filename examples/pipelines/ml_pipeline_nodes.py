@@ -260,3 +260,21 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
         )
         return self.model.score(X, y)
 
+
+class DatasetTargetTransformerRegressor(BaseEstimator, RegressorMixin):
+    def __init__(self, regressor, transformer):
+        self.regressor = regressor
+        self.transformer = transformer
+
+    def fit(self, dataset, y=None):
+        # Appliquer la transformation sur le dataset (modifie y dans les samples)
+        transformed_dataset = self.transformer.fit_transform(dataset)
+
+        # Entraîner le régressseur sur le dataset transformé
+        self.regressor.fit(transformed_dataset)
+        return self
+
+    def predict(self, dataset):
+        # Prédiction dans l’espace transformé (log(y) par ex.)
+        dataset_pred_transformed = self.regressor.predict(dataset)
+        return self.transformer.inverse_transform(dataset_pred_transformed)
