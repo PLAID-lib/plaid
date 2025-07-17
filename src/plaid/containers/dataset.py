@@ -23,7 +23,7 @@ import shutil
 import subprocess
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Union
+from typing import Iterator, Union
 
 import numpy as np
 import yaml
@@ -1002,17 +1002,35 @@ class Dataset(object):
         """
         return len(self._samples)
 
-    def __getitem__(self, id: int) -> Sample:
+    def __iter__(self) -> Iterator[Sample]:
+        """Iterate over the samples in the dataset.
+
+        Yields:
+            Iterator[Sample]: An iterator over the Sample objects stored in the dataset.
+
+        Example:
+            >>> for sample in dataset:
+            ...     process(sample)
+
+        Notes:
+            The samples are yielded in ascending order of their IDs.
+            Only samples that have been explicitly added to the dataset are returned.
+        """
+        return (self._samples[k] for k in sorted(list(self._samples.keys())))
+
+    def __getitem__(
+        self, id: Union[int, slice, range, list[int], np.ndarray]
+    ) -> Union[Sample, Self]:
         """Retrieve a specific sample by its ID int this dataset.
 
         Args:
-            id (int): The ID of the sample to retrieve.
+            id (Union[int, slice, list[int], np.ndarray]): The ID(s) of the sample to retrieve.
 
         Raises:
             IndexError: If the provided ID is out of bounds or does not exist in the dataset.
 
         Returns:
-            Sample: The sample with the specified ID.
+            Union[Sample, Dataset]: The sample with the specified ID or a dataset in the specified IDs.
 
         Example:
             .. code-block:: python
@@ -1024,12 +1042,21 @@ class Dataset(object):
         Seealso:
             This function can also be called using `__call__()`.
         """
-        if id in self._samples:
-            return self._samples[id]
+        if isinstance(id, (slice, range, list, np.ndarray)):
+            if isinstance(id, slice):
+                id = list(range(*id.indices(len(self))))
+            dataset = Dataset()
+            for i in id:
+                dataset.add_sample(self[int(i)], int(i))
+            dataset.set_infos(self.get_infos())
+            return dataset
         else:
-            raise IndexError(
-                f"sample with {id=} not set -> use 'Dataset.add_sample' or 'Dataset.add_samples'"
-            )
+            if id in self._samples:
+                return self._samples[id]
+            else:
+                raise IndexError(
+                    f"sample with {id=} not set -> use 'Dataset.add_sample' or 'Dataset.add_samples'"
+                )
 
     __call__ = __getitem__
 

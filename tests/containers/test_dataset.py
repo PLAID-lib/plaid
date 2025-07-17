@@ -131,6 +131,15 @@ class Test_Dataset:
             Dataset(dataset_path)
 
     # -------------------------------------------------------------------------#
+    def test_iterate_over_dataset(self, dataset_with_samples):
+        sub_dataset = dataset_with_samples[range(0, len(dataset_with_samples), 2)]
+        length = len(sub_dataset)
+        count = 0
+        for sample in sub_dataset:
+            count += 1
+            assert isinstance(sample, Sample)
+        assert count == length
+
     def test_get_samples(self, dataset_with_samples, nb_samples):
         dataset_with_samples.get_samples()
         dataset_with_samples.get_samples(np.arange(np.random.randint(2, nb_samples)))
