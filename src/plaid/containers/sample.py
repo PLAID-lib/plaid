@@ -21,7 +21,7 @@ import copy
 import glob
 import logging
 import os
-from typing import Optional
+from typing import Optional, Union
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
@@ -35,6 +35,7 @@ from plaid.constants import CGNS_ELEMENT_NAMES
 from plaid.types import (
     CGNSNode,
     CGNSTree,
+    FeatureType,
     FieldType,
     LinkType,
     PathType,
@@ -1675,6 +1676,114 @@ class Sample(BaseModel):
             raise KeyError(f"There is no field with name {name} in the specified zone.")
 
         return updated_tree
+
+    # -------------------------------------------------------------------------#
+    def get_feature_from_string_identifier(
+        self, feature_string_identifier: str
+    ) -> FeatureType:
+        """Retrieve a specific feature from its encoded string identifier.
+
+        The `feature_string_identifier` must follow the format:
+            "<feature_type>::<detail1>/<detail2>/.../<detailN>"
+
+        Supported feature types:
+            - "scalar": expects 1 detail → `get_scalar(name)`
+            - "time_series": expects 1 detail → `get_time_series(name)`
+            - "field": up to 5 details → `get_field(name, base_name, zone_name, location, time)`
+            - "nodes": up to 3 details → `get_nodes(base_name, zone_name, time)`
+
+        Args:
+            feature_string_identifier (str): Structured identifier of the feature.
+
+        Returns:
+            FeatureType: The retrieved feature object.
+
+        Raises:
+            AssertionError: If `feature_type` is unknown.
+
+        Warnings:
+            - If "time" is present in a field/nodes identifier, it is cast to float.
+            - `name` is required for scalar, time_series and field features.
+            - The order of the details must be respected. One cannot specify a detail in the feature_string_identifier string without specified the previous ones.
+        """
+        splitted_identifier = feature_string_identifier.split("::")
+
+        feature_type = splitted_identifier[0]
+        feature_details = [
+            detail for detail in splitted_identifier[1].split("/") if detail
+        ]
+
+        assert feature_type in ["scalar", "time_series", "field", "nodes"], (
+            "feature_type not known"
+        )
+
+        if feature_type == "scalar":
+            return self.get_scalar(feature_details[0])
+        elif feature_type == "time_series":
+            return self.get_time_series(feature_details[0])
+        elif feature_type == "field":
+            arg_names = ["name", "base_name", "zone_name", "location", "time"]
+            kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
+            if "time" in kwargs:
+                kwargs["time"] = float(kwargs["time"])
+            return self.get_field(**kwargs)
+        elif feature_type == "nodes":
+            arg_names = ["base_name", "zone_name", "time"]
+            kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
+            if "time" in kwargs:
+                kwargs["time"] = float(kwargs["time"])
+            return self.get_nodes(**kwargs)
+
+    def get_feature_from_identifier(
+        self, feature_identifier: dict[str : Union[str, float]]
+    ) -> FeatureType:
+        """Retrieve a feature object based on a structured identifier dictionary.
+
+        The `feature_identifier` must include a `"type"` key specifying the feature kind:
+            - `"scalar"`       → calls `get_scalar(name)`
+            - `"time_series"`  → calls `get_time_series(name)`
+            - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
+            - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
+
+        Required keys:
+            - `"type"`: one of `"scalar"`, `"time_series"`, `"field"`, or `"nodes"`
+            - `"name"`: required for all types except `"nodes"`
+
+        Optional keys depending on type:
+            - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
+
+        Any omitted optional keys will rely on the default values mechanics of the class.
+
+        Args:
+            feature_identifier ( dict[str:Union[str, float]]):
+                A dictionary encoding the feature type and its relevant parameters.
+
+        Returns:
+            FeatureType: The corresponding feature instance retrieved via the appropriate accessor.
+        """
+        assert "type" in feature_identifier, (
+            "feature type not specified in feature_identifier"
+        )
+        feature_type = feature_identifier["type"]
+        feature_identifier.pop("type")
+
+        assert feature_type in ["scalar", "time_series", "field", "nodes"], (
+            "feature type not known"
+        )
+
+        allowed_keys = ["type", "name", "base_name", "zone_name", "location", "time"]
+        assert all(key in allowed_keys for key in feature_identifier), (
+            "Unexpected key(s) in feature_identifier"
+        )
+
+        if feature_type == "scalar":
+            return self.get_scalar(**feature_identifier)
+        elif feature_type == "time_series":
+            return self.get_time_series(**feature_identifier)
+        elif feature_type == "field":
+            return self.get_field(**feature_identifier)
+        elif feature_type == "nodes":
+            return self.get_nodes(**feature_identifier)
 
     # -------------------------------------------------------------------------#
     def save(self, dir_path: str) -> None:
