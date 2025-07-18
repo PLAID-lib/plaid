@@ -23,8 +23,10 @@ import logging
 import os
 from typing import Union
 
-import numpy as np
 import yaml
+
+from plaid.constants import AUTHORIZED_TASKS
+from plaid.types import IndexType
 
 # %% Globals
 
@@ -37,13 +39,6 @@ logging.basicConfig(
 # %% Functions
 
 # %% Classes
-
-authorized_tasks = ["regression", "classification"]
-"""List containing authorized machine learning tasks.
-"""
-IndexType = Union[list[int], np.ndarray]
-"""IndexType is an Union[list[int],np.ndarray]
-"""
 
 
 class ProblemDefinition(object):
@@ -103,11 +98,11 @@ class ProblemDefinition(object):
         """
         if self._task is not None:
             raise ValueError(f"A task is already in self._task: (`{self._task}`)")
-        elif task in authorized_tasks:
+        elif task in AUTHORIZED_TASKS:
             self._task = task
         else:
             raise TypeError(
-                f"{task} not among authorized tasks. Maybe you want to try among: {authorized_tasks}"
+                f"{task} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_TASKS}"
             )
 
     # -------------------------------------------------------------------------#

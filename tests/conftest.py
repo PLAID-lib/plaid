@@ -7,11 +7,17 @@ from Muscat.Containers import MeshCreationTools as MCT
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
+from plaid.types import CGNSTree
 
 
 @pytest.fixture()
 def dataset():
     return Dataset()
+
+
+@pytest.fixture()
+def sample():
+    return Sample()
 
 
 def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
@@ -22,6 +28,9 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
         sample.init_base(3, 3, base_name)
         sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
         sample.add_scalar("test_scalar", np.random.randn())
+        sample.add_time_series(
+            "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
+        )
         sample.add_field(
             "test_field_same_size", np.random.randn(17), zone_name, base_name
         )
@@ -129,11 +138,17 @@ def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
 
 
 @pytest.fixture()
-def sample_with_tree(sample, tree):
+def sample_with_tree(tree: CGNSTree) -> Sample:
+    """Generate a Sample objects with a tree."""
+    sample = Sample()
     sample.add_tree(tree)
     return sample
 
 
 @pytest.fixture()
-def sample():
-    return Sample()
+def samples_with_tree(nb_samples: int, sample_with_tree: Sample) -> list[Sample]:
+    """Generate a list of Sample objects with a tree."""
+    sample_list = []
+    for _ in range(nb_samples):
+        sample_list.append(sample_with_tree)
+    return sample_list

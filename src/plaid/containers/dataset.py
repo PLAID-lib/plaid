@@ -23,13 +23,15 @@ import shutil
 import subprocess
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Union
+from typing import Iterator, Union
 
 import numpy as np
 import yaml
 from tqdm import tqdm
 
+from plaid.constants import AUTHORIZED_INFO_KEYS
 from plaid.containers.sample import Sample
+from plaid.types import FeatureType
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 
 logger = logging.getLogger(__name__)
@@ -38,30 +40,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-authorized_info_keys = {
-    "legal": ["owner", "license"],
-    "data_production": [
-        "owner",
-        "license",
-        "type",
-        "physics",
-        "simulator",
-        "hardware",
-        "computation_duration",
-        "script",
-        "contact",
-        "location",
-    ],
-    "data_description": [
-        "number_of_samples",
-        "number_of_splits",
-        "DOE",
-        "inputs",
-        "outputs",
-    ],
-}
-"""Configuration dictionary that specifies authorized information keys and their respective categories.
-"""
 
 # %% Functions
 
@@ -375,6 +353,28 @@ class Dataset(object):
         return scalars_names
 
     # -------------------------------------------------------------------------#
+    def get_time_series_names(self, ids: list[int] = None) -> list[str]:
+        """Return union of time series names in all samples with id in ids.
+
+        Args:
+            ids (list[int], optional): Select time series depending on sample id. If None, take all samples. Defaults to None.
+
+        Returns:
+            list[str]: List of all time series names
+        """
+        if ids is not None and len(set(ids)) != len(ids):
+            logger.warning("Provided ids are not unique")
+
+        time_series_names = []
+        for sample in self.get_samples(ids, as_list=True):
+            ts_names = sample.get_time_series_names()
+            for ts_name in ts_names:
+                if ts_name not in time_series_names:
+                    time_series_names.append(ts_name)
+        time_series_names.sort()
+        return time_series_names
+
+    # -------------------------------------------------------------------------#
     def get_field_names(
         self, ids: list[int] = None, zone_name: str = None, base_name: str = None
     ) -> list[str]:
@@ -485,6 +485,39 @@ class Dataset(object):
         return named_tabular
 
     # -------------------------------------------------------------------------#
+    def get_feature_from_string_identifier(
+        self, feature_string_identifier: str
+    ) -> list[FeatureType]:
+        """Get a list of features from the dataset based on the provided feature string identifier.
+
+        Args:
+            feature_string_identifier (str): A string identifier for the feature.
+
+        Returns:
+            list[FeatureType]: A list of features matching the provided string identifier.
+        """
+        return [
+            sample.get_feature_from_string_identifier(feature_string_identifier)
+            for sample in self._samples.values()
+        ]
+
+    def get_feature_from_identifier(
+        self, feature_identifier: dict[str : Union[str, float]]
+    ) -> list[FeatureType]:
+        """Get a list of features from the dataset based on the provided feature identifier.
+
+        Args:
+            feature_identifier (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
+
+        Returns:
+            list[FeatureType]: A list of features matching the provided identifier.
+        """
+        return [
+            sample.get_feature_from_identifier(feature_identifier)
+            for sample in self._samples.values()
+        ]
+
+    # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
         """Add information to the :class:`Dataset <plaid.containers.dataset.Dataset>`, overwriting existing information if there's a conflict.
 
@@ -511,13 +544,13 @@ class Dataset(object):
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}, 'data_production': {'type': 'simulation'}}
 
         """
-        if cat_key not in authorized_info_keys:
+        if cat_key not in AUTHORIZED_INFO_KEYS:
             raise KeyError(
-                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
             )
-        if info_key not in authorized_info_keys[cat_key]:
+        if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
             raise KeyError(
-                f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+                f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
             )
 
         if cat_key not in self._infos:
@@ -554,14 +587,14 @@ class Dataset(object):
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}, 'data_production': {'type': 'simulation', 'simulator': 'Z-set'}}
 
         """
-        if cat_key not in authorized_info_keys:  # Format checking on "infos"
+        if cat_key not in AUTHORIZED_INFO_KEYS:  # Format checking on "infos"
             raise KeyError(
-                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+                f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
             )
         for info_key in infos.keys():
-            if info_key not in authorized_info_keys[cat_key]:
+            if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
                 raise KeyError(
-                    f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+                    f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
                 )
 
         if cat_key not in self._infos:
@@ -595,14 +628,14 @@ class Dataset(object):
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}}
         """
         for cat_key in infos.keys():  # Format checking on "infos"
-            if cat_key not in authorized_info_keys:
+            if cat_key not in AUTHORIZED_INFO_KEYS:
                 raise KeyError(
-                    f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(authorized_info_keys.keys())}"
+                    f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
                 )
             for info_key in infos[cat_key].keys():
-                if info_key not in authorized_info_keys[cat_key]:
+                if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
                     raise KeyError(
-                        f"{info_key=} not among authorized keys. Maybe you want to try among these keys {authorized_info_keys[cat_key]}"
+                        f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
                     )
 
         if len(self._infos) > 0:
@@ -1039,8 +1072,24 @@ class Dataset(object):
         """
         return len(self._samples)
 
+    def __iter__(self) -> Iterator[Sample]:
+        """Iterate over the samples in the dataset.
+
+        Yields:
+            Iterator[Sample]: An iterator over the Sample objects stored in the dataset.
+
+        Example:
+            >>> for sample in dataset:
+            ...     process(sample)
+
+        Notes:
+            The samples are yielded in ascending order of their IDs.
+            Only samples that have been explicitly added to the dataset are returned.
+        """
+        return (self._samples[k] for k in sorted(list(self._samples.keys())))
+
     def __getitem__(
-        self, id: Union[int, slice, list[int], np.ndarray]
+        self, id: Union[int, slice, range, list[int], np.ndarray]
     ) -> Union[Sample, Self]:
         """Retrieve a specific sample by its ID int this dataset.
 
@@ -1063,7 +1112,7 @@ class Dataset(object):
         Seealso:
             This function can also be called using `__call__()`.
         """
-        if isinstance(id, (slice, list, np.ndarray)):
+        if isinstance(id, (slice, range, list, np.ndarray)):
             if isinstance(id, slice):
                 id = list(range(*id.indices(len(self))))
             dataset = Dataset()
@@ -1104,6 +1153,12 @@ class Dataset(object):
         # scalars
         nb_scalars = len(self.get_scalar_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
+
+        # time series
+        nb_time_series = len(self.get_time_series_names())
+        str_repr += (
+            f"{nb_time_series} time_series{'' if nb_time_series == 1 else 's'}, "
+        )
 
         # fields
         nb_fields = len(self.get_field_names())

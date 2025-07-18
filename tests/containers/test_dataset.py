@@ -74,6 +74,13 @@ def dataset_with_samples(dataset, samples, infos):
 
 
 @pytest.fixture()
+def dataset_with_samples_with_tree(empty_dataset, samples_with_tree, infos):
+    empty_dataset.add_samples(samples_with_tree)
+    empty_dataset.set_infos(infos)
+    return empty_dataset
+
+
+@pytest.fixture()
 def other_dataset_with_samples(other_samples):
     other_dataset = Dataset()
     other_dataset.add_samples(other_samples)
@@ -316,6 +323,16 @@ class Test_Dataset:
         dataset_with_samples.get_scalar_names()
         dataset_with_samples.get_scalar_names([0, 0])
 
+    def test_get_time_series_names(self, dataset_with_samples, nb_samples):
+        dataset_with_samples.get_time_series_names()
+        dataset_with_samples.get_time_series_names(
+            np.random.randint(2, nb_samples, size=2)
+        )
+
+    def test_get_time_series_names_same_ids(self, dataset_with_samples):
+        dataset_with_samples.get_time_series_names()
+        dataset_with_samples.get_time_series_names([0, 0])
+
     def test_get_field_names(self, dataset_with_samples, nb_samples):
         dataset_with_samples.get_field_names()
         dataset_with_samples.get_field_names(np.random.randint(2, nb_samples, size=2))
@@ -360,6 +377,128 @@ class Test_Dataset:
         )
         dataset.get_scalars_to_tabular(sample_ids=[0, 0])
         dataset.get_scalars_to_tabular(scalar_names=["test", "test"])
+
+    # -------------------------------------------------------------------------#
+    def test_get_feature_from_string_identifier(
+        self, dataset_with_samples, dataset_with_samples_with_tree
+    ):
+        dataset_with_samples.get_feature_from_string_identifier("scalar::test_scalar")
+
+        dataset_with_samples.get_feature_from_string_identifier(
+            "time_series::test_time_series_1"
+        )
+
+        dataset_with_samples.get_feature_from_string_identifier(
+            "field::test_field_same_size"
+        )
+        dataset_with_samples.get_feature_from_string_identifier(
+            "field::test_field_same_size/TestBaseName"
+        )
+        dataset_with_samples.get_feature_from_string_identifier(
+            "field::test_field_same_size/TestBaseName/TestZoneName"
+        )
+        dataset_with_samples.get_feature_from_string_identifier(
+            "field::test_field_same_size/TestBaseName/TestZoneName/Vertex"
+        )
+        dataset_with_samples.get_feature_from_string_identifier(
+            "field::test_field_same_size/TestBaseName/TestZoneName/Vertex/0"
+        )
+
+        dataset_with_samples_with_tree.get_feature_from_string_identifier("nodes::")
+        dataset_with_samples_with_tree.get_feature_from_string_identifier(
+            "nodes::Base_2_2"
+        )
+        dataset_with_samples_with_tree.get_feature_from_string_identifier(
+            "nodes::Base_2_2/Zone"
+        )
+        dataset_with_samples_with_tree.get_feature_from_string_identifier(
+            "nodes::Base_2_2/Zone/0"
+        )
+
+    def test_get_feature_from_identifier(
+        self, dataset_with_samples, dataset_with_samples_with_tree
+    ):
+        dataset_with_samples.get_feature_from_identifier(
+            {"type": "scalar", "name": "test_scalar"}
+        )
+        dataset_with_samples.get_feature_from_identifier(
+            {"type": "time_series", "name": "test_time_series_1"}
+        )
+
+        dataset_with_samples.get_feature_from_identifier(
+            {"type": "field", "name": "test_field_same_size"}
+        )
+        dataset_with_samples.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_field_same_size",
+                "base_name": "TestBaseName",
+            }
+        )
+        dataset_with_samples.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_field_same_size",
+                "base_name": "TestBaseName",
+                "zone_name": "TestZoneName",
+            }
+        )
+        dataset_with_samples.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_field_same_size",
+                "base_name": "TestBaseName",
+                "zone_name": "TestZoneName",
+                "location": "Vertex",
+            }
+        )
+        dataset_with_samples.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_field_same_size",
+                "base_name": "TestBaseName",
+                "zone_name": "TestZoneName",
+                "location": "Vertex",
+                "time": 0.0,
+            }
+        )
+        dataset_with_samples.get_feature_from_identifier(
+            {"type": "field", "name": "test_field_same_size", "time": 0.0}
+        )
+        dataset_with_samples.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_field_same_size",
+                "base_name": "TestBaseName",
+                "time": 0.0,
+            }
+        )
+        dataset_with_samples.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_field_same_size",
+                "zone_name": "TestZoneName",
+                "location": "Vertex",
+                "time": 0.0,
+            }
+        )
+
+        dataset_with_samples_with_tree.get_feature_from_identifier({"type": "nodes"})
+        dataset_with_samples_with_tree.get_feature_from_identifier(
+            {"type": "nodes", "base_name": "Base_2_2"}
+        )
+        dataset_with_samples_with_tree.get_feature_from_identifier(
+            {"type": "nodes", "base_name": "Base_2_2", "zone_name": "Zone"}
+        )
+        dataset_with_samples_with_tree.get_feature_from_identifier(
+            {"type": "nodes", "base_name": "Base_2_2", "zone_name": "Zone", "time": 0.0}
+        )
+        dataset_with_samples_with_tree.get_feature_from_identifier(
+            {"type": "nodes", "zone_name": "Zone"}
+        )
+        dataset_with_samples_with_tree.get_feature_from_identifier(
+            {"type": "nodes", "time": 0.0}
+        )
 
     # -------------------------------------------------------------------------#
     def test_add_info(self, dataset):
@@ -552,6 +691,21 @@ class Test_Dataset:
     def test___len__(self, dataset_with_samples, nb_samples):
         assert len(dataset_with_samples) == nb_samples
 
+    def test___iter__empty(self, dataset):
+        count = 0
+        for _ in dataset:
+            count += 1
+        assert count == 0
+
+    def test___iter__(self, dataset_with_samples):
+        sub_dataset = dataset_with_samples[range(0, len(dataset_with_samples), 2)]
+        length = len(sub_dataset)
+        count = 0
+        for sample in sub_dataset:
+            count += 1
+            assert isinstance(sample, Sample)
+        assert count == length
+
     def test___getitem__empty(self, dataset):
         with pytest.raises(IndexError):
             dataset[0]
@@ -561,6 +715,7 @@ class Test_Dataset:
         assert isinstance(dataset_with_samples[1 : nb_samples - 1], Dataset)
         assert isinstance(dataset_with_samples[np.arange(1, nb_samples - 1)], Dataset)
         assert isinstance(dataset_with_samples[list(range(1, nb_samples - 1))], Dataset)
+        assert isinstance(dataset_with_samples[range(1, nb_samples - 1)], Dataset)
 
     def test___call__empty(self, dataset):
         with pytest.raises(IndexError):
@@ -569,8 +724,9 @@ class Test_Dataset:
     def test___call__(self, dataset_with_samples, nb_samples):
         dataset_with_samples(np.random.randint(nb_samples))
 
-    def test___repr__(self, dataset):
+    def test___repr__(self, dataset, dataset_with_samples):
         print(dataset)
+        print(dataset_with_samples)
 
     # #-------------------------------------------------------------------------#
     # #-------------------------------------------------------------------------#
