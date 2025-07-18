@@ -18,6 +18,7 @@ from Muscat.Containers import MeshCreationTools as MCT
 
 from plaid.containers.sample import (
     Sample,
+    _check_names,
     read_index,
     read_index_array,
     read_index_range,
@@ -105,13 +106,9 @@ def sample_with_tree_and_scalar_and_time_series(
     sample_with_tree,
 ):
     sample_with_tree.add_scalar("r", np.random.randn())
-    sample_with_tree.add_scalar("a/b", np.random.randn())
     sample_with_tree.add_scalar("test_scalar_1", np.random.randn())
     sample_with_tree.add_time_series(
         "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
-    )
-    sample_with_tree.add_time_series(
-        "a/b", np.arange(113, dtype=float), np.random.randn(113)
     )
     return sample_with_tree
 
@@ -120,12 +117,12 @@ def sample_with_tree_and_scalar_and_time_series(
 
 
 def test_check_names():
-    check_names('test name')
-    check_names(['test name', 'test_name_2'])
+    _check_names("test name")
+    _check_names(["test name", "test_name_2"])
     with pytest.raises(ValueError):
-        check_names(['test/name'])
+        _check_names(["test/name"])
     with pytest.raises(ValueError):
-        check_names(['test\/name'])
+        _check_names([r"test\/name"])
 
 
 def test_read_index(tree, physical_dim):
