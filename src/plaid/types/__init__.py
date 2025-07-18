@@ -10,6 +10,7 @@
 from plaid.types.cgns_types import (
     CGNSNode,
     CGNSTree,
+    FeatureType,
     FieldType,
     LinkType,
     NodeLabel,
@@ -36,5 +37,6 @@ __all__ = [
     "FieldType",
     "TimeSequenceType",
     "TimeSeriesType",
+    "FeatureType",
     "IndexType",
 ]

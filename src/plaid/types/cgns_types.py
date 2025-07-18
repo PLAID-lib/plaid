@@ -50,3 +50,6 @@ ScalarType: TypeAlias = Union[float, int]
 FieldType: TypeAlias = Array
 TimeSequenceType: TypeAlias = Array
 TimeSeriesType: TypeAlias = Tuple[TimeSequenceType, FieldType]
+
+# Feature data types
+FeatureType: TypeAlias = Union[ScalarType, FieldType, TimeSeriesType, Array]

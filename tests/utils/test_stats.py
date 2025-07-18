@@ -246,7 +246,11 @@ class Test_Stats:
 
         sample = samples[0]
         feature_names = sample.get_scalar_names()
-        feature_names.extend(sample.get_time_series_names())
+        feature_names.extend(
+            item
+            for ts_name in sample.get_time_series_names()
+            for item in (f"time_series/{ts_name}", f"timestamps/{ts_name}")
+        )
         for base_name in sample.get_base_names():
             for zone_name in sample.get_zone_names(base_name=base_name):
                 for field_name in sample.get_field_names(
