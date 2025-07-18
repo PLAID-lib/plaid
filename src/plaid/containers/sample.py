@@ -1765,25 +1765,27 @@ class Sample(BaseModel):
             "feature type not specified in feature_identifier"
         )
         feature_type = feature_identifier["type"]
-        feature_identifier.pop("type")
+        feature_identifier_ = {
+            k: v for k, v in feature_identifier.items() if k != "type"
+        }
 
         assert feature_type in ["scalar", "time_series", "field", "nodes"], (
             "feature type not known"
         )
 
         allowed_keys = ["type", "name", "base_name", "zone_name", "location", "time"]
-        assert all(key in allowed_keys for key in feature_identifier), (
+        assert all(key in allowed_keys for key in feature_identifier_), (
             "Unexpected key(s) in feature_identifier"
         )
 
         if feature_type == "scalar":
-            return self.get_scalar(**feature_identifier)
+            return self.get_scalar(**feature_identifier_)
         elif feature_type == "time_series":
-            return self.get_time_series(**feature_identifier)
+            return self.get_time_series(**feature_identifier_)
         elif feature_type == "field":
-            return self.get_field(**feature_identifier)
+            return self.get_field(**feature_identifier_)
         elif feature_type == "nodes":
-            return self.get_nodes(**feature_identifier)
+            return self.get_nodes(**feature_identifier_)
 
     # -------------------------------------------------------------------------#
     def save(self, dir_path: str) -> None:

@@ -31,6 +31,7 @@ from tqdm import tqdm
 
 from plaid.constants import AUTHORIZED_INFO_KEYS
 from plaid.containers.sample import Sample
+from plaid.types import FeatureType
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 
 logger = logging.getLogger(__name__)
@@ -352,6 +353,28 @@ class Dataset(object):
         return scalars_names
 
     # -------------------------------------------------------------------------#
+    def get_time_series_names(self, ids: list[int] = None) -> list[str]:
+        """Return union of time series names in all samples with id in ids.
+
+        Args:
+            ids (list[int], optional): Select time series depending on sample id. If None, take all samples. Defaults to None.
+
+        Returns:
+            list[str]: List of all time series names
+        """
+        if ids is not None and len(set(ids)) != len(ids):
+            logger.warning("Provided ids are not unique")
+
+        time_series_names = []
+        for sample in self.get_samples(ids, as_list=True):
+            ts_names = sample.get_time_series_names()
+            for ts_name in ts_names:
+                if ts_name not in time_series_names:
+                    time_series_names.append(ts_name)
+        time_series_names.sort()
+        return time_series_names
+
+    # -------------------------------------------------------------------------#
     def get_field_names(
         self, ids: list[int] = None, zone_name: str = None, base_name: str = None
     ) -> list[str]:
@@ -460,6 +483,39 @@ class Dataset(object):
         if as_nparray:
             named_tabular = np.array(list(named_tabular.values())).T
         return named_tabular
+
+    # -------------------------------------------------------------------------#
+    def get_feature_from_string_identifier(
+        self, feature_string_identifier: str
+    ) -> list[FeatureType]:
+        """Get a list of features from the dataset based on the provided feature string identifier.
+
+        Args:
+            feature_string_identifier (str): A string identifier for the feature.
+
+        Returns:
+            list[FeatureType]: A list of features matching the provided string identifier.
+        """
+        return [
+            sample.get_feature_from_string_identifier(feature_string_identifier)
+            for sample in self._samples.values()
+        ]
+
+    def get_feature_from_identifier(
+        self, feature_identifier: dict[str : Union[str, float]]
+    ) -> list[FeatureType]:
+        """Get a list of features from the dataset based on the provided feature identifier.
+
+        Args:
+            feature_identifier (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
+
+        Returns:
+            list[FeatureType]: A list of features matching the provided identifier.
+        """
+        return [
+            sample.get_feature_from_identifier(feature_identifier)
+            for sample in self._samples.values()
+        ]
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
@@ -1083,6 +1139,12 @@ class Dataset(object):
         # scalars
         nb_scalars = len(self.get_scalar_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
+
+        # time series
+        nb_time_series = len(self.get_time_series_names())
+        str_repr += (
+            f"{nb_time_series} time_series{'' if nb_time_series == 1 else 's'}, "
+        )
 
         # fields
         nb_fields = len(self.get_field_names())
