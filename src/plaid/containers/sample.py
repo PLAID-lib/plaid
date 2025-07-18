@@ -1556,6 +1556,7 @@ class Sample(BaseModel):
         base_name: str = None,
         location: str = "Vertex",
         time: float = None,
+        warning_overwrite=True,
     ) -> None:
         """Add a field to a specified zone in the grid.
 
@@ -1566,6 +1567,7 @@ class Sample(BaseModel):
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
             time (float, optional): The time associated with the field. Defaults to 0.
+            warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
 
         Raises:
             KeyError: Raised if the specified zone does not exist in the given base.
@@ -1619,9 +1621,10 @@ class Sample(BaseModel):
                 # print(field.shape)
                 # flow_solution_node[2].append(res)
             else:
-                logger.warning(
-                    f"field node with name {name} already exists -> data will be replaced"
-                )
+                if warning_overwrite:
+                    logger.warning(
+                        f"field node with name {name} already exists -> data will be replaced"
+                    )
                 CGU.setValue(field_node, np.asfortranarray(field))
 
     def del_field(

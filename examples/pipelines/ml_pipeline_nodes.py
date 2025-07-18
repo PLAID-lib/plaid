@@ -40,9 +40,10 @@ class ScalarScalerNode(BaseEstimator, TransformerMixin):
         )
 
     def set_scalars(self, dataset, scalars):
-        for i in range(len(dataset)):
+        for i in dataset.get_sample_ids():
+            ii = dataset.get_sample_ids().index(i)
             for j, sn in enumerate(self.scalar_names):
-                dataset[i].add_scalar(sn, scalars[i, j])
+                dataset[i].add_scalar(sn, scalars[ii, j])
 
     def fit(self, dataset, y=None):
         self.model = available_scalers[self.type_]()
@@ -94,9 +95,10 @@ class PCAEmbeddingNode(BaseEstimator, RegressorMixin, TransformerMixin):
         return np.array(all_fields)
 
     def set_reduced_fields(self, dataset, reduced_fields):
-        for i in range(len(dataset)):
+        for i in dataset.get_sample_ids():
+            ii = dataset.get_sample_ids().index(i)
             for j in range(self.n_components):
-                dataset[i].add_scalar(f"reduced_{self.field_name}_{j}", reduced_fields[i, j])
+                dataset[i].add_scalar(f"reduced_{self.field_name}_{j}", reduced_fields[ii, j])
 
     def get_reduced_fields(self, dataset):
         if isinstance(dataset, list):
@@ -107,9 +109,10 @@ class PCAEmbeddingNode(BaseEstimator, RegressorMixin, TransformerMixin):
         )
 
     def set_fields(self, dataset, fields): # TODO: this will not work with multiple times step per sample
-        for i in range(len(dataset)):
+        for i in dataset.get_sample_ids():
+            ii = dataset.get_sample_ids().index(i)
             for time in dataset[i].get_all_mesh_times():
-                dataset[i].add_field(self.field_name, fields[i], self.zone_name, self.base_name, self.location, time)
+                dataset[i].add_field(self.field_name, fields[ii], self.zone_name, self.base_name, self.location, time, warning_overwrite = False)
 
     def fit(self, dataset, y=None):
         self.model = PCA(n_components = self.n_components)
@@ -212,6 +215,7 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
             scalar_names = self.output_names,
             as_nparray = True
         )
+
         self.model.fit(X, y)
 
         self.fitted_ = True
@@ -225,14 +229,15 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
             as_nparray = True
         )
 
-        pred= self.model.predict(X)
+        pred = self.model.predict(X)
         if len(self.output_names) == 1:
             pred = pred.reshape((-1, 1))
 
         dataset_ = copy.deepcopy(dataset)
-        for i in range(len(dataset)):
+        for i in dataset.get_sample_ids():
+            ii = dataset.get_sample_ids().index(i)
             for j, sn in enumerate(self.output_names):
-                dataset_[i].add_scalar(sn, pred[i, j])
+                dataset_[i].add_scalar(sn, pred[ii, j])
 
         return dataset_
 
@@ -242,23 +247,23 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
     def inverse_transform(self, dataset):
         return dataset
 
-    def score(self, dataset, dataset_ref):
-        if not dataset_ref:
-            # case where GirdSearchCV is called with only one argument search.fit(dataset)
-            dataset_ref = dataset
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
-        X = dataset.get_scalars_to_tabular(
-            scalar_names = self.input_names,
-            as_nparray = True
-        )
-        if isinstance(dataset_ref, list):
-            dataset_ref = Dataset.from_list_of_samples(dataset_ref)
-        y = dataset_ref.get_scalars_to_tabular(
-            scalar_names = self.output_names,
-            as_nparray = True
-        )
-        return self.model.score(X, y)
+    # def score(self, dataset, dataset_ref):
+    #     if not dataset_ref:
+    #         # case where GirdSearchCV is called with only one argument search.fit(dataset)
+    #         dataset_ref = dataset
+    #     if isinstance(dataset, list):
+    #         dataset = Dataset.from_list_of_samples(dataset)
+    #     X = dataset.get_scalars_to_tabular(
+    #         scalar_names = self.input_names,
+    #         as_nparray = True
+    #     )
+    #     if isinstance(dataset_ref, list):
+    #         dataset_ref = Dataset.from_list_of_samples(dataset_ref)
+    #     y = dataset_ref.get_scalars_to_tabular(
+    #         scalar_names = self.output_names,
+    #         as_nparray = True
+    #     )
+    #     return self.model.score(X, y)
 
 
 class DatasetTargetTransformerRegressor(BaseEstimator, RegressorMixin):
@@ -266,15 +271,33 @@ class DatasetTargetTransformerRegressor(BaseEstimator, RegressorMixin):
         self.regressor = regressor
         self.transformer = transformer
 
+
+    def get_all_fields(self, dataset):
+        all_fields = []
+        for sample in dataset:
+            all_fields.append(sample.get_field("mach", base_name = "Base_2_2"))
+        return np.array(all_fields)
+
+
     def fit(self, dataset, y=None):
-        # Appliquer la transformation sur le dataset (modifie y dans les samples)
         transformed_dataset = self.transformer.fit_transform(dataset)
 
-        # Entraîner le régressseur sur le dataset transformé
         self.regressor.fit(transformed_dataset)
+        self.fitted_ = True
         return self
 
     def predict(self, dataset):
-        # Prédiction dans l’espace transformé (log(y) par ex.)
         dataset_pred_transformed = self.regressor.predict(dataset)
         return self.transformer.inverse_transform(dataset_pred_transformed)
+
+    def score(self, dataset_ref, dataset_pred):
+
+        mach_ref = self.get_all_fields(dataset_ref)
+        mach_pred = self.get_all_fields(dataset_pred)
+
+        n_samples = len(mach_ref)
+        errors = 0
+        for i in range(n_samples):
+            errors += (np.linalg.norm(mach_pred[i] - mach_ref[i])**2)/(mach_ref[i].shape[0]*np.linalg.norm(mach_ref[i], ord = np.inf)**2)
+        score = np.sqrt(errors/n_samples)
+        return score
