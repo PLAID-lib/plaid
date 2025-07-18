@@ -120,7 +120,17 @@ TimeSeriesType = tuple[TimeSequenceType, FieldType]
 """
 
 
-def _check_names(names: list[str]):
+def _check_names(names: Union[str, list[str]]):
+    """Check that names do not contain invalid character ``/``.
+
+    Args:
+        names (Union[str, list[str]]): The names to check.
+
+    Raises:
+        ValueError: If any name contains the invalid character ``/``.
+    """
+    if isinstance(names, str):
+        names = [names]
     for name in names:
         if (name is not None) and ("/" in name):
             raise ValueError(
