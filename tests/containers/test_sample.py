@@ -120,6 +120,8 @@ def test_check_names():
     _check_names("test name")
     _check_names(["test name", "test_name_2"])
     with pytest.raises(ValueError):
+        _check_names("test/name")
+    with pytest.raises(ValueError):
         _check_names(["test/name"])
     with pytest.raises(ValueError):
         _check_names([r"test\/name"])
