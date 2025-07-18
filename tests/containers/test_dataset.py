@@ -323,6 +323,16 @@ class Test_Dataset:
         dataset_with_samples.get_scalar_names()
         dataset_with_samples.get_scalar_names([0, 0])
 
+    def test_get_time_series_names(self, dataset_with_samples, nb_samples):
+        dataset_with_samples.get_time_series_names()
+        dataset_with_samples.get_time_series_names(
+            np.random.randint(2, nb_samples, size=2)
+        )
+
+    def test_get_time_series_names_same_ids(self, dataset_with_samples):
+        dataset_with_samples.get_time_series_names()
+        dataset_with_samples.get_time_series_names([0, 0])
+
     def test_get_field_names(self, dataset_with_samples, nb_samples):
         dataset_with_samples.get_field_names()
         dataset_with_samples.get_field_names(np.random.randint(2, nb_samples, size=2))
