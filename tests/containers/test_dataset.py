@@ -500,6 +500,132 @@ class Test_Dataset:
             {"type": "nodes", "time": 0.0}
         )
 
+    def test_get_features_from_identifiers(self, dataset_with_samples_with_tree):
+        dataset_with_samples_with_tree.get_features_from_identifiers(
+            [{"type": "nodes"}]
+        )
+        dataset_with_samples_with_tree.get_features_from_identifiers(
+            [
+                {"type": "nodes", "base_name": "Base_2_2"},
+                {
+                    "type": "field",
+                    "name": "test_elem_field_1",
+                    "zone_name": "Zone",
+                    "location": "CellCenter",
+                    "time": 0.0,
+                },
+            ]
+        )
+
+    def test_update_features_from_identifier(
+        self, dataset_with_samples, dataset_with_samples_with_tree
+    ):
+        indices = dataset_with_samples.get_sample_ids()
+        dataset_with_samples.update_features_from_identifier(
+            feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
+            features={ind: 3.1415 for ind in indices},
+            in_place=False,
+        )
+
+        dataset_with_samples.update_features_from_identifier(
+            feature_identifiers={
+                "type": "time_series",
+                "name": "test_time_series_1",
+            },
+            features={
+                ind: (np.array([0, 1]), np.array([3.14, 3.15])) for ind in indices
+            },
+            in_place=False,
+        )
+
+        indices = dataset_with_samples_with_tree.get_sample_ids()
+        before = dataset_with_samples_with_tree[0].get_field(
+            name="test_node_field_1",
+            zone_name="Zone",
+            base_name="Base_2_2",
+            location="Vertex",
+            time=0.0,
+        )
+
+        dataset_with_samples_with_tree.update_features_from_identifier(
+            feature_identifiers={
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "location": "Vertex",
+                "time": 0.0,
+            },
+            features={ind: np.random.rand(*before.shape) for ind in indices},
+            in_place=False,
+        )
+
+        before = dataset_with_samples_with_tree[0].get_nodes(
+            zone_name="Zone", base_name="Base_2_2", time=0.0
+        )
+        dataset_with_samples_with_tree.update_features_from_identifier(
+            feature_identifiers={
+                "type": "nodes",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "time": 0.0,
+            },
+            features={ind: np.random.rand(*before.shape) for ind in indices},
+            in_place=False,
+        )
+
+        before_1 = dataset_with_samples_with_tree[0].get_field("test_node_field_1")
+        before_2 = dataset_with_samples_with_tree[0].get_nodes()
+        dataset_with_samples_with_tree.update_features_from_identifier(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "nodes"},
+            ],
+            features={
+                ind: [
+                    np.random.rand(*before_1.shape),
+                    np.random.rand(*before_2.shape),
+                ]
+                for ind in indices
+            },
+            in_place=False,
+        )
+
+        dataset_with_samples_with_tree.update_features_from_identifier(
+            feature_identifiers=[{"type": "field", "name": "test_node_field_1"}],
+            features={ind: [np.random.rand(*before_1.shape)] for ind in indices},
+            in_place=True,
+        )
+
+    def test_extract_features_from_identifier(
+        self, dataset_with_samples, dataset_with_samples_with_tree
+    ):
+        dataset_with_samples.extract_features_from_identifier(
+            feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
+        )
+
+        dataset_with_samples.extract_features_from_identifier(
+            feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
+        )
+
+        dataset_with_samples_with_tree.extract_features_from_identifier(
+            feature_identifiers={
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "location": "Vertex",
+                "time": 0.0,
+            },
+        )
+
+        dataset_with_samples_with_tree.extract_features_from_identifier(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "nodes"},
+            ],
+        )
+
     # -------------------------------------------------------------------------#
     def test_add_info(self, dataset):
         dataset.add_info("legal", "owner", "PLAID")
@@ -553,6 +679,12 @@ class Test_Dataset:
     def test_merge_dataset_with_bad_type(self, dataset_with_samples):
         with pytest.raises(ValueError):
             dataset_with_samples.merge_dataset(3)
+
+    # -------------------------------------------------------------------------#
+
+    def test_from_list_of_samples(self, samples):
+        loaded_dataset = Dataset.from_list_of_samples(samples)
+        assert len(loaded_dataset) == len(samples)
 
     # -------------------------------------------------------------------------#
 
