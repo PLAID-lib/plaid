@@ -505,20 +505,15 @@ class Test_Dataset:
     ):
         indices = dataset_with_samples.get_sample_ids()
         dataset_with_samples.update_features_from_identifier(
-            feature_identifiers={
-                ind: {"type": "scalar", "name": "test_scalar_1"} for ind in indices
-            },
+            feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
             features={ind: 3.1415 for ind in indices},
             in_place=False,
         )
 
         dataset_with_samples.update_features_from_identifier(
             feature_identifiers={
-                ind: {
-                    "type": "time_series",
-                    "name": "test_time_series_1",
-                }
-                for ind in indices
+                "type": "time_series",
+                "name": "test_time_series_1",
             },
             features={
                 ind: (np.array([0, 1]), np.array([3.14, 3.15])) for ind in indices
@@ -534,17 +529,15 @@ class Test_Dataset:
             location="Vertex",
             time=0.0,
         )
+
         dataset_with_samples_with_tree.update_features_from_identifier(
             feature_identifiers={
-                ind: {
-                    "type": "field",
-                    "name": "test_node_field_1",
-                    "base_name": "Base_2_2",
-                    "zone_name": "Zone",
-                    "location": "Vertex",
-                    "time": 0.0,
-                }
-                for ind in indices
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "location": "Vertex",
+                "time": 0.0,
             },
             features={ind: np.random.rand(*before.shape) for ind in indices},
             in_place=False,
@@ -555,13 +548,10 @@ class Test_Dataset:
         )
         dataset_with_samples_with_tree.update_features_from_identifier(
             feature_identifiers={
-                ind: {
-                    "type": "nodes",
-                    "base_name": "Base_2_2",
-                    "zone_name": "Zone",
-                    "time": 0.0,
-                }
-                for ind in indices
+                "type": "nodes",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "time": 0.0,
             },
             features={ind: np.random.rand(*before.shape) for ind in indices},
             in_place=False,
@@ -570,13 +560,10 @@ class Test_Dataset:
         before_1 = dataset_with_samples_with_tree[0].get_field("test_node_field_1")
         before_2 = dataset_with_samples_with_tree[0].get_nodes()
         dataset_with_samples_with_tree.update_features_from_identifier(
-            feature_identifiers={
-                ind: [
-                    {"type": "field", "name": "test_node_field_1"},
-                    {"type": "nodes"},
-                ]
-                for ind in indices
-            },
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "nodes"},
+            ],
             features={
                 ind: [
                     np.random.rand(*before_1.shape),
@@ -588,9 +575,7 @@ class Test_Dataset:
         )
 
         dataset_with_samples_with_tree.update_features_from_identifier(
-            feature_identifiers={
-                ind: [{"type": "field", "name": "test_node_field_1"}] for ind in indices
-            },
+            feature_identifiers=[{"type": "field", "name": "test_node_field_1"}],
             features={ind: [np.random.rand(*before_1.shape)] for ind in indices},
             in_place=True,
         )
@@ -598,43 +583,30 @@ class Test_Dataset:
     def test_extract_features_from_identifier(
         self, dataset_with_samples, dataset_with_samples_with_tree
     ):
-        indices = dataset_with_samples.get_sample_ids()
-
         dataset_with_samples.extract_features_from_identifier(
-            feature_identifiers={
-                ind: {"type": "scalar", "name": "test_scalar_1"} for ind in indices
-            },
+            feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
         )
 
         dataset_with_samples.extract_features_from_identifier(
-            feature_identifiers={
-                ind: {"type": "time_series", "name": "test_time_series_1"}
-                for ind in indices
-            },
+            feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
 
         dataset_with_samples_with_tree.extract_features_from_identifier(
             feature_identifiers={
-                ind: {
-                    "type": "field",
-                    "name": "test_node_field_1",
-                    "base_name": "Base_2_2",
-                    "zone_name": "Zone",
-                    "location": "Vertex",
-                    "time": 0.0,
-                }
-                for ind in indices
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "location": "Vertex",
+                "time": 0.0,
             },
         )
 
         dataset_with_samples_with_tree.extract_features_from_identifier(
-            feature_identifiers={
-                ind: [
-                    {"type": "field", "name": "test_node_field_1"},
-                    {"type": "nodes"},
-                ]
-                for ind in indices
-            },
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "nodes"},
+            ],
         )
 
     # -------------------------------------------------------------------------#

@@ -23,7 +23,21 @@ class PLAIDTransformer(BaseEstimator, TransformerMixin):
 
         self.features_param = features_param
 
+    def get_features(self, dataset):
+        return dataset.get_feature_from_identifier(self.features_param)
 
+    def set_features(self, dataset, features):
+        return dataset.update_features_from_identifier(self.features_param, features)
+
+    def fit(self, dataset, y=None):
+
+        return self
+
+    def transform(self, dataset):
+        return dataset
+
+    def inverse_transform(self, dataset):
+        return dataset
 
 
 class ScalarScalerNode(BaseEstimator, TransformerMixin):

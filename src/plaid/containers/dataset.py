@@ -500,40 +500,40 @@ class Dataset(object):
     # -------------------------------------------------------------------------#
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
-    ) -> list[FeatureType]:
+    ) -> dict[int, FeatureType]:
         """Get a list of features from the dataset based on the provided feature string identifier.
 
         Args:
             feature_string_identifier (str): A string identifier for the feature.
 
         Returns:
-            list[FeatureType]: A list of features matching the provided string identifier.
+            dict[int, FeatureType]: A list of features matching the provided string identifier.
         """
-        return [
-            sample.get_feature_from_string_identifier(feature_string_identifier)
-            for sample in self._samples.values()
-        ]
+        return {
+            id: self[id].get_feature_from_string_identifier(feature_string_identifier)
+            for id in self.get_sample_ids()
+        }
 
     def get_feature_from_identifier(
         self, feature_identifier: dict[str : Union[str, float]]
-    ) -> list[FeatureType]:
+    ) -> dict[int, FeatureType]:
         """Get a list of features from the dataset based on the provided feature identifier.
 
         Args:
             feature_identifier (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
 
         Returns:
-            list[FeatureType]: A list of features matching the provided identifier.
+            ldict[int, FeatureType]: A list of features matching the provided identifier.
         """
-        return [
-            sample.get_feature_from_identifier(feature_identifier)
-            for sample in self._samples.values()
-        ]
+        return {
+            id: self[id].get_feature_from_identifier(feature_identifier)
+            for id in self.get_sample_ids()
+        }
 
     def update_features_from_identifier(
         self,
-        feature_identifiers: dict[
-            int, Union[dict[str, Union[str, float]], list[dict[str, Union[str, float]]]]
+        feature_identifiers: Union[
+            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
         ],
         features: dict[int, Union[FeatureType, list[FeatureType]]],
         in_place: bool = False,
@@ -545,7 +545,7 @@ class Dataset(object):
         before applying updates, ensuring full isolation from the original.
 
         Args:
-            feature_identifiers (dict): dict with sample index as keys and one or more feature identifiers as values.
+            feature_identifiers (dict or list of dict): one or more feature identifiers.
             features (dict): dict with sample index as keys and one or more features as values.
             in_place (bool, optional): If True, modifies the current dataset in place.
                 If False, returns a deep copy with updated features.
@@ -556,19 +556,15 @@ class Dataset(object):
         Raises:
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
-        assert (
-            set(feature_identifiers.keys())
-            == set(features.keys())
-            == set(self.get_sample_ids())
-        ), (
-            "Must provide the same sample indices in feature_identifiers and features as in the dataset"
+        assert set(features.keys()) == set(self.get_sample_ids()), (
+            "Must provide the same sample indices in features as in the dataset"
         )
 
         dataset = self if in_place else self.copy()
 
         for id in self.get_sample_ids():
             dataset[id].update_features_from_identifier(
-                feature_identifiers[id], features[id], in_place=True
+                feature_identifiers, features[id], in_place=True
             )
         return dataset
 
@@ -592,16 +588,12 @@ class Dataset(object):
         Raises:
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
-        assert set(feature_identifiers.keys()) == set(self.get_sample_ids()), (
-            "Must provide the same sample indices in feature_identifiers as in the dataset"
-        )
-
         dataset = Dataset()
         dataset.set_infos(copy.deepcopy(self.get_infos()))
 
         for id in self.get_sample_ids():
             extracted_sample = self[id].extract_features_from_identifier(
-                feature_identifiers[id]
+                feature_identifiers
             )
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
