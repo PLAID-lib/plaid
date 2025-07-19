@@ -530,6 +530,22 @@ class Dataset(object):
             for id in self.get_sample_ids()
         }
 
+    def get_features_from_identifiers(
+        self, feature_identifiers: list[dict[str : Union[str, float]]]
+    ) -> dict[int, list[FeatureType]]:
+        """Get a list of features from the dataset based on the provided feature identifier.
+
+        Args:
+            feature_identifiers (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
+
+        Returns:
+            dict[int, list[FeatureType]]: A list of features matching the provided identifier.
+        """
+        return {
+            id: self[id].get_features_from_identifiers(feature_identifiers)
+            for id in self.get_sample_ids()
+        }
+
     def update_features_from_identifier(
         self,
         feature_identifiers: Union[

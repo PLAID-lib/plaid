@@ -500,6 +500,23 @@ class Test_Dataset:
             {"type": "nodes", "time": 0.0}
         )
 
+    def test_get_features_from_identifiers(self, dataset_with_samples_with_tree):
+        dataset_with_samples_with_tree.get_features_from_identifiers(
+            [{"type": "nodes"}]
+        )
+        dataset_with_samples_with_tree.get_features_from_identifiers(
+            [
+                {"type": "nodes", "base_name": "Base_2_2"},
+                {
+                    "type": "field",
+                    "name": "test_elem_field_1",
+                    "zone_name": "Zone",
+                    "location": "CellCenter",
+                    "time": 0.0,
+                },
+            ]
+        )
+
     def test_update_features_from_identifier(
         self, dataset_with_samples, dataset_with_samples_with_tree
     ):

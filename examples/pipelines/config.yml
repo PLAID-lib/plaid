@@ -5,15 +5,17 @@ global:
   test_split_name: "test"
 
 test_0:
-  feature:
-    type: scalar
-    name: angle_in
+  features:
+    - type: scalar
+      name: angle_in
+    - type: scalar
+      name: mach_out
 
 test_1:
-  feature:
-    type: field
-    name: mach
-    base_name: Base_2_2
+  features:
+    - type: field
+      name: mach
+      base_name: Base_2_2
 
 input_scalar_scaler:
   scaler_type: "MinMaxScaler"

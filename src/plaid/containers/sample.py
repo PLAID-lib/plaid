@@ -1831,6 +1831,50 @@ class Sample(BaseModel):
         elif feature_type == "nodes":
             return self.get_nodes(**feature_details)
 
+    def get_features_from_identifiers(
+        self, feature_identifiers: list[dict[str, Union[str, float]]]
+    ) -> list[FeatureType]:
+        """Retrieve features based on a list of structured identifier dictionaries.
+
+        Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
+            - `"scalar"`       → calls `get_scalar(name)`
+            - `"time_series"`  → calls `get_time_series(name)`
+            - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
+            - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
+
+        Required keys:
+            - `"type"`: one of `"scalar"`, `"time_series"`, `"field"`, or `"nodes"`
+            - `"name"`: required for all types except `"nodes"`
+
+        Optional keys depending on type:
+            - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
+
+        Any omitted optional keys will rely on the default values mechanics of the class.
+
+        Args:
+            feature_identifiers (list[dict[str, Union[str, float]]]):
+                A dictionary encoding the feature type and its relevant parameters.
+
+        Returns:
+            list[FeatureType]: List of corresponding feature instance retrieved via the appropriate accessor.
+        """
+        all_features_info = [
+            get_feature_type_and_details_from_identifier(feat_id)
+            for feat_id in feature_identifiers
+        ]
+
+        features = []
+        for feature_type, feature_details in all_features_info:
+            if feature_type == "scalar":
+                features.append(self.get_scalar(**feature_details))
+            elif feature_type == "time_series":
+                features.append(self.get_time_series(**feature_details))
+            elif feature_type == "field":
+                features.append(self.get_field(**feature_details))
+            elif feature_type == "nodes":
+                features.append(self.get_nodes(**feature_details))
+        return features
+
     def _add_feature(
         self,
         feature_identifier: dict[str, Union[str, float]],

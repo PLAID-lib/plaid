@@ -1006,6 +1006,28 @@ class Test_Sample:
             {"type": "nodes", "time": 0.0}
         )
 
+    def test_get_features_from_identifiers(
+        self, sample_with_tree_and_scalar_and_time_series
+    ):
+        sample_with_tree_and_scalar_and_time_series.get_features_from_identifiers(
+            [{"type": "scalar", "name": "test_scalar_1"}]
+        )
+
+        sample_with_tree_and_scalar_and_time_series.get_features_from_identifiers(
+            [
+                {
+                    "type": "field",
+                    "name": "test_node_field_1",
+                    "base_name": "Base_2_2",
+                    "zone_name": "Zone",
+                    "location": "Vertex",
+                    "time": 0.0,
+                },
+                {"type": "scalar", "name": "test_scalar_1"},
+                {"type": "nodes"},
+            ]
+        )
+
     def test_update_features_from_identifier(
         self, sample_with_tree_and_scalar_and_time_series
     ):
