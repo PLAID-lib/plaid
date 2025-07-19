@@ -5,14 +5,14 @@ global:
   test_split_name: "test"
 
 input_scalar_scaler:
-  type: "MinMaxScaler"
-  scalar_names:
+  scaler_type: "MinMaxScaler"
+  feature_names:
     - angle_in
     - mach_out
 
 output_scalar_scaler:
-  type: "MinMaxScaler"
-  scalar_names:
+  scaler_type: "MinMaxScaler"
+  feature_names:
     - Q
     - power
     - Pr

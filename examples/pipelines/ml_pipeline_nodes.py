@@ -24,16 +24,16 @@ class ScalarScalerNode(BaseEstimator, TransformerMixin):
 
         self.params = params
 
-        self.type_ = params['type']
-        self.scalar_names = params['scalar_names']
+        self.type_ = params['scaler_type']
+        self.scalar_names = params['feature_names']
 
         assert self.type_ in available_scalers.keys(), "Scaler "+self.type_+" not available"
 
         self.model = None
 
     def get_scalars(self, dataset):
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+        # if isinstance(dataset, list):
+        #     dataset = Dataset.from_list_of_samples(dataset)
         return dataset.get_scalars_to_tabular(
             scalar_names = self.scalar_names,
             as_nparray = True
@@ -47,7 +47,6 @@ class ScalarScalerNode(BaseEstimator, TransformerMixin):
 
     def fit(self, dataset, y=None):
         self.model = available_scalers[self.type_]()
-
         scalars = self.get_scalars(dataset)
         self.model.fit(scalars)
         self.fitted_ = True
@@ -101,8 +100,8 @@ class PCAEmbeddingNode(BaseEstimator, RegressorMixin, TransformerMixin):
                 dataset[i].add_scalar(f"reduced_{self.field_name}_{j}", reduced_fields[ii, j])
 
     def get_reduced_fields(self, dataset):
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+        # if isinstance(dataset, list):
+        #     dataset = Dataset.from_list_of_samples(dataset)
         return dataset.get_scalars_to_tabular(
             scalar_names = [f"reduced_{self.field_name}_{j}" for j in range(self.n_components)],
             as_nparray = True
@@ -164,16 +163,16 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
 
 
     def get_scalars(self, dataset):
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+        # if isinstance(dataset, list):
+        #     dataset = Dataset.from_list_of_samples(dataset)
         return dataset.get_scalars_to_tabular(
             scalar_names = self.input_names,
             as_nparray = True
         )
 
     def fit(self, dataset, y=None):
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+        # if isinstance(dataset, list):
+        #     dataset = Dataset.from_list_of_samples(dataset)
         all_available_scalar = dataset.get_scalar_names()
 
         self.input_names = []
@@ -205,8 +204,8 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
             random_state = self.options["random_state"])
 
         self.model = MultiOutputRegressor(gpr)
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+        # if isinstance(dataset, list):
+        #     dataset = Dataset.from_list_of_samples(dataset)
         X = dataset.get_scalars_to_tabular(
             scalar_names = self.input_names,
             as_nparray = True
@@ -222,8 +221,8 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
         return self
 
     def predict(self, dataset):
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+        # if isinstance(dataset, list):
+        #     dataset = Dataset.from_list_of_samples(dataset)
         X = dataset.get_scalars_to_tabular(
             scalar_names = self.input_names,
             as_nparray = True
