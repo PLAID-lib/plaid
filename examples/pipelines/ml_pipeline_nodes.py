@@ -18,6 +18,14 @@ available_scalers = {
     "MinMaxScaler": MinMaxScaler,
 }
 
+class PLAIDTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, features_param):
+
+        self.features_param = features_param
+
+
+
+
 class ScalarScalerNode(BaseEstimator, TransformerMixin):
 
     def __init__(self, params):
@@ -47,6 +55,7 @@ class ScalarScalerNode(BaseEstimator, TransformerMixin):
 
     def fit(self, dataset, y=None):
         self.model = available_scalers[self.type_]()
+
         scalars = self.get_scalars(dataset)
         self.model.fit(scalars)
         self.fitted_ = True
@@ -67,7 +76,7 @@ class ScalarScalerNode(BaseEstimator, TransformerMixin):
         return dataset_
 
 
-class PCAEmbeddingNode(BaseEstimator, RegressorMixin, TransformerMixin):
+class PCAEmbeddingNode(BaseEstimator, RegressorMixin):
 
     def __init__(self, params, n_components = None):
 

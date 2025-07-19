@@ -4,6 +4,12 @@ global:
   train_split_name: "train"
   test_split_name: "test"
 
+input_scalar_scaler_0:
+  scaler_type: "MinMaxScaler"
+  feature:
+    - type: scalar
+    - name: angle_in
+
 input_scalar_scaler:
   scaler_type: "MinMaxScaler"
   feature_names:
