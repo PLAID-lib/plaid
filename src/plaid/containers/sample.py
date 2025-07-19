@@ -137,8 +137,8 @@ def read_index_range(pyTree: list, dim: list[int]):
 
 
 def _get_feature_type_and_details_from_identifier(
-    feature_identifier: dict[str : Union[str, float]],
-) -> tuple[str, dict[str : Union[str, float]]]:
+    feature_identifier: dict[str, Union[str, float]],
+) -> tuple[str, dict[str, Union[str, float]]]:
     """Extract and validate the feature type and its associated metadata from a feature identifier.
 
     This utility function ensures that the `feature_identifier` dictionary contains a valid
@@ -1833,7 +1833,7 @@ class Sample(BaseModel):
             return self.get_nodes(**kwargs)
 
     def get_feature_from_identifier(
-        self, feature_identifier: dict[str : Union[str, float]]
+        self, feature_identifier: dict[str, Union[str, float]]
     ) -> FeatureType:
         """Retrieve a feature object based on a structured identifier dictionary.
 
@@ -1874,7 +1874,7 @@ class Sample(BaseModel):
 
     def _add_feature(
         self,
-        feature_identifier: dict[str : Union[str, float]],
+        feature_identifier: dict[str, Union[str, float]],
         feature: FeatureType,
     ) -> Self:
         """Add a feature to current sample.
@@ -1912,7 +1912,7 @@ class Sample(BaseModel):
     def update_features_from_identifier(
         self,
         feature_identifiers: Union[
-            dict[str : Union[str, float]], list[dict[str : Union[str, float]]]
+            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
         ],
         features: Union[FeatureType, list[FeatureType]],
         in_place: bool = False,
@@ -1953,7 +1953,7 @@ class Sample(BaseModel):
     def extract_features_from_identifier(
         self,
         feature_identifiers: Union[
-            dict[str : Union[str, float]], list[dict[str : Union[str, float]]]
+            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
         ],
     ) -> Self:
         """Extract features of the sample by their identifier(s) and return a new sample containing these features.
