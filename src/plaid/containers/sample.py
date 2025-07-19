@@ -31,7 +31,12 @@ import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 from pydantic import BaseModel, model_serializer
 
-from plaid.constants import CGNS_ELEMENT_NAMES
+from plaid.constants import (
+    AUTHORIZED_FEATURE_INFOS,
+    AUTHORIZED_FEATURE_TYPES,
+    AUTHORIZED_FIELD_LOCATIONS,
+    CGNS_ELEMENT_NAMES,
+)
 from plaid.types import (
     CGNSNode,
     CGNSTree,
@@ -131,6 +136,48 @@ def read_index_range(pyTree: list, dim: list[int]):
     return np.array(res, dtype=int).ravel()
 
 
+def _get_feature_type_and_details_from_identifier(
+    feature_identifier: dict[str : Union[str, float]],
+) -> tuple[str, dict[str : Union[str, float]]]:
+    """Extract and validate the feature type and its associated metadata from a feature identifier.
+
+    This utility function ensures that the `feature_identifier` dictionary contains a valid
+    "type" key (e.g., "scalar", "time_series", "field", "node") and returns the type along
+    with the remaining identifier keys, which are specific to the feature type.
+
+    Args:
+        feature_identifier (dict): A dictionary with a "type" key, and
+            other keys (some optional) depending on the feature type. For example:
+                - {"type": "scalar", "name": "Mach"}
+                - {"type": "time_series", "name": "AOA"}
+                - {"type": "field", "name": "pressure"}
+
+    Returns:
+        tuple[str, dict]: A tuple `(feature_type, feature_details)` where:
+            - `feature_type` is the value of the "type" key (e.g., "scalar").
+            - `feature_details` is a dictionary of the remaining keys.
+
+    Raises:
+        AssertionError:
+            - If "type" is missing.
+            - If the type is not in `AUTHORIZED_FEATURE_TYPES`.
+            - If any unexpected keys are present for the given type.
+    """
+    assert "type" in feature_identifier, (
+        "feature type not specified in feature_identifier"
+    )
+    feature_type = feature_identifier["type"]
+    feature_details = {k: v for k, v in feature_identifier.items() if k != "type"}
+
+    assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature type not known"
+
+    assert all(
+        key in AUTHORIZED_FEATURE_INFOS[feature_type] for key in feature_details
+    ), "Unexpected key(s) in feature_identifier"
+
+    return feature_type, feature_details
+
+
 class Sample(BaseModel):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset."""
 
@@ -195,6 +242,18 @@ class Sample(BaseModel):
             "active_zone": None,
             "active_time": None,
         }
+
+    def copy(self) -> Self:
+        """Create a deep copy of the sample.
+
+        Returns:
+            A new `Sample` instance with all internal data (scalars, time series, fields, meshes, etc.)
+            deeply copied to ensure full isolation from the original.
+
+        Note:
+            This operation may be memory-intensive for large samples.
+        """
+        return copy.deepcopy(self)
 
     # -------------------------------------------------------------------------#
     def set_default_base(self, base_name: str, time: float = None) -> None:
@@ -1389,11 +1448,25 @@ class Sample(BaseModel):
                 f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`"
             )
 
+        # Check if GridCoordinates_t node exists
+        gc_nodes = [
+            child for child in zone_node[2] if child[0] in CGK.GridCoordinates_ts
+        ]
+        if gc_nodes:
+            grid_coords_node = gc_nodes[0]
+
         coord_type = [CGK.CoordinateX_s, CGK.CoordinateY_s, CGK.CoordinateZ_s]
         for i_dim in range(nodes.shape[-1]):
-            CGL.newCoordinates(
-                zone_node, coord_type[i_dim], np.asfortranarray(nodes[..., i_dim])
-            )
+            name = coord_type[i_dim]
+
+            # Remove existing coordinate if present
+            if gc_nodes:
+                grid_coords_node[2] = [
+                    child for child in grid_coords_node[2] if child[0] != name
+                ]
+
+            # Create new coordinate
+            CGL.newCoordinates(zone_node, name, np.asfortranarray(nodes[..., i_dim]))
 
     set_points = set_nodes
     set_vertices = set_nodes
@@ -1680,6 +1753,30 @@ class Sample(BaseModel):
 
         return updated_tree
 
+    def del_all_fields(
+        self,
+    ) -> Self:
+        """Delete alls field from sample, while keeping geometrical info.
+
+        Returns:
+            Sample: The sample with deleted fields
+        """
+        for t in self.get_all_mesh_times():
+            for bn in self.get_base_names(time=t):
+                for zn in self.get_zone_names(base_name=bn, time=t):
+                    for loc in AUTHORIZED_FIELD_LOCATIONS:
+                        for fn in self.get_field_names(
+                            zone_name=zn, base_name=bn, location=loc, time=t
+                        ):
+                            self.del_field(
+                                name=fn,
+                                zone_name=zn,
+                                base_name=bn,
+                                location=loc,
+                                time=t,
+                            )
+        return self
+
     # -------------------------------------------------------------------------#
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
@@ -1716,22 +1813,20 @@ class Sample(BaseModel):
             detail for detail in splitted_identifier[1].split("/") if detail
         ]
 
-        assert feature_type in ["scalar", "time_series", "field", "nodes"], (
-            "feature_type not known"
-        )
+        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
+
+        arg_names = AUTHORIZED_FEATURE_INFOS[feature_type]
 
         if feature_type == "scalar":
             return self.get_scalar(feature_details[0])
         elif feature_type == "time_series":
             return self.get_time_series(feature_details[0])
         elif feature_type == "field":
-            arg_names = ["name", "base_name", "zone_name", "location", "time"]
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
             return self.get_field(**kwargs)
         elif feature_type == "nodes":
-            arg_names = ["base_name", "zone_name", "time"]
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
@@ -1764,31 +1859,147 @@ class Sample(BaseModel):
         Returns:
             FeatureType: The corresponding feature instance retrieved via the appropriate accessor.
         """
-        assert "type" in feature_identifier, (
-            "feature type not specified in feature_identifier"
-        )
-        feature_type = feature_identifier["type"]
-        feature_identifier_ = {
-            k: v for k, v in feature_identifier.items() if k != "type"
-        }
-
-        assert feature_type in ["scalar", "time_series", "field", "nodes"], (
-            "feature type not known"
-        )
-
-        allowed_keys = ["type", "name", "base_name", "zone_name", "location", "time"]
-        assert all(key in allowed_keys for key in feature_identifier_), (
-            "Unexpected key(s) in feature_identifier"
+        feature_type, feature_details = _get_feature_type_and_details_from_identifier(
+            feature_identifier
         )
 
         if feature_type == "scalar":
-            return self.get_scalar(**feature_identifier_)
+            return self.get_scalar(**feature_details)
         elif feature_type == "time_series":
-            return self.get_time_series(**feature_identifier_)
+            return self.get_time_series(**feature_details)
         elif feature_type == "field":
-            return self.get_field(**feature_identifier_)
+            return self.get_field(**feature_details)
         elif feature_type == "nodes":
-            return self.get_nodes(**feature_identifier_)
+            return self.get_nodes(**feature_details)
+
+    def _add_feature(
+        self,
+        feature_identifier: dict[str : Union[str, float]],
+        feature: FeatureType,
+    ) -> Self:
+        """Add a feature to current sample.
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers, and corresponding feature data.
+
+        Args:
+            feature_identifier (dict): A feature identifier.
+            feature (FeatureType): A feature corresponding to the identifiers.
+
+        Returns:
+            Self: The updated sample
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        feature_type, feature_details = _get_feature_type_and_details_from_identifier(
+            feature_identifier
+        )
+
+        if feature_type == "scalar":
+            self.add_scalar(**feature_details, value=feature)
+        elif feature_type == "time_series":
+            self.add_time_series(
+                **feature_details, time_sequence=feature[0], values=feature[1]
+            )
+        elif feature_type == "field":
+            self.add_field(**feature_details, field=feature, warning_overwrite=False)
+        elif feature_type == "nodes":
+            self.set_nodes(**feature_details, nodes=feature)
+
+        return self
+
+    def update_features_from_identifier(
+        self,
+        feature_identifiers: Union[
+            dict[str : Union[str, float]], list[dict[str : Union[str, float]]]
+        ],
+        features: Union[FeatureType, list[FeatureType]],
+        in_place: bool = False,
+    ) -> Self:
+        """Update one or several features of the sample by their identifier(s).
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers, and corresponding feature data. When `in_place=False`, a deep copy of the sample is created
+        before applying updates, ensuring full isolation from the original.
+
+        Args:
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+            features (FeatureType or list of FeatureType): One or more features corresponding
+                to the identifiers.
+            in_place (bool, optional): If True, modifies the current sample in place.
+                If False, returns a deep copy with updated features.
+
+        Returns:
+            Self: The updated sample (either the current instance or a new copy).
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        assert isinstance(feature_identifiers, dict) or (
+            isinstance(feature_identifiers, list) and isinstance(features, list)
+        ), "Check types of feature_identifiers and features arguments"
+        if isinstance(feature_identifiers, dict):
+            feature_identifiers = [feature_identifiers]
+            features = [features]
+
+        sample = self if in_place else self.copy()
+
+        for feat_id, feat in zip(feature_identifiers, features):
+            sample._add_feature(feat_id, feat)
+
+        return sample
+
+    def extract_features_from_identifier(
+        self,
+        feature_identifiers: Union[
+            dict[str : Union[str, float]], list[dict[str : Union[str, float]]]
+        ],
+    ) -> Self:
+        """Extract features of the sample by their identifier(s) and return a new sample containing these features.
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers
+
+        Args:
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+
+        Returns:
+            Self: New sample containing the provided feature identifiers
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        assert isinstance(feature_identifiers, dict) or isinstance(
+            feature_identifiers, list
+        ), "Check types of feature_identifiers argument"
+        if isinstance(feature_identifiers, dict):
+            feature_identifiers = [feature_identifiers]
+
+        feature_types = set([feat_id["type"] for feat_id in feature_identifiers])
+
+        # if field or node features are to extract, copy the source sample and delete all fields
+        if "field" in feature_types or "nodes" in feature_types:
+            source_sample = self.copy()
+            source_sample.del_all_fields()
+
+        sample = Sample()
+
+        for feat_id in feature_identifiers:
+            feature = self.get_feature_from_identifier(feat_id)
+
+            # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
+            if feat_id["type"] in ["field", "nodes"]:
+                # get time of current feature
+                time = self.get_time_assignment(time=feat_id.get("time"))
+
+                # if the constructed sample does not have a tree, add the one from the source sample, with no field
+                if not sample.get_mesh(time):
+                    sample.add_tree(source_sample.get_mesh(time))
+
+            sample._add_feature(feat_id, feature)
+
+        return sample
 
     # -------------------------------------------------------------------------#
     def save(self, dir_path: str) -> None:

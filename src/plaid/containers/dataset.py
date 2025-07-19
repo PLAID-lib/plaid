@@ -517,6 +517,21 @@ class Dataset(object):
             for sample in self._samples.values()
         ]
 
+    # def update_features_from_identifier(
+    #     self,
+    #     feature_identifiers: Union[dict[str : Union[str, float]], list[dict[str : Union[str, float]]]],
+    #     features: Union[FeatureType, list[FeatureType]],
+    #     in_place: bool = False
+    # ) -> Self:
+    #     """docstring
+    #     """
+    #     assert (isinstance(feature_identifiers, dict) and isinstance(features, FeatureType)) or (isinstance(feature_identifiers, dict) and isinstance(features, dict)), "Check types of feature_identifiers and features arguments"
+    #     if isinstance(feature_identifiers, dict):
+    #         feature_identifiers = [feature_identifiers]
+    #         features = [features]
+
+    #     return self
+
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
         """Add information to the :class:`Dataset <plaid.containers.dataset.Dataset>`, overwriting existing information if there's a conflict.
@@ -1168,6 +1183,3 @@ class Dataset(object):
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
         return str_repr
-
-
-# %%
