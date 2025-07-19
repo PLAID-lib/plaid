@@ -8,6 +8,7 @@
 #
 
 # %% Imports
+import copy
 import sys
 
 if sys.version_info >= (3, 11):
@@ -118,6 +119,18 @@ class Dataset(object):
                 self._load_from_dir_(
                     directory_path, verbose=verbose, processes_number=processes_number
                 )
+
+    def copy(self) -> Self:
+        """Create a deep copy of the dataset.
+
+        Returns:
+            A new `Dataset` instance with all internal data (samples, infos)
+            deeply copied to ensure full isolation from the original.
+
+        Note:
+            This operation may be memory-intensive for large datasets.
+        """
+        return copy.deepcopy(self)
 
     # -------------------------------------------------------------------------#
     def get_samples(
@@ -249,7 +262,7 @@ class Dataset(object):
                 )
 
         if ids is None:
-            ids = np.arange(len(self), len(self) + len(samples))
+            ids = list(range(len(self), len(self) + len(samples)))
         else:
             if len(samples) != len(ids):
                 raise ValueError(
@@ -517,20 +530,81 @@ class Dataset(object):
             for sample in self._samples.values()
         ]
 
-    # def update_features_from_identifier(
-    #     self,
-    #     feature_identifiers: Union[dict[str : Union[str, float]], list[dict[str : Union[str, float]]]],
-    #     features: Union[FeatureType, list[FeatureType]],
-    #     in_place: bool = False
-    # ) -> Self:
-    #     """docstring
-    #     """
-    #     assert (isinstance(feature_identifiers, dict) and isinstance(features, FeatureType)) or (isinstance(feature_identifiers, dict) and isinstance(features, dict)), "Check types of feature_identifiers and features arguments"
-    #     if isinstance(feature_identifiers, dict):
-    #         feature_identifiers = [feature_identifiers]
-    #         features = [features]
+    def update_features_from_identifier(
+        self,
+        feature_identifiers: dict[
+            int, Union[dict[str, Union[str, float]], list[dict[str, Union[str, float]]]]
+        ],
+        features: dict[int, Union[FeatureType, list[FeatureType]]],
+        in_place: bool = False,
+    ) -> Self:
+        """Update one or several features of the dataset by their identifier(s).
 
-    #     return self
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers, and corresponding feature data. When `in_place=False`, a deep copy of the dataset is created
+        before applying updates, ensuring full isolation from the original.
+
+        Args:
+            feature_identifiers (dict): dict with sample index as keys and one or more feature identifiers as values.
+            features (dict): dict with sample index as keys and one or more features as values.
+            in_place (bool, optional): If True, modifies the current dataset in place.
+                If False, returns a deep copy with updated features.
+
+        Returns:
+            Self: The updated dataset (either the current instance or a new copy).
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        assert (
+            set(feature_identifiers.keys())
+            == set(features.keys())
+            == set(self.get_sample_ids())
+        ), (
+            "Must provide the same sample indices in feature_identifiers and features as in the dataset"
+        )
+
+        dataset = self if in_place else self.copy()
+
+        for id in self.get_sample_ids():
+            dataset[id].update_features_from_identifier(
+                feature_identifiers[id], features[id], in_place=True
+            )
+        return dataset
+
+    def extract_features_from_identifier(
+        self,
+        feature_identifiers: Union[
+            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
+        ],
+    ) -> Self:
+        """Extract features of the dataset by their identifier(s) and return a new dataset containing these features.
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers
+
+        Args:
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+
+        Returns:
+            Self: New dataset containing the provided feature identifiers
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        assert set(feature_identifiers.keys()) == set(self.get_sample_ids()), (
+            "Must provide the same sample indices in feature_identifiers as in the dataset"
+        )
+
+        dataset = Dataset()
+        dataset.set_infos(copy.deepcopy(self.get_infos()))
+
+        for id in self.get_sample_ids():
+            extracted_sample = self[id].extract_features_from_identifier(
+                feature_identifiers[id]
+            )
+            dataset.add_sample(sample=extracted_sample, id=id)
+        return dataset
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
