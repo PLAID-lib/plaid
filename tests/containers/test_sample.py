@@ -1012,6 +1012,12 @@ class Test_Sample:
         sample_with_tree_and_scalar_and_time_series.get_features_from_identifiers(
             [{"type": "scalar", "name": "test_scalar_1"}]
         )
+        sample_with_tree_and_scalar_and_time_series.get_features_from_identifiers(
+            [
+                {"type": "scalar", "name": "test_scalar_1"},
+                {"type": "time_series", "name": "test_time_series_1"},
+            ]
+        )
 
         sample_with_tree_and_scalar_and_time_series.get_features_from_identifiers(
             [

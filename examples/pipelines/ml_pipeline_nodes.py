@@ -24,7 +24,7 @@ class PLAIDTransformer(BaseEstimator, TransformerMixin):
         self.features_param = features_param
 
     def get_features(self, dataset):
-        return dataset.get_feature_from_identifier(self.features_param)
+        return dataset.get_features_from_identifiers(self.features_param)
 
     def set_features(self, dataset, features):
         return dataset.update_features_from_identifier(self.features_param, features)
