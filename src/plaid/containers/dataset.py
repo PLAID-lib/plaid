@@ -613,11 +613,9 @@ class Dataset(object):
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
 
-    def get_tabular_from_identifier(
+    def get_tabular_from_homogeneous_identifiers(
         self,
-        feature_identifiers: Union[
-            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
-        ],
+        feature_identifiers: list[dict[str, Union[str, float]]],
     ) -> Array:
         """Extract features of the dataset by their identifier(s) and return an array containing these features.
 
@@ -625,7 +623,7 @@ class Dataset(object):
         This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
 
         Args:
-            feature_identifiers (dict or list of dict): One or more feature identifiers.
+            feature_identifiers (list of dict): Feature identifiers.
 
         Returns:
             Array: An containing the provided feature identifiers, size (nb_sample, nb_features, dim_features)
@@ -633,15 +631,35 @@ class Dataset(object):
         Raises:
             AssertionError: If feature sizes are inconsistent.
         """
-        if isinstance(feature_identifiers, dict):
-            feature_identifiers = [feature_identifiers]
-
         features = self.get_features_from_identifiers(feature_identifiers)
         dim_features = check_features_size_homogeneity(feature_identifiers, features)
 
         tabular = np.stack(list(features.values()))
         if dim_features == 0:
             tabular = np.expand_dims(tabular, axis=-1)
+
+        return tabular
+
+    def get_tabular_from_stacked_identifiers(
+        self,
+        feature_identifiers: list[dict[str, Union[str, float]]],
+    ) -> Array:
+        """Extract features of the dataset by their identifier(s), stack them and return an array containing these features.
+
+        After stacking, each sample has one feature of dimension dim_stacked_features
+
+        Args:
+            feature_identifiers (list of dict): Feature identifiers.
+
+        Returns:
+            Array: An containing the provided feature identifiers, size (nb_sample, dim_stacked_features)
+        """
+        features = self.get_features_from_identifiers(feature_identifiers)
+
+        tabular = []
+        for local_feats in features.values():
+            tabular.append(np.hstack([np.atleast_1d(e) for e in local_feats]))
+        tabular = np.stack(tabular)
 
         return tabular
 

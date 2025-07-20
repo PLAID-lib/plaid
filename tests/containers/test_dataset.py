@@ -626,15 +626,15 @@ class Test_Dataset:
             ],
         )
 
-    def test_get_tabular_from_identifier(
+    def test_get_tabular_from_homogeneous_identifiers(
         self, nb_samples, dataset_with_samples, dataset_with_samples_with_tree
     ):
-        X = dataset_with_samples.get_tabular_from_identifier(
-            feature_identifiers={"type": "scalar", "name": "test_scalar"},
+        X = dataset_with_samples.get_tabular_from_homogeneous_identifiers(
+            feature_identifiers=[{"type": "scalar", "name": "test_scalar"}],
         )
         assert X.shape == (nb_samples, 1, 1)
 
-        X = dataset_with_samples_with_tree.get_tabular_from_identifier(
+        X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "field", "name": "OriginalIds"},
@@ -642,21 +642,47 @@ class Test_Dataset:
         )
         assert X.shape == (nb_samples, 2, 5)
 
-    def test_get_tabular_from_identifier_inconsistent_features_through_features(
+    def test_get_tabular_from_stacked_identifiers(
+        self, nb_samples, dataset_with_samples
+    ):
+        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+            feature_identifiers=[
+                {"type": "scalar", "name": "test_scalar"},
+                {"type": "field", "name": "test_field_same_size"},
+                {"type": "scalar", "name": "test_scalar"},
+            ],
+        )
+        assert X.shape == (nb_samples, 19)
+
+        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+            feature_identifiers=[
+                {"type": "field", "name": "test_field_same_size"},
+            ],
+        )
+        assert X.shape == (nb_samples, 17)
+
+        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+            feature_identifiers=[
+                {"type": "scalar", "name": "test_scalar"},
+            ],
+        )
+        assert X.shape == (nb_samples, 1)
+
+    def test_get_tabular_from_homogeneous_identifiers_inconsistent_features_through_features(
         self, dataset_with_samples_with_tree
     ):
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
         for sample in dataset_with_samples_with_tree_:
             sample.add_field("test_node_field_1", [0, 1], warning_overwrite=False)
         with pytest.raises(AssertionError):
-            dataset_with_samples_with_tree_.get_tabular_from_identifier(
+            dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
                 feature_identifiers=[
                     {"type": "field", "name": "test_node_field_1"},
                     {"type": "field", "name": "OriginalIds"},
                 ],
             )
 
-    def test_get_tabular_from_identifier_inconsistent_features_through_samples(
+    def test_get_tabular_from_homogeneous_identifiers_inconsistent_features_through_samples(
         self, dataset_with_samples_with_tree
     ):
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
@@ -667,7 +693,7 @@ class Test_Dataset:
             "OriginalIds", [0, 1], warning_overwrite=False
         )
         with pytest.raises(AssertionError):
-            dataset_with_samples_with_tree_.get_tabular_from_identifier(
+            dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
                 feature_identifiers=[
                     {"type": "field", "name": "test_node_field_1"},
                     {"type": "field", "name": "OriginalIds"},
@@ -675,7 +701,7 @@ class Test_Dataset:
             )
 
     def test_from_tabular(self, dataset_with_samples_with_tree):
-        X = dataset_with_samples_with_tree.get_tabular_from_identifier(
+        X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "field", "name": "OriginalIds"},
@@ -707,7 +733,7 @@ class Test_Dataset:
             dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
         ).all()
 
-        X = dataset_with_samples_with_tree.get_tabular_from_identifier(
+        X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "field", "name": "OriginalIds"},

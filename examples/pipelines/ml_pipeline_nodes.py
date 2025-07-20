@@ -250,24 +250,6 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
     def inverse_transform(self, dataset):
         return dataset
 
-    # def score(self, dataset, dataset_ref):
-    #     if not dataset_ref:
-    #         # case where GirdSearchCV is called with only one argument search.fit(dataset)
-    #         dataset_ref = dataset
-    #     if isinstance(dataset, list):
-    #         dataset = Dataset.from_list_of_samples(dataset)
-    #     X = dataset.get_scalars_to_tabular(
-    #         scalar_names = self.input_names,
-    #         as_nparray = True
-    #     )
-    #     if isinstance(dataset_ref, list):
-    #         dataset_ref = Dataset.from_list_of_samples(dataset_ref)
-    #     y = dataset_ref.get_scalars_to_tabular(
-    #         scalar_names = self.output_names,
-    #         as_nparray = True
-    #     )
-    #     return self.model.score(X, y)
-
 
 class PLAIDTransformedTargetRegressor(BaseEstimator, RegressorMixin):
     def __init__(self, regressor, transformer):
