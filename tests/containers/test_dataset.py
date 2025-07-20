@@ -674,12 +674,7 @@ class Test_Dataset:
                 ],
             )
 
-    def test_from_tabular(self, dataset_with_samples, dataset_with_samples_with_tree):
-        dataset_with_samples.get_tabular_from_identifier(
-            feature_identifiers=[
-                {"type": "scalar", "name": "test_scalar"},
-            ],
-        )
+    def test_from_tabular(self, dataset_with_samples_with_tree):
         X = dataset_with_samples_with_tree.get_tabular_from_identifier(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
@@ -724,7 +719,7 @@ class Test_Dataset:
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "field", "name": "OriginalIds"},
             ],
-            restrict_to_features=True,
+            restrict_to_features=False,
         )
         last_index = dataset_with_samples_with_tree.get_sample_ids()[-1]
         assert np.isclose(
@@ -743,6 +738,11 @@ class Test_Dataset:
             dataset[last_index].get_field("test_node_field_1"),
             dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
         ).all()
+
+        dataset = dataset_with_samples_with_tree.from_tabular(
+            tabular=X,
+            feature_identifiers={"type": "field", "name": "OriginalIds"},
+        )
 
     # -------------------------------------------------------------------------#
     def test_add_info(self, dataset):

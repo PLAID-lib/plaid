@@ -634,6 +634,12 @@ class Test_Sample:
         assert scalar is not None
         assert isinstance(scalar, np.ndarray)
 
+    def test__add_feature(self, sample_with_scalar):
+        sample_with_scalar._add_feature(
+            feature_identifier={"type": "scalar", "name": "test_scalar_2"},
+            feature=[3.1415],
+        )
+
     # -------------------------------------------------------------------------#
     def test_get_time_series_names_empty(self, sample):
         assert sample.get_time_series_names() == []

@@ -154,10 +154,6 @@ class PlaidSklearnTransformWrapper(PlaidSklearnBlockWrapper, TransformerMixin):
 
         return dataset_inv_transformed
 
-    ## Already defined by TransformerMixin
-    # def fit_transform(self, dataset:Dataset):...
-
-
 class ScalarScalerNode(BaseEstimator, TransformerMixin):
 
     def __init__(self, params):
