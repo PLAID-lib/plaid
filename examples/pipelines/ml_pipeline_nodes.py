@@ -7,6 +7,8 @@
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin
+from sklearn.utils.metaestimators import _BaseComposition
+from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA
 from plaid.containers.dataset import Dataset
 import copy
@@ -17,27 +19,6 @@ available_scalers = {
     "StandardScaler": StandardScaler,
     "MinMaxScaler": MinMaxScaler,
 }
-
-class PLAIDTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, features_param):
-
-        self.features_param = features_param
-
-    def get_features(self, dataset):
-        return dataset.get_features_from_identifiers(self.features_param)
-
-    def set_features(self, dataset, features):
-        return dataset.update_features_from_identifier(self.features_param, features)
-
-    def fit(self, dataset, y=None):
-
-        return self
-
-    def transform(self, dataset):
-        return dataset
-
-    def inverse_transform(self, dataset):
-        return dataset
 
 
 class ScalarScalerNode(BaseEstimator, TransformerMixin):
@@ -288,7 +269,7 @@ class GPRegressorNode(BaseEstimator, RegressorMixin, TransformerMixin):
     #     return self.model.score(X, y)
 
 
-class DatasetTargetTransformerRegressor(BaseEstimator, RegressorMixin):
+class PLAIDTransformedTargetRegressor(BaseEstimator, RegressorMixin):
     def __init__(self, regressor, transformer):
         self.regressor = regressor
         self.transformer = transformer

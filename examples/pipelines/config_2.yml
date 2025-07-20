@@ -1,0 +1,71 @@
+global:
+  dataset_path: "PLAID-datasets/VKI-LS59"
+  save_path: "./artifacts"
+  train_split_name: "train"
+  test_split_name: "test"
+
+
+input_scalar_scaler:
+  scaler_type: "MinMaxScaler"
+  in_features_identifiers:
+    - type: scalar
+      name: angle_in
+    - type: scalar
+      name: mach_out
+
+output_scalar_scaler:
+  scaler_type: "MinMaxScaler"
+  in_features_identifiers:
+    - type: scalar
+      name: Q
+    - type: scalar
+      name: power
+    - type: scalar
+      name: Pr
+    - type: scalar
+      name: Tr
+    - type: scalar
+      name: eth_is
+    - type: scalar
+      name: angle_out
+
+pca_nodes:
+  n_components: 3
+  in_features_identifiers:
+    - type: nodes
+      base_name: Base_2_2
+  out_features_identifiers:
+    - type: scalar
+      name: reduced_nodes_*
+
+pca_mach:
+  n_components: 5
+  in_features_identifiers:
+    - type: field
+      name: mach
+      base_name: Base_2_2
+  out_features_identifiers:
+    - type: scalar
+      name: reduced_mach_*
+
+regressor_mach:
+  type: "GaussianProcessRegressor"
+  options:
+    kernel: Matern
+    kernel_options:
+      nu: 2.5
+    optim: fmin_l_bfgs_b
+    num_restarts: 2
+    anisotropic: True
+    random_state: 42
+    show_warnings: False
+  in_features_identifiers:
+    - type: scalar
+      name: angle_in
+    - type: scalar
+      name: mach_out
+    - type: scalar
+      name: reduced_nodes_*
+  out_features_identifiers:
+    - type: scalar
+      name: reduced_mach_*

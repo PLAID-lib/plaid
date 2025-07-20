@@ -7,6 +7,7 @@
 
 # %% Imports
 
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -601,9 +602,8 @@ class Test_Dataset:
         self, dataset_with_samples, dataset_with_samples_with_tree
     ):
         dataset_with_samples.extract_features_from_identifier(
-            feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
+            feature_identifiers={"type": "scalar", "name": "test_scalar"},
         )
-
         dataset_with_samples.extract_features_from_identifier(
             feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
@@ -625,6 +625,62 @@ class Test_Dataset:
                 {"type": "nodes"},
             ],
         )
+
+    def test_get_tabular_from_identifier(
+        self, nb_samples, dataset_with_samples, dataset_with_samples_with_tree
+    ):
+        # print(">> =", dataset_with_samples[0].get_scalar_names())
+        # print(">> =", dataset_with_samples_with_tree[0].get_field_names())
+        # print(">> =", dataset_with_samples_with_tree[0].get_field("test_node_field_1"))
+        # print(">> =", dataset_with_samples_with_tree[0].get_field("OriginalIds"))
+        # # 10/0.
+
+        X = dataset_with_samples.get_tabular_from_identifier(
+            feature_identifiers={"type": "scalar", "name": "test_scalar"},
+        )
+        assert X.shape == (nb_samples, 1)
+
+        X = dataset_with_samples_with_tree.get_tabular_from_identifier(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+        )
+        assert X.shape == (nb_samples, 2, 5)
+
+    def test_get_tabular_from_identifier_inconsistent_features_through_features(
+        self, dataset_with_samples_with_tree
+    ):
+        dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
+        for sample in dataset_with_samples_with_tree_:
+            sample.add_field("test_node_field_1", [0, 1], warning_overwrite=False)
+        with pytest.raises(AssertionError):
+            dataset_with_samples_with_tree_.get_tabular_from_identifier(
+                feature_identifiers=[
+                    # {"type": "field", "name": "big_node_field"},
+                    {"type": "field", "name": "test_node_field_1"},
+                    {"type": "field", "name": "OriginalIds"},
+                ],
+            )
+
+    def test_get_tabular_from_identifier_inconsistent_features_through_samples(
+        self, dataset_with_samples_with_tree
+    ):
+        dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
+        dataset_with_samples_with_tree_[0].add_field(
+            "test_node_field_1", [0, 1], warning_overwrite=False
+        )
+        dataset_with_samples_with_tree_[0].add_field(
+            "OriginalIds", [0, 1], warning_overwrite=False
+        )
+        with pytest.raises(AssertionError):
+            dataset_with_samples_with_tree_.get_tabular_from_identifier(
+                feature_identifiers=[
+                    # {"type": "field", "name": "big_node_field"},
+                    {"type": "field", "name": "test_node_field_1"},
+                    {"type": "field", "name": "OriginalIds"},
+                ],
+            )
 
     # -------------------------------------------------------------------------#
     def test_add_info(self, dataset):

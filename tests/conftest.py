@@ -1,5 +1,7 @@
 """This file defines shared pytest fixtures and test configurations."""
 
+import copy
+
 import numpy as np
 import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
@@ -150,5 +152,5 @@ def samples_with_tree(nb_samples: int, sample_with_tree: Sample) -> list[Sample]
     """Generate a list of Sample objects with a tree."""
     sample_list = []
     for _ in range(nb_samples):
-        sample_list.append(sample_with_tree)
+        sample_list.append(copy.deepcopy(sample_with_tree))
     return sample_list

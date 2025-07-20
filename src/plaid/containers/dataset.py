@@ -32,7 +32,8 @@ from tqdm import tqdm
 
 from plaid.constants import AUTHORIZED_INFO_KEYS
 from plaid.containers.sample import Sample
-from plaid.types import FeatureType
+from plaid.containers.utils import check_features_size_homogeneity
+from plaid.types import Array, FeatureType
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 
 logger = logging.getLogger(__name__)
@@ -613,6 +614,34 @@ class Dataset(object):
             )
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
+
+    def get_tabular_from_identifier(
+        self,
+        feature_identifiers: Union[
+            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
+        ],
+    ) -> Array:
+        """Extract features of the dataset by their identifier(s) and return an array containing these features.
+
+        Features must have identic sizes to be casted in an array. The first dimension of the array is the number of samples in the dataset.
+        This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
+
+        Args:
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+
+        Returns:
+            Array: An containing the provided feature identifiers, size (nb_sample, nb_features) or (nb_sample, nb_features, dim_feature) if dim_feature>1
+
+        Raises:
+            AssertionError: If feature sizes are inconsistent.
+        """
+        if isinstance(feature_identifiers, dict):
+            feature_identifiers = [feature_identifiers]
+
+        features = self.get_features_from_identifiers(feature_identifiers)
+        check_features_size_homogeneity(feature_identifiers, features)
+
+        return np.stack(list(features.values()))
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:

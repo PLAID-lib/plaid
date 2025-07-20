@@ -16,6 +16,7 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
 )
+from plaid.types import FeatureType
 
 # %% Functions
 
@@ -91,3 +92,71 @@ def get_feature_type_and_details_from_identifier(
     ), "Unexpected key(s) in feature_identifier"
 
     return feature_type, feature_details
+
+
+def check_features_type_homogeneity(
+    feature_identifiers: list[dict[str, Union[str, float]]],
+) -> None:
+    """Check type homogeneity of features, for tabular conversion.
+
+    Args:
+        feature_identifiers (list[dict]): dict with a "type" key, and
+            other keys (some optional) depending on the feature type. For example:
+                - {"type": "scalar", "name": "Mach"}
+                - {"type": "time_series", "name": "AOA"}
+                - {"type": "field", "name": "pressure"}
+
+    Raises:
+        AssertionError: if types are not consistent
+    """
+    feat_type = feature_identifiers[0]["type"]
+    for i, feat_id in enumerate(feature_identifiers):
+        assert feat_id["type"] in AUTHORIZED_FEATURE_TYPES, "feature type not known"
+        assert feat_id["type"] == feat_type, (
+            f"Inconsistent feature types: {i}-th feature type is {feat_id['type']}, while the first one is {feat_type}"
+        )
+
+
+def check_features_size_homogeneity(
+    feature_identifiers: list[dict[str, Union[str, float]]],
+    features: dict[int, list[FeatureType]],
+) -> None:
+    """Check size homogeneity of features, for tabular conversion.
+
+    Size homogeneity is check through samples for each feature, and through features for each sample.
+    To be converted to tabular data, each sample must have the same number of features and each feature
+    must have the same dimension
+
+    Args:
+        feature_identifiers (list[dict]): dict with a "type" key, and
+            other keys (some optional) depending on the feature type. For example:
+                - {"type": "scalar", "name": "Mach"}
+                - {"type": "time_series", "name": "AOA"}
+                - {"type": "field", "name": "pressure"}
+        features (dict): dict with sample index as keys and one or more features as values.
+
+    Raises:
+        AssertionError: if sizes are not consistent
+    """
+
+    def safe_len(obj):
+        return len(obj) if hasattr(obj, "__len__") else 0
+
+    features_values = list(features.values())
+    nb_samples = len(features_values)
+    nb_features = len(feature_identifiers)
+    for i in range(nb_features):
+        size = safe_len(features_values[0][i])
+        for j in range(nb_samples):
+            size_j = safe_len(features_values[j][i])
+            assert size_j == size, (
+                f"Inconsistent feature sizes for feature {i} (name {feature_identifiers[i]['name']}): has size {size_j} in sample {j}, while having size {size} in sample 0"
+            )
+
+    for j in range(nb_samples):
+        size = safe_len(features_values[j][0])
+        for i in range(nb_features):
+            size_i = safe_len(features_values[j][i])
+            assert size_i == size, (
+                f"Inconsistent feature sizes in sample {j}: feature {i} (name {feature_identifiers[i]['name']}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) if of size {size}"
+            )

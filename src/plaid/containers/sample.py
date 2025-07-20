@@ -21,6 +21,7 @@ import copy
 import glob
 import logging
 import os
+from collections.abc import Iterable
 from typing import Optional, Union
 
 import CGNS.MAP as CGM
@@ -1940,7 +1941,7 @@ class Sample(BaseModel):
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
         assert isinstance(feature_identifiers, dict) or (
-            isinstance(feature_identifiers, list) and isinstance(features, list)
+            isinstance(feature_identifiers, Iterable) and isinstance(features, Iterable)
         ), "Check types of feature_identifiers and features arguments"
         if isinstance(feature_identifiers, dict):
             feature_identifiers = [feature_identifiers]
