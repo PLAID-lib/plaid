@@ -1147,24 +1147,24 @@ class Test_Sample:
         ref_2 = sample_.get_field("test_node_field_1")
         assert np.any(np.isclose(ref_1, ref_2))
 
-    def test_extract_features_from_identifier(
+    def test_from_features_identifier(
         self, sample_with_tree_and_scalar_and_time_series
     ):
-        sample_ = sample_with_tree_and_scalar_and_time_series.extract_features_from_identifier(
+        sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
         )
         assert sample_.get_scalar_names() == ["test_scalar_1"]
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = sample_with_tree_and_scalar_and_time_series.extract_features_from_identifier(
+        sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
         assert len(sample_.get_scalar_names()) == 0
         assert sample_.get_time_series_names() == ["test_time_series_1"]
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = sample_with_tree_and_scalar_and_time_series.extract_features_from_identifier(
+        sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers={
                 "type": "field",
                 "name": "test_node_field_1",
@@ -1178,7 +1178,7 @@ class Test_Sample:
         assert len(sample_.get_time_series_names()) == 0
         assert sample_.get_field_names() == ["test_node_field_1"]
 
-        sample_ = sample_with_tree_and_scalar_and_time_series.extract_features_from_identifier(
+        sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers={
                 "type": "nodes",
                 "base_name": "Base_2_2",
@@ -1190,7 +1190,7 @@ class Test_Sample:
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = sample_with_tree_and_scalar_and_time_series.extract_features_from_identifier(
+        sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "nodes"},

@@ -17,6 +17,7 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
 )
 from plaid.types import FeatureType
+from plaid.utils.base import safe_len
 
 # %% Functions
 
@@ -120,7 +121,7 @@ def check_features_type_homogeneity(
 def check_features_size_homogeneity(
     feature_identifiers: list[dict[str, Union[str, float]]],
     features: dict[int, list[FeatureType]],
-) -> None:
+) -> int:
     """Check size homogeneity of features, for tabular conversion.
 
     Size homogeneity is check through samples for each feature, and through features for each sample.
@@ -135,13 +136,12 @@ def check_features_size_homogeneity(
                 - {"type": "field", "name": "pressure"}
         features (dict): dict with sample index as keys and one or more features as values.
 
+    Returns:
+        int: the common feature dimension
+
     Raises:
         AssertionError: if sizes are not consistent
     """
-
-    def safe_len(obj):
-        return len(obj) if hasattr(obj, "__len__") else 0
-
     features_values = list(features.values())
     nb_samples = len(features_values)
     nb_features = len(feature_identifiers)
@@ -160,3 +160,4 @@ def check_features_size_homogeneity(
             assert size_i == size, (
                 f"Inconsistent feature sizes in sample {j}: feature {i} (name {feature_identifiers[i]['name']}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) if of size {size}"
             )
+    return size

@@ -51,6 +51,7 @@ from plaid.types import (
     TimeSeriesType,
 )
 from plaid.utils import cgns_helper as CGH
+from plaid.utils.base import safe_len
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -1790,7 +1791,7 @@ class Sample(BaseModel):
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
-            return self.get_nodes(**kwargs)
+            return self.get_nodes(**kwargs).flatten()
 
     def get_feature_from_identifier(
         self, feature_identifier: dict[str, Union[str, float]]
@@ -1830,7 +1831,7 @@ class Sample(BaseModel):
         elif feature_type == "field":
             return self.get_field(**feature_details)
         elif feature_type == "nodes":
-            return self.get_nodes(**feature_details)
+            return self.get_nodes(**feature_details).flatten()
 
     def get_features_from_identifiers(
         self, feature_identifiers: list[dict[str, Union[str, float]]]
@@ -1873,7 +1874,7 @@ class Sample(BaseModel):
             elif feature_type == "field":
                 features.append(self.get_field(**feature_details))
             elif feature_type == "nodes":
-                features.append(self.get_nodes(**feature_details))
+                features.append(self.get_nodes(**feature_details).flatten())
         return features
 
     def _add_feature(
@@ -1901,6 +1902,8 @@ class Sample(BaseModel):
         )
 
         if feature_type == "scalar":
+            if safe_len(feature) == 1:
+                feature = feature[0]
             self.add_scalar(**feature_details, value=feature)
         elif feature_type == "time_series":
             self.add_time_series(
@@ -1909,7 +1912,11 @@ class Sample(BaseModel):
         elif feature_type == "field":
             self.add_field(**feature_details, field=feature, warning_overwrite=False)
         elif feature_type == "nodes":
-            self.set_nodes(**feature_details, nodes=feature)
+            physical_dim_arg = {
+                k: v for k, v in feature_details.items() if k in ["base_name", "time"]
+            }
+            phys_dim = self.get_physical_dim(**physical_dim_arg)
+            self.set_nodes(**feature_details, nodes=feature.reshape((-1, phys_dim)))
 
         return self
 
@@ -1954,7 +1961,7 @@ class Sample(BaseModel):
 
         return sample
 
-    def extract_features_from_identifier(
+    def from_features_identifier(
         self,
         feature_identifiers: Union[
             dict[str, Union[str, float]], list[dict[str, Union[str, float]]]

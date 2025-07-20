@@ -34,6 +34,22 @@ def generate_random_ASCII(size: int = 16) -> str:
     return rnd_
 
 
+def safe_len(obj):
+    """Safely return the length of an object, or 0 if the object has no length.
+
+    Parameters
+    ----------
+    obj : Any
+        The object whose length is to be computed.
+
+    Returns:
+    -------
+    int
+        The length of the object if it defines `__len__`, otherwise 0.
+    """
+    return len(obj) if hasattr(obj, "__len__") else 0
+
+
 class NotAllowedError(Exception):
     """Exception for not allowed usage."""
 

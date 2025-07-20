@@ -598,17 +598,17 @@ class Test_Dataset:
             in_place=True,
         )
 
-    def test_extract_features_from_identifier(
+    def test_from_features_identifier(
         self, dataset_with_samples, dataset_with_samples_with_tree
     ):
-        dataset_with_samples.extract_features_from_identifier(
+        dataset_with_samples.from_features_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar"},
         )
-        dataset_with_samples.extract_features_from_identifier(
+        dataset_with_samples.from_features_identifier(
             feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
 
-        dataset_with_samples_with_tree.extract_features_from_identifier(
+        dataset_with_samples_with_tree.from_features_identifier(
             feature_identifiers={
                 "type": "field",
                 "name": "test_node_field_1",
@@ -619,7 +619,7 @@ class Test_Dataset:
             },
         )
 
-        dataset_with_samples_with_tree.extract_features_from_identifier(
+        dataset_with_samples_with_tree.from_features_identifier(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "nodes"},
@@ -629,16 +629,10 @@ class Test_Dataset:
     def test_get_tabular_from_identifier(
         self, nb_samples, dataset_with_samples, dataset_with_samples_with_tree
     ):
-        # print(">> =", dataset_with_samples[0].get_scalar_names())
-        # print(">> =", dataset_with_samples_with_tree[0].get_field_names())
-        # print(">> =", dataset_with_samples_with_tree[0].get_field("test_node_field_1"))
-        # print(">> =", dataset_with_samples_with_tree[0].get_field("OriginalIds"))
-        # # 10/0.
-
         X = dataset_with_samples.get_tabular_from_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar"},
         )
-        assert X.shape == (nb_samples, 1)
+        assert X.shape == (nb_samples, 1, 1)
 
         X = dataset_with_samples_with_tree.get_tabular_from_identifier(
             feature_identifiers=[
@@ -657,7 +651,6 @@ class Test_Dataset:
         with pytest.raises(AssertionError):
             dataset_with_samples_with_tree_.get_tabular_from_identifier(
                 feature_identifiers=[
-                    # {"type": "field", "name": "big_node_field"},
                     {"type": "field", "name": "test_node_field_1"},
                     {"type": "field", "name": "OriginalIds"},
                 ],
@@ -676,11 +669,80 @@ class Test_Dataset:
         with pytest.raises(AssertionError):
             dataset_with_samples_with_tree_.get_tabular_from_identifier(
                 feature_identifiers=[
-                    # {"type": "field", "name": "big_node_field"},
                     {"type": "field", "name": "test_node_field_1"},
                     {"type": "field", "name": "OriginalIds"},
                 ],
             )
+
+    def test_from_tabular(self, dataset_with_samples, dataset_with_samples_with_tree):
+        dataset_with_samples.get_tabular_from_identifier(
+            feature_identifiers=[
+                {"type": "scalar", "name": "test_scalar"},
+            ],
+        )
+        X = dataset_with_samples_with_tree.get_tabular_from_identifier(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+        )
+        dataset = dataset_with_samples_with_tree.from_tabular(
+            tabular=X,
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+            restrict_to_features=True,
+        )
+        last_index = dataset_with_samples_with_tree.get_sample_ids()[-1]
+        assert np.isclose(
+            dataset[0].get_field("OriginalIds"),
+            dataset_with_samples_with_tree[0].get_field("OriginalIds"),
+        ).all()
+        assert np.isclose(
+            dataset[0].get_field("test_node_field_1"),
+            dataset_with_samples_with_tree[0].get_field("test_node_field_1"),
+        ).all()
+        assert np.isclose(
+            dataset[last_index].get_field("OriginalIds"),
+            dataset_with_samples_with_tree[last_index].get_field("OriginalIds"),
+        ).all()
+        assert np.isclose(
+            dataset[last_index].get_field("test_node_field_1"),
+            dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
+        ).all()
+
+        X = dataset_with_samples_with_tree.get_tabular_from_identifier(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+        )
+        dataset = dataset_with_samples_with_tree.from_tabular(
+            tabular=X,
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+            restrict_to_features=True,
+        )
+        last_index = dataset_with_samples_with_tree.get_sample_ids()[-1]
+        assert np.isclose(
+            dataset[0].get_field("OriginalIds"),
+            dataset_with_samples_with_tree[0].get_field("OriginalIds"),
+        ).all()
+        assert np.isclose(
+            dataset[0].get_field("test_node_field_1"),
+            dataset_with_samples_with_tree[0].get_field("test_node_field_1"),
+        ).all()
+        assert np.isclose(
+            dataset[last_index].get_field("OriginalIds"),
+            dataset_with_samples_with_tree[last_index].get_field("OriginalIds"),
+        ).all()
+        assert np.isclose(
+            dataset[last_index].get_field("test_node_field_1"),
+            dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
+        ).all()
 
     # -------------------------------------------------------------------------#
     def test_add_info(self, dataset):

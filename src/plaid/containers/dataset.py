@@ -585,7 +585,7 @@ class Dataset(object):
             )
         return dataset
 
-    def extract_features_from_identifier(
+    def from_features_identifier(
         self,
         feature_identifiers: Union[
             dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
@@ -609,9 +609,7 @@ class Dataset(object):
         dataset.set_infos(copy.deepcopy(self.get_infos()))
 
         for id in self.get_sample_ids():
-            extracted_sample = self[id].extract_features_from_identifier(
-                feature_identifiers
-            )
+            extracted_sample = self[id].from_features_identifier(feature_identifiers)
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
 
@@ -630,7 +628,7 @@ class Dataset(object):
             feature_identifiers (dict or list of dict): One or more feature identifiers.
 
         Returns:
-            Array: An containing the provided feature identifiers, size (nb_sample, nb_features) or (nb_sample, nb_features, dim_feature) if dim_feature>1
+            Array: An containing the provided feature identifiers, size (nb_sample, nb_features, dim_features)
 
         Raises:
             AssertionError: If feature sizes are inconsistent.
@@ -639,9 +637,61 @@ class Dataset(object):
             feature_identifiers = [feature_identifiers]
 
         features = self.get_features_from_identifiers(feature_identifiers)
-        check_features_size_homogeneity(feature_identifiers, features)
+        dim_features = check_features_size_homogeneity(feature_identifiers, features)
 
-        return np.stack(list(features.values()))
+        tabular = np.stack(list(features.values()))
+        if dim_features == 0:
+            tabular = np.expand_dims(tabular, axis=-1)
+
+        return tabular
+
+    def from_tabular(
+        self,
+        tabular: Array,
+        feature_identifiers: Union[
+            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
+        ],
+        restrict_to_features=True,
+    ) -> Self:
+        """Generates a dataset from tabular data and feature_identifiers.
+
+        Parameters:
+            tabular (Array): of size (nb_sample, nb_features) or (nb_sample, nb_features, dim_feature) if dim_feature>1
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+            extract_features (bool, optional): If True, only returns the features from feature identifiers, otherwise keep the other features as well
+
+        Returns:
+            Self
+                A new dataset defined from tabular data and feature_identifiers.
+
+        Raises:
+            AssertionError
+                If the number of rows in `tabular` does not match the number of samples in the dataset,
+                or if the number of feature identifiers does not match the number of columns in `tabular`.
+        """
+        if isinstance(feature_identifiers, dict):
+            feature_identifiers = [feature_identifiers]
+
+        assert tabular.shape[0] == len(self)
+        # assert tabular.shape[1] == len(feature_identifiers)
+
+        features = {id: tabular[i] for i, id in enumerate(self.get_sample_ids())}
+
+        if restrict_to_features:
+            dataset = self.from_features_identifier(feature_identifiers)
+            dataset.update_features_from_identifier(
+                feature_identifiers=feature_identifiers,
+                features=features,
+                in_place=True,
+            )
+        else:
+            dataset = self.update_features_from_identifier(
+                feature_identifiers=feature_identifiers,
+                features=features,
+                in_place=False,
+            )
+
+        return dataset
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
