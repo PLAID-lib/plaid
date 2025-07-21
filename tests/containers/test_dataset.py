@@ -856,6 +856,13 @@ class Test_Dataset:
         with pytest.raises(ValueError):
             dataset_with_samples.merge_features(3)
 
+    def test_merge_dataset_by_features(
+        self, dataset_with_samples, other_dataset_with_samples
+    ):
+        Dataset.merge_dataset_by_features(
+            [dataset_with_samples, other_dataset_with_samples]
+        )
+
     # -------------------------------------------------------------------------#
 
     def test_from_list_of_samples(self, samples):

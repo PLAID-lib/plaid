@@ -30,7 +30,7 @@ from sklearn.utils._tags import get_tags
 from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA
 from plaid.containers.dataset import Dataset
-from plaid.containers.utils import check_features_type_homogeneity, merge_dataset_by_features
+from plaid.containers.utils import check_features_type_homogeneity
 import copy
 from typing import Union, Callable, Any
 from sklearn.base import clone
@@ -272,7 +272,7 @@ class PlaidColumnTransformer(ColumnTransformer):
             sub_dataset = dataset.from_features_identifier(feat_ids)
             transformed = transformer_.transform(sub_dataset)
             transformed_datasets.append(transformed)
-        return merge_dataset_by_features(transformed_datasets)
+        return Dataset.merge_dataset_by_features(transformed_datasets)
 
     def fit_transform(self, X, y=None):
         return self.fit(X, y).transform(X)

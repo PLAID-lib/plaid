@@ -920,12 +920,12 @@ class Dataset(object):
         """Merge features of another dataset into this one.
 
         Args:
-            dataset (Dataset): The data set to be merged into this one (self).
+            dataset (Dataset): The dataset to be merged into this one (self).
             in_place (bool, option): If True, modifies the current dataset in place.
                 If False, returns a deep copy with the merged features.
 
         Returns:
-            Dataset: A new dataset containing all samples from the input datasets.
+            Dataset: A dataset containing all samples from the input datasets.
         """
         if dataset is None:
             return
@@ -944,6 +944,22 @@ class Dataset(object):
                 id=id, sample=merged_sample, warning_overwrite=False
             )
 
+        return merged_dataset
+
+    @classmethod
+    def merge_dataset_by_features(cls, datasets_list: list) -> Self:
+        """Merge features a list of datasets.
+
+        Args:
+            datasets_list (list(Dataset)): The list of datasets to be merged.
+
+        Returns:
+            Dataset: A new dataset containing all samples from the input datasets.
+        """
+        assert len(datasets_list) > 1, "Provide more than one dataset"
+        merged_dataset = datasets_list[0]
+        for dataset in datasets_list[1:]:
+            merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
         return merged_dataset
 
     def save(self, fname: Union[str, Path]) -> None:
