@@ -147,6 +147,13 @@ class Test_Dataset:
             np.arange(np.random.randint(2, nb_samples)), as_list=True
         )
 
+    def test_get_all_features_identifiers(self, dataset_with_samples, nb_samples):
+        dataset_with_samples.get_all_features_identifiers()
+        dataset_with_samples.get_all_features_identifiers(
+            np.arange(np.random.randint(2, nb_samples))
+        )
+        dataset_with_samples.get_all_features_identifiers([0, 0])
+
     def test_add_sample(self, dataset, sample):
         assert dataset.add_sample(sample) == 0
         assert len(dataset) == 1
@@ -841,6 +848,13 @@ class Test_Dataset:
         )
         dataset_2.merge_features(dataset_1, in_place=True)
         dataset_1.merge_features(dataset_2, in_place=True)
+
+    def test_merge_features_with_None(self, dataset_with_samples):
+        dataset_with_samples.merge_features(None)
+
+    def test_merge_features_with_bad_type(self, dataset_with_samples):
+        with pytest.raises(ValueError):
+            dataset_with_samples.merge_features(3)
 
     # -------------------------------------------------------------------------#
 

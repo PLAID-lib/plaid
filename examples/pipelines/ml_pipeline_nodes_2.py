@@ -24,7 +24,7 @@ from sklearn.decomposition import PCA
 from plaid.containers.dataset import Dataset
 from plaid.containers.utils import check_features_type_homogeneity
 import copy
-from typing import Union, Callable
+from typing import Union, Callable, Any
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
@@ -223,12 +223,6 @@ class PLAIDTransformedTargetRegressor(BaseEstimator, RegressorMixin):
         self.regressor = regressor
         self.transformer = transformer
 
-    def get_all_fields(self, dataset):
-        all_fields = []
-        for sample in dataset:
-            all_fields.append(sample.get_field("mach", base_name = "Base_2_2"))
-        return np.array(all_fields)
-
     def fit(self, dataset, y=None):
         transformed_dataset = self.transformer.fit_transform(dataset)
 
@@ -242,18 +236,38 @@ class PLAIDTransformedTargetRegressor(BaseEstimator, RegressorMixin):
         return self.transformer.inverse_transform(dataset_pred_transformed)
 
     def score(self, dataset_ref, dataset_pred):
-        mach_ref = self.get_all_fields(dataset_ref)
-        mach_pred = self.get_all_fields(dataset_pred)
 
-        n_samples = len(mach_ref)
-        errors = 0
-        for i in range(n_samples):
-            errors += (np.linalg.norm(mach_pred[i] - mach_ref[i])**2)/(mach_ref[i].shape[0]*np.linalg.norm(mach_ref[i], ord = np.inf)**2)
-        score = np.sqrt(errors/n_samples)
-        return score
+        sample_ids = dataset_ref.get_sample_ids()
+
+        assert dataset_pred.get_sample_ids() == sample_ids
+
+        in_features_identifiers = self.transformer[0].in_features_identifiers
+
+        scores = []
+        for feat_id in in_features_identifiers:
+
+            feature_type = feat_id['type']
+
+            reference  = dataset_ref.get_feature_from_identifier(feat_id)
+            prediction = dataset_pred.get_feature_from_identifier(feat_id)
+
+            if feature_type == "scalar":
+                errors = 0.
+                for id in sample_ids:
+                    errors += ((prediction[id] - reference[id])**2)/(reference[id]**2)
+            elif feature_type == "field":
+                errors = 0.
+                for id in sample_ids:
+                    errors += (np.linalg.norm(prediction[id] - reference[id])**2)/(reference[id].shape[0]*np.linalg.norm(reference[id], ord = np.inf)**2)
+            else:
+                raise(f"No score implemented for feature type {feat_id['type']}")
+
+            scores.append(np.sqrt(errors/len(sample_ids)))
+
+        return sum(scores)/len(in_features_identifiers)
 
 
-# class PLAIDColumnTransformer(ColumnTransformer):
+# class PLAIDFeatureTransformer(ColumnTransformer):
 #     def __init__(self, transformers):
 #         """
 #         transformers: list of (name, transformer, feature_selector)
@@ -296,3 +310,28 @@ class PLAIDTransformedTargetRegressor(BaseEstimator, RegressorMixin):
 
 
 
+class PLAIDColumnTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self, transformers: list[tuple[str, Any, list[dict]]]):
+        """
+        transformers: List of (name, transformer, feature_identifiers)
+        """
+        self.transformers = transformers
+        self.named_transformers_ = {}
+
+    def fit(self, X, y=None):
+        for name, transformer, feat_ids in self.transformers:
+            subset = X.get_subset_of_features(feat_ids)
+            transformer.fit(subset, y)
+            self.named_transformers_[name] = transformer
+        return self
+
+    def transform(self, X):
+        transformed_datasets = []
+        for name, transformer, feat_ids in self.transformers:
+            subset = X.get_subset_of_features(feat_ids)
+            transformed = transformer.transform(subset)
+            transformed_datasets.append(transformed)
+        return merge_datasets(transformed_datasets)
+
+    def fit_transform(self, X, y=None):
+        return self.fit(X, y).transform(X)
