@@ -161,3 +161,16 @@ def check_features_size_homogeneity(
                 f"Inconsistent feature sizes in sample {j}: feature {i} (name {feature_identifiers[i]['name']}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) is of size {size}"
             )
     return size
+
+
+def merge_dataset_by_features(datasets_list: list):
+    """Dosctring to complete.
+
+    Returns:
+        Dataset
+    """
+    assert len(datasets_list) > 1, "Provide more than one dataset"
+    merged_dataset = datasets_list[0]
+    for dataset in datasets_list[1:]:
+        merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
+    return merged_dataset

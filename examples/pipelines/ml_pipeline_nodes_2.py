@@ -22,7 +22,7 @@ from sklearn.utils.metaestimators import _BaseComposition
 from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA
 from plaid.containers.dataset import Dataset
-from plaid.containers.utils import check_features_type_homogeneity
+from plaid.containers.utils import check_features_type_homogeneity, merge_dataset_by_features
 import copy
 from typing import Union, Callable, Any
 
@@ -310,28 +310,34 @@ class PLAIDTransformedTargetRegressor(BaseEstimator, RegressorMixin):
 
 
 
-class PLAIDColumnTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, transformers: list[tuple[str, Any, list[dict]]]):
+class PLAIDFeatureTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self,
+            transformers: list[tuple[str, Any, list[dict]]],
+            remainder_feature_id: list):
         """
-        transformers: List of (name, transformer, feature_identifiers)
+        transformers: List of (name, transformer, features_identifiers)
+        remainder_feature_id: List of features_identifiers
         """
         self.transformers = transformers
-        self.named_transformers_ = {}
+        self.remainder_feature_id = remainder_feature_id
+        print("remainder_feature_id =", remainder_feature_id)
 
-    def fit(self, X, y=None):
-        for name, transformer, feat_ids in self.transformers:
-            subset = X.get_subset_of_features(feat_ids)
-            transformer.fit(subset, y)
-            self.named_transformers_[name] = transformer
+    def fit(self, dataset, y=None):
+        for _, transformer, feat_ids in self.transformers:
+            sub_dataset = dataset.from_features_identifier(feat_ids)
+            transformer.fit(sub_dataset)
         return self
 
-    def transform(self, X):
-        transformed_datasets = []
-        for name, transformer, feat_ids in self.transformers:
-            subset = X.get_subset_of_features(feat_ids)
-            transformed = transformer.transform(subset)
+    def transform(self, dataset):
+        dataset_remainder = dataset.from_features_identifier(self.remainder_feature_id)
+        transformed_datasets = [dataset_remainder]
+        for _, transformer, feat_ids in self.transformers:
+            sub_dataset = dataset.from_features_identifier(feat_ids)
+            transformed = transformer.transform(sub_dataset)
             transformed_datasets.append(transformed)
-        return merge_datasets(transformed_datasets)
+        merged_dataset = merge_dataset_by_features(transformed_datasets)
+        print("merged_dataset =", merged_dataset)
+        return merged_dataset
 
     def fit_transform(self, X, y=None):
         return self.fit(X, y).transform(X)
