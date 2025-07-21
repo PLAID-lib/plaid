@@ -1206,6 +1206,95 @@ class Test_Sample:
         assert len(sample_.get_time_series_names()) == 0
         assert sample_.get_field_names() == ["test_node_field_1"]
 
+    def test_get_all_features_identifiers(
+        self, sample_with_tree_and_scalar_and_time_series
+    ):
+        feat_id = (
+            sample_with_tree_and_scalar_and_time_series.get_all_features_identifiers()
+        )
+        assert len(feat_id) == 10
+        assert {"type": "scalar", "name": "r"} in feat_id
+        assert {"type": "scalar", "name": "test_scalar_1"} in feat_id
+        assert {"type": "time_series", "name": "test_time_series_1"} in feat_id
+        assert {
+            "type": "nodes",
+            "base_name": "Base_2_2",
+            "zone_name": "Zone",
+            "time": 0.0,
+        } in feat_id
+        assert {
+            "type": "field",
+            "name": "big_node_field",
+            "base_name": "Base_2_2",
+            "zone_name": "Zone",
+            "location": "Vertex",
+            "time": 0.0,
+        } in feat_id
+        assert {
+            "type": "field",
+            "name": "test_node_field_1",
+            "base_name": "Base_2_2",
+            "zone_name": "Zone",
+            "location": "Vertex",
+            "time": 0.0,
+        } in feat_id
+        assert {
+            "type": "field",
+            "name": "OriginalIds",
+            "base_name": "Base_2_2",
+            "zone_name": "Zone",
+            "location": "Vertex",
+            "time": 0.0,
+        } in feat_id
+        assert {
+            "type": "field",
+            "name": "OriginalIds",
+            "base_name": "Base_2_2",
+            "zone_name": "Zone",
+            "location": "FaceCenter",
+            "time": 0.0,
+        } in feat_id
+        assert {
+            "type": "field",
+            "name": "test_elem_field_1",
+            "base_name": "Base_2_2",
+            "zone_name": "Zone",
+            "location": "CellCenter",
+            "time": 0.0,
+        } in feat_id
+        assert {
+            "type": "field",
+            "name": "OriginalIds",
+            "base_name": "Base_2_2",
+            "zone_name": "Zone",
+            "location": "CellCenter",
+            "time": 0.0,
+        } in feat_id
+
+    def test_merge_features(
+        self, sample_with_tree_and_scalar_and_time_series, sample_with_tree
+    ):
+        feat_id = (
+            sample_with_tree_and_scalar_and_time_series.get_all_features_identifiers()
+        )
+        feat_id = [
+            fid for fid in feat_id if fid["type"] not in ["scalar", "time_series"]
+        ]
+        sample_1 = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
+            feat_id
+        )
+        feat_id = sample_with_tree.get_all_features_identifiers()
+        feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "node"]]
+        sample_2 = sample_with_tree.from_features_identifier(feat_id)
+        sample_merge_1 = sample_1.merge_features(sample_2, in_place=False)
+        sample_merge_2 = sample_2.merge_features(sample_1, in_place=False)
+        assert (
+            sample_merge_1.get_all_features_identifiers()
+            == sample_merge_2.get_all_features_identifiers()
+        )
+        sample_2.merge_features(sample_1, in_place=True)
+        sample_1.merge_features(sample_2, in_place=True)
+
     # -------------------------------------------------------------------------#
     def test_save(self, sample_with_tree_and_scalar_and_time_series, tmp_path):
         save_dir = tmp_path / "test_dir"

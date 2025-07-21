@@ -419,6 +419,30 @@ class Dataset(object):
         return fields_names
 
     # -------------------------------------------------------------------------#
+    def get_all_features_identifiers(
+        self, ids: list[int] = None
+    ) -> list[dict[str, Union[str, float]]]:
+        """Get all features identifiers from the dataset.
+
+        Args:
+            ids (list[int], optional): Select scalars depending on sample id. If None, take all samples. Defaults to None.
+
+        Returns:
+            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of all features in the sample.
+        """
+        if ids is not None and len(set(ids)) != len(ids):
+            logger.warning("Provided ids are not unique")
+
+        all_features_identifiers = []
+        for sample in self.get_samples(ids, as_list=True):
+            features_identifiers = sample.get_all_features_identifiers()
+            for feat_id in features_identifiers:
+                if feat_id not in all_features_identifiers:
+                    all_features_identifiers.append(feat_id)
+        all_features_identifiers
+        return all_features_identifiers
+
+    # -------------------------------------------------------------------------#
     def add_tabular_scalars(self, tabular: np.ndarray, names: list[str] = None) -> None:
         """Add tabular scalar data to the summary.
 
@@ -534,7 +558,7 @@ class Dataset(object):
     def get_features_from_identifiers(
         self, feature_identifiers: list[dict[str : Union[str, float]]]
     ) -> dict[int, list[FeatureType]]:
-        """Get a list of features from the dataset based on the provided feature identifier.
+        """Get a list of features from the dataset based on the provided feature identifiers.
 
         Args:
             feature_identifiers (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
@@ -874,10 +898,11 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def merge_dataset(self, dataset: Self) -> list[int]:
-        """Merges another Dataset into this one.
+        """Merges samples of another dataset into this one.
 
         Args:
             dataset (Dataset): The data set to be merged into this one (self).
+            in_place (bool, option): If True, modifies the current dataset in place.
 
         Returns:
             list[int]: ids of added :class:`Samples <plaid.containers.sample.Sample>` from input :class:`Dataset <plaid.containers.dataset.Dataset>`.
@@ -891,7 +916,36 @@ class Dataset(object):
             raise ValueError("dataset must be an instance of Dataset")
         return self.add_samples(dataset.get_samples(as_list=True))
 
-    # -------------------------------------------------------------------------#
+    def merge_features(self, dataset: Self, in_place: bool = False) -> Self:
+        """Merge features of another dataset into this one.
+
+        Args:
+            dataset (Dataset): The data set to be merged into this one (self).
+            in_place (bool, option): If True, modifies the current dataset in place.
+                If False, returns a deep copy with the merged features.
+
+        Returns:
+            Dataset: A new dataset containing all samples from the input datasets.
+        """
+        if dataset is None:
+            return
+        if not isinstance(dataset, Dataset):
+            raise ValueError("dataset must be an instance of Dataset")
+
+        merged_dataset = self if in_place else self.copy()
+        assert dataset.get_sample_ids() == merged_dataset.get_sample_ids(), (
+            "Cannot merge features of datasets with different sample ids. "
+        )
+        for id in dataset.get_sample_ids():
+            merged_sample = merged_dataset[id].merge_features(
+                dataset[id], in_place=in_place
+            )
+            merged_dataset.set_sample(
+                id=id, sample=merged_sample, warning_overwrite=False
+            )
+
+        return merged_dataset
+
     def save(self, fname: Union[str, Path]) -> None:
         """Saves the data set to a TAR (Tape Archive) file.
 
@@ -1219,12 +1273,13 @@ class Dataset(object):
     # le laisser placer des samples n’importe où ?
     #  - avec des ids potentiellement négatifs,
     #  - potentiellement loin après le dernier id déjà présent...
-    def set_sample(self, id: int, sample: Sample) -> None:
+    def set_sample(self, id: int, sample: Sample, warning_overwrite=True) -> None:
         """Set a :class:`sample` with :code:`id` in the Dataset, overwriting existing samples if there's a conflict.
 
         Args:
             id (int): The choosen id of the sample.
             sample (Sample): The sample to set inside the dataset.
+            warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
 
         Raises:
             TypeError: If the 'id' inside the sample is not of type int.
@@ -1243,10 +1298,11 @@ class Dataset(object):
                 f"sample should be of type {Sample.__class__} but {type(sample)=}"
             )
 
-        if id in self._samples:
-            logger.warning(
-                f"sample with {id=} already present in dataset, replacing it anyway"
-            )
+        if warning_overwrite:
+            if id in self._samples:
+                logger.warning(
+                    f"sample with {id=} already present in dataset, replacing it anyway"
+                )
         self._samples[id] = sample
 
     # -------------------------------------------------------------------------#

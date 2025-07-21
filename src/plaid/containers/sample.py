@@ -1722,23 +1722,61 @@ class Sample(BaseModel):
         Returns:
             Sample: The sample with deleted fields
         """
+        all_features_identifiers = self.get_all_features_identifiers()
+        # Delete all fields in the sample
+        for feat_id in all_features_identifiers:
+            if feat_id["type"] == "field":
+                self.del_field(
+                    name=feat_id["name"],
+                    zone_name=feat_id["zone_name"],
+                    base_name=feat_id["base_name"],
+                    location=feat_id["location"],
+                    time=feat_id["time"],
+                )
+        return self
+
+    # -------------------------------------------------------------------------#
+    def get_all_features_identifiers(
+        self,
+    ) -> list[dict[str, Union[str, float]]]:
+        """Get all features identifiers from the sample.
+
+        Returns:
+            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of all features in the sample.
+        """
+        all_features_identifiers = []
+        for sn in self.get_scalar_names():
+            all_features_identifiers.append({"type": "scalar", "name": sn})
+        for tsn in self.get_time_series_names():
+            all_features_identifiers.append({"type": "time_series", "name": tsn})
         for t in self.get_all_mesh_times():
             for bn in self.get_base_names(time=t):
                 for zn in self.get_zone_names(base_name=bn, time=t):
+                    if self.get_nodes(base_name=bn, zone_name=zn, time=t) is not None:
+                        all_features_identifiers.append(
+                            {
+                                "type": "nodes",
+                                "base_name": bn,
+                                "zone_name": zn,
+                                "time": t,
+                            }
+                        )
                     for loc in AUTHORIZED_FIELD_LOCATIONS:
                         for fn in self.get_field_names(
                             zone_name=zn, base_name=bn, location=loc, time=t
                         ):
-                            self.del_field(
-                                name=fn,
-                                zone_name=zn,
-                                base_name=bn,
-                                location=loc,
-                                time=t,
+                            all_features_identifiers.append(
+                                {
+                                    "type": "field",
+                                    "name": fn,
+                                    "base_name": bn,
+                                    "zone_name": zn,
+                                    "location": loc,
+                                    "time": t,
+                                }
                             )
-        return self
+        return all_features_identifiers
 
-    # -------------------------------------------------------------------------#
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
     ) -> FeatureType:
@@ -2012,6 +2050,49 @@ class Sample(BaseModel):
 
         return sample
 
+    def merge_features(self, sample: Self, in_place: bool = False) -> Self:
+        """Merge features from another sample into the current sample.
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using features from another sample. When `in_place=False`, a deep copy of the sample is created
+        before applying updates, ensuring full isolation from the original.
+
+        Args:
+            sample (Sample): The sample from which features will be merged.
+            in_place (bool, optional): If True, modifies the current sample in place.
+                If False, returns a deep copy with updated features.
+
+        Returns:
+            Self: The updated sample (either the current instance or a new copy).
+        """
+        merged_dataset = self if in_place else self.copy()
+
+        all_features_identifiers = sample.get_all_features_identifiers()
+        all_features = sample.get_features_from_identifiers(all_features_identifiers)
+
+        feature_types = set([feat_id["type"] for feat_id in all_features_identifiers])
+
+        # if field or node features are to extract, copy the source sample and delete all fields
+        if "field" in feature_types or "nodes" in feature_types:
+            source_sample = sample.copy()
+            source_sample.del_all_fields()
+
+        for feat_id in all_features_identifiers:
+            # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
+            if feat_id["type"] in ["field", "nodes"]:
+                # get time of current feature
+                time = sample.get_time_assignment(time=feat_id.get("time"))
+
+                # if the constructed sample does not have a tree, add the one from the source sample, with no field
+                if not merged_dataset.get_mesh(time):
+                    merged_dataset.add_tree(source_sample.get_mesh(time))
+
+        return merged_dataset.update_features_from_identifier(
+            feature_identifiers=all_features_identifiers,
+            features=all_features,
+            in_place=in_place,
+        )
+
     # -------------------------------------------------------------------------#
     def save(self, dir_path: str) -> None:
         """Save the Sample in directory `dir_path`.
@@ -2168,6 +2249,7 @@ class Sample(BaseModel):
         Returns:
             str: A string representation of the overview of sample content.
         """
+        # TODO rewrite using self.get_all_features_identifiers()
         str_repr = "Sample("
 
         # scalars

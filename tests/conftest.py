@@ -37,7 +37,7 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
             "test_field_same_size", np.random.randn(17), zone_name, base_name
         )
         sample.add_field(
-            f"test_field_{np.random.randint(1e8, 1e9)}",
+            "test_field_2785",
             np.random.randn(np.random.randint(10, 20)),
             zone_name,
             base_name,
