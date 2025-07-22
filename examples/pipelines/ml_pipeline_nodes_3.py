@@ -6,6 +6,10 @@
 #
 
 # TODO:
+# - recoder score avec la logique
+#       def score(self, X, y):
+#       y_pred = self.predict(X)
+#       return -mean_squared_error(y, y_pred)
 # - better handling of params (in the GPRegressor here, params of the GP are not reachable with pipeline.get_params())
 # - save state / load state -> normalement ici, tout hérite de BaseEstimator, donc facile ?
 # - move this in src and provide tests, examples and move the notebook to the doc
@@ -62,22 +66,21 @@ available_scalers = {
 class PlaidSklearnBlockWrapper(BaseEstimator, MetaEstimatorMixin):
     def __init__(
         self,
-        sklearn_block: SklearnBlock = None,
-        sklearn_block_constructor: Callable = None,
-        params: dict = None,
+        sklearn_block: SklearnBlock,
+        params:dict
     ):
-        if sklearn_block is None and sklearn_block_constructor is None:
-            raise ValueError("You must provide either 'sklearn_block' or 'sklearn_block_constructor'.")
-        if sklearn_block is not None and sklearn_block_constructor is not None:
-            raise ValueError("Only one of 'sklearn_block' or 'sklearn_block_constructor' should be provided.")
-        if sklearn_block is not None:
-            assert isinstance(sklearn_block, SklearnBlock), "sklearn_block must by a scikit_learn block"
-        if sklearn_block_constructor is not None:
-            assert isinstance(sklearn_block_constructor, Callable), "sklearn_block_constructor must by a Callable, returning a scikit_learn block"
+        assert isinstance(sklearn_block, SklearnBlock), "sklearn_block must be a scikit_learn block"
+        assert isinstance(params, dict), "params must be a dict containing the scikit_learn block parameters to set"
+        assert "in_features_identifiers" in params, "Must provide in_features_identifiers in sklearn_params of the node"
 
         self.sklearn_block = sklearn_block
-        self.sklearn_block_constructor = sklearn_block_constructor
-        self.params = params or {}
+        self.params = params
+
+        # print("kwargs =", kwargs)
+        # 1./0.
+        # print(self.in_features_identifiers)
+        # print(self.in_features_identifiersAA)
+        # AttributeError
 
         self.in_features_identifiers = params['in_features_identifiers']
         check_features_type_homogeneity(self.in_features_identifiers)
@@ -88,10 +91,52 @@ class PlaidSklearnBlockWrapper(BaseEstimator, MetaEstimatorMixin):
         else:
             self.out_features_identifiers = params['in_features_identifiers']
 
-    def fit_sklearn_block(self, X, y):
-        if self.sklearn_block is None:
-            self.sklearn_block = self.sklearn_block_constructor(X, y, self.params)
-        self.sklearn_block_ = clone(self.sklearn_block).fit(X, y)
+        if 'sklearn_params' not in params:
+            params['sklearn_params'] = {}
+
+        self.sklearn_block.set_params(**params['sklearn_params'])
+
+    # def _get_param_names(self):
+    #     return self.sklearn_block._get_param_names()
+
+    # def get_params(self, deep=True):
+    #     return self.sklearn_block.get_params()
+
+    # def set_params(self, **params):
+    #     self.params.update(params)
+    #     self.sklearn_block.set_params(**params)
+    #     return self
+
+    # def get_params(self, deep=True):
+    #     out = {
+    #         "sklearn_block": self.sklearn_block,
+    #     }
+    #     out.update(self.params['sklearn_params'])
+    #     return out
+
+    # def set_params(self, **params):
+    #     if "sklearn_block" in params:
+    #         setattr(self, "sklearn_block", params.pop("sklearn_block"))
+
+    #     self.params.update(params)
+    #     self.sklearn_block.set_params(**params)
+
+    #     return self
+
+    # def get_params(self, deep=True):
+    #     return {
+    #         "sklearn_block": self.sklearn_block,
+    #         "params": self.params
+    #     }
+
+    # def set_params(self, **params):
+    #     # Handle sklearn_block and params separately
+    #     self.sklearn_block = params.pop("sklearn_block")
+    #     self.params = params.pop("params")
+    #     # Forward the rest to sklearn_block if any
+    #     self.sklearn_block.set_params(**params)
+    #     return self
+
 
 class WrappedPlaidSklearnTransformer(PlaidSklearnBlockWrapper, TransformerMixin):
     """Wrapper for scikit-learn Transformer blocks to operate on PLAID objects in a Pipeline.
@@ -102,11 +147,14 @@ class WrappedPlaidSklearnTransformer(PlaidSklearnBlockWrapper, TransformerMixin)
 
     def fit(self, dataset: Dataset, y=None):
 
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
+
         X = dataset.get_tabular_from_homogeneous_identifiers(self.in_features_identifiers)
         assert X.shape[1] == len(self.in_features_identifiers), "number of features not consistent between generated tabular and in_features_identifiers"
         X = np.squeeze(X)
 
-        self.fit_sklearn_block(X, y)
+        self.sklearn_block_ = clone(self.sklearn_block).fit(X, y)
 
         return self
 
@@ -121,6 +169,9 @@ class WrappedPlaidSklearnTransformer(PlaidSklearnBlockWrapper, TransformerMixin)
             Dataset: The transformed PLAID dataset.
         """
         check_is_fitted(self, "sklearn_block_")
+
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
 
         X = dataset.get_tabular_from_homogeneous_identifiers(self.in_features_identifiers)
         assert X.shape[1] == len(self.in_features_identifiers), "number of features not consistent between generated tabular and in_features_identifiers"
@@ -144,6 +195,9 @@ class WrappedPlaidSklearnTransformer(PlaidSklearnBlockWrapper, TransformerMixin)
         """
         check_is_fitted(self, "sklearn_block_")
 
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
+
         X = dataset.get_tabular_from_homogeneous_identifiers(self.out_features_identifiers)
         assert X.shape[1] == len(self.out_features_identifiers), "number of features not consistent between generated tabular and out_features_identifiers"
         X = np.squeeze(X)
@@ -162,15 +216,21 @@ class WrappedPlaidSklearnRegressor(PlaidSklearnBlockWrapper, RegressorMixin):
     """
     def fit(self, dataset: Dataset, y=None):
 
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
+
         X = dataset.get_tabular_from_stacked_identifiers(self.in_features_identifiers)
         y = dataset.get_tabular_from_stacked_identifiers(self.out_features_identifiers)
 
-        self.fit_sklearn_block(X, y)
+        self.sklearn_block_ = clone(self.sklearn_block).fit(X, y)
 
         return self
 
     def predict(self, dataset: Dataset):
         check_is_fitted(self, "sklearn_block_")
+
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
 
         X = dataset.get_tabular_from_stacked_identifiers(self.in_features_identifiers)
 
@@ -197,6 +257,8 @@ class PlaidTransformedTargetRegressor(BaseEstimator, RegressorMixin):
         self.params = params
 
     def fit(self, dataset, y=None):
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
         self.transformer_ = clone(self.transformer).fit(dataset)
         transformed_dataset = self.transformer_.transform(dataset)
         self.regressor_ = clone(self.regressor).fit(transformed_dataset)
@@ -204,11 +266,19 @@ class PlaidTransformedTargetRegressor(BaseEstimator, RegressorMixin):
 
     def predict(self, dataset):
         check_is_fitted(self, "regressor_")
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
         dataset_pred_transformed = self.regressor_.predict(dataset)
         return self.transformer_.inverse_transform(dataset_pred_transformed)
 
-    def score(self, dataset_ref, dataset_pred):
+    def score(self, dataset_ref, dataset_pred = None):
         check_is_fitted(self, "regressor_")
+        if isinstance(dataset_ref, list):
+            dataset_ref = Dataset.from_list_of_samples(dataset_ref)
+        if isinstance(dataset_pred, list):
+            dataset_pred = Dataset.from_list_of_samples(dataset_pred)
+        if dataset_pred == None:
+            dataset_pred = dataset_ref
 
         sample_ids = dataset_ref.get_sample_ids()
 
@@ -257,6 +327,8 @@ class PlaidColumnTransformer(ColumnTransformer):
         super().__init__(transformers)
 
     def fit(self, dataset, y=None):
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
         self.transformers_ = []
         for name, transformer, feat_ids in self.transformers:
             sub_dataset = dataset.from_features_identifier(feat_ids)
@@ -266,6 +338,8 @@ class PlaidColumnTransformer(ColumnTransformer):
 
     def transform(self, dataset):
         check_is_fitted(self, "transformers_")
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
         dataset_remainder = dataset.from_features_identifier(self.remainder_feature_id)
         transformed_datasets = [dataset_remainder]
         for _, transformer_, feat_ids in self.transformers_:
@@ -279,6 +353,7 @@ class PlaidColumnTransformer(ColumnTransformer):
 
 
 from sklearn.gaussian_process import GaussianProcessRegressor
+import inspect
 class LazyGPR(BaseEstimator, RegressorMixin):
     def __init__(self, kernel_factory=None, gpr_params=None):
         """
