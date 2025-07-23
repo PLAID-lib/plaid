@@ -6,7 +6,6 @@
 #
 
 # TODO:
-# - better handling of params (in the GPRegressor here, params of the GP are not reachable with pipeline.get_params())
 # - test restrict_to_features = True dans transformer (limit memory consumption)
 # - save state / load state -> normalement ici, tout hérite de BaseEstimator, donc facile ?
 # - move this in src and provide tests, examples and move the notebook to the doc
@@ -58,47 +57,6 @@ available_scalers = {
     "StandardScaler": StandardScaler,
     "MinMaxScaler": MinMaxScaler,
 }
-
-
-
-# class PlaidSklearnBlockWrapper_(BaseEstimator):
-#     # split in 2 classes, with a block and a block_constructor
-#     def __init__(
-#         self,
-#         sklearn_block: SklearnBlock = None,
-#         **kwargs: dict = None,
-#     ):
-#         self.sklearn_block = sklearn_block
-#         self.params = params
-
-#     def _prepare_fit(self):
-
-#         check_features_type_homogeneity(self.params['in_features_identifiers'])
-#         self.in_features_identifiers_ = copy.deepcopy(self.params['in_features_identifiers'])
-
-#         if "out_features_identifiers" in self.params:
-#             check_features_type_homogeneity(self.params['out_features_identifiers'])
-#             self.out_features_identifiers_ = self.params['out_features_identifiers']
-#         else:
-#             self.out_features_identifiers_ = copy.deepcopy(self.params['in_features_identifiers'])
-
-#     def _fit_sklearn_block(self, X, y):
-
-#         if self.sklearn_block is None:
-#             self.sklearn_block = self.sklearn_block_constructor(X, y, self.params)
-#         self.sklearn_block_ = clone(self.sklearn_block).fit(X, y)
-
-#     # def get_params(self, deep=True):
-#     #     out = {}
-#     #     if deep and isinstance(self.sklearn_block, SklearnBlock):
-#     #         for key, value in self.sklearn_block.get_params(deep=True).items():
-#     #             out[key] = value
-#     #     return out
-
-#     # def set_params(self, **params):
-#     #     print(self.sklearn_block)
-#     #     self.sklearn_block.set_params(params)
-#     #     return self
 
 
 class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
@@ -195,20 +153,28 @@ class WrappedPlaidSklearnRegressor(RegressorMixin, BaseEstimator):
         sklearn_block: SklearnBlock = None,
         in_features_identifiers: dict = None,
         out_features_identifiers: dict = None,
+        dynamics_params_factory: dict = None
     ):
         self.sklearn_block = sklearn_block
         self.in_features_identifiers  = in_features_identifiers
         self.out_features_identifiers = out_features_identifiers
+        self.dynamics_params_factory = dynamics_params_factory
 
     def fit(self, dataset: Dataset, y=None):
 
+        self.sklearn_block_ = clone(self.sklearn_block)
         self.in_features_identifiers_  = copy.deepcopy(self.in_features_identifiers)
         self.out_features_identifiers_ = copy.deepcopy(self.out_features_identifiers)
+        self.dynamics_params_factory_  = copy.deepcopy(self.dynamics_params_factory)
 
         X = dataset.get_tabular_from_stacked_identifiers(self.in_features_identifiers_)
         y = dataset.get_tabular_from_stacked_identifiers(self.out_features_identifiers_)
 
-        self.sklearn_block_ = clone(self.sklearn_block).fit(X, y)
+        if self.dynamics_params_factory_:
+            dynamic_params = {k:v(X) for k, v in self.dynamics_params_factory_.items()}
+            self.sklearn_block_.set_params(**dynamic_params)
+
+        self.sklearn_block_.fit(X, y)
 
         return self
 
@@ -433,6 +399,7 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
             all_errors.append(np.sqrt(errors/len(sample_ids)))
 
         return 1. - sum(all_errors)/len(self.transformed_target_feature_id_)
+
 
 
 # # class PlaidTransformedTargetRegressor(BaseEstimator, RegressorMixin):
