@@ -110,6 +110,7 @@ def check_features_type_homogeneity(
     Raises:
         AssertionError: if types are not consistent
     """
+    assert isinstance(feature_identifiers, list), "feature_identifiers must be a list"
     feat_type = feature_identifiers[0]["type"]
     for i, feat_id in enumerate(feature_identifiers):
         assert feat_id["type"] in AUTHORIZED_FEATURE_TYPES, "feature type not known"

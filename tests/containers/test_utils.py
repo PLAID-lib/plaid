@@ -51,6 +51,10 @@ class Test_Container_Utils:
             [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "P"}]
         )
 
+    def test_check_features_type_homogeneity_fail_type(self):
+        with pytest.raises(AssertionError):
+            check_features_type_homogeneity(0)
+
     def test_check_features_type_homogeneity_fail(self):
         with pytest.raises(AssertionError):
             check_features_type_homogeneity(

@@ -55,7 +55,7 @@ regressor_mach:
     kernel_options:
       nu: 2.5
     optim: fmin_l_bfgs_b
-    num_restarts: 2
+    num_restarts: 1
     anisotropic: True
     random_state: 42
     show_warnings: False

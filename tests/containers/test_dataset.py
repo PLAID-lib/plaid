@@ -22,70 +22,11 @@ from plaid.utils.base import ShapeError
 
 
 @pytest.fixture()
-def nb_scalars():
-    return 5
-
-
-@pytest.fixture()
-def tabular(nb_samples, nb_scalars):
-    return np.random.randn(nb_samples, nb_scalars)
-
-
-@pytest.fixture()
-def scalar_names(nb_scalars):
-    return [f"test_scalar_{np.random.randint(1e8, 1e9)}" for _ in range(nb_scalars)]
-
-
-@pytest.fixture()
-def sample(zone_name, base_name):
-    sample = Sample()
-    sample.init_base(3, 3, base_name)
-    sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
-    sample.add_scalar("test_scalar", np.random.randn())
-    sample.add_field("test_field_same_size", np.random.randn(17), zone_name, base_name)
-    sample.add_field(
-        f"test_field_{np.random.randint(1e8, 1e9)}",
-        np.random.randn(np.random.randint(10, 20)),
-        zone_name,
-        base_name,
-    )
-    return sample
-
-
-@pytest.fixture
-def empty_sample():
-    return Sample()
-
-
-@pytest.fixture()
-def empty_dataset():
-    return Dataset()
-
-
-@pytest.fixture()
 def current_directory():
     return Path(__file__).absolute().parent
 
 
-@pytest.fixture()
-def dataset_with_samples(dataset, samples, infos):
-    dataset.add_samples(samples)
-    dataset.set_infos(infos)
-    return dataset
-
-
-@pytest.fixture()
-def dataset_with_samples_with_tree(empty_dataset, samples_with_tree, infos):
-    empty_dataset.add_samples(samples_with_tree)
-    empty_dataset.set_infos(infos)
-    return empty_dataset
-
-
-@pytest.fixture()
-def other_dataset_with_samples(other_samples):
-    other_dataset = Dataset()
-    other_dataset.add_samples(other_samples)
-    return other_dataset
+# %% Functions
 
 
 def compare_two_samples(sample_1: Sample, sample_2: Sample):

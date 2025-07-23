@@ -154,3 +154,49 @@ def samples_with_tree(nb_samples: int, sample_with_tree: Sample) -> list[Sample]
     for _ in range(nb_samples):
         sample_list.append(copy.deepcopy(sample_with_tree))
     return sample_list
+
+
+@pytest.fixture()
+def nb_scalars():
+    return 5
+
+
+@pytest.fixture()
+def tabular(nb_samples, nb_scalars):
+    return np.random.randn(nb_samples, nb_scalars)
+
+
+@pytest.fixture()
+def scalar_names(nb_scalars):
+    return [f"test_scalar_{np.random.randint(1e8, 1e9)}" for _ in range(nb_scalars)]
+
+
+@pytest.fixture
+def empty_sample():
+    return Sample()
+
+
+@pytest.fixture()
+def empty_dataset():
+    return Dataset()
+
+
+@pytest.fixture()
+def dataset_with_samples(dataset, samples, infos):
+    dataset.add_samples(samples)
+    dataset.set_infos(infos)
+    return dataset
+
+
+@pytest.fixture()
+def dataset_with_samples_with_tree(empty_dataset, samples_with_tree, infos):
+    empty_dataset.add_samples(samples_with_tree)
+    empty_dataset.set_infos(infos)
+    return empty_dataset
+
+
+@pytest.fixture()
+def other_dataset_with_samples(other_samples):
+    other_dataset = Dataset()
+    other_dataset.add_samples(other_samples)
+    return other_dataset

@@ -13,11 +13,6 @@ input_scalar_scaler:
         name: angle_in
       - type: scalar
         name: mach_out
-    out_features_identifiers:
-      - type: scalar
-        name: angle_in
-      - type: scalar
-        name: mach_out
 
 pca_nodes:
   sklearn_block: "PCA"

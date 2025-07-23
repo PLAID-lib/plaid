@@ -35,6 +35,8 @@ import copy
 from typing import Union, Callable, Any
 from sklearn.base import clone
 from sklearn.utils.validation import check_is_fitted
+from sklearn.utils import  estimator_checks
+
 
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
@@ -84,6 +86,22 @@ class PlaidSklearnBlockWrapper(BaseEstimator):
 
         self.sklearn_block.set_params(**params['sklearn_params'])
 
+    # def get_params(self, deep=True):
+    #     # Expose sklearn_block and the full dict, but optionally flatten sklearn_params
+    #     return {
+    #         'sklearn_block': self.sklearn_block,
+    #         'params': self.params.copy()
+    #     }
+
+    # def set_params(self, **kwargs):
+    #     for key, value in kwargs.items():
+    #         setattr(self, key, value)
+
+    #     # If sklearn_params has changed, update the block
+    #     if 'params' in kwargs and 'sklearn_params' in kwargs['params']:
+    #         self.sklearn_block.set_params(**kwargs['params']['sklearn_params'])
+
+    #     return self
 
 class WrappedPlaidSklearnTransformer(PlaidSklearnBlockWrapper, TransformerMixin):
     """Wrapper for scikit-learn Transformer blocks to operate on PLAID objects in a Pipeline.
@@ -100,6 +118,8 @@ class WrappedPlaidSklearnTransformer(PlaidSklearnBlockWrapper, TransformerMixin)
         X = dataset.get_tabular_from_homogeneous_identifiers(self.params['in_features_identifiers'])
         assert X.shape[1] == len(self.params['in_features_identifiers']), "number of features not consistent between generated tabular and in_features_identifiers"
         X = np.squeeze(X)
+
+        print(">>> =", self.sklearn_block.get_params())
 
         self.sklearn_block_ = clone(self.sklearn_block).fit(X, y)
 
@@ -258,9 +278,52 @@ class PlaidTransformedTargetRegressor(BaseEstimator, RegressorMixin):
         return sum(scores)/len(pred_features_identifiers)
 
 
+# class PlaidColumnTransformer(ColumnTransformer):
+#     def __init__(self,
+#             plaid_transformers: list[tuple[str, WrappedPlaidSklearnTransformer, list[dict]]],
+#             remainder_feature_id: list[dict]):
+#         """
+#         Parameters
+#         ----------
+#         transformers : list of (str, transformer, list[dict])
+#             List of (name, transformer, features_identifiers).
+#         remainder_feature_id : list[dict]
+#             Features to pass through unchanged. The other features are discarded.
+#         """
+#         self.plaid_transformers = plaid_transformers
+#         self.remainder_feature_id = remainder_feature_id
+#         transformers_with_feat_ids = [(name, transformer, transformer.params['in_features_identifiers']) for name, transformer in plaid_transformers]
+#         super().__init__(transformers_with_feat_ids)
+
+#     def fit(self, dataset, y=None):
+#         if isinstance(dataset, list):
+#             dataset = Dataset.from_list_of_samples(dataset)
+#         self.transformers_ = []
+#         for name, transformer, feat_ids in self.transformers:
+#             sub_dataset = dataset.from_features_identifier(feat_ids)
+#             transformer_ = clone(transformer).fit(sub_dataset)
+#             self.transformers_.append((name, transformer_, feat_ids))
+#         return self
+
+#     def transform(self, dataset):
+#         check_is_fitted(self, "transformers_")
+#         if isinstance(dataset, list):
+#             dataset = Dataset.from_list_of_samples(dataset)
+#         dataset_remainder = dataset.from_features_identifier(self.remainder_feature_id)
+#         transformed_datasets = [dataset_remainder]
+#         for _, transformer_, feat_ids in self.transformers_:
+#             sub_dataset = dataset.from_features_identifier(feat_ids)
+#             transformed = transformer_.transform(sub_dataset)
+#             transformed_datasets.append(transformed)
+#         return Dataset.merge_dataset_by_features(transformed_datasets)
+
+#     def fit_transform(self, X, y=None):
+#         return self.fit(X, y).transform(X)
+
+
 class PlaidColumnTransformer(ColumnTransformer):
     def __init__(self,
-            plaid_transformers: list[tuple[str, WrappedPlaidSklearnTransformer, list[dict]]],
+            transformers: list[tuple[str, Any, list[dict]]],
             remainder_feature_id: list[dict]):
         """
         Parameters
@@ -270,16 +333,21 @@ class PlaidColumnTransformer(ColumnTransformer):
         remainder_feature_id : list[dict]
             Features to pass through unchanged. The other features are discarded.
         """
-        self.plaid_transformers = plaid_transformers
+        self.transformers = transformers
         self.remainder_feature_id = remainder_feature_id
-        transformers_with_feat_ids = [(name, transformer, transformer.params['in_features_identifiers']) for name, transformer in plaid_transformers]
-        super().__init__(transformers_with_feat_ids)
+        super().__init__(transformers)
+
+    def set_params_2(self, **kwargs):
+        print("params =", kwargs)
+        self.set_params(**kwargs)
+        print("self.get_params()['pca_nodes__sklearn_block__n_components'] =", self.get_params()['pca_nodes__sklearn_block__n_components'])
+
 
     def fit(self, dataset, y=None):
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
         self.transformers_ = []
         for name, transformer, feat_ids in self.transformers:
+            if name == 'pca_nodes':
+                print(">> ", transformer.get_params())
             sub_dataset = dataset.from_features_identifier(feat_ids)
             transformer_ = clone(transformer).fit(sub_dataset)
             self.transformers_.append((name, transformer_, feat_ids))
@@ -287,8 +355,6 @@ class PlaidColumnTransformer(ColumnTransformer):
 
     def transform(self, dataset):
         check_is_fitted(self, "transformers_")
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
         dataset_remainder = dataset.from_features_identifier(self.remainder_feature_id)
         transformed_datasets = [dataset_remainder]
         for _, transformer_, feat_ids in self.transformers_:
@@ -300,3 +366,70 @@ class PlaidColumnTransformer(ColumnTransformer):
     def fit_transform(self, X, y=None):
         return self.fit(X, y).transform(X)
 
+
+class LazyWrappedPlaidSklearnRegressor(BaseEstimator, RegressorMixin):
+    def __init__(
+        self,
+        sklearn_block: SklearnBlock,
+        params:dict,
+        sklearn_block_param_factory:Callable = None
+    ):
+        assert isinstance(sklearn_block, SklearnBlock), "sklearn_block must be a scikit_learn block"
+        assert isinstance(params, dict), "params must be a dict containing the scikit_learn block parameters to set"
+        assert 'in_features_identifiers' in params, "Must provide in_features_identifiers in sklearn_params of the node"
+
+        self.sklearn_block = sklearn_block
+        self.params = params
+        self.sklearn_block_param_factory = sklearn_block_param_factory
+
+        check_features_type_homogeneity(params['in_features_identifiers'])
+
+        if 'out_features_identifiers' in params:
+            check_features_type_homogeneity(params['out_features_identifiers'])
+        else:
+            params['out_features_identifiers'] = params['in_features_identifiers']
+
+        if 'sklearn_params' not in params:
+            params['sklearn_params'] = {}
+
+        self.sklearn_block.set_params(**params['sklearn_params'])
+
+
+    def fit(self, dataset: Dataset, y=None):
+
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
+
+        X = dataset.get_tabular_from_stacked_identifiers(self.params['in_features_identifiers'])
+        y = dataset.get_tabular_from_stacked_identifiers(self.params['out_features_identifiers'])
+
+        self.sklearn_block_ = clone(self.sklearn_block)
+
+        if self.sklearn_block_param_factory:
+            dynamic_params = self.sklearn_block_param_factory(X)
+            self.sklearn_block_.set_params(**dynamic_params)
+
+        self.sklearn_block_.fit(X, y)
+
+        return self
+
+    def predict(self, dataset: Dataset):
+        check_is_fitted(self, "sklearn_block_")
+
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
+
+        X = dataset.get_tabular_from_stacked_identifiers(self.params['in_features_identifiers'])
+
+        y = self.sklearn_block_.predict(X)
+        y = y.reshape((len(dataset), len(self.params['out_features_identifiers']), -1))
+
+        dataset_predicted = dataset.from_tabular(y, self.params['out_features_identifiers'], restrict_to_features = False)
+
+        return dataset_predicted
+
+    def transform(self, dataset):
+        return dataset
+
+    def inverse_transform(self, dataset):
+        return dataset

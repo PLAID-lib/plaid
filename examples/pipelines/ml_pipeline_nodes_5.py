@@ -6,7 +6,6 @@
 #
 
 # TODO:
-# - save state / load state -> normalement ici, tout hérite de BaseEstimator, donc facile ?
 # - move this in src and provide tests, examples and move the notebook to the doc
 
 

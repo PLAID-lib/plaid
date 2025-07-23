@@ -659,8 +659,14 @@ class Dataset(object):
         dim_features = check_features_size_homogeneity(feature_identifiers, features)
 
         tabular = np.stack(list(features.values()))
+        # print("before =", tabular.shape)
+        # print("dim_features =", dim_features)
+        # print(list(features.values()))
+        # print(len(list(features.values())))
         if dim_features == 0:
             tabular = np.expand_dims(tabular, axis=-1)
+        # print("after =", tabular.shape)
+        # 1./0.
 
         return tabular
 
