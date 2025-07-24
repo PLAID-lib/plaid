@@ -2,9 +2,9 @@
 # coding: utf-8
 
 # # Pipeline Examples
-# 
+#
 # This notebook presents how the provided pipeline blocks can be used in a PCA-GP algorithm. Pipeline block directly link PLAID datasets, and hyperpamater tuning is available using scikit-learn's GridSearchCV or Optuna.
-# 
+#
 # We start by a few imports:
 
 # In[ ]:
@@ -67,7 +67,7 @@ print(dataset_train)
 # In[ ]:
 
 
-with open("config_pipeline.yml") as f:
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config_pipeline.yml")) as f:
     config = yaml.safe_load(f)
 
 all_feature_id = config['input_scalar_scaler']['in_features_identifiers'] +\
@@ -79,7 +79,7 @@ print(dataset_train)
 
 
 # Hence, we keep only 2 scalars and 1 field of interest.
-# 
+#
 # We now define a preprocessor: a `MinMaxScaler` of the 2 input scalars and a `PCA` on the nodes coordinates of the meshes:
 
 # In[ ]:
@@ -93,7 +93,7 @@ preprocessor
 
 
 # We use a `PlaidColumnTransformer`, which enable independant transformations of features. The `out_features_identifiers` of each transformer are appended to `remainder_feature_ids`, which specifies the feature that will be passed through, such that only these features are kept in the returned merged dataset.
-# 
+#
 # We check this by applying the `preprocessor` to `dataset_train`:
 
 # In[ ]:
@@ -106,7 +106,7 @@ print("field names =", preprocessed_dataset.get_field_names())
 
 
 # With `MinMaxScaler`, we have scaled `angle_in` and `mach_out` and overridden their values, while with `PCA`, we have compressed the nodes coordinates and returned scalars with name `reduced_nodes_*'` containing the PCA coordinates. We could have specified `out_features_identifiers` in the `.yml` file to generate new scalars instead of overriding `in_features_identifiers`.
-# 
+#
 # We now define the postprocessor, which is here a PCA on the `mach` field:
 
 # In[ ]:
@@ -147,7 +147,7 @@ target_regressor
 
 
 # `PlaidTransformedTargetRegressor` work as a scikit-learn `TransformedTargetRegressor`, but directly on PLAID datasets. The argument `transformed_target_feature_id` allows to specify which feature identifiers are concerned by the transformation.
-# 
+#
 # Finally, we define the complete pipeline as:
 
 # In[ ]:
@@ -163,8 +163,8 @@ pipeline
 
 
 # ## Optuna
-# 
-# We now use optune to optimze the hyperparmeters, by a research over the number of components of the two `PCA` blocks, and a three-fold cross validation: 
+#
+# We now use optune to optimze the hyperparmeters, by a research over the number of components of the two `PCA` blocks, and a three-fold cross validation:
 
 # In[ ]:
 
@@ -256,7 +256,7 @@ print("score =", score, ", error =", 1. - score)
 
 
 # ## GridSearchCV
-# 
+#
 # Our pipeline node design satisfying the scikit-learn API, the constructed pipeline is directly compatible with GridSearchCV:
 
 # In[ ]:
