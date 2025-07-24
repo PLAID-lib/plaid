@@ -72,7 +72,6 @@ docs/source/notebooks/*.yaml
 # Heavy data
 *.cgns
 !notebooks/ex_rotor37_pv.cgns
-*artifact*
 
 ###############################################################################
 # .gitignore PATTERN FORMAT:
