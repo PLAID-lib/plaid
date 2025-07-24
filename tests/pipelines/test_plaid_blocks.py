@@ -102,6 +102,7 @@ class Test_PlaidTransformedTargetRegressor:
         assert id(dataset_with_samples) != id(pred_dataset)
         y_pred = get_2Darray_from_homogeneous_identifiers(pred_dataset, out_feat_ids)
         assert np.allclose(y_pred, y_ref)
+        plaid_transformed_target_regressor.predict([s for s in dataset_with_samples])
 
     def test_score(self, plaid_transformed_target_regressor, dataset_with_samples):
         plaid_transformed_target_regressor.fit(dataset_with_samples)
