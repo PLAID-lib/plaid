@@ -131,6 +131,7 @@ def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
     base_paths = CGU.getPathsByTypeSet(pyTree, "CGNSBase_t")
     nb_base = len(base_paths)
     nb_zones = 0
+    nb_nodes = 0
     nb_elements = 0
     nb_fields = 0
     fields = []
@@ -147,13 +148,9 @@ def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
         for zone_path in zone_paths:
             zone_node = CGU.getNodeByPath(base_node, zone_path)
             zone_name = zone_node[0]
-
-            # Elements
-            elem_paths = CGU.getPathsByTypeSet(zone_node, "Elements_t")
-            if elem_paths:
-                for elem_path in elem_paths:
-                    elem_node = CGU.getNodeByPath(zone_node, elem_path)
-                    nb_elements += elem_node[1][0]
+            # Read number of nodes and elements from the Zone node
+            nb_nodes += zone_node[1][0][0]
+            nb_elements += zone_node[1][0][1]
 
             # Flow Solutions (Fields)
             sol_paths = CGU.getPathsByTypeSet(zone_node, "FlowSolution_t")
@@ -167,6 +164,7 @@ def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
 
     summary.append(f"Number of Bases: {nb_base}")
     summary.append(f"Number of Zones: {nb_zones}")
+    summary.append(f"Number of Nodes: {nb_nodes}")
     summary.append(f"Number of Elements: {nb_elements}")
     summary.append(f"Number of Fields: {nb_fields}")
     summary.append("")
