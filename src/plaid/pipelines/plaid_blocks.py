@@ -126,8 +126,7 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         transformer: A transformer implementing `fit`, `transform`, and `inverse_transform`.
             Applied to the dataset before fitting the regressor.
         transformed_target_feature_id: A list of dictionaries identifying the target features
-            to be evaluated in the `score()` method. Each dictionary must contain at least
-            a `"type"` key, set to `"scalar"` or `"field"`.
+            to be evaluated in the `score()` method. These should be the in_feature_ids of the transformer.
     """
 
     def __init__(
@@ -221,17 +220,21 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
             if feature_type == "scalar":
                 errors = 0.0
                 for id in sample_ids:
-                    errors += ((prediction[id] - reference[id]) ** 2) / (
-                        reference[id] ** 2
-                    )
-            elif feature_type == "field":
+                    if reference[id] != 0:
+                        error = ((prediction[id] - reference[id]) ** 2) / (
+                            reference[id] ** 2
+                        )
+                    else:
+                        error = (prediction[id] - reference[id]) ** 2
+                    errors += error
+            elif feature_type == "field":  # pragma: no cover
                 errors = 0.0
                 for id in sample_ids:
                     errors += (np.linalg.norm(prediction[id] - reference[id]) ** 2) / (
                         reference[id].shape[0]
                         * np.linalg.norm(reference[id], ord=np.inf) ** 2
                     )
-            else:
+            else:  # pragma: no cover
                 raise (
                     f"No score function implemented for feature type {feat_id['type']}"
                 )

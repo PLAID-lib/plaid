@@ -11,6 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 from plaid.pipelines.plaid_blocks import (
     PlaidColumnTransformer,
+    PlaidTransformedTargetRegressor,
 )
 from plaid.pipelines.sklearn_block_wrappers import (
     WrappedPlaidSklearnRegressor,
@@ -40,8 +41,13 @@ def sklearn_multioutput_gp_regressor():
 
 
 @pytest.fixture()
-def dataset_with_samples_scalar_feat_ids(dataset_with_samples):
-    return dataset_with_samples.get_all_features_identifiers_by_type("scalar")
+def dataset_with_samples_scalar1_feat_ids(dataset_with_samples):
+    return [dataset_with_samples.get_all_features_identifiers_by_type("scalar")[0]]
+
+
+@pytest.fixture()
+def dataset_with_samples_scalar2_feat_ids(dataset_with_samples):
+    return [dataset_with_samples.get_all_features_identifiers_by_type("scalar")[1]]
 
 
 @pytest.fixture()
@@ -70,10 +76,10 @@ def dataset_with_samples_with_tree_nodes_feat_ids(dataset_with_samples_with_tree
 
 
 @pytest.fixture()
-def wrapped_sklearn_transformer(sklearn_scaler, dataset_with_samples_scalar_feat_ids):
+def wrapped_sklearn_transformer(sklearn_scaler, dataset_with_samples_scalar1_feat_ids):
     return WrappedPlaidSklearnTransformer(
         sklearn_block=sklearn_scaler,
-        in_features_identifiers=dataset_with_samples_scalar_feat_ids,
+        in_features_identifiers=dataset_with_samples_scalar1_feat_ids,
     )
 
 
@@ -87,7 +93,9 @@ def wrapped_sklearn_transformer_2(sklearn_pca):
 
 @pytest.fixture()
 def wrapped_sklearn_multioutput_gp_regressor(
-    sklearn_multioutput_gp_regressor, dataset_with_samples_scalar_feat_ids
+    sklearn_multioutput_gp_regressor,
+    dataset_with_samples_scalar1_feat_ids,
+    dataset_with_samples_scalar2_feat_ids,
 ):
     def length_scale_init(X):
         return np.ones(X.shape[1])
@@ -95,8 +103,8 @@ def wrapped_sklearn_multioutput_gp_regressor(
     dynamics_params_factory = {"estimator__kernel__length_scale": length_scale_init}
     return WrappedPlaidSklearnRegressor(
         sklearn_block=sklearn_multioutput_gp_regressor,
-        in_features_identifiers=dataset_with_samples_scalar_feat_ids,
-        out_features_identifiers=dataset_with_samples_scalar_feat_ids,
+        in_features_identifiers=dataset_with_samples_scalar2_feat_ids,
+        out_features_identifiers=dataset_with_samples_scalar1_feat_ids,
         dynamics_params_factory=dynamics_params_factory,
     )
 
@@ -125,20 +133,24 @@ def plaid_column_transformer(
 
 
 @pytest.fixture()
-def plaid_blocks(plaid_column_transformer):
-    return [plaid_column_transformer]
+def plaid_transformed_target_regressor(
+    wrapped_sklearn_multioutput_gp_regressor,
+    wrapped_sklearn_transformer,
+    dataset_with_samples_scalar1_feat_ids,
+):
+    return PlaidTransformedTargetRegressor(
+        regressor=wrapped_sklearn_multioutput_gp_regressor,
+        transformer=wrapped_sklearn_transformer,
+        transformed_target_feature_id=dataset_with_samples_scalar1_feat_ids,
+    )
+
+
+@pytest.fixture()
+def plaid_blocks(plaid_column_transformer, plaid_transformed_target_regressor):
+    return [plaid_column_transformer, plaid_transformed_target_regressor]
 
 
 # ---------------------------------------------------------------------------------------
 @pytest.fixture()
 def all_blocks(wrapped_sklearn_blocks, plaid_blocks):
     return wrapped_sklearn_blocks + plaid_blocks
-
-
-# @pytest.fixture()
-# def wrapped_sklearn_transformer(dataset_with_samples_with_tree: Dataset) -> WrappedPlaidSklearnTransformer:
-
-
-# dataset_with_samples_with_tree
-
-# wrapped_transf = WrappedPlaidSklearnTransformer(MinMaxScaler(), **config['input_scalar_scaler']['plaid_params'])

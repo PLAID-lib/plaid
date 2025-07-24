@@ -126,9 +126,6 @@ class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
             dataset, self.in_features_identifiers_
         )
 
-        print("X =", X)
-        print("X.shape =", X.shape)
-
         self.sklearn_block_ = clone(self.sklearn_block).fit(X, _y)
 
         return self
