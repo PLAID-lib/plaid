@@ -114,12 +114,8 @@ def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
         pyTree (list): The CGNS tree to summarize.
         verbose (bool, optional): If True, include detailed field information. Defaults to True.
 
-    Returns:
-        str: A string containing the summary.
-
     Example:
-        >>> summary = summarize_cgns_tree(pyTree)
-        >>> print(summary)
+        >>> summarize_cgns_tree(pyTree)
         Number of Bases: 2
         Number of Zones: 5
         Number of Elements: 10
