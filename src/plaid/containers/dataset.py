@@ -425,10 +425,10 @@ class Dataset(object):
         """Get all features identifiers from the dataset.
 
         Args:
-            ids (list[int], optional): Select scalars depending on sample id. If None, take all samples. Defaults to None.
+            ids (list[int], optional): Sample id from which returning feature identifiers. If None, take all samples. Defaults to None.
 
         Returns:
-            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of all features in the sample.
+            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of all features in the dataset.
         """
         if ids is not None and len(set(ids)) != len(ids):
             logger.warning("Provided ids are not unique")
@@ -441,6 +441,25 @@ class Dataset(object):
                     all_features_identifiers.append(feat_id)
         all_features_identifiers
         return all_features_identifiers
+
+    def get_all_features_identifiers_by_type(
+        self, feature_type: str, ids: list[int] = None
+    ) -> list[dict[str, Union[str, float]]]:
+        """Get all features identifiers from the dataset.
+
+        Args:
+            feature_type (str): Type of features to return
+            ids (list[int], optional): Sample id from which returning feature identifiers. If None, take all samples. Defaults to None.
+
+        Returns:
+            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of all features of a given type  in the dataset.
+        """
+        all_features_identifiers = self.get_all_features_identifiers(ids)
+        return [
+            feat_id
+            for feat_id in all_features_identifiers
+            if feat_id["type"] == feature_type
+        ]
 
     # -------------------------------------------------------------------------#
     def add_tabular_scalars(self, tabular: np.ndarray, names: list[str] = None) -> None:

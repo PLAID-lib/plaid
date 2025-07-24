@@ -4,23 +4,30 @@ import pytest
 from plaid.pipelines.sklearn_block_wrappers import (
     WrappedPlaidSklearnRegressor,
     WrappedPlaidSklearnTransformer,
-    get_tabular_from_homogeneous_identifiers,
+    get_2Darray_from_homogeneous_identifiers,
 )
 
 
-def test_get_tabular_from_homogeneous_identifiers(dataset_with_samples):
+def test_get_2Darray_from_homogeneous_identifiers(
+    dataset_with_samples,
+    dataset_with_samples_scalar_feat_ids,
+    dataset_with_samples_time_series_feat_ids,
+):
     # dataset_with_samples.get_all_features_identifiers()
-    scalar_feat_id = {"type": "scalar", "name": "test_scalar"}
-    feat_ids = [scalar_feat_id]
-    X = get_tabular_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
+    X = get_2Darray_from_homogeneous_identifiers(
+        dataset_with_samples, dataset_with_samples_scalar_feat_ids
+    )
     assert X.shape == (4, 1)
 
-    feat_ids = [scalar_feat_id, scalar_feat_id]
-    X = get_tabular_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
+    feat_ids = (
+        dataset_with_samples_scalar_feat_ids + dataset_with_samples_scalar_feat_ids
+    )
+    X = get_2Darray_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
     assert X.shape == (4, 2)
 
-    feat_ids = [{"type": "time_series", "name": "test_time_series_1"}]
-    X = get_tabular_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
+    X = get_2Darray_from_homogeneous_identifiers(
+        dataset_with_samples, dataset_with_samples_time_series_feat_ids
+    )
     assert X.shape == (4, 2, 111)
 
     field_same_size_feat_id = {
@@ -32,12 +39,12 @@ def test_get_tabular_from_homogeneous_identifiers(dataset_with_samples):
         "time": 0.0,
     }
     feat_ids = [field_same_size_feat_id]
-    X = get_tabular_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
+    X = get_2Darray_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
     assert X.shape == (4, 17)
 
     with pytest.raises(ValueError):
         feat_ids = [field_same_size_feat_id, field_same_size_feat_id]
-        X = get_tabular_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
+        X = get_2Darray_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
 
     with pytest.raises(AssertionError):
         feat_ids = [
@@ -51,71 +58,106 @@ def test_get_tabular_from_homogeneous_identifiers(dataset_with_samples):
             },
             field_same_size_feat_id,
         ]
-        X = get_tabular_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
+        X = get_2Darray_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
+
+
+def test_get_2Darray_from_homogeneous_identifiers_nodes(
+    dataset_with_samples_with_tree, dataset_with_samples_with_tree_nodes_feat_ids
+):
+    X = get_2Darray_from_homogeneous_identifiers(
+        dataset_with_samples_with_tree, dataset_with_samples_with_tree_nodes_feat_ids
+    )
+    assert X.shape == (4, 10)
 
 
 class Test_WrappedPlaidSklearnTransformer:
-    def test___init__(self, sklearn_scaler):
+    def test___init__(self, sklearn_scaler, wrapped_sklearn_transformer):
         WrappedPlaidSklearnTransformer()
         WrappedPlaidSklearnTransformer(sklearn_block=sklearn_scaler)
         in_feat_ids = [{"type": "scalar", "name": "test_scalar"}]
-        WrappedPlaidSklearnTransformer(
-            sklearn_block=sklearn_scaler, in_features_identifiers=in_feat_ids
-        )
+        wrapped_sklearn_transformer
         WrappedPlaidSklearnTransformer(
             sklearn_block=sklearn_scaler,
             in_features_identifiers=in_feat_ids,
             out_features_identifiers=in_feat_ids,
         )
 
-    def test_fit(self, sklearn_scaler, dataset_with_samples):
-        in_feat_ids = [{"type": "scalar", "name": "test_scalar"}]
-        wrapped_transf = WrappedPlaidSklearnTransformer(
-            sklearn_scaler, in_features_identifiers=in_feat_ids
+    def test_fit(self, wrapped_sklearn_transformer, dataset_with_samples):
+        wrapped_sklearn_transformer.fit(dataset_with_samples)
+        wrapped_sklearn_transformer.out_features_identifiers = (
+            wrapped_sklearn_transformer.in_features_identifiers
         )
-        wrapped_transf.fit(dataset_with_samples)
+        wrapped_sklearn_transformer.fit(dataset_with_samples)
 
-        wrapped_transf = WrappedPlaidSklearnTransformer(
-            sklearn_scaler,
-            in_features_identifiers=in_feat_ids,
-            out_features_identifiers=in_feat_ids,
+    def test_transform(self, wrapped_sklearn_transformer, dataset_with_samples):
+        transformed_dataset = wrapped_sklearn_transformer.fit_transform(
+            dataset_with_samples
         )
-        wrapped_transf.fit(dataset_with_samples)
-
-    def test_transform(self, sklearn_scaler, dataset_with_samples):
-        in_feat_ids = [{"type": "scalar", "name": "test_scalar"}]
-        wrapped_transf = WrappedPlaidSklearnTransformer(
-            sklearn_scaler, in_features_identifiers=in_feat_ids
-        )
-        transformed_dataset = wrapped_transf.fit_transform(dataset_with_samples)
         assert id(dataset_with_samples) != id(transformed_dataset)
 
-        in_features = get_tabular_from_homogeneous_identifiers(
-            dataset_with_samples, in_feat_ids
+        in_features = get_2Darray_from_homogeneous_identifiers(
+            dataset_with_samples, wrapped_sklearn_transformer.in_features_identifiers
         )
-        tranformed_in_features = get_tabular_from_homogeneous_identifiers(
-            transformed_dataset, in_feat_ids
+        tranformed_in_features = get_2Darray_from_homogeneous_identifiers(
+            transformed_dataset, wrapped_sklearn_transformer.in_features_identifiers
         )
         assert not np.allclose(in_features, tranformed_in_features)
 
-    def test_inverse_transform(self, sklearn_scaler, dataset_with_samples):
-        in_feat_ids = [{"type": "scalar", "name": "test_scalar"}]
-        wrapped_transf = WrappedPlaidSklearnTransformer(
-            sklearn_scaler, in_features_identifiers=in_feat_ids
+    def test_inverse_transform(self, wrapped_sklearn_transformer, dataset_with_samples):
+        wrapped_sklearn_transformer.fit(dataset_with_samples)
+        transformed_dataset = wrapped_sklearn_transformer.inverse_transform(
+            dataset_with_samples
         )
-        wrapped_transf.fit(dataset_with_samples)
-        transformed_dataset = wrapped_transf.inverse_transform(dataset_with_samples)
         assert id(dataset_with_samples) != id(transformed_dataset)
 
-        in_features = get_tabular_from_homogeneous_identifiers(
-            dataset_with_samples, in_feat_ids
+        in_features = get_2Darray_from_homogeneous_identifiers(
+            dataset_with_samples, wrapped_sklearn_transformer.in_features_identifiers
         )
-        tranformed_in_features = get_tabular_from_homogeneous_identifiers(
-            transformed_dataset, in_feat_ids
+        tranformed_in_features = get_2Darray_from_homogeneous_identifiers(
+            transformed_dataset, wrapped_sklearn_transformer.in_features_identifiers
         )
         assert not np.allclose(in_features, tranformed_in_features)
 
 
 class Test_WrappedPlaidSklearnRegressor:
-    def test___init__(self):
+    def test___init__(
+        self, sklearn_multioutput_gp_regressor, wrapped_sklearn_multioutput_gp_regressor
+    ):
         WrappedPlaidSklearnRegressor()
+        WrappedPlaidSklearnRegressor(sklearn_block=sklearn_multioutput_gp_regressor)
+        in_feat_ids = [{"type": "scalar", "name": "test_scalar"}]
+        out_feat_ids = [{"type": "scalar", "name": "test_scalar_2"}]
+        WrappedPlaidSklearnRegressor(
+            sklearn_block=sklearn_multioutput_gp_regressor,
+            in_features_identifiers=in_feat_ids,
+        )
+        WrappedPlaidSklearnRegressor(
+            sklearn_block=sklearn_multioutput_gp_regressor,
+            in_features_identifiers=in_feat_ids,
+            out_features_identifiers=out_feat_ids,
+        )
+        wrapped_sklearn_multioutput_gp_regressor
+
+    def test_fit(self, wrapped_sklearn_multioutput_gp_regressor, dataset_with_samples):
+        wrapped_sklearn_multioutput_gp_regressor.fit(dataset_with_samples)
+
+    def test_predict(
+        self, wrapped_sklearn_multioutput_gp_regressor, dataset_with_samples
+    ):
+        out_feat = wrapped_sklearn_multioutput_gp_regressor.out_features_identifiers
+        y_ref = get_2Darray_from_homogeneous_identifiers(dataset_with_samples, out_feat)
+
+        wrapped_sklearn_multioutput_gp_regressor.fit(dataset_with_samples)
+        pred_dataset = wrapped_sklearn_multioutput_gp_regressor.predict(
+            dataset_with_samples
+        )
+
+        assert id(dataset_with_samples) != id(pred_dataset)
+        y_pred = get_2Darray_from_homogeneous_identifiers(pred_dataset, out_feat)
+        assert np.allclose(y_pred, y_ref)
+
+    def test_transform(self, dataset_with_samples):
+        WrappedPlaidSklearnRegressor().transform(dataset_with_samples)
+
+    def test_inverse_transform(self, dataset_with_samples):
+        WrappedPlaidSklearnRegressor().inverse_transform(dataset_with_samples)

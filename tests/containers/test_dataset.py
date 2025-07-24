@@ -95,6 +95,59 @@ class Test_Dataset:
         )
         dataset_with_samples.get_all_features_identifiers([0, 0])
 
+    def test_get_all_features_identifiers_by_type(
+        self, dataset_with_samples, nb_samples
+    ):
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="scalar"
+                )
+            )
+            == 1
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="times_series"
+                )
+            )
+            == 0
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="field"
+                )
+            )
+            == 2
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="nodes"
+                )
+            )
+            == 0
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="scalar",
+                    ids=np.arange(np.random.randint(2, nb_samples)),
+                )
+            )
+            == 1
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="scalar", ids=[0, 0]
+                )
+            )
+            == 1
+        )
+
     def test_add_sample(self, dataset, sample):
         assert dataset.add_sample(sample) == 0
         assert len(dataset) == 1

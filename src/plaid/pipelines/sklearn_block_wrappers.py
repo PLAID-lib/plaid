@@ -45,7 +45,7 @@ SklearnBlock = Union[
 ]
 
 
-def get_tabular_from_homogeneous_identifiers(
+def get_2Darray_from_homogeneous_identifiers(
     dataset: Dataset, features_identifiers: list[dict]
 ):
     """Returns a 2D array from a Dataset and a feature id.
@@ -120,7 +120,7 @@ class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
         else:
             self.out_features_identifiers_ = self.in_features_identifiers_
 
-        X = get_tabular_from_homogeneous_identifiers(
+        X = get_2Darray_from_homogeneous_identifiers(
             dataset, self.in_features_identifiers_
         )
 
@@ -139,7 +139,7 @@ class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
         """
         check_is_fitted(self, "sklearn_block_")
 
-        X = get_tabular_from_homogeneous_identifiers(
+        X = get_2Darray_from_homogeneous_identifiers(
             dataset, self.in_features_identifiers_
         )
 
@@ -165,7 +165,7 @@ class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
         """
         check_is_fitted(self, "sklearn_block_")
 
-        X = get_tabular_from_homogeneous_identifiers(
+        X = get_2Darray_from_homogeneous_identifiers(
             dataset, self.out_features_identifiers_
         )
 

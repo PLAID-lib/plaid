@@ -22,6 +22,96 @@ from sklearn.utils.validation import check_is_fitted
 from plaid.containers.dataset import Dataset
 
 
+class PlaidColumnTransformer(ColumnTransformer):
+    """Custom column-wise transformer for PLAID-style datasets.
+
+    Similar to scikit-learn's `ColumnTransformer`, this class applies a list
+    of transformer blocks to subsets of features, defined by their feature
+    identifiers. Additionally, it preserves a set of remainder features that
+    bypass transformation.
+
+    Args:
+        plaid_transformers: A list of tuples
+            (name, transformer), where each `transformer` is a TransformerMixin.
+        remainder_feature_id: List of feature identifiers to pass through
+            without transformation.
+    """
+
+    def __init__(
+        self,
+        plaid_transformers: list[tuple[str, TransformerMixin]] = None,
+        remainder_feature_id: list[dict] = None,
+    ):
+        self.plaid_transformers = plaid_transformers
+        self.remainder_feature_id = remainder_feature_id
+
+        if plaid_transformers:
+            transformers_with_feat_ids = [
+                (name, transformer, transformer.get_params()["in_features_identifiers"])
+                for name, transformer in plaid_transformers
+            ]
+        else:
+            transformers_with_feat_ids = plaid_transformers
+
+        super().__init__(transformers_with_feat_ids)
+
+    def fit(self, dataset, _y=None):
+        """Fits all transformers on their corresponding feature subsets.
+
+        Args:
+            dataset: A `Dataset` object or a list of samples.
+            y: Ignored. Present for API compatibility.
+
+        Returns:
+            self: The fitted PlaidColumnTransformer.
+        """
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
+
+        self.plaid_transformers_ = copy.deepcopy(self.plaid_transformers)
+        self.remainder_feature_id_ = copy.deepcopy(self.remainder_feature_id)
+
+        self.transformers_ = []
+        for name, transformer, feat_ids in self.transformers:
+            sub_dataset = dataset.from_features_identifier(feat_ids)
+            transformer_ = clone(transformer).fit(sub_dataset)
+            self.transformers_.append((name, transformer_, feat_ids))
+        return self
+
+    def transform(self, dataset):
+        """Applies fitted transformers to feature subsets and merges results.
+
+        Args:
+            dataset: A `Dataset` object or a list of samples.
+
+        Returns:
+            Dataset: A new `Dataset` with transformed feature blocks, including
+            untransformed remainder features.
+        """
+        check_is_fitted(self, "transformers_")
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
+        dataset_remainder = dataset.from_features_identifier(self.remainder_feature_id_)
+        transformed_datasets = [dataset_remainder]
+        for _, transformer_, feat_ids in self.transformers_:
+            sub_dataset = dataset.from_features_identifier(feat_ids)
+            transformed = transformer_.transform(sub_dataset)
+            transformed_datasets.append(transformed)
+        return Dataset.merge_dataset_by_features(transformed_datasets)
+
+    def fit_transform(self, X, y=None):
+        """Fits all transformers and returns the combined transformed dataset.
+
+        Args:
+            X: A `Dataset` object or a list of samples.
+            y: Ignored. Present for API compatibility.
+
+        Returns:
+            Dataset: A new `Dataset` with transformed features.
+        """
+        return self.fit(X, y).transform(X)
+
+
 class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
     """Meta-estimator that transforms the target before fit and inverses it at predict.
 
@@ -147,88 +237,3 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
             all_errors.append(np.sqrt(errors / len(sample_ids)))
 
         return 1.0 - sum(all_errors) / len(self.transformed_target_feature_id_)
-
-
-class PlaidColumnTransformer(ColumnTransformer):
-    """Custom column-wise transformer for PLAID-style datasets.
-
-    Similar to scikit-learn's `ColumnTransformer`, this class applies a list
-    of transformer blocks to subsets of features, defined by their feature
-    identifiers. Additionally, it preserves a set of remainder features that
-    bypass transformation.
-
-    Args:
-        plaid_transformers: A list of tuples
-            (name, transformer), where each `transformer` is a TransformerMixin.
-        remainder_feature_id: List of feature identifiers to pass through
-            without transformation.
-    """
-
-    def __init__(
-        self,
-        plaid_transformers: list[tuple[str, TransformerMixin]] = None,
-        remainder_feature_id: list[dict] = None,
-    ):
-        self.plaid_transformers = plaid_transformers
-        self.remainder_feature_id = remainder_feature_id
-
-        if plaid_transformers:
-            transformers_with_feat_ids = [
-                (name, transformer, transformer.get_params()["in_features_identifiers"])
-                for name, transformer in plaid_transformers
-            ]
-        else:
-            transformers_with_feat_ids = plaid_transformers
-        super().__init__(transformers_with_feat_ids)
-
-    def fit(self, dataset, _y=None):
-        """Fits all transformers on their corresponding feature subsets.
-
-        Args:
-            dataset: A `Dataset` object or a list of samples.
-            y: Ignored. Present for API compatibility.
-
-        Returns:
-            self: The fitted PlaidColumnTransformer.
-        """
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
-        self.transformers_ = []
-        for name, transformer, feat_ids in self.transformers:
-            sub_dataset = dataset.from_features_identifier(feat_ids)
-            transformer_ = clone(transformer).fit(sub_dataset)
-            self.transformers_.append((name, transformer_, feat_ids))
-        return self
-
-    def transform(self, dataset):
-        """Applies fitted transformers to feature subsets and merges results.
-
-        Args:
-            dataset: A `Dataset` object or a list of samples.
-
-        Returns:
-            Dataset: A new `Dataset` with transformed feature blocks, including
-            untransformed remainder features.
-        """
-        check_is_fitted(self, "transformers_")
-        if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
-        dataset_remainder = dataset.from_features_identifier(self.remainder_feature_id)
-        transformed_datasets = [dataset_remainder]
-        for _, transformer_, feat_ids in self.transformers_:
-            sub_dataset = dataset.from_features_identifier(feat_ids)
-            transformed = transformer_.transform(sub_dataset)
-            transformed_datasets.append(transformed)
-        return Dataset.merge_dataset_by_features(transformed_datasets)
-
-    def fit_transform(self, X, y=None):
-        """Fits all transformers and returns the combined transformed dataset.
-
-        Args:
-            X: A `Dataset` object or a list of samples.
-            y: Ignored. Present for API compatibility.
-
-        Returns:
-            Dataset: A new `Dataset` with transformed features.
-        """
-        return self.fit(X, y).transform(X)

@@ -1777,6 +1777,25 @@ class Sample(BaseModel):
                             )
         return all_features_identifiers
 
+    def get_all_features_identifiers_by_type(
+        self, feature_type: str
+    ) -> list[dict[str, Union[str, float]]]:
+        """Get all features identifiers of a given type from the sample.
+
+        Args:
+            feature_type (str): Type of features to return
+
+        Returns:
+            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
+        """
+        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
+        all_features_identifiers = self.get_all_features_identifiers()
+        return [
+            feat_id
+            for feat_id in all_features_identifiers
+            if feat_id["type"] == feature_type
+        ]
+
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
     ) -> FeatureType:
