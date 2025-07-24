@@ -65,9 +65,9 @@ def get_feature_type_and_details_from_identifier(
     Args:
         feature_identifier (dict): A dictionary with a "type" key, and
             other keys (some optional) depending on the feature type. For example:
-                - {"type": "scalar", "name": "Mach"}
-                - {"type": "time_series", "name": "AOA"}
-                - {"type": "field", "name": "pressure"}
+            - {"type": "scalar", "name": "Mach"}
+            - {"type": "time_series", "name": "AOA"}
+            - {"type": "field", "name": "pressure"}
 
     Returns:
         tuple[str, dict]: A tuple `(feature_type, feature_details)` where:
@@ -105,9 +105,9 @@ def check_features_type_homogeneity(
     Args:
         feature_identifiers (list[dict]): dict with a "type" key, and
             other keys (some optional) depending on the feature type. For example:
-                - {"type": "scalar", "name": "Mach"}
-                - {"type": "time_series", "name": "AOA"}
-                - {"type": "field", "name": "pressure"}
+            - {"type": "scalar", "name": "Mach"}
+            - {"type": "time_series", "name": "AOA"}
+            - {"type": "field", "name": "pressure"}
 
     Raises:
         AssertionError: if types are not consistent
@@ -134,9 +134,9 @@ def check_features_size_homogeneity(
     Args:
         feature_identifiers (list[dict]): dict with a "type" key, and
             other keys (some optional) depending on the feature type. For example:
-                - {"type": "scalar", "name": "Mach"}
-                - {"type": "time_series", "name": "AOA"}
-                - {"type": "field", "name": "pressure"}
+            - {"type": "scalar", "name": "Mach"}
+            - {"type": "time_series", "name": "AOA"}
+            - {"type": "field", "name": "pressure"}
         features (dict): dict with sample index as keys and one or more features as values.
 
     Returns:

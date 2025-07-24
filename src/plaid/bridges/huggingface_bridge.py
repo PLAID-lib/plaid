@@ -195,6 +195,7 @@ def huggingface_dataset_to_plaid(
     ids: Optional[list[int]] = None,
     processes_number: int = 1,
     large_dataset: Optional[bool] = False,
+    verbose=True,
 ) -> tuple[Self, ProblemDefinition]:
     """Use this function for converting a plaid dataset from a huggingface dataset.
 
@@ -207,6 +208,7 @@ def huggingface_dataset_to_plaid(
         ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
         processes_number (int, optional): The number of processes used to generate the plaid dataset
         large_dataset (bool, optional): if True, uses a variant where parallel worker do not each load the complete dataset
+        verbose (bool, optional): if True, prints progress using tdqm
 
     Returns:
         dataset (Dataset): the converted dataset.
@@ -231,7 +233,8 @@ def huggingface_dataset_to_plaid(
 
     dataset = Dataset()
 
-    print("Converting huggingface dataset to plaid dataset...")
+    if verbose:
+        print("Converting huggingface dataset to plaid dataset...")
 
     if large_dataset:
         if ids:
@@ -249,6 +252,7 @@ def huggingface_dataset_to_plaid(
                     tqdm(
                         pool.imap(converter, range(len(converter.ds))),
                         total=len(converter.ds),
+                        disable=not verbose,
                     )
                 )
 
@@ -271,7 +275,9 @@ def huggingface_dataset_to_plaid(
             indices = range(len(ds))
         with Pool(processes=processes_number) as pool:
             for sample in tqdm(
-                pool.imap(HFToPlaidSampleConverter(ds), indices), total=len(indices)
+                pool.imap(HFToPlaidSampleConverter(ds), indices),
+                total=len(indices),
+                disable=not verbose,
             ):
                 dataset.add_sample(sample)
 

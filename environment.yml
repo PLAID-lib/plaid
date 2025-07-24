@@ -16,13 +16,13 @@ dependencies:
   - datasets >=3.0
   - numpy
   - matplotlib-base
-#---# optim
-  - optuna
 #---# data validation
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs
   - muscat=2.4.1
+#---# optim
+  - optuna
 #---# testing
   - pytest
   - pytest-cov
@@ -37,4 +37,5 @@ dependencies:
   - sphinxcontrib-bibtex
   - myst-nb
   - myst-parser
+  - nbconvert
   - furo

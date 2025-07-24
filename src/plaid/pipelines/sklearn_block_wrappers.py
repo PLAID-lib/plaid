@@ -91,6 +91,7 @@ class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
             defaults to `in_features_identifiers`.
     """
 
+    # TODO: check if restrict_to_features=True can be used to reduce further memory consumption
     def __init__(
         self,
         sklearn_block: SklearnBlock = None,

@@ -40,7 +40,6 @@ dependencies = [
     "scikit-learn",
     "datasets >=3.0",
     "pydantic",
-    "optuna",
 ]
 
 dynamic = ["version"]
@@ -81,8 +80,10 @@ dev = [
     "sphinx",
     "myst-nb",
     "myst-parser",
+    "nbconvert",
     "furo",
     "sphinx-autoapi",
     "sphinx-tabs",
     "sphinxcontrib.bibtex",
+    "optuna",
 ]
