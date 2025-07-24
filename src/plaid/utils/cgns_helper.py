@@ -173,8 +173,6 @@ def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
         summary.append("Fields :")
         for field_names, sol_name, zone_name, base_name in fields:
             for field_name in field_names:
-                if field_name.startswith("Coordinate"):
-                    continue
                 summary.append(f"  {base_name}/{zone_name}/{sol_name}/{field_name}")
 
     print("\n".join(summary))
