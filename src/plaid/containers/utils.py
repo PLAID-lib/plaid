@@ -86,7 +86,9 @@ def get_feature_type_and_details_from_identifier(
     feature_type = feature_identifier["type"]
     feature_details = {k: v for k, v in feature_identifier.items() if k != "type"}
 
-    assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature type not known"
+    assert feature_type in AUTHORIZED_FEATURE_TYPES, (
+        f"feature type {feature_type} not known"
+    )
 
     assert all(
         key in AUTHORIZED_FEATURE_INFOS[feature_type] for key in feature_details

@@ -104,7 +104,7 @@ class Test_Dataset:
                     feature_type="scalar"
                 )
             )
-            == 1
+            == 2
         )
         assert (
             len(
@@ -137,7 +137,7 @@ class Test_Dataset:
                     ids=np.arange(np.random.randint(2, nb_samples)),
                 )
             )
-            == 1
+            == 2
         )
         assert (
             len(
@@ -145,7 +145,7 @@ class Test_Dataset:
                     feature_type="scalar", ids=[0, 0]
                 )
             )
-            == 1
+            == 2
         )
 
     def test_add_sample(self, dataset, sample):

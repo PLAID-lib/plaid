@@ -33,17 +33,17 @@ class PlaidColumnTransformer(ColumnTransformer):
     Args:
         plaid_transformers: A list of tuples
             (name, transformer), where each `transformer` is a TransformerMixin.
-        remainder_feature_id: List of feature identifiers to pass through
+        remainder_feature_ids: List of feature identifiers to pass through
             without transformation.
     """
 
     def __init__(
         self,
         plaid_transformers: list[tuple[str, TransformerMixin]] = None,
-        remainder_feature_id: list[dict] = None,
+        remainder_feature_ids: list[dict] = None,
     ):
         self.plaid_transformers = plaid_transformers
-        self.remainder_feature_id = remainder_feature_id
+        self.remainder_feature_ids = remainder_feature_ids
 
         if plaid_transformers:
             transformers_with_feat_ids = [
@@ -51,7 +51,7 @@ class PlaidColumnTransformer(ColumnTransformer):
                 for name, transformer in plaid_transformers
             ]
         else:
-            transformers_with_feat_ids = plaid_transformers
+            transformers_with_feat_ids = None
 
         super().__init__(transformers_with_feat_ids)
 
@@ -69,7 +69,7 @@ class PlaidColumnTransformer(ColumnTransformer):
             dataset = Dataset.from_list_of_samples(dataset)
 
         self.plaid_transformers_ = copy.deepcopy(self.plaid_transformers)
-        self.remainder_feature_id_ = copy.deepcopy(self.remainder_feature_id)
+        self.remainder_feature_ids_ = copy.deepcopy(self.remainder_feature_ids)
 
         self.transformers_ = []
         for name, transformer, feat_ids in self.transformers:
@@ -91,7 +91,9 @@ class PlaidColumnTransformer(ColumnTransformer):
         check_is_fitted(self, "transformers_")
         if isinstance(dataset, list):
             dataset = Dataset.from_list_of_samples(dataset)
-        dataset_remainder = dataset.from_features_identifier(self.remainder_feature_id_)
+        dataset_remainder = dataset.from_features_identifier(
+            self.remainder_feature_ids_
+        )
         transformed_datasets = [dataset_remainder]
         for _, transformer_, feat_ids in self.transformers_:
             sub_dataset = dataset.from_features_identifier(feat_ids)

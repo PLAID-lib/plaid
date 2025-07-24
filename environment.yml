@@ -16,6 +16,8 @@ dependencies:
   - datasets >=3.0
   - numpy
   - matplotlib-base
+#---# optim
+  - optuna
 #---# data validation
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####

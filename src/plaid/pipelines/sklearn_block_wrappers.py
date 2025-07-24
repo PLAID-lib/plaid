@@ -112,17 +112,22 @@ class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
             self: The fitted transformer.
         """
         self.in_features_identifiers_ = copy.deepcopy(self.in_features_identifiers)
-        self.out_features_identifiers_ = copy.deepcopy(self.out_features_identifiers)
-
         check_features_type_homogeneity(self.in_features_identifiers_)
-        if self.out_features_identifiers_:
+
+        if self.out_features_identifiers:
+            self.out_features_identifiers_ = copy.deepcopy(
+                self.out_features_identifiers
+            )
             check_features_type_homogeneity(self.out_features_identifiers_)
         else:
-            self.out_features_identifiers_ = self.in_features_identifiers_
+            self.out_features_identifiers_ = copy.deepcopy(self.in_features_identifiers)
 
         X = get_2Darray_from_homogeneous_identifiers(
             dataset, self.in_features_identifiers_
         )
+
+        print("X =", X)
+        print("X.shape =", X.shape)
 
         self.sklearn_block_ = clone(self.sklearn_block).fit(X, _y)
 

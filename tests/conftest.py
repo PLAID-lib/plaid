@@ -25,20 +25,23 @@ def sample():
 def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
     """Generate a list of Sample objects with randomized scalar and field data."""
     sample_list = []
-    for _ in range(nb):
+    for i in range(nb):
         sample = Sample()
         sample.init_base(3, 3, base_name)
         sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
-        sample.add_scalar("test_scalar", np.random.randn())
+        sample.add_scalar("test_scalar", float(i))
+        sample.add_scalar("test_scalar_2", float(i**2))
         sample.add_time_series(
-            "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
+            "test_time_series_1",
+            np.arange(11, dtype=float),
+            float(i**3) * np.arange(11, dtype=float),
         )
         sample.add_field(
-            "test_field_same_size", np.random.randn(17), zone_name, base_name
+            "test_field_same_size", float(i**4) * np.ones(17), zone_name, base_name
         )
         sample.add_field(
             "test_field_2785",
-            np.random.randn(np.random.randint(10, 20)),
+            float(i**5) * np.ones(3 * i),
             zone_name,
             base_name,
         )

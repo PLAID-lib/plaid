@@ -25,7 +25,7 @@ def sklearn_scaler():
 
 @pytest.fixture()
 def sklearn_pca():
-    return PCA(n_components=3)
+    return PCA(n_components=2)
 
 
 @pytest.fixture()
@@ -35,7 +35,7 @@ def sklearn_linear_regressor():
 
 @pytest.fixture()
 def sklearn_multioutput_gp_regressor():
-    gpr = GaussianProcessRegressor(kernel=RBF())
+    gpr = GaussianProcessRegressor(kernel=RBF(), random_state=42)
     return MultiOutputRegressor(gpr)
 
 
@@ -55,6 +55,13 @@ def dataset_with_samples_with_tree_field_feat_ids(dataset_with_samples_with_tree
 
 
 @pytest.fixture()
+def dataset_with_samples_with_tree_1field_feat_ids(dataset_with_samples_with_tree):
+    return [
+        dataset_with_samples_with_tree.get_all_features_identifiers_by_type("field")[0]
+    ]
+
+
+@pytest.fixture()
 def dataset_with_samples_with_tree_nodes_feat_ids(dataset_with_samples_with_tree):
     return dataset_with_samples_with_tree.get_all_features_identifiers_by_type("nodes")
 
@@ -71,12 +78,10 @@ def wrapped_sklearn_transformer(sklearn_scaler, dataset_with_samples_scalar_feat
 
 
 @pytest.fixture()
-def wrapped_sklearn_transformer_2(
-    sklearn_pca, dataset_with_samples_time_series_feat_ids
-):
+def wrapped_sklearn_transformer_2(sklearn_pca):
     return WrappedPlaidSklearnTransformer(
         sklearn_block=sklearn_pca,
-        in_features_identifiers=dataset_with_samples_time_series_feat_ids,
+        in_features_identifiers=[{"type": "field", "name": "test_field_same_size"}],
     )
 
 
@@ -112,10 +117,10 @@ def plaid_column_transformer(
 ):
     return PlaidColumnTransformer(
         plaid_transformers=[
-            ("scalar_scaler", wrapped_sklearn_transformer),
-            ("time_series_scaler", wrapped_sklearn_transformer_2),
+            ("scaler_scalar", wrapped_sklearn_transformer),
+            ("pca_field", wrapped_sklearn_transformer_2),
         ],
-        remainder_feature_id=None,
+        remainder_feature_ids=[{"type": "time_series", "name": "test_time_series_1"}],
     )
 
 

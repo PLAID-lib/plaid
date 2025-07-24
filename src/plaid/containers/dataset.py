@@ -128,7 +128,7 @@ class Dataset(object):
             A new `Dataset` instance with all internal data (samples, infos)
             deeply copied to ensure full isolation from the original.
 
-        Note:
+        Notes:
             This operation may be memory-intensive for large datasets.
         """
         return copy.deepcopy(self)
@@ -473,7 +473,7 @@ class Dataset(object):
             ShapeError: Raised if the input tabular array does not have the correct shape (2D).
             ShapeError: Raised if the number of columns in the tabular data does not match the number of names provided.
 
-        Note:
+        Notes:
             If no names are provided, it will automatically create names based on the pattern 'X{number}'
         """
         nb_samples = len(tabular)
@@ -671,6 +671,9 @@ class Dataset(object):
         Returns:
             Array: An containing the provided feature identifiers, size (nb_sample, nb_features, dim_features)
 
+        Notes:
+            Not working with time_series for the moment (time series have 2 elements: time_sequence and values)
+
         Raises:
             AssertionError: If feature sizes are inconsistent.
         """
@@ -678,14 +681,11 @@ class Dataset(object):
         dim_features = check_features_size_homogeneity(feature_identifiers, features)
 
         tabular = np.stack(list(features.values()))
-        # print("before =", tabular.shape)
-        # print("dim_features =", dim_features)
-        # print(list(features.values()))
-        # print(len(list(features.values())))
         if dim_features == 0:
             tabular = np.expand_dims(tabular, axis=-1)
-        # print("after =", tabular.shape)
-        # 1./0.
+        assert tabular.ndim == 3, (
+            "tabular must be constructed to have 3 dimensions: (nb_sample, nb_features, dim_features)"
+        )
 
         return tabular
 
