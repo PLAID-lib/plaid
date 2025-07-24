@@ -105,3 +105,82 @@ def show_cgns_tree(pyTree: list, pre: str = ""):
         if child[2]:
             show_cgns_tree(child, " " * len(pre) + "|_ ")
     np.set_printoptions(edgeitems=3, threshold=1000)
+
+
+def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
+    """Provide a summary of a CGNS tree's contents.
+
+    Args:
+        pyTree (list): The CGNS tree to summarize.
+        verbose (bool, optional): If True, include detailed field information. Defaults to True.
+
+    Returns:
+        str: A string containing the summary.
+
+    Example:
+        >>> summary = summarize_cgns_tree(pyTree)
+        >>> print(summary)
+        Number of Bases: 2
+        Number of Zones: 5
+        Number of Elements: 10
+        Number of Fields: 8
+
+        Fields:
+          'Base1/Zone1/Solution1/Field1'
+          'Base1/Zone1/Solution1/Field2'
+          'Base2/Zone2/Solution2/Field1'
+          ...
+    """
+    summary = []
+    base_paths = CGU.getPathsByTypeSet(pyTree, "CGNSBase_t")
+    nb_base = len(base_paths)
+    nb_zones = 0
+    nb_elements = 0
+    nb_fields = 0
+    fields = []
+
+    # Bases
+    for base_path in base_paths:
+        base_node = CGU.getNodeByPath(pyTree, base_path)
+        base_name = base_node[0]
+
+        zone_paths = CGU.getPathsByTypeSet(base_node, "Zone_t")
+        nb_zones += len(zone_paths)
+
+        # Zones
+        for zone_path in zone_paths:
+            zone_node = CGU.getNodeByPath(base_node, zone_path)
+            zone_name = zone_node[0]
+
+            # Elements
+            elem_paths = CGU.getPathsByTypeSet(zone_node, "Elements_t")
+            if elem_paths:
+                for elem_path in elem_paths:
+                    elem_node = CGU.getNodeByPath(zone_node, elem_path)
+                    nb_elements += elem_node[1][0]
+
+            # Flow Solutions (Fields)
+            sol_paths = CGU.getPathsByTypeSet(zone_node, "FlowSolution_t")
+            if sol_paths:
+                for sol_path in sol_paths:
+                    sol_node = CGU.getNodeByPath(zone_node, sol_path)
+                    sol_name = sol_node[0]
+                    field_names = [n[0] for n in sol_node[2]]
+                    nb_fields += len(field_names)
+                    fields.append(((field_names, sol_name, zone_name, base_name)))
+
+    summary.append(f"Number of Bases: {nb_base}")
+    summary.append(f"Number of Zones: {nb_zones}")
+    summary.append(f"Number of Elements: {nb_elements}")
+    summary.append(f"Number of Fields: {nb_fields}")
+    summary.append("")
+
+    if verbose:
+        summary.append("Fields :")
+        for field_names, sol_name, zone_name, base_name in fields:
+            for field_name in field_names:
+                if field_name.startswith("Coordinate"):
+                    continue
+                summary.append(f"  {base_name}/{zone_name}/{sol_name}/{field_name}")
+
+    print("\n".join(summary))
