@@ -118,6 +118,7 @@ def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
         >>> summarize_cgns_tree(pyTree)
         Number of Bases: 2
         Number of Zones: 5
+        Number of Nodes: 20
         Number of Elements: 10
         Number of Fields: 8
 
