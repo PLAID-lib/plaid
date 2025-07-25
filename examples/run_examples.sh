@@ -1,5 +1,5 @@
 #!/bin/bash
-for file in *.py utils/*.py containers/*.py post/*.py
+for file in *.py utils/*.py containers/*.py post/*.py pipelines/*.py
     do echo "--------------------------------------------------------------------------------------"
         echo "#---# run python $file"
         python $file
