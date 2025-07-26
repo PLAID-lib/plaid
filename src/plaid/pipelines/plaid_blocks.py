@@ -20,6 +20,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.utils.validation import check_is_fitted
 
 from plaid.containers.dataset import Dataset
+from plaid.containers.utils import has_duplicates_feature_ids
 
 
 class PlaidColumnTransformer(ColumnTransformer):
@@ -33,27 +34,22 @@ class PlaidColumnTransformer(ColumnTransformer):
     Args:
         plaid_transformers: A list of tuples
             (name, transformer), where each `transformer` is a TransformerMixin.
-        remainder_feature_ids: List of feature identifiers to pass through
-            without transformation.
+
+    Notes:
+        At fit, it is checked that `plaid_transformers` share no in_features_identifiers and no out_features_identifiers.
     """
 
-    def __init__(
-        self,
-        plaid_transformers: list[tuple[str, TransformerMixin]] = None,
-        remainder_feature_ids: list[dict] = None,
-    ):
+    def __init__(self, plaid_transformers: list[tuple[str, TransformerMixin]] = None):
         self.plaid_transformers = plaid_transformers
-        self.remainder_feature_ids = remainder_feature_ids
 
         if plaid_transformers:
-            transformers_with_feat_ids = [
-                (name, transformer, transformer.get_params()["in_features_identifiers"])
-                for name, transformer in plaid_transformers
+            transformers_dummy = [
+                (name, transformer, "_") for name, transformer in plaid_transformers
             ]
         else:
-            transformers_with_feat_ids = None
+            transformers_dummy = None
 
-        super().__init__(transformers_with_feat_ids)
+        super().__init__(transformers_dummy)
 
     def fit(self, dataset, _y=None):
         """Fits all transformers on their corresponding feature subsets.
@@ -68,14 +64,39 @@ class PlaidColumnTransformer(ColumnTransformer):
         if isinstance(dataset, list):
             dataset = Dataset.from_list_of_samples(dataset)
 
-        self.plaid_transformers_ = copy.deepcopy(self.plaid_transformers)
-        self.remainder_feature_ids_ = copy.deepcopy(self.remainder_feature_ids)
+        self.in_features_identifiers_ = []
+        for _, transformer in self.plaid_transformers:
+            self.in_features_identifiers_ += copy.deepcopy(
+                transformer.in_features_identifiers
+            )
+
+        assert not has_duplicates_feature_ids(self.in_features_identifiers_), (
+            "Identical in_features_identifiers found among provided transformer: not compatible with PlaidColumnTransformer."
+        )
+
+        self.plaid_transformers_ = [
+            (copy.deepcopy(name), clone(transformer))
+            for name, transformer in self.plaid_transformers
+        ]
 
         self.transformers_ = []
-        for name, transformer, feat_ids in self.transformers:
-            sub_dataset = dataset.from_features_identifier(feat_ids)
+        for name, transformer in self.plaid_transformers_:
+            sub_dataset = dataset.from_features_identifier(
+                transformer.in_features_identifiers
+            )
             transformer_ = clone(transformer).fit(sub_dataset)
-            self.transformers_.append((name, transformer_, feat_ids))
+            self.transformers_.append((name, transformer_, "_"))
+
+        self.out_features_identifiers_ = []
+        for _, transformer, _ in self.transformers_:
+            self.out_features_identifiers_ += copy.deepcopy(
+                transformer.out_features_identifiers_
+            )
+
+        assert not has_duplicates_feature_ids(self.out_features_identifiers_), (
+            "Identical out_features_identifiers found among provided transformer: not compatible with PlaidColumnTransformer."
+        )
+
         return self
 
     def transform(self, dataset):
@@ -91,12 +112,12 @@ class PlaidColumnTransformer(ColumnTransformer):
         check_is_fitted(self, "transformers_")
         if isinstance(dataset, list):
             dataset = Dataset.from_list_of_samples(dataset)
-        dataset_remainder = dataset.from_features_identifier(
-            self.remainder_feature_ids_
-        )
-        transformed_datasets = [dataset_remainder]
-        for _, transformer_, feat_ids in self.transformers_:
-            sub_dataset = dataset.from_features_identifier(feat_ids)
+
+        transformed_datasets = [dataset.copy()]
+        for _, transformer_, _ in self.transformers_:
+            sub_dataset = dataset.from_features_identifier(
+                transformer_.in_features_identifiers
+            )
             transformed = transformer_.transform(sub_dataset)
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)
@@ -125,19 +146,15 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         regressor: A regressor implementing `fit` and `predict`, following the scikit-learn API.
         transformer: A transformer implementing `fit`, `transform`, and `inverse_transform`.
             Applied to the dataset before fitting the regressor.
-        transformed_target_feature_ids: A list of dictionaries identifying the target features
-            to be evaluated in the `score()` method. These should be the in_feature_ids of the transformer.
     """
 
     def __init__(
         self,
         regressor: RegressorMixin = None,
         transformer: TransformerMixin = None,
-        transformed_target_feature_ids: list[dict] = None,
     ):
         self.regressor = regressor
         self.transformer = transformer
-        self.transformed_target_feature_ids = transformed_target_feature_ids
 
     def fit(self, dataset, _y=None):
         """Fits the transformer and the regressor on the transformed dataset.
@@ -152,12 +169,19 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         """
         if isinstance(dataset, list):
             dataset = Dataset.from_list_of_samples(dataset)
+
         self.transformer_ = clone(self.transformer).fit(dataset)
+
         transformed_dataset = self.transformer_.transform(dataset)
         self.regressor_ = clone(self.regressor).fit(transformed_dataset)
-        self.transformed_target_feature_ids_ = copy.deepcopy(
-            self.transformed_target_feature_ids
+
+        self.in_features_identifiers_ = copy.deepcopy(
+            self.regressor_.in_features_identifiers_
         )
+        self.out_features_identifiers_ = copy.deepcopy(
+            self.transformer_.in_features_identifiers_
+        )
+
         return self
 
     def predict(self, dataset):
@@ -179,8 +203,8 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
     def score(self, dataset_X, dataset_y=None):
         """Computes a normalized root mean squared error (RMSE) score on the transformed targets.
 
-        The score is defined as `1 - avg(relative RMSE)` over all target features in
-        `transformed_target_feature_ids_`. The error computation depends on the feature type:
+        The score is defined as `1 - avg(relative RMSE)` over all target features in the
+        `transformer` input features identifiers. The error computation depends on the feature type:
         - For "scalar" features: RMSE normalized by squared reference value.
         - For "field" features: RMSE normalized by field size and max-norm of the reference.
 
@@ -211,7 +235,8 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         assert dataset_y.get_sample_ids() == sample_ids
 
         all_errors = []
-        for feat_id in self.transformed_target_feature_ids_:
+
+        for feat_id in self.out_features_identifiers_:
             feature_type = feat_id["type"]
 
             reference = dataset_y.get_feature_from_identifier(feat_id)
@@ -241,4 +266,4 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
 
             all_errors.append(np.sqrt(errors / len(sample_ids)))
 
-        return 1.0 - sum(all_errors) / len(self.transformed_target_feature_ids_)
+        return 1.0 - sum(all_errors) / len(self.out_features_identifiers_)

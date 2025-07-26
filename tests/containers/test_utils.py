@@ -16,6 +16,7 @@ from plaid.containers.utils import (
     check_features_type_homogeneity,
     get_number_of_samples,
     get_sample_ids,
+    has_duplicates_feature_ids,
 )
 
 # %% Fixtures
@@ -60,3 +61,11 @@ class Test_Container_Utils:
             check_features_type_homogeneity(
                 [{"type": "scalar", "name": "Mach"}, {"type": "nodes"}]
             )
+
+    def test_has_duplicates_feature_ids(self):
+        assert not has_duplicates_feature_ids(
+            [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "P"}]
+        )
+        assert has_duplicates_feature_ids(
+            [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "Mach"}]
+        )

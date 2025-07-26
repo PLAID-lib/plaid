@@ -128,20 +128,16 @@ def plaid_column_transformer(
             ("scaler_scalar", wrapped_sklearn_transformer),
             ("pca_field", wrapped_sklearn_transformer_2),
         ],
-        remainder_feature_ids=[{"type": "time_series", "name": "test_time_series_1"}],
     )
 
 
 @pytest.fixture()
 def plaid_transformed_target_regressor(
-    wrapped_sklearn_multioutput_gp_regressor,
-    wrapped_sklearn_transformer,
-    dataset_with_samples_scalar1_feat_ids,
+    wrapped_sklearn_multioutput_gp_regressor, wrapped_sklearn_transformer
 ):
     return PlaidTransformedTargetRegressor(
         regressor=wrapped_sklearn_multioutput_gp_regressor,
         transformer=wrapped_sklearn_transformer,
-        transformed_target_feature_ids=dataset_with_samples_scalar1_feat_ids,
     )
 
 

@@ -15,15 +15,11 @@ class Test_PlaidColumnTransformer:
         PlaidColumnTransformer([("titi", wrapped_sklearn_transformer)])
         PlaidColumnTransformer(
             [("toto", wrapped_sklearn_transformer)],
-            [{"type": "time_series", "name": "test_time_series"}],
         )
         PlaidColumnTransformer(
             plaid_transformers=[
                 ("scaler_scalar", wrapped_sklearn_transformer),
                 ("pca_field", wrapped_sklearn_transformer_2),
-            ],
-            remainder_feature_ids=[
-                {"type": "time_series", "name": "test_time_series_1"}
             ],
         )
 
@@ -67,10 +63,7 @@ class Test_PlaidColumnTransformer:
 
 class Test_PlaidTransformedTargetRegressor:
     def test___init__(
-        self,
-        wrapped_sklearn_multioutput_gp_regressor,
-        wrapped_sklearn_transformer,
-        dataset_with_samples_scalar2_feat_ids,
+        self, wrapped_sklearn_multioutput_gp_regressor, wrapped_sklearn_transformer
     ):
         PlaidTransformedTargetRegressor()
         PlaidTransformedTargetRegressor(
@@ -83,7 +76,6 @@ class Test_PlaidTransformedTargetRegressor:
         PlaidTransformedTargetRegressor(
             regressor=wrapped_sklearn_multioutput_gp_regressor,
             transformer=wrapped_sklearn_transformer,
-            transformed_target_feature_ids=dataset_with_samples_scalar2_feat_ids,
         )
 
     def test_fit(self, plaid_transformed_target_regressor, dataset_with_samples):
@@ -91,16 +83,16 @@ class Test_PlaidTransformedTargetRegressor:
         plaid_transformed_target_regressor.fit([s for s in dataset_with_samples])
 
     def test_predict(self, plaid_transformed_target_regressor, dataset_with_samples):
-        out_feat_ids = plaid_transformed_target_regressor.transformed_target_feature_ids
+        plaid_transformed_target_regressor.fit(dataset_with_samples)
+        pred_dataset = plaid_transformed_target_regressor.predict(dataset_with_samples)
+        assert id(dataset_with_samples) != id(pred_dataset)
+
+        out_feat_ids = plaid_transformed_target_regressor.out_features_identifiers_
         y_ref = get_2Darray_from_homogeneous_identifiers(
             dataset_with_samples, out_feat_ids
         )
-
-        plaid_transformed_target_regressor.fit(dataset_with_samples)
-        pred_dataset = plaid_transformed_target_regressor.predict(dataset_with_samples)
-
-        assert id(dataset_with_samples) != id(pred_dataset)
         y_pred = get_2Darray_from_homogeneous_identifiers(pred_dataset, out_feat_ids)
+
         assert np.allclose(y_pred, y_ref)
         plaid_transformed_target_regressor.predict([s for s in dataset_with_samples])
 

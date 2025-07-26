@@ -164,3 +164,22 @@ def check_features_size_homogeneity(
                 f"Inconsistent feature sizes in sample {j}: feature {i} (name {feature_identifiers[i]['name']}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) is of size {size}"
             )
     return size
+
+
+def has_duplicates_feature_ids(feature_identifiers: list[dict[str, Union[str, float]]]):
+    """Check whether a list of feature identifier contains duplicates.
+
+    Args:
+        feature_identifiers (list[dict[str, Union[str, float]]]):
+            A list of dictionaries representing feature identifiers.
+
+    Returns:
+        bool: True if a duplicate is found in the list, False otherwise.
+    """
+    seen = set()
+    for d in feature_identifiers:
+        frozen = frozenset(d.items())
+        if frozen in seen:
+            return True
+        seen.add(frozen)
+    return False
