@@ -65,20 +65,6 @@ It has been developped at SafranTech, the research center of `Safran group <http
 The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
 
-> Getting Started
->> Quickstart
->> Description
-
-> Documentation
->> API Reference
->> Examples & Tutorials
->> Data Conversion Guide
->> Default Values Flowchart
-
-> Contributing
->> How to Contribute
-
-
 .. toctree::
    :glob:
    :maxdepth: 1

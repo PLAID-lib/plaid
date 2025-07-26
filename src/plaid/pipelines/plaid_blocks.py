@@ -125,7 +125,7 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         regressor: A regressor implementing `fit` and `predict`, following the scikit-learn API.
         transformer: A transformer implementing `fit`, `transform`, and `inverse_transform`.
             Applied to the dataset before fitting the regressor.
-        transformed_target_feature_id: A list of dictionaries identifying the target features
+        transformed_target_feature_ids: A list of dictionaries identifying the target features
             to be evaluated in the `score()` method. These should be the in_feature_ids of the transformer.
     """
 
@@ -133,11 +133,11 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         self,
         regressor: RegressorMixin = None,
         transformer: TransformerMixin = None,
-        transformed_target_feature_id: list[dict] = None,
+        transformed_target_feature_ids: list[dict] = None,
     ):
         self.regressor = regressor
         self.transformer = transformer
-        self.transformed_target_feature_id = transformed_target_feature_id
+        self.transformed_target_feature_ids = transformed_target_feature_ids
 
     def fit(self, dataset, _y=None):
         """Fits the transformer and the regressor on the transformed dataset.
@@ -155,8 +155,8 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         self.transformer_ = clone(self.transformer).fit(dataset)
         transformed_dataset = self.transformer_.transform(dataset)
         self.regressor_ = clone(self.regressor).fit(transformed_dataset)
-        self.transformed_target_feature_id_ = copy.deepcopy(
-            self.transformed_target_feature_id
+        self.transformed_target_feature_ids_ = copy.deepcopy(
+            self.transformed_target_feature_ids
         )
         return self
 
@@ -180,7 +180,7 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         """Computes a normalized root mean squared error (RMSE) score on the transformed targets.
 
         The score is defined as `1 - avg(relative RMSE)` over all target features in
-        `transformed_target_feature_id_`. The error computation depends on the feature type:
+        `transformed_target_feature_ids_`. The error computation depends on the feature type:
         - For "scalar" features: RMSE normalized by squared reference value.
         - For "field" features: RMSE normalized by field size and max-norm of the reference.
 
@@ -211,7 +211,7 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         assert dataset_y.get_sample_ids() == sample_ids
 
         all_errors = []
-        for feat_id in self.transformed_target_feature_id_:
+        for feat_id in self.transformed_target_feature_ids_:
             feature_type = feat_id["type"]
 
             reference = dataset_y.get_feature_from_identifier(feat_id)
@@ -241,4 +241,4 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
 
             all_errors.append(np.sqrt(errors / len(sample_ids)))
 
-        return 1.0 - sum(all_errors) / len(self.transformed_target_feature_id_)
+        return 1.0 - sum(all_errors) / len(self.transformed_target_feature_ids_)

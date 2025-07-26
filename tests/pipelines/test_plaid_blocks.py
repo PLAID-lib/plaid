@@ -83,7 +83,7 @@ class Test_PlaidTransformedTargetRegressor:
         PlaidTransformedTargetRegressor(
             regressor=wrapped_sklearn_multioutput_gp_regressor,
             transformer=wrapped_sklearn_transformer,
-            transformed_target_feature_id=dataset_with_samples_scalar2_feat_ids,
+            transformed_target_feature_ids=dataset_with_samples_scalar2_feat_ids,
         )
 
     def test_fit(self, plaid_transformed_target_regressor, dataset_with_samples):
@@ -91,7 +91,7 @@ class Test_PlaidTransformedTargetRegressor:
         plaid_transformed_target_regressor.fit([s for s in dataset_with_samples])
 
     def test_predict(self, plaid_transformed_target_regressor, dataset_with_samples):
-        out_feat_ids = plaid_transformed_target_regressor.transformed_target_feature_id
+        out_feat_ids = plaid_transformed_target_regressor.transformed_target_feature_ids
         y_ref = get_2Darray_from_homogeneous_identifiers(
             dataset_with_samples, out_feat_ids
         )

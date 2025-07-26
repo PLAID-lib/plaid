@@ -141,7 +141,7 @@ def plaid_transformed_target_regressor(
     return PlaidTransformedTargetRegressor(
         regressor=wrapped_sklearn_multioutput_gp_regressor,
         transformer=wrapped_sklearn_transformer,
-        transformed_target_feature_id=dataset_with_samples_scalar1_feat_ids,
+        transformed_target_feature_ids=dataset_with_samples_scalar1_feat_ids,
     )
 
 
