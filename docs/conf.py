@@ -220,6 +220,7 @@ github_url = "https://github.com/PLAID-lib/plaid"
 
 # -----------------------------------------------------------------------------#
 
+os.environ["PYTHONWARNINGS"] = "ignore:::tqdm.*"
 
 def skip_logger_attribute(app, what, name, obj, skip, options):
     if what == "data" and "logger" in name:
