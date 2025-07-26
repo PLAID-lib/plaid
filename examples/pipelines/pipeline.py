@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # # Pipeline Examples
-# 
+
 # ## PCA-GP on Field Data
 # 
 # This notebook demonstrates the end-to-end process of building a machine learning pipeline for predicting high-dimensional flow fields from scalar input parameters using the PLAID dataset. The pipeline leverages PLAID’s scikit-learn-compatible blocks and standard dataset structures to enable modular, reusable workflows.
@@ -20,7 +20,7 @@
 
 # ### 📦 Imports
 
-# In[1]:
+# In[ ]:
 
 
 import warnings
@@ -60,16 +60,16 @@ n_processes = min(max(1, os.cpu_count()), 6)
 # 
 # We load the `VKI-LS59` dataset from Hugging Face and restrict ourselves to the first 24 samples of the training set.
 
-# In[2]:
+# In[ ]:
 
 
 hf_dataset = load_dataset("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
 dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
 
 
-# We print the summary of dataset_train, which contains 24 samples, with 8 scalars and 8 fields, which is consistent with the VKI-LS59` dataset:
+# We print the summary of dataset_train, which contains 24 samples, with 8 scalars and 8 fields, which is consistent with the `VKI-LS59` dataset:
 
-# In[3]:
+# In[ ]:
 
 
 print(dataset_train)
@@ -89,7 +89,7 @@ print(dataset_train)
 #       name: reduced_nodes_*
 # ```
 
-# In[4]:
+# In[ ]:
 
 
 try:
@@ -104,22 +104,24 @@ all_feature_id = config['input_scalar_scaler']['in_features_identifiers'] +\
     config['pca_nodes']['in_features_identifiers'] + config['pca_mach']['in_features_identifiers']
 
 
-# In this example, we aim to predict the ``mach`` based on two input scalars ``angle_in`` and ``mach_out``, and the mesh node coordinates. To contain memory consumption, we restrict the dataset to the features required for this example:
+# In this example, we aim to predict the ``mach`` field based on two input scalars ``angle_in`` and ``mach_out``, and the mesh node coordinates. To contain memory consumption, we restrict the dataset to the features required for this example:
 
-# In[5]:
+# In[ ]:
 
 
 dataset_train = dataset_train.from_features_identifier(all_feature_id)
-print(dataset_train)
+print("dataset_train:", dataset_train)
+print("scalar names =", dataset_train.get_scalar_names())
+print("field names =", dataset_train.get_field_names())
 
 
 # We notive that only the 2 scalars and the field of interest are kept after restriction.
 
-# 1. Preprocessor
+# ### 1. Preprocessor
 # 
 # We now define a preprocessor: a `MinMaxScaler` of the 2 input scalars and a `PCA` on the nodes coordinates of the meshes:
 
-# In[6]:
+# In[ ]:
 
 
 preprocessor = PlaidColumnTransformer(
@@ -135,29 +137,29 @@ preprocessor
 # 
 # To verify this behavior, we apply the `preprocessor` to `dataset_train`:
 
-# In[7]:
+# In[ ]:
 
 
 preprocessed_dataset = preprocessor.fit_transform(dataset_train)
-print(preprocessed_dataset)
+print("preprocessed_dataset:", preprocessed_dataset)
 print("scalar names =", preprocessed_dataset.get_scalar_names())
 print("field names =", preprocessed_dataset.get_field_names())
 
 
 # Using `MinMaxScaler`, we scaled the `angle_in` and `mach_out` features, replacing their original values. In contrast, `PCA` compressed the node coordinates and produced new scalar features named `reduced_nodes_*`, representing the PCA components. Alternatively, we could have specified `out_features_identifiers` in the `.yml` file configuring the `MinMaxScaler` block to generate new scalars without overwriting the original inputs.
 
-# 2. Postprocessor
+# ### 2. Postprocessor
 # 
 # Next, we define the postprocessor, which applies PCA to the `mach` field:
 
-# In[8]:
+# In[ ]:
 
 
 postprocessor = WrappedPlaidSklearnTransformer(PCA(), **config['pca_mach'])
 postprocessor
 
 
-# 3. TransformedTargetRegressor
+# ### 3. TransformedTargetRegressor
 # 
 # The Gaussian Process regressor takes the transformed `angle_in` and `mach_out` scalars, along with the PCA coefficients of the mesh node coordinates as inputs, and predicts the PCA coefficients of the `mach` field as outputs. This is facilitated by using a `PlaidTransformedTargetRegressor`.
 
@@ -190,11 +192,11 @@ target_regressor
 
 # `PlaidTransformedTargetRegressor` functions like scikit-learn’s `TransformedTargetRegressor` but operates directly on PLAID datasets.
 
-# 4. Pipeline assembling
+# ### 4. Pipeline assembling
 # 
 # We then define the complete pipeline as follows:
 
-# In[10]:
+# In[ ]:
 
 
 pipeline = Pipeline(
@@ -210,7 +212,7 @@ pipeline
 # 
 # We now use Optuna to optimize hyperparameters, specifically tuning the number of components for the two `PCA` blocks using three-fold cross-validation.
 
-# In[11]:
+# In[ ]:
 
 
 def objective(trial):
@@ -247,7 +249,7 @@ def objective(trial):
 
 # We maximize the defined objective function over 4 trials selected by Optuna.
 
-# In[12]:
+# In[ ]:
 
 
 study = optuna.create_study(direction='maximize')
@@ -257,7 +259,7 @@ print("best_params =", study.best_params)
 
 # We retrieve the best hyperparameters found by Optuna and use them to define the `optimized_pipeline`.
 
-# In[13]:
+# In[ ]:
 
 
 optimized_pipeline = clone(pipeline).set_params(**study.best_params)
@@ -267,7 +269,7 @@ optimized_pipeline
 
 # Next, we fit the `optimized_pipeline` to the `dataset_train` dataset and evaluate its performance on the same data.
 
-# In[14]:
+# In[ ]:
 
 
 dataset_pred = optimized_pipeline.predict(dataset_train)
@@ -277,7 +279,7 @@ print("score =", score, ", error =", 1. - score)
 
 # We use an anisotropic kernel in the Gaussian Process. Its optimized `length_scale` is a vector with dimensions equal to 2 plus the number of PCA components from `preprocessor__pca_nodes__sklearn_block__n_components`, accounting for the two input scalars.
 
-# In[15]:
+# In[ ]:
 
 
 print("Dimension GP kernel length_scale =", len(optimized_pipeline.named_steps["regressor"].regressor_.sklearn_block_.estimators_[0].kernel_.get_params()['length_scale']))
@@ -286,7 +288,7 @@ print("Expected dimension =", 2 + study.best_params['preprocessor__pca_nodes__sk
 
 # The error remains non-zero due to the approximation introduced by PCA. Since the Gaussian Process regressor interpolates, the error is expected to vanish on the training set if all PCA modes are retained.
 
-# In[16]:
+# In[ ]:
 
 
 exact_pipeline = clone(pipeline).set_params(
@@ -303,7 +305,7 @@ print("score =", score, ", error =", 1. - score)
 # 
 # Since our pipeline nodes conform to the scikit-learn API, the constructed pipeline can be used directly with `GridSearchCV`.
 
-# In[17]:
+# In[ ]:
 
 
 param_grid = {
@@ -318,7 +320,7 @@ search.fit(dataset_train)
 
 # We evaluate the performance of the optimized pipeline by computing its score on the training set.
 
-# In[18]:
+# In[ ]:
 
 
 print("best_params =", search.best_params_)
