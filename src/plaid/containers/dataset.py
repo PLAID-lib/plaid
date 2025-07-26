@@ -1447,9 +1447,7 @@ class Dataset(object):
 
         # time series
         nb_time_series = len(self.get_time_series_names())
-        str_repr += (
-            f"{nb_time_series} time_series{'' if nb_time_series == 1 else 's'}, "
-        )
+        str_repr += f"{nb_time_series} time_series, "
 
         # fields
         nb_fields = len(self.get_field_names())
