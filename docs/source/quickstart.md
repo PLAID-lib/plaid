@@ -1,4 +1,4 @@
-# Getting Started
+# Quickstart
 
 Everything you need to know to start using the PLAID.
 

@@ -1,4 +1,4 @@
-# Contributing to PLAID
+# How to Contribute
 
 Thank you for your interest in contributing to PLAID Project! We welcome contributions from the community to help make this project even better.
 
