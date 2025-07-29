@@ -99,6 +99,11 @@ class Dataset(object):
                 >>> Dataset(3 samples, 2 scalars, 5 fields)
                 print(len(dataset))
                 >>> 3
+                for sample in dataset:
+                    print(sample)
+                >>> Sample(1 scalar, 0 time series, 1 timestamp, 2 fields)
+                    Sample(1 scalar, 0 time series, 0 timestamps, 0 fields)
+                    Sample(2 scalars, 0 time series, 1 timestamp, 2 fields)
 
         Caution:
             It is assumed that you provided a compatible PLAID dataset.
