@@ -163,6 +163,13 @@ added_sample_id = dataset.add_sample(sample_03)
 print(f"{added_sample_id = }")
 
 # %% [markdown]
+# ### Iterate through Samples in the Dataset
+
+# %%
+for sample in dataset:
+    print(sample)
+
+# %% [markdown]
 # ### Add and display information to the Dataset
 
 # %%
