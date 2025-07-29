@@ -5,6 +5,9 @@ tests/post/*.yaml
 tests/problem_definition/*.csv
 examples/**/*.png
 tests/problem_definition/split.csv
+# Heavy data
+*.cgns
+!notebooks/ex_rotor37_pv.cgns
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -13,6 +16,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+venv/
 build/
 develop-eggs/
 dist/
@@ -32,6 +36,7 @@ share/python-wheels/
 *.egg
 MANIFEST
 _version.py
+oryx-build-commands.txt
 
 # Unit test / coverage reports
 htmlcov/
@@ -68,10 +73,6 @@ docs/autoapi/
 docs/_extra/
 docs/source/notebooks/*.png
 docs/source/notebooks/*.yaml
-
-# Heavy data
-*.cgns
-!notebooks/ex_rotor37_pv.cgns
 
 ###############################################################################
 # .gitignore PATTERN FORMAT:
