@@ -1,0 +1,50 @@
+input_scalar_scaler:
+  in_features_identifiers:
+    - type: scalar
+      name: P
+    - type: scalar
+      name: p1
+    - type: scalar
+      name: p2
+    - type: scalar
+      name: p3
+    - type: scalar
+      name: p4
+    - type: scalar
+      name: p5
+
+pca_nodes:
+  in_features_identifiers:
+    - type: nodes
+      time: 0.
+  out_features_identifiers:
+    - type: scalar
+      name: reduced_nodes_*
+
+pca_u1:
+  in_features_identifiers:
+    - type: field
+      name: U1
+  out_features_identifiers:
+    - type: scalar
+      name: reduced_U1_*
+
+regressor_mach:
+  in_features_identifiers:
+    - type: scalar
+      name: P
+    - type: scalar
+      name: p1
+    - type: scalar
+      name: p2
+    - type: scalar
+      name: p3
+    - type: scalar
+      name: p4
+    - type: scalar
+      name: p5
+    - type: scalar
+      name: reduced_nodes_*
+  out_features_identifiers:
+    - type: scalar
+      name: reduced_U1_*
