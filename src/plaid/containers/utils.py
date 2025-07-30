@@ -149,19 +149,21 @@ def check_features_size_homogeneity(
     nb_samples = len(features_values)
     nb_features = len(feature_identifiers)
     for i in range(nb_features):
+        name_feature = feature_identifiers[i].get("name", "nodes")
         size = safe_len(features_values[0][i])
         for j in range(nb_samples):
             size_j = safe_len(features_values[j][i])
             assert size_j == size, (
-                f"Inconsistent feature sizes for feature {i} (name {feature_identifiers[i]['name']}): has size {size_j} in sample {j}, while having size {size} in sample 0"
+                f"Inconsistent feature sizes for feature {i} (name {name_feature}): has size {size_j} in sample {j}, while having size {size} in sample 0"
             )
 
     for j in range(nb_samples):
         size = safe_len(features_values[j][0])
         for i in range(nb_features):
+            name_feature = feature_identifiers[i].get("name", "nodes")
             size_i = safe_len(features_values[j][i])
             assert size_i == size, (
-                f"Inconsistent feature sizes in sample {j}: feature {i} (name {feature_identifiers[i]['name']}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) is of size {size}"
+                f"Inconsistent feature sizes in sample {j}: feature {i} (name {name_feature}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) is of size {size}"
             )
     return size
 
