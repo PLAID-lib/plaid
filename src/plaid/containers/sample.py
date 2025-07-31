@@ -204,6 +204,8 @@ class Sample(BaseModel):
             "active_time": None,
         }
 
+        self._extra_data = None
+
     def copy(self) -> Self:
         """Create a deep copy of the sample.
 
@@ -2066,6 +2068,8 @@ class Sample(BaseModel):
                     sample.add_tree(source_sample.get_mesh(time))
 
             sample._add_feature(feat_id, feature)
+
+        sample._extra_data = copy.deepcopy(self._extra_data)
 
         return sample
 

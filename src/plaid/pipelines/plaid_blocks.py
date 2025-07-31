@@ -13,10 +13,12 @@ Includes:
 #
 
 import copy
+from typing import Union
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
 from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
 
 from plaid.containers.dataset import Dataset
@@ -39,7 +41,10 @@ class PlaidColumnTransformer(ColumnTransformer):
         At fit, it is checked that `plaid_transformers` share no in_features_identifiers and no out_features_identifiers.
     """
 
-    def __init__(self, plaid_transformers: list[tuple[str, TransformerMixin]] = None):
+    def __init__(
+        self,
+        plaid_transformers: list[tuple[str, Union[TransformerMixin, Pipeline]]] = None,
+    ):
         self.plaid_transformers = plaid_transformers
 
         if plaid_transformers:
@@ -66,9 +71,12 @@ class PlaidColumnTransformer(ColumnTransformer):
 
         self.in_features_identifiers_ = []
         for _, transformer in self.plaid_transformers:
-            self.in_features_identifiers_ += copy.deepcopy(
-                transformer.in_features_identifiers
+            in_feat_id = (
+                transformer[0].in_features_identifiers
+                if isinstance(transformer, Pipeline)
+                else transformer.in_features_identifiers
             )
+            self.in_features_identifiers_ += copy.deepcopy(in_feat_id)
 
         assert not has_duplicates_feature_ids(self.in_features_identifiers_), (
             "Identical in_features_identifiers found among provided transformer: not compatible with PlaidColumnTransformer."
@@ -81,17 +89,23 @@ class PlaidColumnTransformer(ColumnTransformer):
 
         self.transformers_ = []
         for name, transformer in self.plaid_transformers_:
-            sub_dataset = dataset.from_features_identifier(
-                transformer.in_features_identifiers
+            in_feat_id = (
+                transformer[0].in_features_identifiers
+                if isinstance(transformer, Pipeline)
+                else transformer.in_features_identifiers
             )
+            sub_dataset = dataset.from_features_identifier(in_feat_id)
             transformer_ = clone(transformer).fit(sub_dataset)
             self.transformers_.append((name, transformer_, "_"))
 
         self.out_features_identifiers_ = []
         for _, transformer, _ in self.transformers_:
-            self.out_features_identifiers_ += copy.deepcopy(
-                transformer.out_features_identifiers_
+            out_feat_id = (
+                transformer[-1].out_features_identifiers_
+                if isinstance(transformer, Pipeline)
+                else transformer.out_features_identifiers_
             )
+            self.out_features_identifiers_ += copy.deepcopy(out_feat_id)
 
         assert not has_duplicates_feature_ids(self.out_features_identifiers_), (
             "Identical out_features_identifiers found among provided transformer: not compatible with PlaidColumnTransformer."
@@ -115,9 +129,12 @@ class PlaidColumnTransformer(ColumnTransformer):
 
         transformed_datasets = [dataset.copy()]
         for _, transformer_, _ in self.transformers_:
-            sub_dataset = dataset.from_features_identifier(
-                transformer_.in_features_identifiers
+            in_feat_id = (
+                transformer_[0].in_features_identifiers_
+                if isinstance(transformer_, Pipeline)
+                else transformer_.in_features_identifiers_
             )
+            sub_dataset = dataset.from_features_identifier(in_feat_id)
             transformed = transformer_.transform(sub_dataset)
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)
@@ -150,8 +167,8 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
 
     def __init__(
         self,
-        regressor: RegressorMixin = None,
-        transformer: TransformerMixin = None,
+        regressor: Union[RegressorMixin, Pipeline] = None,
+        transformer: Union[TransformerMixin, Pipeline] = None,
     ):
         self.regressor = regressor
         self.transformer = transformer
@@ -175,12 +192,19 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         transformed_dataset = self.transformer_.transform(dataset)
         self.regressor_ = clone(self.regressor).fit(transformed_dataset)
 
-        self.in_features_identifiers_ = copy.deepcopy(
-            self.regressor_.in_features_identifiers_
+        in_feat_id = (
+            self.regressor_[0].in_features_identifiers_
+            if isinstance(self.regressor_, Pipeline)
+            else self.regressor_.in_features_identifiers_
         )
-        self.out_features_identifiers_ = copy.deepcopy(
-            self.transformer_.in_features_identifiers_
+        self.in_features_identifiers_ = copy.deepcopy(in_feat_id)
+
+        out_feat_id = (
+            self.transformer_[0].in_features_identifiers_
+            if isinstance(self.transformer_, Pipeline)
+            else self.transformer_.in_features_identifiers_
         )
+        self.out_features_identifiers_ = copy.deepcopy(out_feat_id)
 
         return self
 

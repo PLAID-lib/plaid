@@ -11,7 +11,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
-from plaid.containers.utils import check_features_type_homogeneity
+from plaid.containers.utils import get_feature_type_and_details_from_identifier, check_features_type_homogeneity
 
 import Muscat.Containers.ElementsDescription as ED
 import Muscat.Containers.Filters.FilterObjects as FilterObjects
@@ -37,7 +37,279 @@ from typing import Tuple, Callable
 
 
 
-class MeshMorphingInterpolationTransformer(TransformerMixin, BaseEstimator):
+class MMGPPreparer(TransformerMixin, BaseEstimator):
+    """Adapter for using a scikit-learn transformer on PLAID Datasets.
+
+    Transforms tabular data extracted from homogeneous feature identifiers,
+    and returns results as a `Dataset`. Supports forward and inverse transforms.
+
+    Args:
+        sklearn_block: A scikit-learn Transformer implementing fit/transform APIs.
+        in_features_identifiers: List of feature identifiers to extract input data from.
+        out_features_identifiers: List of feature identifiers used for outputs. If None,
+            defaults to `in_features_identifiers`.
+    """
+    # TODO: check if restrict_to_features=True can be used to reduce further memory consumption
+    def __init__(
+        self,
+        common_mesh_id: int = None
+    ):
+        self.common_mesh_id = common_mesh_id
+
+    def morph(self, mesh):
+        mesh_renumb, _, n_boundary = renumber_mesh_for_parametrization(
+            mesh, in_place=False)
+        mesh_renumb.elemFields = mesh_renumb.nodeFields = {}
+        morphed_mesh, _ = floater_mesh_parametrization(
+            mesh_renumb, n_boundary)
+        return morphed_mesh
+
+    def fit(self, dataset: Dataset, _y=None):
+        """Fits the underlying scikit-learn transformer on selected input features.
+
+        Args:
+            dataset: A `Dataset` object containing the features to transform.
+            _y: Ignored.
+
+        Returns:
+            self: The fitted transformer.
+        """
+
+        self.common_mesh_id_ = 0 if self.common_mesh_id is None else self.common_mesh_id
+
+        self.morphed_common_mesh_ = self.morph(CGNSToMesh(dataset[self.common_mesh_id_].get_mesh()))
+        self.morphed_common_tree_ = MeshToCGNS(self.morphed_common_mesh_, exportOriginalIDs=False, tagsAsFields=False)
+
+        return self
+
+    def transform(self, dataset: Dataset):
+        """Applies the fitted transformer to the selected input features.
+
+        Args:
+            dataset: A `Dataset` object to transform.
+
+        Returns:
+            Dataset: Transformed features wrapped as a new `Dataset`.
+        """
+        check_is_fitted(self, "morphed_common_mesh_")
+
+        # n_dim = self.morphed_common_mesh_.GetPointsDimensionality()
+        # coord_names = ["coords_X", "coords_Y", "coords_Z"][:n_dim]
+
+        samples = []
+        for sample in dataset:
+            # morph the mesh of the current sample
+            mesh = CGNSToMesh(sample.get_mesh())
+            morphed_mesh = self.morph(mesh)
+
+            # compute the FE interpolation operator
+            proj_operator = compute_FE_projection_operator(morphed_mesh, self.morphed_common_mesh_)
+            inv_proj_operator = compute_FE_projection_operator(self.morphed_common_mesh_, morphed_mesh)
+
+            # # initialize morph_proj_sample and add the common mesh as geometrical support of morph_proj_sample
+            # morph_proj_sample = Sample()
+            # morph_proj_sample.add_tree(copy.deepcopy(self.morphed_common_tree_))
+
+            # # update all features (except nodes and fields) of morph_proj_sample from the ones of current sample
+            # features_identifiers = sample.get_all_features_identifiers()
+            # features_identifiers = [feat_id for feat_id in features_identifiers if feat_id.get("type") != "nodes"]
+            # features = sample.get_features_from_identifiers(features_identifiers)
+            # morph_proj_sample.update_features_from_identifier(features_identifiers, features, in_place=True)
+
+            # # add morph_proj_sample coord fields as the node coordinates of current sample
+            # for nodes_feat_id in sample.get_all_features_identifiers_by_type("nodes"):
+            #     args = {key: value for key, value in nodes_feat_id.items() if key != 'type'}
+            #     coords = sample.get_feature_from_identifier(nodes_feat_id).reshape((-1,n_dim))
+            #     for dim in range(n_dim):
+            #         morph_proj_sample.add_field(name = coord_names[dim], field = coords[:,dim], **args)
+
+            # update all field of morph_proj_sample by finite element interpolation onto the common mesh
+            # field_features_identifiers = morph_proj_sample.get_all_features_identifiers_by_type("field")
+            # projected_field = [proj_operator.dot(field) for field in morph_proj_sample.get_features_from_identifiers(field_features_identifiers)]
+            # morph_proj_sample.update_features_from_identifier(field_features_identifiers, projected_field, in_place=True)
+
+            # # add input nodes coordinate to extra_sample for inverse transform needs
+            # extra_sample = Sample()
+            # morphed_tree = MeshToCGNS(morphed_mesh, exportOriginalIDs=False, tagsAsFields=False)
+            # extra_sample.add_tree(morphed_tree)
+            # for nodes_feat_id in sample.get_all_features_identifiers_by_type("nodes"):
+            #     args = {key: value for key, value in nodes_feat_id.items() if key != 'type'}
+            #     coords = sample.get_feature_from_identifier(nodes_feat_id).reshape((-1,n_dim))
+            #     for dim in range(n_dim):
+            #         extra_sample.add_field(name = coord_names[dim], field = coords[:,dim], **args)
+
+            sample_ = sample.copy()
+            sample_._extra_data = {
+                    'init_mesh':mesh,
+                    'proj_operator':proj_operator,
+                    'inv_proj_operator':inv_proj_operator
+                }
+
+            samples.append(sample_)
+
+        transformed_dataset = Dataset.from_list_of_samples(samples)
+
+        return transformed_dataset
+
+
+    def inverse_transform(self, dataset: Dataset):
+        """Applies inverse transformation to the output features.
+
+        Args:
+            dataset: A `Dataset` object with transformed output features.
+
+        Returns:
+            Dataset: Dataset with inverse-transformed features.
+        """
+        check_is_fitted(self, "morphed_common_mesh_")
+
+        dataset_ = dataset.copy()
+        for sample in dataset_:
+            sample._extra_data = None
+
+        # n_dim = self.morphed_common_mesh_.GetPointsDimensionality()
+        # coord_names = ["coords_X", "coords_Y", "coords_Z"][:n_dim]
+
+        # samples = []
+        # for transformed_sample in zip(dataset):
+        #     # morph the mesh of the current sample
+        #     mesh = transformed_sample._extra_data['init_mesh']
+
+        #     # compute the FE interpolation operator
+        #     inv_proj_operator = compute_FE_projection_operator(self.morphed_common_mesh_, mesh)
+
+        #     # initialize sample and add the inverse morphed mesh
+        #     sample = Sample()
+        #     sample.add_tree(MeshToCGNS(mesh, exportOriginalIDs=False, tagsAsFields=False))
+        #     sample = sample.del_all_fields()
+
+        #     # update all features (except nodes and fields) of sample from the ones of current transformed_sample
+        #     features_identifiers = extra_sample.get_all_features_identifiers()
+        #     # features_identifiers = [feat_id for feat_id in features_identifiers if feat_id.get("type") not in ("nodes", "field")]
+        #     features = extra_sample.get_features_from_identifiers(features_identifiers)
+        #     sample.update_features_from_identifier(features_identifiers, features, in_place=True)
+
+        #     # update all field of sample by finite element interpolation from the common mesh
+        #     field_features_identifiers = transformed_sample.get_all_features_identifiers_by_type("field")
+        #     field_features_identifiers = [feat_id for feat_id in field_features_identifiers if feat_id.get("name") not in coord_names]
+        #     for field_id in field_features_identifiers:
+        #         args = {key: value for key, value in field_id.items() if key != 'type'}
+        #         field = transformed_sample.get_feature_from_identifier(field_id)
+        #         sample.add_field(field = inv_proj_operator.dot(field), **args)
+
+        #     samples.append(sample)
+
+        # return Dataset.from_list_of_samples(samples)
+
+        return dataset_
+
+
+
+class MMGPTransformer(TransformerMixin, BaseEstimator):
+    """Adapter for using a scikit-learn transformer on PLAID Datasets.
+
+    Transforms tabular data extracted from homogeneous feature identifiers,
+    and returns results as a `Dataset`. Supports forward and inverse transforms.
+
+    Args:
+        sklearn_block: A scikit-learn Transformer implementing fit/transform APIs.
+        in_features_identifiers: List of feature identifiers to extract input data from.
+        out_features_identifiers: List of feature identifiers used for outputs. If None,
+            defaults to `in_features_identifiers`.
+    """
+    # TODO: check if restrict_to_features=True can be used to reduce further memory consumption
+    def __init__(
+        self,
+        in_features_identifiers: list[dict] = None,
+    ):
+        self.in_features_identifiers = in_features_identifiers
+
+    def fit(self, dataset: Dataset, _y=None):
+
+        # print("self.in_features_identifiers =", self.in_features_identifiers )
+        # print(dataset)
+        # print(">>", dataset[0]._extra_data)
+        # 1./0.
+
+        self.n_dim_ = dataset[0]._extra_data['init_mesh'].GetPointsDimensionality()
+        self.coord_names_ = ["coords_X", "coords_Y", "coords_Z"][:self.n_dim_]
+
+        self.in_features_identifiers_ = copy.deepcopy(self.in_features_identifiers)
+
+        return self
+
+
+    def transform(self, dataset: Dataset):
+        check_is_fitted(self, "n_dim_")
+
+        transformed_samples = []
+        for sample in dataset:
+
+            proj_operator     = sample._extra_data['proj_operator']
+
+            transformed_sample = sample.copy()
+
+            for feat_id in self.in_features_identifiers:
+
+                feature_type, feature_details = get_feature_type_and_details_from_identifier(feat_id)
+
+                if feature_type == "nodes":
+                    coords = sample.get_feature_from_identifier(feat_id).reshape((-1,self.n_dim_))
+                    nodes = []
+                    for dim in range(self.n_dim_):
+                        nodes.append(proj_operator.dot(coords[:,dim]))
+                        # transformed_sample.add_field(name = self.coord_names_[dim], field = proj_operator.dot(coords[:,dim]), **feature_details)
+                    transformed_sample.set_nodes(nodes = np.stack(nodes).T, **feature_details)
+                elif feature_type == "field":
+                    field = sample.get_feature_from_identifier(feat_id)
+                    transformed_sample.add_field(field = proj_operator.dot(field), **feature_details, warning_overwrite = False)
+                else:
+                    raise(f"Feature type {feat_id['type']} not compatible with MMGPTransformer")
+
+            transformed_samples.append(transformed_sample)
+
+        transformed_dataset = Dataset.from_list_of_samples(transformed_samples)
+
+        return transformed_dataset
+
+
+    def inverse_transform(self, dataset: Dataset):
+        check_is_fitted(self, "n_dim_")
+
+        samples = []
+        for transformed_sample in dataset:
+
+            inv_proj_operator = transformed_sample._extra_data['inv_proj_operator']
+
+            sample = transformed_sample.copy()
+
+            for feat_id in self.in_features_identifiers:
+
+                feature_type, feature_details = get_feature_type_and_details_from_identifier(feat_id)
+
+                if feature_type == "nodes":
+                    coords = transformed_sample.get_feature_from_identifier(feat_id).reshape((-1,self.n_dim_))
+                    nodes = []
+                    for dim in range(self.n_dim_):
+                        nodes.append(inv_proj_operator.dot(coords[:,dim]))
+                    # nodes = []
+                    # for dim in range(self.n_dim_):
+                    #     nodes.append(inv_proj_operator.dot(transformed_sample.get_field(name = self.coord_names_[dim], **feature_details)))
+                    #     sample.del_field(name = self.coord_names_[dim], **feature_details)
+                    sample.set_nodes(nodes = np.stack(nodes).T, **feature_details)
+                elif feature_type == "field":
+                    field = transformed_sample.get_feature_from_identifier(feat_id)
+                    sample.add_field(field = inv_proj_operator.dot(field), **feature_details, warning_overwrite = False)
+                else:
+                    raise(f"Feature type {feat_id['type']} not compatible with MMGPTransformer")
+
+            samples.append(sample)
+
+        transformed_dataset = Dataset.from_list_of_samples(samples)
+
+        return transformed_dataset
+
+class MeshMorphingInterpolationFieldTransformer(TransformerMixin, BaseEstimator):
     """Adapter for using a scikit-learn transformer on PLAID Datasets.
 
     Transforms tabular data extracted from homogeneous feature identifiers,
@@ -195,6 +467,169 @@ class MeshMorphingInterpolationTransformer(TransformerMixin, BaseEstimator):
 
         return Dataset.from_list_of_samples(samples)
 
+
+
+
+
+
+
+class MeshMorphingInterpolationTransformerOld(TransformerMixin, BaseEstimator):
+    """Adapter for using a scikit-learn transformer on PLAID Datasets.
+
+    Transforms tabular data extracted from homogeneous feature identifiers,
+    and returns results as a `Dataset`. Supports forward and inverse transforms.
+
+    Args:
+        sklearn_block: A scikit-learn Transformer implementing fit/transform APIs.
+        in_features_identifiers: List of feature identifiers to extract input data from.
+        out_features_identifiers: List of feature identifiers used for outputs. If None,
+            defaults to `in_features_identifiers`.
+    """
+    # TODO: check if restrict_to_features=True can be used to reduce further memory consumption
+    def __init__(
+        self,
+        common_mesh_id: int = None
+    ):
+        self.common_mesh_id = common_mesh_id
+
+    def morph(self, mesh):
+        mesh_renumb, _, n_boundary = renumber_mesh_for_parametrization(
+            mesh, in_place=False)
+        mesh_renumb.elemFields = mesh_renumb.nodeFields = {}
+        morphed_mesh, _ = floater_mesh_parametrization(
+            mesh_renumb, n_boundary)
+        return morphed_mesh
+
+    def fit(self, dataset: Dataset, _y=None):
+        """Fits the underlying scikit-learn transformer on selected input features.
+
+        Args:
+            dataset: A `Dataset` object containing the features to transform.
+            _y: Ignored.
+
+        Returns:
+            self: The fitted transformer.
+        """
+
+        self.common_mesh_id_ = 0 if self.common_mesh_id is None else self.common_mesh_id
+
+        self.morphed_common_mesh_ = self.morph(CGNSToMesh(dataset[self.common_mesh_id_].get_mesh()))
+        self.morphed_common_tree_ = MeshToCGNS(self.morphed_common_mesh_, exportOriginalIDs=False, tagsAsFields=False)
+
+        return self
+
+    def transform(self, dataset: Dataset):
+        """Applies the fitted transformer to the selected input features.
+
+        Args:
+            dataset: A `Dataset` object to transform.
+
+        Returns:
+            Dataset: Transformed features wrapped as a new `Dataset`.
+        """
+        check_is_fitted(self, "morphed_common_mesh_")
+
+        n_dim = self.morphed_common_mesh_.GetPointsDimensionality()
+        coord_names = ["coords_X", "coords_Y", "coords_Z"][:n_dim]
+
+        transformed_samples = []
+        extra_samples = []
+        for sample in dataset:
+            # morph the mesh of the current sample
+            morphed_mesh = self.morph(CGNSToMesh(sample.get_mesh()))
+
+            # compute the FE interpolation operator
+            proj_operator = compute_FE_projection_operator(morphed_mesh, self.morphed_common_mesh_)
+
+            # initialize morph_proj_sample and add the common mesh as geometrical support of morph_proj_sample
+            morph_proj_sample = Sample()
+            morph_proj_sample.add_tree(copy.deepcopy(self.morphed_common_tree_))
+
+            # update all features (except nodes and fields) of morph_proj_sample from the ones of current sample
+            features_identifiers = sample.get_all_features_identifiers()
+            features_identifiers = [feat_id for feat_id in features_identifiers if feat_id.get("type") != "nodes"]
+            features = sample.get_features_from_identifiers(features_identifiers)
+            morph_proj_sample.update_features_from_identifier(features_identifiers, features, in_place=True)
+
+            # add morph_proj_sample coord fields as the node coordinates of current sample
+            for nodes_feat_id in sample.get_all_features_identifiers_by_type("nodes"):
+                args = {key: value for key, value in nodes_feat_id.items() if key != 'type'}
+                coords = sample.get_feature_from_identifier(nodes_feat_id).reshape((-1,n_dim))
+                for dim in range(n_dim):
+                    morph_proj_sample.add_field(name = coord_names[dim], field = coords[:,dim], **args)
+
+            # update all field of morph_proj_sample by finite element interpolation onto the common mesh
+            field_features_identifiers = morph_proj_sample.get_all_features_identifiers_by_type("field")
+            projected_field = [proj_operator.dot(field) for field in morph_proj_sample.get_features_from_identifiers(field_features_identifiers)]
+            morph_proj_sample.update_features_from_identifier(field_features_identifiers, projected_field, in_place=True)
+
+            # add input nodes coordinate to extra_sample for inverse transform needs
+            extra_sample = Sample()
+            morphed_tree = MeshToCGNS(morphed_mesh, exportOriginalIDs=False, tagsAsFields=False)
+            extra_sample.add_tree(morphed_tree)
+            for nodes_feat_id in sample.get_all_features_identifiers_by_type("nodes"):
+                args = {key: value for key, value in nodes_feat_id.items() if key != 'type'}
+                coords = sample.get_feature_from_identifier(nodes_feat_id).reshape((-1,n_dim))
+                for dim in range(n_dim):
+                    extra_sample.add_field(name = coord_names[dim], field = coords[:,dim], **args)
+
+            transformed_samples.append(morph_proj_sample)
+            extra_samples.append(extra_sample)
+
+        transformed_dataset = Dataset.from_list_of_samples(transformed_samples)
+        transformed_dataset.extra_data = Dataset.from_list_of_samples(extra_samples)
+
+        return transformed_dataset
+
+
+    def inverse_transform(self, dataset: Dataset):
+        """Applies inverse transformation to the output features.
+
+        Args:
+            dataset: A `Dataset` object with transformed output features.
+
+        Returns:
+            Dataset: Dataset with inverse-transformed features.
+        """
+        check_is_fitted(self, "morphed_common_mesh_")
+
+        n_dim = self.morphed_common_mesh_.GetPointsDimensionality()
+        coord_names = ["coords_X", "coords_Y", "coords_Z"][:n_dim]
+
+        samples = []
+        for transformed_sample, extra_sample in zip(dataset, dataset.extra_data):
+            # morph the mesh of the current sample
+            tree = extra_sample.get_mesh()
+            mesh = CGNSToMesh(tree)
+
+            # compute the FE interpolation operator
+            inv_proj_operator = compute_FE_projection_operator(self.morphed_common_mesh_, mesh)
+
+            nodes = [extra_sample.get_field(cn) for cn in coord_names]
+            mesh.nodes = np.vstack(nodes).T
+
+            # initialize sample and add the inverse morphed mesh
+            sample = Sample()
+            sample.add_tree(MeshToCGNS(mesh, exportOriginalIDs=False, tagsAsFields=False))
+            sample = sample.del_all_fields()
+
+            # update all features (except nodes and fields) of sample from the ones of current transformed_sample
+            features_identifiers = extra_sample.get_all_features_identifiers()
+            # features_identifiers = [feat_id for feat_id in features_identifiers if feat_id.get("type") not in ("nodes", "field")]
+            features = extra_sample.get_features_from_identifiers(features_identifiers)
+            sample.update_features_from_identifier(features_identifiers, features, in_place=True)
+
+            # update all field of sample by finite element interpolation from the common mesh
+            field_features_identifiers = transformed_sample.get_all_features_identifiers_by_type("field")
+            field_features_identifiers = [feat_id for feat_id in field_features_identifiers if feat_id.get("name") not in coord_names]
+            for field_id in field_features_identifiers:
+                args = {key: value for key, value in field_id.items() if key != 'type'}
+                field = transformed_sample.get_feature_from_identifier(field_id)
+                sample.add_field(field = inv_proj_operator.dot(field), **args)
+
+            samples.append(sample)
+
+        return Dataset.from_list_of_samples(samples)
 
 
 def compute_FE_projection_operator(origin_mesh: Mesh, target_mesh: Mesh,
