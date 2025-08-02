@@ -180,7 +180,7 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
     pca_transformer = [
         (
             "pca",
-            PCA(n_components=16),
+            PCA(n_components=40),
             np.arange(
                 2, 2 + nodes_train.shape[-1]
             ),
@@ -193,7 +193,7 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
     output_preprocessor = Pipeline(
         steps=[
             ("scaler", MinMaxScaler()),
-            ("pca", PCA(n_components=32))
+            ("pca", PCA(n_components=80))
             if apply_output_pca
             else ("identity", "passthrough"),
         ]
@@ -295,3 +295,6 @@ if __name__ == "__main__":
 
     with open("prediction.pkl", "wb") as file:
         pickle.dump(reference, file)
+
+    # duration train: 416.71344685554504
+    # duration test: 1.2284891605377197
