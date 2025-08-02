@@ -1,3 +1,3 @@
 Scripts for generating the benchmarking entries of https://huggingface.co/spaces/PLAIDcompetitions/2DElastoPlastoDynamics, where all instructions for participating are detailed.
 
-MMGP is not application on this dataset (due to topology variations)
+MMGP is not applicable on this dataset (due to topology variations)
