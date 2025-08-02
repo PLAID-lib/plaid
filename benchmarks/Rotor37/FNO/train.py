@@ -23,7 +23,7 @@ dataset._load_from_dir_(os.path.join(prepared_data_dir, "dataset"), verbose=True
 problem = ProblemDefinition()
 problem._load_from_dir_(pb_defpath)
 
-ids_train = problem.get_split('train_500')
+ids_train = problem.get_split('train_1000')
 ids_test  = problem.get_split('test')
 
 
@@ -100,7 +100,7 @@ padding=2,
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.MSELoss()
 
-n_epoch = 20
+n_epoch = 60
 for epoch in range(n_epoch):
     model.train()
     total_loss = 0.0
@@ -162,4 +162,4 @@ dataset[ids_test]._save_to_dir_(predicted_data_dir)
 
 
 print("duration train =", time.time()-start)
-# GPUA30, 2742 seconds
+# GPUA30, 8002 seconds

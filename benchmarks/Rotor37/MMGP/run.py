@@ -5,13 +5,14 @@ import numpy as np
 from datasets import load_dataset
 from GPy.kern import RBF, Matern32, Matern52
 from GPy.models import GPRegression
+from plaid.containers.sample import Sample
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
+import time
 
-from plaid.containers.sample import Sample
 
 dataset = load_dataset("PLAID-datasets/Rotor37", split="all_samples")
 
@@ -25,7 +26,8 @@ out_scalars_names = ["Massflow", "Compression_ratio", "Efficiency"]
 def convert_data(
     ids: List[int],
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Converts a list of sample IDs into structured numpy arrays containing input and output data.
+    """
+    Converts a list of sample IDs into structured numpy arrays containing input and output data.
 
     Parameters:
     ----------
@@ -47,6 +49,7 @@ def convert_data(
     Y_temperature : np.ndarray
         Array containing field values for Temperature across samples.
     """
+
     X_scalars = []
     Y_scalars = []
     Y_density = []
@@ -87,7 +90,8 @@ def convert_data(
 
 
 class GPyRegressor(BaseEstimator, RegressorMixin):
-    """Custom Gaussian Process Regressor using GPy library.
+    """
+    Custom Gaussian Process Regressor using GPy library.
 
     Args:
         normalizer (bool): Whether to normalize the output.
@@ -104,7 +108,8 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
         self.num_restarts = num_restarts
 
     def fit(self, X, y):
-        """Fit the Gaussian Process model to the data.
+        """
+        Fit the Gaussian Process model to the data.
 
         Args:
             X (ndarray): Input features of shape (n_samples, n_features).
@@ -133,7 +138,8 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X, return_var: bool = False):
-        """Predict using the Gaussian Process model.
+        """
+        Predict using the Gaussian Process model.
 
         Args:
             X (ndarray): Input features of shape (n_samples, n_features).
@@ -153,7 +159,8 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
 
 
 def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
-    """Constructs a regression pipeline that includes:
+    """
+    Constructs a regression pipeline that includes:
     - PCA transformation on input features.
     - Standard scaling of input features.
     - Optional PCA transformation on the output.
@@ -173,8 +180,10 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
     pca_transformer = [
         (
             "pca",
-            PCA(n_components=32),
-            np.arange(2, 2 + nodes_train.shape[-1]),
+            PCA(n_components=16),
+            np.arange(
+                2, 2 + nodes_train.shape[-1]
+            ),
         )
     ]
 
@@ -184,7 +193,7 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
     output_preprocessor = Pipeline(
         steps=[
             ("scaler", MinMaxScaler()),
-            ("pca", PCA(n_components=64))
+            ("pca", PCA(n_components=32))
             if apply_output_pca
             else ("identity", "passthrough"),
         ]
@@ -210,6 +219,10 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
 
 
 if __name__ == "__main__":
+
+
+    start = time.time()
+
     (
         nodes_train,
         X_scalars_train,
@@ -218,6 +231,28 @@ if __name__ == "__main__":
         Y_pressure_train,
         Y_temperature_train,
     ) = convert_data(ids_train)
+
+
+    # Train
+    X_train = np.concatenate([X_scalars_train, nodes_train], axis=-1)
+
+    # scalars
+    pipeline_scalars = build_pipeline(apply_output_pca=False)
+    pipeline_scalars.fit(X_train, Y_scalars_train)
+    # fields
+    pipeline_density = build_pipeline(apply_output_pca=True)
+    pipeline_density.fit(X_train, Y_density_train)
+
+    pipeline_temperature = build_pipeline(apply_output_pca=True)
+    pipeline_temperature.fit(X_train, Y_temperature_train)
+
+    pipeline_pressure = build_pipeline(apply_output_pca=True)
+    pipeline_pressure.fit(X_train, Y_pressure_train)
+
+    print("duration train:", time.time()-start)
+    start = time.time()
+
+    # Predict
 
     (
         nodes_test,
@@ -228,35 +263,26 @@ if __name__ == "__main__":
         Y_temperature_test,
     ) = convert_data(ids_test)
 
-    X_train = np.concatenate([X_scalars_train, nodes_train], axis=-1)
     X_test = np.concatenate([X_scalars_test, nodes_test], axis=-1)
 
     predictions = {}
 
-    # scalars
-    pipeline_scalars = build_pipeline(apply_output_pca=False)
-    pipeline_scalars.fit(X_train, Y_scalars_train)
     y_pred = pipeline_scalars.predict(X_test)
-
     predictions["Massflow"] = y_pred[:, 0]
     predictions["Compression_ratio"] = y_pred[:, 1]
     predictions["Efficiency"] = y_pred[:, 2]
 
-    # fields
-    pipeline_density = build_pipeline(apply_output_pca=True)
-    pipeline_density.fit(X_train, Y_density_train)
     y_pred = pipeline_density.predict(X_test)
     predictions["Density"] = y_pred
 
-    pipeline_temperature = build_pipeline(apply_output_pca=True)
-    pipeline_temperature.fit(X_train, Y_temperature_train)
     y_pred = pipeline_temperature.predict(X_test)
     predictions["Temperature"] = y_pred
 
-    pipeline_pressure = build_pipeline(apply_output_pca=True)
-    pipeline_pressure.fit(X_train, Y_pressure_train)
     y_pred = pipeline_pressure.predict(X_test)
     predictions["Pressure"] = y_pred
+
+    print("duration test:", time.time()-start)
+    start = time.time()
 
     # dump
     reference = []
@@ -267,5 +293,5 @@ if __name__ == "__main__":
         for sn in out_scalars_names:
             reference[i][sn] = predictions[sn][i]
 
-    with open("predictions.pkl", "wb") as file:
+    with open("prediction.pkl", "wb") as file:
         pickle.dump(reference, file)

@@ -26,7 +26,7 @@ dataset_pred._load_from_dir_(predicted_data_dir, verbose=True, processes_number=
 problem = ProblemDefinition()
 problem._load_from_dir_(pb_defpath)
 
-ids_train = problem.get_split('train_500')
+ids_train = problem.get_split('train_1000')
 ids_test  = problem.get_split('test')
 
 
@@ -71,4 +71,4 @@ with open('prediction_rotor37.pkl', 'wb') as file:
     pickle.dump(prediction, file)
 
 print("duration construct predictions =", time.time()-start)
-# 117 seconds
+# 126 seconds

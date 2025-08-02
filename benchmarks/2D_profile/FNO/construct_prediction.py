@@ -70,4 +70,4 @@ with open('prediction_2d_profile.pkl', 'wb') as file:
     pickle.dump(prediction, file)
 
 print("duration construct predictions =", time.time()-start)
-# 24.2 seconds
+# 95 seconds
