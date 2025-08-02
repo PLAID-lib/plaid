@@ -1,0 +1,1 @@
+Scripts for generating the benchmarking entries of https://huggingface.co/spaces/PLAIDcompetitions/VKILS59Benchmark, where all instructions for participating are detailed.
