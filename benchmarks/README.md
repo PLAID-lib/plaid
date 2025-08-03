@@ -14,7 +14,8 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 - ✅: Added post-submission on Hugging Face
 - ❌: Not compatible with topology variation
   -->
-The results on Aug, 3rd, 2025 are:
+
+**Results as of August 3, 2025:**
  | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
 |-------------------|-----|------|------------|-------|-------|-------|
 | `Tensile2d`       |  0.0673 |  **0.0026**  |   0.0058     |  0.0154   |  0.021  |  *0.0038*  |
@@ -24,6 +25,10 @@ The results on Aug, 3rd, 2025 are:
 | `2D_profile`      |  0.0593 |  0.0365  |   *0.0319*     |  0.0425   |  0.0972  |  **0.0307**  |
 | `VKI-LS59`        | 0.0684  |  0.0312  |   0.0493     |  *0.0267*   |   0.0581  |  **0.0124**  |
 
-Additional notes:
-- MARIO is computationally expensive to train, but delivers excellent accuracy across all datasets, demonstrating its high versatility.
-- FNO struggles on datasets with strong mesh anisotropies (e.g., Rotor37 and 2D_profile): the need to project to and from regular grids leads to a significant loss of accuracy. On Rotor37, using a 3D regular grid also incurs high computational costs.
+**Additional notes:**
+- MMGP does not support variable mesh topologies, which prevents its application to some datasets. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with excellent accuracy (e.g., `Tensile2d`, `Rotor37`).
+- MARIO is computationally expensive to train but achieves consistently strong performance across most datasets. Its result on `2D_MultiScHypEl` is slightly higher than other top performers, which may reflect the challenge of capturing complex shape variability in that case.
+- Vi-Transformer and Augur perform well across all datasets, showing strong versatility and generalization capabilities.
+- FNO suffers significantly on datasets with strong mesh anisotropies—notably `Rotor37` and `2D_profile`. This is likely due to its reliance on projections to and from regular grids, which can degrade accuracy. Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
+
+
