@@ -1,6 +1,6 @@
 ## PLAID Benchmarks
 
-This folder contains the code used to generate the baselines for the [PLAID Benchmarks](https://huggingface.co/PLAIDcompetitions). These benchmarks are interactive: anyone can participate and submit their own model predictions. Each benchmark application provides the corresponding dataset, along with documentation on how to use it and submit a solution.
+This folder contains the code used to generate the baselines for the [PLAID Benchmarks](https://huggingface.co/PLAIDcompetitions), with the exception of the Augur results, which are produced using a [commercial solution](https://augurco.fr/). These benchmarks are interactive: anyone can participate by submitting their own model predictions. Each benchmark includes the corresponding dataset, along with documentation on how to use it and how to submit a solution.
 
 <!-- | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
 |-------------------|-----|------|------------|-------|-------|-------|
@@ -26,9 +26,9 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 | `VKI-LS59`        | 0.0684  |  0.0312  |   0.0493     |  *0.0267*   |   0.0581  |  **0.0124**  |
 
 **Additional notes:**
-- MMGP does not support variable mesh topologies, which prevents its application to some datasets. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with excellent accuracy (e.g., `Tensile2d`, `Rotor37`).
-- MARIO is computationally expensive to train but achieves consistently strong performance across most datasets. Its result on `2D_MultiScHypEl` is slightly higher than other top performers, which may reflect the challenge of capturing complex shape variability in that case.
-- Vi-Transformer and Augur perform well across all datasets, showing strong versatility and generalization capabilities.
-- FNO suffers significantly on datasets with strong mesh anisotropies—notably `Rotor37` and `2D_profile`. This is likely due to its reliance on projections to and from regular grids, which can degrade accuracy. Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
+- **MMGP** does not support variable mesh topologies, which prevents its application to some datasets. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with excellent accuracy (e.g., `Tensile2d`, `Rotor37`).
+- **MARIO** is computationally expensive to train but achieves consistently strong performance across most datasets. Its result on `2D_MultiScHypEl` is slightly higher than other top performers, which may reflect the challenge of capturing complex shape variability in that case.
+- **Vi-Transformer** and **Augur** perform well across all datasets, showing strong versatility and generalization capabilities.
+- **FNO** suffers significantly on datasets with strong mesh anisotropies—notably `Rotor37` and `2D_profile`. This is likely due to its reliance on projections to and from regular grids, which can degrade accuracy. Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
 
 
