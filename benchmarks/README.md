@@ -15,6 +15,12 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 - ❌: Not compatible with topology variation
   -->
 
+<!-- We would like to clarify that by “work in progress,” we meant that the benchmark table would be completed for the camera-ready version, and that all code necessary to reproduce the baseline results would be made publicly available in the PLAID repository — with the exception of **Augur**, which relies on a commercial solution and cannot be open-sourced. Most of the relevant code was already implemented at the time of our rebuttal.
+
+We thank the reviewer for their encouraging feedback and for responding early in the discussion period. This allowed us to complete the remaining work, finalize the benchmark table, and release the code online.
+
+We believe this additional work fully addresses points W1 and W2 raised in the initial review. The updated table is shown below (displaying only the `total_error`), and each entry corresponds to a submission that can be consulted on the Hugging Face interactive benchmarks. The code to reproduce these results (excluding **Augur**) is available in the `benchmarks` folder of the PLAID repository. -->
+
 **Results as of August 3, 2025:**
  | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
 |-------------------|-----|------|------------|-------|-------|-------|
@@ -30,3 +36,4 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 - **MARIO** is computationally expensive to train but achieves consistently strong performance across most datasets. Its result on `2D_MultiScHypEl` is slightly higher than other top performers, which may reflect the challenge of capturing complex shape variability in that case.
 - **Vi-Transformer** and **Augur** perform well across all datasets, showing strong versatility and generalization capabilities.
 - **FNO** suffers significantly on datasets with strong mesh anisotropies: the projections to and from regular grids degrade accuracy, especially on datasets with strong mesh anisotropies such as `Rotor37` and `2D_profile`. Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
+
