@@ -1,6 +1,1 @@
-# VKI_MMGP_PolyDec
-
-
-## VKI case with MMGP + Polynomial PCA
-
-All you need is in `VKI_study.ipynb`
+The code to run this benchmark entry is documented in `VKI_study.ipynb`.
