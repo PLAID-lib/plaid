@@ -35,6 +35,17 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 - **Vi-Transformer** and **Augur** perform well across all datasets, showing strong versatility and generalization capabilities.
 - **FNO** suffers significantly on datasets with strong mesh anisotropies: the projections to and from regular grids degrade accuracy, especially on datasets with strong mesh anisotropies such as `Rotor37` and `2D_profile`. Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
 
+### List of dependencies
+
+The benchmark codes require the following dependencies:
+- [PLAID](https://github.com/PLAID-lib/plaid)
+- [Muscat](https://gitlab.com/drti/muscat)
+- [GPy](https://github.com/SheffieldML/GPy)
+- [MMGP](https://gitlab.com/drti/mmgp)
+- [PhysicsNemo](https://github.com/NVIDIA/physicsnemo)
+- [MARIO](https://github.com/giovannicatalani/MARIO)
+
+
 
 <!-- Longuer version (not a good idea, imho)
 
