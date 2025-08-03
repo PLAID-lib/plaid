@@ -2,25 +2,25 @@
 
 This folder contains the code used to generate the baselines for the [PLAID Benchmarks](https://huggingface.co/PLAIDcompetitions), with the exception of the Augur results, which are produced using a [commercial solution](https://augurco.fr/). These benchmarks are interactive: anyone can participate by submitting their own model predictions. Each benchmark includes the corresponding dataset, along with documentation on how to use it and how to submit a solution.
 
-<!-- | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
-|-------------------|-----|------|------------|-------|-------|-------|
-| `Tensile2d`       | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  ✅  |
-| `2D_MultiScHypEl` | 🔵  |  ❌  |   🔵     |  🔵   |   ✅  |  ✅  |
-| `2D_ElPlDynamics` | 🕑  |  ❌  |   🕑     |  🕑    |  🔵  |  🕑  |
-| `Rotor37`         | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  ✅  |
-| `2D_profile`      | 🔵  |  🔵  |   🔵     |  ✅   |   ✅  |  ✅  |
-| `VKI-LS59`        | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  🔵  |
-- 🔵: Present in initial submission
-- ✅: Added post-submission on Hugging Face
+**As of August 3, 2025:**
+
+### Code distribution status:
+| Dataset           | MGN | MMGP | Vi-Transf. | FNO | MARIO |
+|-------------------|-----|------|------------|-------|-------|
+| `Tensile2d`       | 🕑  |  ✅  |   🕑     |  ✅  |  🕑  |
+| `2D_MultiScHypEl` | 🕑  |  ❌  |   🕑     |  ✅  |  🕑  |
+| `2D_ElPlDynamics` | 🕑  |  ❌  |   🕑     |  🕑  |  🕑  |
+| `Rotor37`         | 🕑  |  ✅  |   🕑     |  ✅  |  ✅  |
+| `2D_profile`      | 🕑  |  🕑  |   🕑     |  ✅  |  ✅  |
+| `VKI-LS59`        | 🕑  |  ✅  |   🕑     |  ✅  |  ✅  |
 - ❌: Not compatible with topology variation
-  -->
 
 <!-- We thank the reviewer for their encouraging feedback and for responding early in the discussion period. This gave us both the opportunity and the motivation to complete the remaining work in time to provide a full response before the end of the discussion phase. As a result, we were able to finalize the benchmark table and release the code online.
 
 We believe this additional work fully addresses points W1 and W2 raised in the initial review. The updated table is shown below (displaying only the `total_error`), and each entry corresponds to a submission that can be consulted on the Hugging Face interactive benchmarks. The code to reproduce these results (excluding **Augur**, which relies on a commercial solution and cannot be open-sourced) is available in the `benchmarks` folder of the PLAID repository. -->
 
-**Results as of August 3, 2025:**
- | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
+### Benchmark status:
+| Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
 |-------------------|-----|------|------------|-------|-------|-------|
 | `Tensile2d`       |  0.0673 |  **0.0026**  |   0.0058     |  0.0154   |  0.021  |  *0.0038*  |
 | `2D_MultiScHypEl` | 0.0437  |  ❌  |   *0.0341*     |  **0.0232**   |   0.0439  |  0.0573  |
@@ -43,3 +43,18 @@ We would like to apologize for the confusing presentation and lack of clear dist
 We thank the reviewer for their encouraging feedback and for responding early in the discussion period. This gave us both the opportunity and the motivation to complete the remaining work in time to provide a full response before the end of the discussion phase. As a result, we were able to finalize the benchmark table and release the code online.
 
 We believe this additional work fully addresses points W1 and W2 raised in the initial review. The updated table is shown below (displaying only the `total_error`), and each entry corresponds to a submission that can be consulted on the Hugging Face interactive benchmarks. The code to reproduce these results (excluding **Augur**) is available in the `benchmarks` folder of the PLAID repository. -->
+
+
+
+<!-- | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
+|-------------------|-----|------|------------|-------|-------|-------|
+| `Tensile2d`       | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  ✅  |
+| `2D_MultiScHypEl` | 🔵  |  ❌  |   🔵     |  🔵   |   ✅  |  ✅  |
+| `2D_ElPlDynamics` | 🕑  |  ❌  |   🕑     |  🕑    |  🔵  |  🕑  |
+| `Rotor37`         | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  ✅  |
+| `2D_profile`      | 🔵  |  🔵  |   🔵     |  ✅   |   ✅  |  ✅  |
+| `VKI-LS59`        | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  🔵  |
+- 🔵: Present in initial submission
+- ✅: Added post-submission on Hugging Face
+- ❌: Not compatible with topology variation
+  -->
