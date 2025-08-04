@@ -4,8 +4,6 @@ import copy
 import time
 import sys , os
 
-from Muscat.Containers.MeshModificationTools import ComputeSkin
-
 from Muscat.FE.Fields.FEField import FEField
 from Muscat.FE.FETools import PrepareFEComputation
 from Muscat.Containers.Filters.FilterObjects import ElementFilter
@@ -18,7 +16,7 @@ from Muscat.Containers.MeshModificationTools import  CleanLonelyNodes , ComputeS
 from utils_2dprofile import  ElasticProblem  , VectorialDistance_Muscat_preprocessed,signedDistannce_Function_kokkos
 
 
-plaid_location = # path to update to input plaid dataset
+plaid_location = "/data/ssa/units/stn/mads/flex/datasets/C1/2D_profile/large_dataset/clipped/plaid" # path to update to input plaid dataset
 
 
 def MatchTwoGeometries(mesh, Tmesh,TmeshIndex=250,max_iteration=200, tolerance= 1*10**(-3) ,YoungModulus=0.1 , nu=0.3 , alpha=200, gamma=5,beta=0,formulation="vect_distance",tags=[]) :
@@ -130,7 +128,7 @@ print("sample = ", sample)
 
 Tmesh_index=str(sample).zfill(3)
 
-Tmesh_path = os.path.join(plaid_location, "dataset/samples/sample_00000000"+str(Tmesh_index)+"/meshes/mesh_000000000.cgns")
+Tmesh_path = os.path.join(plaid_location, "dataset/samples/sample_000000"+str(Tmesh_index)+"/meshes/mesh_000000000.cgns")
 
 # plaid_location_coarse = # path to update to plaid dataset containing a sample with the coarse common mesh
 # reference_mesh_index=0

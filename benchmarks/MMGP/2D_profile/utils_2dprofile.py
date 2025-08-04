@@ -7,19 +7,18 @@ from Muscat.Containers import MeshInspectionTools as UMIP
 from Muscat.Containers.Filters.FilterObjects import ElementFilter
 import Muscat.Containers.MeshInspectionTools as UMIT
 from Muscat.Containers.MeshModificationTools import  CleanLonelyNodes
-from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
 from Muscat.FE.Fields.FEField import FEField
 from Muscat.FE.FETools import PrepareFEComputation
-from Muscat.FE.SymPhysics import MecaPhysics
+from Muscat.FE.SymPhysics import MechPhysics
 from Muscat.FE.SymWeakForm import GetField, GetScalarField,GetNormal
 from Muscat.FE.UnstructuredFeaSym import UnstructuredFeaSym
 from Muscat.FE.Fields.FieldTools import GetPointRepresentation
 from Muscat.Helpers.Timer import Timer
-from Muscat.FieldTransferKokkos.FieldTransfer import FieldTransferKokkos
+from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
 from Muscat.FE.FETools import  ComputeNormalsAtPoints
 
 
-class MecaPhysics_ESM(MecaPhysics):
+class MecaPhysics_ESM(MechPhysics):
     # Add weak formulations to the MecaPhysics class
     def __init__(self,dim=2   ,elasticModel ="isotropic"):
         super().__init__(dim)
@@ -234,9 +233,10 @@ def signedDistannce_Function_kokkos(Tmesh, mesh,field_Tmesh,dim=1):
     signed_distance[boundary_ids] = np.sqrt(np.sum((skinpos - mesh.nodes[boundary_ids])**2,axis=1))
 
     #calculate the sign. If statusBulk[i]==1, then Mesh.nodes[i] is inside Tmesh.
-    statusBulk0=  FieldTransferKokkos(inputField= field_Tmesh, targetPoints= mesh.nodes[boundary_ids], method="Interp/Clamp" , elementFilter= ElementFilter(dimensionality=2) )[1]
+    statusBulk0=  GetFieldTransferOp(inputField= field_Tmesh, targetPoints= mesh.nodes[boundary_ids], method="Interp/Clamp" , elementFilter= ElementFilter(dimensionality=2) )[1]
     statusBulk=np.zeros(nNodes)
-    statusBulk[boundary_ids]=statusBulk0[:]
+
+    statusBulk[boundary_ids]=statusBulk0[:,0]
 
     signed_distance[statusBulk[:]==1] *= -1
 
