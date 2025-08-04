@@ -2,7 +2,7 @@
 
 This folder contains the code used to generate the baselines for the [PLAID Benchmarks](https://huggingface.co/PLAIDcompetitions), with the exception of the Augur results, which are produced using a [commercial solution](https://augurco.fr/). These benchmarks are interactive: anyone can participate by submitting their own model predictions. Each benchmark includes the corresponding dataset, along with documentation on how to use it and how to submit a solution.
 
-**As of August 3, 2025:**
+**As of August 4, 2025:**
 
 ### Code distribution status:
 | Dataset           | MGN | MMGP | Vi-Transf. | FNO | MARIO |
