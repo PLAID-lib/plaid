@@ -9,9 +9,9 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 |-------------------|-----|------|------------|-------|-------|
 | `Tensile2d`       | 🕑  |  ✅  |   🕑     |  ✅  |  🕑  |
 | `2D_MultiScHypEl` | 🕑  |  ❌  |   🕑     |  ✅  |  🕑  |
-| `2D_ElPlDynamics` | 🕑  |  ❌  |   🕑     |  🕑  |  🕑  |
+| `2D_ElPlDynamics` | 🕑  |  ❌  |   🕑     |  ✅  |  🕑  |
 | `Rotor37`         | 🕑  |  ✅  |   🕑     |  ✅  |  ✅  |
-| `2D_profile`      | 🕑  |  🕑  |   🕑     |  ✅  |  ✅  |
+| `2D_profile`      | 🕑  |  ✅  |   🕑     |  ✅  |  ✅  |
 | `VKI-LS59`        | 🕑  |  ✅  |   🕑     |  ✅  |  ✅  |
 - ❌: Not compatible with topology variation
 
