@@ -17,12 +17,14 @@ import copy
 import os
 
 
-datapath = "/path/to/plaid/dataset"
-output_data_dir = "/path/where/to/register/new_dataset"
+dataset_path = # path to update to input plaid dataset
+rect_dataset_path = # path to update to location where rectilinear dataset is created
+
+
 dataset = Dataset()
 for sample_index in range(1000):
     dataset._load_from_dir_(
-        savedir=datapath,
+        savedir=dataset_path,
         verbose=True,
         processes_number=1,
         ids=[sample_index])
@@ -125,7 +127,7 @@ for sample_index in range(1000):
         ux = old_mesh.nodeFields["U_x"]
         uy = old_mesh.nodeFields["U_y"]
         path_linked_sample = os.path.join(
-            output_data_dir, f"dataset/samples/sample_{sample_index:09d}/meshes/mesh_{0:09d}.cgns")
+            rect_dataset_path, f"dataset/samples/sample_{sample_index:09d}/meshes/mesh_{0:09d}.cgns")
         new_sample.link_tree(
             path_linked_sample,
             linked_sample=new_sample,
@@ -149,5 +151,5 @@ for sample_index in range(1000):
             sample.get_mesh(
                 time=dt * i,
                 apply_links=True))
-    new_sample.save(os.path.join(output_data_dir,
+    new_sample.save(os.path.join(rect_dataset_path,
                     "dataset/samples/sample_{:09d}".format(sample_index)))

@@ -9,6 +9,11 @@ from physicsnemo.models.fno.fno import FNO
 from utils import TemporalFractureReader
 
 
+
+rect_dataset_path =  # path to update to plaid dataset
+
+
+
 def renormalize(values):
     """
     Function to normalize input of the FNO
@@ -56,7 +61,7 @@ def train(model, optimizer, dataloader, epochs, device, dtype):
             optimizer.zero_grad()
 
 
-def main(model, dataset_path, num_workers, batch_size, epochs, learning_rate, pin_memory, save_file):
+def main(model, rect_dataset_path, num_workers, batch_size, epochs, learning_rate, pin_memory, save_file):
     """Function for starting the training and saving a model
     We advise using DDP to scale this function to multi-node multi-gpu to reduce computation time
 
@@ -64,7 +69,7 @@ def main(model, dataset_path, num_workers, batch_size, epochs, learning_rate, pi
     ----------
     model : torch.nn.Model
         model to train
-    dataset_path : str
+    rect_dataset_path : str
         location of the dataset
     num_workers : int
         number of cpus
@@ -84,7 +89,7 @@ def main(model, dataset_path, num_workers, batch_size, epochs, learning_rate, pi
     dtype = torch.float
 
     temp_dataset = TemporalFractureReader(
-        dataset_path, num_workers, step_definition=1)
+        rect_dataset_path, num_workers, step_definition=1)
 
     model.to(device=device, dtype=dtype)
 
@@ -105,7 +110,6 @@ if __name__ == "__main__":
     batch_size = 60
     epochs = 100
     learning_rate = 0.0003
-    dataset_path = "/path/to/plaid/dataset"
     pin_memory = True
     save_file = "saved_model.pt"
 
@@ -124,5 +128,5 @@ if __name__ == "__main__":
          )
 
 
-    main(model, dataset_path, num_workers, batch_size,
+    main(model, rect_dataset_path, num_workers, batch_size,
          epochs, learning_rate, pin_memory, save_file)

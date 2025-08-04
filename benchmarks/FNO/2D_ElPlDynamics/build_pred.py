@@ -19,6 +19,9 @@ from plaid.containers.dataset import Dataset as Plaid_Dataset
 import pickle
 
 
+dataset_path = # path to update to location where rectilinear dataset is created
+
+
 def renormalize(values):
     """
     Function to normalize input of the FNO
@@ -35,8 +38,6 @@ def denormalize(values):
     Inverse function of renormalise except the mask that we do not need
     """
     input_values = copy.deepcopy(values)
-    # not denormalising mask
-    # input_values[:,[2]] = 10*torch.log(input_values[:,[2]]/(1-input_values[:,[2]]))
     xhi = input_values[:, [2]]
     input_values[:, [0, 1]] *= 20
     return input_values, xhi
@@ -151,93 +152,6 @@ def postprocess_sample(prediction, sample):
     return ux, uy, erosion_node_field
 
 
-def compute_refs(dataset_path, ids, save_name):
-    """Function to compute the reference pickle file for a given list of ids
-
-    Parameters
-    ----------
-    dataset_path : str
-        path where to save the pickle file containing references
-    ids : iterable
-        int iterable of ids where to get the reference fields
-    """
-    processes_number = 32
-    dataset = Plaid_Dataset()
-    dataset._load_from_dir_(savedir=dataset_path, verbose=True,
-                            processes_number=processes_number, ids=list(ids))
-    sample = dataset.get_samples([ids[0]])[ids[0]]
-
-    out_fields_names = ['U_x', 'U_y']
-    time_steps = sample.get_all_mesh_times()
-
-    reference = []
-    for index_sample, id in enumerate(ids):
-        reference.append({})
-        sample = dataset[id]
-        old_mesh = CGNSToMesh(sample.get_mesh(time=0))
-        print(old_mesh)
-        indexes = np.zeros(old_mesh.GetNumberOfNodes(), int)
-        values = np.zeros((old_mesh.GetNumberOfNodes(), 15))
-        for connect in old_mesh.GetElementsOfType(ED.Triangle_3).connectivity:
-            values[connect, indexes[connect]] = 1
-            indexes[connect] += 1
-        average = 1/indexes
-        data, i, j = np.zeros(0), np.zeros(
-            0).astype(int), np.zeros(0).astype(int)
-        for elem_index, connect in enumerate(old_mesh.GetElementsOfType(ED.Triangle_3).connectivity):
-            data = np.concatenate((data, average[connect]), axis=0)
-            i = np.concatenate((i, connect), axis=0)
-            j = np.concatenate((j, [elem_index]*3), axis=0)
-
-        operator_elem_to_node = coo_matrix((data, (i, j)))
-        list_values = [operator_elem_to_node@sample.get_field(name="EROSION_STATUS", zone_name="Zone",
-                                                              base_name="Base_2_2", location="FaceCenter", time=time_step) for time_step in time_steps[1:]]
-        reference[index_sample]['EROSION_STATUS'] = np.stack(
-            [np.ones_like(list_values[0])]+list_values)
-        for fn in out_fields_names:
-            list_values = [sample.get_field(
-                name=fn, zone_name="Zone", base_name="Base_2_2", time=time_step) for time_step in time_steps[1:]]
-            reference[index_sample][fn] = np.stack(
-                [np.zeros_like(list_values[0])]+list_values)
-
-    with open(save_name, 'wb') as file:
-        pickle.dump(reference, file)
-
-
-def _metric(reference_split, prediction_split):
-    """Compute the metric described in the paper by masking predicted fields with the predicted mask and masking
-    the reference fields with the reference mask
-
-    Parameters
-    ----------
-    reference_split : Union[Dict]
-        list of results (dict)
-    prediction_split : Union[Dict]
-        list of prediction (dict)
-
-    Returns
-    -------
-    errors: Dict
-        python dictionnary containing the errors on all the fields
-    """
-    assert len(reference_split) == len(prediction_split)
-    out_fields_names = ["U_x", "U_y"]
-    errors = {name: 0. for name in out_fields_names+["EROSION_STATUS"]}
-    n_samples = len(reference_split)
-    for i in range(n_samples):
-        for fn in out_fields_names:
-            # divided by node number and nb timesteps
-            errors[fn] += (np.sum((prediction_split[i][fn]*prediction_split[i]["EROSION_STATUS"] - reference_split[i][fn] *
-                           reference_split[i]["EROSION_STATUS"])**2))/prediction_split[i][fn].shape[1]/41
-        errors["EROSION_STATUS"] += (np.sum((prediction_split[i]["EROSION_STATUS"] -
-                                     reference_split[i]["EROSION_STATUS"])**2))/prediction_split[i][fn].shape[1]/41
-    for fn in out_fields_names:
-        # divided by the number of samples
-        errors[fn] = np.sqrt(errors[fn]/n_samples)
-    errors["EROSION_STATUS"] = np.sqrt(errors["EROSION_STATUS"]/n_samples)
-    return errors
-
-
 def compute_predictions(dataset_path, ids, model, save_name, device, dtype):
     """Function to compute the predictions from a list of ids in the dataset
     ideally we compute the prediction on unseen samples
@@ -299,20 +213,9 @@ def compute_predictions(dataset_path, ids, model, save_name, device, dtype):
         pickle.dump(predictions, file)
 
 
-def compare_ref(pred_pkl, ref_pkl):
-    """
-    Simple wrapper of the _metric function that loads reference and prediction pickle files beforehand
-    """
-    with open(pred_pkl, 'rb') as file:
-        prediction_split = pickle.load(file)
-    with open(ref_pkl, 'rb') as file:
-        reference_split = pickle.load(file)
-
-    print(_metric(reference_split, prediction_split))
-
 
 if __name__ == "__main__":
-    dataset_path = "/path/to/plaid/dataset"
+
     # Ids where to test the prediction
     # Make sure it does not contain the training set
     ids = range(900, 1000)
@@ -320,8 +223,6 @@ if __name__ == "__main__":
 
     device = torch.device("cuda")
     dtype = torch.float
-
-    ## If you want to train the FNO instead of the DAFNO
 
     model = FNO(
             in_channels=3,
@@ -335,14 +236,8 @@ if __name__ == "__main__":
             padding=8,
        )
 
-
     model.load_state_dict(torch.load(save_file))
     model.to(device=device, dtype=dtype)
-    # Builduing reference pkl file
-    ref_name = 'reference.pkl'
-    compute_refs(dataset_path, ids, ref_name)
-    # Building prediction file
+
     save_name = 'predictions.pkl'
     compute_predictions(dataset_path, ids, model, save_name, device, dtype)
-    # if you build a reference pkl for computing the loss you may use the compare_ref.pkl
-    compare_ref(save_name, ref_name)
