@@ -1,1 +1,0 @@
-Scripts for generating the benchmarking entries of https://huggingface.co/spaces/PLAIDcompetitions/Tensile2dBenchmark, where all instructions for participating are detailed.
