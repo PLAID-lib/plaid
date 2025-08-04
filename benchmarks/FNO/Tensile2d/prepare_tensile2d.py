@@ -19,6 +19,11 @@ import time
 
 
 
+plaid_location = # path to update
+prepared_data_dir= # path to update
+
+
+
 start = time.time()
 
 def compute_signed_distance(mesh,eval_points):
@@ -42,9 +47,6 @@ def compute_signed_distance(mesh,eval_points):
     distance = np.sqrt(np.sum((eval_points - skinpos)**2,axis=-1))
     return sign_distance*distance
 
-
-plaid_location = # path to update
-prepared_data_dir= # path to update
 
 datapath=os.path.join(plaid_location, "dataset")
 pb_defpath=os.path.join(plaid_location, "problem_definition")

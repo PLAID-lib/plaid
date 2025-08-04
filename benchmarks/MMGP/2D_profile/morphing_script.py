@@ -16,7 +16,7 @@ from Muscat.Containers.MeshModificationTools import  CleanLonelyNodes , ComputeS
 from utils_2dprofile import  ElasticProblem  , VectorialDistance_Muscat_preprocessed,signedDistannce_Function_kokkos
 
 
-plaid_location = "/data/ssa/units/stn/mads/flex/datasets/C1/2D_profile/large_dataset/clipped/plaid" # path to update to input plaid dataset
+plaid_location = # path to update to input plaid dataset
 
 
 def MatchTwoGeometries(mesh, Tmesh,TmeshIndex=250,max_iteration=200, tolerance= 1*10**(-3) ,YoungModulus=0.1 , nu=0.3 , alpha=200, gamma=5,beta=0,formulation="vect_distance",tags=[]) :

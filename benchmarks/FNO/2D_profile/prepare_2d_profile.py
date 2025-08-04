@@ -18,6 +18,11 @@ from tqdm import tqdm
 import os, shutil, time
 
 
+plaid_location = # path to update
+prepared_data_dir = # path to update
+
+
+
 start = time.time()
 
 def compute_signed_distance(mesh,eval_points):
@@ -42,8 +47,6 @@ def compute_signed_distance(mesh,eval_points):
     return sign_distance*distance
 
 
-plaid_location = # path to update
-prepared_data_dir = # path to update
 
 datapath=os.path.join(plaid_location, "dataset")
 pb_defpath=os.path.join(plaid_location, "problem_definition")

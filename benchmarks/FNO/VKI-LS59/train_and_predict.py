@@ -13,7 +13,9 @@ start = time.time()
 
 plaid_location = # path to update
 prepared_data_dir = # path to update
-predicted_data_dir = # path to update
+predicted_data_dir= # path to update
+
+
 
 pb_defpath=os.path.join(plaid_location, "problem_definition")
 
@@ -23,7 +25,7 @@ dataset._load_from_dir_(os.path.join(prepared_data_dir, "dataset"), verbose=True
 problem = ProblemDefinition()
 problem._load_from_dir_(pb_defpath)
 
-ids_train = problem.get_split('train_500')
+ids_train = problem.get_split('train')
 ids_test  = problem.get_split('test')
 
 
@@ -31,26 +33,28 @@ n_train = len(ids_train)
 n_test  = len(ids_test)
 
 
-in_scalars_names = ["P","p1","p2","p3","p4","p5"]
-out_fields_names = ["U1","U2","sig11","sig22","sig12"]
-out_scalars_names = ["max_von_mises","max_U2_top",'max_sig22_top']
+in_scalars_names = ['angle_in', 'mach_out']
+out_fields_names = ['mach', 'nut']
+out_scalars_names = ['Q', 'power', 'Pr', 'Tr', 'eth_is', 'angle_out']
 
-size = 201
+
+size1 = 301
+size2 = 121
 
 
 # TRAIN
 
-inputs = np.empty((n_train, len(in_scalars_names)+1, size, size))
+inputs = np.empty((n_train, len(in_scalars_names)+1, size1, size2))
 for i, id_sample in enumerate(ids_train):
     for in_chan in range(len(in_scalars_names)+1):
-        inputs[i, in_chan, :, :] = dataset[id_sample].get_field("Signed_Distance").reshape((size, size))
+        inputs[i, in_chan, :, :] = dataset[id_sample].get_field("Signed_Distance", base_name="Base_2_2").reshape((size1, size2))
         for k, sn in enumerate(in_scalars_names):
             inputs[i, k+1, :, :] = dataset[id_sample].get_scalar(sn)
 
-outputs = np.empty((n_train, len(out_scalars_names)+len(out_fields_names), size, size))
+outputs = np.empty((n_train, len(out_scalars_names)+len(out_fields_names), size1, size2))
 for i, id_sample in enumerate(ids_train):
     for k, fn in enumerate(out_fields_names):
-        outputs[i, k, :, :] = dataset[id_sample].get_field(fn).reshape((size, size))
+        outputs[i, k, :, :] = dataset[id_sample].get_field(fn, base_name="Base_2_2").reshape((size1, size2))
     for k, sn in enumerate(out_scalars_names):
         outputs[i, k+len(out_fields_names), :, :] = dataset[id_sample].get_scalar(sn)
 
@@ -84,6 +88,7 @@ dataset__ = GridDataset(inputs, outputs)
 loader = DataLoader(dataset__, batch_size=64, shuffle=True)
 
 
+
 model = FNO(
 in_channels=inputs.shape[1],
 out_channels=outputs.shape[1],
@@ -94,6 +99,7 @@ latent_channels=32,
 num_fno_layers=2,
 padding=0,
 ).cuda()
+
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.MSELoss()
@@ -116,11 +122,11 @@ for epoch in range(n_epoch):
 
 # TEST
 
-inputs = np.empty((n_test, len(in_scalars_names)+1, size, size))
+inputs = np.empty((n_test, len(in_scalars_names)+1, size1, size2))
 
 for i, id_sample in enumerate(ids_test):
     for in_chan in range(len(in_scalars_names)+1):
-        inputs[i, in_chan, :, :] = dataset[id_sample].get_field("Signed_Distance").reshape((size, size))
+        inputs[i, in_chan, :, :] = dataset[id_sample].get_field("Signed_Distance", base_name="Base_2_2").reshape((size1, size2))
         for k, sn in enumerate(in_scalars_names):
             inputs[i, k+1, :, :] = dataset[id_sample].get_scalar(sn)
 
@@ -148,4 +154,4 @@ dataset[ids_test]._save_to_dir_(predicted_data_dir)
 
 
 print("duration train =", time.time()-start)
-# GPUA30, 764 seconds
+# GPUA30, 718 seconds

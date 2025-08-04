@@ -15,10 +15,12 @@ start = time.time()
 
 
 plaid_location = # path to update
+predicted_data_dir = # path to update
+
+
 
 datapath=os.path.join(plaid_location, "dataset")
 pb_defpath=os.path.join(plaid_location, "problem_definition")
-predicted_data_dir = # path to update
 
 dataset_pred = Dataset()
 dataset_pred._load_from_dir_(predicted_data_dir, verbose=True, processes_number=4)

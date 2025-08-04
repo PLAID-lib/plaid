@@ -24,11 +24,11 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 ### Benchmark status:
 | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
 |-------------------|-----|------|------------|-------|-------|-------|
-| `Tensile2d`       |  0.0673 |  **0.0026**  |   0.0058     |  0.0154   |  0.021  |  *0.0038*  |
+| `Tensile2d`       | 0.0673  |  **0.0026**  |   0.0116     |  0.0154   |  0.021  |  *0.0038*  |
 | `2D_MultiScHypEl` | 0.0437  |  ❌  |   *0.0341*     |  **0.0232**   |   0.0439  |  0.0573  |
-| `2D_ElPlDynamics` | 	0.1202  |  ❌  |   *0.0263*     |  0.0346    |  **0.0215**  |  0.0742  |
+| `2D_ElPlDynamics` | 0.1202  |  ❌  |   *0.0263*     |  0.0346    |  **0.0215**  |  0.0742  |
 | `Rotor37`         | 0.0074  |  **0.0014**  |   0.0029     |  0.0033   |   0.0313  |  *0.0017*  |
-| `2D_profile`      |  0.0593 |  0.0365  |   *0.0319*     |  0.0425   |  0.0972  |  **0.0307**  |
+| `2D_profile`      | 0.0593  |  0.0365  |   *0.0319*     |  0.0425   |  0.0972  |  **0.0307**  |
 | `VKI-LS59`        | 0.0684  |  0.0312  |   0.0493     |  *0.0267*   |   0.0581  |  **0.0124**  |
 
 **Additional notes:**
@@ -40,10 +40,10 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 ### List of dependencies
 
 The benchmark codes require the following dependencies:
-- [PLAID](https://github.com/PLAID-lib/plaid)
-- [Muscat](https://gitlab.com/drti/muscat)
+- [PLAID=0.1.6](https://github.com/PLAID-lib/plaid)
+- [Muscat=2.4.1](https://gitlab.com/drti/muscat)
 - [GPy](https://github.com/SheffieldML/GPy)
-- [MMGP](https://gitlab.com/drti/mmgp)
+- [MMGP=0.0.9](https://gitlab.com/drti/mmgp)
 - [PhysicsNemo](https://github.com/NVIDIA/physicsnemo)
 - [MARIO](https://github.com/giovannicatalani/MARIO)
 
