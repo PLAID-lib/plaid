@@ -5,7 +5,7 @@ import time
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 from Muscat.IO.CGNSReader import ReadCGNS
-from Muscat.FieldTransferKokkos.FieldTransfer import FieldTransferKokkos
+from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
 from Muscat.Containers.Filters.FilterObjects import ElementFilter
 from Muscat.FE.Fields.FEField import FEField
 from Muscat.FE.FETools import PrepareFEComputation
@@ -35,7 +35,7 @@ reference_mesh_fin = ReadCGNS(fileName=reference_mesh_path)
 
 space, numbering,_,_ = PrepareFEComputation(reference_mesh,numberOfComponents=1)
 fefield = FEField("", mesh=reference_mesh, space=space, numbering=numbering[0])
-op_ref_mesh=FieldTransferKokkos(inputField= fefield, targetPoints= reference_mesh_fin.nodes, method="Interp/Clamp" , elementFilter= ElementFilter(dimensionality=2) )[0]
+op_ref_mesh=GetFieldTransferOp(inputField= fefield, targetPoints= reference_mesh_fin.nodes, method="Interp/Clamp" , elementFilter= ElementFilter(dimensionality=2) )[0]
 
 
 
@@ -77,7 +77,7 @@ for sample in range(n_train):
 
     space, numbering,_,_ = PrepareFEComputation(Tmesh,numberOfComponents=1)
     fefield = FEField("", mesh=Tmesh, space=space, numbering=numbering[0])
-    OP=FieldTransferKokkos(inputField= fefield, targetPoints= temp_mesh.nodes, method="Interp/Clamp" , elementFilter= ElementFilter(dimensionality=2) )[0]
+    OP=GetFieldTransferOp(inputField= fefield, targetPoints= temp_mesh.nodes, method="Interp/Clamp" , elementFilter= ElementFilter(dimensionality=2) )[0]
 
     for field_name in node_fields:
         data[field_name][sample] = OP.dot(Tmesh.nodeFields[field_name])
@@ -183,7 +183,7 @@ for sample in range(n_test):
     fefield = FEField("", mesh=temp_mesh, space=space, numbering=numbering[0])
 
 
-    OP=FieldTransferKokkos(inputField= fefield, targetPoints= Tmesh.nodes, method="Interp/Clamp" , elementFilter= ElementFilter(dimensionality=2) )[0]
+    OP=GetFieldTransferOp(inputField= fefield, targetPoints= Tmesh.nodes, method="Interp/Clamp" , elementFilter= ElementFilter(dimensionality=2) )[0]
     transfer_op_test.append(OP)
 
 
