@@ -60,7 +60,7 @@ class MMGPPreparer(TransformerMixin, BaseEstimator):
         """
         self.common_mesh_id_ = 0 if self.common_mesh_id is None else self.common_mesh_id
 
-        self.morphed_common_mesh_ = self.morph(
+        self.morphed_common_mesh_ = self.morphing(
             CGNSToMesh(dataset[self.common_mesh_id_].get_mesh())
         )
         self.morphed_common_tree_ = MeshToCGNS(
@@ -87,7 +87,7 @@ class MMGPPreparer(TransformerMixin, BaseEstimator):
         for sample in dataset:
             # morph the mesh of the current sample
             mesh = CGNSToMesh(sample.get_mesh())
-            morphed_mesh = self.morph(mesh)
+            morphed_mesh = self.morphing(mesh)
 
             # compute the FE interpolation operator
             proj_operator = compute_FE_projection_operator(
