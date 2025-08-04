@@ -100,7 +100,7 @@ padding=2,
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.MSELoss()
 
-n_epoch = 60
+n_epoch = 100
 for epoch in range(n_epoch):
     model.train()
     total_loss = 0.0
@@ -162,4 +162,4 @@ dataset[ids_test]._save_to_dir_(predicted_data_dir)
 
 
 print("duration train =", time.time()-start)
-# GPUA30, 8002 seconds
+# GPUA30, 26370 seconds
