@@ -38,17 +38,6 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 - **FNO** suffers on datasets featuring unstructured meshes with pronounced anisotropies, due to the loss of accuracy introduced by projections to and from regular grids (e.g., `Rotor37` and `2D_profile`). Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
 
 
-### List of dependencies
-
-The benchmark codes require the following dependencies (not simultaneously, see individual benchmark codes):
-- [PLAID=0.1.6](https://github.com/PLAID-lib/plaid)
-- [Muscat=2.4.1](https://gitlab.com/drti/muscat)
-- [GPy](https://github.com/SheffieldML/GPy)
-- [MMGP=0.0.9](https://gitlab.com/drti/mmgp)
-- [PhysicsNemo](https://github.com/NVIDIA/physicsnemo)
-- [MARIO](https://github.com/giovannicatalani/MARIO)
-- [DGL](https://www.dgl.ai/)
-- [PyTorchGeometric=2.6.1](https://pytorch-geometric.readthedocs.io/en/latest/)
 
 
 <!-- Longuer version (not a good idea, imho)

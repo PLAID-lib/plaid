@@ -39,7 +39,7 @@ python main_elasto_plasto_dynamics.py
 
 
 ## Dependencies
-- [PLAID=0.1](https://github.com/PLAID-lib/plaid)
+- [PLAID=0.1.6](https://github.com/PLAID-lib/plaid)
 - [PyTorch=2.7.0](https://pytorch.org/)
 - [Datasets=3.6.0](https://pypi.org/project/datasets/)
 - [Einops=0.8.1](https://pypi.org/project/einops/)
