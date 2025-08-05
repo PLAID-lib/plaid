@@ -4,22 +4,9 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 
 **As of August 5, 2025:**
 
-### Code distribution status:
-| Dataset           | MGN | MMGP | Vi-Transf. | FNO | MARIO |
-|-------------------|-----|------|------------|-------|-------|
-| `Tensile2d`       | ✅  |  ✅  |   ✅     |  ✅  |  🕑  |
-| `2D_MultiScHypEl` | ✅  |  ❌  |   ✅     |  ✅  |  🕑  |
-| `2D_ElPlDynamics` | ✅  |  ❌  |   ✅     |  ✅  |  🕑  |
-| `Rotor37`         | ✅  |  ✅  |   ✅     |  ✅  |  ✅  |
-| `2D_profile`      | ✅  |  ✅  |   ✅     |  ✅  |  ✅  |
-| `VKI-LS59`        | ✅  |  ✅  |   ✅     |  ✅  |  ✅  |
-- ❌: Not compatible with topology variation
-
 <!-- We thank the reviewer for their encouraging feedback and for responding early in the discussion period. This gave us both the opportunity and the motivation to complete the remaining work in time to provide a full response before the end of the discussion phase. As a result, we were able to finalize the benchmark table and release the code online. To improve reproducibility and alignment with common practice in the Neural Operator literature, we replaced DAFNO with the more widely cited FNO model, using the high-quality implementation available in NVIDIA’s PhysicsNemo library.
 
 We believe this additional work fully addresses points W1 and W2 raised in the initial review. The updated table is shown below (displaying only the `total_error`), and each entry corresponds to a submission that can be consulted on the Hugging Face interactive benchmarks. The code to reproduce these results (excluding **Augur**, which relies on a commercial solution and cannot be open-sourced) is available in the `benchmarks` folder of the PLAID repository. -->
-
-
 
 ### Benchmark status:
 | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
@@ -30,13 +17,13 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 | `Rotor37`         | 0.0074  |  **0.0014**  |   0.0029     |  0.0033   |   0.0313  |  *0.0017*  |
 | `2D_profile`      | 0.0593  |  0.0365  |   *0.0312*     |  0.0425   |  0.0972  |  **0.0307**  |
 | `VKI-LS59`        | 0.0684  |  0.0312  |   *0.0193*     |  0.0267    |   0.0215  |  **0.0124**  |
+❌: Not compatible with topology variation
 
 **Additional notes:**
-- **MMGP** does not support variable mesh topologies, which limits its applicability to certain datasets and often necessitates custom preprocessing for new cases. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with good accuracy (e.g., `Tensile2d`, `Rotor37`).
+- **MMGP** does not support variable mesh topologies, which limits its applicability to certain datasets and often necessitates custom preprocessing for new cases. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with good accuracy (e.g., `Tensile2d` and `Rotor37`).
 - **MARIO** is computationally expensive to train but achieves consistently a very strong performance across most datasets. Its results on `2D_MultiScHypEl` and `2D_ElPlDynamics` are slightly worse than other tested methods, which may reflect the challenge of capturing complex shape variability in these cases.
 - **Vi-Transformer** and **Augur** perform well across all datasets, showing strong versatility and generalization capabilities.
 - **FNO** suffers on datasets featuring unstructured meshes with pronounced anisotropies, due to the loss of accuracy introduced by projections to and from regular grids (e.g., `Rotor37` and `2D_profile`). Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
-
 
 
 
@@ -54,17 +41,3 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 To improve reproducibility and alignment with common practice in the Neural Operator literature, we replaced DAFNO with the more widely cited FNO model, using the high-quality implementation from NVIDIA’s PhysicsNemo library.
 
 We believe this additional work fully addresses points W1 and W2 raised in the initial review. The updated table is shown below (displaying only the `total_error`), and each entry corresponds to a submission that can be consulted on the Hugging Face interactive benchmarks. The code to reproduce these results (excluding **Augur**, which relies on a commercial solution and cannot be open-sourced) is available in the `benchmarks` folder of the PLAID repository. -->
-
-
-<!-- | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
-|-------------------|-----|------|------------|-------|-------|-------|
-| `Tensile2d`       | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  ✅  |
-| `2D_MultiScHypEl` | 🔵  |  ❌  |   🔵     |  🔵   |   ✅  |  ✅  |
-| `2D_ElPlDynamics` | 🕑  |  ❌  |   🕑     |  🕑    |  🔵  |  🕑  |
-| `Rotor37`         | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  ✅  |
-| `2D_profile`      | 🔵  |  🔵  |   🔵     |  ✅   |   ✅  |  ✅  |
-| `VKI-LS59`        | 🔵  |  🔵  |   🔵     |  🔵   |   ✅  |  🔵  |
-- 🔵: Present in initial submission
-- ✅: Added post-submission on Hugging Face
-- ❌: Not compatible with topology variation
-  -->
