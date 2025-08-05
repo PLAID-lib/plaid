@@ -12,6 +12,7 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 | `Rotor37`         | 0.0074  |  **0.0014**  |   0.0029     |  0.0033   |   0.0313  |  *0.0017*  |
 | `2D_profile`      | 0.0593  |  0.0365  |   *0.0312*     |  0.0425   |  0.0972  |  **0.0307**  |
 | `VKI-LS59`        | 0.0684  |  0.0312  |   *0.0193*     |  0.0267    |   0.0215  |  **0.0124**  |
+
 ❌: Not compatible with topology variation
 
 ### Additional notes:
