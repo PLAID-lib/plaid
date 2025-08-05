@@ -1,1 +1,0 @@
-The code to run this benchmark entry is located at https://github.com/giovannicatalani/MARIO/tree/main/VKILS59_task
