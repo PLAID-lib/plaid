@@ -1,0 +1,60 @@
+bridge:
+  function:
+    _target_: src.data.loader.bridges.tensile_sample_to_geometric.tensile_sample_to_geometric
+    _partial_: true
+  data_info:
+    name: tensile2d
+    geometry_dimension: 2
+    input_field_dim: 5
+    input_scalar_dim: 6
+    output_field_dim: 5
+    output_scalar_dim: 3
+loader:
+  _target_: src.data.loader.hub_loader.HubLoader
+  bridge: ${bridge.function}
+  dataset_name: PLAID-datasets/Tensile2d
+  cache_dir: cached_datasets/Tensile2d
+  task_split:
+  - train_500
+  - test
+  processes_number: 1
+scaler:
+  _target_: src.data.scaler.StandardScaler
+model:
+  _target_: src.models.vits.flatformer_cls_less.FlatFormerCLSLess
+  n_vertices_per_subdomain: 10
+  n_head: 16
+  dim_ff: 512
+  num_layers: 5
+  activation: gelu
+  dropout: 0.1
+  latent_dim: 1024
+  input_field_dim: ${bridge.data_info.input_field_dim}
+  input_scalar_dim: ${bridge.data_info.input_scalar_dim}
+  output_field_dim: ${bridge.data_info.output_field_dim}
+  output_scalar_dim: ${bridge.data_info.output_scalar_dim}
+  tokenizer:
+    _target_: src.models.vits.tokenization.flatten_tokenizer.FlattenTokenizer
+    partitioner:
+      _target_: src.models.vits.tokenization.partitioners.metis_partitioner.MetisPartitioner
+      processes_number: 1
+      n_vertices_per_subdomain: ${model.n_vertices_per_subdomain}
+      absolute_tol: 1
+      relative_tol: 0.1
+    tokenization_type: morton
+    processes_number: 1
+    output_field_dim: ${model.output_field_dim}
+  preprocessing:
+    train_seed: 777
+    val_seed: 523
+    test_seed: 175
+training:
+  lbda: 0.5
+  test_size: 0.2
+  batch_size: 30
+  num_epochs: 500
+  optimizer:
+    _target_: torch.optim.AdamW
+    lr: 0.0001
+    weight_decay: 1.0e-05
+seed: 270

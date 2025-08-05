@@ -1,0 +1,25 @@
+# conda env create --file environment.yaml
+# conda remove -n ENV_NAME --all
+name: vi_transformer
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - datasets=3.6.0
+  - einops=0.8.1
+  - huggingface_hub=0.31.2
+  - muscat=2.4.1
+  - numpy=1.26.4
+  - plaid=0.1
+  - meshio=5.3.5
+  - torch-tb-profiler=0.4.3
+  - tqdm=4.67.1
+  - pip
+  - pip:
+    - hydra-core==1.3.2
+    - omegaconf==2.3.0
+    - pymetis==2025.1.1
+    - torch==2.7.0
+    - torch-geometric==2.6.1
+    - torchaudio==2.7.0
+    - torchvision==0.22.0
