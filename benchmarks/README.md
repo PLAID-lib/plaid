@@ -35,7 +35,8 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 - **MMGP** does not support variable mesh topologies, which limits its applicability to certain datasets and often necessitates custom preprocessing for new cases. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with good accuracy (e.g., `Tensile2d`, `Rotor37`).
 - **MARIO** is computationally expensive to train but achieves consistently a very strong performance across most datasets. Its results on `2D_MultiScHypEl` and `2D_ElPlDynamics` are slightly worse than other tested methods, which may reflect the challenge of capturing complex shape variability in these cases.
 - **Vi-Transformer** and **Augur** perform well across all datasets, showing strong versatility and generalization capabilities.
-- **FNO** suffers significantly on datasets with strong mesh anisotropies: the projections to and from regular grids degrade accuracy, especially on datasets with strong mesh anisotropies such as `Rotor37` and `2D_profile`. Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
+- **FNO** suffers on datasets featuring unstructured meshes with pronounced anisotropies, due to the loss of accuracy introduced by projections to and from regular grids (e.g., `Rotor37` and `2D_profile`). Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
+
 
 ### List of dependencies
 
