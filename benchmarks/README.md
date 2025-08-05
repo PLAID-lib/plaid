@@ -29,7 +29,7 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 | `2D_ElPlDynamics` | 0.1202  |  ❌  |   *0.0263*     |  0.0346    |  **0.0215**  |  0.0742  |
 | `Rotor37`         | 0.0074  |  **0.0014**  |   0.0029     |  0.0033   |   0.0313  |  *0.0017*  |
 | `2D_profile`      | 0.0593  |  0.0365  |   *0.0319*     |  0.0425   |  0.0972  |  **0.0307**  |
-| `VKI-LS59`        | 0.0684  |  0.0312  |   0.0493     |  *0.0267*   |   0.0215  |  **0.0124**  |
+| `VKI-LS59`        | 0.0684  |  0.0312  |   *0.0193*     |  0.0267    |   0.0215  |  **0.0124**  |
 
 **Additional notes:**
 - **MMGP** does not support variable mesh topologies, which limits its applicability to certain datasets and often necessitates custom preprocessing for new cases. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with good accuracy (e.g., `Tensile2d`, `Rotor37`).
