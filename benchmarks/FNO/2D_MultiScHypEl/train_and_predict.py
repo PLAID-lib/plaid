@@ -163,4 +163,4 @@ dataset[ids_test]._save_to_dir_(predicted_data_dir)
 
 
 print("duration train =", time.time()-start)
-# GPUA30, 1169 seconds
+# GPUA30, 15130 seconds
