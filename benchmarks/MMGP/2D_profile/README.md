@@ -5,3 +5,10 @@ To run this benchmark, you need to download and untar the dataset from Zenodo, t
 Run in the order: "create_coarse_common_mesh.py", "launch_morphings.py", and "train_and_predict.py" to generate the prediction on the testing set.
 
 Remark: the loop in "launch_morphings.py" is embarrasingly parallel, and the calls to "morphing_script.py" can be efficiently handled by any job scheduler.
+
+
+### List of dependencies
+
+- [PLAID=0.1.6](https://github.com/PLAID-lib/plaid)
+- [Muscat=2.4.1](https://gitlab.com/drti/muscat)
+- [GPy=1.13.2](https://github.com/SheffieldML/GPy)

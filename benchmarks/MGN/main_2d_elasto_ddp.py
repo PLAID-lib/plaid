@@ -16,11 +16,11 @@ from plaid.containers.dataset import Dataset as PlaidDataset
 from plaid.problem_definition import ProblemDefinition
 
 from data import *
-from final_features import *
+from utils import *
 from model import MeshGraphNet
 
 
-class PlaidTransientDataset(Dataset):
+class ElastoDataset(Dataset):
     def __init__(self, plaid_dataset, plaid_problem, split="train", fields=("U_x","U_y")):
         self.plaid_ds   = plaid_dataset
         self.ids        = plaid_problem.get_split(split)
@@ -99,12 +99,12 @@ def compute_minmax_scaler(train_ds, args, device):
     for batch in loader:
         xs.append(batch.ndata['x'][:, :2])
         ys.append(batch.ndata['y'])
-    all_x = torch.cat(xs, dim=0).to(device)
-    all_y = torch.cat(ys, dim=0).to(device)
+    all_x = torch.cat(xs, dim=0)
+    all_y = torch.cat(ys, dim=0)
     return {
         'type': 'minmax',
-        'min_x': all_x.min(0)[0], 'max_x': all_x.max(0)[0],
-        'min_y': all_y.min(0)[0], 'max_y': all_y.max(0)[0],
+        'min_x': all_x.min(0)[0].to(device), 'max_x': all_x.max(0)[0].to(device),
+        'min_y': all_y.min(0)[0].to(device), 'max_y': all_y.max(0)[0].to(device),
     }
 
 
@@ -115,12 +115,12 @@ def compute_standard_scaler(train_ds, args, device):
     for batch in loader:
         xs.append(batch.ndata['x'][:, :2])
         ys.append(batch.ndata['y'])
-    all_x = torch.cat(xs, dim=0).to(device)
-    all_y = torch.cat(ys, dim=0).to(device)
+    all_x = torch.cat(xs, dim=0)
+    all_y = torch.cat(ys, dim=0)
     return {
         'type': 'standard',
-        'mean_x': all_x.mean(0), 'std_x': all_x.std(0),
-        'mean_y': all_y.mean(0), 'std_y': all_y.std(0),
+        'mean_x': all_x.mean(0).to(device), 'std_x': all_x.std(0).to(device),
+        'mean_y': all_y.mean(0).to(device), 'std_y': all_y.std(0).to(device),
     }
 
 
@@ -277,8 +277,8 @@ def main_worker(args):
     # Build datasets
     if rank==0: print("🚀 Building datasets")
     t0 = time.perf_counter()
-    train_ds = PlaidTransientDataset(plaid_ds, problem, split="train")
-    test_ds  = PlaidTransientDataset(plaid_ds, problem, split="test")
+    train_ds = ElastoDataset(plaid_ds, problem, split="train")
+    test_ds  = ElastoDataset(plaid_ds, problem, split="test")
     t1 = time.perf_counter()
     if rank==0:
         print(f"✔️ [Dataset] {t1-t0:.2f}s — train size={len(train_ds)}, test size={len(test_ds)}")
@@ -437,8 +437,8 @@ if __name__ == "__main__":
     parser.add_argument("--amp",           action="store_true")
     parser.add_argument("--scaler", choices=["none","minmax","standard"], default="standard")
     parser.add_argument("--clip_grad_norm", type=float, default=1.0)
-    parser.add_argument("--ckpt_path",      type=str, default="/ccc/work/cont001/safrtech/nguyenxu/work_station/taxi_driver_quantum_topaze/mgn_physicsnemo/output/2D_ElastoPlastoDynamics/standard")
-    parser.add_argument("--submission_path",type=str, default="/ccc/work/cont001/safrtech/nguyenxu/work_station/taxi_driver_quantum_topaze/mgn_physicsnemo/output/2D_ElastoPlastoDynamics/standard/submission.pkl")
+    parser.add_argument("--ckpt_path",      type=str, default="./ckpt_path")
+    parser.add_argument("--submission_path",type=str, default="./submission.pkl")
     parser.add_argument("--save_interval",  type=int, default=20)
     parser.add_argument("--processor_size",            type=int, default=15)
     parser.add_argument("--num_layers_node_processor", type=int, default=2)

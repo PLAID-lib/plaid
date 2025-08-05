@@ -4,7 +4,7 @@
             "Rotor37"
         ],
         "dataset_path": [
-            "/ccc/work/cont001/safrtech/nguyenxu/work_station/data/Rotor37/plaid"
+            "/Rotor37/plaid"
         ],
         "split_train_name": [
             "train_1000"

@@ -4,7 +4,7 @@
             "2D_Multiscale"
         ],
         "dataset_path": [
-            "/ccc/work/cont001/safrtech/nguyenxu/work_station/data/2D_Multiscale_Hyperelasticity/plaid"
+            "/2D_Multiscale_Hyperelasticity/plaid"
         ],
         "split_train_name": [
             "DOE_train"

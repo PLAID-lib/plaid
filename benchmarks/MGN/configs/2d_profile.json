@@ -4,7 +4,7 @@
             "2D_Profile"
         ],
         "dataset_path": [
-            "/ccc/work/cont001/safrtech/nguyenxu/work_station/data/2D_Profile/large_dataset/clipped/plaid"
+            "/2D_Profile/plaid"
         ],
         "split_train_name": [
             "train"

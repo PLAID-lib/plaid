@@ -52,12 +52,14 @@ Use `main_2d_elasto_ddp.py` to train on the 2D Elasto-PlastoDynamics problem usi
 
 #### Example:
 ```bash
-ccc_mprun python main_2d_elasto_ddp.py \
+srun python main_2d_elasto_ddp.py \
   --data_dir "$DATA_DIR" \
   --problem_dir "$PROBLEM_DIR" \
   --batch_size 16 \
   --epochs 100
 ```
+
+Note: This script is compatible with Slurm-based HPC environments. If you're not using Slurm, replace `srun` with `python` as appropriate for your local setup.
 
 ---
 
@@ -74,3 +76,13 @@ Examples:
 - `tensile2d.json`
 - `vkils59.json`
 - `rotor37.json`
+
+## ⚙️ Dependencies
+
+Install the required Python libraries before running the scripts:
+- torch
+- dgl
+- muscat
+- plaid
+- numpy
+- sklearn

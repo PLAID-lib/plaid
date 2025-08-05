@@ -4,7 +4,7 @@
             "Tensile2D"
         ],
         "dataset_path": [
-            "/ccc/work/cont001/safrtech/nguyenxu/work_station/data/Tensile2d/plaid"
+            "/Tensile2d/plaid"
         ],
         "split_train_name": [
             "train_500"

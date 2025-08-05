@@ -4,7 +4,7 @@
             "VKI_LS59"
         ],
         "dataset_path": [
-            "/ccc/work/cont001/safrtech/nguyenxu/work_station/data/VKILS59/plaid"
+            "/VKILS59/plaid"
         ],
         "split_train_name": [
             "train"

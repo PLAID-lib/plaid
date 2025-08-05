@@ -1,7 +1,6 @@
 import os
 import dgl
 import csv
-import h5py
 import torch
 import numpy as np
 from rich.progress import track
@@ -17,10 +16,6 @@ import Muscat.Containers.ElementsDescription as ED
 from Muscat.Containers.Filters import FilterObjects as FO
 from Muscat.Containers import MeshModificationTools as MMT
 from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
-
-from utils import *
-from transform import *
-from transform_error_control import *
 
 
 def tri_cells_to_edges(cells):
