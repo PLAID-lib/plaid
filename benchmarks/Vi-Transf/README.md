@@ -1,12 +1,5 @@
 # PLAID Vision Transformer benchmarks
 
-## Environment installation and setup
-```
-conda env create --file environment.yaml
-conda activate vi_transformer
-```
-
-
 ## Training and submission
 The Vi-Transformer benchmark models can be ran on the corresponding datasets as follows:
 

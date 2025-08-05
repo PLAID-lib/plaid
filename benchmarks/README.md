@@ -48,6 +48,7 @@ The benchmark codes require the following dependencies (not simultaneously, see 
 - [PhysicsNemo](https://github.com/NVIDIA/physicsnemo)
 - [MARIO](https://github.com/giovannicatalani/MARIO)
 - [DGL](https://www.dgl.ai/)
+- [PyTorchGeometric=2.6.1](https://pytorch-geometric.readthedocs.io/en/latest/)
 
 
 <!-- Longuer version (not a good idea, imho)
