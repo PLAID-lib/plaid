@@ -36,3 +36,16 @@ python main_static.py --config-name vkils59.yaml
 ```
 python main_elasto_plasto_dynamics.py
 ```
+
+
+## Dependencies
+- [PLAID=0.1](https://github.com/PLAID-lib/plaid)
+- [PyTorch=2.7.0](https://pytorch.org/)
+- [Datasets=3.6.0](https://pypi.org/project/datasets/)
+- [Einops=0.8.1](https://pypi.org/project/einops/)
+- [Muscat=2.4.1](https://gitlab.com/drti/muscat)
+- [PyTorchGeometric=2.6.1](https://pytorch-geometric.readthedocs.io/en/latest/)
+- [Hydra=1.3.2](https://hydra.cc/docs/intro/)
+- [Pymetis=2025.0.1](https://github.com/inducer/pymetis)
+- [Omegaconf=2.3.0](https://omegaconf.readthedocs.io/en/2.3_branch/)
+- [TorchTbProfiler=0.4.3](https://pypi.org/project/torch-tb-profiler/)
