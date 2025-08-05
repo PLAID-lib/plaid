@@ -6,9 +6,7 @@ from torch.nn import TransformerEncoder, TransformerEncoderLayer
 from typing import List, Union, Callable, Optional
 from torch_geometric.data import Data, Batch
 from .tokenization.tokenizer import Tokenizer
-from ..blocks import MLP
 from einops import rearrange
-import torch.nn.functional as F
 import random
 
 # B: Batch size
@@ -70,7 +68,7 @@ class FlatFormerCLSLess(BaseModel):
                                                   activation=activation)
         self.transformer_encoder = TransformerEncoder(encoder_layers, num_layers)
 
-        # MLP decoder
+        # Linear decoder
         self.decoder     = nn.Linear(latent_dim + input_scalar_dim, n_vertices_per_subdomain*(self.output_field_dim + self.output_scalar_dim), bias=False)
         
     def preprocess(self, pyg_dataset: List[Data], seed: Optional[int]=None, **kwargs) -> List[Data]:
