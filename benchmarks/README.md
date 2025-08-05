@@ -7,12 +7,12 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 ### Code distribution status:
 | Dataset           | MGN | MMGP | Vi-Transf. | FNO | MARIO |
 |-------------------|-----|------|------------|-------|-------|
-| `Tensile2d`       | 🕑  |  ✅  |   🕑     |  ✅  |  🕑  |
-| `2D_MultiScHypEl` | 🕑  |  ❌  |   🕑     |  ✅  |  🕑  |
-| `2D_ElPlDynamics` | 🕑  |  ❌  |   🕑     |  ✅  |  🕑  |
-| `Rotor37`         | 🕑  |  ✅  |   🕑     |  ✅  |  ✅  |
-| `2D_profile`      | 🕑  |  ✅  |   🕑     |  ✅  |  ✅  |
-| `VKI-LS59`        | 🕑  |  ✅  |   🕑     |  ✅  |  ✅  |
+| `Tensile2d`       | ✅  |  ✅  |   ✅     |  ✅  |  🕑  |
+| `2D_MultiScHypEl` | ✅  |  ❌  |   ✅     |  ✅  |  🕑  |
+| `2D_ElPlDynamics` | ✅  |  ❌  |   ✅     |  ✅  |  🕑  |
+| `Rotor37`         | ✅  |  ✅  |   ✅     |  ✅  |  ✅  |
+| `2D_profile`      | ✅  |  ✅  |   ✅     |  ✅  |  ✅  |
+| `VKI-LS59`        | ✅  |  ✅  |   ✅     |  ✅  |  ✅  |
 - ❌: Not compatible with topology variation
 
 <!-- We thank the reviewer for their encouraging feedback and for responding early in the discussion period. This gave us both the opportunity and the motivation to complete the remaining work in time to provide a full response before the end of the discussion phase. As a result, we were able to finalize the benchmark table and release the code online. To improve reproducibility and alignment with common practice in the Neural Operator literature, we replaced DAFNO with the more widely cited FNO model, using the high-quality implementation available in NVIDIA’s PhysicsNemo library.
@@ -26,9 +26,9 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 |-------------------|-----|------|------------|-------|-------|-------|
 | `Tensile2d`       | 0.0673  |  **0.0026**  |   0.0116     |  0.0154   |  0.0123  |  *0.0038*  |
 | `2D_MultiScHypEl` | 0.0437  |  ❌  |   0.0325     |  **0.0232**   |   *0.0302*  |  0.0573  |
-| `2D_ElPlDynamics` | 0.1202  |  ❌  |   *0.0263*     |  0.0346    |  **0.0215**  |  0.0319  |
+| `2D_ElPlDynamics` | 0.1202  |  ❌  |   *0.0227*     |  0.0346    |  **0.0215**  |  0.0319  |
 | `Rotor37`         | 0.0074  |  **0.0014**  |   0.0029     |  0.0033   |   0.0313  |  *0.0017*  |
-| `2D_profile`      | 0.0593  |  0.0365  |   *0.0319*     |  0.0425   |  0.0972  |  **0.0307**  |
+| `2D_profile`      | 0.0593  |  0.0365  |   *0.0312*     |  0.0425   |  0.0972  |  **0.0307**  |
 | `VKI-LS59`        | 0.0684  |  0.0312  |   *0.0193*     |  0.0267    |   0.0215  |  **0.0124**  |
 
 **Additional notes:**
@@ -40,14 +40,15 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 
 ### List of dependencies
 
-The benchmark codes require the following dependencies:
+The benchmark codes require the following dependencies (not simultaneously, see individual benchmark codes):
 - [PLAID=0.1.6](https://github.com/PLAID-lib/plaid)
 - [Muscat=2.4.1](https://gitlab.com/drti/muscat)
 - [GPy](https://github.com/SheffieldML/GPy)
 - [MMGP=0.0.9](https://gitlab.com/drti/mmgp)
 - [PhysicsNemo](https://github.com/NVIDIA/physicsnemo)
 - [MARIO](https://github.com/giovannicatalani/MARIO)
-
+- [DGL](https://www.dgl.ai/)
+- [PyTorchGeometric=2.6.1](https://pytorch-geometric.readthedocs.io/en/latest/)
 
 
 <!-- Longuer version (not a good idea, imho)

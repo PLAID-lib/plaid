@@ -1,0 +1,63 @@
+dataset:
+  name: 2d_multiscale_hyperelasticity
+  dimension: 2
+bridge:
+  function:
+    _target_: src.data.loader.bridges.multiscale_sample_to_geometric.multiscale_sample_to_geometric
+    _partial_: true
+  data_info:
+    name: 2d_multiscale_hyperelasticity
+    geometry_dimension: 2
+    input_field_dim: 5
+    input_scalar_dim: 3
+    output_field_dim: 7
+    output_scalar_dim: 1
+loader:
+  _target_: src.data.loader.hub_loader.HubLoader
+  bridge: ${bridge.function}
+  dataset_name: PLAID-datasets/2D_Multiscale_Hyperelasticity
+  cache_dir: cached_datasets/2D_Multiscale_Hyperelasticity
+  task_split:
+  - DOE_train
+  - DOE_test
+  processes_number: 1
+scaler:
+  _target_: src.data.scaler.StandardScaler
+model:
+  _target_: src.models.vits.flatformer_cls_less.FlatFormerCLSLess
+  n_vertices_per_subdomain: 10
+  n_head: 16
+  dim_ff: 512
+  num_layers: 5
+  activation: gelu
+  dropout: 0.1
+  latent_dim: 1024
+  input_field_dim: ${bridge.data_info.input_field_dim}
+  input_scalar_dim: ${bridge.data_info.input_scalar_dim}
+  output_field_dim: ${bridge.data_info.output_field_dim}
+  output_scalar_dim: ${bridge.data_info.output_scalar_dim}
+  tokenizer:
+    _target_: src.models.vits.tokenization.flatten_tokenizer.FlattenTokenizer
+    partitioner:
+      _target_: src.models.vits.tokenization.partitioners.metis_partitioner.MetisPartitioner
+      processes_number: 1
+      n_vertices_per_subdomain: ${model.n_vertices_per_subdomain}
+      absolute_tol: 1
+      relative_tol: 0.1
+    tokenization_type: morton
+    processes_number: 1
+    output_field_dim: ${model.output_field_dim}
+  preprocessing:
+    train_seed: 27
+    val_seed: 37
+    test_seed: 66
+training:
+  lbda: 0.5
+  test_size: 0.2
+  batch_size: 50
+  num_epochs: 500
+  optimizer:
+    _target_: torch.optim.AdamW
+    lr: 0.0001
+    weight_decay: 1.0e-05
+seed: 5
