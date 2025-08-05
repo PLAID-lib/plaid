@@ -80,9 +80,9 @@ Examples:
 ## ⚙️ Dependencies
 
 Install the required Python libraries before running the scripts:
-- torch
-- dgl
-- muscat
-- plaid
-- numpy
-- sklearn
+- torch=2.6.0
+- dgl=2.4.0+cu124
+- muscat=2.4.1
+- plaid=0.1
+- numpy=1.26.4
+- scikit-learn=1.6.1
