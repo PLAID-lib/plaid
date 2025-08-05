@@ -132,3 +132,4 @@ def tensile_sample_to_geometric(sample: Sample, sample_id: int, problem_definiti
         output_scalars_names=output_scalars_names,
         **nodal_tags
     )
+    return data
