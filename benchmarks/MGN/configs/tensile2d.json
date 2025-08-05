@@ -1,0 +1,70 @@
+[
+    {
+        "dataset_name": [
+            "Tensile2D"
+        ],
+        "dataset_path": [
+            "/ccc/work/cont001/safrtech/nguyenxu/work_station/data/Tensile2d/plaid"
+        ],
+        "split_train_name": [
+            "train_500"
+        ],
+        "split_test_name": [
+            "test"
+        ],
+        "bandwidth": [
+            0.02976729880552192
+        ],
+        "activation": [
+            "leaky"
+        ],
+        "aggregation": [
+            "sum"
+        ],
+        "batch_size": [
+            1
+        ],
+        "hidden_dim_edge_encoder": [
+            16
+        ],
+        "hidden_dim_node_decoder": [
+            16
+        ],
+        "hidden_dim_node_encoder": [
+            16
+        ],
+        "input_dim_edges": [
+            1
+        ],
+        "input_dim_nodes": [
+            18
+        ],
+        "lr": [
+            0.001
+        ],
+        "num_epochs": [
+            1000
+        ],
+        "num_layers_edge_encoder": [
+            2
+        ],
+        "num_layers_edge_processor": [
+            2
+        ],
+        "num_layers_node_decoder": [
+            2
+        ],
+        "num_layers_node_encoder": [
+            2
+        ],
+        "num_layers_node_processor": [
+            2
+        ],
+        "output_dim": [
+            5
+        ],
+        "processor_size": [
+            10
+        ]
+    }
+]

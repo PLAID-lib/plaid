@@ -1,0 +1,70 @@
+[
+    {
+        "dataset_name": [
+            "VKI_LS59"
+        ],
+        "dataset_path": [
+            "/ccc/work/cont001/safrtech/nguyenxu/work_station/data/VKILS59/plaid"
+        ],
+        "split_train_name": [
+            "train"
+        ],
+        "split_test_name": [
+            "test"
+        ],
+        "bandwidth": [
+            0.015646763135580142
+        ],
+        "activation": [
+            "leaky"
+        ],
+        "aggregation": [
+            "sum"
+        ],
+        "batch_size": [
+            1
+        ],
+        "hidden_dim_edge_encoder": [
+            32
+        ],
+        "hidden_dim_node_decoder": [
+            32
+        ],
+        "hidden_dim_node_encoder": [
+            32
+        ],
+        "input_dim_edges": [
+            1
+        ],
+        "input_dim_nodes": [
+            14
+        ],
+        "lr": [
+            0.001
+        ],
+        "num_epochs": [
+            1000
+        ],
+        "num_layers_edge_encoder": [
+            2
+        ],
+        "num_layers_edge_processor": [
+            2
+        ],
+        "num_layers_node_decoder": [
+            2
+        ],
+        "num_layers_node_encoder": [
+            2
+        ],
+        "num_layers_node_processor": [
+            2
+        ],
+        "output_dim": [
+            1
+        ],
+        "processor_size": [
+            10
+        ]
+    }
+]
