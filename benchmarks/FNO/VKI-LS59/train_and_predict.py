@@ -70,7 +70,7 @@ outputs = (outputs - min_out) / (max_out - min_out)
 
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, TensorDataset
 
 class GridDataset(Dataset):
     def __init__(self, inputs, outputs):
@@ -92,11 +92,11 @@ loader = DataLoader(dataset__, batch_size=64, shuffle=True)
 model = FNO(
 in_channels=inputs.shape[1],
 out_channels=outputs.shape[1],
-decoder_layers=2,
-decoder_layer_size=32,
+decoder_layers=4,
+decoder_layer_size=64,
 dimension=2,
-latent_channels=32,
-num_fno_layers=2,
+latent_channels=64,
+num_fno_layers=4,
 padding=0,
 ).cuda()
 
@@ -104,7 +104,7 @@ padding=0,
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 loss_fn = torch.nn.MSELoss()
 
-n_epoch = 500
+n_epoch = 2000
 for epoch in range(n_epoch):
     model.train()
     total_loss = 0.0
@@ -154,4 +154,4 @@ dataset[ids_test]._save_to_dir_(predicted_data_dir)
 
 
 print("duration train =", time.time()-start)
-# GPUA30, 718 seconds
+# GPUA30, 9344 seconds

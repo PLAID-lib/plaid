@@ -71,4 +71,4 @@ with open('prediction_vki.pkl', 'wb') as file:
     pickle.dump(prediction, file)
 
 print("duration construct predictions =", time.time()-start)
-# 15.2 seconds
+# 3.5 seconds

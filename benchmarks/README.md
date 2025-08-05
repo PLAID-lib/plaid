@@ -2,7 +2,7 @@
 
 This folder contains the code used to generate the baselines for the [PLAID Benchmarks](https://huggingface.co/PLAIDcompetitions), with the exception of the Augur results, which are produced using a [commercial solution](https://augurco.fr/). These benchmarks are interactive: anyone can participate by submitting their own model predictions. Each benchmark includes the corresponding dataset, along with documentation on how to use it and how to submit a solution.
 
-**As of August 4, 2025:**
+**As of August 5, 2025:**
 
 ### Code distribution status:
 | Dataset           | MGN | MMGP | Vi-Transf. | FNO | MARIO |
@@ -24,12 +24,12 @@ We believe this additional work fully addresses points W1 and W2 raised in the i
 ### Benchmark status:
 | Dataset           | MGN | MMGP | Vi-Transf. | Augur | FNO | MARIO |
 |-------------------|-----|------|------------|-------|-------|-------|
-| `Tensile2d`       | 0.0673  |  **0.0026**  |   0.0116     |  0.0154   |  0.021  |  *0.0038*  |
+| `Tensile2d`       | 0.0673  |  **0.0026**  |   0.0116     |  0.0154   |  0.0123  |  *0.0038*  |
 | `2D_MultiScHypEl` | 0.0437  |  ❌  |   *0.0341*     |  **0.0232**   |   0.0439  |  0.0573  |
 | `2D_ElPlDynamics` | 0.1202  |  ❌  |   *0.0263*     |  0.0346    |  **0.0215**  |  0.0742  |
 | `Rotor37`         | 0.0074  |  **0.0014**  |   0.0029     |  0.0033   |   0.0313  |  *0.0017*  |
 | `2D_profile`      | 0.0593  |  0.0365  |   *0.0319*     |  0.0425   |  0.0972  |  **0.0307**  |
-| `VKI-LS59`        | 0.0684  |  0.0312  |   0.0493     |  *0.0267*   |   0.0581  |  **0.0124**  |
+| `VKI-LS59`        | 0.0684  |  0.0312  |   0.0493     |  *0.0267*   |   0.0215  |  **0.0124**  |
 
 **Additional notes:**
 - **MMGP** does not support variable mesh topologies, which limits its applicability to certain datasets and often necessitates custom preprocessing for new cases. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with good accuracy (e.g., `Tensile2d`, `Rotor37`).
