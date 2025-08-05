@@ -73,4 +73,4 @@ with open('prediction_2dMultiScHypEl.pkl', 'wb') as file:
     pickle.dump(prediction, file)
 
 print("duration construct predictions =", time.time()-start)
-# 27.2 seconds
+# 28 seconds
