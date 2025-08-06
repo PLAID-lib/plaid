@@ -58,10 +58,6 @@ def train(args, model, optimizer, loss_fn, train_data, test_data):
     # Data structure for storing metrics
     metrics = []
 
-    # Variable to store the best relative RMSE mean
-    best_relative_rmse_mean = float('inf')
-    best_epoch = -1
-
     # Training loop
     num_epochs = args.num_epochs
 
@@ -88,37 +84,20 @@ def train(args, model, optimizer, loss_fn, train_data, test_data):
 
         train_loss /= (idx+1)
 
-        test_loss = 0.0
         model.eval()
-        y_tests, y_test_preds = [], []
+        y_test_preds = []
 
         with torch.no_grad():
             for idx, (graph, _, _) in enumerate(test_dataloader):
                 graph = graph.to(device)
                 pred = model(graph.ndata["x"], graph.edata["f"], graph)
 
-                loss = loss_fn(graph.ndata["y"], pred)
-                test_loss += loss.item()
-
-                y_tests.append(graph.ndata["y"] * (fields_max - fields_min) + fields_min)
                 pred = pred * (fields_max - fields_min) + fields_min
                 y_test_preds.append(pred)
 
-            test_loss /= (idx+1)
-
-        if (epoch+1) % 500 == 0:
+        if (epoch+1) % 100 == 0:
             torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"state_epoch_{epoch+1}.pt"))
             save_fields(os.path.join(predictions_dir, f"predicted_fields_{epoch+1}.h5"), y_test_preds)
-
-        relative_rmses = relative_rmse_field(y_tests, y_test_preds)
-
-        mean_relative_rmse = relative_rmses.mean().item()
-
-        if mean_relative_rmse < best_relative_rmse_mean:
-            best_relative_rmse_mean = mean_relative_rmse
-            best_epoch = epoch+1
-            torch.save(model.state_dict(), os.path.join(checkpoint_dir, "best_state.pt"))
-            save_fields(os.path.join(predictions_dir, "best_predicted_fields.h5"), y_test_preds)
 
         epoch_end_time = time.time()
         epoch_duration = epoch_end_time - epoch_start_time
@@ -127,19 +106,13 @@ def train(args, model, optimizer, loss_fn, train_data, test_data):
         metrics.append({
             "epoch": epoch,
             "train_loss": train_loss,
-            "test_loss": test_loss,
-            "mean_rrmse": mean_relative_rmse,
-            "rrmses_field": relative_rmses.cpu(),
             "duration": epoch_duration
         })
 
         metrics_str = (f"🌟"
             f"Epoch {epoch+1} | "
-            f"Train Loss: {train_loss:.7f} | Test Loss: {test_loss:.7f} | "
-            f"Mean RRMSE: {mean_relative_rmse:.7f} | "
-            f"RRMSE Field: {[f'{v:.7f}' for v in relative_rmses]} | "
-            f"Duration: {epoch_duration:.2f} (s) | "
-            f"Best Mean RRMSE: {best_relative_rmse_mean:.7f} at epoch {best_epoch}"
+            f"Train Loss: {train_loss:.7f} | "
+            f"Duration: {epoch_duration:.2f} (s) "
         )
         print(metrics_str)
 
