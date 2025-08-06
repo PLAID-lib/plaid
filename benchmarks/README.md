@@ -17,6 +17,6 @@ This folder contains the code used to generate the baselines for the [PLAID Benc
 
 ### Additional notes:
 - **MMGP** does not support variable mesh topologies, which limits its applicability to certain datasets and often necessitates custom preprocessing for new cases. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with good accuracy (e.g., `Tensile2d` and `Rotor37`).
-- **MARIO** is computationally expensive to train but achieves consistently a very strong performance across most datasets. Its results on `2D_MultiScHypEl` and `2D_ElPlDynamics` are slightly worse than other tested methods, which may reflect the challenge of capturing complex shape variability in these cases.
+- **MARIO** is computationally expensive to train but achieves consistently a very strong performance across most datasets. Its result on `2D_MultiScHypEl` is slightly worse than other tested methods, which may reflect the challenge of capturing complex shape variability in these cases.
 - **Vi-Transformer** and **Augur** perform well across all datasets, showing strong versatility and generalization capabilities.
 - **FNO** suffers on datasets featuring unstructured meshes with pronounced anisotropies, due to the loss of accuracy introduced by projections to and from regular grids (e.g., `Rotor37` and `2D_profile`). Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
