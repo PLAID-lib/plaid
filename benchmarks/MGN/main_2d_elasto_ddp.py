@@ -148,27 +148,13 @@ def load_checkpoint(path, model, optimizer=None, device='cpu'):
     return start_epoch
 
 
-def _metric(reference_split, prediction_split):
-    assert len(reference_split) == len(prediction_split)
-    errors = {name:0. for name in reference_split[0].keys()}
-    n_samples = len(reference_split)
-    for i in range(n_samples):
-        for fn in reference_split[0].keys():
-            errors[fn] += (np.linalg.norm(prediction_split[i][fn] - reference_split[i][fn])**2)/(reference_split[i][fn].shape[1]*np.linalg.norm(reference_split[i][fn], ord = np.inf)**2)
-
-    for fn in reference_split[0].keys():
-        errors[fn] = 100.*np.sqrt(errors[fn]/n_samples)
-
-    return errors
-
-
-def evaluate(model, device, test_ds, scaler, args, rank):
+def inference(model, device, test_ds, scaler, args, rank):
     if rank != 0:
         return None
-    print("🔍 Starting evaluation")
+    print("🔍 Starting inference on test set")
     t0 = time.perf_counter()
     model.eval()
-    preds, refs = [], []
+    preds = []
 
     with torch.no_grad():
         for sim_idx, sid in enumerate(test_ds.ids):
@@ -181,11 +167,9 @@ def evaluate(model, device, test_ds, scaler, args, rank):
             u_pred = torch.stack([ux0, uy0], dim=-1)
 
             pred_dict = {'U_x': [], 'U_y': []}
-            ref_dict  = {'U_x': [], 'U_y': []}
 
             for i,fn in enumerate(['U_x','U_y']):
                 pred_dict[fn].append(u_pred[:,i].cpu().numpy())
-                ref_dict[fn].append(u_pred[:,i].cpu().numpy())
 
             for t in range(test_ds.n_steps):
                 # Prepare x0
@@ -222,26 +206,17 @@ def evaluate(model, device, test_ds, scaler, args, rank):
 
                 for i,fn in enumerate(['U_x','U_y']):
                     pred_dict[fn].append(u_pred[:,i].cpu().numpy())
-                    ref_dict[fn].append(u_tp[:,i].cpu().numpy())
 
             # Stack along time
             for fn in pred_dict:
                 pred_dict[fn] = np.stack(pred_dict[fn], axis=1).T
-                ref_dict[fn]  = np.stack(ref_dict[fn],  axis=1).T
-
             preds.append(pred_dict)
-            refs.append(ref_dict)
-
-    # Compute relative RMSE
-    errors = _metric(refs, preds)
-
-    t1 = time.perf_counter()
-    print(f"🎯 Eval finished in {t1-t0:.2f}s — Errors: {errors}")
 
     with open(args.submission_path, "wb") as f:
         pickle.dump(preds, f)
-
-    print(f"💾 Submission saved: {args.submission_path}\n")
+    
+    t1 = time.perf_counter()
+    print(f"🎯 Inference done in {t1-t0:.2f}s — saving to {args.submission_path}")
 
 
 def main_worker(args):
@@ -413,10 +388,7 @@ def main_worker(args):
             if avg_loss < best_loss:
                 best_loss = avg_loss
                 save_checkpoint(f"{args.ckpt_path}/best.pth", model, optimizer, epoch, rank)
-                evaluate(model, device, test_ds, scaler, args, rank)
-
-    # Final eval
-    evaluate(model, device, test_ds, scaler, args, rank)
+                inference(model, device, test_ds, scaler, args, rank)
 
     t_end = time.perf_counter()
     if rank==0:
