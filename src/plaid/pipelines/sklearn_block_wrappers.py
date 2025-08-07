@@ -58,7 +58,7 @@ def get_2Darray_from_homogeneous_identifiers(
         features_identifiers: a list of input feature identifiers.
 
     Returns:
-        A NumPy array of shape (n_samples, n_features),.
+        A NumPy array of shape (n_samples, n_features).
 
     Raises:
         AssertionError: If the number of features in the output does not match the identifiers.
@@ -198,6 +198,8 @@ class WrappedPlaidSklearnRegressor(RegressorMixin, BaseEstimator):
         dynamics_params_factory: Optional dict of callables for dynamic hyperparameter
             injection based on the input data.
     """
+
+    # TODO: remove transform and inv tranf
 
     def __init__(
         self,

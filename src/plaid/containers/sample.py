@@ -219,7 +219,7 @@ class Sample(BaseModel):
         return copy.deepcopy(self)
 
     # -------------------------------------------------------------------------#
-    def set_default_base(self, base_name: str, time: float = None) -> None:
+    def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
         """Set the default base for the specified time (that will also be set as default if provided).
 
         The default base is a reference point for various operations in the system.

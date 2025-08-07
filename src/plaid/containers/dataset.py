@@ -24,7 +24,7 @@ import shutil
 import subprocess
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Iterator, Union
+from typing import Iterator, Optional, Union
 
 import numpy as np
 import yaml
@@ -425,7 +425,7 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def get_all_features_identifiers(
-        self, ids: list[int] = None
+        self, ids: Optional[list[int]] = None
     ) -> list[dict[str, Union[str, float]]]:
         """Get all features identifiers from the dataset.
 
@@ -467,7 +467,9 @@ class Dataset(object):
         ]
 
     # -------------------------------------------------------------------------#
-    def add_tabular_scalars(self, tabular: np.ndarray, names: list[str] = None) -> None:
+    def add_tabular_scalars(
+        self, tabular: np.ndarray, names: Optional[list[str]] = None
+    ) -> None:
         """Add tabular scalar data to the summary.
 
         Args:
@@ -572,7 +574,7 @@ class Dataset(object):
             feature_identifier (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
 
         Returns:
-            ldict[int, FeatureType]: A list of features matching the provided identifier.
+            dict[int, FeatureType]: A list of features matching the provided identifier.
         """
         return {
             id: self[id].get_feature_from_identifier(feature_identifier)
@@ -1319,7 +1321,9 @@ class Dataset(object):
     # le laisser placer des samples n’importe où ?
     #  - avec des ids potentiellement négatifs,
     #  - potentiellement loin après le dernier id déjà présent...
-    def set_sample(self, id: int, sample: Sample, warning_overwrite=True) -> None:
+    def set_sample(
+        self, id: int, sample: Sample, warning_overwrite: bool = True
+    ) -> None:
         """Set a :class:`sample` with :code:`id` in the Dataset, overwriting existing samples if there's a conflict.
 
         Args:

@@ -7,7 +7,7 @@ Includes:
 
 import copy
 import time
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import Muscat.Containers.ElementsDescription as ED
 import Muscat.Containers.Filters.FilterObjects as FilterObjects
@@ -43,8 +43,9 @@ class MMGPPreparer(TransformerMixin, BaseEstimator):
         morphing: ...
     """
 
-    # TODO: check if restrict_to_features=True can be used to reduce further memory consumption
-    def __init__(self, common_mesh_id: int = None, morphing: Callable = None):
+    def __init__(
+        self, common_mesh_id: Optional[int] = None, morphing: Optional[Callable] = None
+    ):
         self.common_mesh_id = common_mesh_id
         self.morphing = morphing
 
@@ -210,7 +211,7 @@ class MMGPTransformer(TransformerMixin, BaseEstimator):
     # TODO: check if restrict_to_features=True can be used to reduce further memory consumption
     def __init__(
         self,
-        in_features_identifiers: list[dict] = None,
+        in_features_identifiers: Optional[list[dict]] = None,
     ):
         self.in_features_identifiers = in_features_identifiers
 
@@ -365,7 +366,9 @@ def compute_FE_projection_operator(
 
 
 def compute_node_to_node_graph(
-    in_mesh: Mesh, dimensionality: int = None, dist_func: Callable = None
+    in_mesh: Mesh,
+    dimensionality: Optional[int] = None,
+    dist_func: Optional[Callable] = None,
 ) -> networkx.Graph:
     """Creates a networkx graph from the node connectivity on a Mesh through edges.
 
@@ -432,8 +435,8 @@ def renumber_mesh_for_parametrization(
     in_mesh: Mesh,
     in_place: bool = True,
     boundary_orientation: str = "direct",
-    fixed_boundary_points: list = None,
-    starting_point_rank_on_boundary: int = None,
+    fixed_boundary_points: Optional[list] = None,
+    starting_point_rank_on_boundary: Optional[int] = None,
 ) -> Tuple[Mesh, np.ndarray, int]:
     """Only for linear triangle meshes.
 
@@ -621,8 +624,8 @@ def floater_mesh_parametrization(
     out_shape: str = "circle",
     boundary_orientation: str = "direct",
     curv_abs_boundary: bool = True,
-    fixed_interior_points: dict[str, list] = None,
-    fixed_boundary_points: list = None,
+    fixed_interior_points: Optional[dict[str, list]] = None,
+    fixed_boundary_points: Optional[list] = None,
 ) -> Tuple[Mesh, dict[str, float]]:
     """STILL LARGELY EXPERIMENTAL.
 

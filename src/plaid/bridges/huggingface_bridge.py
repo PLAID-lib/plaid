@@ -5,6 +5,7 @@ import pickle
 import shutil
 import sys
 from multiprocessing import Pool
+from pathlib import Path
 from typing import Callable, Optional
 
 from datasets import load_from_disk
@@ -170,23 +171,27 @@ def huggingface_description_to_problem_definition(
 class HFToPlaidSampleConverter:
     """Class to convert a huggingface dataset sample to a plaid sample."""
 
-    def __init__(self, ds):
+    def __init__(self, ds: datasets.Dataset):
         self.ds = ds
 
-    def __call__(self, ind):  # pragma: no cover  (not reported with multiprocessing)
+    def __call__(
+        self, sample_id: int
+    ):  # pragma: no cover  (not reported with multiprocessing)
         """Convert a single sample from the huggingface dataset to a plaid sample."""
-        return Sample.model_validate(pickle.loads(self.ds[ind]["sample"]))
+        return Sample.model_validate(pickle.loads(self.ds[sample_id]["sample"]))
 
 
 class HFShardToPlaidSampleConverter:
     """Class to convert a huggingface dataset sample shard to a plaid sample."""
 
-    def __init__(self, shard_path):
-        self.ds = load_from_disk(shard_path)
+    def __init__(self, shard_path: Path):
+        self.ds = load_from_disk(shard_path.as_posix())
 
-    def __call__(self, idx):  # pragma: no cover (not reported with multiprocessing)
+    def __call__(
+        self, sample_id: int
+    ):  # pragma: no cover (not reported with multiprocessing)
         """Convert a sample shard from the huggingface dataset to a plaid sample."""
-        sample = self.ds[idx]
+        sample = self.ds[sample_id]
         return Sample.model_validate(pickle.loads(sample["sample"]))
 
 
@@ -246,7 +251,7 @@ def huggingface_dataset_to_plaid(
             shard.save_to_disk(f"shards/dataset_shard_{i}")
 
         def parallel_convert(shard_path, n_workers):
-            converter = HFShardToPlaidSampleConverter(shard_path)
+            converter = HFShardToPlaidSampleConverter(Path(shard_path))
             with Pool(processes=n_workers) as pool:
                 return list(
                     tqdm(
