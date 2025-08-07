@@ -409,7 +409,7 @@ class Dataset(object):
         """Add tabular scalar data to the summary.
 
         Args:
-            tabular (np.ndarray): A 2D NumPy array containing tabular scalar data.
+            tabular (np.ndarray): A 2D NumPy array containing tabular scalar data, with shape (n_samples, n_scalars)
             names (list[str], optional): A list of column names for the tabular data. Defaults to None.
 
         Raises:
@@ -419,27 +419,23 @@ class Dataset(object):
         Note:
             If no names are provided, it will automatically create names based on the pattern 'X{number}'
         """
-        nb_samples = len(tabular)
-
         if tabular.ndim != 2:
             raise ShapeError(f"{tabular.ndim=}!=2, should be == 2")
+
+        nb_samples = tabular.shape[0]
+        nb_scalars = tabular.shape[1]
+
         if names is None:
-            names = [f"X{i}" for i in range(tabular.shape[1])]
-        if tabular.shape[1] != len(names):
+            names = [f"X{i}" for i in range(nb_scalars)]
+        if nb_scalars != len(names):
             raise ShapeError(
-                f"tabular should have as many columns as there are names, but {tabular.shape[1]=} and {len(names)=}"
+                f"tabular should have as many columns as there are names, but {nb_scalars=} and {len(names)=}"
             )
 
-        # ---# For efficiency, first add values to storage
-        name_to_ids = {}
-        for col, name in zip(tabular.T, names):
-            name_to_ids[name] = col
-
-        # ---# Then add data in sample
         for i_samp in range(nb_samples):
             sample = Sample()
-            for name in names:
-                sample.add_scalar(name, name_to_ids[name][i_samp])
+            for i_col, name in enumerate(names):
+                sample.add_scalar(name, tabular[i_samp, i_col])
             self.add_sample(sample)
 
     def get_scalars_to_tabular(
@@ -505,28 +501,26 @@ class Dataset(object):
         Note:
             If no names are provided, it will automatically create names based on the pattern 'X{number}'
         """
-        nb_samples = len(tabular)
-
         if tabular.ndim != 4:
             raise ShapeError(f"{tabular.ndim=}!=4, should be == 4")
+
+        nb_samples = tabular.shape[0]
+        # max_n_timestamps = tabular.shape[1]
+        nb_features = tabular.shape[2]
+        assert tabular.shape[3] == 2
+
         if names is None:
-            names = [f"X{i}" for i in range(tabular.shape[2])]
-        if tabular.shape[2] != len(names):
+            names = [f"X{i}" for i in range(nb_features)]
+        if nb_features != len(names):
             raise ShapeError(
-                f"tabular's 3rd dimension should have same size as there are names, but {tabular.shape[2]=} and {len(names)=}"
+                f"tabular's 3rd dimension should have same size as there are names, but {nb_features=} and {len(names)=}"
             )
 
-        # ---# For efficiency, first add values to storage
-        name_to_ids = {}
-        for i_col, name in enumerate(names):
-            name_to_ids[name] = tabular[:, :, i_col]
-
-        # ---# Then add data in sample
         for i_samp in range(nb_samples):
             sample = Sample()
-            for i_name, name in enumerate(names):
-                timestamps = name_to_ids[name][i_samp, :, 0]
-                values = name_to_ids[name][i_samp, :, 1]
+            for i_col, name in enumerate(names):
+                timestamps = tabular[i_samp, :, i_col, 0]
+                values = tabular[i_samp, :, i_col, 1]
                 # detect first decreasing timestamp
                 diff_ts = timestamps[1:] - timestamps[:-1]
                 decreasing_ts_ids = (diff_ts <= 0).nonzero()[0]
@@ -619,7 +613,7 @@ class Dataset(object):
         """Add tabular field data to the dataset.
 
         Args:
-            tabular (np.ndarray): A 2D NumPy array containing tabular field data.
+            tabular (np.ndarray): A 3D NumPy array containing tabular field data, with shape (n_samples, n_points, n_fields).
             names (list[str], optional): A list of column names for the tabular data. Defaults to None.
 
         Raises:
@@ -629,27 +623,24 @@ class Dataset(object):
         Note:
             If no names are provided, it will automatically create names based on the pattern 'X{number}'
         """
-        nb_samples = len(tabular)
+        if tabular.ndim != 3:
+            raise ShapeError(f"{tabular.ndim=}!=3, should be == 3")
 
-        if tabular.ndim != 2:
-            raise ShapeError(f"{tabular.ndim=}!=2, should be == 2")
+        nb_samples = tabular.shape[0]
+        # nb_points = tabular.shape[1]
+        nb_fields = tabular.shape[2]
+
         if names is None:
-            names = [f"X{i}" for i in range(tabular.shape[1])]
-        if tabular.shape[1] != len(names):
+            names = [f"X{i}" for i in range(nb_fields)]
+        if nb_fields != len(names):
             raise ShapeError(
-                f"tabular should have as many columns as there are names, but {tabular.shape[1]=} and {len(names)=}"
+                f"tabular should have as many columns as there are names, but {nb_fields=} and {len(names)=}"
             )
 
-        # ---# For efficiency, first add values to storage
-        name_to_ids = {}
-        for col, name in zip(tabular.T, names):
-            name_to_ids[name] = col
-
-        # ---# Then add data in sample
         for i_samp in range(nb_samples):
             sample = Sample()
-            for name in names:
-                sample.add_field(name, name_to_ids[name][i_samp])
+            for i_col, name in enumerate(names):
+                sample.add_field(name, tabular[i_samp, :, i_col])
             self.add_sample(sample)
 
     def get_fields_to_tabular(
@@ -670,7 +661,7 @@ class Dataset(object):
             dict[str,np.ndarray]: if as_nparray is False, field name -> tabular values.
 
         Note:
-            This method won’t work if the fields does not have the same sizes in all samples specified by `sample_ids`.
+            This method won't work if the fields does not have the same sizes in all samples specified by `sample_ids`.
         """
         if field_names is None:
             field_names = self.get_field_names(sample_ids)
@@ -970,7 +961,7 @@ class Dataset(object):
                     trg_samples[samp_id].add_time_series(
                         time_series_name, samp.get_time_series(time_series_name)
                     )
-                trg_samples[samp_id].add_tree(samp.get_tree())
+                trg_samples[samp_id].add_tree(samp.get_mesh())
             else:
                 # TODO: should we copy the sample before adding it ?
                 self.add_sample(copy.deepcopy(samp), id=samp_id)
