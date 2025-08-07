@@ -1,3 +1,13 @@
+# Voir https://cgns.org/standard/SIDS/grid.html#flow-solution-structure-definition-flowsolution-t
+CGNS_FIELD_LOCATIONS = [
+    "Vertex",
+    "CellCenter",
+    "FaceCenter",
+    "IFaceCenter",
+    "JFaceCenter",
+    "KFaceCenter",
+    "EdgeCenter",
+]
 """Common constants used across the PLAID library.
 
 AUTHORIZED_TASKS: Tuple of strings representing the types of tasks supported by PLAID.
