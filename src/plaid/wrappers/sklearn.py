@@ -4,7 +4,9 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-"""This module provides wrappers for scikit-learn estimators and transformers so they can be used seamlessly in scikit-learn Pipelines
+"""Wrappers for scikit-learn estimators/transformers to operate on PLAID Dataset objects in pipelines.
+
+This module provides wrappers for scikit-learn estimators and transformers so they can be used seamlessly in scikit-learn Pipelines
 with PLAID objects. The wrapped blocks (e.g. PCA, GaussianProcessRegressor, StandardScaler, etc.) take a `plaid.containers.Dataset` as input,
 and return a `plaid.containers.Dataset` as output. This allows you to build
 scikit-learn Pipelines where all blocks operate on PLAID objects, enabling end-to-end workflows with domain-specific data structures.
@@ -134,6 +136,7 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
 
         Args:
             dataset (Dataset): The dataset to fit the model on.
+            kwargs: Additional keyword arguments to pass to the fit method of the sklearn block.
 
         Returns:
             self: Returns self for chaining.
@@ -348,7 +351,7 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
             Dataset: The updated PLAID dataset with new scalars/fields.
         """
         # TODO: use https://scikit-learn.org/stable/glossary.html#term-get_feature_names_out avoid overwriting features
-        print(f"=== In <_convert_y_to_plaid>")
+        print("=== In <_convert_y_to_plaid>")
         if hasattr(self.sklearn_block, "feature_names_in_"):
             print(f"- {self.sklearn_block.feature_names_in_=}")
         else:
@@ -364,7 +367,9 @@ class PlaidWrapper(BaseEstimator, MetaEstimatorMixin):
 
         new_dset = Dataset()
         # TODO: define tests to determine if we write new features to scalars, fields, or time series
-        if y.ndim == 2 and y.shape[0] == len(self.sklearn_block.get_feature_names_out()):
+        if y.ndim == 2 and y.shape[0] == len(
+            self.sklearn_block.get_feature_names_out()
+        ):
             new_dset.add_tabular_scalars(y, self.sklearn_block.get_feature_names_out())
         elif len(self.output_scalars) > 0:
             new_dset.add_tabular_scalars(y, self.output_scalars)
