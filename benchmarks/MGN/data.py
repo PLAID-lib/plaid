@@ -51,11 +51,12 @@ def distance_field(mesh, nTag=None):
     return distance
 
 
-def get_data(mesh, dataset_name=None):
+def get_data(mesh, dataset_name=None, load_fields=True):
     # Automatically retrieve node fields
-    node_fields = {
-        key: torch.tensor(value) for key, value in mesh.nodeFields.items()
-    }
+    if load_fields:
+        node_fields = { k: torch.tensor(v) for k, v in mesh.nodeFields.items() }
+    else:
+        node_fields = {}
 
     # Automatically retrieve nodetags
     tag_label_map = {
@@ -164,7 +165,10 @@ def load_datasets(dataset_name, dataset_path, split_train_name=None, split_test_
                 mesh = CGNSToMesh(tree)
 
             # Get data from mesh
-            node_fields, node_features, edges = get_data(mesh, dataset_name=dataset_name)
+            load_fields = (process_type == "train")
+            node_fields, node_features, edges = get_data(
+                mesh, dataset_name=dataset_name, load_fields=load_fields
+            )
 
             nodes = node_features['mesh_pos']
             node_tags = node_features['node_type']
@@ -182,8 +186,10 @@ def load_datasets(dataset_name, dataset_path, split_train_name=None, split_test_
             if not effective_field_names:
                 raise ValueError("No valid field selected for processing. Please specify a valid target field or use 'all_fields'.")
 
-            fields = [node_fields[fn] for fn in effective_field_names]
-            fields = torch.column_stack(fields)
+            if process_type == "train":
+                fields = [node_fields[fn] for fn in effective_field_names]
+                fields = torch.column_stack(fields)
+                Y_fields += [fields]
 
             # Retrieve input scalars
             in_scalars_names = scalar_input_dict.get(dataset_name, [])
@@ -197,7 +203,6 @@ def load_datasets(dataset_name, dataset_path, split_train_name=None, split_test_
             X_edges += [edges]
             X_node_tags += [node_tags]
             X_distances += [distances]
-            Y_fields += [fields]
 
         X_scalars = np.array(X_scalars)
         Y_scalars = np.array(Y_scalars)
@@ -265,8 +270,6 @@ class GraphDataset(DGLDataset):
             num_sca = self.input_globals[i].shape[-1] if self.input_globals.size(0) > 0 else 0
             sca = torch.ones((len(pos),num_sca), dtype=torch.float32)*self.input_globals[i].unsqueeze(0) if num_sca else torch.tensor([])
 
-            Y_fields = ((data["Y_fields"][i] - self.fields_min) / (self.fields_max - self.fields_min)).clone().detach().to(torch.float32)
-
             src, dst = edge_index[0], edge_index[1]
             graph = dgl.graph((src, dst))
 
@@ -275,7 +278,11 @@ class GraphDataset(DGLDataset):
                 node_features.append(sca)
 
             graph.ndata["x"] = torch.cat(node_features, dim=1)
-            graph.ndata["y"] = Y_fields
+
+            if data_type == "train":
+                Y_fields = ((data["Y_fields"][i] - self.fields_min) / (self.fields_max - self.fields_min)).clone().detach().to(torch.float32)
+                graph.ndata["y"] = Y_fields
+
             graph.ndata["pos"] = pos
 
             # Calculate squared distances
@@ -291,6 +298,7 @@ class GraphDataset(DGLDataset):
         graph = self.graphs[idx]
         input_globals = self.input_globals[idx] if self.input_globals.numel() > 0 else torch.tensor([])
         output_globals = self.output_globals[idx] if self.output_globals.numel() > 0 else torch.tensor([])
+
         return graph, input_globals, output_globals
 
     def __len__(self):
