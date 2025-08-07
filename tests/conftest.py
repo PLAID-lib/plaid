@@ -137,3 +137,63 @@ def sample_with_tree(sample, tree):
 @pytest.fixture()
 def sample():
     return Sample()
+
+
+# fixtures for tabular scalar data
+@pytest.fixture()
+def nb_scalars():
+    return 5
+
+
+@pytest.fixture()
+def scalar_tabular(nb_samples, nb_scalars):
+    return np.random.randn(nb_samples, nb_scalars)
+
+
+@pytest.fixture()
+def scalar_names(nb_scalars):
+    return [f"test_scalar_{np.random.randint(1e8, 1e9)}" for _ in range(nb_scalars)]
+
+
+# fixtures for tabular time_series data
+@pytest.fixture()
+def nb_time_series():
+    return 5
+
+
+@pytest.fixture()
+def nb_timestamps():
+    return 11
+
+
+@pytest.fixture()
+def time_series_tabular(nb_samples, nb_timestamps, nb_time_series):
+    return np.random.randn(nb_samples, nb_timestamps, nb_time_series, 2)
+
+
+@pytest.fixture()
+def time_series_names(nb_time_series):
+    return [
+        f"test_time_series_{np.random.randint(1e8, 1e9)}" for _ in range(nb_time_series)
+    ]
+
+
+# fixtures for tabular field data
+@pytest.fixture()
+def nb_fields():
+    return 5
+
+
+@pytest.fixture()
+def nb_points():
+    return 13
+
+
+@pytest.fixture()
+def field_tabular(nb_samples, nb_points, nb_fields):
+    return np.random.randn(nb_samples, nb_points, nb_fields)
+
+
+@pytest.fixture()
+def field_names(nb_fields):
+    return [f"test_field_{np.random.randint(1e8, 1e9)}" for _ in range(nb_fields)]

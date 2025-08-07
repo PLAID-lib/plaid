@@ -21,21 +21,6 @@ from plaid.utils.base import ShapeError
 
 
 @pytest.fixture()
-def nb_scalars():
-    return 5
-
-
-@pytest.fixture()
-def tabular(nb_samples, nb_scalars):
-    return np.random.randn(nb_samples, nb_scalars)
-
-
-@pytest.fixture()
-def scalar_names(nb_scalars):
-    return [f"test_scalar_{np.random.randint(1e8, 1e9)}" for _ in range(nb_scalars)]
-
-
-@pytest.fixture()
 def sample(zone_name, base_name):
     sample = Sample()
     sample.init_base(3, 3, base_name)
@@ -49,16 +34,6 @@ def sample(zone_name, base_name):
         base_name,
     )
     return sample
-
-
-@pytest.fixture
-def empty_sample():
-    return Sample()
-
-
-@pytest.fixture()
-def empty_dataset():
-    return Dataset()
 
 
 @pytest.fixture()
@@ -200,30 +175,30 @@ class Test_Dataset:
         with pytest.raises(TypeError):
             dataset.add_sample(1)
 
-    def test_add_samples_empty(self, empty_dataset):
+    def test_add_samples_empty(self, dataset):
         with pytest.raises(ValueError):
-            empty_dataset.add_samples([])
+            dataset.add_samples([])
         with pytest.raises(ValueError):
-            empty_dataset.add_samples([], 1)
+            dataset.add_samples([], 1)
 
-    def test_add_samples_empty_with_ids(self, empty_dataset, sample):
+    def test_add_samples_empty_with_ids(self, dataset, sample):
         with pytest.raises(ValueError):
-            empty_dataset.add_samples([sample], [1, 2, 3])
+            dataset.add_samples([sample], [1, 2, 3])
 
-    def test_add_samples_bad_number_ids_inf(self, empty_dataset, sample):
+    def test_add_samples_bad_number_ids_inf(self, dataset, sample):
         with pytest.raises(ValueError):
             samples = [sample, sample, sample]
-            empty_dataset.add_samples(samples, [1, 2])
+            dataset.add_samples(samples, [1, 2])
 
-    def test_add_samples_bad_number_ids_supp(self, empty_dataset, sample):
+    def test_add_samples_bad_number_ids_supp(self, dataset, sample):
         with pytest.raises(ValueError):
             samples = [sample, sample, sample]
-            empty_dataset.add_samples(samples, [1, 2, 3, 4])
+            dataset.add_samples(samples, [1, 2, 3, 4])
 
-    def test_add_samples_with_same_ids(self, empty_dataset, sample):
+    def test_add_samples_with_same_ids(self, dataset, sample):
         with pytest.raises(ValueError):
             samples = [sample, sample, sample]
-            empty_dataset.add_samples(samples, [1, 1, 1])
+            dataset.add_samples(samples, [1, 1, 1])
 
     def test_add_samples_with_ids_good(self, dataset, sample):
         samples = [sample, sample, sample]
@@ -321,82 +296,145 @@ class Test_Dataset:
         dataset_with_samples.get_field_names(np.random.randint(2, nb_samples, size=2))
 
     # -------------------------------------------------------------------------#
-    def test_add_tabular_scalars(self, dataset, tabular, scalar_names, nb_samples):
-        dataset.add_tabular_scalars(tabular, scalar_names)
+    def test_add_tabular_scalars(
+        self, dataset, scalar_tabular, scalar_names, nb_samples
+    ):
+        dataset.add_tabular_scalars(scalar_tabular, scalar_names)
         assert len(dataset) == nb_samples
 
-    def test_add_tabular_scalars_no_names(self, dataset, tabular, nb_samples):
-        dataset.add_tabular_scalars(tabular)
+    def test_add_tabular_scalars_no_names(self, dataset, scalar_tabular, nb_samples):
+        dataset.add_tabular_scalars(scalar_tabular)
         assert len(dataset) == nb_samples
 
-    def test_add_tabular_scalars_bad_ndim(self, dataset, tabular, scalar_names):
+    def test_add_tabular_scalars_bad_ndim(self, dataset, scalar_tabular, scalar_names):
         with pytest.raises(ShapeError):
-            dataset.add_tabular_scalars(tabular.reshape((-1)), scalar_names)
+            dataset.add_tabular_scalars(scalar_tabular.reshape((-1)), scalar_names)
 
-    def test_add_tabular_scalars_bad_shape(self, dataset, tabular, scalar_names):
-        tabular = np.concatenate((tabular, np.zeros((len(tabular), 1))), axis=1)
+    def test_add_tabular_scalars_bad_shape(self, dataset, scalar_tabular, scalar_names):
+        scalar_tabular = np.concatenate(
+            (scalar_tabular, np.zeros((len(scalar_tabular), 1))), axis=1
+        )
         with pytest.raises(ShapeError):
-            dataset.add_tabular_scalars(tabular, scalar_names)
+            dataset.add_tabular_scalars(scalar_tabular, scalar_names)
 
-    def test_get_scalars_to_tabular(self, dataset, tabular, scalar_names):
+    def test_get_scalars_to_tabular(self, dataset, scalar_tabular, scalar_names):
         assert len(dataset.get_scalars_to_tabular()) == 0
         assert dataset.get_scalars_to_tabular() == {}
-        dataset.add_tabular_scalars(tabular, scalar_names)
+        dataset.add_tabular_scalars(scalar_tabular, scalar_names)
         assert dataset.get_scalars_to_tabular(as_nparray=True).shape == (
-            len(tabular),
+            len(scalar_tabular),
             len(scalar_names),
         )
         dict_tabular = dataset.get_scalars_to_tabular()
         for i_s, sname in enumerate(scalar_names):
-            assert np.all(dict_tabular[sname] == tabular[:, i_s])
+            assert np.all(dict_tabular[sname] == scalar_tabular[:, i_s])
 
     def test_get_scalars_to_tabular_same_scalars_name(
-        self, dataset, tabular, scalar_names
+        self, dataset, scalar_tabular, scalar_names
     ):
-        dataset.add_tabular_scalars(tabular, scalar_names)
+        dataset.add_tabular_scalars(scalar_tabular, scalar_names)
         assert dataset.get_scalars_to_tabular(as_nparray=True).shape == (
-            len(tabular),
+            len(scalar_tabular),
             len(scalar_names),
         )
         dataset.get_scalars_to_tabular(sample_ids=[0, 0])
         dataset.get_scalars_to_tabular(scalar_names=["test", "test"])
 
     # -------------------------------------------------------------------------#
-    def test_add_tabular_fields(self, dataset, tabular, field_names, nb_samples):
-        dataset.add_tabular_fields(tabular, field_names)
+    def test_add_tabular_time_series(
+        self, dataset, time_series_tabular, time_series_names, nb_samples
+    ):
+        dataset.add_tabular_time_series(time_series_tabular, time_series_names)
         assert len(dataset) == nb_samples
 
-    def test_add_tabular_fields_no_names(self, dataset, tabular, nb_samples):
-        dataset.add_tabular_fields(tabular)
+    def test_add_tabular_time_series_no_names(
+        self, dataset, time_series_tabular, nb_samples
+    ):
+        dataset.add_tabular_time_series(time_series_tabular)
         assert len(dataset) == nb_samples
 
-    def test_add_tabular_fields_bad_ndim(self, dataset, tabular, field_names):
+    def test_add_tabular_time_series_bad_ndim(
+        self, dataset, time_series_tabular, time_series_names
+    ):
         with pytest.raises(ShapeError):
-            dataset.add_tabular_fields(tabular.reshape((-1)), field_names)
+            dataset.add_tabular_time_series(
+                time_series_tabular.reshape((-1)), time_series_names
+            )
 
-    def test_add_tabular_fields_bad_shape(self, dataset, tabular, field_names):
-        tabular = np.concatenate((tabular, np.zeros((len(tabular), 1))), axis=1)
+    def test_add_tabular_time_series_bad_shape(
+        self, dataset, time_series_tabular, time_series_names
+    ):
+        time_series_tabular = np.concatenate(
+            (time_series_tabular, np.zeros((len(time_series_tabular), 1))), axis=1
+        )
         with pytest.raises(ShapeError):
-            dataset.add_tabular_fields(tabular, field_names)
+            dataset.add_tabular_time_series(time_series_tabular, time_series_names)
 
-    def test_get_fields_to_tabular(self, dataset, tabular, field_names):
+    def test_get_time_series_to_tabular(
+        self, dataset, time_series_tabular, time_series_names
+    ):
+        assert len(dataset.get_time_series_to_tabular()) == 0
+        assert dataset.get_time_series_to_tabular() == {}
+        dataset.add_tabular_time_series(time_series_tabular, time_series_names)
+        assert dataset.get_time_series_to_tabular(as_nparray=True).shape == (
+            len(time_series_tabular),
+            len(time_series_names),
+        )
+        dict_tabular = dataset.get_time_series_to_tabular()
+        for i_s, sname in enumerate(time_series_names):
+            assert np.all(dict_tabular[sname] == time_series_tabular[:, i_s])
+
+    def test_get_time_series_to_tabular_same_time_series_name(
+        self, dataset, time_series_tabular, time_series_names
+    ):
+        dataset.add_tabular_time_series(time_series_tabular, time_series_names)
+        assert dataset.get_time_series_to_tabular(as_nparray=True).shape == (
+            len(time_series_tabular),
+            len(time_series_names),
+        )
+        dataset.get_time_series_to_tabular(sample_ids=[0, 0])
+        dataset.get_time_series_to_tabular(time_series_names=["test", "test"])
+
+    # -------------------------------------------------------------------------#
+    def test_add_tabular_fields(self, dataset, field_tabular, field_names, nb_samples):
+        dataset.add_tabular_fields(field_tabular, field_names)
+        assert len(dataset) == nb_samples
+
+    def test_add_tabular_fields_no_names(self, dataset, field_tabular, nb_samples):
+        dataset.add_tabular_fields(field_tabular)
+        assert len(dataset) == nb_samples
+
+    def test_add_tabular_fields_bad_ndim(self, dataset, field_tabular, field_names):
+        with pytest.raises(ShapeError):
+            dataset.add_tabular_fields(field_tabular.reshape((-1)), field_names)
+
+    def test_add_tabular_fields_bad_shape(
+        self, dataset, field_tabular, nb_points, field_names
+    ):
+        field_tabular = np.concatenate(
+            (field_tabular, np.zeros((len(field_tabular), nb_points, 1))), axis=-1
+        )
+        with pytest.raises(ShapeError):
+            dataset.add_tabular_fields(field_tabular, field_names)
+
+    def test_get_fields_to_tabular(self, dataset, field_tabular, field_names):
         assert len(dataset.get_fields_to_tabular()) == 0
         assert dataset.get_fields_to_tabular() == {}
-        dataset.add_tabular_fields(tabular, field_names)
+        dataset.add_tabular_fields(field_tabular, field_names)
         assert dataset.get_fields_to_tabular(as_nparray=True).shape == (
-            len(tabular),
+            len(field_tabular),
             len(field_names),
         )
         dict_tabular = dataset.get_fields_to_tabular()
         for i_s, sname in enumerate(field_names):
-            assert np.all(dict_tabular[sname] == tabular[:, i_s])
+            assert np.all(dict_tabular[sname] == field_tabular[:, i_s])
 
     def test_get_fields_to_tabular_same_fields_name(
-        self, dataset, tabular, field_names
+        self, dataset, field_tabular, field_names
     ):
-        dataset.add_tabular_fields(tabular, field_names)
+        dataset.add_tabular_fields(field_tabular, field_names)
         assert dataset.get_fields_to_tabular(as_nparray=True).shape == (
-            len(tabular),
+            len(field_tabular),
             len(field_names),
         )
         dataset.get_fields_to_tabular(sample_ids=[0, 0])
