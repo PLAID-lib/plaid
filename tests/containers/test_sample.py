@@ -1007,6 +1007,7 @@ class Test_Sample:
         assert save_dir.is_dir()
         with pytest.raises(ValueError):
             sample_with_tree_and_scalar_and_time_series.save(save_dir)
+        sample_with_tree_and_scalar_and_time_series.save(save_dir, overwrite=True)
 
     def test_load_from_saved_file(
         self, sample_with_tree_and_scalar_and_time_series, tmp_path
