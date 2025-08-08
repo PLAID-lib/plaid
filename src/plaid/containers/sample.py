@@ -1793,7 +1793,7 @@ class Sample(BaseModel):
             return self.get_nodes(**feature_identifier_)
 
     # -------------------------------------------------------------------------#
-    def save(self, dir_path: str, overwrite: Optional[bool] = None) -> None:
+    def save(self, dir_path: str, overwrite: Optional[bool] = False) -> None:
         """Save the Sample in directory `dir_path`.
 
         Args:
@@ -1801,16 +1801,15 @@ class Sample(BaseModel):
             overwrite (str, optional): target directory overwritten if True.
         """
         if os.path.exists(dir_path) and os.path.isdir(dir_path):
-            if len(glob.glob(os.path.join(dir_path, "*"))) and not overwrite:
+            if overwrite:
+                shutil.rmtree(dir_path)
+                logger.warning(f"Existing {dir_path} directory has been reset.")
+            elif len(glob.glob(os.path.join(dir_path, "*"))):
                 raise ValueError(
                     f"directory {dir_path} already exists and is not empty. Set `overwrite` to True if needed."
                 )
-            else:
-                shutil.rmtree(dir_path)
-                logger.warning(f"{dir_path} directory has been overwritten.")
 
-        else:
-            os.makedirs(dir_path)
+        os.makedirs(dir_path, exist_ok=True)
 
         mesh_dir = os.path.join(dir_path, "meshes")
 
