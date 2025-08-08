@@ -35,8 +35,8 @@ from pydantic import BaseModel, model_serializer
 from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
-    AUTHORIZED_FIELD_LOCATIONS,
     CGNS_ELEMENT_NAMES,
+    CGNS_FIELD_LOCATIONS,
 )
 from plaid.containers.utils import get_feature_type_and_details_from_identifier
 from plaid.types import (
@@ -1490,6 +1490,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
             location (str, optional): The desired grid location where the field is defined. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
@@ -1549,6 +1550,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
             location (str, optional): The location at which to retrieve the field. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
@@ -1602,6 +1604,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time associated with the field. Defaults to 0.
             warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
 
@@ -1678,6 +1681,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
@@ -1763,7 +1767,7 @@ class Sample(BaseModel):
                                 "time": t,
                             }
                         )
-                    for loc in AUTHORIZED_FIELD_LOCATIONS:
+                    for loc in CGNS_FIELD_LOCATIONS:
                         for fn in self.get_field_names(
                             zone_name=zn, base_name=bn, location=loc, time=t
                         ):
