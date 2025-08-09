@@ -4,9 +4,8 @@ This page, still under construction, provides elements on PLAID functionalities.
 
 ---
 
-- [Description](#description)
-  - [1. Datamodel](#1-datamodel)
-  - [2. How to use it ?](#2-how-to-use-it-)
+- [1. Datamodel](#1-datamodel)
+- [2. How to use it ?](#2-how-to-use-it-)
 
 ---
 

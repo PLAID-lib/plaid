@@ -94,6 +94,13 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 .. toctree::
    :glob:
    :maxdepth: 1
+   :caption: Citation
+
+   source/citation.md
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
    :caption: Contributing
 
    source/contributing.md

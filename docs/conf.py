@@ -160,8 +160,9 @@ autoapi_python_class_content = "both"  # default is 'class'
 #     #     - Classes
 #     #     - Functions
 #     #     - Methods
-jupyter_execute_notebooks = "force"
-execution_timeout = 300
+
+nb_execution_mode = 'auto'
+nb_execution_timeout = 300
 
 numfig = True
 
