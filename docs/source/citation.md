@@ -1,6 +1,6 @@
 # How to Cite
 
-If you have used PLAID in your how work and fould it useful, please consider citing the following papers.
+If you have used PLAID in your work and found it useful, please consider citing the following papers.
 
 ## JOSS paper
 
