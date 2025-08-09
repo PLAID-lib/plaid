@@ -233,31 +233,49 @@ def setup(sphinx):
 
 # -----------------------------------------------------------------------------#
 
-def get_git_version():
+def get_git_info():
+
     try:
-        # Try to get exact tag first
-        version = subprocess.check_output(
-            ["git", "describe", "--tags", "--exact-match"],
-            stderr=subprocess.STDOUT,
-        ).decode().strip()
-        return version
+        # Try exact tag on current commit
+        tag = subprocess.check_output(
+            ['git', 'describe', '--tags', '--exact-match'],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+        if tag:
+            print(f"I found an ecat tag: {tag}")
+            return tag
     except subprocess.CalledProcessError:
-        # No tag, get branch name
-        try:
+        # No exact tag on this commit, fallback below
+        pass
+
+    try:
+        rtd_version = os.environ.get("READTHEDOCS_VERSION")
+
+        if rtd_version == "latest":
+            rtd_version = "main"
+
+        # Get branch from RTD env or local git
+        branch = rtd_version
+        if not branch:
             branch = subprocess.check_output(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"]
-            ).decode().strip()
-        except Exception:
-            branch = "unknown-branch"
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                stderr=subprocess.DEVNULL,
+                text=True
+            ).strip()
+
         # Get short commit hash
-        try:
-            commit_hash = subprocess.check_output(
-                ["git", "rev-parse", "--short", "HEAD"]
-            ).decode().strip()
-        except Exception:
-            commit_hash = "unknown-hash"
+        commit = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
 
-        return f"{branch}-{commit_hash}"
+        return f"{branch}-{commit}"
 
-release = get_git_version()
+
+    except Exception:
+        return "unknown"
+
+release = get_git_info()
 version = release
