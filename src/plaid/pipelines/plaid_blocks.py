@@ -1,7 +1,9 @@
 """Custom meta-estimators for applying feature-wise and target-wise transformations.
 
 Includes:
+
 - PlaidTransformedTargetRegressor: transforms the target before fitting.
+
 - PlaidColumnTransformer: applies transformers to feature subsets like ColumnTransformer.
 """
 

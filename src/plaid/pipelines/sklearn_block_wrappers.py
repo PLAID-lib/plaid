@@ -1,7 +1,9 @@
 """Wrapped scikit-learn transformers and regressors for PLAID Dataset compatibility.
 
 Provides adapters to use scikit-learn estimators within the PLAID feature/block system:
+
 - WrappedPlaidSklearnTransformer: wraps a TransformerMixin
+
 - WrappedPlaidSklearnRegressor: wraps a RegressorMixin
 """
 
