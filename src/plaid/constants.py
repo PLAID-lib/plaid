@@ -17,6 +17,17 @@ These constants help standardize metadata, task types, and mesh element referenc
 
 AUTHORIZED_TASKS = ["regression", "classification"]
 
+AUTHORIZED_FEATURE_TYPES = ["scalar", "time_series", "field", "nodes"]
+
+AUTHORIZED_FEATURE_INFOS = {
+    "scalar": ["name"],
+    "time_series": ["name"],
+    "field": ["name", "base_name", "zone_name", "location", "time"],
+    "nodes": ["base_name", "zone_name", "time"],
+}
+
+AUTHORIZED_FIELD_LOCATIONS = ["Vertex", "EdgeCenter", "FaceCenter", "CellCenter"]
+
 AUTHORIZED_INFO_KEYS = {
     "legal": ["owner", "license"],
     "data_production": [

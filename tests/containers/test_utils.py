@@ -12,7 +12,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from plaid.containers.utils import get_number_of_samples, get_sample_ids
+from plaid.containers.utils import (
+    check_features_type_homogeneity,
+    get_number_of_samples,
+    get_sample_ids,
+    has_duplicates_feature_ids,
+)
 
 # %% Fixtures
 
@@ -41,3 +46,26 @@ class Test_Container_Utils:
     def test_get_number_of_samples_with_str(self, current_directory):
         dataset_path = current_directory / "dataset"
         assert get_number_of_samples(str(dataset_path)) == 3
+
+    def test_check_features_type_homogeneity(self):
+        check_features_type_homogeneity(
+            [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "P"}]
+        )
+
+    def test_check_features_type_homogeneity_fail_type(self):
+        with pytest.raises(AssertionError):
+            check_features_type_homogeneity(0)
+
+    def test_check_features_type_homogeneity_fail(self):
+        with pytest.raises(AssertionError):
+            check_features_type_homogeneity(
+                [{"type": "scalar", "name": "Mach"}, {"type": "nodes"}]
+            )
+
+    def test_has_duplicates_feature_ids(self):
+        assert not has_duplicates_feature_ids(
+            [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "P"}]
+        )
+        assert has_duplicates_feature_ids(
+            [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "Mach"}]
+        )

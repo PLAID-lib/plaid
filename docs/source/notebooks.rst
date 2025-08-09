@@ -24,3 +24,4 @@ You can find here all basic detailed examples different part of PLAID-lib, nicel
    notebooks/init_with_tabular
    notebooks/interpolation
    notebooks/huggingface
+   notebooks/pipeline
