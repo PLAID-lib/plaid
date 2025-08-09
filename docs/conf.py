@@ -16,6 +16,7 @@
 import datetime
 import os
 import sys
+import subprocess
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -228,3 +229,35 @@ def skip_logger_attribute(app, what, name, obj, skip, options):
 
 def setup(sphinx):
     sphinx.connect("autoapi-skip-member", skip_logger_attribute)
+
+
+# -----------------------------------------------------------------------------#
+
+
+# def get_git_version():
+#     try:
+#         # Try to get exact tag first
+#         version = subprocess.check_output(
+#             ["git", "describe", "--tags", "--exact-match"],
+#             stderr=subprocess.STDOUT,
+#         ).decode().strip()
+#         return version
+#     except subprocess.CalledProcessError:
+#         # No tag, get branch name
+#         try:
+#             branch = subprocess.check_output(
+#                 ["git", "rev-parse", "--abbrev-ref", "HEAD"]
+#             ).decode().strip()
+#         except Exception:
+#             branch = "unknown-branch"
+#         # Get short commit hash
+#         try:
+#             commit_hash = subprocess.check_output(
+#                 ["git", "rev-parse", "--short", "HEAD"]
+#             ).decode().strip()
+#         except Exception:
+#             commit_hash = "unknown-hash"
+
+#         return f"{branch}-{commit_hash}"
+
+# version = get_git_version()

@@ -4,6 +4,9 @@
 
 version: 2
 
+git:
+  depth: full
+
 sphinx:
   configuration: docs/conf.py
 
@@ -19,3 +22,9 @@ python:
   install:
     - method: pip
       path: .
+
+versions:
+  only:
+    - latest
+    - 0.1.6
+    - 0.1.5
