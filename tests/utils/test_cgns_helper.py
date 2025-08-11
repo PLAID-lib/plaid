@@ -9,7 +9,12 @@
 
 import pytest
 
-from plaid.utils.cgns_helper import get_base_names, get_time_values, show_cgns_tree
+from plaid.utils.cgns_helper import (
+    get_base_names,
+    get_time_values,
+    show_cgns_tree,
+    summarize_cgns_tree,
+)
 
 
 # %% Tests
@@ -45,3 +50,9 @@ class Test_cgns_helper:
     def test_show_cgns_tree_not_a_list(self):
         with pytest.raises(TypeError):
             show_cgns_tree({1: 2})
+
+    def test_summarize_cgns_tree(self, tree):
+        summarize_cgns_tree(tree, verbose=False)
+
+    def test_summarize_cgns_tree_verbose(self, tree):
+        summarize_cgns_tree(tree, verbose=True)

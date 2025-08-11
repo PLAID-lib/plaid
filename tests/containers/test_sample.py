@@ -888,6 +888,131 @@ class Test_Sample:
         assert len(fields) == 0
 
     # -------------------------------------------------------------------------#
+    def test_get_feature_from_string_identifier(
+        self, sample_with_tree_and_scalar_and_time_series
+    ):
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "scalar::test_scalar_1"
+        )
+
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "time_series::test_time_series_1"
+        )
+
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "field::test_node_field_1"
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "field::test_node_field_1/Base_2_2"
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "field::test_node_field_1/Base_2_2/Zone"
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "field::test_node_field_1/Base_2_2/Zone/Vertex"
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "field::test_node_field_1/Base_2_2/Zone/Vertex/0"
+        )
+
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "nodes::"
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "nodes::Base_2_2"
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "nodes::Base_2_2/Zone"
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
+            "nodes::Base_2_2/Zone/0"
+        )
+
+    def test_get_feature_from_identifier(
+        self, sample_with_tree_and_scalar_and_time_series
+    ):
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "scalar", "name": "test_scalar_1"}
+        )
+
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "time_series", "name": "test_time_series_1"}
+        )
+
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "field", "name": "test_node_field_1"}
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "field", "name": "test_node_field_1", "base_name": "Base_2_2"}
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+            }
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "location": "Vertex",
+            }
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "location": "Vertex",
+                "time": 0.0,
+            }
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "field", "name": "test_node_field_1", "time": 0.0}
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "time": 0.0,
+            }
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {
+                "type": "field",
+                "name": "test_node_field_1",
+                "zone_name": "Zone",
+                "location": "Vertex",
+                "time": 0.0,
+            }
+        )
+
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "nodes"}
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "nodes", "base_name": "Base_2_2"}
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "nodes", "base_name": "Base_2_2", "zone_name": "Zone"}
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "nodes", "base_name": "Base_2_2", "zone_name": "Zone", "time": 0.0}
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "nodes", "zone_name": "Zone"}
+        )
+        sample_with_tree_and_scalar_and_time_series.get_feature_from_identifier(
+            {"type": "nodes", "time": 0.0}
+        )
+
+    # -------------------------------------------------------------------------#
     def test_save(self, sample_with_tree_and_scalar_and_time_series, tmp_path):
         save_dir = tmp_path / "test_dir"
         sample_with_tree_and_scalar_and_time_series.save(save_dir)

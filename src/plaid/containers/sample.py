@@ -31,6 +31,18 @@ import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 from pydantic import BaseModel, model_serializer
 
+from plaid.constants import CGNS_ELEMENT_NAMES
+from plaid.types import (
+    CGNSNode,
+    CGNSTree,
+    FeatureType,
+    FieldType,
+    LinkType,
+    PathType,
+    ScalarType,
+    TimeSequenceType,
+    TimeSeriesType,
+)
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -41,83 +53,8 @@ logging.basicConfig(
 
 # %% Globals
 
-CGNS_element_names = [
-    "ElementTypeNull",
-    "ElementTypeUserDefined",
-    "NODE",
-    "BAR_2",
-    "BAR_3",
-    "TRI_3",
-    "TRI_6",
-    "QUAD_4",
-    "QUAD_8",
-    "QUAD_9",
-    "TETRA_4",
-    "TETRA_10",
-    "PYRA_5",
-    "PYRA_14",
-    "PENTA_6",
-    "PENTA_15",
-    "PENTA_18",
-    "HEXA_8",
-    "HEXA_20",
-    "HEXA_27",
-    "MIXED",
-    "PYRA_13",
-    "NGON_n",
-    "NFACE_n",
-    "BAR_4",
-    "TRI_9",
-    "TRI_10",
-    "QUAD_12",
-    "QUAD_16",
-    "TETRA_16",
-    "TETRA_20",
-    "PYRA_21",
-    "PYRA_29",
-    "PYRA_30",
-    "PENTA_24",
-    "PENTA_38",
-    "PENTA_40",
-    "HEXA_32",
-    "HEXA_56",
-    "HEXA_64",
-]
-"""List of element type names commonly used in Computational Fluid Dynamics (CFD). These names represent different types of finite elements that are used to discretize physical domains for numerical analysis."""
 
 # %% Classes
-
-CGNSTree = list
-"""A CGNSTree is a list
-"""
-CGNSNode = list
-"""A CGNSNode is a list
-"""
-LinkType = list[str]
-"""A link is a list containing 4 str [target_dir_path,target_file_name,target_node_name,local_node_name]
-
-        - target_dir_path (optional)
-        - target_file_name
-        - target_node_name: absolute tree path
-        - local_node_name: absolute tree path
-
-    See https://chlone.sourceforge.net/sids-to-python.html#links
-"""
-PathType = tuple
-"""A PathType is a tuple
-"""
-ScalarType = Union[float, int]
-"""A ScalarType is an Union[float,int]
-"""
-FieldType = np.ndarray
-"""A FieldType is a np.ndarray
-"""
-TimeSequenceType = np.ndarray
-"""A TimeSequenceType is a np.ndarray
-"""
-TimeSeriesType = tuple[TimeSequenceType, FieldType]
-"""A TimeSeriesType is a tuple[TimeSequenceType,FieldType]
-"""
 
 
 def _check_names(names: Union[str, list[str]]):
@@ -1512,7 +1449,7 @@ class Sample(BaseModel):
         for elem in elem_paths:
             elem_node = CGU.getNodeByPath(zone_node, elem)
             val = CGU.getValue(elem_node)
-            elem_type = CGNS_element_names[val[0]]
+            elem_type = CGNS_ELEMENT_NAMES[val[0]]
             elem_size = int(elem_type.split("_")[-1])
             # elem_range = CGU.getValueByPath(
             #     elem_node, "ElementRange"
@@ -1541,6 +1478,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
             location (str, optional): The desired grid location where the field is defined. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
@@ -1600,6 +1538,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
             location (str, optional): The location at which to retrieve the field. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
@@ -1652,6 +1591,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
@@ -1727,6 +1667,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
@@ -1764,6 +1705,116 @@ class Sample(BaseModel):
             raise KeyError(f"There is no field with name {name} in the specified zone.")
 
         return updated_tree
+
+    # -------------------------------------------------------------------------#
+    def get_feature_from_string_identifier(
+        self, feature_string_identifier: str
+    ) -> FeatureType:
+        """Retrieve a specific feature from its encoded string identifier.
+
+        The `feature_string_identifier` must follow the format:
+            "<feature_type>::<detail1>/<detail2>/.../<detailN>"
+
+        Supported feature types:
+            - "scalar": expects 1 detail → `get_scalar(name)`
+            - "time_series": expects 1 detail → `get_time_series(name)`
+            - "field": up to 5 details → `get_field(name, base_name, zone_name, location, time)`
+            - "nodes": up to 3 details → `get_nodes(base_name, zone_name, time)`
+
+        Args:
+            feature_string_identifier (str): Structured identifier of the feature.
+
+        Returns:
+            FeatureType: The retrieved feature object.
+
+        Raises:
+            AssertionError: If `feature_type` is unknown.
+
+        Warnings:
+            - If "time" is present in a field/nodes identifier, it is cast to float.
+            - `name` is required for scalar, time_series and field features.
+            - The order of the details must be respected. One cannot specify a detail in the feature_string_identifier string without specified the previous ones.
+        """
+        splitted_identifier = feature_string_identifier.split("::")
+
+        feature_type = splitted_identifier[0]
+        feature_details = [
+            detail for detail in splitted_identifier[1].split("/") if detail
+        ]
+
+        assert feature_type in ["scalar", "time_series", "field", "nodes"], (
+            "feature_type not known"
+        )
+
+        if feature_type == "scalar":
+            return self.get_scalar(feature_details[0])
+        elif feature_type == "time_series":
+            return self.get_time_series(feature_details[0])
+        elif feature_type == "field":
+            arg_names = ["name", "base_name", "zone_name", "location", "time"]
+            kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
+            if "time" in kwargs:
+                kwargs["time"] = float(kwargs["time"])
+            return self.get_field(**kwargs)
+        elif feature_type == "nodes":
+            arg_names = ["base_name", "zone_name", "time"]
+            kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
+            if "time" in kwargs:
+                kwargs["time"] = float(kwargs["time"])
+            return self.get_nodes(**kwargs)
+
+    def get_feature_from_identifier(
+        self, feature_identifier: dict[str : Union[str, float]]
+    ) -> FeatureType:
+        """Retrieve a feature object based on a structured identifier dictionary.
+
+        The `feature_identifier` must include a `"type"` key specifying the feature kind:
+            - `"scalar"`       → calls `get_scalar(name)`
+            - `"time_series"`  → calls `get_time_series(name)`
+            - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
+            - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
+
+        Required keys:
+            - `"type"`: one of `"scalar"`, `"time_series"`, `"field"`, or `"nodes"`
+            - `"name"`: required for all types except `"nodes"`
+
+        Optional keys depending on type:
+            - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
+
+        Any omitted optional keys will rely on the default values mechanics of the class.
+
+        Args:
+            feature_identifier ( dict[str:Union[str, float]]):
+                A dictionary encoding the feature type and its relevant parameters.
+
+        Returns:
+            FeatureType: The corresponding feature instance retrieved via the appropriate accessor.
+        """
+        assert "type" in feature_identifier, (
+            "feature type not specified in feature_identifier"
+        )
+        feature_type = feature_identifier["type"]
+        feature_identifier_ = {
+            k: v for k, v in feature_identifier.items() if k != "type"
+        }
+
+        assert feature_type in ["scalar", "time_series", "field", "nodes"], (
+            "feature type not known"
+        )
+
+        allowed_keys = ["type", "name", "base_name", "zone_name", "location", "time"]
+        assert all(key in allowed_keys for key in feature_identifier_), (
+            "Unexpected key(s) in feature_identifier"
+        )
+
+        if feature_type == "scalar":
+            return self.get_scalar(**feature_identifier_)
+        elif feature_type == "time_series":
+            return self.get_time_series(**feature_identifier_)
+        elif feature_type == "field":
+            return self.get_field(**feature_identifier_)
+        elif feature_type == "nodes":
+            return self.get_nodes(**feature_identifier_)
 
     # -------------------------------------------------------------------------#
     def save(self, dir_path: str) -> None:
@@ -1926,6 +1977,10 @@ class Sample(BaseModel):
         # scalars
         nb_scalars = len(self.get_scalar_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
+
+        # time series
+        nb_ts = len(self.get_time_series_names())
+        str_repr += f"{nb_ts} time series, "
 
         # fields
         times = self.get_all_mesh_times()

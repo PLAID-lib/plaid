@@ -71,6 +71,10 @@ tree = MeshToCGNS(Mesh)
 # Display CGNS Tree
 CGH.show_cgns_tree(tree)
 
+# %%
+# Print CGNS tree summary for a concise overview
+CGH.summarize_cgns_tree(tree, verbose=True)
+
 # %% [markdown]
 # ### Initialize a new empty Sample and print it
 
