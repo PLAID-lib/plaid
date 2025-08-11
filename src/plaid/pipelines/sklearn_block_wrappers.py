@@ -208,12 +208,10 @@ class WrappedPlaidSklearnRegressor(RegressorMixin, BaseEstimator):
         sklearn_block: SklearnBlock = None,
         in_features_identifiers: list[dict] = None,
         out_features_identifiers: list[dict] = None,
-        dynamics_params_factory: list[dict] = None,
     ):
         self.sklearn_block = sklearn_block
         self.in_features_identifiers = in_features_identifiers
         self.out_features_identifiers = out_features_identifiers
-        self.dynamics_params_factory = dynamics_params_factory
 
     def fit(self, dataset: Dataset, _y=None):
         """Fits the wrapped scikit-learn regressor on the stacked input/output data.
@@ -226,16 +224,11 @@ class WrappedPlaidSklearnRegressor(RegressorMixin, BaseEstimator):
             self: The fitted regressor.
         """
         self.sklearn_block_ = clone(self.sklearn_block)
-        self.in_features_identifiers_ = copy.deepcopy(self.in_features_identifiers)
-        self.out_features_identifiers_ = copy.deepcopy(self.out_features_identifiers)
-        self.dynamics_params_factory_ = copy.deepcopy(self.dynamics_params_factory)
+        self.in_features_identifiers_ = self.in_features_identifiers.copy()
+        self.out_features_identifiers_ = self.out_features_identifiers.copy()
 
         X = dataset.get_tabular_from_stacked_identifiers(self.in_features_identifiers_)
         y = dataset.get_tabular_from_stacked_identifiers(self.out_features_identifiers_)
-
-        if self.dynamics_params_factory_:
-            dynamic_params = {k: v(X) for k, v in self.dynamics_params_factory_.items()}
-            self.sklearn_block_.set_params(**dynamic_params)
 
         self.sklearn_block_.fit(X, y)
 
