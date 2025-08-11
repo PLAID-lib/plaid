@@ -4,9 +4,6 @@
 
 version: 2
 
-git:
-  depth: full
-
 sphinx:
   configuration: docs/conf.py
 
