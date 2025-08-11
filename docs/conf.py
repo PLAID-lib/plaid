@@ -16,6 +16,7 @@
 import datetime
 import os
 import sys
+import subprocess
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -228,3 +229,53 @@ def skip_logger_attribute(app, what, name, obj, skip, options):
 
 def setup(sphinx):
     sphinx.connect("autoapi-skip-member", skip_logger_attribute)
+
+
+# -----------------------------------------------------------------------------#
+
+def get_git_info():
+
+    try:
+        # Try exact tag on current commit
+        tag = subprocess.check_output(
+            ['git', 'describe', '--tags', '--exact-match'],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+        if tag:
+            print(f"I found an ecat tag: {tag}")
+            return tag
+    except subprocess.CalledProcessError:
+        # No exact tag on this commit, fallback below
+        pass
+
+    try:
+        rtd_version = os.environ.get("READTHEDOCS_VERSION")
+
+        if rtd_version == "latest":
+            rtd_version = "main"
+
+        # Get branch from RTD env or local git
+        branch = rtd_version
+        if not branch:
+            branch = subprocess.check_output(
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                stderr=subprocess.DEVNULL,
+                text=True
+            ).strip()
+
+        # Get short commit hash
+        commit = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+
+        return f"{branch}-{commit}"
+
+
+    except Exception:
+        return "unknown"
+
+release = get_git_info()
+version = release
