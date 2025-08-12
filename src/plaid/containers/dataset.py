@@ -825,7 +825,8 @@ class Dataset(object):
         """Add a sample to the dataset and save it to the specified directory.
 
         Notes:
-            If save_dir is None, will look for self.save_dir which will be retrieved from last previous call to load or save.
+            If `save_dir` is None, will look for `self.save_dir` which will be retrieved from last previous call to load or save.
+            `save_dir` given in argument will take precedence over `self.save_dir` and overwrite it.
 
         Args:
             sample (Sample): The sample to add.
@@ -839,7 +840,7 @@ class Dataset(object):
             save_dir = Path(save_dir)
             self.save_dir = save_dir
         else:
-            if self.save_dir is None:
+            if not hasattr(self, "save_dir") or self.save_dir is None:
                 raise ValueError(
                     "self.save_dir and save_dir are None, we don't know where to save, specify one of them before"
                 )
@@ -867,7 +868,8 @@ class Dataset(object):
             for d in samples_dir.glob("sample_*")
             if d.is_dir()
         ]
-        i_sample = max(len(self), max(sample_ids_in_path) + 1)
+        i_sample = max(sample_ids_in_path) + 1 if len(sample_ids_in_path) > 0 else 0
+        i_sample = max(len(self), i_sample)
 
         sample_fname = samples_dir / f"sample_{i_sample:09d}"
         sample.save(sample_fname)
