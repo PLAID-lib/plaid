@@ -8,6 +8,8 @@
 # %%
 # Importing Required Libraries
 import os
+from typing import Union
+from pathlib import Path
 
 from plaid.containers.dataset import Dataset
 from plaid.post.metrics import compute_metrics, prepare_datasets, pretty_metrics
@@ -15,27 +17,26 @@ from plaid.problem_definition import ProblemDefinition
 
 
 # %%
-def get_project_root(path: str, index=3) -> str:
+def get_project_root(path: Union[str, Path], index: int=3) -> Path:
     """Find the project root path
 
     Args:
-        path (str): Current path of the notebook
+        path (Union[str, Path]): Current path of the notebook
         index (int, optional): The number of parents to go back. Defaults to 3.
 
     Returns:
-        str: The project root path
+        Path: The project root path
     """
+    path = Path(path)
     if index == 0:
         return path
-    return get_project_root(os.path.dirname(path), index - 1)
+    return get_project_root(path.parent, index - 1)
 
 
 # Setting up Directories
-current_directory = os.getcwd()
-# dataset_directory = os.path.join(get_project_root(current_directory), "tests", "post")
-dataset_directory = os.path.join(
-    get_project_root(current_directory, 1), "tests", "post"
-)
+current_directory = Path.cwd()
+# dataset_directory = get_project_root(current_directory) / "tests" / "post"
+dataset_directory = get_project_root(current_directory, 1) / "tests" / "post"
 
 # %% [markdown]
 # ## Prepare Datasets for comparision
@@ -44,9 +45,9 @@ dataset_directory = os.path.join(
 
 # %%
 # Load PLAID datasets and problem metadata objects
-ref_ds = Dataset(os.path.join(dataset_directory, "dataset_ref"))
-pred_ds = Dataset(os.path.join(dataset_directory, "dataset_near_pred"))
-problem = ProblemDefinition(os.path.join(dataset_directory, "problem_definition"))
+ref_ds = Dataset(dataset_directory / "dataset_ref")
+pred_ds = Dataset(dataset_directory / "dataset_near_pred")
+problem = ProblemDefinition(dataset_directory / "problem_definition")
 
 # Get output scalars from reference and prediction dataset
 ref_out_scalars, pred_out_scalars, out_scalars_names = prepare_datasets(
@@ -79,9 +80,9 @@ for item1, item2 in zip(ref_out_scalars[key], pred_out_scalars[key]):
 print("=== Metrics with file paths ===")
 
 # Load PLAID datasets and problem metadata file paths
-ref_ds = os.path.join(dataset_directory, "dataset_ref")
-pred_ds = os.path.join(dataset_directory, "dataset_near_pred")
-problem = os.path.join(dataset_directory, "problem_definition")
+ref_ds = dataset_directory / "dataset_ref"
+pred_ds = dataset_directory / "dataset_near_pred"
+problem = dataset_directory / "problem_definition"
 
 # Using file paths to generate metrics
 metrics = compute_metrics(ref_ds, pred_ds, problem, "first_metrics")
@@ -100,9 +101,9 @@ print("output dictionary =", json.dumps(metrics, indent=4))
 print("=== Metrics with PLAID objects and verbose ===")
 
 # Load PLAID datasets and problem metadata objects
-ref_ds = Dataset(os.path.join(dataset_directory, "dataset_ref"))
-pred_ds = Dataset(os.path.join(dataset_directory, "dataset_pred"))
-problem = ProblemDefinition(os.path.join(dataset_directory, "problem_definition"))
+ref_ds = Dataset(dataset_directory / "dataset_ref")
+pred_ds = Dataset(dataset_directory / "dataset_pred")
+problem = ProblemDefinition(dataset_directory / "problem_definition")
 
 # Pretty print activated with verbose mode
 metrics = compute_metrics(ref_ds, pred_ds, problem, "second_metrics", verbose=True)
@@ -127,10 +128,10 @@ pretty_metrics(dictionary)
 import shutil
 
 shutil.move(
-    os.path.join(current_directory, "first_metrics.yaml"),
-    os.path.join(current_directory, "post", "first_metrics.yaml"),
+    current_directory / "first_metrics.yaml",
+    current_directory / "post" / "first_metrics.yaml",
 )
 shutil.move(
-    os.path.join(current_directory, "second_metrics.yaml"),
-    os.path.join(current_directory, "post", "second_metrics.yaml"),
+    current_directory / "second_metrics.yaml",
+    current_directory / "post" / "second_metrics.yaml",
 )
