@@ -14,7 +14,7 @@
 
 # %%
 # Import required libraries
-import os
+from pathlib import Path
 
 # %%
 # Import necessary libraries and functions
@@ -517,10 +517,10 @@ print(
 # ### Save Sample to as a file tree
 
 # %%
-test_pth = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
-os.makedirs(test_pth)
+test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+test_pth.mkdir(parents=True, exist_ok=True)
 
-sample_save_fname = os.path.join(test_pth, "test")
+sample_save_fname = test_pth / "test"
 print(f"saving path: {sample_save_fname}")
 
 sample.save(sample_save_fname)
@@ -537,7 +537,7 @@ show_sample(new_sample)
 # ### Load a Sample from a directory via the Sample class
 
 # %%
-new_sample_2 = Sample.load_from_dir(os.path.join(test_pth, "test"))
+new_sample_2 = Sample.load_from_dir(test_pth / "test")
 
 show_sample(new_sample)
 

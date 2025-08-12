@@ -18,10 +18,10 @@ else:  # pragma: no cover
     Self = TypeVar("Self")
 
 import copy
-import glob
 import logging
-import os
 from collections.abc import Iterable
+import shutil
+from pathlib import Path
 from typing import Optional, Union
 
 import CGNS.MAP as CGM
@@ -162,7 +162,7 @@ class Sample(BaseModel):
 
     def __init__(
         self,
-        directory_path: str = None,
+        directory_path: Union[str, Path] = None,
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
         meshes: dict[float, CGNSTree] = None,
@@ -174,7 +174,7 @@ class Sample(BaseModel):
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
         Args:
-            directory_path (str, optional): The path from which to load PLAID sample files.
+            directory_path (Union[str, Path], optional): The path from which to load PLAID sample files.
             mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
             mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
             meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
@@ -214,7 +214,8 @@ class Sample(BaseModel):
         self._paths: dict[float, list[PathType]] = paths
 
         if directory_path is not None:
-            self.load(str(directory_path))
+            directory_path = Path(directory_path)
+            self.load(directory_path)
 
         self._defaults: dict = {
             "active_base": None,
@@ -543,9 +544,7 @@ class Sample(BaseModel):
         tree = copy.deepcopy(tree)
         for link in links:
             if not in_memory:
-                subtree, _, _ = CGM.load(
-                    os.path.join(link[0], link[1]), subtree=link[2]
-                )
+                subtree, _, _ = CGM.load(str(Path(link[0]) / link[1]), subtree=link[2])
             else:
                 linked_timestep = int(link[1].split(".cgns")[0].split("_")[1])
                 linked_timestamp = list(self._meshes.keys())[linked_timestep]
@@ -675,7 +674,7 @@ class Sample(BaseModel):
 
     def link_tree(
         self,
-        path_linked_sample: str,
+        path_linked_sample: Union[str, Path],
         linked_sample: Self,
         linked_time: float,
         time: float,
@@ -683,7 +682,7 @@ class Sample(BaseModel):
         """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
 
         Args:
-            path_linked_sample (str): The absolute path of the folder containing the linked CGNS
+            path_linked_sample (Union[str, Path]): The absolute path of the folder containing the linked CGNS
             linked_sample (Sample): The linked sample
             linked_time (float): The time step of the linked CGNS in the linked sample
             time (float): The time step the current sample to which the CGNS tree is linked.
@@ -696,6 +695,8 @@ class Sample(BaseModel):
 
         # https://pycgns.github.io/MAP/examples.html#save-with-links
         # When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
+
+        path_linked_sample = Path(path_linked_sample)
 
         if linked_time not in linked_sample._meshes:  # pragma: no cover
             raise KeyError(
@@ -762,7 +763,7 @@ class Sample(BaseModel):
                 ]
                 grid[2].append(zone_family)
 
-        def find_feature_roots(sample, time, Type_t):
+        def find_feature_roots(sample: Sample, time: float, Type_t: str):
             Types_t = CGU.getAllNodesByTypeSet(sample.get_mesh(time), Type_t)
             # in case the type is not present in the tree
             if Types_t == []:  # pragma: no cover
@@ -780,9 +781,9 @@ class Sample(BaseModel):
 
         self.add_tree(tree, time=time)
 
-        dname = os.path.dirname(path_linked_sample)
-        bname = os.path.basename(path_linked_sample)
-        self._links[time] = [[dname, bname, fp, fp] for fp in feature_paths]
+        dname = path_linked_sample.parent
+        bname = path_linked_sample.name
+        self._links[time] = [[str(dname), bname, fp, fp] for fp in feature_paths]
 
         return tree
 
@@ -2146,27 +2147,35 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    def save(self, dir_path: str) -> None:
+    def save(self, dir_path: Union[str, Path], overwrite: bool = False) -> None:
         """Save the Sample in directory `dir_path`.
 
         Args:
-            dir_path (str): relative or absolute directory path.
+            dir_path (Union[str,Path]): relative or absolute directory path.
+            overwrite (bool): target directory overwritten if True.
         """
-        if os.path.isdir(dir_path):
-            if len(glob.glob(os.path.join(dir_path, "*"))):
-                raise ValueError(
-                    f"directory {dir_path} already exists and is not empty"
-                )
-        else:
-            os.makedirs(dir_path)
+        dir_path = Path(dir_path)
 
-        mesh_dir = os.path.join(dir_path, "meshes")
+        if dir_path.is_dir():
+            if overwrite:
+                shutil.rmtree(dir_path)
+                logger.warning(f"Existing {dir_path} directory has been reset.")
+            elif len(list(dir_path.glob("*"))):
+                raise ValueError(
+                    f"directory {dir_path} already exists and is not empty. Set `overwrite` to True if needed."
+                )
+
+        dir_path.mkdir(exist_ok=True)
+
+        mesh_dir = dir_path / "meshes"
 
         if self._meshes is not None:
-            os.makedirs(mesh_dir)
+            mesh_dir.mkdir()
             for i, time in enumerate(self._meshes.keys()):
-                outfname = os.path.join(mesh_dir, f"mesh_{i:09d}.cgns")
-                status = CGM.save(outfname, self._meshes[time], links=self._links[time])
+                outfname = mesh_dir / f"mesh_{i:09d}.cgns"
+                status = CGM.save(
+                    str(outfname), self._meshes[time], links=self._links[time]
+                )
                 logger.debug(f"save -> {status=}")
 
         scalars_names = self.get_scalar_names()
@@ -2177,7 +2186,7 @@ class Sample(BaseModel):
             scalars = np.array(scalars).reshape((1, -1))
             header = ",".join(scalars_names)
             np.savetxt(
-                os.path.join(dir_path, "scalars.csv"),
+                dir_path / "scalars.csv",
                 scalars,
                 header=header,
                 delimiter=",",
@@ -2191,7 +2200,7 @@ class Sample(BaseModel):
                 data = np.vstack((ts[0], ts[1])).T
                 header = ",".join(["t", ts_name])
                 np.savetxt(
-                    os.path.join(dir_path, f"time_series_{ts_name}.csv"),
+                    dir_path / f"time_series_{ts_name}.csv",
                     data,
                     header=header,
                     delimiter=",",
@@ -2199,13 +2208,13 @@ class Sample(BaseModel):
                 )
 
     @classmethod
-    def load_from_dir(cls, dir_path: str) -> Self:
+    def load_from_dir(cls, dir_path: Union[str, Path]) -> Self:
         """Load the Sample from directory `dir_path`.
 
         This is a class method, you don't need to instantiate a `Sample` first.
 
         Args:
-            dir_path (str): Relative or absolute directory path.
+            dir_path (Union[str,Path]): Relative or absolute directory path.
 
         Returns:
             Sample
@@ -2221,15 +2230,16 @@ class Sample(BaseModel):
         Note:
             It calls 'load' function during execution.
         """
+        dir_path = Path(dir_path)
         instance = cls()
         instance.load(dir_path)
         return instance
 
-    def load(self, dir_path: str) -> None:
+    def load(self, dir_path: Union[str, Path]) -> None:
         """Load the Sample from directory `dir_path`.
 
         Args:
-            dir_path (str): Relative or absolute directory path.
+            dir_path (Union[str,Path]): Relative or absolute directory path.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
@@ -2245,23 +2255,23 @@ class Sample(BaseModel):
                 >>> Sample(3 scalars, 1 timestamp, 3 fields)
 
         """
-        if not os.path.exists(dir_path):
+        dir_path = Path(dir_path)
+
+        if not dir_path.exists():
             raise FileNotFoundError(f'Directory "{dir_path}" does not exist. Abort')
 
-        if not os.path.isdir(dir_path):
+        if not dir_path.is_dir():
             raise FileExistsError(f'"{dir_path}" is not a directory. Abort')
 
-        meshes_dir = os.path.join(dir_path, "meshes")
-        if os.path.isdir(meshes_dir):
-            meshes_names = glob.glob(os.path.join(meshes_dir, "*"))
+        meshes_dir = dir_path / "meshes"
+        if meshes_dir.is_dir():
+            meshes_names = list(meshes_dir.glob("*"))
             nb_meshes = len(meshes_names)
             self._meshes = {}
             self._links = {}
             self._paths = {}
             for i in range(nb_meshes):
-                tree, links, paths = CGM.load(
-                    os.path.join(meshes_dir, f"mesh_{i:09d}.cgns")
-                )
+                tree, links, paths = CGM.load(str(meshes_dir / f"mesh_{i:09d}.cgns"))
                 time = CGH.get_time_values(tree)
 
                 self._meshes[time], self._links[time], self._paths[time] = (
@@ -2270,12 +2280,10 @@ class Sample(BaseModel):
                     paths,
                 )
                 for i in range(len(self._links[time])):  # pragma: no cover
-                    self._links[time][i][0] = os.path.join(
-                        meshes_dir, self._links[time][i][0]
-                    )
+                    self._links[time][i][0] = str(meshes_dir / self._links[time][i][0])
 
-        scalars_fname = os.path.join(dir_path, "scalars.csv")
-        if os.path.isfile(scalars_fname):
+        scalars_fname = dir_path / "scalars.csv"
+        if scalars_fname.is_file():
             names = np.loadtxt(
                 scalars_fname, dtype=str, max_rows=1, delimiter=","
             ).reshape((-1,))
@@ -2285,7 +2293,7 @@ class Sample(BaseModel):
             for name, value in zip(names, scalars):
                 self.add_scalar(name, value)
 
-        time_series_files = glob.glob(os.path.join(dir_path, "time_series_*.csv"))
+        time_series_files = list(dir_path.glob("time_series_*.csv"))
         for ts_fname in time_series_files:
             names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
                 (-1,)
