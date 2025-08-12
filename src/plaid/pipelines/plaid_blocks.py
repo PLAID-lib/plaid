@@ -15,7 +15,7 @@ Includes:
 #
 
 import copy
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
@@ -27,7 +27,7 @@ from plaid.containers.dataset import Dataset
 from plaid.containers.utils import has_duplicates_feature_ids
 
 
-class PlaidColumnTransformer(ColumnTransformer):
+class ColumnTransformer(ColumnTransformer):
     """Custom column-wise transformer for PLAID-style datasets.
 
     Similar to scikit-learn's `ColumnTransformer`, this class applies a list
@@ -45,7 +45,9 @@ class PlaidColumnTransformer(ColumnTransformer):
 
     def __init__(
         self,
-        plaid_transformers: list[tuple[str, Union[TransformerMixin, Pipeline]]] = None,
+        plaid_transformers: Optional[
+            list[tuple[str, Union[TransformerMixin, Pipeline]]]
+        ] = None,
     ):
         self.plaid_transformers = plaid_transformers
 
@@ -58,7 +60,7 @@ class PlaidColumnTransformer(ColumnTransformer):
 
         super().__init__(transformers_dummy)
 
-    def fit(self, dataset, _y=None):
+    def fit(self, dataset: Dataset, _y=None):
         """Fits all transformers on their corresponding feature subsets.
 
         Args:
@@ -115,7 +117,7 @@ class PlaidColumnTransformer(ColumnTransformer):
 
         return self
 
-    def transform(self, dataset):
+    def transform(self, dataset: Dataset):
         """Applies fitted transformers to feature subsets and merges results.
 
         Args:
@@ -141,20 +143,20 @@ class PlaidColumnTransformer(ColumnTransformer):
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)
 
-    def fit_transform(self, X, y=None):
+    def fit_transform(self, dataset: Dataset, y=None):
         """Fits all transformers and returns the combined transformed dataset.
 
         Args:
-            X: A `Dataset` object or a list of samples.
+            dataset: A `Dataset` object or a list of samples.
             y: Ignored. Present for API compatibility.
 
         Returns:
             Dataset: A new `Dataset` with transformed features.
         """
-        return self.fit(X, y).transform(X)
+        return self.fit(dataset, y).transform(dataset)
 
 
-class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
+class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
     """Meta-estimator that transforms the target before fit and inverses it at predict.
 
     This regressor is compatible with custom `Dataset` objects and supports
@@ -175,7 +177,7 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         self.regressor = regressor
         self.transformer = transformer
 
-    def fit(self, dataset, _y=None):
+    def fit(self, dataset: Dataset, _y=None):
         """Fits the transformer and the regressor on the transformed dataset.
 
         Args:
@@ -210,7 +212,7 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
 
         return self
 
-    def predict(self, dataset):
+    def predict(self, dataset: Dataset):
         """Predicts target values using the fitted regressor, then applies the inverse transformation.
 
         Args:
@@ -226,7 +228,7 @@ class PlaidTransformedTargetRegressor(RegressorMixin, BaseEstimator):
         dataset_pred_transformed = self.regressor_.predict(dataset)
         return self.transformer_.inverse_transform(dataset_pred_transformed)
 
-    def score(self, dataset_X, dataset_y=None):
+    def score(self, dataset_X: Dataset, dataset_y: Dataset = None):
         """Computes a normalized root mean squared error (RMSE) score on the transformed targets.
 
         The score is defined as `1 - avg(relative RMSE)` over all target features in the

@@ -1,22 +1,22 @@
 import numpy as np
 
 from plaid.pipelines.plaid_blocks import (
-    PlaidColumnTransformer,
-    PlaidTransformedTargetRegressor,
+    ColumnTransformer,
+    TransformedTargetRegressor,
 )
 from plaid.pipelines.sklearn_block_wrappers import (
     get_2Darray_from_homogeneous_identifiers,
 )
 
 
-class Test_PlaidColumnTransformer:
+class Test_ColumnTransformer:
     def test___init__(self, wrapped_sklearn_transformer, wrapped_sklearn_transformer_2):
-        PlaidColumnTransformer()
-        PlaidColumnTransformer([("titi", wrapped_sklearn_transformer)])
-        PlaidColumnTransformer(
+        ColumnTransformer()
+        ColumnTransformer([("titi", wrapped_sklearn_transformer)])
+        ColumnTransformer(
             [("toto", wrapped_sklearn_transformer)],
         )
-        PlaidColumnTransformer(
+        ColumnTransformer(
             plaid_transformers=[
                 ("scaler_scalar", wrapped_sklearn_transformer),
                 ("pca_field", wrapped_sklearn_transformer_2),
@@ -61,19 +61,19 @@ class Test_PlaidColumnTransformer:
         )
 
 
-class Test_PlaidTransformedTargetRegressor:
+class Test_TransformedTargetRegressor:
     def test___init__(
         self, wrapped_sklearn_multioutput_gp_regressor, wrapped_sklearn_transformer
     ):
-        PlaidTransformedTargetRegressor()
-        PlaidTransformedTargetRegressor(
+        TransformedTargetRegressor()
+        TransformedTargetRegressor(
             regressor=wrapped_sklearn_multioutput_gp_regressor,
         )
-        PlaidTransformedTargetRegressor(
+        TransformedTargetRegressor(
             regressor=wrapped_sklearn_multioutput_gp_regressor,
             transformer=wrapped_sklearn_transformer,
         )
-        PlaidTransformedTargetRegressor(
+        TransformedTargetRegressor(
             regressor=wrapped_sklearn_multioutput_gp_regressor,
             transformer=wrapped_sklearn_transformer,
         )

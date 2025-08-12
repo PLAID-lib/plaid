@@ -1,6 +1,5 @@
 """This file defines shared pytest fixtures and test configurations for pipelines."""
 
-import numpy as np
 import pytest
 from sklearn.decomposition import PCA
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -10,12 +9,12 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.preprocessing import MinMaxScaler
 
 from plaid.pipelines.plaid_blocks import (
-    PlaidColumnTransformer,
-    PlaidTransformedTargetRegressor,
+    ColumnTransformer,
+    TransformedTargetRegressor,
 )
 from plaid.pipelines.sklearn_block_wrappers import (
-    WrappedPlaidSklearnRegressor,
-    WrappedPlaidSklearnTransformer,
+    WrappedSklearnRegressor,
+    WrappedSklearnTransformer,
 )
 
 
@@ -77,7 +76,7 @@ def dataset_with_samples_with_tree_nodes_feat_ids(dataset_with_samples_with_tree
 
 @pytest.fixture()
 def wrapped_sklearn_transformer(sklearn_scaler, dataset_with_samples_scalar1_feat_ids):
-    return WrappedPlaidSklearnTransformer(
+    return WrappedSklearnTransformer(
         sklearn_block=sklearn_scaler,
         in_features_identifiers=dataset_with_samples_scalar1_feat_ids,
     )
@@ -85,7 +84,7 @@ def wrapped_sklearn_transformer(sklearn_scaler, dataset_with_samples_scalar1_fea
 
 @pytest.fixture()
 def wrapped_sklearn_transformer_2(sklearn_pca):
-    return WrappedPlaidSklearnTransformer(
+    return WrappedSklearnTransformer(
         sklearn_block=sklearn_pca,
         in_features_identifiers=[{"type": "field", "name": "test_field_same_size"}],
     )
@@ -97,15 +96,10 @@ def wrapped_sklearn_multioutput_gp_regressor(
     dataset_with_samples_scalar1_feat_ids,
     dataset_with_samples_scalar2_feat_ids,
 ):
-    def length_scale_init(X):
-        return np.ones(X.shape[1])
-
-    dynamics_params_factory = {"estimator__kernel__length_scale": length_scale_init}
-    return WrappedPlaidSklearnRegressor(
+    return WrappedSklearnRegressor(
         sklearn_block=sklearn_multioutput_gp_regressor,
         in_features_identifiers=dataset_with_samples_scalar2_feat_ids,
         out_features_identifiers=dataset_with_samples_scalar1_feat_ids,
-        dynamics_params_factory=dynamics_params_factory,
     )
 
 
@@ -123,7 +117,7 @@ def wrapped_sklearn_blocks(
 def plaid_column_transformer(
     wrapped_sklearn_transformer, wrapped_sklearn_transformer_2
 ):
-    return PlaidColumnTransformer(
+    return ColumnTransformer(
         plaid_transformers=[
             ("scaler_scalar", wrapped_sklearn_transformer),
             ("pca_field", wrapped_sklearn_transformer_2),
@@ -135,7 +129,7 @@ def plaid_column_transformer(
 def plaid_transformed_target_regressor(
     wrapped_sklearn_multioutput_gp_regressor, wrapped_sklearn_transformer
 ):
-    return PlaidTransformedTargetRegressor(
+    return TransformedTargetRegressor(
         regressor=wrapped_sklearn_multioutput_gp_regressor,
         transformer=wrapped_sklearn_transformer,
     )

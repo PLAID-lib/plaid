@@ -15,16 +15,9 @@ Provides adapters to use scikit-learn estimators within the PLAID feature/block 
 #
 
 import copy
-from typing import Union
 
 from sklearn.base import (
     BaseEstimator,
-    BiclusterMixin,
-    ClassifierMixin,
-    ClusterMixin,
-    DensityMixin,
-    MultiOutputMixin,
-    OutlierMixin,
     RegressorMixin,
     TransformerMixin,
     clone,
@@ -33,18 +26,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.utils import check_features_type_homogeneity
-
-SklearnBlock = Union[
-    BaseEstimator,
-    TransformerMixin,
-    RegressorMixin,
-    ClassifierMixin,
-    ClusterMixin,
-    BiclusterMixin,
-    DensityMixin,
-    OutlierMixin,
-    MultiOutputMixin,
-]
+from plaid.types.sklearn_types import SklearnBlock
 
 
 def get_2Darray_from_homogeneous_identifiers(
@@ -80,7 +62,7 @@ def get_2Darray_from_homogeneous_identifiers(
     return X
 
 
-class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
+class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
     """Adapter for using a scikit-learn transformer on PLAID Datasets.
 
     Transforms tabular data extracted from homogeneous feature identifiers,
@@ -187,7 +169,7 @@ class WrappedPlaidSklearnTransformer(TransformerMixin, BaseEstimator):
         return dataset_inv_transformed
 
 
-class WrappedPlaidSklearnRegressor(RegressorMixin, BaseEstimator):
+class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
     """Adapter for using a scikit-learn regressor with PLAID Dataset.
 
     Fits and predicts on tabular arrays extracted from stacked features,
@@ -197,8 +179,6 @@ class WrappedPlaidSklearnRegressor(RegressorMixin, BaseEstimator):
         sklearn_block: A scikit-learn regressor with fit/predict API.
         in_features_identifiers: List of feature identifiers for inputs.
         out_features_identifiers: List of feature identifiers for outputs.
-        dynamics_params_factory: Optional dict of callables for dynamic hyperparameter
-            injection based on the input data.
     """
 
     # TODO: remove transform and inv tranf
