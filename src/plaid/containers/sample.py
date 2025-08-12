@@ -19,8 +19,8 @@ else:  # pragma: no cover
 
 import copy
 import logging
-from collections.abc import Iterable
 import shutil
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional, Union
 
