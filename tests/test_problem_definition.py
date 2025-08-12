@@ -9,6 +9,7 @@
 
 import os
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -23,18 +24,21 @@ def problem_definition() -> ProblemDefinition:
 
 
 @pytest.fixture()
-def current_directory() -> str:
-    return os.path.dirname(os.path.abspath(__file__))
+def current_directory() -> Path:
+    return Path(__file__).absolute().parent
 
 
 @pytest.fixture(scope="session", autouse=True)
 def clean_tests():
+    base_dir = Path(__file__).absolute().parent
     if os.name == "nt":
         # Windows
-        retcode = subprocess.call(["cmd", "/c", "tests\\clean.bat"])
+        script_path = base_dir / "clean.bat"
+        retcode = subprocess.call(["cmd", "/c", str(script_path)])
     else:
         # Unix
-        retcode = subprocess.call(["sh", "./tests/clean.sh"])
+        script_path = base_dir / "clean.sh"
+        retcode = subprocess.call(["sh", str(script_path)])
     assert retcode == 0, "Test cleanup script failed"
 
 
@@ -100,7 +104,7 @@ class Test_ProblemDefinition:
 
     # -------------------------------------------------------------------------#
     def test_filter_scalars_names(self, current_directory):
-        d_path = os.path.join(current_directory, "problem_definition")
+        d_path = current_directory / "problem_definition"
         problem = ProblemDefinition(d_path)
         filter_in = problem.filter_input_scalars_names(
             ["predict_scalar", "test_scalar"]
@@ -165,7 +169,7 @@ class Test_ProblemDefinition:
 
     # -------------------------------------------------------------------------#
     def test_filter_fields_names(self, current_directory):
-        d_path = os.path.join(current_directory, "problem_definition")
+        d_path = current_directory / "problem_definition"
         problem = ProblemDefinition(d_path)
         filter_in = problem.filter_input_fields_names(["predict_field", "test_field"])
         filter_out = problem.filter_output_fields_names(["predict_field", "test_field"])
@@ -234,7 +238,7 @@ class Test_ProblemDefinition:
 
     # -------------------------------------------------------------------------#
     def test_filter_timeseries_names(self, current_directory):
-        d_path = os.path.join(current_directory, "problem_definition")
+        d_path = current_directory / "problem_definition"
         problem = ProblemDefinition(d_path)
         filter_in = problem.filter_input_timeseries_names(
             ["predict_timeseries", "test_timeseries"]
@@ -305,7 +309,7 @@ class Test_ProblemDefinition:
 
     # -------------------------------------------------------------------------#
     def test_filter_meshes_names(self, current_directory):
-        d_path = os.path.join(current_directory, "problem_definition")
+        d_path = current_directory / "problem_definition"
         problem = ProblemDefinition(d_path)
         print(f"{problem=}")
         print(f"{problem.get_input_meshes_names()=}")
@@ -364,9 +368,7 @@ class Test_ProblemDefinition:
         new_split = {"train": [0, 1, 2], "test": [3, 4]}
         problem_definition.set_split(new_split)
 
-        problem_definition._save_to_dir_(
-            os.path.join(current_directory, "problem_definition")
-        )
+        problem_definition._save_to_dir_(current_directory / "problem_definition")
 
     def test_load_path_object(self, current_directory):
         from pathlib import Path
@@ -375,7 +377,7 @@ class Test_ProblemDefinition:
         ProblemDefinition(my_dir / "problem_definition")
 
     def test_load(self, current_directory):
-        d_path = os.path.join(current_directory, "problem_definition")
+        d_path = current_directory / "problem_definition"
         problem = ProblemDefinition(d_path)
         assert problem.get_task() == "regression"
         assert set(problem.get_input_scalars_names()) == set(

@@ -1009,7 +1009,7 @@ class Dataset(object):
             """
 
         infos_fname = save_dir / "infos.yaml"
-        if os.path.isfile(infos_fname):
+        if infos_fname.is_file():
             with open(infos_fname, "r") as file:
                 self._infos = yaml.safe_load(file)
 

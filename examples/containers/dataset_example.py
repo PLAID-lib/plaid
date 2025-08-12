@@ -15,6 +15,7 @@
 # %%
 # Import required libraries
 import os
+from pathlib import Path
 
 # %%
 # Import necessary libraries and functions
@@ -388,8 +389,8 @@ print(f"{loaded_dataset_from_instance = }")
 # ### Save the dataset to a TAR (Tape Archive) file
 
 # %%
-tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
-tmpfile = os.path.join(tmpdir, "test_file.plaid")
+tmpdir = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+tmpfile = tmpdir / "test_file.plaid"
 
 print(f"Save dataset in: {tmpfile}")
 dataset.save(tmpfile)

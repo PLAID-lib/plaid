@@ -1,5 +1,6 @@
 """Utility functions for computing and printing metrics for regression problems in PLAID."""
 
+from pathlib import Path
 from typing import Union
 
 import numpy as np
@@ -127,27 +128,27 @@ def pretty_metrics(metrics: dict) -> None:
 
 
 def compute_metrics(
-    ref_dataset: Union[Dataset, str],
-    pred_dataset: Union[Dataset, str],
-    problem: Union[ProblemDefinition, str],
+    ref_dataset: Union[Dataset, str, Path],
+    pred_dataset: Union[Dataset, str, Path],
+    problem: Union[ProblemDefinition, str, Path],
     save_file_name: str = "test_metrics",
     verbose: bool = False,
 ) -> None:
     """Compute and save evaluation metrics for a given regression problem.
 
     Args:
-        ref_dataset (Dataset | str): Reference dataset or path to a reference dataset.
-        pred_dataset (Dataset | str): Predicted dataset or path to a predicted dataset.
-        problem (ProblemDefinition | str): Problem definition or path to a problem definition.
+        ref_dataset (Dataset | str | Path): Reference dataset or path to a reference dataset.
+        pred_dataset (Dataset | str | Path): Predicted dataset or path to a predicted dataset.
+        problem (ProblemDefinition | str | Path): Problem definition or path to a problem definition.
         save_file_name (str, optional): Name of the file to save the metrics. Defaults to "test_metrics".
         verbose (bool, optional): If True, print detailed information during computation.
     """
     ### Transform path to Dataset object ###
-    if isinstance(ref_dataset, str):
+    if isinstance(ref_dataset, (str, Path)):
         ref_dataset: Dataset = Dataset(ref_dataset)
-    if isinstance(pred_dataset, str):
+    if isinstance(pred_dataset, (str, Path)):
         pred_dataset: Dataset = Dataset(pred_dataset)
-    if isinstance(problem, str):
+    if isinstance(problem, (str, Path)):
         problem: ProblemDefinition = ProblemDefinition(problem)
 
     ### Get important formated values ###
