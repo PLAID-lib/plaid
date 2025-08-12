@@ -14,6 +14,7 @@
 # %%
 # Import required libraries
 import os
+from pathlib import Path
 
 import numpy as np
 
@@ -192,9 +193,9 @@ print(
 # ### Save a Problem Definition to a directory
 
 # %%
-test_pth = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
-pb_def_save_fname = os.path.join(test_pth, "test")
-os.makedirs(test_pth)
+test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+pb_def_save_fname = test_pth / "test"
+test_pth.mkdir(parents=True, exist_ok=True)
 print()
 print(f"saving path: {pb_def_save_fname}")
 
