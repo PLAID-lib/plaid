@@ -7,7 +7,7 @@
 
 # %% Imports
 
-import os
+from pathlib import Path
 
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnsutils as CGU
@@ -128,8 +128,8 @@ def test_read_index_range(tree, physical_dim):
 
 
 @pytest.fixture()
-def current_directory():
-    return os.path.dirname(os.path.abspath(__file__))
+def current_directory() -> Path:
+    return Path(__file__).absolute().parent
 
 
 # %% Tests
@@ -138,15 +138,9 @@ def current_directory():
 class Test_Sample:
     # -------------------------------------------------------------------------#
     def test___init__(self, current_directory):
-        dataset_path_1 = os.path.join(
-            current_directory, "dataset", "samples", "sample_000000000"
-        )
-        dataset_path_2 = os.path.join(
-            current_directory, "dataset", "samples", "sample_000000001"
-        )
-        dataset_path_3 = os.path.join(
-            current_directory, "dataset", "samples", "sample_000000002"
-        )
+        dataset_path_1 = current_directory / "dataset" / "samples" / "sample_000000000"
+        dataset_path_2 = current_directory / "dataset" / "samples" / "sample_000000001"
+        dataset_path_3 = current_directory / "dataset" / "samples" / "sample_000000002"
         sample_already_filled_1 = Sample(dataset_path_1)
         sample_already_filled_2 = Sample(dataset_path_2)
         sample_already_filled_3 = Sample(dataset_path_3)
@@ -164,16 +158,12 @@ class Test_Sample:
         )
 
     def test__init__unknown_directory(self, current_directory):
-        dataset_path = os.path.join(
-            current_directory, "dataset", "samples", "sample_000000298"
-        )
+        dataset_path = current_directory / "dataset" / "samples" / "sample_000000298"
         with pytest.raises(FileNotFoundError):
             Sample(dataset_path)
 
     def test__init__file_provided(self, current_directory):
-        dataset_path = os.path.join(
-            current_directory, "dataset", "samples", "sample_000067392"
-        )
+        dataset_path = current_directory / "dataset" / "samples" / "sample_000067392"
         with pytest.raises(FileExistsError):
             Sample(dataset_path)
 
