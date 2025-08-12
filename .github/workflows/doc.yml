@@ -1,0 +1,40 @@
+name: Documentation
+
+on:
+  push:
+    branches: 
+      - '**'
+  pull_request:
+    branches: 
+      - '**'
+  schedule:
+    - cron: '0 0 * * *'  # Every day at 00:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  doc:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Conda with Mamba
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          use-mamba: true
+          auto-activate-base: false
+          miniforge-variant: Miniforge3
+
+      - name: Create environment
+        run: |
+          mamba env create -f environment.yml
+          mamba run -n plaid pip install -e .
+
+      - name: Compile documentation
+        run: |
+          cd docs
+          mamba run -n plaid bash generate_doc.sh

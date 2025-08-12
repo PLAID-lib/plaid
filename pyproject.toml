@@ -5,10 +5,10 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "plaid"
+name = "pyplaid"
 authors = [{name = "Safran", email = "fabien.casenave@safrangroup.com"}]
 description = "A package that implements a data model tailored for AI and ML in the context of physics problems"
-requires-python = ">=3.11, <3.13"
+requires-python = ">=3.9, <3.14"
 keywords=[
     "machine learning",
     "physics",
@@ -21,8 +21,11 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: POSIX",
     "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -35,7 +38,7 @@ dependencies = [
     "matplotlib",
     "rich",
     "scikit-learn",
-    "datasets",
+    "datasets >=3.0",
     "pydantic",
 ]
 
@@ -45,7 +48,7 @@ dynamic = ["version"]
 write_to = "src/plaid/_version.py"
 
 [project.urls]
-homepage = "https://github.com/PLAID-lib/plaid"
+homepage = "https://plaid-lib.github.io"
 documentation = "https://plaid-lib.readthedocs.io"
 repository = "https://github.com/PLAID-lib/plaid"
 
@@ -67,3 +70,18 @@ platforms = [
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["plaid*"]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "ruff",
+    "pytest",
+    "pytest-cov",
+    "sphinx",
+    "myst-nb",
+    "myst-parser",
+    "furo",
+    "sphinx-autoapi",
+    "sphinx-tabs",
+    "sphinxcontrib.bibtex",
+]

@@ -1,69 +1,91 @@
 name: Tests and Examples
 
+permissions:
+  contents: read
+
 on:
   push:
+    branches: 
+      - '**'
   pull_request:
+    branches: 
+      - '**'
   schedule:
     - cron: '0 0 * * *'  # Every day at 00:00 UTC
 
 jobs:
   test:
+    name: Run Tests and Examples
     runs-on: ${{ matrix.os }}
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: [3.11, 3.12]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Conda with Mamba
+      - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
         with:
-          use-mamba: true
+          use-mamba: false
+          python-version: 3.11
           auto-activate-base: false
           miniforge-variant: Miniforge3
 
-      - name: Create environment
-        run: |
-          mamba env create -f .github/workflows/testing_conda_envs/python${{ matrix.python-version }}.yml
-
-      - name: Run tests on Unix
+      - name: Modify environment.yml with matrix Python version (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
-          export PYTHONPATH=$(pwd)/src
-          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+          sed -i.bak "s/^  - python=.*/  - python=${{ matrix.python-version }}/" environment.yml
+
+      - name: Modify environment.yml with matrix Python version (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $file = 'environment.yml'
+          (Get-Content $file) -replace '^\s+- python=.*', "  - python=${{ matrix.python-version }}" | Set-Content $file
+
+      - name: Create environment
+        run: |
+          conda env create -n plaid-dev -f environment.yml
+          conda run -n plaid-dev pip install -e .
+
+      - name: Run tests on Linux
+        if: runner.os == 'Linux'
+        run: |
+          conda run -n plaid-dev pytest tests --cov=src --cov-report=xml --cov-report=term
+
+      - name: Run tests on macOS
+        if: runner.os == 'macOS'
+        run: |
+          conda run -n plaid-dev pytest tests
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $env:PYTHONPATH = "$(Get-Location)\src"
-          mamba run -n plaid_python${{ matrix.python-version }} pytest tests
+          conda run -n plaid-dev pytest tests
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
         run: |
-          export PYTHONPATH=$(pwd)/src
           cd examples
-          mamba run -n plaid_python${{ matrix.python-version }} bash run_examples.sh
+          conda run -n plaid-dev bash run_examples.sh
 
       - name: Run examples on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $env:PYTHONPATH = "$(Get-Location)\src"
           cd examples
-          mamba run -n plaid_python${{ matrix.python-version }} run_examples.bat
+          conda run -n plaid-dev run_examples.bat
 
-    #   - name: Set up Miniconda
-    #     uses: conda-incubator/setup-miniconda@v2
-    #     with:
-    #       miniforge-variant: Miniforge3
-    #       miniforge-version: latest
-    #       use-mamba: true
-    #       auto-activate-base: false
-    #       auto-update-conda: true
-    #       activate-environment: plaid_python${{ matrix.python-version }}
-    #       environment-file: .github/workflows/testing_conda_envs/python${{ matrix.python-version }}.yml
+      - name: Upload coverage to Codecov (Linux only)
+        if: runner.os == 'Linux'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: python-${{ matrix.python-version }}
+          verbose: true

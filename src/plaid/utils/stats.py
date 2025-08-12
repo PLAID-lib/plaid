@@ -1,3 +1,5 @@
+"""Utility functions for computing statistics on datasets."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -7,33 +9,42 @@
 
 # %% Imports
 
+import copy
 import logging
-from typing import Union
+from typing import List, Union
+
+try:  # pragma: no cover
+    from typing import Self
+except ImportError:  # pragma: no cover
+    from typing import Any as Self
 
 import numpy as np
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
-from plaid.utils.base import ShapeError
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    format='[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s',
-    level=logging.INFO)
+    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
+    level=logging.INFO,
+)
 
 # %% Functions
 
 
-def aggregate_stats(sizes: np.ndarray, means: np.ndarray,
-                    vars: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def aggregate_stats(
+    sizes: np.ndarray, means: np.ndarray, vars: np.ndarray
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute aggregated statistics of a batch of already computed statistics (without original samples information).
-        This function calculates aggregated statistics, such as the total number of samples, mean, and variance, by taking into account the statistics computed for each batch of data.
 
-    cf: https://fr.wikipedia.org/wiki/Variance_(math%C3%A9matiques)
+    This function calculates aggregated statistics, such as the total number of samples, mean, and variance, by taking into account the statistics computed for each batch of data.
+
+    cf: [Variance from (cardinal,mean,variance) of several statistical series](https://fr.wikipedia.org/wiki/Variance_(math%C3%A9matiques)#Formules)
+
     Args:
-        sizes (np.ndarray): An array containing the sizes (number of samples) of each batch.
-        means (np.ndarray): An array containing the means of each batch.
-        vars (np.ndarray): An array containing the variances of each batch.
+        sizes (np.ndarray): An array containing the sizes (number of samples) of each batch. Expect shape (n_batches,1).
+        means (np.ndarray): An array containing the means of each batch. Expect shape (n_batches, n_features).
+        vars (np.ndarray): An array containing the variances of each batch. Expect shape (n_batches, n_features).
 
     Returns:
         tuple[np.ndarray,np.ndarray,np.ndarray]: A tuple containing the aggregated statistics in the following order:
@@ -41,133 +52,218 @@ def aggregate_stats(sizes: np.ndarray, means: np.ndarray,
         - Weighted mean calculated from the batch means.
         - Weighted variance calculated from the batch variances, considering the means.
     """
-    total_n_samples = np.sum(sizes, keepdims=True)
-    total_mean = np.sum(sizes * means, keepdims=True) / total_n_samples
-    total_var = np.sum(sizes * (vars + (total_mean - means)
-                       ** 2), keepdims=True) / total_n_samples
+    assert sizes.ndim == 1
+    assert means.ndim == 2
+    assert len(sizes) == len(means)
+    assert means.shape == vars.shape
+    sizes = sizes.reshape((-1, 1))
+    total_n_samples = np.sum(sizes)
+    total_mean = np.sum(sizes * means, axis=0, keepdims=True) / total_n_samples
+    total_var = (
+        np.sum(sizes * (vars + (total_mean - means) ** 2), axis=0, keepdims=True)
+        / total_n_samples
+    )
     return total_n_samples, total_mean, total_var
+
 
 # %% Classes
 
 
 class OnlineStatistics(object):
-    """OnlineStatistics is a class for computing online statistics (e.g., min, max, mean, variance, and standard deviation) of numpy arrays.
+    """OnlineStatistics is a class for computing online statistics of numpy arrays.
 
-    Attributes:
-        n_samples (int): The total number of samples added to the statistics.
-        min (np.ndarray): The minimum values of the input arrays.
-        max (np.ndarray): The maximum values of the input arrays.
-        mean (np.ndarray): The mean values of the input arrays.
-        var (np.ndarray): The variance values of the input arrays.
-        std (np.ndarray): The standard deviation values of the input arrays.
+    This class computes running statistics (min, max, mean, variance, std) for streaming data
+    without storing all samples in memory.
+
+    Example:
+        >>> stats = OnlineStatistics()
+        >>> stats.add_samples(np.array([[1, 2], [3, 4]]))
+        >>> stats.add_samples(np.array([[5, 6]]))
+        >>> print(stats.get_stats()['mean'])
+        [[3. 4.]]
     """
 
     def __init__(self) -> None:
-        """Initialize an empty OnlineStatistics object.
-        """
+        """Initialize an empty OnlineStatistics object."""
         self.n_samples: int = 0
+        self.n_features: int = None
+        self.n_points: int = None
         self.min: np.ndarray = None
         self.max: np.ndarray = None
         self.mean: np.ndarray = None
         self.var: np.ndarray = None
         self.std: np.ndarray = None
 
-    def add_samples(self, x: np.ndarray) -> None:
+    def add_samples(self, x: np.ndarray, n_samples: int = None) -> None:
         """Add samples to compute statistics for.
 
         Args:
-            x (np.ndarray): The input numpy array containing samples data.
+            x (np.ndarray): The input numpy array containing samples data. Expect 2D arrays with shape (n_samples, n_features).
+            n_samples (int, optional): The number of samples in the input array. If not provided, it will be inferred from the shape of `x`. Use this argument when the input array has already been flattened because of shape inconsistencies.
 
         Raises:
-            ShapeError: Raised when there is an inconsistency in the shape of the input array.
+            ValueError: Raised when input contains NaN or Inf values.
         """
+        # Validate input
+        if not isinstance(x, np.ndarray):
+            raise TypeError("Input must be a numpy array")
+
+        if np.any(~np.isfinite(x)):
+            raise ValueError("Input contains NaN or Inf values")
+
+        # Handle 1D arrays
         if x.ndim == 1:
-            if not (self.min is None):
-                if self.min.size == 1:
-                    # n_samples x 1
+            if self.min is not None:
+                if self.min.shape[1] == 1:
                     x = x.reshape((-1, 1))
                 else:
-                    # 1 x n_features
                     x = x.reshape((1, -1))
             else:
-                raise ShapeError(
-                    "can't determine if input array with ndim=1, is 1 x n_features or n_samples x 1")
+                x = x.reshape((-1, 1))  # Default to column vector
+
+        # Handle n-dimensional arrays
         elif x.ndim > 2:
-            # suppose last dim is features dim, all previous dims are space
-            # dims and are aggregated
+            # if we have array of shape (n_samples, n_points, n_features)
+            # it will be reshaped to (n_samples * n_points, n_features)
             x = x.reshape((-1, x.shape[-1]))
 
-        added_n_samples = len(x)
+        if self.n_features is None:
+            self.n_features = x.shape[1]
+
+        if x.shape[1] != self.n_features:
+            # it means that stats where previously on a per-point mode,
+            # but it is no longer possible as the new added samples have a different shape
+            # so we need to shift the stats to a per-sample mode, and then flatten the stats array
+            self.flatten_array()
+            n_samples = x.shape[0]
+            x = x.reshape((-1, 1))
+
+        added_n_samples = len(x) if n_samples is None else n_samples
+        added_n_points = x.size
         added_min = np.min(x, axis=0, keepdims=True)
         added_max = np.max(x, axis=0, keepdims=True)
         added_mean = np.mean(x, axis=0, keepdims=True)
         added_var = np.var(x, axis=0, keepdims=True)
 
-        if (self.n_samples == 0) or (self.min is None) or (
-                self.max is None) or (self.mean is None) or (self.var is None):
+        if (
+            (self.n_samples == 0)
+            or (self.min is None)
+            or (self.max is None)
+            or (self.mean is None)
+            or (self.var is None)
+        ):
             self.n_samples = added_n_samples
+            self.n_points = added_n_points
             self.min = added_min
             self.max = added_max
             self.mean = added_mean
             self.var = added_var
         else:
             self.min = np.min(
-                np.concatenate(
-                    (self.min, added_min), axis=0), axis=0)
+                np.concatenate((self.min, added_min), axis=0), axis=0, keepdims=True
+            )
             self.max = np.max(
-                np.concatenate(
-                    (self.max, added_max), axis=0), axis=0)
-            new_n_samples = self.n_samples + added_n_samples
-            new_mean = (self.n_samples * self.mean +
-                        added_n_samples * added_mean) / new_n_samples
-            self.n_samples, self.mean, self.var = aggregate_stats(
-                np.concatenate([self.n_samples +
-                                np.zeros(self.mean.shape, dtype=int), added_n_samples +
-                                np.zeros(added_mean.shape, dtype=int)]),
-                np.concatenate([self.mean, added_mean]),
-                np.concatenate([self.var, added_var]),
+                np.concatenate((self.max, added_max), axis=0), axis=0, keepdims=True
+            )
+            if self.n_features > 1:
+                # feature not flattened, we are on a per-sample mode
+                self.n_points += added_n_points
+                self.n_samples, self.mean, self.var = aggregate_stats(
+                    np.array([self.n_samples, added_n_samples]),
+                    np.concatenate([self.mean, added_mean]),
+                    np.concatenate([self.var, added_var]),
+                )
+            else:
+                # feature flattened, we are on a per-point mode
+                self.n_samples += added_n_samples
+                self.n_points, self.mean, self.var = aggregate_stats(
+                    np.array([self.n_points, added_n_points]),
+                    np.concatenate([self.mean, added_mean]),
+                    np.concatenate([self.var, added_var]),
+                )
+
+        self.std = np.sqrt(self.var)
+
+    def merge_stats(self, other: Self) -> None:
+        """Merge statistics from another instance.
+
+        Args:
+            other (Self): The other instance to merge statistics from.
+        """
+        if not isinstance(other, self.__class__):
+            raise TypeError("Can only merge with another instance of the same class")
+
+        if self.n_features != other.n_features:
+            # flatten both
+            self.flatten_array()
+            other = copy.deepcopy(other)
+            other.flatten_array()
+            assert self.min.shape == other.min.shape, (
+                "Shape mismatch in OnlineStatistics merging"
             )
 
-            # # cf: https://fr.wikipedia.org/wiki/Variance_(math%C3%A9matiques)
-            # self.var = (self.n_samples * (self.var + (new_mean - self.mean)**2) + added_n_samples*(added_var + (new_mean - added_mean)**2)) / new_n_samples
-            # self.n_samples = new_n_samples
-            # self.mean = new_mean
-
+        self.min = np.min(
+            np.concatenate((self.min, other.min), axis=0), axis=0, keepdims=True
+        )
+        self.max = np.max(
+            np.concatenate((self.max, other.max), axis=0), axis=0, keepdims=True
+        )
+        self.n_points += other.n_points
+        self.n_samples, self.mean, self.var = aggregate_stats(
+            np.array([self.n_samples, other.n_samples]),
+            np.concatenate([self.mean, other.mean]),
+            np.concatenate([self.var, other.var]),
+        )
         self.std = np.sqrt(self.var)
 
     def flatten_array(self) -> None:
         """When a shape incoherence is detected, you should call this function."""
-        self.min = np.min(self.min, keepdims=True)
-        self.max = np.max(self.max, keepdims=True)
-        assert (self.mean.shape == self.var.shape)
-        self.n_samples, self.mean, self.var = aggregate_stats(
-            np.zeros(self.mean.shape, dtype=int) + self.n_samples, self.mean, self.var)
+        self.min = np.min(self.min, keepdims=True).reshape(1, 1)
+        self.max = np.max(self.max, keepdims=True).reshape(1, 1)
+        self.n_points = self.n_samples * self.n_features
+        assert self.mean.shape == self.var.shape
+        self.n_points, self.mean, self.var = aggregate_stats(
+            np.array([self.n_samples] * self.n_features),
+            self.mean.reshape(-1, 1),
+            self.var.reshape(-1, 1),
+        )
         self.std = np.sqrt(self.var)
 
-    def get_stats(self) -> dict[str, np.ndarray]:
+        self.n_features = 1
+
+    def get_stats(self) -> dict[str, Union[int, np.ndarray]]:
         """Get computed statistics.
 
         Returns:
-            dict[str,np.ndarray]:  A dictionary containing computed statistics.
+            dict[str, Union[int, np.ndarray]]: A dictionary containing computed statistics.
+            The shapes of the arrays depend on the input data and may vary.
         """
         return {
-            'n_samples': self.n_samples,
-            'min': self.min,
-            'max': self.max,
-            'mean': self.mean,
-            'var': self.var,
-            'std': self.std,
+            "n_samples": self.n_samples,
+            "n_points": self.n_points,
+            "n_features": self.n_features,
+            "min": self.min,
+            "max": self.max,
+            "mean": self.mean,
+            "var": self.var,
+            "std": self.std,
         }
 
 
-class Stats(object):
-    """Stats is a class for aggregating and computing statistics for datasets.
+class Stats:
+    """Class for aggregating and computing statistics across datasets.
+
+    The Stats class processes both scalar and field data from samples or datasets,
+    computing running statistics like min, max, mean, variance and standard deviation.
+
+    Attributes:
+        _stats (dict[str, OnlineStatistics]): Dictionary mapping data identifiers to their statistics
     """
 
     def __init__(self):
-        """Initialize an empty Stats object.
-        """
-        self._stats = {}
+        """Initialize an empty Stats object."""
+        self._stats: dict[str, OnlineStatistics] = {}
+        self._feature_is_flattened: dict[str, bool] = {}
 
     def add_dataset(self, dset: Dataset) -> None:
         """Add a dataset to compute statistics for.
@@ -177,26 +273,38 @@ class Stats(object):
         """
         self.add_samples(dset)
 
-    def add_samples(self, samples: Union[list[Sample], Dataset]) -> None:
-        """Add samples (or a dataset) to compute statistics for.
+    def add_samples(self, samples: Union[List[Sample], Dataset]) -> None:
+        """Add samples or a dataset to compute statistics for.
+
+        Compute stats for each features present in the samples among scalars, fields and time_series.
+        For fields and time_series, as long as the added samples have the same shape as the existing ones,
+        the stats will be computed per-coordinates (n_features=x.shape[-1]).
+        But as soon as the shapes differ, the stats and added fields/time_series will be flattened (n_features=1),
+        then stats will be computed over all values of the field/time_series.
 
         Args:
-            samples (Union[list[Sample],Dataset]): The list of samples or a dataset to add.
+            samples (Union[List[Sample], Dataset]): List of samples or dataset to process
+
+        Raises:
+            TypeError: If samples is not a List[Sample] or Dataset
+            ValueError: If a sample contains invalid data
         """
-        # ---# Aggregate
-        new_data = {}
+        # Input validation
+        if not isinstance(samples, (list, Dataset)):
+            raise TypeError("samples must be a List[Sample] or Dataset")
+
+        # Process each sample
+        new_data: dict[str, list] = {}
+
         for sample in samples:
-            # ---# Scalars
-            for s_name in sample.get_scalar_names():
-                if s_name not in new_data:
-                    new_data[s_name] = []
-                new_data[s_name].append(sample.get_scalar(s_name))
+            # Process scalars
+            self._process_scalar_data(sample, new_data)
 
-            # ---# Fields
-            # TODO
+            # Process fields
+            self._process_field_data(sample, new_data)
 
-            # ---# Categorical
-            # TODO
+            # ---# Time-Series
+            self._process_time_series_data(sample, new_data)
 
             # ---# SpatialSupport (Meshes)
             # TODO
@@ -204,42 +312,217 @@ class Stats(object):
             # ---# TemporalSupport
             # TODO
 
-        # ---# Process
-        for name in new_data:
-            # new_shapes = [value.shape for value in new_data[name] if value.shape!=new_data[name][0].shape]
-            # has_same_shape = (len(new_shapes)==0)
-            has_same_shape = True
+            # ---# Categorical
+            # TODO
 
-            if has_same_shape:
-                new_data[name] = np.array(new_data[name])
-            else:
-                if name in self._stats:
-                    self._stats[name].flatten_array()
-                new_data[name] = np.concatenate(
-                    [np.ravel(value) for value in new_data[name]])
+        # Update statistics
+        self._update_statistics(new_data)
 
-            if new_data[name].ndim == 1:
-                new_data[name] = new_data[name].reshape((-1, 1))
+    def get_stats(
+        self, identifiers: list[str] = None
+    ) -> dict[str, dict[str, np.ndarray]]:
+        """Get computed statistics for specified data identifiers.
 
-            if name not in self._stats:
-                self._stats[name] = OnlineStatistics()
-
-            self._stats[name].add_samples(new_data[name])
-
-    def get_stats(self) -> dict[str, dict[str, np.ndarray]]:
-        """Get computed statistics for different data identifiers.
+        Args:
+            identifiers (list[str], optional): List of data identifiers to retrieve.
+                If None, returns statistics for all identifiers.
 
         Returns:
-            dict[str,dict[str,np.ndarray]]: A dictionary containing computed statistics for different data identifiers.
+            dict[str, dict[str, np.ndarray]]: Dictionary mapping identifiers to their statistics
         """
+        if identifiers is None:
+            identifiers = self.get_available_statistics()
+
         stats = {}
-        for identifier in self._stats:
-            stats[identifier] = {}
-            for stat_name, stat_value in self._stats[identifier].get_stats(
-            ).items():
-                stats[identifier][stat_name] = np.squeeze(stat_value)
+        for identifier in identifiers:
+            if identifier in self._stats:
+                stats[identifier] = {}
+                for stat_name, stat_value in (
+                    self._stats[identifier].get_stats().items()
+                ):
+                    stats[identifier][stat_name] = stat_value
+                    # stats[identifier][stat_name] = np.squeeze(stat_value)
 
         return stats
+
+    def get_available_statistics(self) -> list[str]:
+        """Get list of data identifiers with computed statistics.
+
+        Returns:
+            list[str]: List of data identifiers
+        """
+        return sorted(self._stats.keys())
+
+    def clear_statistics(self) -> None:
+        """Clear all computed statistics."""
+        self._stats.clear()
+
+    def merge_stats(self, other: Self) -> None:
+        """Merge statistics from another Stats object.
+
+        Args:
+            other (Stats): Stats object to merge with
+        """
+        for name, stats in other._stats.items():
+            if name not in self._stats:
+                self._stats[name] = copy.deepcopy(stats)
+            else:
+                self._stats[name].merge_stats(stats)
+
+    def _process_scalar_data(self, sample: Sample, data_dict: dict[str, list]) -> None:
+        """Process scalar data from a sample.
+
+        Args:
+            sample (Sample): Sample containing scalar data
+            data_dict (dict[str, list]): Dictionary to store processed data
+        """
+        for name in sample.get_scalar_names():
+            if name not in data_dict:
+                data_dict[name] = []
+            value = sample.get_scalar(name)
+            if value is not None:
+                data_dict[name].append(np.array(value).reshape((1, -1)))
+
+    def _process_time_series_data(
+        self, sample: Sample, data_dict: dict[str, list]
+    ) -> None:
+        """Process time series data from a sample.
+
+        Args:
+            sample (Sample): Sample containing time series data
+            data_dict (dict[str, list]): Dictionary to store processed data
+        """
+        for name in sample.get_time_series_names():
+            timestamps, time_series = sample.get_time_series(name)
+            timestamps = timestamps.reshape((1, -1))
+            time_series = time_series.reshape((1, -1))
+
+            timestamps_name = f"timestamps/{name}"
+            time_series_name = f"time_series/{name}"
+            if timestamps_name not in data_dict:
+                assert time_series_name not in data_dict
+                data_dict[timestamps_name] = []
+                data_dict[time_series_name] = []
+            if timestamps is not None and time_series is not None:
+                # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
+                if len(
+                    data_dict[time_series_name]
+                ) > 0 and not self._feature_is_flattened.get(time_series_name, False):
+                    prev_shape = data_dict[time_series_name][0].shape
+                    if time_series.shape != prev_shape:
+                        # set this stat as flattened
+                        self._feature_is_flattened[timestamps_name] = True
+                        self._feature_is_flattened[time_series_name] = True
+                        # flatten corresponding stat
+                        if time_series_name in self._stats:
+                            self._stats[time_series_name].flatten_array()
+
+                if self._feature_is_flattened.get(time_series_name, False):
+                    timestamps = timestamps.reshape((-1, 1))
+                    time_series = time_series.reshape((-1, 1))
+                else:
+                    timestamps = timestamps.reshape((1, -1))
+                    time_series = time_series.reshape((1, -1))
+
+                data_dict[timestamps_name].append(timestamps)
+                data_dict[time_series_name].append(time_series)
+
+    def _process_field_data(self, sample: Sample, data_dict: dict[str, list]) -> None:
+        """Process field data from a sample.
+
+        Args:
+            sample (Sample): Sample containing field data
+            data_dict (dict[str, list]): Dictionary to store processed data
+        """
+        for time in sample.get_all_mesh_times():
+            for base_name in sample.get_base_names(time=time):
+                for zone_name in sample.get_zone_names(base_name=base_name, time=time):
+                    for field_name in sample.get_field_names(
+                        zone_name=zone_name, base_name=base_name, time=time
+                    ):
+                        stat_key = f"{base_name}/{zone_name}/{field_name}"
+                        if stat_key not in data_dict:
+                            data_dict[stat_key] = []
+                        field = sample.get_field(
+                            field_name,
+                            zone_name=zone_name,
+                            base_name=base_name,
+                            time=time,
+                        ).reshape((1, -1))
+                        if field is not None:
+                            # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
+                            if len(
+                                data_dict[stat_key]
+                            ) > 0 and not self._feature_is_flattened.get(
+                                stat_key, False
+                            ):
+                                prev_shape = data_dict[stat_key][0].shape
+                                if field.shape != prev_shape:
+                                    # set this stat as flattened
+                                    self._feature_is_flattened[stat_key] = True
+                                    # flatten corresponding stat
+                                    if stat_key in self._stats:
+                                        self._stats[stat_key].flatten_array()
+
+                            if self._feature_is_flattened.get(stat_key, False):
+                                field = field.reshape((-1, 1))
+
+                            data_dict[stat_key].append(field)
+
+    def _update_statistics(self, new_data: dict[str, list]) -> None:
+        """Update running statistics with new data.
+
+        Args:
+            new_data (dict[str, list]): Dictionary containing new data to process
+        """
+        for name, list_of_arrays in new_data.items():
+            if len(list_of_arrays) > 0:
+                if name not in self._stats:
+                    self._stats[name] = OnlineStatistics()
+
+                # internal check, should never happen if self._process_* functions work correctly
+                for sample_id in range(len(list_of_arrays)):
+                    assert isinstance(list_of_arrays[sample_id], np.ndarray)
+                    assert list_of_arrays[sample_id].ndim == 2, (
+                        f"for feature <{name}> -> {sample_id=}: {list_of_arrays[sample_id].ndim=} should be 2"
+                    )
+
+                if self._feature_is_flattened.get(name, False):
+                    # flatten all arrays in list_of_arrays
+                    n_samples = len(list_of_arrays)
+                    for i in range(len(list_of_arrays)):
+                        list_of_arrays[i] = list_of_arrays[i].reshape((-1, 1))
+                else:
+                    n_samples = None
+
+                # Convert to numpy array and reshape if needed
+                data = np.concatenate(list_of_arrays)
+                assert data.ndim == 2
+
+                self._stats[name].add_samples(data, n_samples=n_samples)
+
+        # # old version of _update_statistics logic
+        # for name in new_data:
+        #     # new_shapes = [value.shape for value in new_data[name] if value.shape!=new_data[name][0].shape]
+        #     # has_same_shape = (len(new_shapes)==0)
+        #     has_same_shape = True
+
+        #     if has_same_shape:
+        #         new_data[name] = np.array(new_data[name])
+        #     else:  # pragma: no cover  ### remove "no cover" when "has_same_shape = True" is no longer used
+        #         if name in self._stats:
+        #             self._stats[name].flatten_array()
+        #         new_data[name] = np.concatenate(
+        #             [np.ravel(value) for value in new_data[name]]
+        #         )
+
+        #     if new_data[name].ndim == 1:
+        #         new_data[name] = new_data[name].reshape((-1, 1))
+
+        #     if name not in self._stats:
+        #         self._stats[name] = OnlineStatistics()
+
+        #     self._stats[name].add_samples(new_data[name])
 
     # TODO : FAIRE DEUX FONCTIONS :
     # - compute_stats(samples) -> stats

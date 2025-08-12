@@ -1,0 +1,37 @@
+name: Get SHA256 of release asset
+
+on:
+  workflow_dispatch:  # manual trigger
+  release:
+    types: [created]
+
+permissions:
+  contents: read
+
+jobs:
+  get-sha256:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get latest release tag
+        id: get_latest
+        run: |
+            tag=$(gh release view --repo ${{ github.repository }} --json tagName -q .tagName)
+            echo "tag=$tag" >> $GITHUB_OUTPUT
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download release asset and compute SHA256
+        run: |
+          TAG=${{ steps.get_latest.outputs.tag }}
+          ASSET_NAME=${TAG}.tar.gz
+          curl -L -o "$ASSET_NAME" https://github.com/PLAID-lib/plaid/archive/refs/tags/"$TAG".tar.gz
+          sha256sum "$ASSET_NAME" > "plaid-${ASSET_NAME}.sha256"
+          cat "plaid-${ASSET_NAME}.sha256"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload SHA256 file
+        uses: actions/upload-artifact@v4
+        with:
+          name: sha256-checksum
+          path: plaid-*.sha256

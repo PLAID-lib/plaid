@@ -1,3 +1,5 @@
+"""PLAID package public API."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -7,9 +9,13 @@
 
 try:
     from ._version import __version__
-except ImportError:
+except ImportError:  # pragma: no cover
     __version__ = "None"
 
-__all__ = ["__version__"]
-
 from .containers.utils import get_number_of_samples, get_sample_ids
+
+__all__ = [
+    "__version__",
+    "get_number_of_samples",
+    "get_sample_ids",
+]

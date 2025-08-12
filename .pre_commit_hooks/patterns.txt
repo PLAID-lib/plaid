@@ -1,0 +1,12 @@
+# List patterns to find in files, can be regex
+##################
+# hard coded paths
+##################
+# Unix
+/data/
+/gpfs/
+/apps/
+/softs/
+# Windows
+C:\\
+D:\\

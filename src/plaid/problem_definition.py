@@ -1,3 +1,5 @@
+"""Implementation of the `ProblemDefinition` class."""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -7,43 +9,43 @@
 
 # %% Imports
 
-try: # pragma: no cover
+import sys
+
+if sys.version_info >= (3, 11):
     from typing import Self
-except ImportError: # pragma: no cover
-    from typing import Any as Self
+else:  # pragma: no cover
+    from typing import TypeVar
+
+    Self = TypeVar("Self")
 
 import csv
 import logging
 import os
 from typing import Union
 
-import numpy as np
 import yaml
+
+from plaid.constants import AUTHORIZED_TASKS
+from plaid.types import IndexType
 
 # %% Globals
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-    format='[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s',
-    level=logging.INFO)
+    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
+    level=logging.INFO,
+)
 
 # %% Functions
 
 # %% Classes
-
-authorized_tasks = ["regression", "classification"]
-"""List containing authorized machine learning tasks.
-"""
-IndexType = Union[list[int], np.ndarray]
-"""IndexType is an Union[list[int],np.ndarray]
-"""
 
 
 class ProblemDefinition(object):
     """Gathers all necessary informations to define a learning problem."""
 
     def __init__(self, directory_path: str = None) -> None:
-        """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`
+        """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`.
 
         Use :meth:`add_inputs <plaid.problem_definition.ProblemDefinition.add_inputs>` or :meth:`add_output_scalars_names <plaid.problem_definition.ProblemDefinition.add_output_scalars_names>` to feed the :class:`ProblemDefinition`
 
@@ -66,14 +68,14 @@ class ProblemDefinition(object):
                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
         self._task: str = None  # list[task name]
-        self.in_scalars_names: list[str]     = []
-        self.out_scalars_names: list[str]    = []
-        self.in_timeseries_names: list[str]  = []
+        self.in_scalars_names: list[str] = []
+        self.out_scalars_names: list[str] = []
+        self.in_timeseries_names: list[str] = []
         self.out_timeseries_names: list[str] = []
-        self.in_fields_names: list[str]      = []
-        self.out_fields_names: list[str]     = []
-        self.in_meshes_names: list[str]      = []
-        self.out_meshes_names: list[str]     = []
+        self.in_fields_names: list[str] = []
+        self.out_fields_names: list[str] = []
+        self.in_meshes_names: list[str] = []
+        self.out_meshes_names: list[str] = []
         self._split: dict[str, IndexType] = None
 
         if directory_path is not None:
@@ -95,19 +97,20 @@ class ProblemDefinition(object):
             task (str): The authorized task to be set, such as "regression" or "classification".
         """
         if self._task is not None:
-            raise ValueError(
-                f"A task is already in self._task: (`{self._task}`)")
-        elif task in authorized_tasks:
+            raise ValueError(f"A task is already in self._task: (`{self._task}`)")
+        elif task in AUTHORIZED_TASKS:
             self._task = task
         else:
             raise TypeError(
-                f"{task} not among authorized tasks. Maybe you want to try among: {authorized_tasks}")
+                f"{task} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_TASKS}"
+            )
+
     # -------------------------------------------------------------------------#
 
     def get_split(
-            self, indices_name: str = None) -> Union[IndexType, dict[str, IndexType]]:
-        """Get the split indices. This function returns the split indices, either for a specific split
-            with the provided `indices_name` or all split indices if `indices_name` is not specified.
+        self, indices_name: str = None
+    ) -> Union[IndexType, dict[str, IndexType]]:
+        """Get the split indices. This function returns the split indices, either for a specific split with the provided `indices_name` or all split indices if `indices_name` is not specified.
 
         Args:
             indices_name (str, optional): The name of the split for which indices are requested. Defaults to None.
@@ -138,12 +141,13 @@ class ProblemDefinition(object):
         if indices_name is None:
             return self._split
         else:
-            assert indices_name in self._split, indices_name + " not among split indices names"
+            assert indices_name in self._split, (
+                indices_name + " not among split indices names"
+            )
             return self._split[indices_name]
 
     def set_split(self, split: dict[str, IndexType]) -> None:
-        """Set the split indices. This function allows you to set the split indices by providing a dictionary
-        mapping split names (str) to their respective indices (IndexType).
+        """Set the split indices. This function allows you to set the split indices by providing a dictionary mapping split names (str) to their respective indices (IndexType).
 
         Args:
             split (dict[str,IndexType]):  A dictionary containing split names and their indices.
@@ -156,8 +160,8 @@ class ProblemDefinition(object):
                 new_split = {'train': [0, 1, 2], 'test': [3, 4]}
                 problem.set_split(new_split)
         """
-        if self._split is not None: # pragma: no cover
-            logger.warning(f"split already exists -> data will be replaced")
+        if self._split is not None:  # pragma: no cover
+            logger.warning("split already exists -> data will be replaced")
         self._split = split
 
     # -------------------------------------------------------------------------#
@@ -197,7 +201,7 @@ class ProblemDefinition(object):
                 problem.add_input_scalars_names(input_scalars_names)
         """
         if not (len(set(inputs)) == len(inputs)):
-            raise ValueError('Some inputs have same names')
+            raise ValueError("Some inputs have same names")
         for input in inputs:
             self.add_input_scalar_name(input)
 
@@ -282,12 +286,13 @@ class ProblemDefinition(object):
                 problem.add_output_scalars_names(output_scalars_names)
         """
         if not (len(set(outputs)) == len(outputs)):
-            raise ValueError('Some outputs have same names')
+            raise ValueError("Some outputs have same names")
         for output in outputs:
             self.add_output_scalar_name(output)
 
     def add_output_scalar_name(self, output: str) -> None:
         """Add an output scalar name or identifier to the problem.
+
         Args:
             output (str):  The name or identifier of the output feature to add.
 
@@ -366,7 +371,7 @@ class ProblemDefinition(object):
                 problem.add_input_fields_names(input_fields_names)
         """
         if not (len(set(inputs)) == len(inputs)):
-            raise ValueError('Some inputs have same names')
+            raise ValueError("Some inputs have same names")
         for input in inputs:
             self.add_input_field_name(input)
 
@@ -451,12 +456,13 @@ class ProblemDefinition(object):
                 problem.add_output_fields_names(output_fields_names)
         """
         if not (len(set(outputs)) == len(outputs)):
-            raise ValueError('Some outputs have same names')
+            raise ValueError("Some outputs have same names")
         for output in outputs:
             self.add_output_field_name(output)
 
     def add_output_field_name(self, output: str) -> None:
         """Add an output field name or identifier to the problem.
+
         Args:
             output (str):  The name or identifier of the output feature to add.
 
@@ -474,7 +480,7 @@ class ProblemDefinition(object):
         if output in self.out_fields_names:
             raise ValueError(f"{output} is already in self.out_fields_names")
         self.out_fields_names.append(output)
-        self.in_fields_names.sort()
+        self.out_fields_names.sort()
 
     def filter_output_fields_names(self, names: list[str]) -> list[str]:
         """Filter and get output features corresponding to a sorted list of names.
@@ -535,7 +541,7 @@ class ProblemDefinition(object):
                 problem.add_input_timeseries_names(input_timeseries_names)
         """
         if not (len(set(inputs)) == len(inputs)):
-            raise ValueError('Some inputs have same names')
+            raise ValueError("Some inputs have same names")
         for input in inputs:
             self.add_input_timeseries_name(input)
 
@@ -620,12 +626,13 @@ class ProblemDefinition(object):
                 problem.add_output_timeseries_names(output_timeseries_names)
         """
         if not (len(set(outputs)) == len(outputs)):
-            raise ValueError('Some outputs have same names')
+            raise ValueError("Some outputs have same names")
         for output in outputs:
             self.add_output_timeseries_name(output)
 
     def add_output_timeseries_name(self, output: str) -> None:
         """Add an output timeserie name or identifier to the problem.
+
         Args:
             output (str):  The name or identifier of the output feature to add.
 
@@ -704,7 +711,7 @@ class ProblemDefinition(object):
                 problem.add_input_meshes_names(input_meshes_names)
         """
         if not (len(set(inputs)) == len(inputs)):
-            raise ValueError('Some inputs have same names')
+            raise ValueError("Some inputs have same names")
         for input in inputs:
             self.add_input_mesh_name(input)
 
@@ -789,12 +796,13 @@ class ProblemDefinition(object):
                 problem.add_output_meshes_names(output_meshes_names)
         """
         if not (len(set(outputs)) == len(outputs)):
-            raise ValueError('Some outputs have same names')
+            raise ValueError("Some outputs have same names")
         for output in outputs:
             self.add_output_mesh_name(output)
 
     def add_output_mesh_name(self, output: str) -> None:
         """Add an output mesh name or identifier to the problem.
+
         Args:
             output (str):  The name or identifier of the output feature to add.
 
@@ -894,34 +902,34 @@ class ProblemDefinition(object):
                 problem = ProblemDefinition()
                 problem._save_to_dir_("/path/to/save_directory")
         """
-        if not (os.path.isdir(savedir)): # pragma: no cover
+        if not (os.path.isdir(savedir)):  # pragma: no cover
             os.makedirs(savedir)
 
         data = {
             "task": self._task,
-            "input_scalars": self.in_scalars_names,         # list[input scalar name]
-            "output_scalars": self.out_scalars_names,       # list[output scalar name]
-            "input_fields": self.in_fields_names,           # list[input field name]
-            "output_fields": self.out_fields_names,         # list[output field name]
-            "input_timeseries": self.in_timeseries_names,   # list[input timeserie name]
-            "output_timeseries": self.out_timeseries_names, # list[output timeserie name]
-            "input_meshes": self.in_meshes_names,           # list[input mesh name]
-            "output_meshes": self.out_meshes_names,         # list[output mesh name]
+            "input_scalars": self.in_scalars_names,  # list[input scalar name]
+            "output_scalars": self.out_scalars_names,  # list[output scalar name]
+            "input_fields": self.in_fields_names,  # list[input field name]
+            "output_fields": self.out_fields_names,  # list[output field name]
+            "input_timeseries": self.in_timeseries_names,  # list[input timeserie name]
+            "output_timeseries": self.out_timeseries_names,  # list[output timeserie name]
+            "input_meshes": self.in_meshes_names,  # list[input mesh name]
+            "output_meshes": self.out_meshes_names,  # list[output mesh name]
         }
 
-        pbdef_fname = os.path.join(savedir, 'problem_infos.yaml')
-        with open(pbdef_fname, 'w') as file:
+        pbdef_fname = os.path.join(savedir, "problem_infos.yaml")
+        with open(pbdef_fname, "w") as file:
             yaml.dump(data, file, default_flow_style=False, sort_keys=False)
 
-        split_fname = os.path.join(savedir, 'split.csv')
+        split_fname = os.path.join(savedir, "split.csv")
         if self._split is not None:
-            with open(split_fname, 'w', newline='') as file:
+            with open(split_fname, "w", newline="") as file:
                 write = csv.writer(file)
                 for name, indices in self._split.items():
                     write.writerow([name] + list(indices))
 
     @classmethod
-    def load(cls, save_dir: str) -> Self: # pragma: no cover
+    def load(cls, save_dir: str) -> Self:  # pragma: no cover
         """Load data from a specified directory.
 
         Args:
@@ -938,7 +946,7 @@ class ProblemDefinition(object):
         """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
 
         Args:
-            savedir (str): The directory from which to load the problem information.
+            save_dir (str): The directory from which to load the problem information.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
@@ -951,21 +959,21 @@ class ProblemDefinition(object):
                 problem = ProblemDefinition()
                 problem._load_from_dir_("/path/to/load_directory")
         """
-        if not os.path.exists(save_dir): # pragma: no cover
-            raise FileNotFoundError(
-                f"Directory \"{save_dir}\" does not exist. Abort")
+        if not os.path.exists(save_dir):  # pragma: no cover
+            raise FileNotFoundError(f'Directory "{save_dir}" does not exist. Abort')
 
-        if not os.path.isdir(save_dir): # pragma: no cover
-            raise FileExistsError(f"\"{save_dir}\" is not a directory. Abort")
+        if not os.path.isdir(save_dir):  # pragma: no cover
+            raise FileExistsError(f'"{save_dir}" is not a directory. Abort')
 
-        pbdef_fname = os.path.join(save_dir, 'problem_infos.yaml')
+        pbdef_fname = os.path.join(save_dir, "problem_infos.yaml")
         data = {}  # To avoid crash if pbdef_fname does not exist
         if os.path.isfile(pbdef_fname):
-            with open(pbdef_fname, 'r') as file:
+            with open(pbdef_fname, "r") as file:
                 data = yaml.safe_load(file)
-        else: # pragma: no cover
+        else:  # pragma: no cover
             logger.warning(
-                f"file with path `{pbdef_fname}` does not exist. Task, inputs, and outputs will not be set")
+                f"file with path `{pbdef_fname}` does not exist. Task, inputs, and outputs will not be set"
+            )
 
         self._task = data["task"]
         self.in_scalars_names = data["input_scalars"]
@@ -977,16 +985,17 @@ class ProblemDefinition(object):
         self.in_meshes_names = data["input_meshes"]
         self.out_meshes_names = data["output_meshes"]
 
-        split_fname = os.path.join(save_dir, 'split.csv')
+        split_fname = os.path.join(save_dir, "split.csv")
         split = {}
         if os.path.isfile(split_fname):
             with open(split_fname) as file:
-                reader = csv.reader(file, delimiter=',')
+                reader = csv.reader(file, delimiter=",")
                 for row in reader:
                     split[row[0]] = [int(i) for i in row[1:]]
-        else: # pragma: no cover
+        else:  # pragma: no cover
             logger.warning(
-                f"file with path `{split_fname}` does not exist. Splits will not be set")
+                f"file with path `{split_fname}` does not exist. Splits will not be set"
+            )
         self._split = split
 
     # -------------------------------------------------------------------------#
@@ -1007,44 +1016,44 @@ class ProblemDefinition(object):
         """
         str_repr = "ProblemDefinition("
 
-        #---# scalars
+        # ---# scalars
         if len(self.in_scalars_names) > 0:
             input_scalars_names = self.in_scalars_names
             str_repr += f"{input_scalars_names=}, "
         if len(self.out_scalars_names) > 0:
             output_scalars_names = self.out_scalars_names
             str_repr += f"{output_scalars_names=}, "
-        #---# fields
+        # ---# fields
         if len(self.in_fields_names) > 0:
             input_fields_names = self.in_fields_names
             str_repr += f"{input_fields_names=}, "
         if len(self.out_fields_names) > 0:
             output_fields_names = self.out_fields_names
             str_repr += f"{output_fields_names=}, "
-        #---# timeseries
+        # ---# timeseries
         if len(self.in_timeseries_names) > 0:
             input_timeseries_names = self.in_timeseries_names
             str_repr += f"{input_timeseries_names=}, "
         if len(self.out_timeseries_names) > 0:
             output_timeseries_names = self.out_timeseries_names
             str_repr += f"{output_timeseries_names=}, "
-        #---# meshes
+        # ---# meshes
         if len(self.in_meshes_names) > 0:
             input_meshes_names = self.in_meshes_names
             str_repr += f"{input_meshes_names=}, "
         if len(self.out_meshes_names) > 0:
             output_meshes_names = self.out_meshes_names
             str_repr += f"{output_meshes_names=}, "
-        #---# task
+        # ---# task
         if self._task is not None:
             task = self._task
             str_repr += f"{task=}, "
-        #---# split
+        # ---# split
         if self._split is not None:
             split_names = list(self._split.keys())
             str_repr += f"{split_names=}, "
 
-        if str_repr[-2:] == ', ':
+        if str_repr[-2:] == ", ":
             str_repr = str_repr[:-2]
         str_repr += ")"
         return str_repr
