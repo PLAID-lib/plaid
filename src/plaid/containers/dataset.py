@@ -979,11 +979,11 @@ class Dataset(object):
         return merged_dataset
 
     @classmethod
-    def merge_dataset_by_features(cls, datasets_list: list) -> Self:
+    def merge_dataset_by_features(cls, datasets_list: list[Self]) -> Self:
         """Merge features a list of datasets.
 
         Args:
-            datasets_list (list(Dataset)): The list of datasets to be merged.
+            datasets_list (list[Dataset]): The list of datasets to be merged.
 
         Returns:
             Dataset: A new dataset containing all samples from the input datasets.

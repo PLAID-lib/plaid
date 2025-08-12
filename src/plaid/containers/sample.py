@@ -38,7 +38,7 @@ from plaid.constants import (
     CGNS_ELEMENT_NAMES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.utils import get_feature_type_and_details_from_identifier
+from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     CGNSNode,
     CGNSTree,
@@ -1909,7 +1909,7 @@ class Sample(BaseModel):
         Returns:
             FeatureType: The corresponding feature instance retrieved via the appropriate accessor.
         """
-        feature_type, feature_details = get_feature_type_and_details_from_identifier(
+        feature_type, feature_details = get_feature_type_and_details_from(
             feature_identifier
         )
 
@@ -1950,7 +1950,7 @@ class Sample(BaseModel):
             list[FeatureType]: List of corresponding feature instance retrieved via the appropriate accessor.
         """
         all_features_info = [
-            get_feature_type_and_details_from_identifier(feat_id)
+            get_feature_type_and_details_from(feat_id)
             for feat_id in feature_identifiers
         ]
 
@@ -1986,7 +1986,7 @@ class Sample(BaseModel):
         Raises:
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
-        feature_type, feature_details = get_feature_type_and_details_from_identifier(
+        feature_type, feature_details = get_feature_type_and_details_from(
             feature_identifier
         )
 

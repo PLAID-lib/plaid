@@ -53,7 +53,7 @@ def get_number_of_samples(savedir: Union[str, Path]) -> int:
     return len(get_sample_ids(savedir))
 
 
-def get_feature_type_and_details_from_identifier(
+def get_feature_type_and_details_from(
     feature_identifier: dict[str, Union[str, float]],
 ) -> tuple[str, dict[str, Union[str, float]]]:
     """Extract and validate the feature type and its associated metadata from a feature identifier.
@@ -68,6 +68,8 @@ def get_feature_type_and_details_from_identifier(
             - {"type": "scalar", "name": "Mach"}
             - {"type": "time_series", "name": "AOA"}
             - {"type": "field", "name": "pressure"}
+            - {"type": "field", "name": "pressure", "time":0.}
+            - {"type": "nodes", "base_name": "Base_2_2"}
 
     Returns:
         tuple[str, dict]: A tuple `(feature_type, feature_details)` where:
@@ -84,7 +86,8 @@ def get_feature_type_and_details_from_identifier(
         "feature type not specified in feature_identifier"
     )
     feature_type = feature_identifier["type"]
-    feature_details = {k: v for k, v in feature_identifier.items() if k != "type"}
+    feature_details = feature_identifier.copy()
+    feature_type = feature_details.pop("type")
 
     assert feature_type in AUTHORIZED_FEATURE_TYPES, (
         f"feature type {feature_type} not known"
@@ -112,7 +115,9 @@ def check_features_type_homogeneity(
     Raises:
         AssertionError: if types are not consistent
     """
-    assert isinstance(feature_identifiers, list), "feature_identifiers must be a list"
+    assert feature_identifiers and isinstance(feature_identifiers, list), (
+        "feature_identifiers must be a non-empty list"
+    )
     feat_type = feature_identifiers[0]["type"]
     for i, feat_id in enumerate(feature_identifiers):
         assert feat_id["type"] in AUTHORIZED_FEATURE_TYPES, "feature type not known"
