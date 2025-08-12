@@ -65,6 +65,24 @@ logging.basicConfig(
 # %% Classes
 
 
+def _check_names(names: Union[str, list[str]]):
+    """Check that names do not contain invalid character ``/``.
+
+    Args:
+        names (Union[str, list[str]]): The names to check.
+
+    Raises:
+        ValueError: If any name contains the invalid character ``/``.
+    """
+    if isinstance(names, str):
+        names = [names]
+    for name in names:
+        if (name is not None) and ("/" in name):
+            raise ValueError(
+                f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurence of `/` with something else, for example: `name.replace('/','__')`"
+            )
+
+
 def read_index(pyTree: list, dim: list[int]):
     """Read Index Array or Index Range from CGNS.
 
@@ -831,6 +849,8 @@ class Sample(BaseModel):
         Returns:
             CGNSNode: The created Base node.
         """
+        _check_names([base_name])
+
         time = self.get_time_assignment(time)
 
         if base_name is None:
@@ -973,6 +993,8 @@ class Sample(BaseModel):
         Returns:
             CGLNode: The newly initialized zone node within the CGNS tree.
         """
+        _check_names([zone_name])
+
         # init_tree will look for default time
         self.init_tree(time)
         # get_base will look for default base_name and time
@@ -1160,6 +1182,7 @@ class Sample(BaseModel):
             name (str): The name of the scalar value.
             value (ScalarType): The scalar value to add or update in the dictionary.
         """
+        _check_names([name])
         if self._scalars is None:
             self._scalars = {name: value}
         else:
@@ -1233,6 +1256,7 @@ class Sample(BaseModel):
         Raises:
             TypeError: Raised if the length of `time_sequence` is not equal to the length of `values`.
         """
+        _check_names([name])
         assert len(time_sequence) == len(values), (
             "time sequence and values do not have the same size"
         )
@@ -1611,6 +1635,7 @@ class Sample(BaseModel):
         Raises:
             KeyError: Raised if the specified zone does not exist in the given base.
         """
+        _check_names([name])
         # init_tree will look for default time
         self.init_tree(time)
         # get_zone will look for default zone_name, base_name and time
