@@ -49,14 +49,9 @@ class ColumnTransformer(ColumnTransformer):
     ):
         self.plaid_transformers = plaid_transformers
 
-        if plaid_transformers:
-            transformers_dummy = [
-                (name, transformer, "_") for name, transformer in plaid_transformers
-            ]
-        else:
-            transformers_dummy = None
-
-        super().__init__(transformers_dummy)
+        super().__init__(
+            [(name, transformer, "_") for name, transformer in plaid_transformers]
+        )
 
     def fit(self, dataset: Dataset, _y=None):
         """Fits all transformers on their corresponding feature subsets.
