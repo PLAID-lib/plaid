@@ -2,20 +2,19 @@
 # coding: utf-8
 
 # # Pipeline Examples
+# 
+# This notebook demonstrates the end-to-end process of building a machine learning pipeline using PLAID datasets and PLAID’s scikit-learn-compatible blocks.
 
-# ## PCA-GP on Field Data
+# ## PCA-GP for `mach` field prediction of `VKI-LS59` dataset
 # 
-# This notebook demonstrates the end-to-end process of building a machine learning pipeline for predicting high-dimensional flow fields from scalar input parameters using the PLAID dataset. The pipeline leverages PLAID’s scikit-learn-compatible blocks and standard dataset structures to enable modular, reusable workflows.
+# Key steps covered:
 # 
-# Key steps covered in this notebook:
-# 
-# - **Loading and preparing the PLAID dataset** using Hugging Face integration and PLAID’s dataset classes  
-# - **Standardizing features** with PLAID-wrapped scikit-learn transformers for scalars and fields  
+# - **Loading the PLAID dataset** using Hugging Face integration and PLAID’s dataset classes  
+# - **Standardizing features** with PLAID-wrapped scikit-learn transformers for scalars  
 # - **Dimensionality reduction** of flow fields via Principal Component Analysis (PCA) to reduce output complexity  
 # - **Regression modeling** of PCA coefficients from scalar inputs using Gaussian Process regression  
 # - **Pipeline assembly** combining transformations and regressors into a single scikit-learn-compatible workflow  
 # - **Hyperparameter tuning** using Optuna and scikit-learn’s `GridSearchCV`
-# - **Model evaluation** using cross-validation and appropriate metrics  
 # - **Best practices** for working with PLAID datasets and pipelines in a reproducible and modular manner
 
 # ### 📦 Imports
@@ -49,14 +48,14 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.model_selection import KFold, GridSearchCV
 
 from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, huggingface_description_to_problem_definition
-from plaid.pipelines.sklearn_block_wrappers import WrappedPlaidSklearnTransformer, WrappedPlaidSklearnRegressor
-from plaid.pipelines.plaid_blocks import PlaidTransformedTargetRegressor, PlaidColumnTransformer
+from plaid.pipelines.sklearn_block_wrappers import WrappedSklearnTransformer, WrappedSklearnRegressor
+from plaid.pipelines.plaid_blocks import TransformedTargetRegressor, ColumnTransformer
 
 disable_progress_bar()
 n_processes = min(max(1, os.cpu_count()), 6)
 
 
-# ## 📥 Load Dataset
+# ### 📥 Load Dataset
 # 
 # We load the `VKI-LS59` dataset from Hugging Face and restrict ourselves to the first 24 samples of the training set.
 
@@ -75,7 +74,7 @@ dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, processes_number = n
 print(dataset_train)
 
 
-# ## ⚙️ Pipeline Configuration
+# ### ⚙️ Pipeline Configuration
 # 
 # For convenience, the `in_features_identifiers` and `out_features_identifiers` for each pipeline block are defined in a `.yml` file. Here's an example of how the configuration might look:
 
@@ -117,17 +116,17 @@ print("field names =", dataset_train.get_field_names())
 
 # We notive that only the 2 scalars and the field of interest are kept after restriction.
 
-# ### 1. Preprocessor
+# #### 1. Preprocessor
 # 
 # We now define a preprocessor: a `MinMaxScaler` of the 2 input scalars and a `PCA` on the nodes coordinates of the meshes:
 
 # In[ ]:
 
 
-preprocessor = PlaidColumnTransformer(
+preprocessor = ColumnTransformer(
     [
-        ('input_scalar_scaler', WrappedPlaidSklearnTransformer(MinMaxScaler(), **config['input_scalar_scaler'])),
-        ('pca_nodes', WrappedPlaidSklearnTransformer(PCA(), **config['pca_nodes'])),
+        ('input_scalar_scaler', WrappedSklearnTransformer(MinMaxScaler(), **config['input_scalar_scaler'])),
+        ('pca_nodes', WrappedSklearnTransformer(PCA(), **config['pca_nodes'])),
     ]
 )
 preprocessor
@@ -148,18 +147,18 @@ print("field names =", preprocessed_dataset.get_field_names())
 
 # Using `MinMaxScaler`, we scaled the `angle_in` and `mach_out` features, replacing their original values. In contrast, `PCA` compressed the node coordinates and produced new scalar features named `reduced_nodes_*`, representing the PCA components. Alternatively, we could have specified `out_features_identifiers` in the `.yml` file configuring the `MinMaxScaler` block to generate new scalars without overwriting the original inputs.
 
-# ### 2. Postprocessor
+# #### 2. Postprocessor
 # 
 # Next, we define the postprocessor, which applies PCA to the `mach` field:
 
 # In[ ]:
 
 
-postprocessor = WrappedPlaidSklearnTransformer(PCA(), **config['pca_mach'])
+postprocessor = WrappedSklearnTransformer(PCA(), **config['pca_mach'])
 postprocessor
 
 
-# ### 3. TransformedTargetRegressor
+# #### 3. TransformedTargetRegressor
 # 
 # The Gaussian Process regressor takes the transformed `angle_in` and `mach_out` scalars, along with the PCA coefficients of the mesh node coordinates as inputs, and predicts the PCA coefficients of the `mach` field as outputs. This is facilitated by using a `PlaidTransformedTargetRegressor`.
 
@@ -176,14 +175,9 @@ gpr = GaussianProcessRegressor(
 
 reg = MultiOutputRegressor(gpr)
 
-def length_scale_init(X):
-    return np.ones(X.shape[1])
+regressor = WrappedSklearnRegressor(reg, **config['regressor_mach'])
 
-dynamics_params_factory = {'estimator__kernel__length_scale':length_scale_init}
-
-regressor = WrappedPlaidSklearnRegressor(reg, **config['regressor_mach'], dynamics_params_factory = dynamics_params_factory)
-
-target_regressor = PlaidTransformedTargetRegressor(
+target_regressor = TransformedTargetRegressor(
     regressor=regressor,
     transformer=postprocessor
 )
@@ -192,7 +186,7 @@ target_regressor
 
 # `PlaidTransformedTargetRegressor` functions like scikit-learn’s `TransformedTargetRegressor` but operates directly on PLAID datasets.
 
-# ### 4. Pipeline assembling
+# #### 4. Pipeline assembling
 # 
 # We then define the complete pipeline as follows:
 
@@ -208,7 +202,7 @@ pipeline = Pipeline(
 pipeline
 
 
-# ## 🎯 Optuna hyperparameter tuning
+# ### 🎯 Optuna hyperparameter tuning
 # 
 # We now use Optuna to optimize hyperparameters, specifically tuning the number of components for the two `PCA` blocks using three-fold cross-validation.
 
@@ -224,7 +218,10 @@ def objective(trial):
     pipeline_run = clone(pipeline)
     pipeline_run.set_params(
         preprocessor__pca_nodes__sklearn_block__n_components=nodes_n_components,
-        regressor__transformer__sklearn_block__n_components=mach_n_components
+        regressor__transformer__sklearn_block__n_components=mach_n_components,
+        regressor__regressor__sklearn_block__estimator__kernel=Matern(
+                    length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(nodes_n_components + len(config['input_scalar_scaler']['in_features_identifiers']))
+                )
     )
 
     cv = KFold(n_splits=3, shuffle=True, random_state=42)
@@ -263,6 +260,11 @@ print("best_params =", study.best_params)
 
 
 optimized_pipeline = clone(pipeline).set_params(**study.best_params)
+optimized_pipeline.set_params(regressor__regressor__sklearn_block__estimator__kernel=Matern(
+                    length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(study.best_params['preprocessor__pca_nodes__sklearn_block__n_components'] + len(config['input_scalar_scaler']['in_features_identifiers']))
+                )
+)
+
 optimized_pipeline.fit(dataset_train)
 optimized_pipeline
 
@@ -278,6 +280,12 @@ print("score =", score, ", error =", 1. - score)
 
 
 # We use an anisotropic kernel in the Gaussian Process. Its optimized `length_scale` is a vector with dimensions equal to 2 plus the number of PCA components from `preprocessor__pca_nodes__sklearn_block__n_components`, accounting for the two input scalars.
+
+# In[ ]:
+
+
+print(optimized_pipeline.named_steps["regressor"].regressor_.sklearn_block_.estimators_[0].kernel_.get_params()['length_scale'])
+
 
 # In[ ]:
 
@@ -301,17 +309,29 @@ score = exact_pipeline.score(dataset_train)
 print("score =", score, ", error =", 1. - score)
 
 
-# ## 🔍 GridSearchCV hyperparameter tuning
+# ### 🔍 GridSearchCV hyperparameter tuning
 # 
 # Since our pipeline nodes conform to the scikit-learn API, the constructed pipeline can be used directly with `GridSearchCV`.
 
 # In[ ]:
 
 
-param_grid = {
-    'preprocessor__pca_nodes__sklearn_block__n_components': [3, 4],
-    'regressor__transformer__sklearn_block__n_components': [4, 5],
-}
+pca_n_components = [3, 4]
+regressor_n_components = [4, 5]
+
+param_grid = []
+for n, m in zip(pca_n_components, regressor_n_components):
+    param_grid.append(
+        {
+            "preprocessor__pca_nodes__sklearn_block__n_components": [n],
+            "regressor__transformer__sklearn_block__n_components": [m],
+            "regressor__regressor__sklearn_block__estimator__kernel": [
+                Matern(
+                    length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(n + 2)
+                )
+            ],
+        }
+    )
 
 cv = KFold(n_splits=3, shuffle=True, random_state=42)
 search = GridSearchCV(pipeline, param_grid=param_grid, cv=cv, verbose=3, error_score='raise')
