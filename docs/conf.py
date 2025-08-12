@@ -14,22 +14,17 @@
 # -- Path setup --------------------------------------------------------------
 
 import datetime
-import os
 import sys
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+from pathlib import Path
 
 sys.path.insert(0, ".")
 sys.path.insert(0, "../")
 
-basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+basedir = Path(__file__).absolute().parent.parent
 sys.path.insert(0, basedir)
-sys.path.insert(0, os.path.join(basedir, "src/plaid"))
-# sys.path.insert(0, os.path.join(basedir, "tests"))
-sys.path.insert(0, os.path.join(basedir, "examples"))
+sys.path.insert(0, basedir / "src" / "plaid")
+# sys.path.insert(0, basedir / "tests")
+sys.path.insert(0, basedir / "examples")
 print(sys.path)
 
 
