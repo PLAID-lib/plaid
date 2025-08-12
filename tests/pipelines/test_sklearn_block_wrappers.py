@@ -79,9 +79,6 @@ class Test_WrappedSklearnTransformer:
         dataset_with_samples_scalar1_feat_ids,
         dataset_with_samples_scalar2_feat_ids,
     ):
-        WrappedSklearnTransformer()
-        WrappedSklearnTransformer(sklearn_block=sklearn_scaler)
-        # in_feat_ids = [{"type": "scalar", "name": "test_scalar"}]
         WrappedSklearnTransformer(
             sklearn_block=sklearn_scaler,
             in_features_identifiers=dataset_with_samples_scalar1_feat_ids,

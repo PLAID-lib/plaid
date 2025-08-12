@@ -33,7 +33,7 @@ from tqdm import tqdm
 from plaid.constants import AUTHORIZED_INFO_KEYS
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
-from plaid.types import Array, FeatureType
+from plaid.types import Array, FeatureIdentifier, FeatureType
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 
 logger = logging.getLogger(__name__)
@@ -426,14 +426,14 @@ class Dataset(object):
     # -------------------------------------------------------------------------#
     def get_all_features_identifiers(
         self, ids: Optional[list[int]] = None
-    ) -> list[dict[str, Union[str, float]]]:
+    ) -> list[FeatureIdentifier]:
         """Get all features identifiers from the dataset.
 
         Args:
             ids (list[int], optional): Sample id from which returning feature identifiers. If None, take all samples. Defaults to None.
 
         Returns:
-            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of all features in the dataset.
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the dataset.
         """
         if ids is not None and len(set(ids)) != len(ids):
             logger.warning("Provided ids are not unique")
@@ -449,7 +449,7 @@ class Dataset(object):
 
     def get_all_features_identifiers_by_type(
         self, feature_type: str, ids: list[int] = None
-    ) -> list[dict[str, Union[str, float]]]:
+    ) -> list[FeatureIdentifier]:
         """Get all features identifiers from the dataset.
 
         Args:
@@ -457,7 +457,7 @@ class Dataset(object):
             ids (list[int], optional): Sample id from which returning feature identifiers. If None, take all samples. Defaults to None.
 
         Returns:
-            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of all features of a given type  in the dataset.
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features of a given type  in the dataset.
         """
         all_features_identifiers = self.get_all_features_identifiers(ids)
         return [
@@ -571,7 +571,7 @@ class Dataset(object):
         """Get a list of features from the dataset based on the provided feature identifier.
 
         Args:
-            feature_identifier (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
+            feature_identifier (FeatureIdentifier): A dictionary containing the feature identifier.
 
         Returns:
             dict[int, FeatureType]: A list of features matching the provided identifier.
@@ -587,7 +587,7 @@ class Dataset(object):
         """Get a list of features from the dataset based on the provided feature identifiers.
 
         Args:
-            feature_identifiers (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
+            feature_identifiers (FeatureIdentifier): A dictionary containing the feature identifier.
 
         Returns:
             dict[int, list[FeatureType]]: A list of features matching the provided identifier.
@@ -599,9 +599,7 @@ class Dataset(object):
 
     def update_features_from_identifier(
         self,
-        feature_identifiers: Union[
-            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
-        ],
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
         features: dict[int, Union[FeatureType, list[FeatureType]]],
         in_place: bool = False,
     ) -> Self:
@@ -637,9 +635,7 @@ class Dataset(object):
 
     def from_features_identifier(
         self,
-        feature_identifiers: Union[
-            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
-        ],
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
     ) -> Self:
         """Extract features of the dataset by their identifier(s) and return a new dataset containing these features.
 
@@ -665,7 +661,7 @@ class Dataset(object):
 
     def get_tabular_from_homogeneous_identifiers(
         self,
-        feature_identifiers: list[dict[str, Union[str, float]]],
+        feature_identifiers: list[FeatureIdentifier],
     ) -> Array:
         """Extract features of the dataset by their identifier(s) and return an array containing these features.
 
@@ -698,7 +694,7 @@ class Dataset(object):
 
     def get_tabular_from_stacked_identifiers(
         self,
-        feature_identifiers: list[dict[str, Union[str, float]]],
+        feature_identifiers: list[FeatureIdentifier],
     ) -> Array:
         """Extract features of the dataset by their identifier(s), stack them and return an array containing these features.
 
@@ -722,9 +718,7 @@ class Dataset(object):
     def from_tabular(
         self,
         tabular: Array,
-        feature_identifiers: Union[
-            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
-        ],
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
         restrict_to_features=True,
     ) -> Self:
         """Generates a dataset from tabular data and feature_identifiers.

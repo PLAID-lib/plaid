@@ -15,6 +15,7 @@ Provides adapters to use scikit-learn estimators within the PLAID feature/block 
 #
 
 import copy
+from typing import Optional
 
 from sklearn.base import (
     BaseEstimator,
@@ -26,7 +27,7 @@ from sklearn.utils.validation import check_is_fitted
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.utils import check_features_type_homogeneity
-from plaid.types.sklearn_types import SklearnBlock
+from plaid.types import SklearnBlock
 
 
 def get_2Darray_from_homogeneous_identifiers(
@@ -69,18 +70,18 @@ class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
     and returns results as a `Dataset`. Supports forward and inverse transforms.
 
     Args:
-        sklearn_block: A scikit-learn Transformer implementing fit/transform APIs.
-        in_features_identifiers: List of feature identifiers to extract input data from.
-        out_features_identifiers: List of feature identifiers used for outputs. If None,
+        sklearn_block (SklearnBlock): A scikit-learn Transformer implementing fit/transform APIs.
+        in_features_identifiers (list[dict]): List of feature identifiers to extract input data from.
+        out_features_identifiers(list[dict], optional): List of feature identifiers used for outputs. If None,
             defaults to `in_features_identifiers`.
     """
 
     # TODO: check if restrict_to_features=True can be used to reduce further memory consumption
     def __init__(
         self,
-        sklearn_block: SklearnBlock = None,
-        in_features_identifiers: list[dict] = None,
-        out_features_identifiers: list[dict] = None,
+        sklearn_block: SklearnBlock,
+        in_features_identifiers: list[dict],
+        out_features_identifiers: Optional[list[dict]] = None,
     ):
         self.sklearn_block = sklearn_block
         self.in_features_identifiers = in_features_identifiers

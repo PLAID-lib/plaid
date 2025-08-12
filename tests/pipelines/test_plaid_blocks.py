@@ -11,7 +11,6 @@ from plaid.pipelines.sklearn_block_wrappers import (
 
 class Test_ColumnTransformer:
     def test___init__(self, wrapped_sklearn_transformer, wrapped_sklearn_transformer_2):
-        ColumnTransformer()
         ColumnTransformer([("titi", wrapped_sklearn_transformer)])
         ColumnTransformer(
             [("toto", wrapped_sklearn_transformer)],
@@ -65,14 +64,6 @@ class Test_TransformedTargetRegressor:
     def test___init__(
         self, wrapped_sklearn_multioutput_gp_regressor, wrapped_sklearn_transformer
     ):
-        TransformedTargetRegressor()
-        TransformedTargetRegressor(
-            regressor=wrapped_sklearn_multioutput_gp_regressor,
-        )
-        TransformedTargetRegressor(
-            regressor=wrapped_sklearn_multioutput_gp_regressor,
-            transformer=wrapped_sklearn_transformer,
-        )
         TransformedTargetRegressor(
             regressor=wrapped_sklearn_multioutput_gp_regressor,
             transformer=wrapped_sklearn_transformer,

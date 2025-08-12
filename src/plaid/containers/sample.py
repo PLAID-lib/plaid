@@ -42,6 +42,7 @@ from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     CGNSNode,
     CGNSTree,
+    FeatureIdentifier,
     FeatureType,
     FieldType,
     LinkType,
@@ -1770,11 +1771,11 @@ class Sample(BaseModel):
     # -------------------------------------------------------------------------#
     def get_all_features_identifiers(
         self,
-    ) -> list[dict[str, Union[str, float]]]:
+    ) -> list[FeatureIdentifier]:
         """Get all features identifiers from the sample.
 
         Returns:
-            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of all features in the sample.
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
         """
         all_features_identifiers = []
         for sn in self.get_scalar_names():
@@ -1811,14 +1812,14 @@ class Sample(BaseModel):
 
     def get_all_features_identifiers_by_type(
         self, feature_type: str
-    ) -> list[dict[str, Union[str, float]]]:
+    ) -> list[FeatureIdentifier]:
         """Get all features identifiers of a given type from the sample.
 
         Args:
             feature_type (str): Type of features to return
 
         Returns:
-            list[dict[str, Union[str, float]]]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
         """
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
         all_features_identifiers = self.get_all_features_identifiers()
@@ -1883,7 +1884,7 @@ class Sample(BaseModel):
             return self.get_nodes(**kwargs).flatten()
 
     def get_feature_from_identifier(
-        self, feature_identifier: dict[str, Union[str, float]]
+        self, feature_identifier: FeatureIdentifier
     ) -> FeatureType:
         """Retrieve a feature object based on a structured identifier dictionary.
 
@@ -1923,7 +1924,7 @@ class Sample(BaseModel):
             return self.get_nodes(**feature_details).flatten()
 
     def get_features_from_identifiers(
-        self, feature_identifiers: list[dict[str, Union[str, float]]]
+        self, feature_identifiers: list[FeatureIdentifier]
     ) -> list[FeatureType]:
         """Retrieve features based on a list of structured identifier dictionaries.
 
@@ -1943,7 +1944,7 @@ class Sample(BaseModel):
         Any omitted optional keys will rely on the default values mechanics of the class.
 
         Args:
-            feature_identifiers (list[dict[str, Union[str, float]]]):
+            feature_identifiers (list[FeatureIdentifier]):
                 A dictionary encoding the feature type and its relevant parameters.
 
         Returns:
@@ -1968,7 +1969,7 @@ class Sample(BaseModel):
 
     def _add_feature(
         self,
-        feature_identifier: dict[str, Union[str, float]],
+        feature_identifier: FeatureIdentifier,
         feature: FeatureType,
     ) -> Self:
         """Add a feature to current sample.
@@ -2011,9 +2012,7 @@ class Sample(BaseModel):
 
     def update_features_from_identifier(
         self,
-        feature_identifiers: Union[
-            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
-        ],
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
         features: Union[FeatureType, list[FeatureType]],
         in_place: bool = False,
     ) -> Self:
@@ -2052,9 +2051,7 @@ class Sample(BaseModel):
 
     def from_features_identifier(
         self,
-        feature_identifiers: Union[
-            dict[str, Union[str, float]], list[dict[str, Union[str, float]]]
-        ],
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
     ) -> Self:
         """Extract features of the sample by their identifier(s) and return a new sample containing these features.
 

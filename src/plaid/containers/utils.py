@@ -16,7 +16,7 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
 )
-from plaid.types import FeatureType
+from plaid.types import FeatureIdentifier, FeatureType
 from plaid.utils.base import safe_len
 
 # %% Functions
@@ -54,8 +54,8 @@ def get_number_of_samples(savedir: Union[str, Path]) -> int:
 
 
 def get_feature_type_and_details_from(
-    feature_identifier: dict[str, Union[str, float]],
-) -> tuple[str, dict[str, Union[str, float]]]:
+    feature_identifier: FeatureIdentifier,
+) -> tuple[str, FeatureIdentifier]:
     """Extract and validate the feature type and its associated metadata from a feature identifier.
 
     This utility function ensures that the `feature_identifier` dictionary contains a valid
@@ -101,7 +101,7 @@ def get_feature_type_and_details_from(
 
 
 def check_features_type_homogeneity(
-    feature_identifiers: list[dict[str, Union[str, float]]],
+    feature_identifiers: list[FeatureIdentifier],
 ) -> None:
     """Check type homogeneity of features, for tabular conversion.
 
@@ -127,7 +127,7 @@ def check_features_type_homogeneity(
 
 
 def check_features_size_homogeneity(
-    feature_identifiers: list[dict[str, Union[str, float]]],
+    feature_identifiers: list[FeatureIdentifier],
     features: dict[int, list[FeatureType]],
 ) -> int:
     """Check size homogeneity of features, for tabular conversion.
@@ -173,11 +173,11 @@ def check_features_size_homogeneity(
     return size
 
 
-def has_duplicates_feature_ids(feature_identifiers: list[dict[str, Union[str, float]]]):
+def has_duplicates_feature_ids(feature_identifiers: list[FeatureIdentifier]):
     """Check whether a list of feature identifier contains duplicates.
 
     Args:
-        feature_identifiers (list[dict[str, Union[str, float]]]):
+        feature_identifiers (list[FeatureIdentifier]):
             A list of dictionaries representing feature identifiers.
 
     Returns:

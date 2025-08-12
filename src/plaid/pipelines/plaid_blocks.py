@@ -15,7 +15,7 @@ Includes:
 #
 
 import copy
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
@@ -45,9 +45,7 @@ class ColumnTransformer(ColumnTransformer):
 
     def __init__(
         self,
-        plaid_transformers: Optional[
-            list[tuple[str, Union[TransformerMixin, Pipeline]]]
-        ] = None,
+        plaid_transformers: list[tuple[str, Union[TransformerMixin, Pipeline]]],
     ):
         self.plaid_transformers = plaid_transformers
 
@@ -171,8 +169,8 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
 
     def __init__(
         self,
-        regressor: Union[RegressorMixin, Pipeline] = None,
-        transformer: Union[TransformerMixin, Pipeline] = None,
+        regressor: Union[RegressorMixin, Pipeline],
+        transformer: Union[TransformerMixin, Pipeline],
     ):
         self.regressor = regressor
         self.transformer = transformer
