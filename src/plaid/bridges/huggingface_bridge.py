@@ -133,7 +133,7 @@ def plaid_generator_to_huggingface(
         features=datasets.Features({"sample": datasets.Value("binary")}),
         num_proc=processes_number,
         writer_batch_size=1,
-        split=datasets.splits.NamedSplit("all_samples")
+        split=datasets.splits.NamedSplit("all_samples"),
     )
 
     def update_dataset_description(ds: Dataset, new_desc: str) -> Dataset:
@@ -143,8 +143,7 @@ def plaid_generator_to_huggingface(
         return ds
 
     ds = update_dataset_description(
-        ds,
-        generate_huggingface_description(infos, problem_definition)
+        ds, generate_huggingface_description(infos, problem_definition)
     )
 
     return ds
