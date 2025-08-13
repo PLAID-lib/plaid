@@ -16,14 +16,13 @@ else:  # pragma: no cover
     from typing import TypeVar
 
     Self = TypeVar("Self")
-
 import logging
 import os
 import shutil
 import subprocess
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Iterator, Union
+from typing import Iterator, Optional, Union
 
 import numpy as np
 import yaml
@@ -66,7 +65,7 @@ class Dataset(object):
 
     def __init__(
         self,
-        directory_path: Union[str, Path] = None,
+        directory_path: Optional[Union[str, Path]] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> None:
@@ -126,7 +125,7 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def get_samples(
-        self, ids: list[int] = None, as_list: bool = False
+        self, ids: Optional[list[int]] = None, as_list: bool = False
     ) -> dict[int, Sample]:
         """Return dictionnary of samples with ids corresponding to :code:`ids` if specified, else all samples.
 
@@ -144,7 +143,7 @@ class Dataset(object):
         else:
             return {id: self._samples[id] for id in ids}
 
-    def add_sample(self, sample: Sample, id: int = None) -> int:
+    def add_sample(self, sample: Sample, id: Optional[int] = None) -> int:
         """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`.
 
         Args:
@@ -215,7 +214,9 @@ class Dataset(object):
 
         return deleted_sample
 
-    def add_samples(self, samples: list[Sample], ids: list[int] = None) -> list[int]:
+    def add_samples(
+        self, samples: list[Sample], ids: Optional[list[int]] = None
+    ) -> list[int]:
         """Add new :class:`Samples <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
         Args:
@@ -336,7 +337,7 @@ class Dataset(object):
         return list(self._samples.keys())
 
     # -------------------------------------------------------------------------#
-    def get_scalar_names(self, ids: list[int] = None) -> list[str]:
+    def get_scalar_names(self, ids: Optional[list[int]] = None) -> list[str]:
         """Return union of scalars names in all samples with id in ids.
 
         Args:
@@ -358,7 +359,7 @@ class Dataset(object):
         return scalars_names
 
     # -------------------------------------------------------------------------#
-    def get_time_series_names(self, ids: list[int] = None) -> list[str]:
+    def get_time_series_names(self, ids: Optional[list[int]] = None) -> list[str]:
         """Return union of time series names in all samples with id in ids.
 
         Args:
@@ -381,7 +382,10 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def get_field_names(
-        self, ids: list[int] = None, zone_name: str = None, base_name: str = None
+        self,
+        ids: Optional[list[int]] = None,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
     ) -> list[str]:
         """Return union of fields names in all samples with id in ids.
 
@@ -410,7 +414,9 @@ class Dataset(object):
         return fields_names
 
     # -------------------------------------------------------------------------#
-    def add_tabular_scalars(self, tabular: np.ndarray, names: list[str] = None) -> None:
+    def add_tabular_scalars(
+        self, tabular: np.ndarray, names: Optional[list[str]] = None
+    ) -> None:
         """Add tabular scalar data to the summary.
 
         Args:
@@ -449,8 +455,8 @@ class Dataset(object):
 
     def get_scalars_to_tabular(
         self,
-        scalar_names: list[str] = None,
-        sample_ids: list[int] = None,
+        scalar_names: Optional[list[str]] = None,
+        sample_ids: Optional[list[int]] = None,
         as_nparray=False,
     ) -> Union[dict[str, np.ndarray], np.ndarray]:
         """Return a dict containing scalar values as tabulars/arrays.
@@ -758,7 +764,7 @@ class Dataset(object):
     def load_from_dir(
         cls,
         dname: Union[str, Path],
-        ids: list[int] = None,
+        ids: Optional[list[int]] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> Self:
@@ -820,7 +826,10 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def add_to_dir(
-        self, sample: Sample, save_dir: Union[str, Path] = None, verbose: bool = False
+        self,
+        sample: Sample,
+        save_dir: Optional[Union[str, Path]] = None,
+        verbose: bool = False,
     ) -> None:
         """Add a sample to the dataset and save it to the specified directory.
 
@@ -853,7 +862,7 @@ class Dataset(object):
         if not self.save_dir.is_dir():
             self.save_dir.mkdir(parents=True)
 
-        if verbose:  # pragma: no cover
+        if verbose:
             print(f"Saving database to: {self.save_dir}")
 
         samples_dir = self.save_dir / "samples"
@@ -916,7 +925,7 @@ class Dataset(object):
     def _load_from_dir_(
         self,
         save_dir: Union[str, Path],
-        ids: list[int] = None,
+        ids: Optional[list[int]] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> None:
