@@ -24,7 +24,7 @@ import shutil
 import subprocess
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Iterator, Optional, Union
+from typing import Iterator, Literal, Optional, Union
 
 import numpy as np
 import yaml
@@ -448,7 +448,9 @@ class Dataset(object):
         return all_features_identifiers
 
     def get_all_features_identifiers_by_type(
-        self, feature_type: str, ids: list[int] = None
+        self,
+        feature_type: Literal["scalar", "nodes", "field", "time_series"],
+        ids: list[int] = None,
     ) -> list[FeatureIdentifier]:
         """Get all features identifiers from the dataset.
 
@@ -719,7 +721,7 @@ class Dataset(object):
         self,
         tabular: Array,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-        restrict_to_features=True,
+        restrict_to_features: bool = True,
     ) -> Self:
         """Generates a dataset from tabular data and feature_identifiers.
 

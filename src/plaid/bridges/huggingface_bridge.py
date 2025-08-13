@@ -168,7 +168,7 @@ def huggingface_description_to_problem_definition(
     return problem_definition
 
 
-class HFToPlaidSampleConverter:
+class _HFToPlaidSampleConverter:
     """Class to convert a huggingface dataset sample to a plaid sample."""
 
     def __init__(self, ds: datasets.Dataset):
@@ -181,7 +181,7 @@ class HFToPlaidSampleConverter:
         return Sample.model_validate(pickle.loads(self.ds[sample_id]["sample"]))
 
 
-class HFShardToPlaidSampleConverter:
+class _HFShardToPlaidSampleConverter:
     """Class to convert a huggingface dataset sample shard to a plaid sample."""
 
     def __init__(self, shard_path: Path):
@@ -200,7 +200,7 @@ def huggingface_dataset_to_plaid(
     ids: Optional[list[int]] = None,
     processes_number: int = 1,
     large_dataset: Optional[bool] = False,
-    verbose=True,
+    verbose: bool = True,
 ) -> tuple[Self, ProblemDefinition]:
     """Use this function for converting a plaid dataset from a huggingface dataset.
 
@@ -251,7 +251,7 @@ def huggingface_dataset_to_plaid(
             shard.save_to_disk(f"shards/dataset_shard_{i}")
 
         def parallel_convert(shard_path, n_workers):
-            converter = HFShardToPlaidSampleConverter(Path(shard_path))
+            converter = _HFShardToPlaidSampleConverter(Path(shard_path))
             with Pool(processes=n_workers) as pool:
                 return list(
                     tqdm(
@@ -280,7 +280,7 @@ def huggingface_dataset_to_plaid(
             indices = range(len(ds))
         with Pool(processes=processes_number) as pool:
             for sample in tqdm(
-                pool.imap(HFToPlaidSampleConverter(ds), indices),
+                pool.imap(_HFToPlaidSampleConverter(ds), indices),
                 total=len(indices),
                 disable=not verbose,
             ):

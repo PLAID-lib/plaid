@@ -15,7 +15,7 @@ Provides adapters to use scikit-learn estimators within the PLAID feature/block 
 #
 
 import copy
-from typing import Optional
+from typing import Optional, Self
 
 from sklearn.base import (
     BaseEstimator,
@@ -27,20 +27,20 @@ from sklearn.utils.validation import check_is_fitted
 
 from plaid.containers.dataset import Dataset
 from plaid.containers.utils import check_features_type_homogeneity
-from plaid.types import SklearnBlock
+from plaid.types import Array, FeatureIdentifier, SklearnBlock
 
 
 def get_2Darray_from_homogeneous_identifiers(
-    dataset: Dataset, features_identifiers: list[dict]
-):
+    dataset: Dataset, features_identifiers: list[FeatureIdentifier]
+) -> Array:
     """Returns a 2D array from a Dataset and a feature id.
 
     The function calls `dataset.get_tabular_from_homogeneous_identifiers(...)`, then removes
     either the second or third dimension if it has size 1, so that the output is 2D.
 
     Args:
-        dataset: A Dataset object exposing `get_tabular_from_homogeneous_identifiers`.
-        features_identifiers: a list of input feature identifiers.
+        dataset (Dataset): A Dataset object exposing `get_tabular_from_homogeneous_identifiers`.
+        features_identifiers (list[FeatureIdentifier]): a list of input feature identifiers.
 
     Returns:
         A NumPy array of shape (n_samples, n_features).
@@ -71,8 +71,8 @@ class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
 
     Args:
         sklearn_block (SklearnBlock): A scikit-learn Transformer implementing fit/transform APIs.
-        in_features_identifiers (list[dict]): List of feature identifiers to extract input data from.
-        out_features_identifiers(list[dict], optional): List of feature identifiers used for outputs. If None,
+        in_features_identifiers (list[FeatureIdentifier]): List of feature identifiers to extract input data from.
+        out_features_identifiers (list[FeatureIdentifier], optional): List of feature identifiers used for outputs. If None,
             defaults to `in_features_identifiers`.
     """
 
@@ -80,14 +80,14 @@ class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
     def __init__(
         self,
         sklearn_block: SklearnBlock,
-        in_features_identifiers: list[dict],
-        out_features_identifiers: Optional[list[dict]] = None,
+        in_features_identifiers: list[FeatureIdentifier],
+        out_features_identifiers: Optional[list[FeatureIdentifier]] = None,
     ):
         self.sklearn_block = sklearn_block
         self.in_features_identifiers = in_features_identifiers
         self.out_features_identifiers = out_features_identifiers
 
-    def fit(self, dataset: Dataset, _y=None):
+    def fit(self, dataset: Dataset, _y=None) -> Self:
         """Fits the underlying scikit-learn transformer on selected input features.
 
         Args:
@@ -116,7 +116,7 @@ class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
 
         return self
 
-    def transform(self, dataset: Dataset):
+    def transform(self, dataset: Dataset) -> Dataset:
         """Applies the fitted transformer to the selected input features.
 
         Args:
@@ -142,7 +142,7 @@ class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
 
         return dataset_transformed
 
-    def inverse_transform(self, dataset: Dataset):
+    def inverse_transform(self, dataset: Dataset) -> Dataset:
         """Applies inverse transformation to the output features.
 
         Args:
@@ -187,14 +187,14 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
     def __init__(
         self,
         sklearn_block: SklearnBlock = None,
-        in_features_identifiers: list[dict] = None,
-        out_features_identifiers: list[dict] = None,
+        in_features_identifiers: list[FeatureIdentifier] = None,
+        out_features_identifiers: list[FeatureIdentifier] = None,
     ):
         self.sklearn_block = sklearn_block
         self.in_features_identifiers = in_features_identifiers
         self.out_features_identifiers = out_features_identifiers
 
-    def fit(self, dataset: Dataset, _y=None):
+    def fit(self, dataset: Dataset, _y=None) -> Self:
         """Fits the wrapped scikit-learn regressor on the stacked input/output data.
 
         Args:
@@ -215,7 +215,7 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
 
         return self
 
-    def predict(self, dataset: Dataset):
+    def predict(self, dataset: Dataset) -> Dataset:
         """Predicts target values using the fitted regressor.
 
         Args:
@@ -237,10 +237,10 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
 
         return dataset_predicted
 
-    def transform(self, dataset):
+    def transform(self, dataset: Dataset) -> Dataset:
         """Identity transform. Returns input unchanged."""
         return dataset
 
-    def inverse_transform(self, dataset):
+    def inverse_transform(self, dataset: Dataset) -> Dataset:
         """Identity inverse transform. Returns input unchanged."""
         return dataset

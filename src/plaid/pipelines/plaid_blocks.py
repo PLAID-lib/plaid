@@ -15,7 +15,7 @@ Includes:
 #
 
 import copy
-from typing import Union
+from typing import Self, Union
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
@@ -53,7 +53,7 @@ class ColumnTransformer(ColumnTransformer):
             [(name, transformer, "_") for name, transformer in plaid_transformers]
         )
 
-    def fit(self, dataset: Dataset, _y=None):
+    def fit(self, dataset: Dataset, _y=None) -> Self:
         """Fits all transformers on their corresponding feature subsets.
 
         Args:
@@ -110,7 +110,7 @@ class ColumnTransformer(ColumnTransformer):
 
         return self
 
-    def transform(self, dataset: Dataset):
+    def transform(self, dataset: Dataset) -> Dataset:
         """Applies fitted transformers to feature subsets and merges results.
 
         Args:
@@ -136,7 +136,7 @@ class ColumnTransformer(ColumnTransformer):
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)
 
-    def fit_transform(self, dataset: Dataset, y=None):
+    def fit_transform(self, dataset: Dataset, y=None) -> Dataset:
         """Fits all transformers and returns the combined transformed dataset.
 
         Args:
@@ -170,7 +170,7 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
         self.regressor = regressor
         self.transformer = transformer
 
-    def fit(self, dataset: Dataset, _y=None):
+    def fit(self, dataset: Dataset, _y=None) -> Self:
         """Fits the transformer and the regressor on the transformed dataset.
 
         Args:
@@ -205,7 +205,7 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
 
         return self
 
-    def predict(self, dataset: Dataset):
+    def predict(self, dataset: Dataset) -> Dataset:
         """Predicts target values using the fitted regressor, then applies the inverse transformation.
 
         Args:
@@ -221,7 +221,7 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
         dataset_pred_transformed = self.regressor_.predict(dataset)
         return self.transformer_.inverse_transform(dataset_pred_transformed)
 
-    def score(self, dataset_X: Dataset, dataset_y: Dataset = None):
+    def score(self, dataset_X: Dataset, dataset_y: Dataset = None) -> float:
         """Computes a normalized root mean squared error (RMSE) score on the transformed targets.
 
         The score is defined as `1 - avg(relative RMSE)` over all target features in the
