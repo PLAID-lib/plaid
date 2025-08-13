@@ -1,5 +1,12 @@
 """Huggingface bridge for PLAID datasets."""
 
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
 import pickle
 import sys
 from typing import Callable
@@ -83,9 +90,9 @@ def plaid_dataset_to_huggingface(
     """
 
     def generator():
-        for id in range(len(dataset)):
+        for sample in dataset:
             yield {
-                "sample": pickle.dumps(dataset[id].model_dump()),
+                "sample": pickle.dumps(sample.model_dump()),
             }
 
     return plaid_generator_to_huggingface(
@@ -122,14 +129,22 @@ def plaid_generator_to_huggingface(
             dataset.save_to_disk("path/to/dir")
     """
     ds = datasets.Dataset.from_generator(
-        generator, num_proc=processes_number, writer_batch_size=1
+        generator,
+        features=datasets.Features({"sample": datasets.Value("binary")}),
+        num_proc=processes_number,
+        writer_batch_size=1,
+        split=datasets.splits.NamedSplit("all_samples")
     )
 
-    ds._split = datasets.splits.NamedSplit("all_samples")
+    def update_dataset_description(ds: Dataset, new_desc: str) -> Dataset:
+        info = ds.info.copy()
+        info.description = new_desc
+        ds._info = info
+        return ds
 
-    ds._info = datasets.DatasetInfo(
-        features=datasets.Features({"sample": datasets.Value("binary")}),
-        description=generate_huggingface_description(infos, problem_definition),
+    ds = update_dataset_description(
+        ds,
+        generate_huggingface_description(infos, problem_definition)
     )
 
     return ds
@@ -161,8 +176,8 @@ def huggingface_dataset_to_plaid(
             plaid_dataset, plaid_problem = huggingface_dataset_to_plaid(dataset)
     """
     dataset = Dataset()
-    for i in range(len(ds)):
-        dataset.add_sample(Sample.model_validate(pickle.loads(ds[i]["sample"])))
+    for sample in ds:
+        dataset.add_sample(Sample.model_validate(pickle.loads(sample["sample"])))
 
     infos = {}
     if "legal" in ds.description:
