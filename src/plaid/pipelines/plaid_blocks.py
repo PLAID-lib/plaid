@@ -15,7 +15,12 @@ Includes:
 #
 
 import copy
-from typing import Self, Union
+from typing import Union
+
+try:
+    from typing import Self  # Python 3.10+
+except ImportError:
+    from typing_extensions import Self
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
