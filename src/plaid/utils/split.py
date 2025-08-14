@@ -13,6 +13,7 @@ import logging
 from typing import Any, Optional
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
 
 from plaid.containers.dataset import Dataset
@@ -171,11 +172,11 @@ def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
 
 
 def mmd_subsample_fn(
-    X: np.ndarray,
+    X: NDArray[np.float64],
     size: int,
     initial_ids: Optional[list[int]] = None,
-    memory_safe: Optional[bool] = False,
-) -> np.ndarray:
+    memory_safe: bool = False,
+) -> NDArray[np.int64]:
     """Selects samples in the input table by greedily minimizing the maximum mena discrepancy (MMD).
 
     Args:
