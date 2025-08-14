@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (split.py) add mmd_subsample_fn to subsample datasets based on tabular input data
 - (CHANGELOG.md) initiale CHANGELOG
 - PLAID benchmarks and source code
 - (cgns_helper.py) add summarize_cgns_tree function
