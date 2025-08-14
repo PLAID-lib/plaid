@@ -15,11 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - add python 3.13 support
 - (constants.py) locate additional constants to this file for clarity
 - (dataset.py, sample.py) initiate get/set feature_identifiers mechanisms
+- (dataset.py) add method `add_to_dir` to iteratively save `Sample` objects to a directory
 
 ### Changed
 
 - Update repo configuration (actions)
-- Update readme
+- Update README
 - Update documentation (including replacing data challenges page with PLAID benchmark one)
 - (types/*) improve typing factorization
 - (stats.py) improve OnlineStatistics and Stats classes
@@ -89,4 +90,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [0.1.3]: https://github.com/PLAID-lib/plaid/compare/0.1.2...0.1.3
 [0.1.2]: https://github.com/PLAID-lib/plaid/compare/0.1.1...0.1.2
 [0.1.1]: https://github.com/PLAID-lib/plaid/releases/tag/0.1.1
-
