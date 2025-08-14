@@ -39,19 +39,17 @@ jobs:
     permissions:
       id-token: write
 
-    steps:
-      - name: sanity check
-        run: echo "This job is only for publishing to PyPI."      
-      # - uses: actions/checkout@v4
+    steps:   
+      - uses: actions/checkout@v4
 
-      # - name: Download all wheel artifacts
-      #   uses: actions/download-artifact@v4
-      #   with:
-      #     pattern: wheels-*
-      #     path: dist
-      #     merge-multiple: true
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
 
-      # - name: Publish to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
-      #   with:
-      #     packages-dir: dist
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
