@@ -36,7 +36,7 @@ dynamic = ["version"]
 dependencies = [
     "datasets>=4.0.0",
     "matplotlib>=3.9.4",
-    "numpy>=2.0.2",
+    "numpy<2.0.0",
     "pycgns>=6.2.2",
     "pydantic>=2.11.7",
     "pyyaml>=6.0.2",
