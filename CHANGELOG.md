@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update repo configuration (actions)
 - Update README
-- Update documentation (including replacing data challenges page with PLAID benchmark one)
+- Update documentation (including configuration and replacing data challenges page with PLAID benchmark one)
 - (types/*) improve typing factorization
 - (stats.py) improve OnlineStatistics and Stats classes
 
