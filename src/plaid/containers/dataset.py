@@ -23,7 +23,7 @@ import shutil
 import subprocess
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Iterator, Optional, Union
+from typing import Iterator, Literal, Optional, Union
 
 import numpy as np
 import yaml
