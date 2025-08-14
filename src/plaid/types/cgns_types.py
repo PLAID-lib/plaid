@@ -11,7 +11,7 @@ from typing import Tuple, Union
 
 try:
     from typing import TypeAlias  # Python 3.10+
-except ImportError:
+except ImportError:  # pragma: no cover
     from typing_extensions import TypeAlias
 
 from plaid.types.common import Array
