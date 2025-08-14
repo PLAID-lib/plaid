@@ -35,7 +35,7 @@ classifiers = [
 dependencies = [
     "tqdm",
     "pyyaml",
-    "h5py",
+    "h5py>=3.8",
     "pycgns",
     "scikit-learn",
     "datasets",
