@@ -44,12 +44,3 @@ CGNSTree: TypeAlias = CGNSNode
 # CGNS links and paths
 LinkType: TypeAlias = list[str]  # [dir, filename, source_path, target_path]
 PathType: TypeAlias = Tuple[str, ...]  # a path in the CGNS tree
-
-# Physical data types
-ScalarType: TypeAlias = Union[float, int]
-FieldType: TypeAlias = Array
-TimeSequenceType: TypeAlias = Array
-TimeSeriesType: TypeAlias = Tuple[TimeSequenceType, FieldType]
-
-# Feature data types
-FeatureType: TypeAlias = Union[ScalarType, FieldType, TimeSeriesType, Array]

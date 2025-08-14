@@ -157,6 +157,9 @@ autoapi_python_class_content = "both"  # default is 'class'
 #     #     - Functions
 #     #     - Methods
 
+nb_execution_mode = 'auto'
+nb_execution_timeout = 300
+
 numfig = True
 
 # -----------------------------------------------------------------------------#
@@ -213,7 +216,6 @@ github_url = "https://github.com/PLAID-lib/plaid"
 # html_extra_path = ['_extra']
 
 # -----------------------------------------------------------------------------#
-
 
 def skip_logger_attribute(app, what, name, obj, skip, options):
     if what == "data" and "logger" in name:

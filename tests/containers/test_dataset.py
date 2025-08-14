@@ -7,6 +7,7 @@
 
 # %% Imports
 
+import copy
 from pathlib import Path
 
 import numpy as np
@@ -21,70 +22,11 @@ from plaid.utils.base import ShapeError
 
 
 @pytest.fixture()
-def nb_scalars():
-    return 5
-
-
-@pytest.fixture()
-def tabular(nb_samples, nb_scalars):
-    return np.random.randn(nb_samples, nb_scalars)
-
-
-@pytest.fixture()
-def scalar_names(nb_scalars):
-    return [f"test_scalar_{np.random.randint(1e8, 1e9)}" for _ in range(nb_scalars)]
-
-
-@pytest.fixture()
-def sample(zone_name, base_name):
-    sample = Sample()
-    sample.init_base(3, 3, base_name)
-    sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
-    sample.add_scalar("test_scalar", np.random.randn())
-    sample.add_field("test_field_same_size", np.random.randn(17), zone_name, base_name)
-    sample.add_field(
-        f"test_field_{np.random.randint(1e8, 1e9)}",
-        np.random.randn(np.random.randint(10, 20)),
-        zone_name,
-        base_name,
-    )
-    return sample
-
-
-@pytest.fixture
-def empty_sample():
-    return Sample()
-
-
-@pytest.fixture()
-def empty_dataset():
-    return Dataset()
-
-
-@pytest.fixture()
 def current_directory():
     return Path(__file__).absolute().parent
 
 
-@pytest.fixture()
-def dataset_with_samples(dataset, samples, infos):
-    dataset.add_samples(samples)
-    dataset.set_infos(infos)
-    return dataset
-
-
-@pytest.fixture()
-def dataset_with_samples_with_tree(empty_dataset, samples_with_tree, infos):
-    empty_dataset.add_samples(samples_with_tree)
-    empty_dataset.set_infos(infos)
-    return empty_dataset
-
-
-@pytest.fixture()
-def other_dataset_with_samples(other_samples):
-    other_dataset = Dataset()
-    other_dataset.add_samples(other_samples)
-    return other_dataset
+# %% Functions
 
 
 def compare_two_samples(sample_1: Sample, sample_2: Sample):
@@ -144,6 +86,66 @@ class Test_Dataset:
         dataset_with_samples.get_samples(as_list=True)
         dataset_with_samples.get_samples(
             np.arange(np.random.randint(2, nb_samples)), as_list=True
+        )
+
+    def test_get_all_features_identifiers(self, dataset_with_samples, nb_samples):
+        dataset_with_samples.get_all_features_identifiers()
+        dataset_with_samples.get_all_features_identifiers(
+            np.arange(np.random.randint(2, nb_samples))
+        )
+        dataset_with_samples.get_all_features_identifiers([0, 0])
+
+    def test_get_all_features_identifiers_by_type(
+        self, dataset_with_samples, nb_samples
+    ):
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="scalar"
+                )
+            )
+            == 2
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="times_series"
+                )
+            )
+            == 0
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="field"
+                )
+            )
+            == 2
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="nodes"
+                )
+            )
+            == 0
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="scalar",
+                    ids=np.arange(np.random.randint(2, nb_samples)),
+                )
+            )
+            == 2
+        )
+        assert (
+            len(
+                dataset_with_samples.get_all_features_identifiers_by_type(
+                    feature_type="scalar", ids=[0, 0]
+                )
+            )
+            == 2
         )
 
     def test_add_sample(self, dataset, sample):
@@ -500,6 +502,275 @@ class Test_Dataset:
             {"type": "nodes", "time": 0.0}
         )
 
+    def test_get_features_from_identifiers(self, dataset_with_samples_with_tree):
+        dataset_with_samples_with_tree.get_features_from_identifiers(
+            [{"type": "nodes"}]
+        )
+        dataset_with_samples_with_tree.get_features_from_identifiers(
+            [
+                {"type": "nodes", "base_name": "Base_2_2"},
+                {
+                    "type": "field",
+                    "name": "test_elem_field_1",
+                    "zone_name": "Zone",
+                    "location": "CellCenter",
+                    "time": 0.0,
+                },
+            ]
+        )
+
+    def test_update_features_from_identifier(
+        self, dataset_with_samples, dataset_with_samples_with_tree
+    ):
+        indices = dataset_with_samples.get_sample_ids()
+        dataset_with_samples.update_features_from_identifier(
+            feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
+            features={ind: 3.1415 for ind in indices},
+            in_place=False,
+        )
+
+        dataset_with_samples.update_features_from_identifier(
+            feature_identifiers={
+                "type": "time_series",
+                "name": "test_time_series_1",
+            },
+            features={
+                ind: (np.array([0, 1]), np.array([3.14, 3.15])) for ind in indices
+            },
+            in_place=False,
+        )
+
+        indices = dataset_with_samples_with_tree.get_sample_ids()
+        before = dataset_with_samples_with_tree[0].get_field(
+            name="test_node_field_1",
+            zone_name="Zone",
+            base_name="Base_2_2",
+            location="Vertex",
+            time=0.0,
+        )
+
+        dataset_with_samples_with_tree.update_features_from_identifier(
+            feature_identifiers={
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "location": "Vertex",
+                "time": 0.0,
+            },
+            features={ind: np.random.rand(*before.shape) for ind in indices},
+            in_place=False,
+        )
+
+        before = dataset_with_samples_with_tree[0].get_nodes(
+            zone_name="Zone", base_name="Base_2_2", time=0.0
+        )
+        dataset_with_samples_with_tree.update_features_from_identifier(
+            feature_identifiers={
+                "type": "nodes",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "time": 0.0,
+            },
+            features={ind: np.random.rand(*before.shape) for ind in indices},
+            in_place=False,
+        )
+
+        before_1 = dataset_with_samples_with_tree[0].get_field("test_node_field_1")
+        before_2 = dataset_with_samples_with_tree[0].get_nodes()
+        dataset_with_samples_with_tree.update_features_from_identifier(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "nodes"},
+            ],
+            features={
+                ind: [
+                    np.random.rand(*before_1.shape),
+                    np.random.rand(*before_2.shape),
+                ]
+                for ind in indices
+            },
+            in_place=False,
+        )
+
+        dataset_with_samples_with_tree.update_features_from_identifier(
+            feature_identifiers=[{"type": "field", "name": "test_node_field_1"}],
+            features={ind: [np.random.rand(*before_1.shape)] for ind in indices},
+            in_place=True,
+        )
+
+    def test_from_features_identifier(
+        self, dataset_with_samples, dataset_with_samples_with_tree
+    ):
+        dataset_with_samples.from_features_identifier(
+            feature_identifiers={"type": "scalar", "name": "test_scalar"},
+        )
+        dataset_with_samples.from_features_identifier(
+            feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
+        )
+
+        dataset_with_samples_with_tree.from_features_identifier(
+            feature_identifiers={
+                "type": "field",
+                "name": "test_node_field_1",
+                "base_name": "Base_2_2",
+                "zone_name": "Zone",
+                "location": "Vertex",
+                "time": 0.0,
+            },
+        )
+
+        dataset_with_samples_with_tree.from_features_identifier(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "nodes"},
+            ],
+        )
+
+    def test_get_tabular_from_homogeneous_identifiers(
+        self, nb_samples, dataset_with_samples, dataset_with_samples_with_tree
+    ):
+        X = dataset_with_samples.get_tabular_from_homogeneous_identifiers(
+            feature_identifiers=[{"type": "scalar", "name": "test_scalar"}],
+        )
+        assert X.shape == (nb_samples, 1, 1)
+
+        X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+        )
+        assert X.shape == (nb_samples, 2, 5)
+
+    def test_get_tabular_from_stacked_identifiers(
+        self, nb_samples, dataset_with_samples
+    ):
+        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+            feature_identifiers=[
+                {"type": "scalar", "name": "test_scalar"},
+                {"type": "field", "name": "test_field_same_size"},
+                {"type": "scalar", "name": "test_scalar"},
+            ],
+        )
+        assert X.shape == (nb_samples, 19)
+
+        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+            feature_identifiers=[
+                {"type": "field", "name": "test_field_same_size"},
+            ],
+        )
+        assert X.shape == (nb_samples, 17)
+
+        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+            feature_identifiers=[
+                {"type": "scalar", "name": "test_scalar"},
+            ],
+        )
+        assert X.shape == (nb_samples, 1)
+
+    def test_get_tabular_from_homogeneous_identifiers_inconsistent_features_through_features(
+        self, dataset_with_samples_with_tree
+    ):
+        dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
+        for sample in dataset_with_samples_with_tree_:
+            sample.add_field("test_node_field_1", [0, 1], warning_overwrite=False)
+        with pytest.raises(AssertionError):
+            dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
+                feature_identifiers=[
+                    {"type": "field", "name": "test_node_field_1"},
+                    {"type": "field", "name": "OriginalIds"},
+                ],
+            )
+
+    def test_get_tabular_from_homogeneous_identifiers_inconsistent_features_through_samples(
+        self, dataset_with_samples_with_tree
+    ):
+        dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
+        dataset_with_samples_with_tree_[0].add_field(
+            "test_node_field_1", [0, 1], warning_overwrite=False
+        )
+        dataset_with_samples_with_tree_[0].add_field(
+            "OriginalIds", [0, 1], warning_overwrite=False
+        )
+        with pytest.raises(AssertionError):
+            dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
+                feature_identifiers=[
+                    {"type": "field", "name": "test_node_field_1"},
+                    {"type": "field", "name": "OriginalIds"},
+                ],
+            )
+
+    def test_from_tabular(self, dataset_with_samples_with_tree):
+        X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+        )
+        dataset = dataset_with_samples_with_tree.from_tabular(
+            tabular=X,
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+            restrict_to_features=True,
+        )
+        last_index = dataset_with_samples_with_tree.get_sample_ids()[-1]
+        assert np.isclose(
+            dataset[0].get_field("OriginalIds"),
+            dataset_with_samples_with_tree[0].get_field("OriginalIds"),
+        ).all()
+        assert np.isclose(
+            dataset[0].get_field("test_node_field_1"),
+            dataset_with_samples_with_tree[0].get_field("test_node_field_1"),
+        ).all()
+        assert np.isclose(
+            dataset[last_index].get_field("OriginalIds"),
+            dataset_with_samples_with_tree[last_index].get_field("OriginalIds"),
+        ).all()
+        assert np.isclose(
+            dataset[last_index].get_field("test_node_field_1"),
+            dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
+        ).all()
+
+        X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+        )
+        dataset = dataset_with_samples_with_tree.from_tabular(
+            tabular=X,
+            feature_identifiers=[
+                {"type": "field", "name": "test_node_field_1"},
+                {"type": "field", "name": "OriginalIds"},
+            ],
+            restrict_to_features=False,
+        )
+        last_index = dataset_with_samples_with_tree.get_sample_ids()[-1]
+        assert np.isclose(
+            dataset[0].get_field("OriginalIds"),
+            dataset_with_samples_with_tree[0].get_field("OriginalIds"),
+        ).all()
+        assert np.isclose(
+            dataset[0].get_field("test_node_field_1"),
+            dataset_with_samples_with_tree[0].get_field("test_node_field_1"),
+        ).all()
+        assert np.isclose(
+            dataset[last_index].get_field("OriginalIds"),
+            dataset_with_samples_with_tree[last_index].get_field("OriginalIds"),
+        ).all()
+        assert np.isclose(
+            dataset[last_index].get_field("test_node_field_1"),
+            dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
+        ).all()
+
+        dataset = dataset_with_samples_with_tree.from_tabular(
+            tabular=X,
+            feature_identifiers={"type": "field", "name": "OriginalIds"},
+        )
+
     # -------------------------------------------------------------------------#
     def test_add_info(self, dataset):
         dataset.add_info("legal", "owner", "PLAID")
@@ -553,6 +824,44 @@ class Test_Dataset:
     def test_merge_dataset_with_bad_type(self, dataset_with_samples):
         with pytest.raises(ValueError):
             dataset_with_samples.merge_dataset(3)
+
+    def test_merge_features(self, dataset_with_samples, other_dataset_with_samples):
+        feat_id = dataset_with_samples.get_all_features_identifiers()
+        feat_id = [
+            fid for fid in feat_id if fid["type"] not in ["scalar", "time_series"]
+        ]
+        dataset_1 = dataset_with_samples.from_features_identifier(feat_id)
+        feat_id = other_dataset_with_samples.get_all_features_identifiers()
+        feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "node"]]
+        dataset_2 = other_dataset_with_samples.from_features_identifier(feat_id)
+        dataset_merge_1 = dataset_1.merge_features(dataset_2, in_place=False)
+        dataset_merge_2 = dataset_2.merge_features(dataset_1, in_place=False)
+        assert (
+            dataset_merge_1[0].get_all_features_identifiers()
+            == dataset_merge_2[0].get_all_features_identifiers()
+        )
+        dataset_2.merge_features(dataset_1, in_place=True)
+        dataset_1.merge_features(dataset_2, in_place=True)
+
+    def test_merge_features_with_None(self, dataset_with_samples):
+        dataset_with_samples.merge_features(None)
+
+    def test_merge_features_with_bad_type(self, dataset_with_samples):
+        with pytest.raises(ValueError):
+            dataset_with_samples.merge_features(3)
+
+    def test_merge_dataset_by_features(
+        self, dataset_with_samples, other_dataset_with_samples
+    ):
+        Dataset.merge_dataset_by_features(
+            [dataset_with_samples, other_dataset_with_samples]
+        )
+
+    # -------------------------------------------------------------------------#
+
+    def test_from_list_of_samples(self, samples):
+        loaded_dataset = Dataset.from_list_of_samples(samples)
+        assert len(loaded_dataset) == len(samples)
 
     # -------------------------------------------------------------------------#
 

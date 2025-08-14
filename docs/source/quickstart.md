@@ -1,12 +1,11 @@
-# Getting Started
+# Quickstart
 
 Everything you need to know to start using the PLAID.
 
 ---
 
-- [Getting Started](#getting-started)
-  - [1. Using the library](#1-using-the-library)
-  - [2. Contributing to the library](#2-contributing-to-the-library)
+- [1. Using the library](#1-using-the-library)
+- [2. Contributing to the library](#2-contributing-to-the-library)
 
 ---
 

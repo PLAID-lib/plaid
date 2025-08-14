@@ -80,8 +80,10 @@ dev = [
     "sphinx",
     "myst-nb",
     "myst-parser",
+    "nbconvert",
     "furo",
     "sphinx-autoapi",
     "sphinx-tabs",
     "sphinxcontrib.bibtex",
+    "optuna",
 ]

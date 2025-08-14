@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (pipelines/*) add plaid_blocks.py and sklearn_block_wrappers.py: mechanisms to define ML pipeline on plaid datasets, that staisfy the sklearn conventions
 - (split.py) add mmd_subsample_fn to subsample datasets based on tabular input data
 - (CHANGELOG.md) initiale CHANGELOG
 - PLAID benchmarks and source code

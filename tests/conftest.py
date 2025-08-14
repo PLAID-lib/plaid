@@ -1,5 +1,7 @@
 """This file defines shared pytest fixtures and test configurations."""
 
+import copy
+
 import numpy as np
 import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
@@ -23,20 +25,23 @@ def sample():
 def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
     """Generate a list of Sample objects with randomized scalar and field data."""
     sample_list = []
-    for _ in range(nb):
+    for i in range(nb):
         sample = Sample()
         sample.init_base(3, 3, base_name)
         sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
-        sample.add_scalar("test_scalar", np.random.randn())
+        sample.add_scalar("test_scalar", float(i))
+        sample.add_scalar("test_scalar_2", float(i**2))
         sample.add_time_series(
-            "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
+            "test_time_series_1",
+            np.arange(11, dtype=float),
+            float(i**3) * np.arange(11, dtype=float),
         )
         sample.add_field(
-            "test_field_same_size", np.random.randn(17), zone_name, base_name
+            "test_field_same_size", float(i**4) * np.ones(17), zone_name, base_name
         )
         sample.add_field(
-            f"test_field_{np.random.randint(1e8, 1e9)}",
-            np.random.randn(np.random.randint(10, 20)),
+            "test_field_2785",
+            float(i**5) * np.ones(3 * i),
             zone_name,
             base_name,
         )
@@ -47,7 +52,7 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
 @pytest.fixture()
 def nb_samples() -> int:
     """Number of samples to generate for tests."""
-    return 11
+    return 4
 
 
 @pytest.fixture()
@@ -150,5 +155,51 @@ def samples_with_tree(nb_samples: int, sample_with_tree: Sample) -> list[Sample]
     """Generate a list of Sample objects with a tree."""
     sample_list = []
     for _ in range(nb_samples):
-        sample_list.append(sample_with_tree)
+        sample_list.append(copy.deepcopy(sample_with_tree))
     return sample_list
+
+
+@pytest.fixture()
+def nb_scalars():
+    return 5
+
+
+@pytest.fixture()
+def tabular(nb_samples, nb_scalars):
+    return np.random.randn(nb_samples, nb_scalars)
+
+
+@pytest.fixture()
+def scalar_names(nb_scalars):
+    return [f"test_scalar_{np.random.randint(1e8, 1e9)}" for _ in range(nb_scalars)]
+
+
+@pytest.fixture
+def empty_sample():
+    return Sample()
+
+
+@pytest.fixture()
+def empty_dataset():
+    return Dataset()
+
+
+@pytest.fixture()
+def dataset_with_samples(dataset, samples, infos):
+    dataset.add_samples(samples)
+    dataset.set_infos(infos)
+    return dataset
+
+
+@pytest.fixture()
+def dataset_with_samples_with_tree(empty_dataset, samples_with_tree, infos):
+    empty_dataset.add_samples(samples_with_tree)
+    empty_dataset.set_infos(infos)
+    return empty_dataset
+
+
+@pytest.fixture()
+def other_dataset_with_samples(other_samples):
+    other_dataset = Dataset()
+    other_dataset.add_samples(other_samples)
+    return other_dataset
