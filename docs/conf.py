@@ -14,7 +14,7 @@
 # -- Path setup --------------------------------------------------------------
 
 import datetime
-import sys
+import os, sys
 import subprocess
 from pathlib import Path
 
@@ -269,7 +269,6 @@ def get_git_info():
         ).strip()
 
         return f"{branch}-{commit}"
-
 
     except Exception:
         return "unknown"

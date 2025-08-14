@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from plaid.utils.init_with_tabular import initialize_dataset_with_tabular_data
-from plaid.utils.split import split_dataset
+from plaid.utils.split import mmd_subsample_fn, split_dataset
 
 # %% Fixtures
 
@@ -27,10 +27,17 @@ def nb_samples():
 
 
 @pytest.fixture()
-def dataset(nb_scalars, nb_samples):
-    tabular_data = {
-        f"scalar_{j}": np.random.randn(nb_samples) for j in range(nb_scalars)
-    }
+def tabular_data(nb_scalars, nb_samples):
+    return {f"scalar_{j}": np.random.randn(nb_samples) for j in range(nb_scalars)}
+
+
+@pytest.fixture()
+def tabular_X(tabular_data):
+    return np.stack([v for v in tabular_data.values()]).T
+
+
+@pytest.fixture()
+def dataset(tabular_data):
     return initialize_dataset_with_tabular_data(tabular_data)
 
 
@@ -257,3 +264,10 @@ class Test_split_dataset:
         assert not np.array_equal(split1["other"], split2["other"]), (
             "shuffle didn't work"
         )
+
+
+class Test_mmd_subsample_fn:
+    def test_mmd_subsample_fn(self, tabular_X):
+        mmd_subsample_fn(tabular_X, size=10)
+        mmd_subsample_fn(tabular_X, size=10, initial_ids=[0, 12])
+        mmd_subsample_fn(tabular_X, size=10, initial_ids=[0, 12], memory_safe=True)

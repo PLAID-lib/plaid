@@ -1,0 +1,17 @@
+{
+    "include": [
+      "src/"
+    ],
+    "exclude": [
+      "**/venv",
+      "**/.venv",
+      "**/__pycache__",
+      "examples",
+      ".pre_commit_hooks"
+    ],
+    "typeCheckingMode": "standard",
+    "reportUnusedVariable": "warning",
+    "reportMissingImports": "error",
+    "reportUnknownMemberType": "warning",
+    "useLibraryCodeForTypes": true
+  }

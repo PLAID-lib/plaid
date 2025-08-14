@@ -929,6 +929,40 @@ class Test_Dataset:
         assert len(loaded_dataset) == len(dataset_with_samples)
 
     # -------------------------------------------------------------------------#
+    def test_add_to_dir_creates_and_saves(self, empty_dataset, sample, tmp_path):
+        # Should create the directory and save the sample
+        save_dir = tmp_path / "my_dataset_dir"
+        empty_dataset.add_to_dir(sample, save_dir)
+        samples_dir = save_dir / "samples"
+        # Check directory and sample folder exist
+        assert samples_dir.is_dir()
+        sample_dirs = list(samples_dir.glob("sample_*"))
+        assert len(sample_dirs) == 1
+        assert sample_dirs[0].is_dir()
+
+    def test_add_to_dir_uses_self_save_dir(self, empty_dataset, sample, tmp_path):
+        # Set save_dir by first call, then call without argument
+        save_dir = tmp_path / "dataset_dir2"
+        empty_dataset.add_to_dir(sample, save_dir)
+        # Add another sample without specifying save_dir
+        sample2 = Sample()
+        empty_dataset.add_to_dir(sample2)
+        samples_dir = save_dir / "samples"
+        sample_dirs = list(samples_dir.glob("sample_*"))
+        assert len(sample_dirs) == 2
+
+    def test_add_to_dir_raises_if_no_save_dir(self, empty_dataset, sample):
+        # Should raise ValueError if no save_dir is set
+        with pytest.raises(ValueError):
+            empty_dataset.add_to_dir(sample)
+
+    def test_add_to_dir_verbose(self, empty_dataset, sample, tmp_path, capsys):
+        save_dir = tmp_path / "dataset_verbose"
+        empty_dataset.add_to_dir(sample, save_dir, verbose=True)
+        captured = capsys.readouterr()
+        assert "Saving database to" in captured.out
+
+    # -------------------------------------------------------------------------#
     def test__save_to_dir_(self, dataset_with_samples, tmp_path):
         savedir = tmp_path / "testdir"
         dataset_with_samples._save_to_dir_(savedir)

@@ -1,6 +1,13 @@
 """Huggingface bridge for PLAID datasets."""
 
 import os
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
 import pickle
 import shutil
 import sys
@@ -90,9 +97,9 @@ def plaid_dataset_to_huggingface(
     """
 
     def generator():
-        for id in tqdm(range(len(dataset))):
+        for sample in dataset:
             yield {
-                "sample": pickle.dumps(dataset[id].model_dump()),
+                "sample": pickle.dumps(sample.model_dump()),
             }
 
     return plaid_generator_to_huggingface(
@@ -129,14 +136,21 @@ def plaid_generator_to_huggingface(
             dataset.save_to_disk("path/to/dir")
     """
     ds = datasets.Dataset.from_generator(
-        generator, num_proc=processes_number, writer_batch_size=1
+        generator,
+        features=datasets.Features({"sample": datasets.Value("binary")}),
+        num_proc=processes_number,
+        writer_batch_size=1,
+        split=datasets.splits.NamedSplit("all_samples"),
     )
 
-    ds._split = datasets.splits.NamedSplit("all_samples")
+    def update_dataset_description(ds: Dataset, new_desc: str) -> Dataset:
+        info = ds.info.copy()
+        info.description = new_desc
+        ds._info = info
+        return ds
 
-    ds._info = datasets.DatasetInfo(
-        features=datasets.Features({"sample": datasets.Value("binary")}),
-        description=generate_huggingface_description(infos, problem_definition),
+    ds = update_dataset_description(
+        ds, generate_huggingface_description(infos, problem_definition)
     )
 
     return ds
@@ -285,6 +299,7 @@ def huggingface_dataset_to_plaid(
                 disable=not verbose,
             ):
                 dataset.add_sample(sample)
+
 
     infos = {}
     if "legal" in ds.description:
