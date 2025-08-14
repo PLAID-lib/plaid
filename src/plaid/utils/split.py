@@ -10,7 +10,7 @@
 # %% Imports
 
 import logging
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 from scipy.spatial.distance import cdist
@@ -171,15 +171,18 @@ def split_dataset(dset: Dataset, options: dict[str, Any]) -> dict[str, int]:
 
 
 def mmd_subsample_fn(
-    X: np.ndarray, size: int, initial_ids: list[int] = None, memory_safe: bool = False
+    X: np.ndarray,
+    size: int,
+    initial_ids: Optional[list[int]] = None,
+    memory_safe: Optional[bool] = False,
 ) -> np.ndarray:
-    """Selects samples in the input dataset by greedily minimizing the maximum mena discrepancy (MMD).
+    """Selects samples in the input table by greedily minimizing the maximum mena discrepancy (MMD).
 
     Args:
-        X(np.ndarray): input dataset of shape n_samples x n_features
+        X(np.ndarray): input table of shape n_samples x n_features
         size(int): number of samples to select
         initial_ids(list[int]): a list of ids of points to initialize the gready algorithm. Defaults to None.
-        memory_safe(bool): if True, avoids a memory expensive computation. Useful for large datasets. Defaults to False.
+        memory_safe(bool): if True, avoids a memory expensive computation. Useful for large tables. Defaults to False.
 
     Returns:
         np.ndarray: array of selected samples
