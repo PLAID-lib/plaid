@@ -1,6 +1,9 @@
 name: Publish to PyPI
 
 on:
+  push:
+    branches:
+      - '**'
   release:
     types: [created]
 
