@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Removed
+
+## [0.1.7] - 2025-08-14
+
+### Added
+
 - (pipelines/*) add plaid_blocks.py and sklearn_block_wrappers.py: mechanisms to define ML pipeline on plaid datasets, that staisfy the sklearn conventions
 - (split.py) add mmd_subsample_fn to subsample datasets based on tabular input data
 - (CHANGELOG.md) initiale CHANGELOG
@@ -26,8 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update documentation (including configuration and replacing data challenges page with PLAID benchmark one)
 - (types/*) improve typing factorization
 - (stats.py) improve OnlineStatistics and Stats classes
-
-### Removed
 
 ## [0.1.6] - 2025-06-19
 
@@ -85,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migration from [GitLab](https://gitlab.com/drti/plaid).
 
-[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.6...HEAD
+[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.7...HEAD
+[0.1.7]: https://github.com/PLAID-lib/plaid/compare/0.1.6...0.1.7
 [0.1.6]: https://github.com/PLAID-lib/plaid/compare/0.1.5...0.1.6
 [0.1.5]: https://github.com/PLAID-lib/plaid/compare/0.1.4...0.1.5
 [0.1.4]: https://github.com/PLAID-lib/plaid/compare/0.1.3...0.1.4
