@@ -26,6 +26,11 @@ jobs:
       - name: Build distribution
         run: uv build
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-3.11
+          path: dist/*.whl
+
   publish:
     needs: build
     if: github.event_name == 'release'
