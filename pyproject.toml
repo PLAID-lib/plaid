@@ -36,11 +36,11 @@ dependencies = [
     "tqdm",
     "pyyaml",
     "pycgns",
+    "h5py",
+    "scikit-learn",
+    "datasets",
     "numpy",
     "matplotlib",
-    "rich",
-    "scikit-learn",
-    "datasets >=3.0",
     "pydantic",
 ]
 
@@ -75,17 +75,17 @@ include = ["plaid*"]
 
 [project.optional-dependencies]
 dev = [
-    "pre-commit",
-    "ruff",
+    "optuna",
     "pytest",
     "pytest-cov",
+    "ruff",
+    "pre-commit",
     "sphinx",
+    "sphinx-autoapi",
+    "sphinx-tabs",
+    "sphinxcontrib.bibtex",
     "myst-nb",
     "myst-parser",
     "nbconvert",
     "furo",
-    "sphinx-autoapi",
-    "sphinx-tabs",
-    "sphinxcontrib.bibtex",
-    "optuna",
 ]
