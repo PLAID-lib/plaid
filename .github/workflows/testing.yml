@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Conda
         uses: conda-incubator/setup-miniconda@v2
@@ -69,9 +69,9 @@ jobs:
           cd examples
           conda run -n plaid-dev run_examples.bat
 
-      - name: Upload coverage to Codecov (Linux only)
-        if: runner.os == 'Linux'
-        uses: codecov/codecov-action@v4
+      - name: Upload coverage to Codecov (Linux and python 3.11 only)
+        if: runner.os == 'Linux' && matrix.python-version == '3.11'
+        uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
