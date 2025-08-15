@@ -6,7 +6,7 @@ from Muscat.Containers.Filters.FilterObjects import ElementFilter
 from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
 from Muscat.FE.Fields.FEField import FEField
 from Muscat.Bridges.CGNSBridge import MeshToCGNS,CGNSToMesh
-import Muscat.MeshContainers.ElementsDescription as ED
+import Muscat.Containers.ElementsDescription as ED
 from Muscat.Containers.ConstantRectilinearMeshTools import CreateConstantRectilinearMesh
 from Muscat.Containers.MeshTetrahedrization import Tetrahedrization
 from Muscat.Containers.MeshModificationTools import ComputeSkin
