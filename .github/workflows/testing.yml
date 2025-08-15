@@ -35,21 +35,9 @@ jobs:
           auto-activate-base: false
           miniforge-variant: Miniforge3
 
-      - name: Modify environment.yml with matrix Python version (Linux/macOS)
-        if: runner.os != 'Windows'
-        run: |
-          sed -i.bak "s/^  - python=.*/  - python=${{ matrix.python-version }}/" environment.yml
-
-      - name: Modify environment.yml with matrix Python version (Windows)
-        if: runner.os == 'Windows'
-        shell: powershell
-        run: |
-          $file = 'environment.yml'
-          (Get-Content $file) -replace '^\s+- python=.*', "  - python=${{ matrix.python-version }}" | Set-Content $file
-
       - name: Create environment
         run: |
-          conda env create -n plaid-dev -f environment.yml
+          conda create -n plaid-dev python=${{ matrix.python-version }} muscat=2.4.1 -c conda-forge
           conda run -n plaid-dev pip install -e .[dev]
 
       - name: Run tests on Linux
