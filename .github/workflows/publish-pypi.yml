@@ -1,6 +1,9 @@
 name: Publish to PyPI
 
 on:
+  push:
+    branches:
+      - '**'
   release:
     types: [created]
 
@@ -13,6 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # fetch full history and all tags
 
       - name: Install HDF5 dev libraries
         run: |
@@ -30,6 +35,7 @@ jobs:
           pip install build
 
       - name: Check version consistency
+        if: github.event_name == 'release'
         run: |
           pip install .
           RELEASE_VER=${GITHUB_REF#refs/*/}
@@ -51,6 +57,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: build
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

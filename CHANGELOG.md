@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Update repo configuration (actions: rely more on pypi dependencies)
+
 ### Removed
 
 ## [0.1.7] - 2025-08-14
