@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from Muscat.FE.Fields.FEField import FEField
 from Muscat.Bridges.CGNSBridge import CGNSToMesh
 from Muscat.FE.FETools import PrepareFEComputation
-import Muscat.Containers.ElementsDescription as ED
+import Muscat.MeshContainers.ElementsDescription as ED
 from Muscat.Containers.Filters import FilterObjects as FO
 from Muscat.Containers import MeshModificationTools as MMT
 from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
