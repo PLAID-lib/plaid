@@ -75,5 +75,6 @@ jobs:
         with:
           files: coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
+          slug: PLAID-lib/plaid
           name: python-${{ matrix.python-version }}
           verbose: true
