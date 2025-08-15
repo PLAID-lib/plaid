@@ -16,6 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # fetch full history and all tags
 
       - name: Install HDF5 dev libraries
         run: |
