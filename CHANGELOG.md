@@ -5,10 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.8] - 2025-08-14
+## [Unreleased]
+
+### Added
 
 ### Changed
-- install and packaging: bundle HDF5 1.14.6 in the pip wheel
+
+- Update repo configuration (actions: rely more on pypi dependencies)
+
+### Removed
 
 ## [0.1.7] - 2025-08-14
 
@@ -88,8 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migration from [GitLab](https://gitlab.com/drti/plaid).
 
-[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.8...HEAD
-[0.1.8]: https://github.com/PLAID-lib/plaid/compare/0.1.7...0.1.8
+[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.7...HEAD
 [0.1.7]: https://github.com/PLAID-lib/plaid/compare/0.1.6...0.1.7
 [0.1.6]: https://github.com/PLAID-lib/plaid/compare/0.1.5...0.1.6
 [0.1.5]: https://github.com/PLAID-lib/plaid/compare/0.1.4...0.1.5

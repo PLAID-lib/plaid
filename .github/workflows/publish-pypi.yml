@@ -33,6 +33,7 @@ jobs:
           pip install --upgrade setuptools wheel build
 
       - name: Check version consistency
+        if: github.event_name == 'release'
         run: |
           pip install .
           RELEASE_VER=${GITHUB_REF#refs/*/}
