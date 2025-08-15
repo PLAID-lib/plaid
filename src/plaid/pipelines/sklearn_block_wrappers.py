@@ -19,7 +19,7 @@ from typing import Optional
 
 try:
     from typing import Self  # Python 3.10+
-except ImportError:
+except ImportError:  # pragma: no cover
     from typing_extensions import Self
 
 from sklearn.base import (
