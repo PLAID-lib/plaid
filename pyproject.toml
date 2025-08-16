@@ -86,3 +86,6 @@ dev = [
     "nbconvert",
     "furo",
 ]
+
+[tool.coverage.run]
+omit = ["src/plaid/examples/*"]
