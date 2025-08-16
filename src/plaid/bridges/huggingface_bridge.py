@@ -301,7 +301,7 @@ def huggingface_dataset_to_plaid(
                     disable=not verbose,
                 )
             ):
-                dataset.add_sample(sample, id=idx)
+                dataset.add_sample(sample, id=indices[idx])
 
     infos = {}
     if "legal" in ds.description:
