@@ -1,13 +1,12 @@
 """Huggingface bridge for PLAID datasets."""
 
-import os
-
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
+import os
 import pickle
 import shutil
 import sys
@@ -15,7 +14,6 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Callable, Optional
 
-from datasets import load_from_disk
 from tqdm import tqdm
 
 if sys.version_info >= (3, 11):
@@ -25,10 +23,14 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
+
 import datasets
 
+from plaid.bridges._huggingface_helpers import (
+    _HFShardToPlaidSampleConverter,
+    _HFToPlaidSampleConverter,
+)
 from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 
 """
@@ -180,33 +182,6 @@ def huggingface_description_to_problem_definition(
     problem_definition.add_output_meshes_names(description["out_meshes_names"])
 
     return problem_definition
-
-
-class _HFToPlaidSampleConverter:
-    """Class to convert a huggingface dataset sample to a plaid sample."""
-
-    def __init__(self, ds: datasets.Dataset):
-        self.ds = ds
-
-    def __call__(
-        self, sample_id: int
-    ):  # pragma: no cover  (not reported with multiprocessing)
-        """Convert a single sample from the huggingface dataset to a plaid sample."""
-        return Sample.model_validate(pickle.loads(self.ds[sample_id]["sample"]))
-
-
-class _HFShardToPlaidSampleConverter:
-    """Class to convert a huggingface dataset sample shard to a plaid sample."""
-
-    def __init__(self, shard_path: Path):
-        self.ds = load_from_disk(shard_path.as_posix())
-
-    def __call__(
-        self, sample_id: int
-    ):  # pragma: no cover (not reported with multiprocessing)
-        """Convert a sample shard from the huggingface dataset to a plaid sample."""
-        sample = self.ds[sample_id]
-        return Sample.model_validate(pickle.loads(sample["sample"]))
 
 
 def huggingface_dataset_to_plaid(
