@@ -44,7 +44,7 @@ class _LazyDatasets:
             dataset, _ = streamed_huggingface_dataset_to_plaid(hf_repo, 2)
             self._cache[ex_name] = dataset
             return dataset
-        except Exception as e:
+        except Exception as e: # pragma: no cover
             raise RuntimeError(f"Failed to download or convert dataset '{hf_repo}'.") from e
 
 
