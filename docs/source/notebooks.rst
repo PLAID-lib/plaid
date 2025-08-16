@@ -25,3 +25,4 @@ You can find here all basic detailed examples different part of PLAID-lib, nicel
    notebooks/interpolation
    notebooks/huggingface
    notebooks/pipeline
+   notebooks/downloadable_examples
