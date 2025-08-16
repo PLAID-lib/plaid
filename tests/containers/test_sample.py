@@ -14,7 +14,7 @@ import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
-from Muscat.Containers import MeshCreationTools as MCT
+from Muscat.MeshTools import MeshCreationTools as MCT
 
 from plaid.containers.sample import (
     Sample,

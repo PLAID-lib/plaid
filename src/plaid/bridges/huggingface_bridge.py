@@ -282,7 +282,7 @@ def huggingface_dataset_to_plaid(
             shard_samples = parallel_convert(shard_path, n_workers=processes_number)
             samples.extend(shard_samples)
 
-        dataset.add_samples(samples)
+        dataset.add_samples(samples, ids)
 
         if os.path.exists("shards"):
             shutil.rmtree("shards")
@@ -292,13 +292,16 @@ def huggingface_dataset_to_plaid(
             indices = ids
         else:
             indices = range(len(ds))
+
         with Pool(processes=processes_number) as pool:
-            for sample in tqdm(
-                pool.imap(_HFToPlaidSampleConverter(ds), indices),
-                total=len(indices),
-                disable=not verbose,
+            for idx, sample in enumerate(
+                tqdm(
+                    pool.imap(_HFToPlaidSampleConverter(ds), indices),
+                    total=len(indices),
+                    disable=not verbose,
+                )
             ):
-                dataset.add_sample(sample)
+                dataset.add_sample(sample, id=indices[idx])
 
     infos = {}
     if "legal" in ds.description:

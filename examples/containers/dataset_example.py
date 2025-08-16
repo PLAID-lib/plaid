@@ -19,10 +19,10 @@ from pathlib import Path
 
 # %%
 # Import necessary libraries and functions
-import Muscat.Containers.ElementsDescription as ElementsDescription
+import Muscat.MeshContainers.ElementsDescription as ElementsDescription
 import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
-from Muscat.Containers import MeshCreationTools as MCT
+from Muscat.MeshTools import MeshCreationTools as MCT
 
 import plaid
 from plaid.containers.dataset import Dataset

@@ -7,7 +7,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
-from Muscat.Containers import MeshCreationTools as MCT
+from Muscat.MeshTools import MeshCreationTools as MCT
 from tqdm import tqdm
 
 from plaid.containers.dataset import Dataset
