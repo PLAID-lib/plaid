@@ -2085,16 +2085,17 @@ class Sample(BaseModel):
         for feat_id in feature_identifiers:
             feature = self.get_feature_from_identifier(feat_id)
 
-            # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
-            if feat_id["type"] in ["field", "nodes"]:
-                # get time of current feature
-                time = self.get_time_assignment(time=feat_id.get("time"))
+            if feature is not None:
+                # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
+                if feat_id["type"] in ["field", "nodes"]:
+                    # get time of current feature
+                    time = self.get_time_assignment(time=feat_id.get("time"))
 
-                # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                if not sample.get_mesh(time):
-                    sample.add_tree(source_sample.get_mesh(time))
+                    # if the constructed sample does not have a tree, add the one from the source sample, with no field
+                    if not sample.get_mesh(time):
+                        sample.add_tree(source_sample.get_mesh(time))
 
-            sample._add_feature(feat_id, feature)
+                sample._add_feature(feat_id, feature)
 
         sample._extra_data = copy.deepcopy(self._extra_data)
 
