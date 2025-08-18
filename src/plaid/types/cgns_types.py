@@ -18,7 +18,7 @@ from plaid.types.common import Array
 
 # CGNS types inside a node
 NodeName: TypeAlias = str
-NodeLabel: TypeAlias = NodeName
+NodeLabel: TypeAlias = str
 NodeValue: TypeAlias = Union[
     None,
     str,

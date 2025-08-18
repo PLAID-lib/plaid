@@ -19,7 +19,7 @@ from plaid.types.common import Array
 # Physical data types
 ScalarType: TypeAlias = Union[float, int]
 FieldType: TypeAlias = Array
-TimeSequenceType: TypeAlias = FieldType
+TimeSequenceType: TypeAlias = Array
 TimeSeriesType: TypeAlias = Tuple[TimeSequenceType, FieldType]
 
 # Feature data types
