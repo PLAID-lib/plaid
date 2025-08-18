@@ -51,8 +51,14 @@ conda install -c conda-forge plaid
 or
 
 ```bash
+sudo apt-get install -y libhdf5-dev
 pip install pyplaid
 ```
+
+**Note**
+
+Only the conda-forge package comes with a bundled HDF5 dependency.
+
 
 ### 2.2 Contributing to the library
 
@@ -78,7 +84,8 @@ pip install -e .
 
 **Note**
 
-The development dependency [**Muscat**](https://muscat.readthedocs.io/) is available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) but not on [``PyPi``](https://pypi.org/project/muscat).
+The development dependency [**Muscat**](https://muscat.readthedocs.io/) is available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) but not on [``PyPi``](https://pypi.org/project/muscat). A a consequence, using a conda environment is the only way to run tests and examples, and compile the documentation.
+
 
 #### 2.2.2 Tests and examples
 
