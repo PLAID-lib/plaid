@@ -1,7 +1,7 @@
 Notebooks
 =========
 
-You can find here all basic detailed examples different part of PLAID-lib, nicely explained in jupyter notebooks.
+You can find here detailed examples for different parts of plaid, explained in jupyter notebooks.
 
 .. note::
    The `Muscat <https://anaconda.org/conda-forge/muscat>`_ dependency is required on some of the notebooks,
@@ -25,3 +25,4 @@ You can find here all basic detailed examples different part of PLAID-lib, nicel
    notebooks/interpolation
    notebooks/huggingface
    notebooks/pipeline
+   notebooks/downloadable_examples
