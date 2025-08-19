@@ -14,7 +14,7 @@ try:
 except ImportError:  # pragma: no cover
     from typing_extensions import TypeAlias
 
-from plaid.types import Array
+from plaid.types.common import Array
 
 # Physical data types
 ScalarType: TypeAlias = Union[float, int]

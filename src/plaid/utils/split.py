@@ -189,6 +189,7 @@ def mmd_subsample_fn(
         np.ndarray: array of selected samples
     Example:
         .. code-block:: python
+
             # Let X be drawn from a standard 10-dimensional Gaussian distribution
             np.random.seed(0)
             X = np.random.randn(1000,10)
