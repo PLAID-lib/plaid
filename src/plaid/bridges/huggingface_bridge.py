@@ -186,33 +186,6 @@ def huggingface_description_to_problem_definition(
     return problem_definition
 
 
-class _HFToPlaidSampleConverter:
-    """Class to convert a Hugging Face dataset sample to a plaid sample."""
-
-    def __init__(self, ds: datasets.Dataset):
-        self.ds = ds
-
-    def __call__(
-        self, sample_id: int
-    ):  # pragma: no cover  (not reported with multiprocessing)
-        """Convert a single sample from the Hugging Face dataset to a plaid sample."""
-        return Sample.model_validate(pickle.loads(self.ds[sample_id]["sample"]))
-
-
-class _HFShardToPlaidSampleConverter:
-    """Class to convert a Hugging Face dataset sample shard to a plaid sample."""
-
-    def __init__(self, shard_path: Path):
-        self.ds = load_from_disk(shard_path.as_posix())
-
-    def __call__(
-        self, sample_id: int
-    ):  # pragma: no cover (not reported with multiprocessing)
-        """Convert a sample shard from the Hugging Face dataset to a plaid sample."""
-        sample = self.ds[sample_id]
-        return Sample.model_validate(pickle.loads(sample["sample"]))
-
-
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
     ids: Optional[list[int]] = None,
