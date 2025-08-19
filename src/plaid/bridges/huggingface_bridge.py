@@ -1,7 +1,5 @@
 """Hugging Face bridge for PLAID datasets."""
 
-import os
-
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
@@ -27,12 +25,14 @@ else:  # pragma: no cover
 
 
 import datasets
+from datasets import load_dataset
 
 from plaid.bridges._huggingface_helpers import (
     _HFShardToPlaidSampleConverter,
     _HFToPlaidSampleConverter,
 )
 from plaid.containers.dataset import Dataset
+from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 
 """
