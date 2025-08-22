@@ -2,7 +2,6 @@ from .loader import Loader
 from plaid.containers.dataset import Dataset as PlaidDataset
 from plaid.problem_definition import ProblemDefinition
 from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
-from typing import Tuple
 from datasets import load_dataset
 
 
@@ -19,8 +18,8 @@ class HubLoader(Loader):
         super().__init__(bridge, task_split, processes_number=processes_number)
         self.dataset_name = dataset_name
         self.cache_dir = cache_dir
-    
-    def load_plaid(self, **kwargs) -> Tuple[ProblemDefinition, PlaidDataset, ...]:
+
+    def load_plaid(self, **kwargs) -> tuple[ProblemDefinition, PlaidDataset, ...]:
         hf_dataset = None
         try:
             hf_dataset = load_dataset(self.dataset_name, split="all_samples", cache_dir=self.cache_dir)

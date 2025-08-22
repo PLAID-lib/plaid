@@ -1,5 +1,5 @@
 from plaid.containers.dataset import Dataset as PlaidDataset
-from typing import List, Tuple
+from typing import List
 import copy
 from torch_geometric.data import Data
 
@@ -10,13 +10,13 @@ def extract_plaid_dataset(plaid_dataset: PlaidDataset, ids: List[int]) -> PlaidD
 
     return extracted_dataset
 
-def split_plaid_train_test(plaid_dataset: PlaidDataset, train_ids: List[int], test_ids: List[int]) -> Tuple[PlaidDataset, PlaidDataset]:
+def split_plaid_train_test(plaid_dataset: PlaidDataset, train_ids: List[int], test_ids: List[int]) -> tuple[PlaidDataset, PlaidDataset]:
     plaid_train_dataset = extract_plaid_dataset(plaid_dataset, ids=train_ids)
     plaid_test_dataset = extract_plaid_dataset(plaid_dataset, ids=test_ids)
 
     return plaid_train_dataset, plaid_test_dataset
 
-def split_pyg_train_test(pyg_dataset: List[Data], train_ids: List[int], test_ids: List[int]) -> Tuple[List[Data], List[Data]]:
+def split_pyg_train_test(pyg_dataset: List[Data], train_ids: List[int], test_ids: List[int]) -> tuple[List[Data], List[Data]]:
     train_dataset   = []
     test_dataset    = []
 
@@ -28,7 +28,7 @@ def split_pyg_train_test(pyg_dataset: List[Data], train_ids: List[int], test_ids
 
     return train_dataset, test_dataset
 
-def split_temporal_pyg_train_test(pyg_dataset: List[Data], train_ids: List[int], test_ids: List[int]) -> Tuple[List[Data], List[Data]]:
+def split_temporal_pyg_train_test(pyg_dataset: List[Data], train_ids: List[int], test_ids: List[int]) -> tuple[List[Data], List[Data]]:
     train_dataset   = []
     test_dataset    = []
 

@@ -7,7 +7,7 @@
 #
 #
 
-from typing import Tuple, Union
+from typing import Union
 
 try:
     from typing import TypeAlias  # Python 3.10+
@@ -43,4 +43,4 @@ CGNSTree: TypeAlias = CGNSNode
 
 # CGNS links and paths
 LinkType: TypeAlias = list[str]  # [dir, filename, source_path, target_path]
-PathType: TypeAlias = Tuple[str, ...]  # a path in the CGNS tree
+PathType: TypeAlias = tuple[str, ...]  # a path in the CGNS tree

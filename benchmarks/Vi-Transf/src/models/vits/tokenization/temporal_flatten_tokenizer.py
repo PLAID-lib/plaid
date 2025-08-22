@@ -2,7 +2,7 @@ from .tokenizer import Tokenizer
 from .partitioners.partitioner import Partitioner
 import torch
 from torch.multiprocessing import Pool
-from typing import List, Tuple, Optional, Literal
+from typing import List, Optional, Literal
 from torch_geometric.data import Data, Batch
 from tqdm import tqdm
 import os
@@ -29,7 +29,7 @@ class TemporalFlattenTokenizer(FlattenTokenizer):
         first_sample_dataset = self.partitioner.partition(first_samples_dataset)
         n_tokens_per_sim = max([data.n_communities for data in first_sample_dataset])
         first_samples_dataset = [process_data_tuple(self.data_tokenizer_fn_name, sample, n_vertices_per_subdomain=self.n_vertices_per_subdomain, n_tokens_per_sim=n_tokens_per_sim) for sample in first_samples_dataset]
-        
+
         tokenized_dataset = []
         for n, sample_list in enumerate(dataset):
             for sample in sample_list:
@@ -49,5 +49,5 @@ class TemporalFlattenTokenizer(FlattenTokenizer):
                     sample.expanded_output_fields = cross_domain_padded_expanded_output_fields.unsqueeze(0)
 
                 tokenized_dataset.append(sample)
-        
+
         return tokenized_dataset

@@ -1,13 +1,13 @@
 import pickle
 from pathlib import Path
-from typing import Literal, Any, List, Tuple, Optional
+from typing import Literal, Any, List, Optional
 from sklearn.model_selection import KFold
 from datasets import load_dataset, load_from_disk
 from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
 
 def extract_split_data(
     split: Literal["train", "test", "traintest"]
-) -> Tuple[dict[str, List[Any]], dict[str, List[Any]]]:
+) -> tuple[dict[str, List[Any]], dict[str, List[Any]]]:
     """
     Extract input and output dictionaries for all samples in a given split of a Plaid dataset.
 
@@ -87,7 +87,7 @@ def make_kfold_splits(
     n_splits: int = 5,
     shuffle: bool = True,
     random_state: Optional[int] = None
-) -> List[Tuple[
+) -> List[tuple[
         dict[str, List[Any]],  # train inputs
         dict[str, List[Any]],  # train outputs
         dict[str, List[Any]],  # val inputs
@@ -120,7 +120,7 @@ def make_kfold_splits(
     kf = KFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
 
     splits: List[
-        Tuple[
+        tuple[
             dict[str, List[Any]],
             dict[str, List[Any]],
             dict[str, List[Any]],

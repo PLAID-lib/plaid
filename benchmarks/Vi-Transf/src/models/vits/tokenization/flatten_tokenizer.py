@@ -2,7 +2,7 @@ from .tokenizer import Tokenizer
 from .partitioners.partitioner import Partitioner
 import torch
 from torch.multiprocessing import Pool
-from typing import List, Tuple, Optional, Literal
+from typing import List, Optional, Literal
 from torch_geometric.data import Data, Batch
 from tqdm import tqdm
 import os
@@ -44,7 +44,7 @@ class FlattenTokenizer(Tokenizer):
                 ):
                     tokenized_dataset.append(processed_datapoint)
         return tokenized_dataset
-        
+
 
     def preprocess(self, dataset, seed: Optional[int]=None) -> List[Data]:
         # partitioning each datapoint in the dataset
@@ -52,7 +52,7 @@ class FlattenTokenizer(Tokenizer):
             seed = random.randint(0, 2**32 - 1)
             print("Using random seed for partitioning:", seed)
         dataset = self.partitioner.partition(dataset, seed=seed)
-        
+
         # tokenizing each datapoint in the dataset
         dataset = self._tokenize(dataset)
         return dataset
@@ -74,7 +74,7 @@ class FlattenTokenizer(Tokenizer):
         for i, data in enumerate(data_batch):
             new_result = untokenize_prediction_data(full_predictions[i], data, self.output_field_dim)
             result_list.append(new_result)
-        
+
         if keep_list:
             return result_list
 
@@ -88,7 +88,7 @@ def untokenize_prediction_data(full_predictions, data, pred_dim):
 def process_data_tuple(data_tokenizer_fn_name, datapoint, n_vertices_per_subdomain, n_tokens_per_sim):
     data_tokenizer_fn = data_tokenizer_registry[data_tokenizer_fn_name]
     data = data_tokenizer_fn(datapoint, n_vertices_per_subdomain)
-    
+
     cross_domain_padded_token, attn_mask = pad_subdomains(data.tokens, n_tokens_per_sim)
     data.tokens = cross_domain_padded_token.unsqueeze(0)
     data.attn_mask = attn_mask.unsqueeze(0)
@@ -104,7 +104,7 @@ def pad_subdomains(tokens, n_tokens_per_sim):
     token_dim = tokens.shape[1]
     n_sequence_tokens = tokens.shape[0]
     pad_token = torch.zeros((1, token_dim))
-    
+
     if n_tokens_per_sim > n_sequence_tokens:
         tokens = torch.cat([tokens, pad_token.tile((n_tokens_per_sim - n_sequence_tokens, 1))])
     else: assert n_tokens_per_sim == n_sequence_tokens, f"n_tokens_per_sim ({n_tokens_per_sim}) must be equal to the number of sequence tokens ({n_sequence_tokens}) or greater."

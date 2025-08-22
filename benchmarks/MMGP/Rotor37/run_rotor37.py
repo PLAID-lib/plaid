@@ -1,5 +1,5 @@
 import pickle
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 from datasets import load_dataset
@@ -25,7 +25,7 @@ out_scalars_names = ["Massflow", "Compression_ratio", "Efficiency"]
 
 def convert_data(
     ids: List[int],
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Converts a list of sample IDs into structured numpy arrays containing input and output data.
 

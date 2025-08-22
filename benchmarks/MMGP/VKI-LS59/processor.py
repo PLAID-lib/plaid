@@ -1,7 +1,7 @@
 # processor.py
 
 import numpy as np
-from typing import List, Any, Tuple, Optional
+from typing import List, Any, Optional
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from AM_POD import PolynomialManifoldApproximation
@@ -149,8 +149,8 @@ class OutputProcessor:
     of reduced fields and additional scalar outputs.
 
     Args:
-        mach_params (Tuple[int, int]): (polynomial_order, r) for 'mach' field.
-        nut_params  (Tuple[int, int]): (polynomial_order, r) for 'nut' field.
+        mach_params (tuple[int, int]): (polynomial_order, r) for 'mach' field.
+        nut_params  (tuple[int, int]): (polynomial_order, r) for 'nut' field.
         podtype (str): 'pod', 'poly', or 'am' reduction type.
         reg_ls (float): L2 regularization for least squares.
         reg_nt (Optional[float]): L2 regularization for Newton solver.
@@ -163,8 +163,8 @@ class OutputProcessor:
     """
     def __init__(
         self,
-        mach_params: Tuple[int, int],
-        nut_params: Tuple[int, int],
+        mach_params: tuple[int, int],
+        nut_params: tuple[int, int],
         podtype: str = 'am',
         reg_ls: float = 0.01,
         reg_nt: Optional[float] = None,
