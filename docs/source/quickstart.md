@@ -54,7 +54,7 @@ pip install -e .
 
 **Note**
 
-The development dependency [**Muscat**](https://muscat.readthedocs.io/) is available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) but not on [``PyPi``](https://pypi.org/project/muscat). A a consequence, using a conda environment is the only way to run tests and examples, and compile the documentation.
+The development dependency [**Muscat=2.5.0**](https://muscat.readthedocs.io/) is available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) but not on [``PyPi``](https://pypi.org/project/muscat). A a consequence, using a conda environment is the only way to run tests and examples, and compile the documentation.
 
 
 ### 2.2 Tests and examples
