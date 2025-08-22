@@ -1,9 +1,10 @@
-import h5py
 import math
-import torch
+
+import h5py
 import numpy as np
-from sklearn.neighbors import KDTree
+import torch
 from Muscat.Containers.MeshInspectionTools import ComputeMeshMinMaxLengthScale
+from sklearn.neighbors import KDTree
 
 
 def get_bandwidth(mesh) -> float:
@@ -31,7 +32,7 @@ def relative_rmse_field(
 def save_fields(filename: str, fields: list[torch.Tensor]) -> None:
     with h5py.File(filename, "w", libver="latest") as f:
         for idx, field in enumerate(fields):
-            dset = f.create_dataset(str(idx), data=field.cpu().numpy())
+            f.create_dataset(str(idx), data=field.cpu().numpy())
     return None
 
 

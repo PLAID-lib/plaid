@@ -1,14 +1,16 @@
-from .tokenizer import Tokenizer
-from .partitioners.partitioner import Partitioner
-import torch
-from torch.multiprocessing import Pool
-from typing import Optional, Literal
-from torch_geometric.data import Data, Batch
-from tqdm import tqdm
 import os
-from .flatten_data_tokenizers import data_tokenizer_registry
 import random
+from typing import Literal, Optional
+
+import torch
 from einops import rearrange
+from torch.multiprocessing import Pool
+from torch_geometric.data import Batch, Data
+from tqdm import tqdm
+
+from .flatten_data_tokenizers import data_tokenizer_registry
+from .partitioners.partitioner import Partitioner
+from .tokenizer import Tokenizer
 
 
 class FlattenTokenizer(Tokenizer):
@@ -31,7 +33,7 @@ class FlattenTokenizer(Tokenizer):
 
     def _tokenize(self, dataset: list[Data]) -> list[Data]:
         """Tokenizes the dataset using the specified partitioner."""
-        token_dim = dataset[0].x.shape[1] * self.n_vertices_per_subdomain
+        dataset[0].x.shape[1] * self.n_vertices_per_subdomain
         n_tokens_per_sim = max([datapoint.n_communities for datapoint in dataset])
 
         tokenized_dataset = []
@@ -104,7 +106,7 @@ class FlattenTokenizer(Tokenizer):
 
 
 def untokenize_prediction_data(full_predictions, data, pred_dim):
-    """Unflattens and removes padding-associated outputs"""
+    """Unflattens and removes padding-associated outputs."""
     return rearrange(full_predictions, "t n d -> (t n) d")[
         data.community_reverse_orders
     ]

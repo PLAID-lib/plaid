@@ -1,15 +1,11 @@
-from .tokenizer import Tokenizer
-from .partitioners.partitioner import Partitioner
-import torch
-from torch.multiprocessing import Pool
-from typing import Optional, Literal
-from torch_geometric.data import Data, Batch
-from tqdm import tqdm
-import os
-from .flatten_data_tokenizers import data_tokenizer_registry
 import random
+from typing import Literal
+
 from einops import rearrange
-from .flatten_tokenizer import FlattenTokenizer, process_data_tuple, pad_subdomains
+from torch_geometric.data import Data
+
+from .flatten_tokenizer import FlattenTokenizer, pad_subdomains, process_data_tuple
+from .partitioners.partitioner import Partitioner
 
 
 class TemporalFlattenTokenizer(FlattenTokenizer):

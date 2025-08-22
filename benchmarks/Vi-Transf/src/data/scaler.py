@@ -1,4 +1,5 @@
 from copy import deepcopy
+
 import torch
 from sklearn.preprocessing import StandardScaler as SklearnStandardScaler
 from torch_geometric.data import Data
@@ -30,8 +31,7 @@ class NoScaler(Scaler):
 
 
 class StandardScaler(Scaler):
-    """
-    StandardScaler class for scaling and inverse scaling of node features, output scalars, and output fields in
+    """StandardScaler class for scaling and inverse scaling of node features, output scalars, and output fields in
     PyTorch Geometric datasets.
 
     Args:
@@ -44,9 +44,7 @@ class StandardScaler(Scaler):
         self.scalers = [SklearnStandardScaler for _ in range(6)]
 
     def _reset(self):
-        """
-        Resets the scalers for node features, output scalars, and output fields.
-        """
+        """Resets the scalers for node features, output scalars, and output fields."""
         (
             self.xf_scaler,
             self.xs_scaler,
@@ -57,8 +55,7 @@ class StandardScaler(Scaler):
         ) = [s() for s in self.scalers]
 
     def fit(self, dataset: list[Data]):
-        """
-        Fits the scalers to the provided dataset. Each Data object in the dataset must have
+        """Fits the scalers to the provided dataset. Each Data object in the dataset must have
         `x` and `input_scalars`. `output_scalars` and `output_fields` are optional.
 
         Args:
@@ -98,8 +95,7 @@ class StandardScaler(Scaler):
                 self.edge_weight_scaler.partial_fit(data.edge_weight.reshape(-1, 1))
 
     def transform(self, dataset: list[Data]):
-        """
-        Transforms the dataset based on the fitted scalers.
+        """Transforms the dataset based on the fitted scalers.
 
         Args:
             dataset (list[Data]): A list of PyTorch Geometric Data objects to be transformed.
@@ -171,8 +167,7 @@ class StandardScaler(Scaler):
         return dataset
 
     def fit_transform(self, dataset: list[Data]):
-        """
-        Fits the scalers and then transforms the dataset. A combination of `fit` and `transform`.
+        """Fits the scalers and then transforms the dataset. A combination of `fit` and `transform`.
 
         Args:
             dataset (list[Data]): A list of PyTorch Geometric Data objects.
@@ -184,8 +179,7 @@ class StandardScaler(Scaler):
         return self.transform(dataset)
 
     def inverse_transform(self, dataset: list[Data] | Data):
-        """
-        Reverts the scaling transformation applied on the dataset, bringing the data back to its original scale.
+        """Reverts the scaling transformation applied on the dataset, bringing the data back to its original scale.
 
         Args:
             dataset (list[Data] | Data): A list or single PyTorch Geometric Data object to be inverse transformed.
@@ -290,8 +284,7 @@ class StandardScaler(Scaler):
         return dataset
 
     def inverse_transform_prediction(self, dataset: list[Data]):
-        """
-        Inverse transforms the output_fields_prediction attribute of the dataset.
+        """Inverse transforms the output_fields_prediction attribute of the dataset.
 
         Args:
             dataset (list[Data]): A list of PyTorch Geometric Data objects.

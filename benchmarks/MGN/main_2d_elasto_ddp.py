@@ -1,16 +1,15 @@
+import argparse
 import os
 import pickle
-import argparse
 import time
 
+import dgl
+import numpy as np
 import torch
 import torch.distributed as dist
+from dgl.dataloading import GraphDataLoader
 from torch.utils.data import Dataset
 from torch.utils.data.distributed import DistributedSampler
-
-import numpy as np
-import dgl
-from dgl.dataloading import GraphDataLoader
 
 from plaid.containers.dataset import Dataset as PlaidDataset
 from plaid.problem_definition import ProblemDefinition
@@ -18,7 +17,6 @@ from plaid.problem_definition import ProblemDefinition
 from data import *
 from utils import *
 from model import MeshGraphNet
-
 
 class ElastoDataset(Dataset):
     def __init__(
@@ -256,7 +254,7 @@ def inference(model, device, test_ds, scaler, args, rank):
                 uy_tp = torch.tensor(
                     sample.get_field("U_y", time=test_ds.time_steps[t + 1])
                 ).to(device)
-                u_tp = torch.stack([ux_tp, uy_tp], dim=-1)
+                torch.stack([ux_tp, uy_tp], dim=-1)
 
                 for i, fn in enumerate(["U_x", "U_y"]):
                     pred_dict[fn].append(u_pred[:, i].cpu().numpy())

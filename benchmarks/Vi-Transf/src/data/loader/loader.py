@@ -1,10 +1,12 @@
+import os
+from multiprocessing import Pool
+from typing import Union
+
+from torch_geometric.data import Data
+from tqdm import tqdm
+
 from plaid.containers.dataset import Dataset as PlaidDataset
 from plaid.problem_definition import ProblemDefinition
-from typing import Union
-from torch_geometric.data import Data
-import os
-from tqdm import tqdm
-from multiprocessing import Pool
 
 
 class Loader:
@@ -14,13 +16,11 @@ class Loader:
         task_split: Union[list[str], str, list[Union[list[str], str]]],
         processes_number: int = 1,
     ):
-        """
-        Initializes the Loader with the given parameters.
+        """Initializes the Loader with the given parameters.
 
         :param bridge: A callable that bridges the dataset loading process.
         :param task_split: The split(s) of the dataset to load.
         """
-
         self.bridge = bridge
         self.task_split: Union[list[str], str, list[Union[list[str], str]]] = task_split
         self.processes_number = processes_number
@@ -54,15 +54,13 @@ class Loader:
         return (dataset,)
 
     def load(self, verbose=False) -> tuple[ProblemDefinition, tuple[list[Data], ...]]:
-        """
-        Load and converts a plaid dataset to torch geometric format.
+        """Load and converts a plaid dataset to torch geometric format.
 
         Returns:
             tuple[ProblemDefinition, Union[list[Data], tuple[list[Data], ...]]]:
             A tuple containing the problem definition and either a single list of Data objects
             or a tuple of multiple lists of Data objects.
         """
-
         buffer = self.load_plaid(verbose=verbose)
         problem_definition = buffer[0]
         dataset_list = buffer[1:]
@@ -80,8 +78,7 @@ class Loader:
     def plaid_to_bridge(
         self, dataset: PlaidDataset, problem_definition: ProblemDefinition, verbose=True
     ) -> list[Data]:
-        """
-        Converts a Plaid dataset to PytorchGeometric dataset
+        """Converts a Plaid dataset to PytorchGeometric dataset.
 
         Args:
             dataset (plaid.containers.dataset.Dataset): Plaid dataset

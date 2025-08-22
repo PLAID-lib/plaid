@@ -1,7 +1,8 @@
 import time
-from joblib import Parallel, delayed
-import numpy as np
 from itertools import combinations_with_replacement
+
+import numpy as np
+from joblib import Parallel, delayed
 from scipy.optimize import least_squares
 
 
@@ -21,8 +22,7 @@ class PolynomialManifoldApproximation:
         n_jobs=-1,
         verbose=False,
     ):
-        """
-        This is an implementation of the paper https://arxiv.org/pdf/2306.13748
+        """This is an implementation of the paper https://arxiv.org/pdf/2306.13748.
 
         Initialize the class for polynomial manifold approximation.
 
@@ -69,8 +69,7 @@ class PolynomialManifoldApproximation:
         self.verbose = verbose
 
     def _center_data(self, S):
-        """
-        Center the data by subtracting the mean from each feature.
+        """Center the data by subtracting the mean from each feature.
 
         Parameters:
             S (np.ndarray): Snapshot matrix (N, Ns).
@@ -83,8 +82,7 @@ class PolynomialManifoldApproximation:
         return S - np.tile(self.mean, (1, S.shape[1]))
 
     def reduce(self, S):
-        """
-        POD projection
+        """POD projection.
 
         Parameters:
             S (np.ndarray): Snapshot matrix (N, Ns).
@@ -95,8 +93,7 @@ class PolynomialManifoldApproximation:
         return self.V.T @ S
 
     def _generate_combinations(self, coefficients):
-        """
-        Generate the W matrix containing all polynomial combinations up to the specified order.
+        """Generate the W matrix containing all polynomial combinations up to the specified order.
 
         Parameters:
             coefficients (np.ndarray): Coefficients from the projection (r, Ns).
@@ -149,8 +146,7 @@ class PolynomialManifoldApproximation:
         )
 
     def fit(self, S, S_test=None):
-        """
-        Fit the model by iteratively solving the optimization loop.
+        """Fit the model by iteratively solving the optimization loop.
 
         Parameters:
             S (np.ndarray): Snapshot matrix (N, Ns).
@@ -366,8 +362,7 @@ class PolynomialManifoldApproximation:
         return self
 
     def solve_orthogonal_procrustes(self, S_centered, SW):
-        """
-        Solve the Orthogonal Procrustes Problem: minimize ||S_centered - Omega SW||
+        """Solve the Orthogonal Procrustes Problem: minimize ||S_centered - Omega SW||
         subject to Omega^T Omega = I.
 
         Parameters:
@@ -377,7 +372,6 @@ class PolynomialManifoldApproximation:
         Returns:
             np.ndarray: Orthogonal matrix Omega of shape (N, Ns).
         """
-
         A = np.dot(S_centered, SW)
         U, _, Vt = np.linalg.svd(A, full_matrices=False)
         Omega = np.dot(U, Vt)
@@ -385,8 +379,7 @@ class PolynomialManifoldApproximation:
         return Omega
 
     def _levenberg_marquardt(self, S, Omega):
-        """
-        Solve the minimization problem ||S - Omega X(coefficients)|| using Levenberg-Marquardt,
+        """Solve the minimization problem ||S - Omega X(coefficients)|| using Levenberg-Marquardt,
         parallelizing the computation over columns of S.
 
         Parameters:
@@ -427,8 +420,7 @@ class PolynomialManifoldApproximation:
         return X_opt  # Return the optimized matrix
 
     def _residu(self, coefficients, S_col, Omega):
-        """
-        Compute the residual for a single column of S in the Levenberg-Marquardt optimization.
+        """Compute the residual for a single column of S in the Levenberg-Marquardt optimization.
 
         Parameters:
             coefficients (np.ndarray): Parameters to be optimized (in the reduced space).
@@ -450,8 +442,7 @@ class PolynomialManifoldApproximation:
         return resid.ravel()  # Return a 1D vector for least_squares
 
     def _jacobian(self, coefficients, S_col, Omega):
-        """
-        Compute the Jacobian matrix of the residual function.
+        """Compute the Jacobian matrix of the residual function.
 
         Parameters:
             coefficients (np.ndarray): Parameters to be optimized (in the reduced space).
@@ -491,8 +482,7 @@ class PolynomialManifoldApproximation:
             return J
 
     def _compute_combinations_jacobian(self, coefficients):
-        """
-        Compute the Jacobian of the polynomial combinations matrix W with respect to coefficients.
+        """Compute the Jacobian of the polynomial combinations matrix W with respect to coefficients.
 
         Parameters:
             coefficients (np.ndarray): Coefficients from the projection (r, Ns).

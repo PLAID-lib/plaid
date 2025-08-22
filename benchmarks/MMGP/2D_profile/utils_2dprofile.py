@@ -1,21 +1,18 @@
-import numpy as np
-
-from Muscat.FE.Spaces.FESpaces import LagrangeSpaceP0
-from Muscat.FE.DofNumbering import ComputeDofNumbering
-from Muscat.Containers import MeshInspectionTools as UMIP
-
-from Muscat.Containers.Filters.FilterObjects import ElementFilter
 import Muscat.Containers.MeshInspectionTools as UMIT
-from Muscat.Containers.MeshModificationTools import CleanLonelyNodes
-from Muscat.FE.Fields.FEField import FEField
-from Muscat.FE.FETools import PrepareFEComputation
-from Muscat.FE.SymPhysics import MechPhysics
-from Muscat.FE.SymWeakForm import GetField, GetScalarField, GetNormal
-from Muscat.FE.UnstructuredFeaSym import UnstructuredFeaSym
-from Muscat.FE.Fields.FieldTools import GetPointRepresentation
-from Muscat.Helpers.Timer import Timer
+import numpy as np
+from Muscat.Containers import MeshInspectionTools as UMIP
+from Muscat.Containers.Filters.FilterObjects import ElementFilter
 from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
-from Muscat.FE.FETools import ComputeNormalsAtPoints
+from Muscat.Containers.MeshModificationTools import CleanLonelyNodes
+from Muscat.FE.DofNumbering import ComputeDofNumbering
+from Muscat.FE.FETools import ComputeNormalsAtPoints, PrepareFEComputation
+from Muscat.FE.Fields.FEField import FEField
+from Muscat.FE.Fields.FieldTools import GetPointRepresentation
+from Muscat.FE.Spaces.FESpaces import LagrangeSpaceP0
+from Muscat.FE.SymPhysics import MechPhysics
+from Muscat.FE.SymWeakForm import GetField, GetNormal, GetScalarField
+from Muscat.FE.UnstructuredFeaSym import UnstructuredFeaSym
+from Muscat.Helpers.Timer import Timer
 
 
 class MecaPhysics_ESM(MechPhysics):
@@ -50,7 +47,7 @@ class MecaPhysics_ESM(MechPhysics):
         return (vectDist_symb.T * Normal) * ut.T * Normal
 
     def vectDistanceFormulation2(self):
-        Normal = GetNormal(self.spaceDimension)
+        GetNormal(self.spaceDimension)
         ut = self.primalTest
         vectDist_symb = GetField("vectDist", size=2)
         return vectDist_symb.T * ut
@@ -223,7 +220,7 @@ def ElasticProblem(
 
 
 def VectorialDistance_Muscat_preprocessed(mesh, tags, Tmesh_partition={}):
-    """calculate for each node on the boundary of mesh with tag X, its closet point (projection) on the boundary of Tmesh with tag X.
+    """Calculate for each node on the boundary of mesh with tag X, its closet point (projection) on the boundary of Tmesh with tag X.
 
     Args:
         mesh (Mesh): current mesh.
@@ -231,6 +228,7 @@ def VectorialDistance_Muscat_preprocessed(mesh, tags, Tmesh_partition={}):
         Tmesh_partition(dict): dict of dict. Tmesh_partition[tag] contains :
             Tmesh_partition[tag]["mesh"]:  subsampled mesh of Tmesh containing the elements of tag.
             Tmesh_partition[tag]["FEField"]: FE Field on Tmesh_partition[tag]["mesh"].
+
     Returns:
         _numpy array_: _the vector distance function_
     """

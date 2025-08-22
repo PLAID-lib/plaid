@@ -1,16 +1,17 @@
+import numpy as np
+import torch
+from torch_geometric.data import Data
+
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
-from torch_geometric.data import Data
-import numpy as np
+
 from .utils import faces_to_edges
-import torch
 
 
 def base_sample_to_geometric(
     sample: Sample, sample_id: int, problem_definition: ProblemDefinition
 ) -> Data:
-    """
-    Converts a Plaid sample to PytorchGeometric Data object
+    """Converts a Plaid sample to PytorchGeometric Data object.
 
     Args:
         sample (plaid.containers.sample.Sample): data sample
@@ -18,7 +19,6 @@ def base_sample_to_geometric(
     Returns:
         Data: the converted data sample
     """
-
     vertices = sample.get_vertices()
     position_field_names = ["x", "y"] if vertices.shape[1] == 2 else ["x", "y", "z"]
     edge_index = []

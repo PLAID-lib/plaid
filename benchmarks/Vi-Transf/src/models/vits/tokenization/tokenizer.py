@@ -1,6 +1,7 @@
-import torch.nn as nn
-from torch_geometric.data import Data, Batch
 from typing import Optional
+
+import torch.nn as nn
+from torch_geometric.data import Batch, Data
 
 
 class Tokenizer(nn.Module):

@@ -1,6 +1,6 @@
-import torch
 import torch.nn as nn
-from torch_geometric.data import Data, Batch
+from torch_geometric.data import Batch, Data
+
 from plaid.containers.dataset import Dataset as PlaidDataset
 
 

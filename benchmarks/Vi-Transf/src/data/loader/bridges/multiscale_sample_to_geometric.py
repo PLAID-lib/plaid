@@ -1,10 +1,12 @@
-from plaid.containers.sample import Sample
-from plaid.problem_definition import ProblemDefinition
-from torch_geometric.data import Data
 import numpy as np
-from .utils import faces_to_edges
 import torch
 from sklearn.neighbors import KDTree
+from torch_geometric.data import Data
+
+from plaid.containers.sample import Sample
+from plaid.problem_definition import ProblemDefinition
+
+from .utils import faces_to_edges
 
 
 def get_distance_to_ids(vertices, boundary_ids):
@@ -24,8 +26,7 @@ def get_distance_to_ids(vertices, boundary_ids):
 def multiscale_sample_to_geometric(
     sample: Sample, sample_id: int, problem_definition: ProblemDefinition
 ) -> Data:
-    """
-    Converts a Plaid sample to PytorchGeometric Data object
+    """Converts a Plaid sample to PytorchGeometric Data object.
 
     Args:
         sample (plaid.containers.sample.Sample): data sample
@@ -33,7 +34,6 @@ def multiscale_sample_to_geometric(
     Returns:
         Data: the converted data sample
     """
-
     vertices = sample.get_vertices()
     edge_index = []
     faces = sample.get_elements()["TRI_3"]

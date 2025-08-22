@@ -1,8 +1,9 @@
-import torch
-from torch_geometric.data import Data
 import numpy as np
-from .morton import compute_morton_order
+import torch
 from einops import rearrange
+from torch_geometric.data import Data
+
+from .morton import compute_morton_order
 
 
 def flatten_tokenizer(

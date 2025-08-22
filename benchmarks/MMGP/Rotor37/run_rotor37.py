@@ -1,5 +1,5 @@
-import time
 import pickle
+import time
 
 import numpy as np
 from datasets import load_dataset
@@ -25,8 +25,7 @@ out_scalars_names = ["Massflow", "Compression_ratio", "Efficiency"]
 def convert_data(
     ids: list[int],
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Converts a list of sample IDs into structured numpy arrays containing input and output data.
+    """Converts a list of sample IDs into structured numpy arrays containing input and output data.
 
     Parameters:
     ----------
@@ -48,7 +47,6 @@ def convert_data(
     Y_temperature : np.ndarray
         Array containing field values for Temperature across samples.
     """
-
     X_scalars = []
     Y_scalars = []
     Y_density = []
@@ -89,8 +87,7 @@ def convert_data(
 
 
 class GPyRegressor(BaseEstimator, RegressorMixin):
-    """
-    Custom Gaussian Process Regressor using GPy library.
+    """Custom Gaussian Process Regressor using GPy library.
 
     Args:
         normalizer (bool): Whether to normalize the output.
@@ -107,8 +104,7 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
         self.num_restarts = num_restarts
 
     def fit(self, X, y):
-        """
-        Fit the Gaussian Process model to the data.
+        """Fit the Gaussian Process model to the data.
 
         Args:
             X (ndarray): Input features of shape (n_samples, n_features).
@@ -137,8 +133,7 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X, return_var: bool = False):
-        """
-        Predict using the Gaussian Process model.
+        """Predict using the Gaussian Process model.
 
         Args:
             X (ndarray): Input features of shape (n_samples, n_features).
@@ -158,8 +153,7 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
 
 
 def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
-    """
-    Constructs a regression pipeline that includes:
+    """Constructs a regression pipeline that includes:
     - PCA transformation on input features.
     - Standard scaling of input features.
     - Optional PCA transformation on the output.

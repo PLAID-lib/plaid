@@ -1,11 +1,11 @@
 import os
 import time
-import torch
+
 import pandas as pd
+import torch
 from data import GraphDataset
 from dgl.dataloading import GraphDataLoader
-from utils import save_fields, relative_rmse_field
-
+from utils import save_fields
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

@@ -1,22 +1,25 @@
-import torch
-import hydra
-from omegaconf import OmegaConf
-from torch.utils.tensorboard import SummaryWriter
+import datetime
 import logging
 import os
+import pickle
+import time
+
+import hydra
+import torch
+from omegaconf import OmegaConf
+from sklearn.model_selection import train_test_split
+from torch.utils.tensorboard import SummaryWriter
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader
-from sklearn.model_selection import train_test_split
+
 from src.data.utils import split_temporal_pyg_train_test
-import time
-import datetime
-import pickle
 
 
 def seed_everything(seed: int):
+    import random
+
     import numpy as np
     import torch
-    import random
 
     random.seed(seed)
     np.random.seed(seed)

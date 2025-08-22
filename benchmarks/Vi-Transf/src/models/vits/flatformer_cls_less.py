@@ -1,13 +1,15 @@
-from ..model import BaseModel
+import random
+from typing import Callable, Optional, Union
+
 import torch
 import torch.nn as nn
+from einops import rearrange
 from torch import Tensor
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
-from typing import Union, Callable, Optional
-from torch_geometric.data import Data, Batch
+from torch_geometric.data import Batch, Data
+
+from ..model import BaseModel
 from .tokenization.tokenizer import Tokenizer
-from einops import rearrange
-import random
 
 # B: Batch size
 # T: Number of tokens

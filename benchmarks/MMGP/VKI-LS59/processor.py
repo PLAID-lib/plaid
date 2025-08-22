@@ -1,15 +1,15 @@
 # processor.py
 
-import numpy as np
 from typing import Any, Optional
+
+import numpy as np
+from AM_POD import PolynomialManifoldApproximation
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-from AM_POD import PolynomialManifoldApproximation
 
 
 class InputProcessor:
-    """
-    Preprocesses input data by applying PCA to the mesh node coordinates
+    """Preprocesses input data by applying PCA to the mesh node coordinates
     and standard-scaling the resulting PCA components concatenated with
     additional input scalars.
 
@@ -26,8 +26,7 @@ class InputProcessor:
         self.node_shape_: tuple = None  # to reconstruct original shape
 
     def fit(self, inputs: dict[str, list[np.ndarray]]) -> "InputProcessor":
-        """
-        Fit the PCA on flattened node arrays and fit a StandardScaler
+        """Fit the PCA on flattened node arrays and fit a StandardScaler
         on the concatenation of PCA components + the two input scalars.
 
         Args:
@@ -71,8 +70,7 @@ class InputProcessor:
         return self
 
     def transform(self, inputs: dict[str, list[np.ndarray]]) -> np.ndarray:
-        """
-        Apply the fitted PCA and StandardScaler to new data.
+        """Apply the fitted PCA and StandardScaler to new data.
 
         Args:
             inputs: dict with same structure as in fit().
@@ -98,8 +96,7 @@ class InputProcessor:
         return self.scaler.transform(X_combined)
 
     def fit_transform(self, inputs: dict[str, list[np.ndarray]]) -> np.ndarray:
-        """
-        Fit PCA and scaler on inputs, then transform and return processed data in one step.
+        """Fit PCA and scaler on inputs, then transform and return processed data in one step.
 
         Args:
             inputs: dict with same structure as in fit().
@@ -111,8 +108,7 @@ class InputProcessor:
         return self.transform(inputs)
 
     def inverse_transform(self, X_transformed: np.ndarray) -> dict[str, list[Any]]:
-        """
-        Reconstruct approximate original nodes and scalars from the processed data.
+        """Reconstruct approximate original nodes and scalars from the processed data.
 
         Args:
             X_transformed: Array of shape (n_samples, n_pca_components + 2)
@@ -146,8 +142,7 @@ class InputProcessor:
 
 
 class OutputProcessor:
-    """
-    Preprocesses outputs by reducing mesh fields 'mach' and 'nut' via
+    """Preprocesses outputs by reducing mesh fields 'mach' and 'nut' via
     PolynomialManifoldApproximation and standard-scaling the concatenation
     of reduced fields and additional scalar outputs.
 
@@ -218,9 +213,7 @@ class OutputProcessor:
         outputs_train: dict[str, list[Any]],
         outputs_test: dict[str, list[Any]] | None = None,
     ) -> "OutputProcessor":
-        """
-        Fit PMA models on train/test data and a StandardScaler on combined features.
-        """
+        """Fit PMA models on train/test data and a StandardScaler on combined features."""
         # Prepare field snapshots (samples x features)
         S_train_mach = np.stack(outputs_train["mach"], axis=0)
         S_train_nut = np.stack(outputs_train["nut"], axis=0)
@@ -249,9 +242,7 @@ class OutputProcessor:
         return self
 
     def transform(self, outputs: dict[str, list[Any]]) -> np.ndarray:
-        """
-        Transform outputs using fitted PMA and scaler.
-        """
+        """Transform outputs using fitted PMA and scaler."""
         S_mach = np.stack(outputs["mach"], axis=0)
         S_nut = np.stack(outputs["nut"], axis=0)
         X_mach = self.pma_mach.transform(S_mach)
@@ -266,16 +257,12 @@ class OutputProcessor:
         outputs_train: dict[str, list[Any]],
         outputs_test: dict[str, list[Any]] | None = None,
     ) -> np.ndarray:
-        """
-        Fit PMA and scaler then transform train outputs.
-        """
+        """Fit PMA and scaler then transform train outputs."""
         self.fit(outputs_train, outputs_test)
         return self.transform(outputs_train)
 
     def inverse_transform(self, X_transformed: np.ndarray) -> dict[str, list[Any]]:
-        """
-        Inverse transform to reconstruct approximate original outputs.
-        """
+        """Inverse transform to reconstruct approximate original outputs."""
         X_comb = self.scaler.inverse_transform(X_transformed)
         n1 = self.r_mach
         n2 = self.r_nut

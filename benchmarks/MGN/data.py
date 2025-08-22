@@ -1,21 +1,21 @@
-import os
-import dgl
 import csv
-import torch
-import numpy as np
-from rich.progress import track
-from dgl.data import DGLDataset
-from dgl.dataloading import GraphDataLoader
-from torch.nn.functional import one_hot
-from plaid.containers.sample import Sample
-from sklearn.preprocessing import StandardScaler
-from Muscat.FE.Fields.FEField import FEField
-from Muscat.Bridges.CGNSBridge import CGNSToMesh
-from Muscat.FE.FETools import PrepareFEComputation
+
+import dgl
 import Muscat.Containers.ElementsDescription as ED
-from Muscat.Containers.Filters import FilterObjects as FO
+import numpy as np
+import torch
+from dgl.data import DGLDataset
+from Muscat.Bridges.CGNSBridge import CGNSToMesh
 from Muscat.Containers import MeshModificationTools as MMT
+from Muscat.Containers.Filters import FilterObjects as FO
 from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
+from Muscat.FE.FETools import PrepareFEComputation
+from Muscat.FE.Fields.FEField import FEField
+from rich.progress import track
+from sklearn.preprocessing import StandardScaler
+from torch.nn.functional import one_hot
+
+from plaid.containers.sample import Sample
 
 
 def tri_cells_to_edges(cells):

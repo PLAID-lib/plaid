@@ -1,11 +1,12 @@
+import numpy as np
+import torch
+from torch_geometric.data import Data
+
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
-from torch_geometric.data import Data
-import numpy as np
-from .utils import faces_to_edges
-import torch
 
 from .multiscale_sample_to_geometric import get_distance_to_ids
+from .utils import faces_to_edges
 
 
 def profile_sample_to_geometric(

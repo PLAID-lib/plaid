@@ -1,11 +1,11 @@
-import torch
-import torch.nn as nn
-from torch import Tensor
-from dgl import DGLGraph
 from typing import Union
-from physicsnemo.models.module import Module
+
+import torch
+from dgl import DGLGraph
 from physicsnemo.models.gnn_layers.mesh_graph_mlp import MeshGraphMLP
 from physicsnemo.models.meshgraphnet.meshgraphnet import MeshGraphNetProcessor, MetaData
+from physicsnemo.models.module import Module
+from torch import Tensor
 
 
 class MeshGraphNet(Module):

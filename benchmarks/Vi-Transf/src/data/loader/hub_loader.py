@@ -1,8 +1,10 @@
-from .loader import Loader
+from datasets import load_dataset
+
+from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
 from plaid.containers.dataset import Dataset as PlaidDataset
 from plaid.problem_definition import ProblemDefinition
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
-from datasets import load_dataset
+
+from .loader import Loader
 
 
 class HubLoader(Loader):
@@ -14,8 +16,7 @@ class HubLoader(Loader):
         cache_dir: str,
         processes_number: int = 1,
     ):
-        """
-        Initializes the HubLoader with the given parameters.
+        """Initializes the HubLoader with the given parameters.
 
         :param bridge: A callable that bridges the dataset loading process.
         :param dataset_dir: The directory where the dataset is stored.
@@ -35,10 +36,10 @@ class HubLoader(Loader):
         except Exception as e:
             print(f"Error loading dataset from Hugging Face: {e}")
             print(
-                f"Please refer to the documentation (https://huggingface.co/PLAID-datasets)"
+                "Please refer to the documentation (https://huggingface.co/PLAID-datasets)"
             )
             print(
-                f"Provide a correct dataset_name with format 'PLAID-datasets/DATASET'."
+                "Provide a correct dataset_name with format 'PLAID-datasets/DATASET'."
             )
             raise e
 

@@ -1,13 +1,11 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
 
 class CVResults:
     def __init__(self, records: list):
-        """
-        records: list of dicts with keys 'poly_order','r','fold','error'
-        """
+        """records: list of dicts with keys 'poly_order','r','fold','error'."""
         import pandas as pd
 
         self.df = pd.DataFrame(records)
@@ -47,8 +45,7 @@ def plot_mach_nut(
     figsize: tuple = (20, 20),
     levels: int = 200,
 ) -> tuple:
-    """
-    Plot side-by-side contour plots for 'mach' and 'nut' fields of a given sample,
+    """Plot side-by-side contour plots for 'mach' and 'nut' fields of a given sample,
     and their prediction errors below with a symmetric red-blue colormap (white at zero).
 
     Args:
@@ -154,8 +151,7 @@ def plot_scalars_pred_vs_true(
     marker: str = "o",
     diagonal_color: str = "r",
 ) -> tuple:
-    """
-    Plot predicted vs true scatter for each scalar with a diagonal reference line.
+    """Plot predicted vs true scatter for each scalar with a diagonal reference line.
 
     Args:
         outputs_true (dict): True scalar values, keys = scalar names, values = lists of floats or scalars

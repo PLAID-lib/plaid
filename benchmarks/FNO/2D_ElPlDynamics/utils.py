@@ -1,7 +1,8 @@
-from plaid.containers.dataset import Dataset as Plaid_Dataset
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+
+from plaid.containers.dataset import Dataset as Plaid_Dataset
 
 
 class TemporalFractureReader(Dataset):
@@ -9,7 +10,7 @@ class TemporalFractureReader(Dataset):
         """Class used for autoregressive methods, the goal is to predict the next timestep give the previous timestep
         the time step of our simulation is very small thus one might want to predict between longer time intervals
         The dataset projects all meshes on a reference rectangular mesh so that all samples in the dataset get the same size
-        THe reference mesh is taken rectangular so as to use the data with an FNO or a variant
+        THe reference mesh is taken rectangular so as to use the data with an FNO or a variant.
 
         Parameters
         ----------

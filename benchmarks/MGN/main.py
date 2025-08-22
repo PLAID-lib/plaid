@@ -1,9 +1,7 @@
-import time
 from configs import parse_args
 from data import load_datasets
 from model import create_model
 from train import train
-
 
 if __name__ == "__main__":
     args = parse_args()

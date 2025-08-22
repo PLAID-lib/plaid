@@ -1,16 +1,17 @@
 import pickle
 from pathlib import Path
-from typing import Literal, Any, Optional
+from typing import Any, Literal, Optional
+
+from datasets import load_dataset
 from sklearn.model_selection import KFold
-from datasets import load_dataset, load_from_disk
+
 from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
 
 
 def extract_split_data(
     split: Literal["train", "test", "traintest"],
 ) -> tuple[dict[str, list[Any]], dict[str, list[Any]]]:
-    """
-    Extract input and output dictionaries for all samples in a given split of a Plaid dataset.
+    """Extract input and output dictionaries for all samples in a given split of a Plaid dataset.
 
     Args:
         dataset_dir (str): Path to the directory containing the 'huggingface' subfolder.
@@ -85,8 +86,7 @@ def make_kfold_splits(
         dict[str, list[Any]],  # val outputs
     ]
 ]:
-    """
-    Split inputs and outputs into K folds for cross‑validation.
+    """Split inputs and outputs into K folds for cross‑validation.
 
     Args:
         inputs (dict[str, list[Any]]):
@@ -135,8 +135,7 @@ def make_kfold_splits(
 def dump_predictions(
     outputs_pred: dict[str, list[Any]], filename: str = "predictions.pkl"
 ) -> None:
-    """
-    Dump predicted outputs to a pickle file with the same structure as the reference.
+    """Dump predicted outputs to a pickle file with the same structure as the reference.
 
     Args:
         outputs_pred (dict[str, list[Any]]):

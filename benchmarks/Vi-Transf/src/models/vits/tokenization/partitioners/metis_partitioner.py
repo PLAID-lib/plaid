@@ -1,20 +1,21 @@
-from .partitioner import Partitioner
-from torch_geometric.data import Data
+import random
+from typing import Optional
+
 import numpy as np
 import pymetis
-from pymetis import Options
-from typing import Optional
-import random
-from tqdm import tqdm
-from torch.multiprocessing import Pool, cpu_count
 import torch
-from functools import partial
+from pymetis import Options
+from torch.multiprocessing import Pool, cpu_count
+from torch_geometric.data import Data
+from tqdm import tqdm
+
+from .partitioner import Partitioner
 
 
 def npoints_to_nparts(
     npoints: int, n_sim_points: int, absolute_tol: int, relative_tol: float
 ) -> int:
-    """computes the number of subdomains in a simulation, with a tolerance given the number of points per subdomains we want and the number of points in the simulation"""
+    """Computes the number of subdomains in a simulation, with a tolerance given the number of points per subdomains we want and the number of points in the simulation."""
     nparts = n_sim_points // npoints + 1
     nparts = int(np.ceil((1 + relative_tol) * nparts + absolute_tol))
 
@@ -22,8 +23,7 @@ def npoints_to_nparts(
 
 
 def torch_geometric_to_metis_format(data: Data):
-    """
-    Convert torch-geometric graph data to a Pythonic adjacency list format suitable for METIS part_graph.
+    """Convert torch-geometric graph data to a Pythonic adjacency list format suitable for METIS part_graph.
 
     Args:
         data (Data): A torch-geometric Data object containing:
@@ -33,7 +33,6 @@ def torch_geometric_to_metis_format(data: Data):
         list[list[int]]: A Pythonic adjacency list, where adjacency[i] is a list of
         nodes adjacent to node i.
     """
-
     num_nodes = data.num_nodes
     adjacency = [[] for _ in range(num_nodes)]
 

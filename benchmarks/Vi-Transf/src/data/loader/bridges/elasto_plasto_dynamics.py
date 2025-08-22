@@ -1,16 +1,16 @@
+import warnings
+
+import numpy as np
+import torch
+from Muscat.Bridges.CGNSBridge import CGNSToMesh
+from Muscat.Containers import MeshModificationTools as MMT
+from Muscat.Containers.Filters import FilterObjects as FO
+from torch_geometric.data import Data
+
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
-from torch_geometric.data import Data
-import numpy as np
-from src.data.loader.bridges.utils import faces_to_edges
 from src.data.loader.bridges.multiscale_sample_to_geometric import get_distance_to_ids
-import torch
-
-from Muscat.Containers import MeshModificationTools as MMT
-from Muscat.Bridges.CGNSBridge import CGNSToMesh
-from Muscat.Containers.Filters import FilterObjects as FO
-
-import warnings
+from src.data.loader.bridges.utils import faces_to_edges
 
 # warnings.filterwarnings("ignore", module="Muscat")
 # warnings.filterwarnings("ignore", category=UserWarning)
@@ -20,8 +20,7 @@ warnings.filterwarnings("ignore")
 def elasto_plasto_dynamics_sample_to_geometric(
     sample: Sample, sample_id: int, problem_definition: ProblemDefinition
 ) -> Data:
-    """
-    Converts a Plaid sample to PytorchGeometric Data object
+    """Converts a Plaid sample to PytorchGeometric Data object.
 
     Args:
         sample (plaid.containers.sample.Sample): data sample
@@ -29,7 +28,6 @@ def elasto_plasto_dynamics_sample_to_geometric(
     Returns:
         Data: the converted data sample
     """
-
     vertices = sample.get_vertices()
 
     edge_index = []
