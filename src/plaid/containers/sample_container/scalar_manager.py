@@ -3,7 +3,7 @@
 from plaid.types import ScalarType
 
 
-class ScalarManager:
+class ScalarCollection:
     """Manager object for scalars."""
 
     def __init__(self):
