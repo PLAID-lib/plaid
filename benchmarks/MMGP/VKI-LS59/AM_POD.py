@@ -388,7 +388,7 @@ class PolynomialManifoldApproximation:
                             where p is the number of polynomial combinations.
         """
         coeff_dim = coefficients.shape[0]  # Number of coefficients (r)
-        combs = []  # list to store combinations
+        combs = []  # store combinations
 
         # Generate all polynomial combinations
         for deg in range(2, self.polynomial_order + 1):

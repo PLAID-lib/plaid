@@ -1060,7 +1060,7 @@ class Sample(BaseModel):
             time (float, optional): The time at which to check for the Zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-            list[str]: list of Zone names in Base named `base_name`, empty if there is none or if the Base doesn't exist.
+            list[str]: List of Zone names in Base named `base_name`, empty if there is none or if the Base doesn't exist.
         """
         zone_paths = []
 
@@ -1948,7 +1948,7 @@ class Sample(BaseModel):
                 A dictionary encoding the feature type and its relevant parameters.
 
         Returns:
-            list[FeatureType]: list of corresponding feature instance retrieved via the appropriate accessor.
+            list[FeatureType]: List of corresponding feature instance retrieved via the appropriate accessor.
         """
         all_features_info = [
             get_feature_type_and_details_from(feat_id)

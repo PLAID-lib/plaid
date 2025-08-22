@@ -29,7 +29,7 @@ def get_sample_ids(savedir: Union[str, Path]) -> list[int]:
         savedir (Union[str,Path]): The path to the directory where sample files are stored.
 
     Returns:
-        list[int]: list of sample ids.
+        list[int]: List of sample ids.
     """
     savedir = Path(savedir)
     return sorted(

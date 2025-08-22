@@ -283,7 +283,7 @@ class Stats:
         then stats will be computed over all values of the field/time_series.
 
         Args:
-            samples (Union[list[Sample], Dataset]): list of samples or dataset to process
+            samples (Union[list[Sample], Dataset]): List of samples or dataset to process
 
         Raises:
             TypeError: If samples is not a list[Sample] or Dataset
@@ -324,7 +324,7 @@ class Stats:
         """Get computed statistics for specified data identifiers.
 
         Args:
-            identifiers (list[str], optional): list of data identifiers to retrieve.
+            identifiers (list[str], optional): List of data identifiers to retrieve.
                 If None, returns statistics for all identifiers.
 
         Returns:
@@ -349,7 +349,7 @@ class Stats:
         """Get list of data identifiers with computed statistics.
 
         Returns:
-            list[str]: list of data identifiers
+            list[str]: List of data identifiers
         """
         return sorted(self._stats.keys())
 

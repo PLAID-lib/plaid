@@ -346,7 +346,7 @@ class Dataset(object):
         """Return list of sample ids.
 
         Returns:
-            list[int]: list of sample ids.
+            list[int]: List of sample ids.
         """
         return list(self._samples.keys())
 
@@ -358,7 +358,7 @@ class Dataset(object):
             ids (list[int], optional): Select scalars depending on sample id. If None, take all samples. Defaults to None.
 
         Returns:
-            list[str]: list of all scalars names
+            list[str]: List of all scalars names
         """
         if ids is not None and len(set(ids)) != len(ids):
             logger.warning("Provided ids are not unique")
@@ -380,7 +380,7 @@ class Dataset(object):
             ids (list[int], optional): Select time series depending on sample id. If None, take all samples. Defaults to None.
 
         Returns:
-            list[str]: list of all time series names
+            list[str]: List of all time series names
         """
         if ids is not None and len(set(ids)) != len(ids):
             logger.warning("Provided ids are not unique")
@@ -409,7 +409,7 @@ class Dataset(object):
             base_name (str, optional): If provided, only field names containing this base name will be included. Defaults to None.
 
         Returns:
-            list[str]: list of all fields names.
+            list[str]: List of all fields names.
         """
         if ids is not None and len(set(ids)) != len(ids):  # pragma: no cover
             logger.warning("Provided ids are not unique")
