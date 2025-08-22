@@ -28,7 +28,7 @@ def prepare_datasets(
         verbose (bool, optional): Verbose mode. Defaults to False.
 
     Returns:
-        Tuple[Dict[str, List[float]], Dict[str, List[float]], List[str]]: A tuple containing dictionaries of reference and predicted scalar values, and a list of scalar names.
+        tuple[dict[str, list[float]], dict[str, list[float]], list[str]]: A tuple containing dictionaries of reference and predicted scalar values, and a list of scalar names.
     """
     assert len(ref_dataset) == len(pred_dataset), (
         "Reference and predicted dataset lengths differ"

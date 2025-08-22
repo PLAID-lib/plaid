@@ -7,7 +7,7 @@
 #
 #
 
-from typing import Tuple, Union
+from typing import Union
 
 try:
     from typing import TypeAlias  # Python 3.10+
@@ -20,7 +20,7 @@ from plaid.types.common import Array
 ScalarType: TypeAlias = Union[float, int]
 FieldType: TypeAlias = Array
 TimeSequenceType: TypeAlias = Array
-TimeSeriesType: TypeAlias = Tuple[TimeSequenceType, FieldType]
+TimeSeriesType: TypeAlias = tuple[TimeSequenceType, FieldType]
 
 # Feature data types
 FeatureType: TypeAlias = Union[ScalarType, FieldType, TimeSeriesType, Array]

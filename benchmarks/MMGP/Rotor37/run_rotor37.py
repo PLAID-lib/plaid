@@ -1,18 +1,17 @@
 import pickle
-from typing import List, Tuple
+import time
 
 import numpy as np
 from datasets import load_dataset
 from GPy.kern import RBF, Matern32, Matern52
 from GPy.models import GPRegression
-from plaid.containers.sample import Sample
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import time
 
+from plaid.containers.sample import Sample
 
 dataset = load_dataset("PLAID-datasets/Rotor37", split="all_samples")
 
@@ -24,15 +23,14 @@ out_scalars_names = ["Massflow", "Compression_ratio", "Efficiency"]
 
 
 def convert_data(
-    ids: List[int],
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Converts a list of sample IDs into structured numpy arrays containing input and output data.
+    ids: list[int],
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Converts a list of sample IDs into structured numpy arrays containing input and output data.
 
     Parameters:
     ----------
-    ids : List[int]
-        List of sample indices to retrieve from the dataset.
+    ids : list[int]
+        list of sample indices to retrieve from the dataset.
 
     Returns:
     -------
@@ -49,7 +47,6 @@ def convert_data(
     Y_temperature : np.ndarray
         Array containing field values for Temperature across samples.
     """
-
     X_scalars = []
     Y_scalars = []
     Y_density = []
@@ -90,8 +87,7 @@ def convert_data(
 
 
 class GPyRegressor(BaseEstimator, RegressorMixin):
-    """
-    Custom Gaussian Process Regressor using GPy library.
+    """Custom Gaussian Process Regressor using GPy library.
 
     Args:
         normalizer (bool): Whether to normalize the output.
@@ -108,8 +104,7 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
         self.num_restarts = num_restarts
 
     def fit(self, X, y):
-        """
-        Fit the Gaussian Process model to the data.
+        """Fit the Gaussian Process model to the data.
 
         Args:
             X (ndarray): Input features of shape (n_samples, n_features).
@@ -138,8 +133,7 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X, return_var: bool = False):
-        """
-        Predict using the Gaussian Process model.
+        """Predict using the Gaussian Process model.
 
         Args:
             X (ndarray): Input features of shape (n_samples, n_features).
@@ -159,8 +153,7 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
 
 
 def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
-    """
-    Constructs a regression pipeline that includes:
+    """Constructs a regression pipeline that includes:
     - PCA transformation on input features.
     - Standard scaling of input features.
     - Optional PCA transformation on the output.
@@ -181,9 +174,7 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
         (
             "pca",
             PCA(n_components=40),
-            np.arange(
-                2, 2 + nodes_train.shape[-1]
-            ),
+            np.arange(2, 2 + nodes_train.shape[-1]),
         )
     ]
 
@@ -219,8 +210,6 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
 
 
 if __name__ == "__main__":
-
-
     start = time.time()
 
     (
@@ -231,7 +220,6 @@ if __name__ == "__main__":
         Y_pressure_train,
         Y_temperature_train,
     ) = convert_data(ids_train)
-
 
     # Train
     X_train = np.concatenate([X_scalars_train, nodes_train], axis=-1)
@@ -249,7 +237,7 @@ if __name__ == "__main__":
     pipeline_pressure = build_pipeline(apply_output_pca=True)
     pipeline_pressure.fit(X_train, Y_pressure_train)
 
-    print("duration train:", time.time()-start)
+    print("duration train:", time.time() - start)
     start = time.time()
 
     # Predict
@@ -281,7 +269,7 @@ if __name__ == "__main__":
     y_pred = pipeline_pressure.predict(X_test)
     predictions["Pressure"] = y_pred
 
-    print("duration test:", time.time()-start)
+    print("duration test:", time.time() - start)
     start = time.time()
 
     # dump

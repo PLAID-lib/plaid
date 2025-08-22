@@ -1,11 +1,11 @@
+from typing import Union
+
 import torch
-import torch.nn as nn
-from torch import Tensor
 from dgl import DGLGraph
-from typing import List, Union
-from physicsnemo.models.module import Module
 from physicsnemo.models.gnn_layers.mesh_graph_mlp import MeshGraphMLP
 from physicsnemo.models.meshgraphnet.meshgraphnet import MeshGraphNetProcessor, MetaData
+from physicsnemo.models.module import Module
+from torch import Tensor
 
 
 class MeshGraphNet(Module):
@@ -30,11 +30,11 @@ class MeshGraphNet(Module):
     ):
         super().__init__(meta=MetaData())
 
-        if activation=="relu":
+        if activation == "relu":
             activation_fn = torch.nn.ReLU()
-        elif activation=="elu":
+        elif activation == "elu":
             activation_fn = torch.nn.ELU()
-        elif activation=="leaky":
+        elif activation == "leaky":
             activation_fn = torch.nn.LeakyReLU(0.05)
         else:
             raise ValueError()
@@ -83,32 +83,34 @@ class MeshGraphNet(Module):
         self,
         node_features: Tensor,
         edge_features: Tensor,
-        graph: Union[DGLGraph, List[DGLGraph]],
+        graph: Union[DGLGraph, list[DGLGraph]],
     ) -> Tensor:
-
         edge_features = self.edge_encoder(edge_features)
         node_features = self.node_encoder(node_features)
         x = self.processor(node_features, edge_features, graph)
         x = self.node_decoder(x)
         return x
 
+
 def create_model(args):
-    model = MeshGraphNet(input_dim_nodes=args.input_dim_nodes,
-                         input_dim_edges=args.input_dim_edges,
-                         output_dim=args.output_dim,
-                         processor_size=args.processor_size,
-                         num_layers_node_processor=args.num_layers_node_processor,
-                         num_layers_edge_processor=args.num_layers_edge_processor,
-                         hidden_dim_node_encoder=args.hidden_dim_node_encoder,
-                         num_layers_node_encoder=args.num_layers_node_encoder,
-                         hidden_dim_edge_encoder=args.hidden_dim_edge_encoder,
-                         num_layers_edge_encoder=args.num_layers_edge_encoder,
-                         hidden_dim_node_decoder=args.hidden_dim_node_decoder,
-                         num_layers_node_decoder=args.num_layers_node_decoder,
-                         aggregation=args.aggregation,
-                         do_concat_trick=False,
-                         num_processor_checkpoint_segments=0,
-                         activation=args.activation)
+    model = MeshGraphNet(
+        input_dim_nodes=args.input_dim_nodes,
+        input_dim_edges=args.input_dim_edges,
+        output_dim=args.output_dim,
+        processor_size=args.processor_size,
+        num_layers_node_processor=args.num_layers_node_processor,
+        num_layers_edge_processor=args.num_layers_edge_processor,
+        hidden_dim_node_encoder=args.hidden_dim_node_encoder,
+        num_layers_node_encoder=args.num_layers_node_encoder,
+        hidden_dim_edge_encoder=args.hidden_dim_edge_encoder,
+        num_layers_edge_encoder=args.num_layers_edge_encoder,
+        hidden_dim_node_decoder=args.hidden_dim_node_decoder,
+        num_layers_node_decoder=args.num_layers_node_decoder,
+        aggregation=args.aggregation,
+        do_concat_trick=False,
+        num_processor_checkpoint_segments=0,
+        activation=args.activation,
+    )
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     loss_fn = torch.nn.MSELoss()

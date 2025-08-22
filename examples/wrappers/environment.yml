@@ -1,0 +1,42 @@
+name: plaid_examples
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.11
+##### RUN #####
+#---# base
+  - tqdm
+#---# io
+  - pyyaml
+#---# mesh/graph libs
+  - pycgns-core
+#---# SciML
+  - scikit-learn
+  - datasets >=3.0
+  - numpy
+  - matplotlib-base
+#---# data validation
+  - pydantic
+##### DEV/TESTS/EXAMPLES #####
+#---# mesh/graph libs
+  - muscat=2.4.1
+#---# testing
+  - pytest
+  - pytest-cov
+#---# code formatters
+  - ruff
+#---# dev
+  - pre-commit
+#---# doc
+  - sphinx
+  - sphinx-autoapi
+  - sphinx-tabs
+  - sphinxcontrib-bibtex
+  - myst-nb
+  - myst-parser
+  - furo
+#####
+#---# Pypi packages, not available on conda-forge
+  - pip:
+    - GPy

@@ -124,7 +124,7 @@ def read_index_range(pyTree: list, dim: list[int]):
 
     Args:
         pyTree (list): CGNS node which has a child of type IndexRange_t to read
-        dim (List[str]): dimensions of the coordinates
+        dim (list[str]): dimensions of the coordinates
 
     Returns:
         indices
@@ -1277,7 +1277,7 @@ class Sample(BaseModel):
             KeyError: Raised when there is no time series / there is no time series with the provided name.
 
         Returns:
-            Tuple[TimeSequenceType, FieldType]: A tuple containing the time sequence and values of the deleted time series.
+            tuple[TimeSequenceType, FieldType]: A tuple containing the time sequence and values of the deleted time series.
         """
         if self._time_series is None:
             raise KeyError("There is no time series inside this sample.")

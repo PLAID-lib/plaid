@@ -2,18 +2,18 @@
 # coding: utf-8
 
 # # Pipeline Examples
-# 
+#
 # This notebook demonstrates the end-to-end process of building a machine learning pipeline using PLAID datasets and PLAID’s scikit-learn-compatible blocks.
 
 # ## PCA-GP for `mach` field prediction of `VKI-LS59` dataset
-# 
+#
 # Key steps covered:
-# 
-# - **Loading the PLAID dataset** using Hugging Face integration and PLAID’s dataset classes  
-# - **Standardizing features** with PLAID-wrapped scikit-learn transformers for scalars  
-# - **Dimensionality reduction** of flow fields via Principal Component Analysis (PCA) to reduce output complexity  
-# - **Regression modeling** of PCA coefficients from scalar inputs using Gaussian Process regression  
-# - **Pipeline assembly** combining transformations and regressors into a single scikit-learn-compatible workflow  
+#
+# - **Loading the PLAID dataset** using Hugging Face integration and PLAID’s dataset classes
+# - **Standardizing features** with PLAID-wrapped scikit-learn transformers for scalars
+# - **Dimensionality reduction** of flow fields via Principal Component Analysis (PCA) to reduce output complexity
+# - **Regression modeling** of PCA coefficients from scalar inputs using Gaussian Process regression
+# - **Pipeline assembly** combining transformations and regressors into a single scikit-learn-compatible workflow
 # - **Hyperparameter tuning** using Optuna and scikit-learn’s `GridSearchCV`
 # - **Best practices** for working with PLAID datasets and pipelines in a reproducible and modular manner
 
@@ -23,40 +23,42 @@
 
 
 import warnings
+
 warnings.filterwarnings('ignore', module='sklearn')
 warnings.filterwarnings("ignore", message=".*IProgress not found.*")
 
 import os
 from pathlib import Path
 
-import yaml
 import numpy as np
 import optuna
-
-from datasets.utils.logging import disable_progress_bar
+import yaml
 from datasets import load_dataset
-
+from datasets.utils.logging import disable_progress_bar
 from sklearn.base import clone
-from sklearn.pipeline import Pipeline
-
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern
+from sklearn.model_selection import GridSearchCV, KFold
 from sklearn.multioutput import MultiOutputRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MinMaxScaler
 
-from sklearn.model_selection import KFold, GridSearchCV
-
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, huggingface_description_to_problem_definition
-from plaid.pipelines.sklearn_block_wrappers import WrappedSklearnTransformer, WrappedSklearnRegressor
-from plaid.pipelines.plaid_blocks import TransformedTargetRegressor, ColumnTransformer
+from plaid.bridges.huggingface_bridge import (
+    huggingface_dataset_to_plaid,
+)
+from plaid.pipelines.plaid_blocks import ColumnTransformer, TransformedTargetRegressor
+from plaid.pipelines.sklearn_block_wrappers import (
+    WrappedSklearnRegressor,
+    WrappedSklearnTransformer,
+)
 
 disable_progress_bar()
 n_processes = min(max(1, os.cpu_count()), 6)
 
 
 # ### 📥 Load Dataset
-# 
+#
 # We load the `VKI-LS59` dataset from Hugging Face and restrict ourselves to the first 24 samples of the training set.
 
 # In[ ]:
@@ -75,7 +77,7 @@ print(dataset_train)
 
 
 # ### ⚙️ Pipeline Configuration
-# 
+#
 # For convenience, the `in_features_identifiers` and `out_features_identifiers` for each pipeline block are defined in a `.yml` file. Here's an example of how the configuration might look:
 
 # ```yaml
@@ -117,7 +119,7 @@ print("field names =", dataset_train.get_field_names())
 # We notive that only the 2 scalars and the field of interest are kept after restriction.
 
 # #### 1. Preprocessor
-# 
+#
 # We now define a preprocessor: a `MinMaxScaler` of the 2 input scalars and a `PCA` on the nodes coordinates of the meshes:
 
 # In[ ]:
@@ -133,7 +135,7 @@ preprocessor
 
 
 # We use a `PlaidColumnTransformer` to apply independent transformations to different feature groups.
-# 
+#
 # To verify this behavior, we apply the `preprocessor` to `dataset_train`:
 
 # In[ ]:
@@ -148,7 +150,7 @@ print("field names =", preprocessed_dataset.get_field_names())
 # Using `MinMaxScaler`, we scaled the `angle_in` and `mach_out` features, replacing their original values. In contrast, `PCA` compressed the node coordinates and produced new scalar features named `reduced_nodes_*`, representing the PCA components. Alternatively, we could have specified `out_features_identifiers` in the `.yml` file configuring the `MinMaxScaler` block to generate new scalars without overwriting the original inputs.
 
 # #### 2. Postprocessor
-# 
+#
 # Next, we define the postprocessor, which applies PCA to the `mach` field:
 
 # In[ ]:
@@ -159,7 +161,7 @@ postprocessor
 
 
 # #### 3. TransformedTargetRegressor
-# 
+#
 # The Gaussian Process regressor takes the transformed `angle_in` and `mach_out` scalars, along with the PCA coefficients of the mesh node coordinates as inputs, and predicts the PCA coefficients of the `mach` field as outputs. This is facilitated by using a `PlaidTransformedTargetRegressor`.
 
 # In[ ]:
@@ -187,7 +189,7 @@ target_regressor
 # `PlaidTransformedTargetRegressor` functions like scikit-learn’s `TransformedTargetRegressor` but operates directly on PLAID datasets.
 
 # #### 4. Pipeline assembling
-# 
+#
 # We then define the complete pipeline as follows:
 
 # In[ ]:
@@ -203,7 +205,7 @@ pipeline
 
 
 # ### 🎯 Optuna hyperparameter tuning
-# 
+#
 # We now use Optuna to optimize hyperparameters, specifically tuning the number of components for the two `PCA` blocks using three-fold cross-validation.
 
 # In[ ]:
@@ -310,7 +312,7 @@ print("score =", score, ", error =", 1. - score)
 
 
 # ### 🔍 GridSearchCV hyperparameter tuning
-# 
+#
 # Since our pipeline nodes conform to the scikit-learn API, the constructed pipeline can be used directly with `GridSearchCV`.
 
 # In[ ]:
