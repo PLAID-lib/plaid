@@ -7,8 +7,8 @@
 
 # %%
 # Importing Required Libraries
-from typing import Union
 from pathlib import Path
+from typing import Union
 
 from plaid.containers.dataset import Dataset
 from plaid.post.bisect import plot_bisect, prepare_datasets
@@ -17,7 +17,7 @@ from plaid.problem_definition import ProblemDefinition
 
 # %%
 def get_project_root(path: Union[str, Path], index: int=3) -> Path:
-    """Find the project root path
+    """Find the project root path.
 
     Args:
         path (Union[str, Path]): Current path of the notebook

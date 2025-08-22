@@ -14,7 +14,6 @@
 
 # %%
 # Import required libraries
-import os
 from pathlib import Path
 
 # %%
