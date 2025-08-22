@@ -1,6 +1,7 @@
 from torch_geometric.data import Data
 
-class Partitioner():
+
+class Partitioner:
     def __init__(self, n_vertices_per_subdomain):
         self.n_vertices_per_subdomain = n_vertices_per_subdomain
 

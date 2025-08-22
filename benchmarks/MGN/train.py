@@ -10,16 +10,22 @@ from utils import save_fields, relative_rmse_field
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 for i in range(torch.cuda.device_count()):
-   print(f"💻 Using device {i}: {torch.cuda.get_device_properties(i).name}")
+    print(f"💻 Using device {i}: {torch.cuda.get_device_properties(i).name}")
 
 
 def train(args, model, optimizer, loss_fn, train_data, test_data):
     model.to(device)
 
     # Create necessary directories
-    checkpoint_dir = os.path.join(args.save_path, f"{args.dataset_name}/{args.run_name}/checkpoints")
-    predictions_dir = os.path.join(args.save_path, f"{args.dataset_name}/{args.run_name}/predictions")
-    metrics_dir = os.path.join(args.save_path, f"{args.dataset_name}/{args.run_name}/metrics")
+    checkpoint_dir = os.path.join(
+        args.save_path, f"{args.dataset_name}/{args.run_name}/checkpoints"
+    )
+    predictions_dir = os.path.join(
+        args.save_path, f"{args.dataset_name}/{args.run_name}/predictions"
+    )
+    metrics_dir = os.path.join(
+        args.save_path, f"{args.dataset_name}/{args.run_name}/metrics"
+    )
 
     os.makedirs(checkpoint_dir, exist_ok=True)
     os.makedirs(predictions_dir, exist_ok=True)
@@ -27,8 +33,15 @@ def train(args, model, optimizer, loss_fn, train_data, test_data):
 
     # Dataset
     train_dataset = GraphDataset(args, train_data, data_type="train")
-    test_dataset = GraphDataset(args, test_data, data_type="test", in_scaler=train_dataset.in_scaler, out_scaler=train_dataset.out_scaler,
-                                fields_min=train_dataset.fields_min, fields_max=train_dataset.fields_max)
+    test_dataset = GraphDataset(
+        args,
+        test_data,
+        data_type="test",
+        in_scaler=train_dataset.in_scaler,
+        out_scaler=train_dataset.out_scaler,
+        fields_min=train_dataset.fields_min,
+        fields_max=train_dataset.fields_max,
+    )
 
     fields_min = train_dataset.fields_min.clone().detach().to(device)
     fields_max = train_dataset.fields_max.clone().detach().to(device)
@@ -82,7 +95,7 @@ def train(args, model, optimizer, loss_fn, train_data, test_data):
             y_trains.append(graph.ndata["y"])
             y_train_preds.append(pred)
 
-        train_loss /= (idx+1)
+        train_loss /= idx + 1
 
         model.eval()
         y_test_preds = []
@@ -95,22 +108,27 @@ def train(args, model, optimizer, loss_fn, train_data, test_data):
                 pred = pred * (fields_max - fields_min) + fields_min
                 y_test_preds.append(pred)
 
-        if (epoch+1) % 100 == 0:
-            torch.save(model.state_dict(), os.path.join(checkpoint_dir, f"state_epoch_{epoch+1}.pt"))
-            save_fields(os.path.join(predictions_dir, f"predicted_fields_{epoch+1}.h5"), y_test_preds)
+        if (epoch + 1) % 100 == 0:
+            torch.save(
+                model.state_dict(),
+                os.path.join(checkpoint_dir, f"state_epoch_{epoch + 1}.pt"),
+            )
+            save_fields(
+                os.path.join(predictions_dir, f"predicted_fields_{epoch + 1}.h5"),
+                y_test_preds,
+            )
 
         epoch_end_time = time.time()
         epoch_duration = epoch_end_time - epoch_start_time
 
         # Collect metrics for this epoch
-        metrics.append({
-            "epoch": epoch,
-            "train_loss": train_loss,
-            "duration": epoch_duration
-        })
+        metrics.append(
+            {"epoch": epoch, "train_loss": train_loss, "duration": epoch_duration}
+        )
 
-        metrics_str = (f"🌟"
-            f"Epoch {epoch+1} | "
+        metrics_str = (
+            f"🌟"
+            f"Epoch {epoch + 1} | "
             f"Train Loss: {train_loss:.7f} | "
             f"Duration: {epoch_duration:.2f} (s) "
         )

@@ -180,9 +180,7 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
         (
             "pca",
             PCA(n_components=40),
-            np.arange(
-                2, 2 + nodes_train.shape[-1]
-            ),
+            np.arange(2, 2 + nodes_train.shape[-1]),
         )
     ]
 
@@ -218,8 +216,6 @@ def build_pipeline(apply_output_pca: bool = False) -> Pipeline:
 
 
 if __name__ == "__main__":
-
-
     start = time.time()
 
     (
@@ -230,7 +226,6 @@ if __name__ == "__main__":
         Y_pressure_train,
         Y_temperature_train,
     ) = convert_data(ids_train)
-
 
     # Train
     X_train = np.concatenate([X_scalars_train, nodes_train], axis=-1)
@@ -248,7 +243,7 @@ if __name__ == "__main__":
     pipeline_pressure = build_pipeline(apply_output_pca=True)
     pipeline_pressure.fit(X_train, Y_pressure_train)
 
-    print("duration train:", time.time()-start)
+    print("duration train:", time.time() - start)
     start = time.time()
 
     # Predict
@@ -280,7 +275,7 @@ if __name__ == "__main__":
     y_pred = pipeline_pressure.predict(X_test)
     predictions["Pressure"] = y_pred
 
-    print("duration test:", time.time()-start)
+    print("duration test:", time.time() - start)
     start = time.time()
 
     # dump

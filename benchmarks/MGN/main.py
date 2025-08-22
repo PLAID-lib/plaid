@@ -10,9 +10,11 @@ if __name__ == "__main__":
     print(args)
 
     train_data, test_data, train_indices, test_indices = load_datasets(
-        args.dataset_name, args.dataset_path,
-        args.split_train_name, args.split_test_name,
-        args.target_field
+        args.dataset_name,
+        args.dataset_path,
+        args.split_train_name,
+        args.split_test_name,
+        args.target_field,
     )
 
     model, optimizer, loss_fn = create_model(args)
