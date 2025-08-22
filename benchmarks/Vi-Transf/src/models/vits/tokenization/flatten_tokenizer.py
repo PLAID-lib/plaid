@@ -2,7 +2,7 @@ from .tokenizer import Tokenizer
 from .partitioners.partitioner import Partitioner
 import torch
 from torch.multiprocessing import Pool
-from typing import List, Optional, Literal
+from typing import Optional, Literal
 from torch_geometric.data import Data, Batch
 from tqdm import tqdm
 import os
@@ -25,7 +25,7 @@ class FlattenTokenizer(Tokenizer):
         self.processes_number               = os.cpu_count() if processes_number == -1 else processes_number
         self.output_field_dim              = output_field_dim
 
-    def _tokenize(self, dataset: List[Data]) -> List[Data]:
+    def _tokenize(self, dataset: list[Data]) -> list[Data]:
         """Tokenizes the dataset using the specified partitioner."""
         token_dim = dataset[0].x.shape[1] * self.n_vertices_per_subdomain
         n_tokens_per_sim = max([datapoint.n_communities for datapoint in dataset])
@@ -46,7 +46,7 @@ class FlattenTokenizer(Tokenizer):
         return tokenized_dataset
 
 
-    def preprocess(self, dataset, seed: Optional[int]=None) -> List[Data]:
+    def preprocess(self, dataset, seed: Optional[int]=None) -> list[Data]:
         # partitioning each datapoint in the dataset
         if seed is None:
             seed = random.randint(0, 2**32 - 1)

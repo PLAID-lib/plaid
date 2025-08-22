@@ -1,13 +1,13 @@
 import pickle
 from pathlib import Path
-from typing import Literal, Any, List, Optional
+from typing import Literal, Any, Optional
 from sklearn.model_selection import KFold
 from datasets import load_dataset, load_from_disk
 from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
 
 def extract_split_data(
     split: Literal["train", "test", "traintest"]
-) -> tuple[dict[str, List[Any]], dict[str, List[Any]]]:
+) -> tuple[dict[str, list[Any]], dict[str, list[Any]]]:
     """
     Extract input and output dictionaries for all samples in a given split of a Plaid dataset.
 
@@ -17,8 +17,8 @@ def extract_split_data(
             'train', 'test', or 'traintest' (concatenation of train and test).
 
     Returns:
-        inputs (dict[str, List[Any]]): Keys are mesh/scalar names; values are lists of sample data.
-        outputs (dict[str, List[Any]]): Keys are selected field/scalar names; values are lists of sample data.
+        inputs (dict[str, list[Any]]): Keys are mesh/scalar names; values are lists of sample data.
+        outputs (dict[str, list[Any]]): Keys are selected field/scalar names; values are lists of sample data.
     """
     # 1) Load the HuggingFace dataset from disk
     hf_dataset = load_dataset("PLAID-datasets/VKI-LS59", split="all_samples")
@@ -43,8 +43,8 @@ def extract_split_data(
     FIELD_OUTPUTS  = ["mach", "nut"]
     SCALAR_OUTPUTS = ["Q", "power", "Pr", "Tr", "eth_is", "angle_out"]
 
-    inputs: dict[str, List[Any]]  = {}
-    outputs: dict[str, List[Any]] = {}
+    inputs: dict[str, list[Any]]  = {}
+    outputs: dict[str, list[Any]] = {}
 
     # --- INPUTS ---
     # Mesh node coordinates
@@ -82,24 +82,24 @@ def extract_split_data(
 
 
 def make_kfold_splits(
-    inputs: dict[str, List[Any]],
-    outputs: dict[str, List[Any]],
+    inputs: dict[str, list[Any]],
+    outputs: dict[str, list[Any]],
     n_splits: int = 5,
     shuffle: bool = True,
     random_state: Optional[int] = None
-) -> List[tuple[
-        dict[str, List[Any]],  # train inputs
-        dict[str, List[Any]],  # train outputs
-        dict[str, List[Any]],  # val inputs
-        dict[str, List[Any]]   # val outputs
+) -> list[tuple[
+        dict[str, list[Any]],  # train inputs
+        dict[str, list[Any]],  # train outputs
+        dict[str, list[Any]],  # val inputs
+        dict[str, list[Any]]   # val outputs
     ]]:
     """
     Split inputs and outputs into K folds for cross‑validation.
 
     Args:
-        inputs (dict[str, List[Any]]):
+        inputs (dict[str, list[Any]]):
             Dictionary of input data where each key maps to a list of samples.
-        outputs (dict[str, List[Any]]):
+        outputs (dict[str, list[Any]]):
             Dictionary of output data where each key maps to a list of samples.
         n_splits (int, optional):
             Number of folds. Defaults to 5.
@@ -109,7 +109,7 @@ def make_kfold_splits(
             Seed for reproducible shuffling. Defaults to None.
 
     Returns:
-        List of tuples, one per fold, each containing:
+        list of tuples, one per fold, each containing:
             - train_inputs (dict)
             - train_outputs (dict)
             - val_inputs (dict)
@@ -119,12 +119,12 @@ def make_kfold_splits(
     n_samples = len(next(iter(inputs.values())))
     kf = KFold(n_splits=n_splits, shuffle=shuffle, random_state=random_state)
 
-    splits: List[
+    splits: list[
         tuple[
-            dict[str, List[Any]],
-            dict[str, List[Any]],
-            dict[str, List[Any]],
-            dict[str, List[Any]]
+            dict[str, list[Any]],
+            dict[str, list[Any]],
+            dict[str, list[Any]],
+            dict[str, list[Any]]
         ]
     ] = []
 
@@ -141,14 +141,14 @@ def make_kfold_splits(
 
 
 def dump_predictions(
-    outputs_pred: dict[str, List[Any]],
+    outputs_pred: dict[str, list[Any]],
     filename: str = 'predictions.pkl'
 ) -> None:
     """
     Dump predicted outputs to a pickle file with the same structure as the reference.
 
     Args:
-        outputs_pred (dict[str, List[Any]]):
+        outputs_pred (dict[str, list[Any]]):
             Predicted outputs containing keys
             'nut', 'mach', 'Q', 'power', 'Pr', 'Tr', 'eth_is', 'angle_out'.
         filename (str): Path to the output .pkl file.

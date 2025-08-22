@@ -2,7 +2,7 @@ from .tokenizer import Tokenizer
 from .partitioners.partitioner import Partitioner
 import torch
 from torch.multiprocessing import Pool
-from typing import List, Optional, Literal
+from typing import Optional, Literal
 from torch_geometric.data import Data, Batch
 from tqdm import tqdm
 import os
@@ -21,7 +21,7 @@ class TemporalFlattenTokenizer(FlattenTokenizer):
                  processes_number=1):
         super().__init__(partitioner, output_field_dim, tokenization_type, processes_number)
 
-    def preprocess(self, dataset: List[List[Data]], seed: int):
+    def preprocess(self, dataset: list[list[Data]], seed: int):
         if seed is None:
             seed = random.randint(0, 2**32 - 1)
             print("Using random seed for partitioning:", seed)

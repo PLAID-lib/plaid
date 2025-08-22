@@ -2,7 +2,6 @@ import h5py
 import math
 import torch
 import numpy as np
-from typing import List
 from sklearn.neighbors import KDTree
 from Muscat.Containers.MeshInspectionTools import ComputeMeshMinMaxLengthScale
 
@@ -12,7 +11,7 @@ def get_bandwidth(mesh) -> float:
     return lengthscale
 
 
-def relative_rmse_field(y_true: List[torch.Tensor], y_pred: List[torch.Tensor], threshold: float=0.0) -> torch.Tensor:
+def relative_rmse_field(y_true: list[torch.Tensor], y_pred: list[torch.Tensor], threshold: float=0.0) -> torch.Tensor:
     return torch.sqrt(
         torch.mean(
             torch.stack(
@@ -22,7 +21,7 @@ def relative_rmse_field(y_true: List[torch.Tensor], y_pred: List[torch.Tensor], 
     )
 
 
-def save_fields(filename: str, fields: List[torch.Tensor]) -> None:
+def save_fields(filename: str, fields: list[torch.Tensor]) -> None:
     with h5py.File(filename, "w", libver='latest') as f:
         for idx, field in enumerate(fields):
             dset = f.create_dataset(str(idx), data=field.cpu().numpy())
@@ -35,7 +34,7 @@ def save_scalars(file_path, data_list):
             f.create_dataset(f"array_{i}", data=data_array)
 
 
-def load_fields(filename: str) -> List[torch.Tensor]:
+def load_fields(filename: str) -> list[torch.Tensor]:
     fields = []
     with h5py.File(filename, "r") as f:
         # Sort the keys numerically

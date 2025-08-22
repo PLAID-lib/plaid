@@ -1,18 +1,17 @@
+import time
 import pickle
-from typing import List
 
 import numpy as np
 from datasets import load_dataset
 from GPy.kern import RBF, Matern32, Matern52
 from GPy.models import GPRegression
-from plaid.containers.sample import Sample
 from sklearn.base import BaseEstimator, RegressorMixin, clone
 from sklearn.compose import ColumnTransformer, TransformedTargetRegressor
 from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import time
 
+from plaid.containers.sample import Sample
 
 dataset = load_dataset("PLAID-datasets/Rotor37", split="all_samples")
 
@@ -24,15 +23,15 @@ out_scalars_names = ["Massflow", "Compression_ratio", "Efficiency"]
 
 
 def convert_data(
-    ids: List[int],
+    ids: list[int],
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Converts a list of sample IDs into structured numpy arrays containing input and output data.
 
     Parameters:
     ----------
-    ids : List[int]
-        List of sample indices to retrieve from the dataset.
+    ids : list[int]
+        list of sample indices to retrieve from the dataset.
 
     Returns:
     -------

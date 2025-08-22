@@ -27,7 +27,7 @@ def compute_rRMSE_RMSE(
         rel_SE_out_scalars (dict): Dictionary containing relative squared errors for scalar outputs.
         abs_SE_out_scalars (dict): Dictionary containing absolute squared errors for scalar outputs.
         problem_split (dict): Dictionary specifying how the problem is split.
-        out_scalars_names (list[str]): List of names of scalar outputs.
+        out_scalars_names (list[str]): list of names of scalar outputs.
     """
     metrics["rRMSE for scalars"] = {}
     metrics["RMSE for scalars"] = {}
@@ -61,7 +61,7 @@ def compute_R2(
         metrics (dict): Dictionary to store the computed metrics.
         r2_out_scalars (dict): Dictionary containing R2 scores for scalar outputs.
         problem_split (dict): Dictionary specifying how the problem is split.
-        out_scalars_names (list[str]): List of names of scalar outputs.
+        out_scalars_names (list[str]): list of names of scalar outputs.
     """
     metrics["R2 for scalars"] = {}
 
@@ -85,7 +85,7 @@ def prepare_metrics_for_split(
     Args:
         ref_out_specific_scalars (np.ndarray): Array of reference scalar outputs.
         pred_out_specific_scalars (np.ndarray): Array of predicted scalar outputs.
-        split_indices (list[int]): List of indices specifying the split.
+        split_indices (list[int]): list of indices specifying the split.
         rel_SE_out_specific_scalars (np.ndarray): Array to store relative squared errors for scalar outputs.
         abs_SE_out_specific_scalars (np.ndarray): Array to store absolute squared errors for scalar outputs.
 

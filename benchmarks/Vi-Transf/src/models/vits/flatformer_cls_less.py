@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from torch.nn import TransformerEncoder, TransformerEncoderLayer
-from typing import List, Union, Callable, Optional
+from typing import Union, Callable, Optional
 from torch_geometric.data import Data, Batch
 from .tokenization.tokenizer import Tokenizer
 from einops import rearrange
@@ -49,7 +49,7 @@ class FlatFormerCLSLess(BaseModel):
         token_dim = n_vertices_per_subdomain * input_field_dim
         self.tokenizer = tokenizer
         self.n_head = n_head
-        
+
         # Linear projection of the flattened tokens onto the latent space
         self.encoder = nn.Linear(token_dim, latent_dim - input_scalar_dim, bias=False)
 
@@ -70,12 +70,12 @@ class FlatFormerCLSLess(BaseModel):
 
         # Linear decoder
         self.decoder     = nn.Linear(latent_dim + input_scalar_dim, n_vertices_per_subdomain*(self.output_field_dim + self.output_scalar_dim), bias=False)
-        
-    def preprocess(self, pyg_dataset: List[Data], seed: Optional[int]=None, **kwargs) -> List[Data]:
+
+    def preprocess(self, pyg_dataset: list[Data], seed: Optional[int]=None, **kwargs) -> list[Data]:
         if seed is None: seed = random.randint(0, 2**32 - 1)
         print(f"Using seed: {seed} for data preprocessing")
         dataset = self.tokenizer.preprocess(pyg_dataset, seed=seed)
-        
+
         return dataset
 
     def forward(self, data_batch: Data | Batch):
@@ -98,10 +98,10 @@ class FlatFormerCLSLess(BaseModel):
         if self.input_scalar_dim > 0:
             scalar_concat_tensor    = input_scalars.unsqueeze(1).expand((-1, latent_tokens.shape[1], -1)) # B Sin -> B T Sin
             latent_tokens           = torch.concat((latent_tokens, scalar_concat_tensor), dim=2) # B T (L - Sin) -> B T L
-        
+
         # transformer encoder
         encoded_tokens = self.transformer_encoder(latent_tokens, src_key_padding_mask=src_key_padding_mask) # B T L
-        
+
         # reinjecting the scalars
         if self.input_scalar_dim > 0:
             scalar_concat_tensor    = input_scalars.unsqueeze(1).expand((-1, encoded_tokens.shape[1], -1)) # B Sin -> B T Sin
@@ -115,7 +115,7 @@ class FlatFormerCLSLess(BaseModel):
         scalar_predictions  = predictions[:, :, :, self.output_field_dim:].mean(dim=(1, 2))
         if self.output_scalar_dim == 0:
             scalar_predictions = None
-        
+
         return field_predictions, scalar_predictions
 
     def compute_loss(self, data_batch: Data | Batch) -> torch.Tensor:
@@ -151,10 +151,10 @@ class FlatFormerCLSLess(BaseModel):
         else:
             input_scalars = None
         field_predictions, scalar_predictions = self.forward_batch(input_scalars, tokens, src_key_padding_mask)
-        
+
         # removing padding tokens
         field_predictions = field_predictions[~src_key_padding_mask, ...]
-        
+
         # reconstructing the output_field matrix for the data sample
         field_predictions = self.tokenizer.untokenize(field_predictions.cpu(), data, keep_list=True)
 

@@ -1,6 +1,6 @@
 from plaid.containers.dataset import Dataset as PlaidDataset
 from plaid.problem_definition import ProblemDefinition
-from typing import List, Union
+from typing import Union
 from torch_geometric.data import Data
 import os
 from tqdm import tqdm
@@ -9,7 +9,7 @@ from multiprocessing import Pool
 class Loader():
     def __init__(self,
                  bridge: callable,
-                 task_split: Union[List[str], str, List[Union[List[str], str]]],
+                 task_split: Union[list[str], str, list[Union[list[str], str]]],
                  processes_number: int=1):
         """
         Initializes the Loader with the given parameters.
@@ -19,10 +19,10 @@ class Loader():
         """
 
         self.bridge = bridge
-        self.task_split: Union[List[str], str, List[Union[List[str], str]]] = task_split
+        self.task_split: Union[list[str], str, list[Union[list[str], str]]] = task_split
         self.processes_number = processes_number
 
-    def load_plaid(self, verbose: bool) -> tuple[ProblemDefinition, List[PlaidDataset]]:
+    def load_plaid(self, verbose: bool) -> tuple[ProblemDefinition, list[PlaidDataset]]:
         raise NotImplementedError("This method should be implemented in the subclass")
 
     def get_dataset_split(self,
@@ -45,12 +45,12 @@ class Loader():
         return (dataset, )
 
     def load(self,
-             verbose=False) -> tuple[ProblemDefinition, tuple[List[Data], ...]]:
+             verbose=False) -> tuple[ProblemDefinition, tuple[list[Data], ...]]:
         """
         Load and converts a plaid dataset to torch geometric format.
 
         Returns:
-            tuple[ProblemDefinition, Union[List[Data], tuple[List[Data], ...]]]:
+            tuple[ProblemDefinition, Union[list[Data], tuple[list[Data], ...]]]:
             A tuple containing the problem definition and either a single list of Data objects
             or a tuple of multiple lists of Data objects.
         """
@@ -68,7 +68,7 @@ class Loader():
     def plaid_to_bridge(self,
                         dataset: PlaidDataset,
                         problem_definition: ProblemDefinition,
-                        verbose= True) -> List[Data]:
+                        verbose= True) -> list[Data]:
         """
         Converts a Plaid dataset to PytorchGeometric dataset
 
@@ -76,7 +76,7 @@ class Loader():
             dataset (plaid.containers.dataset.Dataset): Plaid dataset
 
         Returns:
-            List[Data]: the converted dataset
+            list[Data]: the converted dataset
         """
         if verbose: print("in bridge")
         if self.processes_number == -1:

@@ -36,7 +36,7 @@ class CVResults:
 
         # Reset to default float format
         pd.reset_option('display.float_format')
-        
+
 def plot_mach_nut(
     inputs: dict,
     outputs_true: dict,
@@ -147,7 +147,7 @@ def plot_scalars_pred_vs_true(
     Args:
         outputs_true (dict): True scalar values, keys = scalar names, values = lists of floats or scalars
         outputs_pred (dict): Predicted scalar values, same structure as outputs_true
-        scalar_keys (list, optional): List of scalar keys to plot. If None, automatically
+        scalar_keys (list, optional): list of scalar keys to plot. If None, automatically
             select only those keys whose values are lists of scalars.
         figsize (tuple): Figure size (width, height).
         marker (str): Marker style for scatter.
@@ -202,4 +202,3 @@ def plot_scalars_pred_vs_true(
 
     plt.tight_layout()
     return fig, axs
-

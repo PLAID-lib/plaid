@@ -153,7 +153,7 @@ def piece_wise_linear_interpolation_vectorized(
         vectors (np.ndarray or dict): the available data, of size (numberOfVectors, numberOfDofs).
 
     Returns:
-        list[np.ndarray]: List of interpolated vectors, each of size (numberOfDofs).
+        list[np.ndarray]: list of interpolated vectors, each of size (numberOfDofs).
     """
     return [
         piece_wise_linear_interpolation(item, item_indices, vectors) for item in items
@@ -177,7 +177,7 @@ def piece_wise_linear_interpolation_vectorized_with_map(
         vectors_map (list): list containing the mapping from the numberOfTimeIndices items indices to the numberOfVectors vectors, of size (numberOfTimeIndices,). Default is None, in which case numberOfVectors = numberOfTimeIndices.
 
     Returns:
-        list[np.ndarray]: List of interpolated vectors, each of size (numberOfDofs).
+        list[np.ndarray]: list of interpolated vectors, each of size (numberOfDofs).
     """
     return [
         piece_wise_linear_interpolation_with_map(

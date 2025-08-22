@@ -3,7 +3,7 @@ from torch_geometric.data import Data
 import numpy as np
 import pymetis
 from pymetis import Options
-from typing import Optional, List
+from typing import Optional
 import random
 from tqdm import tqdm
 from torch.multiprocessing import Pool, cpu_count
@@ -12,7 +12,7 @@ from functools import partial
 
 def npoints_to_nparts(npoints: int, n_sim_points: int, absolute_tol: int, relative_tol: float) -> int:
     """computes the number of subdomains in a simulation, with a tolerance given the number of points per subdomains we want and the number of points in the simulation"""
-    nparts = n_sim_points // npoints + 1 
+    nparts = n_sim_points // npoints + 1
     nparts = int(np.ceil((1 + relative_tol)*nparts + absolute_tol))
 
     return nparts
@@ -26,7 +26,7 @@ def torch_geometric_to_metis_format(data: Data):
             - `edge_index` (torch.Tensor): Tensor of shape (2, num_edges) representing edges.
 
     Returns:
-        List[List[int]]: A Pythonic adjacency list, where adjacency[i] is a list of
+        list[list[int]]: A Pythonic adjacency list, where adjacency[i] is a list of
         nodes adjacent to node i.
     """
 
@@ -46,7 +46,7 @@ class MetisPartitioner(Partitioner):
         self.absolute_tol = absolute_tol
         self.relative_tol = relative_tol
 
-    def partition(self, dataset: List[Data], seed: Optional[int]=None) -> np.ndarray:
+    def partition(self, dataset: list[Data], seed: Optional[int]=None) -> np.ndarray:
         if seed is None: seed = random.randint(0, 2**32 - 1)
         if seed is not None:
             rng_generator = random.Random(seed)
@@ -60,7 +60,7 @@ class MetisPartitioner(Partitioner):
         if self.processes_number > 1:
             with Pool(processes=self.processes_number) as pool:
                 partitioned_dataset = list(tqdm(pool.starmap(
-                    _partition_single, 
+                    _partition_single,
                     zip(dataset, [self.n_vertices_per_subdomain]*len(dataset), seed_vector, [self.absolute_tol]*len(dataset), [self.relative_tol]*len(dataset))
                 ), desc="Partitioning dataset with METIS", total=len(dataset)))
         else:
@@ -94,7 +94,7 @@ def _partition_single(data: Data, npoints, seed=None, absolute_tol: int=1, relat
     communities = torch.tensor(communities, dtype=torch.long)
     for community in torch.unique(communities):
         assert torch.sum(communities==community) <= npoints, f"community {community} is too large for sample {data.sample_id}"
-  
+
     data.communities = communities.to(data.x.device)
     data.n_communities = n_subdomains
 

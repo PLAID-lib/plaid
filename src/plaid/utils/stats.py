@@ -11,7 +11,7 @@
 
 import copy
 import logging
-from typing import List, Union
+from typing import Union
 
 try:  # pragma: no cover
     from typing import Self
@@ -273,7 +273,7 @@ class Stats:
         """
         self.add_samples(dset)
 
-    def add_samples(self, samples: Union[List[Sample], Dataset]) -> None:
+    def add_samples(self, samples: Union[list[Sample], Dataset]) -> None:
         """Add samples or a dataset to compute statistics for.
 
         Compute stats for each features present in the samples among scalars, fields and time_series.
@@ -283,15 +283,15 @@ class Stats:
         then stats will be computed over all values of the field/time_series.
 
         Args:
-            samples (Union[List[Sample], Dataset]): List of samples or dataset to process
+            samples (Union[list[Sample], Dataset]): list of samples or dataset to process
 
         Raises:
-            TypeError: If samples is not a List[Sample] or Dataset
+            TypeError: If samples is not a list[Sample] or Dataset
             ValueError: If a sample contains invalid data
         """
         # Input validation
         if not isinstance(samples, (list, Dataset)):
-            raise TypeError("samples must be a List[Sample] or Dataset")
+            raise TypeError("samples must be a list[Sample] or Dataset")
 
         # Process each sample
         new_data: dict[str, list] = {}
@@ -324,7 +324,7 @@ class Stats:
         """Get computed statistics for specified data identifiers.
 
         Args:
-            identifiers (list[str], optional): List of data identifiers to retrieve.
+            identifiers (list[str], optional): list of data identifiers to retrieve.
                 If None, returns statistics for all identifiers.
 
         Returns:
@@ -349,7 +349,7 @@ class Stats:
         """Get list of data identifiers with computed statistics.
 
         Returns:
-            list[str]: List of data identifiers
+            list[str]: list of data identifiers
         """
         return sorted(self._stats.keys())
 

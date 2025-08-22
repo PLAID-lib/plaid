@@ -283,17 +283,17 @@ class PolynomialManifoldApproximation:
         """
         Solve the minimization problem ||S - Omega X(coefficients)|| using Levenberg-Marquardt,
         parallelizing the computation over columns of S.
-    
+
         Parameters:
             S (np.ndarray): Snapshot vector of shape (N, Ns).
             Omega (np.ndarray): Matrix of shape (N, r + p) such that Omega^T Omega = I.
-    
+
         Returns:
             S_reduced (np.ndarray): Optimized coefficients vector of shape (r, Ns).
         """
         num_cols = S.shape[1]  # Number of columns in S
         S_reduced = self.reduce(S)  # Reduce the dimension of S
-    
+
         def optimize_column(i):
             """Optimize a single column using Levenberg-Marquardt."""
             x0 = S_reduced[:, i].ravel()  # Flatten initial guess
@@ -388,7 +388,7 @@ class PolynomialManifoldApproximation:
                             where p is the number of polynomial combinations.
         """
         coeff_dim = coefficients.shape[0]  # Number of coefficients (r)
-        combs = []  # List to store combinations
+        combs = []  # list to store combinations
 
         # Generate all polynomial combinations
         for deg in range(2, self.polynomial_order + 1):
@@ -434,4 +434,3 @@ class PolynomialManifoldApproximation:
         W = self._generate_combinations(S_reduce)
         S = self.V @ S_reduce + self.Vb @ self.psi @ W + np.tile(self.mean, (1, S_reduce.shape[1]))
         return S.T
-

@@ -76,8 +76,8 @@ class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
 
     Args:
         sklearn_block (SklearnBlock): A scikit-learn Transformer implementing fit/transform APIs.
-        in_features_identifiers (list[FeatureIdentifier]): List of feature identifiers to extract input data from.
-        out_features_identifiers (list[FeatureIdentifier], optional): List of feature identifiers used for outputs. If None,
+        in_features_identifiers (list[FeatureIdentifier]): list of feature identifiers to extract input data from.
+        out_features_identifiers (list[FeatureIdentifier], optional): list of feature identifiers used for outputs. If None,
             defaults to `in_features_identifiers`.
     """
 
@@ -183,8 +183,8 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
 
     Args:
         sklearn_block: A scikit-learn regressor with fit/predict API.
-        in_features_identifiers: List of feature identifiers for inputs.
-        out_features_identifiers: List of feature identifiers for outputs.
+        in_features_identifiers: list of feature identifiers for inputs.
+        out_features_identifiers: list of feature identifiers for outputs.
     """
 
     # TODO: remove transform and inv tranf

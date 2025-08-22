@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from dgl import DGLGraph
-from typing import List, Union
+from typing import Union
 from physicsnemo.models.module import Module
 from physicsnemo.models.gnn_layers.mesh_graph_mlp import MeshGraphMLP
 from physicsnemo.models.meshgraphnet.meshgraphnet import MeshGraphNetProcessor, MetaData
@@ -83,7 +83,7 @@ class MeshGraphNet(Module):
         self,
         node_features: Tensor,
         edge_features: Tensor,
-        graph: Union[DGLGraph, List[DGLGraph]],
+        graph: Union[DGLGraph, list[DGLGraph]],
     ) -> Tensor:
 
         edge_features = self.edge_encoder(edge_features)
