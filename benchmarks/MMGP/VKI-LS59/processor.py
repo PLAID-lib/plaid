@@ -1,7 +1,7 @@
 # processor.py
 
 import numpy as np
-from typing import Dict, List, Any, Tuple, Optional
+from typing import List, Any, Tuple, Optional
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 from AM_POD import PolynomialManifoldApproximation
@@ -23,13 +23,13 @@ class InputProcessor:
         self.n_components_: int = None
         self.node_shape_: tuple = None  # to reconstruct original shape
 
-    def fit(self, inputs: Dict[str, List[np.ndarray]]) -> "InputProcessor":
+    def fit(self, inputs: dict[str, List[np.ndarray]]) -> "InputProcessor":
         """
         Fit the PCA on flattened node arrays and fit a StandardScaler
         on the concatenation of PCA components + the two input scalars.
 
         Args:
-            inputs: Dict with keys:
+            inputs: dict with keys:
                 - 'nodes': List of np.ndarray of shape (n_nodes, 2)
                 - 'angle_in': List of floats
                 - 'mach_out': List of floats
@@ -66,12 +66,12 @@ class InputProcessor:
 
         return self
 
-    def transform(self, inputs: Dict[str, List[np.ndarray]]) -> np.ndarray:
+    def transform(self, inputs: dict[str, List[np.ndarray]]) -> np.ndarray:
         """
         Apply the fitted PCA and StandardScaler to new data.
 
         Args:
-            inputs: Dict with same structure as in fit().
+            inputs: dict with same structure as in fit().
 
         Returns:
             A 2D numpy array of shape (n_samples, n_pca_components + 2).
@@ -91,12 +91,12 @@ class InputProcessor:
 
         return self.scaler.transform(X_combined)
 
-    def fit_transform(self, inputs: Dict[str, List[np.ndarray]]) -> np.ndarray:
+    def fit_transform(self, inputs: dict[str, List[np.ndarray]]) -> np.ndarray:
         """
         Fit PCA and scaler on inputs, then transform and return processed data in one step.
 
         Args:
-            inputs: Dict with same structure as in fit().
+            inputs: dict with same structure as in fit().
 
         Returns:
             A 2D numpy array of shape (n_samples, n_pca_components + 2).
@@ -104,7 +104,7 @@ class InputProcessor:
         self.fit(inputs)
         return self.transform(inputs)
 
-    def inverse_transform(self, X_transformed: np.ndarray) -> Dict[str, List[Any]]:
+    def inverse_transform(self, X_transformed: np.ndarray) -> dict[str, List[Any]]:
         """
         Reconstruct approximate original nodes and scalars from the processed data.
 
@@ -113,7 +113,7 @@ class InputProcessor:
                 as output by transform().
 
         Returns:
-            Dict with keys:
+            dict with keys:
                 - 'nodes': List of np.ndarray of shape original (n_nodes, 2)
                 - 'angle_in': List of floats
                 - 'mach_out':  List of floats
@@ -211,8 +211,8 @@ class OutputProcessor:
 
     def fit(
         self,
-        outputs_train: Dict[str, List[Any]],
-        outputs_test: Dict[str, List[Any]]| None = None
+        outputs_train: dict[str, List[Any]],
+        outputs_test: dict[str, List[Any]]| None = None
     ) -> "OutputProcessor":
         """
         Fit PMA models on train/test data and a StandardScaler on combined features.
@@ -246,7 +246,7 @@ class OutputProcessor:
 
     def transform(
         self,
-        outputs: Dict[str, List[Any]]
+        outputs: dict[str, List[Any]]
     ) -> np.ndarray:
         """
         Transform outputs using fitted PMA and scaler.
@@ -262,8 +262,8 @@ class OutputProcessor:
 
     def fit_transform(
         self,
-        outputs_train: Dict[str, List[Any]],
-        outputs_test: Dict[str, List[Any]] | None = None
+        outputs_train: dict[str, List[Any]],
+        outputs_test: dict[str, List[Any]] | None = None
     ) -> np.ndarray:
         """
         Fit PMA and scaler then transform train outputs.
@@ -274,7 +274,7 @@ class OutputProcessor:
     def inverse_transform(
         self,
         X_transformed: np.ndarray
-    ) -> Dict[str, List[Any]]:
+    ) -> dict[str, List[Any]]:
         """
         Inverse transform to reconstruct approximate original outputs.
         """

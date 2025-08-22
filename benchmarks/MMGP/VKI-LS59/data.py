@@ -1,13 +1,13 @@
 import pickle
 from pathlib import Path
-from typing import Literal, Dict, Any, List, Tuple, Optional
+from typing import Literal, Any, List, Tuple, Optional
 from sklearn.model_selection import KFold
 from datasets import load_dataset, load_from_disk
 from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
 
 def extract_split_data(
     split: Literal["train", "test", "traintest"]
-) -> Tuple[Dict[str, List[Any]], Dict[str, List[Any]]]:
+) -> Tuple[dict[str, List[Any]], dict[str, List[Any]]]:
     """
     Extract input and output dictionaries for all samples in a given split of a Plaid dataset.
 
@@ -17,8 +17,8 @@ def extract_split_data(
             'train', 'test', or 'traintest' (concatenation of train and test).
 
     Returns:
-        inputs (Dict[str, List[Any]]): Keys are mesh/scalar names; values are lists of sample data.
-        outputs (Dict[str, List[Any]]): Keys are selected field/scalar names; values are lists of sample data.
+        inputs (dict[str, List[Any]]): Keys are mesh/scalar names; values are lists of sample data.
+        outputs (dict[str, List[Any]]): Keys are selected field/scalar names; values are lists of sample data.
     """
     # 1) Load the HuggingFace dataset from disk
     hf_dataset = load_dataset("PLAID-datasets/VKI-LS59", split="all_samples")
@@ -43,8 +43,8 @@ def extract_split_data(
     FIELD_OUTPUTS  = ["mach", "nut"]
     SCALAR_OUTPUTS = ["Q", "power", "Pr", "Tr", "eth_is", "angle_out"]
 
-    inputs: Dict[str, List[Any]]  = {}
-    outputs: Dict[str, List[Any]] = {}
+    inputs: dict[str, List[Any]]  = {}
+    outputs: dict[str, List[Any]] = {}
 
     # --- INPUTS ---
     # Mesh node coordinates
@@ -82,24 +82,24 @@ def extract_split_data(
 
 
 def make_kfold_splits(
-    inputs: Dict[str, List[Any]],
-    outputs: Dict[str, List[Any]],
+    inputs: dict[str, List[Any]],
+    outputs: dict[str, List[Any]],
     n_splits: int = 5,
     shuffle: bool = True,
     random_state: Optional[int] = None
 ) -> List[Tuple[
-        Dict[str, List[Any]],  # train inputs
-        Dict[str, List[Any]],  # train outputs
-        Dict[str, List[Any]],  # val inputs
-        Dict[str, List[Any]]   # val outputs
+        dict[str, List[Any]],  # train inputs
+        dict[str, List[Any]],  # train outputs
+        dict[str, List[Any]],  # val inputs
+        dict[str, List[Any]]   # val outputs
     ]]:
     """
     Split inputs and outputs into K folds for cross‑validation.
 
     Args:
-        inputs (Dict[str, List[Any]]):
+        inputs (dict[str, List[Any]]):
             Dictionary of input data where each key maps to a list of samples.
-        outputs (Dict[str, List[Any]]):
+        outputs (dict[str, List[Any]]):
             Dictionary of output data where each key maps to a list of samples.
         n_splits (int, optional):
             Number of folds. Defaults to 5.
@@ -121,10 +121,10 @@ def make_kfold_splits(
 
     splits: List[
         Tuple[
-            Dict[str, List[Any]],
-            Dict[str, List[Any]],
-            Dict[str, List[Any]],
-            Dict[str, List[Any]]
+            dict[str, List[Any]],
+            dict[str, List[Any]],
+            dict[str, List[Any]],
+            dict[str, List[Any]]
         ]
     ] = []
 
@@ -141,14 +141,14 @@ def make_kfold_splits(
 
 
 def dump_predictions(
-    outputs_pred: Dict[str, List[Any]],
+    outputs_pred: dict[str, List[Any]],
     filename: str = 'predictions.pkl'
 ) -> None:
     """
     Dump predicted outputs to a pickle file with the same structure as the reference.
 
     Args:
-        outputs_pred (Dict[str, List[Any]]):
+        outputs_pred (dict[str, List[Any]]):
             Predicted outputs containing keys
             'nut', 'mach', 'Q', 'power', 'Pr', 'Tr', 'eth_is', 'angle_out'.
         filename (str): Path to the output .pkl file.
@@ -160,7 +160,7 @@ def dump_predictions(
     n_samples = len(outputs_pred[FIELD_OUTPUTS[0]])
     predictions = []
     for i in range(n_samples):
-        rec: Dict[str, Any] = {}
+        rec: dict[str, Any] = {}
         for fn in FIELD_OUTPUTS:
             rec[fn] = outputs_pred[fn][i]
         for sn in SCALAR_OUTPUTS:
