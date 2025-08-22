@@ -34,11 +34,10 @@ dependencies = [
     "tqdm",
     "pyyaml",
     "pycgns",
+    "scikit-learn",
+    "datasets",
     "numpy",
     "matplotlib",
-    "rich",
-    "scikit-learn",
-    "datasets >=3.0",
     "pydantic",
 ]
 
@@ -73,15 +72,20 @@ include = ["plaid*"]
 
 [project.optional-dependencies]
 dev = [
-    "pre-commit",
-    "ruff",
+    "optuna",
     "pytest",
     "pytest-cov",
+    "ruff",
+    "pre-commit",
     "sphinx",
-    "myst-nb",
-    "myst-parser",
-    "furo",
     "sphinx-autoapi",
     "sphinx-tabs",
     "sphinxcontrib.bibtex",
+    "myst-nb",
+    "myst-parser",
+    "nbconvert",
+    "furo",
 ]
+
+[tool.coverage.run]
+omit = ["src/plaid/examples/*"]

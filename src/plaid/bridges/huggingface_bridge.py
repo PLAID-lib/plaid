@@ -1,8 +1,20 @@
-"""Huggingface bridge for PLAID datasets."""
+"""Hugging Face bridge for PLAID datasets."""
 
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+import os
 import pickle
+import shutil
 import sys
-from typing import Callable
+from multiprocessing import Pool
+from pathlib import Path
+from typing import Callable, Optional
+
+from tqdm import tqdm
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -11,16 +23,22 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
-import datasets
 
+import datasets
+from datasets import load_dataset
+
+from plaid.bridges._huggingface_helpers import (
+    _HFShardToPlaidSampleConverter,
+    _HFToPlaidSampleConverter,
+)
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 
 """
-Convention with hf (huggingface) datasets:
-- hf-datasets contains a single huggingface split, named 'all_samples'.
-- samples contains a single huggingface feature, named called "sample".
+Convention with hf (Hugging Face) datasets:
+- hf-datasets contains a single Hugging Face split, named 'all_samples'.
+- samples contains a single Hugging Face feature, named called "sample".
 - Samples are instances of plaid.containers.sample.Sample.
 - Mesh objects included in samples follow the CGNS standard, and can be converted in Muscat.Containers.Mesh.Mesh.
 - problem_definition info is stored in hf-datasets "description" parameter
@@ -30,16 +48,16 @@ Convention with hf (huggingface) datasets:
 def generate_huggingface_description(
     infos: dict, problem_definition: ProblemDefinition
 ) -> dict[str]:
-    """Generates a huggingface dataset description field from a plaid dataset infos and problem definition.
+    """Generates a Hugging Face dataset description field from a plaid dataset infos and problem definition.
 
     The conventions chosen here ensure working conversion to and from huggingset datasets.
 
     Args:
-        infos (dict): infos entry of the plaid dataset from which the huggingface description is to be generated
-        problem_definition (ProblemDefinition): of which the huggingface description is to be generated
+        infos (dict): infos entry of the plaid dataset from which the Hugging Face description is to be generated
+        problem_definition (ProblemDefinition): of which the Hugging Face description is to be generated
 
     Returns:
-        dict[str]: huggingface dataset description
+        dict[str]: Hugging Face dataset description
     """
     description = {}
 
@@ -62,17 +80,17 @@ def generate_huggingface_description(
 def plaid_dataset_to_huggingface(
     dataset: Dataset, problem_definition: ProblemDefinition, processes_number: int = 1
 ) -> datasets.Dataset:
-    """Use this function for converting a huggingface dataset from a plaid dataset.
+    """Use this function for converting a Hugging Face dataset from a plaid dataset.
 
-    The dataset can then be saved to disk, or pushed to the huggingface hub.
+    The dataset can then be saved to disk, or pushed to the Hugging Face hub.
 
     Args:
-        dataset (Dataset): the plaid dataset to be converted in huggingface format
-        problem_definition (ProblemDefinition): from which the huggingface dataset is to be generated
-        processes_number (int, optional): The number of processes used to generate the huggingface dataset
+        dataset (Dataset): the plaid dataset to be converted in Hugging Face format
+        problem_definition (ProblemDefinition): from which the Hugging Face dataset is to be generated
+        processes_number (int, optional): The number of processes used to generate the Hugging Face dataset
 
     Returns:
-        datasets.Dataset: dataset in huggingface format
+        datasets.Dataset: dataset in Hugging Face format
 
     Example:
         .. code-block:: python
@@ -83,9 +101,9 @@ def plaid_dataset_to_huggingface(
     """
 
     def generator():
-        for id in range(len(dataset)):
+        for sample in dataset:
             yield {
-                "sample": pickle.dumps(dataset[id].model_dump()),
+                "sample": pickle.dumps(sample.model_dump()),
             }
 
     return plaid_generator_to_huggingface(
@@ -99,20 +117,20 @@ def plaid_generator_to_huggingface(
     problem_definition: ProblemDefinition,
     processes_number: int = 1,
 ) -> datasets.Dataset:
-    """Use this function for creating a huggingface dataset from a sample generator function.
+    """Use this function for creating a Hugging Face dataset from a sample generator function.
 
     This function can be used when the plaid dataset cannot be loaded in RAM all at once due to its size.
     The generator enables loading samples one by one.
-    The dataset can then be saved to disk, or pushed to the huggingface hub.
+    The dataset can then be saved to disk, or pushed to the Hugging Face hub.
 
     Args:
         generator (Callable): a function yielding a dict {"sample" : sample}, where sample is of type 'bytes'
-        infos (dict): infos entry of the plaid dataset from which the huggingface dataset is to be generated
-        problem_definition (ProblemDefinition): from which the huggingface dataset is to be generated
-        processes_number (int, optional): The number of processes used to generate the huggingface dataset
+        infos (dict): infos entry of the plaid dataset from which the Hugging Face dataset is to be generated
+        problem_definition (ProblemDefinition): from which the Hugging Face dataset is to be generated
+        processes_number (int, optional): The number of processes used to generate the Hugging Face dataset
 
     Returns:
-        datasets.Dataset: dataset in huggingface format
+        datasets.Dataset: dataset in Hugging Face format
 
     Example:
         .. code-block:: python
@@ -122,34 +140,75 @@ def plaid_generator_to_huggingface(
             dataset.save_to_disk("path/to/dir")
     """
     ds = datasets.Dataset.from_generator(
-        generator, num_proc=processes_number, writer_batch_size=1
+        generator,
+        features=datasets.Features({"sample": datasets.Value("binary")}),
+        num_proc=processes_number,
+        writer_batch_size=1,
+        split=datasets.splits.NamedSplit("all_samples"),
     )
 
-    ds._split = datasets.splits.NamedSplit("all_samples")
+    def update_dataset_description(ds: Dataset, new_desc: str) -> Dataset:
+        info = ds.info.copy()
+        info.description = new_desc
+        ds._info = info
+        return ds
 
-    ds._info = datasets.DatasetInfo(
-        features=datasets.Features({"sample": datasets.Value("binary")}),
-        description=generate_huggingface_description(infos, problem_definition),
+    ds = update_dataset_description(
+        ds, generate_huggingface_description(infos, problem_definition)
     )
 
     return ds
 
 
+def huggingface_description_to_problem_definition(
+    description: dict,
+) -> ProblemDefinition:
+    """Converts a Hugging Face dataset description to a plaid problem definition.
+
+    Args:
+        description (dict): the description field of a Hugging Face dataset, containing the problem definition
+
+    Returns:
+        problem_definition (ProblemDefinition): the plaid problem definition initialized from the Hugging Face dataset description
+    """
+    problem_definition = ProblemDefinition()
+    problem_definition.set_task(description["task"])
+    problem_definition.set_split(description["split"])
+    problem_definition.add_input_scalars_names(description["in_scalars_names"])
+    problem_definition.add_output_scalars_names(description["out_scalars_names"])
+    problem_definition.add_input_timeseries_names(description["in_timeseries_names"])
+    problem_definition.add_output_timeseries_names(description["out_timeseries_names"])
+    problem_definition.add_input_fields_names(description["in_fields_names"])
+    problem_definition.add_output_fields_names(description["out_fields_names"])
+    problem_definition.add_input_meshes_names(description["in_meshes_names"])
+    problem_definition.add_output_meshes_names(description["out_meshes_names"])
+
+    return problem_definition
+
+
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
-) -> tuple[Self, ProblemDefinition]:
-    """Use this function for converting a plaid dataset from a huggingface dataset.
+    ids: Optional[list[int]] = None,
+    processes_number: int = 1,
+    large_dataset: Optional[bool] = False,
+    verbose: bool = True,
+) -> tuple[Dataset, ProblemDefinition]:
+    """Use this function for converting a plaid dataset from a Hugging Face dataset.
 
-    A huggingface dataset can be read from disk or the hub. From the hub, the
+    A Hugging Face dataset can be read from disk or the hub. From the hub, the
     split = "all_samples" options is important to get a dataset and not a datasetdict.
     Many options from loading are available (caching, streaming, etc...)
 
     Args:
-        ds (datasets.Dataset): the dataset in huggingface format to be converted
+        ds (datasets.Dataset): the dataset in Hugging Face format to be converted
+        ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
+        processes_number (int, optional): The number of processes used to generate the plaid dataset
+        large_dataset (bool, optional): if True, uses a variant where parallel worker do not each load the complete dataset
+        verbose (bool, optional): if True, prints progress using tdqm
 
     Returns:
         dataset (Dataset): the converted dataset.
-        problem_definition (ProblemDefinition): the problem definition generated from th huggingface dataset
+        problem_definition (ProblemDefinition): the problem definition generated from the Hugging Face dataset
 
     Example:
         .. code-block:: python
@@ -160,9 +219,66 @@ def huggingface_dataset_to_plaid(
             dataset = load_from_disk("chanel/dataset")
             plaid_dataset, plaid_problem = huggingface_dataset_to_plaid(dataset)
     """
+    assert processes_number <= len(ds), (
+        "Trying to parallelize with more processes than samples in dataset"
+    )
+    if ids:
+        assert processes_number <= len(ids), (
+            "Trying to parallelize with more processes than selected samples in dataset"
+        )
+
     dataset = Dataset()
-    for i in range(len(ds)):
-        dataset.add_sample(Sample.model_validate(pickle.loads(ds[i]["sample"])))
+
+    if verbose:
+        print("Converting Hugging Face dataset to plaid dataset...")
+
+    if large_dataset:
+        if ids:
+            raise NotImplementedError(
+                "ids selection not implemented with large_dataset option"
+            )
+        for i in range(processes_number):
+            shard = ds.shard(num_shards=processes_number, index=i)
+            shard.save_to_disk(f"shards/dataset_shard_{i}")
+
+        def parallel_convert(shard_path, n_workers):
+            converter = _HFShardToPlaidSampleConverter(Path(shard_path))
+            with Pool(processes=n_workers) as pool:
+                return list(
+                    tqdm(
+                        pool.imap(converter, range(len(converter.ds))),
+                        total=len(converter.ds),
+                        disable=not verbose,
+                    )
+                )
+
+        samples = []
+
+        for i in range(processes_number):
+            shard_path = os.path.join("shards", f"dataset_shard_{i}")
+            shard_samples = parallel_convert(shard_path, n_workers=processes_number)
+            samples.extend(shard_samples)
+
+        dataset.add_samples(samples, ids)
+
+        if os.path.exists("shards"):
+            shutil.rmtree("shards")
+
+    else:
+        if ids:
+            indices = ids
+        else:
+            indices = range(len(ds))
+
+        with Pool(processes=processes_number) as pool:
+            for idx, sample in enumerate(
+                tqdm(
+                    pool.imap(_HFToPlaidSampleConverter(ds), indices),
+                    total=len(indices),
+                    disable=not verbose,
+                )
+            ):
+                dataset.add_sample(sample, id=indices[idx])
 
     infos = {}
     if "legal" in ds.description:
@@ -172,19 +288,54 @@ def huggingface_dataset_to_plaid(
 
     dataset.set_infos(infos)
 
-    problem_definition = ProblemDefinition()
-    problem_definition.set_task(ds.description["task"])
-    problem_definition.set_split(ds.description["split"])
-    problem_definition.add_input_scalars_names(ds.description["in_scalars_names"])
-    problem_definition.add_output_scalars_names(ds.description["out_scalars_names"])
-    problem_definition.add_input_timeseries_names(ds.description["in_timeseries_names"])
-    problem_definition.add_output_timeseries_names(
-        ds.description["out_timeseries_names"]
+    problem_definition = huggingface_description_to_problem_definition(ds.description)
+
+    return dataset, problem_definition
+
+
+def streamed_huggingface_dataset_to_plaid(
+    hf_repo: str,
+    number_of_samples: int,
+) -> tuple[Dataset, ProblemDefinition]:  # pragma: no cover
+    """Use this function for creating a plaid dataset by streaming on Hugging Face.
+
+    The indices of the retrieved sample is not controled.
+
+    Args:
+        hf_repo (str): the name of the repo on Hugging Face
+        number_of_samples (int): The number of samples to retrieve.
+
+    Returns:
+        dataset (Dataset): the converted dataset.
+        problem_definition (ProblemDefinition): the problem definition generated from the Hugging Face dataset
+
+    Notes:
+        .. code-block:: python
+
+            from plaid.bridges.huggingface_bridge import streamed_huggingface_dataset_to_plaid
+
+            dataset, pb_def = streamed_huggingface_dataset_to_plaid('PLAID-datasets/VKI-LS59', 2)
+    """
+    ds_stream = load_dataset(hf_repo, split="all_samples", streaming=True)
+
+    samples = []
+    for _ in range(number_of_samples):
+        hf_sample = next(iter(ds_stream))
+        samples.append(Sample.model_validate(pickle.loads(hf_sample["sample"])))
+
+    dataset = Dataset.from_list_of_samples(samples)
+
+    infos = {}
+    if "legal" in ds_stream.description:
+        infos["legal"] = ds_stream.description["legal"]
+    if "data_production" in ds_stream.description:
+        infos["data_production"] = ds_stream.description["data_production"]
+
+    dataset.set_infos(infos)
+
+    problem_definition = huggingface_description_to_problem_definition(
+        ds_stream.description
     )
-    problem_definition.add_input_fields_names(ds.description["in_fields_names"])
-    problem_definition.add_output_fields_names(ds.description["out_fields_names"])
-    problem_definition.add_input_meshes_names(ds.description["in_meshes_names"])
-    problem_definition.add_output_meshes_names(ds.description["out_meshes_names"])
 
     return dataset, problem_definition
 
@@ -205,27 +356,27 @@ def create_string_for_huggingface_dataset_card(
     dataset_long_description: str = None,
     url_illustration: str = None,
 ) -> str:
-    """Use this function for creating a dataset card, to upload together with the datase on the huggingface hub.
+    """Use this function for creating a dataset card, to upload together with the datase on the Hugging Face hub.
 
     Doing so ensure that load_dataset from the hub will populate the hf-dataset.description field, and be compatible for conversion to plaid.
 
     Without a dataset_card, the description field is lost.
 
     The parameters download_size_bytes and dataset_size_bytes can be determined after a
-    dataset has been uploaded on huggingface:
+    dataset has been uploaded on Hugging Face:
     - manually by reading their values on the dataset page README.md,
     - automatically as shown in the example below
 
     See `the hugginface examples <https://github.com/PLAID-lib/plaid/blob/main/examples/bridges/huggingface_bridge_example.py>`__ for a concrete use.
 
     Args:
-        description (dict): huggingface dataset description. Obtained from
+        description (dict): Hugging Face dataset description. Obtained from
         - description = hf_dataset.description
         - description = generate_huggingface_description(infos, problem_definition)
         download_size_bytes (int): the size of the dataset when downloaded from the hub
         dataset_size_bytes (int): the size of the dataset when loaded in RAM
         nb_samples (int): the number of samples in the dataset
-        owner (str): the owner of the dataset, usually a username or organization name on huggingface
+        owner (str): the owner of the dataset, usually a username or organization name on Hugging Face
         license (str): the license of the dataset, e.g. "CC-BY-4.0", "CC0-1.0", etc.
         zenodo_url (str, optional): the Zenodo URL of the dataset, if available
         arxiv_paper_url (str, optional): the arxiv paper URL of the dataset, if available
@@ -238,7 +389,7 @@ def create_string_for_huggingface_dataset_card(
 
     Returns:
         dataset (Dataset): the converted dataset
-        problem_definition (ProblemDefinition): the problem definition generated from th huggingface dataset
+        problem_definition (ProblemDefinition): the problem definition generated from the Hugging Face dataset
 
     Example:
         .. code-block:: python
@@ -305,9 +456,9 @@ dataset_info:
     if url_illustration:
         str__ += f"""![image/png]({url_illustration})
 
-This dataset contains a single huggingface split, named 'all_samples'.
+This dataset contains a single Hugging Face split, named 'all_samples'.
 
-The samples contains a single huggingface feature, named called "sample".
+The samples contains a single Hugging Face feature, named called "sample".
 
 Samples are instances of [plaid.containers.sample.Sample](https://plaid-lib.readthedocs.io/en/latest/autoapi/plaid/containers/sample/index.html#plaid.containers.sample.Sample).
 Mesh objects included in samples follow the [CGNS](https://cgns.github.io/) standard, and can be converted in

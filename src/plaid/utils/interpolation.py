@@ -28,7 +28,7 @@ def binary_search(
 
     Parameters
     ----------
-    ordered_list: list or one-dimensional np.ndarray
+    ordered_list: List or one-dimensional np.ndarray
         the data sorted in increasing order from which the previous rank is\
         searched.
     item : float or int
@@ -116,7 +116,7 @@ def piece_wise_linear_interpolation_with_map(
     vectors : np.ndarray or dict
         the available data, of size (numberOfVectors, numberOfDofs).
     vectors_map : list
-        list containing the mapping from the numberOfTimeIndices items indices to the numberOfVectors vectors, of size (numberOfTimeIndices,). Default is None, in which case numberOfVectors = numberOfTimeIndices.
+        List containing the mapping from the numberOfTimeIndices items indices to the numberOfVectors vectors, of size (numberOfTimeIndices,). Default is None, in which case numberOfVectors = numberOfTimeIndices.
     tolerance : float
         tolerance for deciding when using the closest timestep value instead of carrying out the linear interpolation, default to 1e-4.
 
@@ -174,7 +174,7 @@ def piece_wise_linear_interpolation_vectorized_with_map(
         items (list[float]): the input items at which interpolations are required.
         item_indices (np.ndarray): the items where the available data is defined, of size (numberOfTimeIndices).
         vectors (np.ndarray or dict): the available data, of size (numberOfVectors, numberOfDofs).
-        vectors_map (list): list containing the mapping from the numberOfTimeIndices items indices to the numberOfVectors vectors, of size (numberOfTimeIndices,). Default is None, in which case numberOfVectors = numberOfTimeIndices.
+        vectors_map (list): List containing the mapping from the numberOfTimeIndices items indices to the numberOfVectors vectors, of size (numberOfTimeIndices,). Default is None, in which case numberOfVectors = numberOfTimeIndices.
 
     Returns:
         list[np.ndarray]: List of interpolated vectors, each of size (numberOfDofs).

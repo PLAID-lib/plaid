@@ -14,22 +14,18 @@
 # -- Path setup --------------------------------------------------------------
 
 import datetime
-import os
-import sys
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
+import os, sys
+import subprocess
+from pathlib import Path
 
 sys.path.insert(0, ".")
 sys.path.insert(0, "../")
 
-basedir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+basedir = Path(__file__).absolute().parent.parent
 sys.path.insert(0, basedir)
-sys.path.insert(0, os.path.join(basedir, "src/plaid"))
-# sys.path.insert(0, os.path.join(basedir, "tests"))
-sys.path.insert(0, os.path.join(basedir, "examples"))
+sys.path.insert(0, basedir / "src" / "plaid")
+# sys.path.insert(0, basedir / "tests")
+sys.path.insert(0, basedir / "examples")
 print(sys.path)
 
 
@@ -161,6 +157,9 @@ autoapi_python_class_content = "both"  # default is 'class'
 #     #     - Functions
 #     #     - Methods
 
+nb_execution_mode = 'auto'
+nb_execution_timeout = 300
+
 numfig = True
 
 # -----------------------------------------------------------------------------#
@@ -218,7 +217,6 @@ github_url = "https://github.com/PLAID-lib/plaid"
 
 # -----------------------------------------------------------------------------#
 
-
 def skip_logger_attribute(app, what, name, obj, skip, options):
     if what == "data" and "logger" in name:
         print(f"WILL SKIP: {what=}, {name=}")
@@ -228,3 +226,52 @@ def skip_logger_attribute(app, what, name, obj, skip, options):
 
 def setup(sphinx):
     sphinx.connect("autoapi-skip-member", skip_logger_attribute)
+
+
+# -----------------------------------------------------------------------------#
+
+def get_git_info():
+
+    try:
+        # Try exact tag on current commit
+        tag = subprocess.check_output(
+            ['git', 'describe', '--tags', '--exact-match'],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+        if tag:
+            print(f"I found an ecat tag: {tag}")
+            return tag
+    except subprocess.CalledProcessError:
+        # No exact tag on this commit, fallback below
+        pass
+
+    try:
+        rtd_version = os.environ.get("READTHEDOCS_VERSION")
+
+        if rtd_version == "latest":
+            rtd_version = "main"
+
+        # Get branch from RTD env or local git
+        branch = rtd_version
+        if not branch:
+            branch = subprocess.check_output(
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                stderr=subprocess.DEVNULL,
+                text=True
+            ).strip()
+
+        # Get short commit hash
+        commit = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+
+        return f"{branch}-{commit}"
+
+    except Exception:
+        return "unknown"
+
+release = get_git_info()
+version = release

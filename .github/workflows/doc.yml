@@ -2,10 +2,10 @@ name: Documentation
 
 on:
   push:
-    branches: 
+    branches:
       - '**'
   pull_request:
-    branches: 
+    branches:
       - '**'
   schedule:
     - cron: '0 0 * * *'  # Every day at 00:00 UTC
@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Set up Conda with Mamba
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v3
         with:
           use-mamba: true
           auto-activate-base: false
@@ -31,10 +31,10 @@ jobs:
 
       - name: Create environment
         run: |
-          mamba env create -f environment.yml
-          mamba run -n plaid pip install -e .
+          conda create -n plaid-dev python=3.11 muscat=2.5.0 -c conda-forge
+          conda run -n plaid-dev pip install -e .[dev]
 
       - name: Compile documentation
         run: |
           cd docs
-          mamba run -n plaid bash generate_doc.sh
+          conda run -n plaid-dev bash generate_doc.sh

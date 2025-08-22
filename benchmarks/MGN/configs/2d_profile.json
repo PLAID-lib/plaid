@@ -25,13 +25,13 @@
             1
         ],
         "hidden_dim_edge_encoder": [
-            32
+            128
         ],
         "hidden_dim_node_decoder": [
-            32
+            128
         ],
         "hidden_dim_node_encoder": [
-            32
+            128
         ],
         "input_dim_edges": [
             1

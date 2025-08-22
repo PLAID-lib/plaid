@@ -8,6 +8,7 @@
 #
 
 # %% Imports
+import copy
 import sys
 
 if sys.version_info >= (3, 11):
@@ -16,14 +17,13 @@ else:  # pragma: no cover
     from typing import TypeVar
 
     Self = TypeVar("Self")
-
 import logging
 import os
 import shutil
 import subprocess
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Iterator, Union
+from typing import Iterator, Literal, Optional, Union
 
 import numpy as np
 import yaml
@@ -31,7 +31,8 @@ from tqdm import tqdm
 
 from plaid.constants import AUTHORIZED_INFO_KEYS
 from plaid.containers.sample import Sample
-from plaid.types import FeatureType
+from plaid.containers.utils import check_features_size_homogeneity
+from plaid.types import Array, FeatureIdentifier, FeatureType
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ class Dataset(object):
 
     def __init__(
         self,
-        directory_path: Union[str, Path] = None,
+        directory_path: Optional[Union[str, Path]] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> None:
@@ -124,9 +125,21 @@ class Dataset(object):
                     directory_path, verbose=verbose, processes_number=processes_number
                 )
 
+    def copy(self) -> Self:
+        """Create a deep copy of the dataset.
+
+        Returns:
+            A new `Dataset` instance with all internal data (samples, infos)
+            deeply copied to ensure full isolation from the original.
+
+        Notes:
+            This operation may be memory-intensive for large datasets.
+        """
+        return copy.deepcopy(self)
+
     # -------------------------------------------------------------------------#
     def get_samples(
-        self, ids: list[int] = None, as_list: bool = False
+        self, ids: Optional[list[int]] = None, as_list: bool = False
     ) -> dict[int, Sample]:
         """Return dictionnary of samples with ids corresponding to :code:`ids` if specified, else all samples.
 
@@ -144,7 +157,7 @@ class Dataset(object):
         else:
             return {id: self._samples[id] for id in ids}
 
-    def add_sample(self, sample: Sample, id: int = None) -> int:
+    def add_sample(self, sample: Sample, id: Optional[int] = None) -> int:
         """Add a new :class:`Sample <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>.`.
 
         Args:
@@ -215,7 +228,9 @@ class Dataset(object):
 
         return deleted_sample
 
-    def add_samples(self, samples: list[Sample], ids: list[int] = None) -> list[int]:
+    def add_samples(
+        self, samples: list[Sample], ids: Optional[list[int]] = None
+    ) -> list[int]:
         """Add new :class:`Samples <plaid.containers.sample.Sample>` to the :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
         Args:
@@ -254,7 +269,7 @@ class Dataset(object):
                 )
 
         if ids is None:
-            ids = np.arange(len(self), len(self) + len(samples))
+            ids = list(range(len(self), len(self) + len(samples)))
         else:
             if len(samples) != len(ids):
                 raise ValueError(
@@ -336,7 +351,7 @@ class Dataset(object):
         return list(self._samples.keys())
 
     # -------------------------------------------------------------------------#
-    def get_scalar_names(self, ids: list[int] = None) -> list[str]:
+    def get_scalar_names(self, ids: Optional[list[int]] = None) -> list[str]:
         """Return union of scalars names in all samples with id in ids.
 
         Args:
@@ -358,7 +373,7 @@ class Dataset(object):
         return scalars_names
 
     # -------------------------------------------------------------------------#
-    def get_time_series_names(self, ids: list[int] = None) -> list[str]:
+    def get_time_series_names(self, ids: Optional[list[int]] = None) -> list[str]:
         """Return union of time series names in all samples with id in ids.
 
         Args:
@@ -381,7 +396,10 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def get_field_names(
-        self, ids: list[int] = None, zone_name: str = None, base_name: str = None
+        self,
+        ids: Optional[list[int]] = None,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
     ) -> list[str]:
         """Return union of fields names in all samples with id in ids.
 
@@ -410,7 +428,56 @@ class Dataset(object):
         return fields_names
 
     # -------------------------------------------------------------------------#
-    def add_tabular_scalars(self, tabular: np.ndarray, names: list[str] = None) -> None:
+
+    def get_all_features_identifiers(
+        self, ids: Optional[list[int]] = None
+    ) -> list[FeatureIdentifier]:
+        """Get all features identifiers from the dataset.
+
+        Args:
+            ids (list[int], optional): Sample id from which returning feature identifiers. If None, take all samples. Defaults to None.
+
+        Returns:
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the dataset.
+        """
+        if ids is not None and len(set(ids)) != len(ids):
+            logger.warning("Provided ids are not unique")
+
+        all_features_identifiers = []
+        for sample in self.get_samples(ids, as_list=True):
+            features_identifiers = sample.get_all_features_identifiers()
+            for feat_id in features_identifiers:
+                if feat_id not in all_features_identifiers:
+                    all_features_identifiers.append(feat_id)
+        all_features_identifiers
+        return all_features_identifiers
+
+    def get_all_features_identifiers_by_type(
+        self,
+        feature_type: Literal["scalar", "nodes", "field", "time_series"],
+        ids: list[int] = None,
+    ) -> list[FeatureIdentifier]:
+        """Get all features identifiers from the dataset.
+
+        Args:
+            feature_type (str): Type of features to return
+            ids (list[int], optional): Sample id from which returning feature identifiers. If None, take all samples. Defaults to None.
+
+        Returns:
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features of a given type  in the dataset.
+        """
+        all_features_identifiers = self.get_all_features_identifiers(ids)
+        return [
+            feat_id
+            for feat_id in all_features_identifiers
+            if feat_id["type"] == feature_type
+        ]
+
+    # -------------------------------------------------------------------------#
+
+    def add_tabular_scalars(
+        self, tabular: np.ndarray, names: Optional[list[str]] = None
+    ) -> None:
         """Add tabular scalar data to the summary.
 
         Args:
@@ -421,7 +488,7 @@ class Dataset(object):
             ShapeError: Raised if the input tabular array does not have the correct shape (2D).
             ShapeError: Raised if the number of columns in the tabular data does not match the number of names provided.
 
-        Note:
+        Notes:
             If no names are provided, it will automatically create names based on the pattern 'X{number}'
         """
         nb_samples = len(tabular)
@@ -449,8 +516,8 @@ class Dataset(object):
 
     def get_scalars_to_tabular(
         self,
-        scalar_names: list[str] = None,
-        sample_ids: list[int] = None,
+        scalar_names: Optional[list[str]] = None,
+        sample_ids: Optional[list[int]] = None,
         as_nparray=False,
     ) -> Union[dict[str, np.ndarray], np.ndarray]:
         """Return a dict containing scalar values as tabulars/arrays.
@@ -492,35 +559,215 @@ class Dataset(object):
     # -------------------------------------------------------------------------#
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
-    ) -> list[FeatureType]:
+    ) -> dict[int, FeatureType]:
         """Get a list of features from the dataset based on the provided feature string identifier.
 
         Args:
             feature_string_identifier (str): A string identifier for the feature.
 
         Returns:
-            list[FeatureType]: A list of features matching the provided string identifier.
+            dict[int, FeatureType]: A list of features matching the provided string identifier.
         """
-        return [
-            sample.get_feature_from_string_identifier(feature_string_identifier)
-            for sample in self._samples.values()
-        ]
+        return {
+            id: self[id].get_feature_from_string_identifier(feature_string_identifier)
+            for id in self.get_sample_ids()
+        }
 
     def get_feature_from_identifier(
         self, feature_identifier: dict[str : Union[str, float]]
-    ) -> list[FeatureType]:
+    ) -> dict[int, FeatureType]:
         """Get a list of features from the dataset based on the provided feature identifier.
 
         Args:
-            feature_identifier (dict[str, Union[str, float]]): A dictionary containing the feature identifier.
+            feature_identifier (FeatureIdentifier): A dictionary containing the feature identifier.
 
         Returns:
-            list[FeatureType]: A list of features matching the provided identifier.
+            dict[int, FeatureType]: A list of features matching the provided identifier.
         """
-        return [
-            sample.get_feature_from_identifier(feature_identifier)
-            for sample in self._samples.values()
-        ]
+        return {
+            id: self[id].get_feature_from_identifier(feature_identifier)
+            for id in self.get_sample_ids()
+        }
+
+    def get_features_from_identifiers(
+        self, feature_identifiers: list[dict[str : Union[str, float]]]
+    ) -> dict[int, list[FeatureType]]:
+        """Get a list of features from the dataset based on the provided feature identifiers.
+
+        Args:
+            feature_identifiers (FeatureIdentifier): A dictionary containing the feature identifier.
+
+        Returns:
+            dict[int, list[FeatureType]]: A list of features matching the provided identifier.
+        """
+        return {
+            id: self[id].get_features_from_identifiers(feature_identifiers)
+            for id in self.get_sample_ids()
+        }
+
+    def update_features_from_identifier(
+        self,
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        features: dict[int, Union[FeatureType, list[FeatureType]]],
+        in_place: bool = False,
+    ) -> Self:
+        """Update one or several features of the dataset by their identifier(s).
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers, and corresponding feature data. When `in_place=False`, a deep copy of the dataset is created
+        before applying updates, ensuring full isolation from the original.
+
+        Args:
+            feature_identifiers (dict or list of dict): one or more feature identifiers.
+            features (dict): dict with sample index as keys and one or more features as values.
+            in_place (bool, optional): If True, modifies the current dataset in place.
+                If False, returns a deep copy with updated features.
+
+        Returns:
+            Self: The updated dataset (either the current instance or a new copy).
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        assert set(features.keys()) == set(self.get_sample_ids()), (
+            "Must provide the same sample indices in features as in the dataset"
+        )
+
+        dataset = self if in_place else self.copy()
+
+        for id in self.get_sample_ids():
+            dataset[id].update_features_from_identifier(
+                feature_identifiers, features[id], in_place=True
+            )
+        return dataset
+
+    def from_features_identifier(
+        self,
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+    ) -> Self:
+        """Extract features of the dataset by their identifier(s) and return a new dataset containing these features.
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers
+
+        Args:
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+
+        Returns:
+            Self: New dataset containing the provided feature identifiers
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        dataset = Dataset()
+        dataset.set_infos(copy.deepcopy(self.get_infos()))
+
+        for id in self.get_sample_ids():
+            extracted_sample = self[id].from_features_identifier(feature_identifiers)
+            dataset.add_sample(sample=extracted_sample, id=id)
+        return dataset
+
+    def get_tabular_from_homogeneous_identifiers(
+        self,
+        feature_identifiers: list[FeatureIdentifier],
+    ) -> Array:
+        """Extract features of the dataset by their identifier(s) and return an array containing these features.
+
+        Features must have identic sizes to be casted in an array. The first dimension of the array is the number of samples in the dataset.
+        This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
+
+        Args:
+            feature_identifiers (list of dict): Feature identifiers.
+
+        Returns:
+            Array: An containing the provided feature identifiers, size (nb_sample, nb_features, dim_features)
+
+        Notes:
+            Not working with time_series for the moment (time series have 2 elements: time_sequence and values)
+
+        Raises:
+            AssertionError: If feature sizes are inconsistent.
+        """
+        features = self.get_features_from_identifiers(feature_identifiers)
+        dim_features = check_features_size_homogeneity(feature_identifiers, features)
+
+        tabular = np.stack(list(features.values()))
+        if dim_features == 0:
+            tabular = np.expand_dims(tabular, axis=-1)
+        assert tabular.ndim == 3, (
+            "tabular must be constructed to have 3 dimensions: (nb_sample, nb_features, dim_features)"
+        )
+
+        return tabular
+
+    def get_tabular_from_stacked_identifiers(
+        self,
+        feature_identifiers: list[FeatureIdentifier],
+    ) -> Array:
+        """Extract features of the dataset by their identifier(s), stack them and return an array containing these features.
+
+        After stacking, each sample has one feature of dimension dim_stacked_features
+
+        Args:
+            feature_identifiers (list of dict): Feature identifiers.
+
+        Returns:
+            Array: An containing the provided feature identifiers, size (nb_sample, dim_stacked_features)
+        """
+        features = self.get_features_from_identifiers(feature_identifiers)
+
+        tabular = []
+        for local_feats in features.values():
+            tabular.append(np.hstack([np.atleast_1d(e) for e in local_feats]))
+        tabular = np.stack(tabular)
+
+        return tabular
+
+    def from_tabular(
+        self,
+        tabular: Array,
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        restrict_to_features: bool = True,
+    ) -> Self:
+        """Generates a dataset from tabular data and feature_identifiers.
+
+        Parameters:
+            tabular (Array): of size (nb_sample, nb_features) or (nb_sample, nb_features, dim_feature) if dim_feature>1
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+            extract_features (bool, optional): If True, only returns the features from feature identifiers, otherwise keep the other features as well
+
+        Returns:
+            Self
+                A new dataset defined from tabular data and feature_identifiers.
+
+        Raises:
+            AssertionError
+                If the number of rows in `tabular` does not match the number of samples in the dataset,
+                or if the number of feature identifiers does not match the number of columns in `tabular`.
+        """
+        if isinstance(feature_identifiers, dict):
+            feature_identifiers = [feature_identifiers]
+
+        assert tabular.shape[0] == len(self)
+        # assert tabular.shape[1] == len(feature_identifiers)
+
+        features = {id: tabular[i] for i, id in enumerate(self.get_sample_ids())}
+
+        if restrict_to_features:
+            dataset = self.from_features_identifier(feature_identifiers)
+            dataset.update_features_from_identifier(
+                feature_identifiers=feature_identifiers,
+                features=features,
+                in_place=True,
+            )
+        else:
+            dataset = self.update_features_from_identifier(
+                feature_identifiers=feature_identifiers,
+                features=features,
+                in_place=False,
+            )
+
+        return dataset
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
@@ -685,10 +932,11 @@ class Dataset(object):
 
     # -------------------------------------------------------------------------#
     def merge_dataset(self, dataset: Self) -> list[int]:
-        """Merges another Dataset into this one.
+        """Merges samples of another dataset into this one.
 
         Args:
             dataset (Dataset): The data set to be merged into this one (self).
+            in_place (bool, option): If True, modifies the current dataset in place.
 
         Returns:
             list[int]: ids of added :class:`Samples <plaid.containers.sample.Sample>` from input :class:`Dataset <plaid.containers.dataset.Dataset>`.
@@ -702,7 +950,52 @@ class Dataset(object):
             raise ValueError("dataset must be an instance of Dataset")
         return self.add_samples(dataset.get_samples(as_list=True))
 
-    # -------------------------------------------------------------------------#
+    def merge_features(self, dataset: Self, in_place: bool = False) -> Self:
+        """Merge features of another dataset into this one.
+
+        Args:
+            dataset (Dataset): The dataset to be merged into this one (self).
+            in_place (bool, option): If True, modifies the current dataset in place.
+                If False, returns a deep copy with the merged features.
+
+        Returns:
+            Dataset: A dataset containing all samples from the input datasets.
+        """
+        if dataset is None:
+            return
+        if not isinstance(dataset, Dataset):
+            raise ValueError("dataset must be an instance of Dataset")
+
+        merged_dataset = self if in_place else self.copy()
+        assert dataset.get_sample_ids() == merged_dataset.get_sample_ids(), (
+            "Cannot merge features of datasets with different sample ids. "
+        )
+        for id in dataset.get_sample_ids():
+            merged_sample = merged_dataset[id].merge_features(
+                dataset[id], in_place=in_place
+            )
+            merged_dataset.set_sample(
+                id=id, sample=merged_sample, warning_overwrite=False
+            )
+
+        return merged_dataset
+
+    @classmethod
+    def merge_dataset_by_features(cls, datasets_list: list[Self]) -> Self:
+        """Merge features a list of datasets.
+
+        Args:
+            datasets_list (list[Dataset]): The list of datasets to be merged.
+
+        Returns:
+            Dataset: A new dataset containing all samples from the input datasets.
+        """
+        assert len(datasets_list) > 1, "Provide more than one dataset"
+        merged_dataset = datasets_list[0]
+        for dataset in datasets_list[1:]:
+            merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
+        return merged_dataset
+
     def save(self, fname: Union[str, Path]) -> None:
         """Saves the data set to a TAR (Tape Archive) file.
 
@@ -716,24 +1009,38 @@ class Dataset(object):
         """
         fname = Path(fname)
 
-        # First : creates a directory <savedir> to save everything in an
+        # First : creates a directory <save_dir> to save everything in an
         # arborescence on disk
-        savedir = fname.parent / f"tmpsavedir_{generate_random_ASCII()}"
-        if savedir.is_dir():  # pragma: no cover
+        save_dir = fname.parent / f"tmpsavedir_{generate_random_ASCII()}"
+        if save_dir.is_dir():  # pragma: no cover
             raise ValueError(
-                f"temporary intermediate directory <{savedir}> already exits"
+                f"temporary intermediate directory <{save_dir}> already exits"
             )
-        savedir.mkdir(parents=True)
+        save_dir.mkdir(parents=True)
 
-        self._save_to_dir_(savedir)
+        self._save_to_dir_(save_dir)
 
         # Then : tar dir in file <fname>
         # TODO: avoid using subprocess by using lib tarfile
-        ARGUMENTS = ["tar", "-cf", fname, "-C", savedir, "."]
+        ARGUMENTS = ["tar", "-cf", fname, "-C", save_dir, "."]
         subprocess.call(ARGUMENTS)
 
-        # Finally : removes directory <savedir>
-        shutil.rmtree(savedir)
+        # Finally : removes directory <save_dir>
+        shutil.rmtree(save_dir)
+
+    @classmethod
+    def from_list_of_samples(cls, list_of_samples: list[Sample]) -> Self:
+        """Initialise a dataset from a list of samples.
+
+        Args:
+            list_of_samples (list[Sample]): The list of samples.
+
+        Returns:
+            Self: The intialized dataset (Dataset).
+        """
+        instance = cls()
+        instance.add_samples(list_of_samples)
+        return instance
 
     @classmethod
     def load_from_file(
@@ -758,7 +1065,7 @@ class Dataset(object):
     def load_from_dir(
         cls,
         dname: Union[str, Path],
-        ids: list[int] = None,
+        ids: Optional[list[int]] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> Self:
@@ -819,21 +1126,81 @@ class Dataset(object):
         shutil.rmtree(inputdir)
 
     # -------------------------------------------------------------------------#
-    def _save_to_dir_(self, savedir: Union[str, Path], verbose: bool = False) -> None:
-        """Saves the dataset into a created sample directory and creates an 'infos.yaml' file to store additional information about the dataset.
+    def add_to_dir(
+        self,
+        sample: Sample,
+        save_dir: Optional[Union[str, Path]] = None,
+        verbose: bool = False,
+    ) -> None:
+        """Add a sample to the dataset and save it to the specified directory.
+
+        Notes:
+            If `save_dir` is None, will look for `self.save_dir` which will be retrieved from last previous call to load or save.
+            `save_dir` given in argument will take precedence over `self.save_dir` and overwrite it.
 
         Args:
-            savedir (Union[str,Path]): The path in which to save the files.
+            sample (Sample): The sample to add.
+            save_dir (Union[str,Path], optional): The directory in which to save the sample. Defaults to None.
+            verbose (bool, optional): If True, will print additional information. Defaults to False.
+
+        Raises:
+            ValueError: If both self.save_dir and save_dir are None.
+        """
+        if save_dir is not None:
+            save_dir = Path(save_dir)
+            self.save_dir = save_dir
+        else:
+            if not hasattr(self, "save_dir") or self.save_dir is None:
+                raise ValueError(
+                    "self.save_dir and save_dir are None, we don't know where to save, specify one of them before"
+                )
+
+        # --- sample is not only saved to dir, but also added to the dataset
+        # self.add_sample(sample)
+        # --- if dataset already contains other Samples, they will all be saved to save_dir
+        # self._save_to_dir_(self.save_dir)
+
+        if not self.save_dir.is_dir():
+            self.save_dir.mkdir(parents=True)
+
+        if verbose:
+            print(f"Saving database to: {self.save_dir}")
+
+        samples_dir = self.save_dir / "samples"
+        if not samples_dir.is_dir():
+            samples_dir.mkdir(parents=True)
+
+        # find i_sample
+        # if there are already samples in the instance, we should not take an already existing id
+        # if there are already samples in the path, we should not take an already existing id
+        sample_ids_in_path = [
+            int(d.name.split("_")[-1])
+            for d in samples_dir.glob("sample_*")
+            if d.is_dir()
+        ]
+        i_sample = max(sample_ids_in_path) + 1 if len(sample_ids_in_path) > 0 else 0
+        i_sample = max(len(self), i_sample)
+
+        sample_fname = samples_dir / f"sample_{i_sample:09d}"
+        sample.save(sample_fname)
+
+    def _save_to_dir_(self, save_dir: Union[str, Path], verbose: bool = False) -> None:
+        """Saves the dataset into a sub-directory `samples` and creates an 'infos.yaml' file to store additional information about the dataset.
+
+        Args:
+            save_dir (Union[str,Path]): The path in which to save the files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
         """
-        savedir = Path(savedir)
-        if not (savedir.is_dir()):
-            savedir.mkdir(parents=True)
+        save_dir = Path(save_dir)
+        if not (save_dir.is_dir()):
+            save_dir.mkdir(parents=True)
+
+        self.save_dir = save_dir
 
         if verbose:  # pragma: no cover
-            print(f"Saving database to: {savedir}")
+            print(f"Saving database to: {save_dir}")
 
-        samples_dir = savedir / "samples"
+        samples_dir = save_dir / "samples"
         if not (samples_dir.is_dir()):
             samples_dir.mkdir(parents=True)
 
@@ -844,29 +1211,29 @@ class Dataset(object):
 
         # ---# save infos
         if len(self._infos) > 0:
-            infos_fname = savedir / "infos.yaml"
+            infos_fname = save_dir / "infos.yaml"
             with open(infos_fname, "w") as file:
                 yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
 
         # #---# save stats
-        # stats_fname = savedir / 'stats.yaml'
+        # stats_fname = save_dir / 'stats.yaml'
         # self._stats.save(stats_fname)
 
         # #---# save flags
-        # flags_fname = savedir / 'flags.yaml'
+        # flags_fname = save_dir / 'flags.yaml'
         # self._flags.save(flags_fname)
 
     def _load_from_dir_(
         self,
-        savedir: Union[str, Path],
-        ids: list[int] = None,
+        save_dir: Union[str, Path],
+        ids: Optional[list[int]] = None,
         verbose: bool = False,
         processes_number: int = 0,
     ) -> None:
         """Loads a dataset from a sample directory and retrieves additional information about the dataset from an 'infos.yaml' file, if available.
 
         Args:
-            savedir (Union[str,Path]): The path from which to load files.
+            save_dir (Union[str,Path]): The path from which to load files.
             ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
@@ -876,20 +1243,22 @@ class Dataset(object):
             FileExistsError: Triggered if the provided path is a file instead of a directory.
             ValueError: Triggered if the number of processes is < -1.
         """
-        savedir = Path(savedir)
-        if not savedir.is_dir():
+        save_dir = Path(save_dir)
+        if not save_dir.is_dir():
             raise FileNotFoundError(
-                f'"{savedir}" is not a directory or does not exist. Abort'
+                f'"{save_dir}" is not a directory or does not exist. Abort'
             )
 
         if processes_number < -1:
             raise ValueError("Number of processes cannot be < -1")
 
+        self.save_dir = save_dir
+
         if verbose:  # pragma: no cover
-            print(f"Reading database located at: {savedir}")
+            print(f"Reading database located at: {save_dir}")
 
         sample_paths = sorted(
-            [path for path in (savedir / "samples").glob("sample_*") if path.is_dir()]
+            [path for path in (save_dir / "samples").glob("sample_*") if path.is_dir()]
         )
 
         if ids is not None:
@@ -951,8 +1320,8 @@ class Dataset(object):
                 self.set_sample(id, sample)
             """
 
-        infos_fname = savedir / "infos.yaml"
-        if os.path.isfile(infos_fname):
+        infos_fname = save_dir / "infos.yaml"
+        if infos_fname.is_file():
             with open(infos_fname, "r") as file:
                 self._infos = yaml.safe_load(file)
 
@@ -967,7 +1336,7 @@ class Dataset(object):
         useful for determining the total number of samples in a dataset.
 
         Args:
-            savedir (Union[str,Path]): The path to the directory where sample files are stored.
+            save_dir (Union[str,Path]): The path to the directory where sample files are stored.
 
         Returns:
             int: The number of sample files found in the specified directory.
@@ -1016,12 +1385,15 @@ class Dataset(object):
     # le laisser placer des samples n’importe où ?
     #  - avec des ids potentiellement négatifs,
     #  - potentiellement loin après le dernier id déjà présent...
-    def set_sample(self, id: int, sample: Sample) -> None:
+    def set_sample(
+        self, id: int, sample: Sample, warning_overwrite: bool = True
+    ) -> None:
         """Set a :class:`sample` with :code:`id` in the Dataset, overwriting existing samples if there's a conflict.
 
         Args:
             id (int): The choosen id of the sample.
             sample (Sample): The sample to set inside the dataset.
+            warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
 
         Raises:
             TypeError: If the 'id' inside the sample is not of type int.
@@ -1040,10 +1412,11 @@ class Dataset(object):
                 f"sample should be of type {Sample.__class__} but {type(sample)=}"
             )
 
-        if id in self._samples:
-            logger.warning(
-                f"sample with {id=} already present in dataset, replacing it anyway"
-            )
+        if warning_overwrite:
+            if id in self._samples:
+                logger.warning(
+                    f"sample with {id=} already present in dataset, replacing it anyway"
+                )
         self._samples[id] = sample
 
     # -------------------------------------------------------------------------#
@@ -1157,6 +1530,3 @@ class Dataset(object):
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
         return str_repr
-
-
-# %%

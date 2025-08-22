@@ -10,8 +10,9 @@ def my_coalesce(edges: torch.Tensor | np.ndarray, num_nodes: int, reduce="add"):
     edges = geometric_coalesce(edges.T, num_nodes=num_nodes, reduce=reduce).T
     return edges
 
-def faces_to_edges(faces: np.ndarray, num_nodes: int, coalesce: bool=True):
-    """Creates a list of edges from a Faces array
+
+def faces_to_edges(faces: np.ndarray, num_nodes: int, coalesce: bool = True):
+    """Creates a list of edges from a Faces array.
 
     Args:
         faces (np.ndarray): Array of faces shape (n_faces, face_dim)
@@ -19,8 +20,7 @@ def faces_to_edges(faces: np.ndarray, num_nodes: int, coalesce: bool=True):
     Returns:
         np.ndarray: the edge list of shape (n, 2)
     """
-
-    assert len(faces.shape)==2, "Wrong shape for the faces, should be a 2D array"
+    assert len(faces.shape) == 2, "Wrong shape for the faces, should be a 2D array"
 
     # Generate edges (without duplicates in one pass)
     rolled = np.roll(faces, -1, axis=1)

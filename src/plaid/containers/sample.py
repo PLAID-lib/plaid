@@ -18,9 +18,10 @@ else:  # pragma: no cover
     Self = TypeVar("Self")
 
 import copy
-import glob
 import logging
-import os
+import shutil
+from collections.abc import Iterable
+from pathlib import Path
 from typing import Optional, Union
 
 import CGNS.MAP as CGM
@@ -31,10 +32,17 @@ import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 from pydantic import BaseModel, model_serializer
 
-from plaid.constants import CGNS_ELEMENT_NAMES
+from plaid.constants import (
+    AUTHORIZED_FEATURE_INFOS,
+    AUTHORIZED_FEATURE_TYPES,
+    CGNS_ELEMENT_NAMES,
+    CGNS_FIELD_LOCATIONS,
+)
+from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     CGNSNode,
     CGNSTree,
+    FeatureIdentifier,
     FeatureType,
     FieldType,
     LinkType,
@@ -44,6 +52,7 @@ from plaid.types import (
     TimeSeriesType,
 )
 from plaid.utils import cgns_helper as CGH
+from plaid.utils.base import safe_len
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -55,6 +64,24 @@ logging.basicConfig(
 
 
 # %% Classes
+
+
+def _check_names(names: Union[str, list[str]]):
+    """Check that names do not contain invalid character ``/``.
+
+    Args:
+        names (Union[str, list[str]]): The names to check.
+
+    Raises:
+        ValueError: If any name contains the invalid character ``/``.
+    """
+    if isinstance(names, str):
+        names = [names]
+    for name in names:
+        if (name is not None) and ("/" in name):
+            raise ValueError(
+                f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurence of `/` with something else, for example: `name.replace('/','__')`"
+            )
 
 
 def read_index(pyTree: list, dim: list[int]):
@@ -97,7 +124,7 @@ def read_index_range(pyTree: list, dim: list[int]):
 
     Args:
         pyTree (list): CGNS node which has a child of type IndexRange_t to read
-        dim (List[str]): dimensions of the coordinates
+        dim (list[str]): dimensions of the coordinates
 
     Returns:
         indices
@@ -136,7 +163,7 @@ class Sample(BaseModel):
 
     def __init__(
         self,
-        directory_path: str = None,
+        directory_path: Union[str, Path] = None,
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
         meshes: dict[float, CGNSTree] = None,
@@ -148,7 +175,7 @@ class Sample(BaseModel):
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
         Args:
-            directory_path (str, optional): The path from which to load PLAID sample files.
+            directory_path (Union[str, Path], optional): The path from which to load PLAID sample files.
             mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
             mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
             meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
@@ -188,7 +215,8 @@ class Sample(BaseModel):
         self._paths: dict[float, list[PathType]] = paths
 
         if directory_path is not None:
-            self.load(str(directory_path))
+            directory_path = Path(directory_path)
+            self.load(directory_path)
 
         self._defaults: dict = {
             "active_base": None,
@@ -196,8 +224,22 @@ class Sample(BaseModel):
             "active_time": None,
         }
 
+        self._extra_data = None
+
+    def copy(self) -> Self:
+        """Create a deep copy of the sample.
+
+        Returns:
+            A new `Sample` instance with all internal data (scalars, time series, fields, meshes, etc.)
+            deeply copied to ensure full isolation from the original.
+
+        Note:
+            This operation may be memory-intensive for large samples.
+        """
+        return copy.deepcopy(self)
+
     # -------------------------------------------------------------------------#
-    def set_default_base(self, base_name: str, time: float = None) -> None:
+    def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
         """Set the default base for the specified time (that will also be set as default if provided).
 
         The default base is a reference point for various operations in the system.
@@ -503,9 +545,7 @@ class Sample(BaseModel):
         tree = copy.deepcopy(tree)
         for link in links:
             if not in_memory:
-                subtree, _, _ = CGM.load(
-                    os.path.join(link[0], link[1]), subtree=link[2]
-                )
+                subtree, _, _ = CGM.load(str(Path(link[0]) / link[1]), subtree=link[2])
             else:
                 linked_timestep = int(link[1].split(".cgns")[0].split("_")[1])
                 linked_timestamp = list(self._meshes.keys())[linked_timestep]
@@ -635,7 +675,7 @@ class Sample(BaseModel):
 
     def link_tree(
         self,
-        path_linked_sample: str,
+        path_linked_sample: Union[str, Path],
         linked_sample: Self,
         linked_time: float,
         time: float,
@@ -643,7 +683,7 @@ class Sample(BaseModel):
         """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
 
         Args:
-            path_linked_sample (str): The absolute path of the folder containing the linked CGNS
+            path_linked_sample (Union[str, Path]): The absolute path of the folder containing the linked CGNS
             linked_sample (Sample): The linked sample
             linked_time (float): The time step of the linked CGNS in the linked sample
             time (float): The time step the current sample to which the CGNS tree is linked.
@@ -656,6 +696,8 @@ class Sample(BaseModel):
 
         # https://pycgns.github.io/MAP/examples.html#save-with-links
         # When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
+
+        path_linked_sample = Path(path_linked_sample)
 
         if linked_time not in linked_sample._meshes:  # pragma: no cover
             raise KeyError(
@@ -722,7 +764,7 @@ class Sample(BaseModel):
                 ]
                 grid[2].append(zone_family)
 
-        def find_feature_roots(sample, time, Type_t):
+        def find_feature_roots(sample: Sample, time: float, Type_t: str):
             Types_t = CGU.getAllNodesByTypeSet(sample.get_mesh(time), Type_t)
             # in case the type is not present in the tree
             if Types_t == []:  # pragma: no cover
@@ -740,9 +782,9 @@ class Sample(BaseModel):
 
         self.add_tree(tree, time=time)
 
-        dname = os.path.dirname(path_linked_sample)
-        bname = os.path.basename(path_linked_sample)
-        self._links[time] = [[dname, bname, fp, fp] for fp in feature_paths]
+        dname = path_linked_sample.parent
+        bname = path_linked_sample.name
+        self._links[time] = [[str(dname), bname, fp, fp] for fp in feature_paths]
 
         return tree
 
@@ -809,6 +851,8 @@ class Sample(BaseModel):
         Returns:
             CGNSNode: The created Base node.
         """
+        _check_names([base_name])
+
         time = self.get_time_assignment(time)
 
         if base_name is None:
@@ -951,6 +995,8 @@ class Sample(BaseModel):
         Returns:
             CGLNode: The newly initialized zone node within the CGNS tree.
         """
+        _check_names([zone_name])
+
         # init_tree will look for default time
         self.init_tree(time)
         # get_base will look for default base_name and time
@@ -1138,6 +1184,7 @@ class Sample(BaseModel):
             name (str): The name of the scalar value.
             value (ScalarType): The scalar value to add or update in the dictionary.
         """
+        _check_names([name])
         if self._scalars is None:
             self._scalars = {name: value}
         else:
@@ -1211,6 +1258,7 @@ class Sample(BaseModel):
         Raises:
             TypeError: Raised if the length of `time_sequence` is not equal to the length of `values`.
         """
+        _check_names([name])
         assert len(time_sequence) == len(values), (
             "time sequence and values do not have the same size"
         )
@@ -1229,7 +1277,7 @@ class Sample(BaseModel):
             KeyError: Raised when there is no time series / there is no time series with the provided name.
 
         Returns:
-            Tuple[TimeSequenceType, FieldType]: A tuple containing the time sequence and values of the deleted time series.
+            tuple[TimeSequenceType, FieldType]: A tuple containing the time sequence and values of the deleted time series.
         """
         if self._time_series is None:
             raise KeyError("There is no time series inside this sample.")
@@ -1389,11 +1437,25 @@ class Sample(BaseModel):
                 f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`"
             )
 
+        # Check if GridCoordinates_t node exists
+        gc_nodes = [
+            child for child in zone_node[2] if child[0] in CGK.GridCoordinates_ts
+        ]
+        if gc_nodes:
+            grid_coords_node = gc_nodes[0]
+
         coord_type = [CGK.CoordinateX_s, CGK.CoordinateY_s, CGK.CoordinateZ_s]
         for i_dim in range(nodes.shape[-1]):
-            CGL.newCoordinates(
-                zone_node, coord_type[i_dim], np.asfortranarray(nodes[..., i_dim])
-            )
+            name = coord_type[i_dim]
+
+            # Remove existing coordinate if present
+            if gc_nodes:
+                grid_coords_node[2] = [
+                    child for child in grid_coords_node[2] if child[0] != name
+                ]
+
+            # Create new coordinate
+            CGL.newCoordinates(zone_node, name, np.asfortranarray(nodes[..., i_dim]))
 
     set_points = set_nodes
     set_vertices = set_nodes
@@ -1454,6 +1516,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
             location (str, optional): The desired grid location where the field is defined. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
@@ -1513,6 +1576,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
             location (str, optional): The location at which to retrieve the field. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
@@ -1556,6 +1620,7 @@ class Sample(BaseModel):
         base_name: str = None,
         location: str = "Vertex",
         time: float = None,
+        warning_overwrite=True,
     ) -> None:
         """Add a field to a specified zone in the grid.
 
@@ -1565,11 +1630,14 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time associated with the field. Defaults to 0.
+            warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
 
         Raises:
             KeyError: Raised if the specified zone does not exist in the given base.
         """
+        _check_names([name])
         # init_tree will look for default time
         self.init_tree(time)
         # get_zone will look for default zone_name, base_name and time
@@ -1619,9 +1687,10 @@ class Sample(BaseModel):
                 # print(field.shape)
                 # flow_solution_node[2].append(res)
             else:
-                logger.warning(
-                    f"field node with name {name} already exists -> data will be replaced"
-                )
+                if warning_overwrite:
+                    logger.warning(
+                        f"field node with name {name} already exists -> data will be replaced"
+                    )
                 CGU.setValue(field_node, np.asfortranarray(field))
 
     def del_field(
@@ -1639,6 +1708,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
@@ -1677,7 +1747,88 @@ class Sample(BaseModel):
 
         return updated_tree
 
+    def del_all_fields(
+        self,
+    ) -> Self:
+        """Delete alls field from sample, while keeping geometrical info.
+
+        Returns:
+            Sample: The sample with deleted fields
+        """
+        all_features_identifiers = self.get_all_features_identifiers()
+        # Delete all fields in the sample
+        for feat_id in all_features_identifiers:
+            if feat_id["type"] == "field":
+                self.del_field(
+                    name=feat_id["name"],
+                    zone_name=feat_id["zone_name"],
+                    base_name=feat_id["base_name"],
+                    location=feat_id["location"],
+                    time=feat_id["time"],
+                )
+        return self
+
     # -------------------------------------------------------------------------#
+    def get_all_features_identifiers(
+        self,
+    ) -> list[FeatureIdentifier]:
+        """Get all features identifiers from the sample.
+
+        Returns:
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
+        """
+        all_features_identifiers = []
+        for sn in self.get_scalar_names():
+            all_features_identifiers.append({"type": "scalar", "name": sn})
+        for tsn in self.get_time_series_names():
+            all_features_identifiers.append({"type": "time_series", "name": tsn})
+        for t in self.get_all_mesh_times():
+            for bn in self.get_base_names(time=t):
+                for zn in self.get_zone_names(base_name=bn, time=t):
+                    if self.get_nodes(base_name=bn, zone_name=zn, time=t) is not None:
+                        all_features_identifiers.append(
+                            {
+                                "type": "nodes",
+                                "base_name": bn,
+                                "zone_name": zn,
+                                "time": t,
+                            }
+                        )
+                    for loc in CGNS_FIELD_LOCATIONS:
+                        for fn in self.get_field_names(
+                            zone_name=zn, base_name=bn, location=loc, time=t
+                        ):
+                            all_features_identifiers.append(
+                                {
+                                    "type": "field",
+                                    "name": fn,
+                                    "base_name": bn,
+                                    "zone_name": zn,
+                                    "location": loc,
+                                    "time": t,
+                                }
+                            )
+        return all_features_identifiers
+
+    def get_all_features_identifiers_by_type(
+        self, feature_type: str
+    ) -> list[FeatureIdentifier]:
+        """Get all features identifiers of a given type from the sample.
+
+        Args:
+            feature_type (str): Type of features to return
+
+        Returns:
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
+        """
+        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
+        all_features_identifiers = self.get_all_features_identifiers()
+        return [
+            feat_id
+            for feat_id in all_features_identifiers
+            if feat_id["type"] == feature_type
+        ]
+
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
     ) -> FeatureType:
@@ -1713,29 +1864,27 @@ class Sample(BaseModel):
             detail for detail in splitted_identifier[1].split("/") if detail
         ]
 
-        assert feature_type in ["scalar", "time_series", "field", "nodes"], (
-            "feature_type not known"
-        )
+        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
+
+        arg_names = AUTHORIZED_FEATURE_INFOS[feature_type]
 
         if feature_type == "scalar":
             return self.get_scalar(feature_details[0])
         elif feature_type == "time_series":
             return self.get_time_series(feature_details[0])
         elif feature_type == "field":
-            arg_names = ["name", "base_name", "zone_name", "location", "time"]
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
             return self.get_field(**kwargs)
         elif feature_type == "nodes":
-            arg_names = ["base_name", "zone_name", "time"]
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
-            return self.get_nodes(**kwargs)
+            return self.get_nodes(**kwargs).flatten()
 
     def get_feature_from_identifier(
-        self, feature_identifier: dict[str : Union[str, float]]
+        self, feature_identifier: FeatureIdentifier
     ) -> FeatureType:
         """Retrieve a feature object based on a structured identifier dictionary.
 
@@ -1761,54 +1910,270 @@ class Sample(BaseModel):
         Returns:
             FeatureType: The corresponding feature instance retrieved via the appropriate accessor.
         """
-        assert "type" in feature_identifier, (
-            "feature type not specified in feature_identifier"
-        )
-        feature_type = feature_identifier["type"]
-        feature_identifier_ = {
-            k: v for k, v in feature_identifier.items() if k != "type"
-        }
-
-        assert feature_type in ["scalar", "time_series", "field", "nodes"], (
-            "feature type not known"
-        )
-
-        allowed_keys = ["type", "name", "base_name", "zone_name", "location", "time"]
-        assert all(key in allowed_keys for key in feature_identifier_), (
-            "Unexpected key(s) in feature_identifier"
+        feature_type, feature_details = get_feature_type_and_details_from(
+            feature_identifier
         )
 
         if feature_type == "scalar":
-            return self.get_scalar(**feature_identifier_)
+            return self.get_scalar(**feature_details)
         elif feature_type == "time_series":
-            return self.get_time_series(**feature_identifier_)
+            return self.get_time_series(**feature_details)
         elif feature_type == "field":
-            return self.get_field(**feature_identifier_)
+            return self.get_field(**feature_details)
         elif feature_type == "nodes":
-            return self.get_nodes(**feature_identifier_)
+            return self.get_nodes(**feature_details).flatten()
+
+    def get_features_from_identifiers(
+        self, feature_identifiers: list[FeatureIdentifier]
+    ) -> list[FeatureType]:
+        """Retrieve features based on a list of structured identifier dictionaries.
+
+        Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
+            - `"scalar"`       → calls `get_scalar(name)`
+            - `"time_series"`  → calls `get_time_series(name)`
+            - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
+            - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
+
+        Required keys:
+            - `"type"`: one of `"scalar"`, `"time_series"`, `"field"`, or `"nodes"`
+            - `"name"`: required for all types except `"nodes"`
+
+        Optional keys depending on type:
+            - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
+
+        Any omitted optional keys will rely on the default values mechanics of the class.
+
+        Args:
+            feature_identifiers (list[FeatureIdentifier]):
+                A dictionary encoding the feature type and its relevant parameters.
+
+        Returns:
+            list[FeatureType]: List of corresponding feature instance retrieved via the appropriate accessor.
+        """
+        all_features_info = [
+            get_feature_type_and_details_from(feat_id)
+            for feat_id in feature_identifiers
+        ]
+
+        features = []
+        for feature_type, feature_details in all_features_info:
+            if feature_type == "scalar":
+                features.append(self.get_scalar(**feature_details))
+            elif feature_type == "time_series":
+                features.append(self.get_time_series(**feature_details))
+            elif feature_type == "field":
+                features.append(self.get_field(**feature_details))
+            elif feature_type == "nodes":
+                features.append(self.get_nodes(**feature_details).flatten())
+        return features
+
+    def _add_feature(
+        self,
+        feature_identifier: FeatureIdentifier,
+        feature: FeatureType,
+    ) -> Self:
+        """Add a feature to current sample.
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers, and corresponding feature data.
+
+        Args:
+            feature_identifier (dict): A feature identifier.
+            feature (FeatureType): A feature corresponding to the identifiers.
+
+        Returns:
+            Self: The updated sample
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        feature_type, feature_details = get_feature_type_and_details_from(
+            feature_identifier
+        )
+
+        if feature_type == "scalar":
+            if safe_len(feature) == 1:
+                feature = feature[0]
+            self.add_scalar(**feature_details, value=feature)
+        elif feature_type == "time_series":
+            self.add_time_series(
+                **feature_details, time_sequence=feature[0], values=feature[1]
+            )
+        elif feature_type == "field":
+            self.add_field(**feature_details, field=feature, warning_overwrite=False)
+        elif feature_type == "nodes":
+            physical_dim_arg = {
+                k: v for k, v in feature_details.items() if k in ["base_name", "time"]
+            }
+            phys_dim = self.get_physical_dim(**physical_dim_arg)
+            self.set_nodes(**feature_details, nodes=feature.reshape((-1, phys_dim)))
+
+        return self
+
+    def update_features_from_identifier(
+        self,
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        features: Union[FeatureType, list[FeatureType]],
+        in_place: bool = False,
+    ) -> Self:
+        """Update one or several features of the sample by their identifier(s).
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers, and corresponding feature data. When `in_place=False`, a deep copy of the sample is created
+        before applying updates, ensuring full isolation from the original.
+
+        Args:
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+            features (FeatureType or list of FeatureType): One or more features corresponding
+                to the identifiers.
+            in_place (bool, optional): If True, modifies the current sample in place.
+                If False, returns a deep copy with updated features.
+
+        Returns:
+            Self: The updated sample (either the current instance or a new copy).
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        assert isinstance(feature_identifiers, dict) or (
+            isinstance(feature_identifiers, Iterable) and isinstance(features, Iterable)
+        ), "Check types of feature_identifiers and features arguments"
+        if isinstance(feature_identifiers, dict):
+            feature_identifiers = [feature_identifiers]
+            features = [features]
+
+        sample = self if in_place else self.copy()
+
+        for feat_id, feat in zip(feature_identifiers, features):
+            sample._add_feature(feat_id, feat)
+
+        return sample
+
+    def from_features_identifier(
+        self,
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+    ) -> Self:
+        """Extract features of the sample by their identifier(s) and return a new sample containing these features.
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using feature identifiers
+
+        Args:
+            feature_identifiers (dict or list of dict): One or more feature identifiers.
+
+        Returns:
+            Self: New sample containing the provided feature identifiers
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        assert isinstance(feature_identifiers, dict) or isinstance(
+            feature_identifiers, list
+        ), "Check types of feature_identifiers argument"
+        if isinstance(feature_identifiers, dict):
+            feature_identifiers = [feature_identifiers]
+
+        feature_types = set([feat_id["type"] for feat_id in feature_identifiers])
+
+        # if field or node features are to extract, copy the source sample and delete all fields
+        if "field" in feature_types or "nodes" in feature_types:
+            source_sample = self.copy()
+            source_sample.del_all_fields()
+
+        sample = Sample()
+
+        for feat_id in feature_identifiers:
+            feature = self.get_feature_from_identifier(feat_id)
+
+            if feature is not None:
+                # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
+                if feat_id["type"] in ["field", "nodes"]:
+                    # get time of current feature
+                    time = self.get_time_assignment(time=feat_id.get("time"))
+
+                    # if the constructed sample does not have a tree, add the one from the source sample, with no field
+                    if not sample.get_mesh(time):
+                        sample.add_tree(source_sample.get_mesh(time))
+
+                sample._add_feature(feat_id, feature)
+
+        sample._extra_data = copy.deepcopy(self._extra_data)
+
+        return sample
+
+    def merge_features(self, sample: Self, in_place: bool = False) -> Self:
+        """Merge features from another sample into the current sample.
+
+        This method applies updates to scalars, time series, fields, or nodes
+        using features from another sample. When `in_place=False`, a deep copy of the sample is created
+        before applying updates, ensuring full isolation from the original.
+
+        Args:
+            sample (Sample): The sample from which features will be merged.
+            in_place (bool, optional): If True, modifies the current sample in place.
+                If False, returns a deep copy with updated features.
+
+        Returns:
+            Self: The updated sample (either the current instance or a new copy).
+        """
+        merged_dataset = self if in_place else self.copy()
+
+        all_features_identifiers = sample.get_all_features_identifiers()
+        all_features = sample.get_features_from_identifiers(all_features_identifiers)
+
+        feature_types = set([feat_id["type"] for feat_id in all_features_identifiers])
+
+        # if field or node features are to extract, copy the source sample and delete all fields
+        if "field" in feature_types or "nodes" in feature_types:
+            source_sample = sample.copy()
+            source_sample.del_all_fields()
+
+        for feat_id in all_features_identifiers:
+            # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
+            if feat_id["type"] in ["field", "nodes"]:
+                # get time of current feature
+                time = sample.get_time_assignment(time=feat_id.get("time"))
+
+                # if the constructed sample does not have a tree, add the one from the source sample, with no field
+                if not merged_dataset.get_mesh(time):
+                    merged_dataset.add_tree(source_sample.get_mesh(time))
+
+        return merged_dataset.update_features_from_identifier(
+            feature_identifiers=all_features_identifiers,
+            features=all_features,
+            in_place=in_place,
+        )
 
     # -------------------------------------------------------------------------#
-    def save(self, dir_path: str) -> None:
+    def save(self, dir_path: Union[str, Path], overwrite: bool = False) -> None:
         """Save the Sample in directory `dir_path`.
 
         Args:
-            dir_path (str): relative or absolute directory path.
+            dir_path (Union[str,Path]): relative or absolute directory path.
+            overwrite (bool): target directory overwritten if True.
         """
-        if os.path.isdir(dir_path):
-            if len(glob.glob(os.path.join(dir_path, "*"))):
-                raise ValueError(
-                    f"directory {dir_path} already exists and is not empty"
-                )
-        else:
-            os.makedirs(dir_path)
+        dir_path = Path(dir_path)
 
-        mesh_dir = os.path.join(dir_path, "meshes")
+        if dir_path.is_dir():
+            if overwrite:
+                shutil.rmtree(dir_path)
+                logger.warning(f"Existing {dir_path} directory has been reset.")
+            elif len(list(dir_path.glob("*"))):
+                raise ValueError(
+                    f"directory {dir_path} already exists and is not empty. Set `overwrite` to True if needed."
+                )
+
+        dir_path.mkdir(exist_ok=True)
+
+        mesh_dir = dir_path / "meshes"
 
         if self._meshes is not None:
-            os.makedirs(mesh_dir)
+            mesh_dir.mkdir()
             for i, time in enumerate(self._meshes.keys()):
-                outfname = os.path.join(mesh_dir, f"mesh_{i:09d}.cgns")
-                status = CGM.save(outfname, self._meshes[time], links=self._links[time])
+                outfname = mesh_dir / f"mesh_{i:09d}.cgns"
+                status = CGM.save(
+                    str(outfname), self._meshes[time], links=self._links[time]
+                )
                 logger.debug(f"save -> {status=}")
 
         scalars_names = self.get_scalar_names()
@@ -1819,7 +2184,7 @@ class Sample(BaseModel):
             scalars = np.array(scalars).reshape((1, -1))
             header = ",".join(scalars_names)
             np.savetxt(
-                os.path.join(dir_path, "scalars.csv"),
+                dir_path / "scalars.csv",
                 scalars,
                 header=header,
                 delimiter=",",
@@ -1833,7 +2198,7 @@ class Sample(BaseModel):
                 data = np.vstack((ts[0], ts[1])).T
                 header = ",".join(["t", ts_name])
                 np.savetxt(
-                    os.path.join(dir_path, f"time_series_{ts_name}.csv"),
+                    dir_path / f"time_series_{ts_name}.csv",
                     data,
                     header=header,
                     delimiter=",",
@@ -1841,13 +2206,13 @@ class Sample(BaseModel):
                 )
 
     @classmethod
-    def load_from_dir(cls, dir_path: str) -> Self:
+    def load_from_dir(cls, dir_path: Union[str, Path]) -> Self:
         """Load the Sample from directory `dir_path`.
 
         This is a class method, you don't need to instantiate a `Sample` first.
 
         Args:
-            dir_path (str): Relative or absolute directory path.
+            dir_path (Union[str,Path]): Relative or absolute directory path.
 
         Returns:
             Sample
@@ -1863,15 +2228,16 @@ class Sample(BaseModel):
         Note:
             It calls 'load' function during execution.
         """
+        dir_path = Path(dir_path)
         instance = cls()
         instance.load(dir_path)
         return instance
 
-    def load(self, dir_path: str) -> None:
+    def load(self, dir_path: Union[str, Path]) -> None:
         """Load the Sample from directory `dir_path`.
 
         Args:
-            dir_path (str): Relative or absolute directory path.
+            dir_path (Union[str,Path]): Relative or absolute directory path.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
@@ -1887,23 +2253,23 @@ class Sample(BaseModel):
                 >>> Sample(3 scalars, 1 timestamp, 3 fields)
 
         """
-        if not os.path.exists(dir_path):
+        dir_path = Path(dir_path)
+
+        if not dir_path.exists():
             raise FileNotFoundError(f'Directory "{dir_path}" does not exist. Abort')
 
-        if not os.path.isdir(dir_path):
+        if not dir_path.is_dir():
             raise FileExistsError(f'"{dir_path}" is not a directory. Abort')
 
-        meshes_dir = os.path.join(dir_path, "meshes")
-        if os.path.isdir(meshes_dir):
-            meshes_names = glob.glob(os.path.join(meshes_dir, "*"))
+        meshes_dir = dir_path / "meshes"
+        if meshes_dir.is_dir():
+            meshes_names = list(meshes_dir.glob("*"))
             nb_meshes = len(meshes_names)
             self._meshes = {}
             self._links = {}
             self._paths = {}
             for i in range(nb_meshes):
-                tree, links, paths = CGM.load(
-                    os.path.join(meshes_dir, f"mesh_{i:09d}.cgns")
-                )
+                tree, links, paths = CGM.load(str(meshes_dir / f"mesh_{i:09d}.cgns"))
                 time = CGH.get_time_values(tree)
 
                 self._meshes[time], self._links[time], self._paths[time] = (
@@ -1912,12 +2278,10 @@ class Sample(BaseModel):
                     paths,
                 )
                 for i in range(len(self._links[time])):  # pragma: no cover
-                    self._links[time][i][0] = os.path.join(
-                        meshes_dir, self._links[time][i][0]
-                    )
+                    self._links[time][i][0] = str(meshes_dir / self._links[time][i][0])
 
-        scalars_fname = os.path.join(dir_path, "scalars.csv")
-        if os.path.isfile(scalars_fname):
+        scalars_fname = dir_path / "scalars.csv"
+        if scalars_fname.is_file():
             names = np.loadtxt(
                 scalars_fname, dtype=str, max_rows=1, delimiter=","
             ).reshape((-1,))
@@ -1927,7 +2291,7 @@ class Sample(BaseModel):
             for name, value in zip(names, scalars):
                 self.add_scalar(name, value)
 
-        time_series_files = glob.glob(os.path.join(dir_path, "time_series_*.csv"))
+        time_series_files = list(dir_path.glob("time_series_*.csv"))
         for ts_fname in time_series_files:
             names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
                 (-1,)
@@ -1943,6 +2307,7 @@ class Sample(BaseModel):
         Returns:
             str: A string representation of the overview of sample content.
         """
+        # TODO rewrite using self.get_all_features_identifiers()
         str_repr = "Sample("
 
         # scalars

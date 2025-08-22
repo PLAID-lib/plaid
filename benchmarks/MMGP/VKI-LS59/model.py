@@ -1,12 +1,11 @@
+
 import GPy
 import numpy as np
-from typing import Optional
-from sklearn.base import BaseEstimator, RegressorMixin, clone
+from sklearn.base import BaseEstimator, RegressorMixin
 
 
 class GPyRegressor(BaseEstimator, RegressorMixin):
-    """
-    Custom Gaussian Process Regressor using GPy library.
+    """Custom Gaussian Process Regressor using GPy library.
 
     Args:
         normalizer (bool): Whether to normalize the output.
@@ -29,8 +28,7 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
         self.num_restarts = num_restarts
 
     def fit(self, X, y):
-        """
-        Fit the Gaussian Process model to the data.
+        """Fit the Gaussian Process model to the data.
 
         Args:
             X (ndarray): Input features of shape (n_samples, n_features).
@@ -71,8 +69,7 @@ class GPyRegressor(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X, return_var: bool = False):
-        """
-        Predict using the Gaussian Process model.
+        """Predict using the Gaussian Process model.
 
         Args:
             X (ndarray): Input features of shape (n_samples, n_features).

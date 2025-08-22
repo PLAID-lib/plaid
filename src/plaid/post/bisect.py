@@ -1,6 +1,7 @@
 """Utiliy function to plot bisect graphs comparing predictions vs. targets dataset."""
 
 import subprocess
+from pathlib import Path
 from typing import Union
 
 import matplotlib as mpl
@@ -27,7 +28,7 @@ def prepare_datasets(
         verbose (bool, optional): Verbose mode. Defaults to False.
 
     Returns:
-        Tuple[Dict[str, List[float]], Dict[str, List[float]], List[str]]: A tuple containing dictionaries of reference and predicted scalar values, and a list of scalar names.
+        tuple[dict[str, list[float]], dict[str, list[float]], list[str]]: A tuple containing dictionaries of reference and predicted scalar values, and a list of scalar names.
     """
     assert len(ref_dataset) == len(pred_dataset), (
         "Reference and predicted dataset lengths differ"
@@ -78,9 +79,9 @@ def is_dvipng_available(verbose: bool) -> bool:
 
 
 def plot_bisect(
-    ref_dataset: Union[Dataset, str],
-    pred_dataset: Union[Dataset, str],
-    problem_def: Union[ProblemDefinition, str],
+    ref_dataset: Union[Dataset, str, Path],
+    pred_dataset: Union[Dataset, str, Path],
+    problem_def: Union[ProblemDefinition, str, Path],
     scalar: Union[str, int],
     save_file_name: str = "bissec_plots",
     verbose: bool = False,
@@ -88,9 +89,9 @@ def plot_bisect(
     """Plot a bisect graph comparing predictions vs. targets dataset.
 
     Args:
-        ref_dataset (Dataset | str): The reference dataset or its file path.
-        pred_dataset (Dataset | str): The predicted dataset or its file path.
-        problem_def (ProblemDefinition | str): The common problem for the reference and predicted dataset
+        ref_dataset (Dataset | str | Path): The reference dataset or its file path.
+        pred_dataset (Dataset | str | Path): The predicted dataset or its file path.
+        problem_def (ProblemDefinition | str | Path): The common problem for the reference and predicted dataset
         scalar (str | int): The name of the scalar to study or its index.
         save_file_name (str, optional): Figure name when saving to PNG format. Defaults to "bissec_plots".
         verbose (bool, optional): Verbose mode. Defaults to False.
@@ -99,11 +100,11 @@ def plot_bisect(
         KeyError: If the provided scalar name is not part of the dataset.
     """
     ### Transform path to Dataset object ###
-    if isinstance(ref_dataset, str):
+    if isinstance(ref_dataset, (str, Path)):
         ref_dataset: Dataset = Dataset(ref_dataset)
-    if isinstance(pred_dataset, str):
+    if isinstance(pred_dataset, (str, Path)):
         pred_dataset: Dataset = Dataset(pred_dataset)
-    if isinstance(problem_def, str):
+    if isinstance(problem_def, (str, Path)):
         problem_def: ProblemDefinition = ProblemDefinition(problem_def)
 
     # Load the testing_set
