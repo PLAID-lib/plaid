@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- (Hugging Face bridge) Add datasetdict conversion, and simple function for plaid sample init from hf sample
+- (Hugging Face bridge) add datasetdict conversion, and simple function for plaid sample init from hf sample
 - Move to Muscat=2.5.0 (for tests and examples support)
 - Update repo configuration (actions: rely more on pypi dependencies, action versions)
 
