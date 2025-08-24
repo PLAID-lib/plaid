@@ -59,6 +59,13 @@ class Test_ColumnTransformer:
             [s for s in dataset_with_samples]
         )
 
+    def test_inverse_transform(self, plaid_column_transformer, dataset_with_samples):
+        transformed_dataset = plaid_column_transformer.fit_transform(
+            dataset_with_samples
+        )
+        plaid_column_transformer.inverse_transform(transformed_dataset)
+        plaid_column_transformer.inverse_transform([s for s in transformed_dataset])
+
 
 class Test_TransformedTargetRegressor:
     def test___init__(
