@@ -18,12 +18,12 @@ from plaid.types.cgns_types import (
 )
 from plaid.types.common import Array, ArrayDType, IndexType
 from plaid.types.feature_types import (
+    Feature,
     FeatureIdentifier,
-    FeatureType,
-    FieldType,
-    ScalarType,
-    TimeSequenceType,
-    TimeSeriesType,
+    Field,
+    Scalar,
+    TimeSequence,
+    TimeSeries,
 )
 from plaid.types.sklearn_types import SklearnBlock
 
@@ -38,11 +38,11 @@ __all__ = [
     "NodeName",
     "NodeValue",
     "PathType",
-    "ScalarType",
-    "FieldType",
-    "TimeSequenceType",
-    "TimeSeriesType",
-    "FeatureType",
+    "Scalar",
+    "Field",
+    "TimeSequence",
+    "TimeSeries",
+    "Feature",
     "FeatureIdentifier",
     "SklearnBlock",
 ]
