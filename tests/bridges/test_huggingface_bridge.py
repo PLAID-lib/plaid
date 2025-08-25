@@ -32,6 +32,7 @@ def problem_definition() -> ProblemDefinition:
     problem_definition = ProblemDefinition()
     problem_definition.set_task("regression")
     problem_definition.add_input_scalars_names(["feature_name_1", "feature_name_2"])
+    problem_definition.set_split({"train": [0], "test": [1]})
     return problem_definition
 
 
@@ -74,17 +75,43 @@ class Test_Huggingface_Bridge:
         assert "test_field_same_size" in sample.get_field_names()
         assert sample.get_field("test_field_same_size").shape[0] == 17
 
+    def test_to_plaid_sample(self, generator, infos, problem_definition):
+        hfds = huggingface_bridge.plaid_generator_to_huggingface(
+            generator, infos, problem_definition
+        )
+        huggingface_bridge.to_plaid_sample(hfds[0])
+
     def test_plaid_dataset_to_huggingface(self, dataset, problem_definition):
+        hfds = huggingface_bridge.plaid_dataset_to_huggingface(
+            dataset, problem_definition, split="train"
+        )
         hfds = huggingface_bridge.plaid_dataset_to_huggingface(
             dataset, problem_definition
         )
         self.assert_hf_dataset(hfds)
 
+    def test_plaid_dataset_to_huggingface_datasetdict(
+        self, dataset, problem_definition
+    ):
+        huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
+            dataset, problem_definition, main_splits=["train", "test"]
+        )
+
     def test_plaid_generator_to_huggingface(self, generator, infos, problem_definition):
+        hfds = huggingface_bridge.plaid_generator_to_huggingface(
+            generator, infos, problem_definition, split="train"
+        )
         hfds = huggingface_bridge.plaid_generator_to_huggingface(
             generator, infos, problem_definition
         )
         self.assert_hf_dataset(hfds)
+
+    def test_plaid_generator_to_huggingface_datasetdict(
+        self, generator, infos, problem_definition
+    ):
+        huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+            generator, infos, problem_definition, main_splits=["train", "test"]
+        )
 
     def test_huggingface_dataset_to_plaid(self, hf_dataset):
         ds, pbdef = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
