@@ -60,11 +60,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 
-# %% Globals
-
-
-# %% Classes
-
 
 def _check_names(names: Union[str, list[str]]):
     """Check that names do not contain invalid character ``/``.
@@ -84,7 +79,7 @@ def _check_names(names: Union[str, list[str]]):
             )
 
 
-def read_index(pyTree: list, dim: list[int]):
+def _read_index(pyTree: list, dim: list[int]):
     """Read Index Array or Index Range from CGNS.
 
     Args:
@@ -94,12 +89,12 @@ def read_index(pyTree: list, dim: list[int]):
     Returns:
         indices
     """
-    a = read_index_array(pyTree)
-    b = read_index_range(pyTree, dim)
+    a = _read_index_array(pyTree)
+    b = _read_index_range(pyTree, dim)
     return np.hstack((a, b))
 
 
-def read_index_array(pyTree: list):
+def _read_index_array(pyTree: list):
     """Read Index Array from CGNS.
 
     Args:
@@ -119,7 +114,7 @@ def read_index_array(pyTree: list):
     return np.array(res, dtype=int).ravel()
 
 
-def read_index_range(pyTree: list, dim: list[int]):
+def _read_index_range(pyTree: list, dim: list[int]):
     """Read Index Range from CGNS.
 
     Args:
@@ -163,12 +158,9 @@ class Sample(BaseModel):
 
     def __init__(
         self,
-        directory_path: Union[str, Path] = None,
+        directory_path: Optional[Union[str, Path]] = None,
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
-        meshes: dict[float, CGNSTree] = None,
-        scalars: dict[str, ScalarType] = None,
-        time_series: dict[str, TimeSeriesType] = None,
         links: dict[float, list[LinkType]] = None,
         paths: dict[float, list[PathType]] = None,
     ) -> None:
@@ -207,9 +199,9 @@ class Sample(BaseModel):
         self._mesh_base_name: str = mesh_base_name
         self._mesh_zone_name: str = mesh_zone_name
 
-        self._meshes: dict[float, CGNSTree] = meshes
-        self._scalars: dict[str, ScalarType] = scalars
-        self._time_series: dict[str, TimeSeriesType] = time_series
+        self._meshes: dict[float, CGNSTree] = {}
+        self._scalars: dict[str, ScalarType] = {}
+        self._time_series: dict[str, TimeSeriesType] = {}
 
         self._links: dict[float, list[LinkType]] = links
         self._paths: dict[float, list[PathType]] = paths
@@ -1319,7 +1311,7 @@ class Sample(BaseModel):
         for BCPath in BCPaths:
             BCNode = CGU.getNodeByPath(zone_node, BCPath)
             BCName = BCNode[0]
-            indices = read_index(BCNode, dim)
+            indices = _read_index(BCNode, dim)
             if len(indices) == 0:  # pragma: no cover
                 continue
 
@@ -1340,7 +1332,7 @@ class Sample(BaseModel):
             # if fnpath:
             #     fn = CGU.getNodeByPath(ZSRNode, fnpath[0])
             #     familyName = CGU.getValueAsString(fn)
-            indices = read_index(ZSRNode, dim)
+            indices = _read_index(ZSRNode, dim)
             if len(indices) == 0:
                 continue
             gl = CGU.getPathsByTypeSet(ZSRNode, ["GridLocation_t"])[0]
