@@ -32,7 +32,7 @@ from tqdm import tqdm
 from plaid.constants import AUTHORIZED_INFO_KEYS
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
-from plaid.types import Array, FeatureIdentifier, FeatureType
+from plaid.types import Array, Feature, FeatureIdentifier
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 
 logger = logging.getLogger(__name__)
@@ -559,14 +559,14 @@ class Dataset(object):
     # -------------------------------------------------------------------------#
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
-    ) -> dict[int, FeatureType]:
+    ) -> dict[int, Feature]:
         """Get a list of features from the dataset based on the provided feature string identifier.
 
         Args:
             feature_string_identifier (str): A string identifier for the feature.
 
         Returns:
-            dict[int, FeatureType]: A list of features matching the provided string identifier.
+            dict[int, Feature]: A list of features matching the provided string identifier.
         """
         return {
             id: self[id].get_feature_from_string_identifier(feature_string_identifier)
@@ -575,14 +575,14 @@ class Dataset(object):
 
     def get_feature_from_identifier(
         self, feature_identifier: dict[str : Union[str, float]]
-    ) -> dict[int, FeatureType]:
+    ) -> dict[int, Feature]:
         """Get a list of features from the dataset based on the provided feature identifier.
 
         Args:
             feature_identifier (FeatureIdentifier): A dictionary containing the feature identifier.
 
         Returns:
-            dict[int, FeatureType]: A list of features matching the provided identifier.
+            dict[int, Feature]: A list of features matching the provided identifier.
         """
         return {
             id: self[id].get_feature_from_identifier(feature_identifier)
@@ -591,14 +591,14 @@ class Dataset(object):
 
     def get_features_from_identifiers(
         self, feature_identifiers: list[dict[str : Union[str, float]]]
-    ) -> dict[int, list[FeatureType]]:
+    ) -> dict[int, list[Feature]]:
         """Get a list of features from the dataset based on the provided feature identifiers.
 
         Args:
             feature_identifiers (FeatureIdentifier): A dictionary containing the feature identifier.
 
         Returns:
-            dict[int, list[FeatureType]]: A list of features matching the provided identifier.
+            dict[int, list[Feature]]: A list of features matching the provided identifier.
         """
         return {
             id: self[id].get_features_from_identifiers(feature_identifiers)
@@ -608,7 +608,7 @@ class Dataset(object):
     def update_features_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-        features: dict[int, Union[FeatureType, list[FeatureType]]],
+        features: dict[int, Union[Feature, list[Feature]]],
         in_place: bool = False,
     ) -> Self:
         """Update one or several features of the dataset by their identifier(s).
