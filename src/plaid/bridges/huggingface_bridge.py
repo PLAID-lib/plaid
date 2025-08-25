@@ -12,7 +12,7 @@ import shutil
 import sys
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from tqdm import tqdm
 
@@ -286,14 +286,14 @@ def huggingface_description_to_problem_definition(
     return problem_definition
 
 
-def to_plaid_sample(hf_sample: bytes) -> Sample:
-    """Use this function for converting a plaid dataset from a Hugging Face dataset.
+def to_plaid_sample(hf_sample: dict[str, Any]) -> Sample:
+    """Convert a Hugging Face sample dictionary to a PLAID Sample instance.
 
     Args:
-        hf_sample (bytes): the sample in bytes directly loaded from the Hugging Face dataset
+        hf_sample (dict[str, Any]): A dictionary with a "sample" key containing the pickled sample bytes.
 
     Returns:
-        sample (Sample): the converted sample.
+        Sample: The deserialized PLAID Sample object.
     """
     return Sample.model_validate(pickle.loads(hf_sample["sample"]))
 
