@@ -42,14 +42,14 @@ from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     CGNSNode,
     CGNSTree,
+    Feature,
     FeatureIdentifier,
-    FeatureType,
-    FieldType,
+    Field,
     LinkType,
     PathType,
-    ScalarType,
-    TimeSequenceType,
-    TimeSeriesType,
+    Scalar,
+    TimeSequence,
+    TimeSeries,
 )
 from plaid.utils import cgns_helper as CGH
 from plaid.utils.base import safe_len
@@ -171,8 +171,8 @@ class Sample(BaseModel):
             mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
             mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
             meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
-            scalars (dict[str, ScalarType], optional): A dictionary mapping scalar names to their values. Defaults to None.
-            time_series (dict[str, TimeSeriesType], optional): A dictionary mapping time series names to their values. Defaults to None.
+            scalars (dict[str, Scalar], optional): A dictionary mapping scalar names to their values. Defaults to None.
+            time_series (dict[str, TimeSeries], optional): A dictionary mapping time series names to their values. Defaults to None.
             links (dict[float, list[LinkType]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
             paths (dict[float, list[PathType]], optional): A dictionary mapping time steps to lists of paths. Defaults to None.
 
@@ -1155,26 +1155,26 @@ class Sample(BaseModel):
             res = sorted(self._scalars.keys())
             return res
 
-    def get_scalar(self, name: str) -> ScalarType:
+    def get_scalar(self, name: str) -> Scalar:
         """Retrieve a scalar value associated with the given name.
 
         Args:
             name (str): The name of the scalar value to retrieve.
 
         Returns:
-            ScalarType or None: The scalar value associated with the given name, or None if the name is not found.
+            Scalar or None: The scalar value associated with the given name, or None if the name is not found.
         """
         if (self._scalars is None) or (name not in self._scalars):
             return None
         else:
             return self._scalars[name]
 
-    def add_scalar(self, name: str, value: ScalarType) -> None:
+    def add_scalar(self, name: str, value: Scalar) -> None:
         """Add a scalar value to a dictionary.
 
         Args:
             name (str): The name of the scalar value.
-            value (ScalarType): The scalar value to add or update in the dictionary.
+            value (Scalar): The scalar value to add or update in the dictionary.
         """
         _check_names([name])
         if self._scalars is None:
@@ -1182,7 +1182,7 @@ class Sample(BaseModel):
         else:
             self._scalars[name] = value
 
-    def del_scalar(self, name: str) -> ScalarType:
+    def del_scalar(self, name: str) -> Scalar:
         """Delete a scalar value from the dictionary.
 
         Args:
@@ -1192,7 +1192,7 @@ class Sample(BaseModel):
             KeyError: Raised when there is no scalar / there is no scalar with the provided name.
 
         Returns:
-            ScalarType: The value of the deleted scalar.
+            Scalar: The value of the deleted scalar.
         """
         if self._scalars is None:
             raise KeyError("There is no scalar inside this sample.")
@@ -1214,14 +1214,14 @@ class Sample(BaseModel):
         else:
             return list(self._time_series.keys())
 
-    def get_time_series(self, name: str) -> TimeSeriesType:
+    def get_time_series(self, name: str) -> TimeSeries:
         """Retrieve a time series by name.
 
         Args:
             name (str): The name of the time series to retrieve.
 
         Returns:
-            TimeSeriesType or None: If a time series with the given name exists, it returns the corresponding time series, or None otherwise.
+            TimeSeries or None: If a time series with the given name exists, it returns the corresponding time series, or None otherwise.
 
         """
         if (self._time_series is None) or (name not in self._time_series):
@@ -1230,14 +1230,14 @@ class Sample(BaseModel):
             return self._time_series[name]
 
     def add_time_series(
-        self, name: str, time_sequence: TimeSequenceType, values: FieldType
+        self, name: str, time_sequence: TimeSequence, values: Field
     ) -> None:
         """Add a time series to the sample.
 
         Args:
             name (str): A descriptive name for the time series.
-            time_sequence (TimeSequenceType): The time sequence, array of time points.
-            values (FieldType): The values corresponding to the time sequence.
+            time_sequence (TimeSequence): The time sequence, array of time points.
+            values (Field): The values corresponding to the time sequence.
 
         Example:
             .. code-block:: python
@@ -1259,7 +1259,7 @@ class Sample(BaseModel):
         else:
             self._time_series[name] = (time_sequence, values)
 
-    def del_time_series(self, name: str) -> tuple[TimeSequenceType, FieldType]:
+    def del_time_series(self, name: str) -> tuple[TimeSequence, Field]:
         """Delete a time series from the sample.
 
         Args:
@@ -1269,7 +1269,7 @@ class Sample(BaseModel):
             KeyError: Raised when there is no time series / there is no time series with the provided name.
 
         Returns:
-            tuple[TimeSequenceType, FieldType]: A tuple containing the time sequence and values of the deleted time series.
+            tuple[TimeSequence, Field]: A tuple containing the time sequence and values of the deleted time series.
         """
         if self._time_series is None:
             raise KeyError("There is no time series inside this sample.")
@@ -1560,7 +1560,7 @@ class Sample(BaseModel):
         base_name: str = None,
         location: str = "Vertex",
         time: float = None,
-    ) -> FieldType:
+    ) -> Field:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
 
         Args:
@@ -1572,7 +1572,7 @@ class Sample(BaseModel):
             time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-            FieldType: A set containing the names of the fields that match the specified criteria.
+            Field: A set containing the names of the fields that match the specified criteria.
         """
         # get_zone will look for default time
         search_node = self.get_zone(zone_name, base_name, time)
@@ -1607,7 +1607,7 @@ class Sample(BaseModel):
     def add_field(
         self,
         name: str,
-        field: FieldType,
+        field: Field,
         zone_name: str = None,
         base_name: str = None,
         location: str = "Vertex",
@@ -1618,7 +1618,7 @@ class Sample(BaseModel):
 
         Args:
             name (str): The name of the field to be added.
-            field (FieldType): The field data to be added.
+            field (Field): The field data to be added.
             zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
@@ -1823,7 +1823,7 @@ class Sample(BaseModel):
 
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
-    ) -> FeatureType:
+    ) -> Feature:
         """Retrieve a specific feature from its encoded string identifier.
 
         The `feature_string_identifier` must follow the format:
@@ -1839,7 +1839,7 @@ class Sample(BaseModel):
             feature_string_identifier (str): Structured identifier of the feature.
 
         Returns:
-            FeatureType: The retrieved feature object.
+            Feature: The retrieved feature object.
 
         Raises:
             AssertionError: If `feature_type` is unknown.
@@ -1877,7 +1877,7 @@ class Sample(BaseModel):
 
     def get_feature_from_identifier(
         self, feature_identifier: FeatureIdentifier
-    ) -> FeatureType:
+    ) -> Feature:
         """Retrieve a feature object based on a structured identifier dictionary.
 
         The `feature_identifier` must include a `"type"` key specifying the feature kind:
@@ -1900,7 +1900,7 @@ class Sample(BaseModel):
                 A dictionary encoding the feature type and its relevant parameters.
 
         Returns:
-            FeatureType: The corresponding feature instance retrieved via the appropriate accessor.
+            Feature: The corresponding feature instance retrieved via the appropriate accessor.
         """
         feature_type, feature_details = get_feature_type_and_details_from(
             feature_identifier
@@ -1917,7 +1917,7 @@ class Sample(BaseModel):
 
     def get_features_from_identifiers(
         self, feature_identifiers: list[FeatureIdentifier]
-    ) -> list[FeatureType]:
+    ) -> list[Feature]:
         """Retrieve features based on a list of structured identifier dictionaries.
 
         Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
@@ -1940,7 +1940,7 @@ class Sample(BaseModel):
                 A dictionary encoding the feature type and its relevant parameters.
 
         Returns:
-            list[FeatureType]: List of corresponding feature instance retrieved via the appropriate accessor.
+            list[Feature]: List of corresponding feature instance retrieved via the appropriate accessor.
         """
         all_features_info = [
             get_feature_type_and_details_from(feat_id)
@@ -1962,7 +1962,7 @@ class Sample(BaseModel):
     def _add_feature(
         self,
         feature_identifier: FeatureIdentifier,
-        feature: FeatureType,
+        feature: Feature,
     ) -> Self:
         """Add a feature to current sample.
 
@@ -1971,7 +1971,7 @@ class Sample(BaseModel):
 
         Args:
             feature_identifier (dict): A feature identifier.
-            feature (FeatureType): A feature corresponding to the identifiers.
+            feature (Feature): A feature corresponding to the identifiers.
 
         Returns:
             Self: The updated sample
@@ -2005,7 +2005,7 @@ class Sample(BaseModel):
     def update_features_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-        features: Union[FeatureType, list[FeatureType]],
+        features: Union[Feature, list[Feature]],
         in_place: bool = False,
     ) -> Self:
         """Update one or several features of the sample by their identifier(s).
@@ -2016,7 +2016,7 @@ class Sample(BaseModel):
 
         Args:
             feature_identifiers (dict or list of dict): One or more feature identifiers.
-            features (FeatureType or list of FeatureType): One or more features corresponding
+            features (Feature or list of Feature): One or more features corresponding
                 to the identifiers.
             in_place (bool, optional): If True, modifies the current sample in place.
                 If False, returns a deep copy with updated features.
