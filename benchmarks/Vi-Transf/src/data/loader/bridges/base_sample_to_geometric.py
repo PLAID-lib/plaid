@@ -46,9 +46,9 @@ def base_sample_to_geometric(
     input_scalars = []
     output_scalars = []
     for name in input_scalars_names:
-        input_scalars.append(sample.get_scalar(name))
+        input_scalars.append(sample.scalars.get(name))
     for name in output_scalars_names:
-        output_scalars.append(sample.get_scalar(name))
+        output_scalars.append(sample.scalars.get(name))
 
     # loading fields
     input_fields_names = problem_definition.get_input_fields_names()

@@ -62,7 +62,7 @@ for sample_index in tqdm(ids_test):
     for fn in out_fields_names:
         prediction[count][fn] = sample_pred.get_field(fn, base_name="Base_2_2")
     for sn in out_scalars_names:
-        prediction[count][sn] = sample_pred.get_scalar(sn)
+        prediction[count][sn] = sample_pred.scalars.get(sn)
 
     count += 1
 

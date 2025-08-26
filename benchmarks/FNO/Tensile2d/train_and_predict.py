@@ -47,14 +47,14 @@ for i, id_sample in enumerate(ids_train):
     for in_chan in range(len(in_scalars_names)+1):
         inputs[i, in_chan, :, :] = dataset[id_sample].get_field("Signed_Distance").reshape((size, size))
         for k, sn in enumerate(in_scalars_names):
-            inputs[i, k+1, :, :] = dataset[id_sample].get_scalar(sn)
+            inputs[i, k+1, :, :] = dataset[id_sample].scalars.get(sn)
 
 outputs = np.empty((n_train, len(out_scalars_names)+len(out_fields_names), size, size))
 for i, id_sample in enumerate(ids_train):
     for k, fn in enumerate(out_fields_names):
         outputs[i, k, :, :] = dataset[id_sample].get_field(fn).reshape((size, size))
     for k, sn in enumerate(out_scalars_names):
-        outputs[i, k+len(out_fields_names), :, :] = dataset[id_sample].get_scalar(sn)
+        outputs[i, k+len(out_fields_names), :, :] = dataset[id_sample].scalars.get(sn)
 
 
 min_in = inputs.min(axis=(0, 2, 3), keepdims=True)
@@ -124,7 +124,7 @@ for i, id_sample in enumerate(ids_test):
     for in_chan in range(len(in_scalars_names)+1):
         inputs[i, in_chan, :, :] = dataset[id_sample].get_field("Signed_Distance").reshape((size, size))
         for k, sn in enumerate(in_scalars_names):
-            inputs[i, k+1, :, :] = dataset[id_sample].get_scalar(sn)
+            inputs[i, k+1, :, :] = dataset[id_sample].scalars.get(sn)
 
 inputs = (inputs - min_in) / (max_in - min_in)
 
@@ -152,7 +152,7 @@ for i, id_sample in enumerate(ids_test):
     for k, fn in enumerate(out_fields_names):
         dataset[id_sample].add_field(fn, outputs_pred[i, k, :, :].flatten())
     for k, sn in enumerate(out_scalars_names):
-        dataset[id_sample].add_scalar(sn, np.mean(outputs_pred[i, k+len(out_fields_names), :, :].flatten()))
+        dataset[id_sample].scalars.add(sn, np.mean(outputs_pred[i, k+len(out_fields_names), :, :].flatten()))
 
 
 if os.path.exists(predicted_data_dir) and os.path.isdir(predicted_data_dir):

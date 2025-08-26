@@ -59,7 +59,7 @@ def stats():
 @pytest.fixture()
 def sample_with_scalar(np_samples_3):
     s = Sample()
-    s.add_scalar("foo", float(np_samples_3.mean()))
+    s.scalars.add("foo", float(np_samples_3.mean()))
     return s
 
 
@@ -245,7 +245,7 @@ class Test_Stats:
         stats_dict = stats.get_stats()
 
         sample = samples[0]
-        feature_names = sample.get_scalar_names()
+        feature_names = sample.scalars.get_names()
         feature_names.extend(
             item
             for ts_name in sample.get_time_series_names()

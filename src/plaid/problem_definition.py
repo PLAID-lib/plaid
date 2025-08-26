@@ -866,7 +866,7 @@ class ProblemDefinition(object):
     #     """
     #     res = {}
     #     for _,feature_name in self.get_input_scalars_names(feature_type='scalar'):
-    #         res.update(self.get_scalars_to_tabular(feature_name, sample_ids))
+    #         res.update(self.scalars.gets_to_tabular(feature_name, sample_ids))
 
     #     if as_dataframe:
     #         res = pandas.DataFrame(res)
@@ -882,7 +882,7 @@ class ProblemDefinition(object):
     #     """
     #     res = {}
     #     for _,feature_name in self.get_output_scalars_names(feature_type='scalar'):
-    #         res.update(self.get_scalars_to_tabular(feature_name, sample_ids))
+    #         res.update(self.scalars.gets_to_tabular(feature_name, sample_ids))
 
     #     if as_dataframe:
     #         res = pandas.DataFrame(res)

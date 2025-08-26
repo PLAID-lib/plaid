@@ -58,16 +58,16 @@ def convert_data(
         sample = Sample.model_validate(pickle.loads(dataset[id]["sample"]))
 
         nodes.append(sample.get_nodes())
-        omega = sample.get_scalar("Omega")
-        pressure = sample.get_scalar("P")
+        omega = sample.scalars.get("Omega")
+        pressure = sample.scalars.get("P")
 
         density = sample.get_field("Density")
         pressure_field = sample.get_field("Pressure")
         temperature = sample.get_field("Temperature")
 
-        massflow = sample.get_scalar("Massflow")
-        compression_ratio = sample.get_scalar("Compression_ratio")
-        efficiency = sample.get_scalar("Efficiency")
+        massflow = sample.scalars.get("Massflow")
+        compression_ratio = sample.scalars.get("Compression_ratio")
+        efficiency = sample.scalars.get("Efficiency")
 
         X_scalars.append(np.array([omega, pressure]))
         Y_scalars.append(np.array([massflow, compression_ratio, efficiency]))

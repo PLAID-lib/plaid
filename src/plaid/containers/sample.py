@@ -38,6 +38,7 @@ from plaid.constants import (
     CGNS_ELEMENT_NAMES,
     CGNS_FIELD_LOCATIONS,
 )
+from plaid.containers.collections import SampleScalars, _check_names
 from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     CGNSNode,
@@ -59,24 +60,6 @@ logging.basicConfig(
     format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
     level=logging.INFO,
 )
-
-
-def _check_names(names: Union[str, list[str]]):
-    """Check that names do not contain invalid character ``/``.
-
-    Args:
-        names (Union[str, list[str]]): The names to check.
-
-    Raises:
-        ValueError: If any name contains the invalid character ``/``.
-    """
-    if isinstance(names, str):
-        names = [names]
-    for name in names:
-        if (name is not None) and ("/" in name):
-            raise ValueError(
-                f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurence of `/` with something else, for example: `name.replace('/','__')`"
-            )
 
 
 def _read_index(pyTree: list, dim: list[int]):
@@ -161,8 +144,11 @@ class Sample(BaseModel):
         directory_path: Optional[Union[str, Path]] = None,
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
-        links: dict[float, list[LinkType]] = None,
-        paths: dict[float, list[PathType]] = None,
+        meshes: Optional[dict[float, CGNSTree]] = None,
+        scalars: Optional[dict[str, Scalar]] = None,
+        time_series: Optional[dict[str, TimeSeries]] = None,
+        links: Optional[dict[float, list[LinkType]]] = None,
+        paths: Optional[dict[float, list[PathType]]] = None,
     ) -> None:
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
@@ -199,24 +185,28 @@ class Sample(BaseModel):
         self._mesh_base_name: str = mesh_base_name
         self._mesh_zone_name: str = mesh_zone_name
 
-        self._meshes: dict[float, CGNSTree] = {}
-        self._scalars: dict[str, Scalar] = {}
-        self._time_series: dict[str, TimeSeries] = {}
+        self._meshes: dict[float, CGNSTree] | None = meshes
+        self._scalars = SampleScalars(scalars)
+        self._time_series: dict[str, TimeSeries] | None = time_series
 
-        self._links: dict[float, list[LinkType]] = links
-        self._paths: dict[float, list[PathType]] = paths
+        self._links: dict[float, list[LinkType]] | None = links
+        self._paths: dict[float, list[PathType]] | None = paths
 
         if directory_path is not None:
             directory_path = Path(directory_path)
             self.load(directory_path)
 
-        self._defaults: dict = {
+        self._defaults: dict[str, Optional[str]] = {
             "active_base": None,
             "active_zone": None,
             "active_time": None,
         }
 
         self._extra_data = None
+
+    @property
+    def scalars(self) -> SampleScalars:
+        return self._scalars
 
     def copy(self) -> Self:
         """Create a deep copy of the sample.
@@ -1143,66 +1133,6 @@ class Sample(BaseModel):
         return CGU.getValueByPath(zone_node, "ZoneType").tobytes().decode()
 
     # -------------------------------------------------------------------------#
-    def get_scalar_names(self) -> set[str]:
-        """Get a set of scalar names available in the object.
-
-        Returns:
-            set[str]: A set containing the names of the available scalars.
-        """
-        if self._scalars is None:
-            return []
-        else:
-            res = sorted(self._scalars.keys())
-            return res
-
-    def get_scalar(self, name: str) -> Scalar:
-        """Retrieve a scalar value associated with the given name.
-
-        Args:
-            name (str): The name of the scalar value to retrieve.
-
-        Returns:
-            Scalar or None: The scalar value associated with the given name, or None if the name is not found.
-        """
-        if (self._scalars is None) or (name not in self._scalars):
-            return None
-        else:
-            return self._scalars[name]
-
-    def add_scalar(self, name: str, value: Scalar) -> None:
-        """Add a scalar value to a dictionary.
-
-        Args:
-            name (str): The name of the scalar value.
-            value (Scalar): The scalar value to add or update in the dictionary.
-        """
-        _check_names([name])
-        if self._scalars is None:
-            self._scalars = {name: value}
-        else:
-            self._scalars[name] = value
-
-    def del_scalar(self, name: str) -> Scalar:
-        """Delete a scalar value from the dictionary.
-
-        Args:
-            name (str): The name of the scalar value to be deleted.
-
-        Raises:
-            KeyError: Raised when there is no scalar / there is no scalar with the provided name.
-
-        Returns:
-            Scalar: The value of the deleted scalar.
-        """
-        if self._scalars is None:
-            raise KeyError("There is no scalar inside this sample.")
-
-        if name not in self._scalars:
-            raise KeyError(f"There is no scalar value with name {name}.")
-
-        return self._scalars.pop(name)
-
-    # -------------------------------------------------------------------------#
     def get_time_series_names(self) -> set[str]:
         """Get the names of time series associated with the object.
 
@@ -1770,7 +1700,7 @@ class Sample(BaseModel):
             list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
         """
         all_features_identifiers = []
-        for sn in self.get_scalar_names():
+        for sn in self.scalars.get_names():
             all_features_identifiers.append({"type": "scalar", "name": sn})
         for tsn in self.get_time_series_names():
             all_features_identifiers.append({"type": "time_series", "name": tsn})
@@ -1830,7 +1760,7 @@ class Sample(BaseModel):
             "<feature_type>::<detail1>/<detail2>/.../<detailN>"
 
         Supported feature types:
-            - "scalar": expects 1 detail → `get_scalar(name)`
+            - "scalar": expects 1 detail → `scalars.get(name)`
             - "time_series": expects 1 detail → `get_time_series(name)`
             - "field": up to 5 details → `get_field(name, base_name, zone_name, location, time)`
             - "nodes": up to 3 details → `get_nodes(base_name, zone_name, time)`
@@ -1861,7 +1791,10 @@ class Sample(BaseModel):
         arg_names = AUTHORIZED_FEATURE_INFOS[feature_type]
 
         if feature_type == "scalar":
-            return self.get_scalar(feature_details[0])
+            val = self.scalars.get(feature_details[0])
+            if val is None:
+                raise KeyError(f"Unknown scalar {feature_details[0]}")
+            return val
         elif feature_type == "time_series":
             return self.get_time_series(feature_details[0])
         elif feature_type == "field":
@@ -1881,7 +1814,7 @@ class Sample(BaseModel):
         """Retrieve a feature object based on a structured identifier dictionary.
 
         The `feature_identifier` must include a `"type"` key specifying the feature kind:
-            - `"scalar"`       → calls `get_scalar(name)`
+            - `"scalar"`       → calls `scalars.get(name)`
             - `"time_series"`  → calls `get_time_series(name)`
             - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
             - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
@@ -1907,7 +1840,7 @@ class Sample(BaseModel):
         )
 
         if feature_type == "scalar":
-            return self.get_scalar(**feature_details)
+            return self.scalars.get(**feature_details)
         elif feature_type == "time_series":
             return self.get_time_series(**feature_details)
         elif feature_type == "field":
@@ -1921,7 +1854,7 @@ class Sample(BaseModel):
         """Retrieve features based on a list of structured identifier dictionaries.
 
         Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
-            - `"scalar"`       → calls `get_scalar(name)`
+            - `"scalar"`       → calls `scalars.get(name)`
             - `"time_series"`  → calls `get_time_series(name)`
             - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
             - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
@@ -1950,7 +1883,7 @@ class Sample(BaseModel):
         features = []
         for feature_type, feature_details in all_features_info:
             if feature_type == "scalar":
-                features.append(self.get_scalar(**feature_details))
+                features.append(self.scalars.get(**feature_details))
             elif feature_type == "time_series":
                 features.append(self.get_time_series(**feature_details))
             elif feature_type == "field":
@@ -1986,7 +1919,7 @@ class Sample(BaseModel):
         if feature_type == "scalar":
             if safe_len(feature) == 1:
                 feature = feature[0]
-            self.add_scalar(**feature_details, value=feature)
+            self.scalars.add(**feature_details, value=feature)
         elif feature_type == "time_series":
             self.add_time_series(
                 **feature_details, time_sequence=feature[0], values=feature[1]
@@ -2168,11 +2101,11 @@ class Sample(BaseModel):
                 )
                 logger.debug(f"save -> {status=}")
 
-        scalars_names = self.get_scalar_names()
+        scalars_names = self.scalars.get_names()
         if len(scalars_names) > 0:
             scalars = []
             for s_name in scalars_names:
-                scalars.append(self.get_scalar(s_name))
+                scalars.append(self.scalars.get(s_name))
             scalars = np.array(scalars).reshape((1, -1))
             header = ",".join(scalars_names)
             np.savetxt(
@@ -2281,7 +2214,7 @@ class Sample(BaseModel):
                 scalars_fname, dtype=float, skiprows=1, delimiter=","
             ).reshape((-1,))
             for name, value in zip(names, scalars):
-                self.add_scalar(name, value)
+                self.scalars.add(name, value)
 
         time_series_files = list(dir_path.glob("time_series_*.csv"))
         for ts_fname in time_series_files:
@@ -2303,7 +2236,7 @@ class Sample(BaseModel):
         str_repr = "Sample("
 
         # scalars
-        nb_scalars = len(self.get_scalar_names())
+        nb_scalars = len(self.scalars.get_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
 
         # time series
@@ -2357,7 +2290,7 @@ class Sample(BaseModel):
             "mesh_base_name": self._mesh_base_name,
             "mesh_zone_name": self._mesh_zone_name,
             "meshes": self._meshes,
-            "scalars": self._scalars,
+            "scalars": self.scalars._scalars,
             "time_series": self._time_series,
             "links": self._links,
             "paths": self._paths,

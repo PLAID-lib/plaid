@@ -70,7 +70,7 @@ class Test_Huggingface_Bridge:
 
     def assert_sample(self, sample):
         assert isinstance(sample, Sample)
-        assert sample.get_scalar_names()[0] == "test_scalar"
+        assert sample.scalars.get_names()[0] == "test_scalar"
         assert "test_field_same_size" in sample.get_field_names()
         assert sample.get_field("test_field_same_size").shape[0] == 17
 

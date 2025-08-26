@@ -176,14 +176,14 @@ def main(cfg):
             optimizer.step()
 
         for n, fn in enumerate(output_fields_names):
-            tb_logger.add_scalar(
+            tb_logger.scalars.add(
                 f"train/loss/{fn}", epoch_train_field_losses[n].item(), epoch
             )
         for n, sn in enumerate(output_scalars_names):
-            tb_logger.add_scalar(
+            tb_logger.scalars.add(
                 f"train/loss/{sn}", epoch_train_scalar_losses[n].item(), epoch
             )
-        tb_logger.add_scalar("train/loss", epoch_train_loss, epoch)
+        tb_logger.scalars.add("train/loss", epoch_train_loss, epoch)
 
         # validation loop
         epoch_val_loss = 0
@@ -208,14 +208,14 @@ def main(cfg):
                 epoch_val_loss += loss.item() * (local_batch_size / len(val_dataset))
 
         for n, fn in enumerate(output_fields_names):
-            tb_logger.add_scalar(
+            tb_logger.scalars.add(
                 f"val/loss/{fn}", epoch_val_field_losses[n].item(), epoch
             )
         for n, sn in enumerate(output_scalars_names):
-            tb_logger.add_scalar(
+            tb_logger.scalars.add(
                 f"val/loss/{sn}", epoch_val_scalar_losses[n].item(), epoch
             )
-        tb_logger.add_scalar("val/loss", epoch_val_loss, epoch)
+        tb_logger.scalars.add("val/loss", epoch_val_loss, epoch)
         logger.info(
             f"Epoch {epoch:>{len(str(epochs))}}: Train Loss: {epoch_train_loss:.5f} | Val Loss: {epoch_val_loss:.5f}"
         )

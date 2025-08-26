@@ -29,8 +29,8 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
         sample = Sample()
         sample.init_base(3, 3, base_name)
         sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
-        sample.add_scalar("test_scalar", float(i))
-        sample.add_scalar("test_scalar_2", float(i**2))
+        sample.scalars.add("test_scalar", float(i))
+        sample.scalars.add("test_scalar_2", float(i**2))
         sample.add_time_series(
             "test_time_series_1",
             np.arange(11, dtype=float),

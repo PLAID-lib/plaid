@@ -103,8 +103,8 @@ for sample_index in tqdm(range(nSamples)):
 
 
     for scalar_name in scalar_names:
-        old_scalar= sample.get_scalar( name=scalar_name)
-        new_sample.add_scalar(scalar_name, old_scalar)
+        old_scalar= sample.scalars.get( name=scalar_name)
+        new_sample.scalars.add(scalar_name, old_scalar)
     new_sample.add_field("Signed_Distance",compute_signed_distance(copy.deepcopy(input_mesh),rec_mesh.nodes))
 
     path = os.path.join(prepared_data_dir,"dataset/samples/sample_{:09d}".format(sample_index))

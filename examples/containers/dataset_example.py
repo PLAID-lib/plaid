@@ -93,7 +93,7 @@ print(f"{sample_01 = }")
 
 # %%
 # Add a scalar to the Sample
-sample_01.add_scalar("rotation", np.random.randn())
+sample_01.scalars.add("rotation", np.random.randn())
 print(f"{sample_01 = }")
 
 # %% [markdown]
@@ -107,7 +107,7 @@ print(f"{sample_02 = }")
 
 # %%
 # Add a scalar to the second Sample
-sample_02.add_scalar("rotation", np.random.randn())
+sample_02.scalars.add("rotation", np.random.randn())
 print(f"{sample_02 = }")
 
 # %% [markdown]
@@ -117,8 +117,8 @@ print(f"{sample_02 = }")
 # Initialize a third empty Sample
 print("#---# Empty Sample")
 sample_03 = Sample()
-sample_03.add_scalar("speed", np.random.randn())
-sample_03.add_scalar("rotation", sample_01.get_scalar("rotation"))
+sample_03.scalars.add("speed", np.random.randn())
+sample_03.scalars.add("rotation", sample_01.scalars.get("rotation"))
 sample_03.add_tree(cgns_mesh)
 
 # Show Sample CGNS content
@@ -137,9 +137,9 @@ sample_03.show_tree()
 print(f"{sample_03 = }", end="\n\n")
 
 # Print sample scalar data
-print(f"{sample_03.get_scalar_names() = }")
-print(f"{sample_03.get_scalar('speed') = }")
-print(f"{sample_03.get_scalar('rotation') = }", end="\n\n")
+print(f"{sample_03.scalars.get_names() = }")
+print(f"{sample_03.scalars.get('speed') = }")
+print(f"{sample_03.scalars.get('rotation') = }", end="\n\n")
 
 # Print sample scalar data
 print(f"{sample_03.get_field_names() = }")
@@ -238,33 +238,33 @@ print(f"{dataset(0) = }")  # call strategy
 print(f"{dataset[1] = }")  # getitem strategy
 print(f"{dataset[2] = }", end="\n\n")
 
-print("scalar of the first sample = ", dataset[0].get_scalar_names())
-print("scalar of the second sample = ", dataset[1].get_scalar_names())
-print("scalar of the third sample = ", dataset[2].get_scalar_names())
+print("scalar of the first sample = ", dataset[0].scalars.get_names())
+print("scalar of the second sample = ", dataset[1].scalars.get_names())
+print("scalar of the third sample = ", dataset[2].scalars.get_names())
 
 # %%
 # Access dataset information
-print(f"{dataset[0].get_scalar('rotation') = }")
-print(f"{dataset[1].get_scalar('rotation') = }")
-print(f"{dataset[2].get_scalar('rotation') = }")
+print(f"{dataset[0].scalars.get('rotation') = }")
+print(f"{dataset[1].scalars.get('rotation') = }")
+print(f"{dataset[2].scalars.get('rotation') = }")
 
 # %% [markdown]
 # ### Get Dataset scalars to tabular
 
 # %%
 # Print scalars in tabular format
-print(f"{dataset.get_scalar_names() = }", end="\n\n")
+print(f"{dataset.scalars.get_names() = }", end="\n\n")
 
-dprint("get rotation scalar = ", dataset.get_scalars_to_tabular(["rotation"]))
-dprint("get speed scalar = ", dataset.get_scalars_to_tabular(["speed"]), end="\n\n")
+dprint("get rotation scalar = ", dataset.scalars.gets_to_tabular(["rotation"]))
+dprint("get speed scalar = ", dataset.scalars.gets_to_tabular(["speed"]), end="\n\n")
 
 # Get specific scalars in tabular format
-dprint("get specific scalars =", dataset.get_scalars_to_tabular(["speed", "rotation"]))
-dprint("get all scalars =", dataset.get_scalars_to_tabular())
+dprint("get specific scalars =", dataset.scalars.gets_to_tabular(["speed", "rotation"]))
+dprint("get all scalars =", dataset.scalars.gets_to_tabular())
 
 # %%
 # Get specific scalars np.array
-print("get all scalar arrays =", dataset.get_scalars_to_tabular(as_nparray=True))
+print("get all scalar arrays =", dataset.scalars.gets_to_tabular(as_nparray=True))
 
 # %% [markdown]
 # ### Get Dataset fields
@@ -288,8 +288,8 @@ nb_samples = 3
 samples = []
 for _ in range(nb_samples):
     sample = Sample()
-    sample.add_scalar("rotation", np.random.rand() + 1.0)
-    sample.add_scalar("random_name", np.random.rand() - 1.0)
+    sample.scalars.add("rotation", np.random.rand() + 1.0)
+    sample.scalars.add("random_name", np.random.rand() - 1.0)
     samples.append(sample)
 
 # Add a list of Samples
@@ -305,7 +305,7 @@ print(f"before merge: {dataset = }")
 dataset.merge_dataset(other_dataset)
 print(f"after merge: {dataset = }", end="\n\n")
 
-dprint("dataset scalars = ", dataset.get_scalars_to_tabular())
+dprint("dataset scalars = ", dataset.scalars.gets_to_tabular())
 
 # %% [markdown]
 # ### Add tabular scalars to a Dataset
@@ -316,7 +316,7 @@ new_scalars = np.random.rand(3, 2)
 dataset.add_tabular_scalars(new_scalars, names=["Tu", "random_name"])
 
 print(f"{dataset = }")
-dprint("dataset scalars =", dataset.get_scalars_to_tabular())
+dprint("dataset scalars =", dataset.scalars.gets_to_tabular())
 
 # %% [markdown]
 # ### Set additional information to a dataset

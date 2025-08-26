@@ -365,7 +365,7 @@ class Dataset(object):
 
         scalars_names = []
         for sample in self.get_samples(ids, as_list=True):
-            s_names = sample.get_scalar_names()
+            s_names = sample.scalars.get_names()
             for s_name in s_names:
                 if s_name not in scalars_names:
                     scalars_names.append(s_name)
@@ -511,7 +511,7 @@ class Dataset(object):
         for i_samp in range(nb_samples):
             sample = Sample()
             for name in names:
-                sample.add_scalar(name, name_to_ids[name][i_samp])
+                sample.scalars.add(name, name_to_ids[name][i_samp])
             self.add_sample(sample)
 
     def get_scalars_to_tabular(
@@ -547,7 +547,7 @@ class Dataset(object):
             res = np.empty(nb_samples)
             res.fill(None)
             for i_, id in enumerate(sample_ids):
-                val = self[id].get_scalar(s_name)
+                val = self[id].scalars.get(s_name)
                 if val is not None:
                     res[i_] = val
             named_tabular[s_name] = res

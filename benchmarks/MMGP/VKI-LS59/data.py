@@ -56,7 +56,7 @@ def extract_split_data(
 
     # Input scalar values
     for key in input_scalars:
-        inputs[key] = [plaid_dataset[i].get_scalar(key) for i in ids]
+        inputs[key] = [plaid_dataset[i].scalars.get(key) for i in ids]
 
     # --- OUTPUTS ---
     # Selected mesh field data
@@ -67,7 +67,7 @@ def extract_split_data(
 
     # Selected output scalar values
     for key in SCALAR_OUTPUTS:
-        outputs[key] = [plaid_dataset[i].get_scalar(key) for i in ids]
+        outputs[key] = [plaid_dataset[i].scalars.get(key) for i in ids]
 
     return inputs, outputs
 

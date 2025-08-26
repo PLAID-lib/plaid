@@ -30,11 +30,11 @@ def airfrans_sample_to_geometric(
     edge_weight = np.linalg.norm(v2 - v1, axis=1)
 
     # loading scalars
-    aoa = sample.get_scalar("angle_of_attack")
-    inlet_velocity = sample.get_scalar("inlet_velocity")
+    aoa = sample.scalars.get("angle_of_attack")
+    inlet_velocity = sample.scalars.get("inlet_velocity")
     u_inlet = [np.cos(aoa) * inlet_velocity, np.sin(aoa) * inlet_velocity]
-    cl = sample.get_scalar("C_L")
-    cd = sample.get_scalar("C_D")
+    cl = sample.scalars.get("C_L")
+    cd = sample.scalars.get("C_D")
     output_scalars = np.array([cl, cd])
 
     # loading fields
