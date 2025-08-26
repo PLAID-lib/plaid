@@ -200,8 +200,8 @@ class Sample(BaseModel):
         self._mesh_zone_name: str = mesh_zone_name
 
         self._meshes: dict[float, CGNSTree] = {}
-        self._scalars: dict[str, ScalarType] = {}
-        self._time_series: dict[str, TimeSeriesType] = {}
+        self._scalars: dict[str, Scalar] = {}
+        self._time_series: dict[str, TimeSeries] = {}
 
         self._links: dict[float, list[LinkType]] = links
         self._paths: dict[float, list[PathType]] = paths
