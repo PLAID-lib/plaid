@@ -17,13 +17,13 @@ except ImportError:  # pragma: no cover
 from plaid.types.common import Array
 
 # Physical data types
-ScalarType: TypeAlias = Union[float, int]
-FieldType: TypeAlias = Array
-TimeSequenceType: TypeAlias = Array
-TimeSeriesType: TypeAlias = tuple[TimeSequenceType, FieldType]
+Scalar: TypeAlias = Union[float, int]
+Field: TypeAlias = Array
+TimeSequence: TypeAlias = Array
+TimeSeries: TypeAlias = tuple[TimeSequence, Field]
 
 # Feature data types
-FeatureType: TypeAlias = Union[ScalarType, FieldType, TimeSeriesType, Array]
+Feature: TypeAlias = Union[Scalar, Field, TimeSeries, Array]
 
 # Identifiers
 FeatureIdentifier: TypeAlias = dict[str, Union[str, float]]

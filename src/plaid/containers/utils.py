@@ -16,7 +16,7 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
 )
-from plaid.types import FeatureIdentifier, FeatureType
+from plaid.types import Feature, FeatureIdentifier
 from plaid.utils.base import safe_len
 
 # %% Functions
@@ -128,7 +128,7 @@ def check_features_type_homogeneity(
 
 def check_features_size_homogeneity(
     feature_identifiers: list[FeatureIdentifier],
-    features: dict[int, list[FeatureType]],
+    features: dict[int, list[Feature]],
 ) -> int:
     """Check size homogeneity of features, for tabular conversion.
 
