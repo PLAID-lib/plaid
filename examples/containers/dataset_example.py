@@ -255,16 +255,16 @@ print(f"{dataset[2].get_scalar('rotation') = }")
 # Print scalars in tabular format
 print(f"{dataset.get_scalar_names( ) = }", end="\n\n")
 
-dprint("get rotation scalar = ", dataset.scalars.gets_to_tabular(["rotation"]))
-dprint("get speed scalar = ", dataset.scalars.gets_to_tabular(["speed"]), end="\n\n")
+dprint("get rotation scalar = ", dataset.get_scalars_to_tabular(["rotation"]))
+dprint("get speed scalar = ", dataset.get_scalars_to_tabular(["speed"]), end="\n\n")
 
 # Get specific scalars in tabular format
-dprint("get specific scalars =", dataset.scalars.gets_to_tabular(["speed", "rotation"]))
-dprint("get all scalars =", dataset.scalars.gets_to_tabular())
+dprint("get specific scalars =", dataset.get_scalars_to_tabular(["speed", "rotation"]))
+dprint("get all scalars =", dataset.get_scalars_to_tabular())
 
 # %%
 # Get specific scalars np.array
-print("get all scalar arrays =", dataset.scalars.gets_to_tabular(as_nparray=True))
+print("get all scalar arrays =", dataset.get_scalars_to_tabular(as_nparray=True))
 
 # %% [markdown]
 # ### Get Dataset fields
@@ -305,7 +305,7 @@ print(f"before merge: {dataset = }")
 dataset.merge_dataset(other_dataset)
 print(f"after merge: {dataset = }", end="\n\n")
 
-dprint("dataset scalars = ", dataset.scalars.gets_to_tabular())
+dprint("dataset scalars = ", dataset.get_scalars_to_tabular())
 
 # %% [markdown]
 # ### Add tabular scalars to a Dataset
@@ -316,7 +316,7 @@ new_scalars = np.random.rand(3, 2)
 dataset.add_tabular_scalars(new_scalars, names=["Tu", "random_name"])
 
 print(f"{dataset = }")
-dprint("dataset scalars =", dataset.scalars.gets_to_tabular())
+dprint("dataset scalars =", dataset.get_scalars_to_tabular())
 
 # %% [markdown]
 # ### Set additional information to a dataset

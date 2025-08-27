@@ -62,5 +62,5 @@ class Test_initialize_dataset_with_tabular_data:
         assert len(dataset) == nb_samples
 
         # scalar_names = ["test_scalar", "test_1D_field", "test_2D_field"]
-        # tabular_data_subset = dataset.scalars.gets_to_tabular(scalar_names)
+        # tabular_data_subset = dataset.get_scalars_to_tabular(scalar_names)
         # assert isinstance(tabular_data_subset, dict)

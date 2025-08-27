@@ -68,6 +68,6 @@ print("Scalar 'scalar_0' in Sample 1:", scalar_value)
 # %%
 # Retrieve tabular data from the dataset based on scalar names
 scalar_names = ["scalar_1", "scalar_3", "scalar_5"]
-tabular_data_subset = dataset.scalars.gets_to_tabular(scalar_names)
+tabular_data_subset = dataset.get_scalars_to_tabular(scalar_names)
 print("Tabular Data Subset for Scalars 1, 3, and 5:")
 dprint("tabular_data_subset", tabular_data_subset)
