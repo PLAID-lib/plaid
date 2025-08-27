@@ -185,12 +185,12 @@ class Sample(BaseModel):
         self._mesh_base_name: str = mesh_base_name
         self._mesh_zone_name: str = mesh_zone_name
 
-        self._meshes: dict[float, CGNSTree] | None = meshes
+        self._meshes: Optional[dict[float, CGNSTree]] = meshes
         self._scalars = SampleScalars(scalars)
-        self._time_series: dict[str, TimeSeries] | None = time_series
+        self._time_series: Optional[dict[str, TimeSeries]] = time_series
 
-        self._links: dict[float, list[LinkType]] | None = links
-        self._paths: dict[float, list[PathType]] | None = paths
+        self._links: Optional[dict[float, list[LinkType]]] = links
+        self._paths: Optional[dict[float, list[PathType]]] = paths
 
         if directory_path is not None:
             directory_path = Path(directory_path)
