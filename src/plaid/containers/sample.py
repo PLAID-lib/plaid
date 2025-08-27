@@ -1831,7 +1831,9 @@ class Sample(BaseModel):
         if feature_type == "scalar":
             val = self.get_scalar(feature_details[0])
             if val is None:
-                raise KeyError(f"Unknown scalar {feature_details[0]}")
+                raise KeyError(
+                    f"Unknown scalar {feature_details[0]}"
+                )  # pragma: no cover
             return val
         elif feature_type == "time_series":
             return self.get_time_series(feature_details[0])
