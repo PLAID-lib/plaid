@@ -67,7 +67,7 @@ class SampleScalars:
 
         return self.data.pop(name)
 
-    def get(self, name: str) -> Scalar | None:
+    def get(self, name: str) -> Optional[Scalar]:
         """Retrieve a scalar value associated with the given name.
 
         Args:
