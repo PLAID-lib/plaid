@@ -62,7 +62,7 @@ print(f"{sample_1 = }")
 
 # %%
 # Access and display the value of a particular scalar within a sample
-scalar_value = sample_1.scalars.get("scalar_0")
+scalar_value = sample_1.get_scalar("scalar_0")
 print("Scalar 'scalar_0' in Sample 1:", scalar_value)
 
 # %%

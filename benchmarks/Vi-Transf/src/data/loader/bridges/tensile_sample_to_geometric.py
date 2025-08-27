@@ -61,9 +61,9 @@ def tensile_sample_to_geometric(
     input_scalars = []
     output_scalars = []
     for name in input_scalars_names:
-        input_scalars.append(sample.scalars.get(name))
+        input_scalars.append(sample.get_scalar(name))
     for name in output_scalars_names:
-        output_scalars.append(sample.scalars.get(name))
+        output_scalars.append(sample.get_scalar(name))
 
     # sdf and one hot encoding
     border_ids = get_border_ids(vertices, faces)

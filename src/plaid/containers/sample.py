@@ -204,9 +204,47 @@ class Sample(BaseModel):
 
         self._extra_data = None
 
-    @property
-    def scalars(self) -> SampleScalars:
-        return self._scalars
+    def get_scalar(self, name: str) -> Scalar | None:
+        """Retrieve a scalar value associated with the given name.
+
+        Args:
+            name (str): The name of the scalar value to retrieve.
+
+        Returns:
+            Scalar or None: The scalar value associated with the given name, or None if the name is not found.
+        """
+        return self._scalars.get(name)
+
+    def add_scalar(self, name: str, value: Scalar) -> None:
+        """Add a scalar value to a dictionary.
+
+        Args:
+            name (str): The name of the scalar value.
+            value (Scalar): The scalar value to add or update in the dictionary.
+        """
+        self._scalars.add(name, value)
+
+    def del_scalar(self, name: str) -> Scalar:
+        """Delete a scalar value from the dictionary.
+
+        Args:
+            name (str): The name of the scalar value to be deleted.
+
+        Raises:
+            KeyError: Raised when there is no scalar / there is no scalar with the provided name.
+
+        Returns:
+            Scalar: The value of the deleted scalar.
+        """
+        return self._scalars.remove(name)
+
+    def get_scalar_names(self) -> list[str]:
+        """Get a set of scalar names available in the object.
+
+        Returns:
+            list[str]: A set containing the names of the available scalars.
+        """
+        return self._scalars.get_names()
 
     def copy(self) -> Self:
         """Create a deep copy of the sample.
@@ -1700,7 +1738,7 @@ class Sample(BaseModel):
             list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
         """
         all_features_identifiers = []
-        for sn in self.scalars.get_names():
+        for sn in self.get_scalar_names():
             all_features_identifiers.append({"type": "scalar", "name": sn})
         for tsn in self.get_time_series_names():
             all_features_identifiers.append({"type": "time_series", "name": tsn})
@@ -1791,7 +1829,7 @@ class Sample(BaseModel):
         arg_names = AUTHORIZED_FEATURE_INFOS[feature_type]
 
         if feature_type == "scalar":
-            val = self.scalars.get(feature_details[0])
+            val = self.get_scalar(feature_details[0])
             if val is None:
                 raise KeyError(f"Unknown scalar {feature_details[0]}")
             return val
@@ -1840,7 +1878,7 @@ class Sample(BaseModel):
         )
 
         if feature_type == "scalar":
-            return self.scalars.get(**feature_details)
+            return self.get_scalar(**feature_details)
         elif feature_type == "time_series":
             return self.get_time_series(**feature_details)
         elif feature_type == "field":
@@ -1883,7 +1921,7 @@ class Sample(BaseModel):
         features = []
         for feature_type, feature_details in all_features_info:
             if feature_type == "scalar":
-                features.append(self.scalars.get(**feature_details))
+                features.append(self.get_scalar(**feature_details))
             elif feature_type == "time_series":
                 features.append(self.get_time_series(**feature_details))
             elif feature_type == "field":
@@ -1919,7 +1957,7 @@ class Sample(BaseModel):
         if feature_type == "scalar":
             if safe_len(feature) == 1:
                 feature = feature[0]
-            self.scalars.add(**feature_details, value=feature)
+            self.add_scalar(**feature_details, value=feature)
         elif feature_type == "time_series":
             self.add_time_series(
                 **feature_details, time_sequence=feature[0], values=feature[1]
@@ -2101,11 +2139,11 @@ class Sample(BaseModel):
                 )
                 logger.debug(f"save -> {status=}")
 
-        scalars_names = self.scalars.get_names()
+        scalars_names = self.get_scalar_names()
         if len(scalars_names) > 0:
             scalars = []
             for s_name in scalars_names:
-                scalars.append(self.scalars.get(s_name))
+                scalars.append(self.get_scalar(s_name))
             scalars = np.array(scalars).reshape((1, -1))
             header = ",".join(scalars_names)
             np.savetxt(
@@ -2214,7 +2252,7 @@ class Sample(BaseModel):
                 scalars_fname, dtype=float, skiprows=1, delimiter=","
             ).reshape((-1,))
             for name, value in zip(names, scalars):
-                self.scalars.add(name, value)
+                self.add_scalar(name, value)
 
         time_series_files = list(dir_path.glob("time_series_*.csv"))
         for ts_fname in time_series_files:
@@ -2236,7 +2274,7 @@ class Sample(BaseModel):
         str_repr = "Sample("
 
         # scalars
-        nb_scalars = len(self.scalars.get_names())
+        nb_scalars = len(self.get_scalar_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
 
         # time series
@@ -2290,7 +2328,7 @@ class Sample(BaseModel):
             "mesh_base_name": self._mesh_base_name,
             "mesh_zone_name": self._mesh_zone_name,
             "meshes": self._meshes,
-            "scalars": self.scalars._scalars,
+            "scalars": self._scalars._scalars,
             "time_series": self._time_series,
             "links": self._links,
             "paths": self._paths,

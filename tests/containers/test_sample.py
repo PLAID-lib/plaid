@@ -49,7 +49,7 @@ def other_sample():
 
 @pytest.fixture()
 def sample_with_scalar(sample):
-    sample.scalars.add("test_scalar_1", np.random.randn())
+    sample.add_scalar("test_scalar_1", np.random.randn())
     return sample
 
 
@@ -105,8 +105,8 @@ def sample_with_tree3d(sample, tree3d):
 def sample_with_tree_and_scalar_and_time_series(
     sample_with_tree,
 ):
-    sample_with_tree.scalars.add("r", np.random.randn())
-    sample_with_tree.scalars.add("test_scalar_1", np.random.randn())
+    sample_with_tree.add_scalar("r", np.random.randn())
+    sample_with_tree.add_scalar("test_scalar_1", np.random.randn())
     sample_with_tree.add_time_series(
         "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
     )
@@ -596,43 +596,43 @@ class Test_Sample:
 
     # -------------------------------------------------------------------------#
     def test_get_scalar_names(self, sample):
-        assert sample.scalars.get_names() == []
+        assert sample.get_scalar_names( ) == []
 
     def test_get_scalar_empty(self, sample):
-        assert sample.scalars.get("missing_scalar_name") is None
+        assert sample.get_scalar("missing_scalar_name") is None
 
     def test_get_scalar(self, sample_with_scalar):
-        assert sample_with_scalar.scalars.get("missing_scalar_name") is None
-        assert sample_with_scalar.scalars.get("test_scalar_1") is not None
+        assert sample_with_scalar.get_scalar("missing_scalar_name") is None
+        assert sample_with_scalar.get_scalar("test_scalar_1") is not None
 
     def test_scalars_add_empty(self, sample_with_scalar):
-        assert isinstance(sample_with_scalar.scalars.get("test_scalar_1"), float)
+        assert isinstance(sample_with_scalar.get_scalar("test_scalar_1"), float)
 
     def test_scalars_add(self, sample_with_scalar):
-        sample_with_scalar.scalars.add("test_scalar_2", np.random.randn())
+        sample_with_scalar.add_scalar("test_scalar_2", np.random.randn())
 
     def test_del_scalar_unknown_scalar(self, sample_with_scalar):
         with pytest.raises(KeyError):
-            sample_with_scalar.scalars.remove("non_existent_scalar")
+            sample_with_scalar.del_scalar("non_existent_scalar")
 
     def test_del_scalar_no_scalar(self):
         sample = Sample()
         with pytest.raises(KeyError):
-            sample.scalars.remove("non_existent_scalar")
+            sample.del_scalar("non_existent_scalar")
 
     def test_del_scalar(self, sample_with_scalar):
-        assert len(sample_with_scalar.scalars.get_names()) == 1
+        assert len(sample_with_scalar.get_scalar_names( )) == 1
 
-        sample_with_scalar.scalars.add("test_scalar_2", np.random.randn(5))
-        assert len(sample_with_scalar.scalars.get_names()) == 2
+        sample_with_scalar.add_scalar("test_scalar_2", np.random.randn(5))
+        assert len(sample_with_scalar.get_scalar_names( )) == 2
 
-        scalar = sample_with_scalar.scalars.remove("test_scalar_1")
-        assert len(sample_with_scalar.scalars.get_names()) == 1
+        scalar = sample_with_scalar.del_scalar("test_scalar_1")
+        assert len(sample_with_scalar.get_scalar_names( )) == 1
         assert scalar is not None
         assert isinstance(scalar, float)
 
-        scalar = sample_with_scalar.scalars.remove("test_scalar_2")
-        assert len(sample_with_scalar.scalars.get_names()) == 0
+        scalar = sample_with_scalar.del_scalar("test_scalar_2")
+        assert len(sample_with_scalar.get_scalar_names( )) == 0
         assert scalar is not None
         assert isinstance(scalar, np.ndarray)
 
@@ -1045,7 +1045,7 @@ class Test_Sample:
     def test_update_features_from_identifier(
         self, sample_with_tree_and_scalar_and_time_series
     ):
-        before = sample_with_tree_and_scalar_and_time_series.scalars.get("test_scalar_1")
+        before = sample_with_tree_and_scalar_and_time_series.get_scalar("test_scalar_1")
         sample_ = (
             sample_with_tree_and_scalar_and_time_series.update_features_from_identifier(
                 feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
@@ -1053,7 +1053,7 @@ class Test_Sample:
                 in_place=False,
             )
         )
-        after = sample_.scalars.get("test_scalar_1")
+        after = sample_.get_scalar("test_scalar_1")
         assert after != before
 
         before = sample_with_tree_and_scalar_and_time_series.get_time_series(
@@ -1161,14 +1161,14 @@ class Test_Sample:
         sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
         )
-        assert sample_.scalars.get_names() == ["test_scalar_1"]
+        assert sample_.get_scalar_names( ) == ["test_scalar_1"]
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
         sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
-        assert len(sample_.scalars.get_names()) == 0
+        assert len(sample_.get_scalar_names( )) == 0
         assert sample_.get_time_series_names() == ["test_time_series_1"]
         assert len(sample_.get_field_names()) == 0
 
@@ -1182,7 +1182,7 @@ class Test_Sample:
                 "time": 0.0,
             },
         )
-        assert len(sample_.scalars.get_names()) == 0
+        assert len(sample_.get_scalar_names( )) == 0
         assert len(sample_.get_time_series_names()) == 0
         assert sample_.get_field_names() == ["test_node_field_1"]
 
@@ -1194,7 +1194,7 @@ class Test_Sample:
                 "time": 0.0,
             },
         )
-        assert len(sample_.scalars.get_names()) == 0
+        assert len(sample_.get_scalar_names( )) == 0
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
@@ -1204,7 +1204,7 @@ class Test_Sample:
                 {"type": "nodes"},
             ],
         )
-        assert len(sample_.scalars.get_names()) == 0
+        assert len(sample_.get_scalar_names( )) == 0
         assert len(sample_.get_time_series_names()) == 0
         assert sample_.get_field_names() == ["test_node_field_1"]
 

@@ -32,7 +32,7 @@ from plaid.utils import cgns_helper as CGH
 def show_sample(sample: Sample):
     print(f"{sample = }")
     sample.show_tree()
-    print(f"{sample.scalars.get_names() = }")
+    print(f"{sample.get_scalar_names( ) = }")
     print(f"{sample.get_field_names() = }")
 
 
@@ -92,14 +92,14 @@ show_sample(sample)
 
 # %%
 # Add a rotation scalar to this Sample
-sample.scalars.add("rotation", np.random.randn())
+sample.add_scalar("rotation", np.random.randn())
 
 show_sample(sample)
 
 # %%
 # Add a more scalars to this Sample
-sample.scalars.add("speed", np.random.randn())
-sample.scalars.add("other", np.random.randn())
+sample.add_scalar("speed", np.random.randn())
+sample.add_scalar("other", np.random.randn())
 
 show_sample(sample)
 
@@ -223,9 +223,9 @@ show_sample(sample)
 
 # %%
 # It will look for a default base if no base and zone are given
-print(f"{sample.scalars.get_names() = }")
-print(f"{sample.scalars.get('omega') = }")
-print(f"{sample.scalars.get('rotation') = }")
+print(f"{sample.get_scalar_names( ) = }")
+print(f"{sample.get_scalar('omega') = }")
+print(f"{sample.get_scalar('rotation') = }")
 
 # %% [markdown]
 # ### Access fields data in Sample
@@ -551,7 +551,7 @@ new_sample.load(sample_save_fname)
 
 show_sample(new_sample)
 
-new_sample.scalars.add("a", 2.1)
+new_sample.add_scalar("a", 2.1)
 serialized_sample = new_sample.model_dump()
 
 unserialized_sample = Sample.model_validate(serialized_sample)

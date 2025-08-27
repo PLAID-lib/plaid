@@ -376,10 +376,10 @@ class Stats:
             sample (Sample): Sample containing scalar data
             data_dict (dict[str, list]): Dictionary to store processed data
         """
-        for name in sample.scalars.get_names():
+        for name in sample.get_scalar_names( ):
             if name not in data_dict:
                 data_dict[name] = []
-            value = sample.scalars.get(name)
+            value = sample.get_scalar(name)
             if value is not None:
                 data_dict[name].append(np.array(value).reshape((1, -1)))
 

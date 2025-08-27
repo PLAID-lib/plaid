@@ -48,10 +48,10 @@ def prepare_datasets(
 
     for i_sample in tqdm(range(n_samples), disable=not (verbose)):
         for sname in out_scalars_names:
-            ref = ref_dataset[i_sample].scalars.get(sname)
+            ref = ref_dataset[i_sample].get_scalar(sname)
             ref_out_scalars[sname].append(ref)
 
-            pred = pred_dataset[i_sample].scalars.get(sname)
+            pred = pred_dataset[i_sample].get_scalar(sname)
             pred_out_scalars[sname].append(pred)
 
     return ref_out_scalars, pred_out_scalars, out_scalars_names

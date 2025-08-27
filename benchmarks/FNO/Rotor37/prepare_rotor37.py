@@ -112,8 +112,8 @@ for sample_index in tqdm(range(len(ids_train)+len(ids_test))):
 
 
     for scalar_name in scalar_names:
-        old_scalar= sample.scalars.get( name=scalar_name)
-        new_sample.scalars.add(scalar_name, old_scalar)
+        old_scalar= sample.get_scalar( name=scalar_name)
+        new_sample.add_scalar(scalar_name, old_scalar)
 
 
     path = os.path.join(prepared_data_dir,"dataset/samples/sample_{:09d}".format(sample_index))

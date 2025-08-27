@@ -231,7 +231,7 @@ def load_datasets(
             # Retrieve input scalars
             in_scalars_names = scalar_input_dict.get(dataset_name, [])
             X_scalars.append(
-                [mesh_data.scalars.get(fn) for fn in in_scalars_names]
+                [mesh_data.get_scalar(fn) for fn in in_scalars_names]
                 if in_scalars_names
                 else []
             )
@@ -239,7 +239,7 @@ def load_datasets(
             # Retrieve output scalars
             out_scalars_names = scalar_output_dict.get(dataset_name, [])
             Y_scalars.append(
-                [mesh_data.scalars.get(fn) for fn in out_scalars_names]
+                [mesh_data.get_scalar(fn) for fn in out_scalars_names]
                 if out_scalars_names
                 else []
             )

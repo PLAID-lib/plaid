@@ -116,8 +116,8 @@ samples = [Sample() for _ in range(nb_samples)]
 spatial_shape_max = 5
 #
 for sample in samples:
-    sample.scalars.add("test_scalar", np.random.randn())
-    sample.scalars.add("test_ND_scalar", np.random.randn(3))
+    sample.add_scalar("test_scalar", np.random.randn())
+    sample.add_scalar("test_ND_scalar", np.random.randn(3))
     sample.init_base(2, 3,)
     zone_shape = np.array([0, 0, 0])
     sample.init_zone(zone_shape)
@@ -149,7 +149,7 @@ nb_samples = 13
 samples = [Sample() for _ in range(nb_samples)]
 
 for sample in samples:
-    sample.scalars.add("test_scalar", np.random.randn())
+    sample.add_scalar("test_scalar", np.random.randn())
     sample.init_base(2, 3,)
     zone_shape = np.array([0, 0, 0])
     sample.init_zone(zone_shape)

@@ -61,7 +61,7 @@ for sample_index in tqdm(range(nSamples)):
         raise("unkown sample_index")
 
     for sn in scalar_names:
-        new_sample.scalars.add(sn, sample.scalars.get(sn))
+        new_sample.add_scalar(sn, sample.get_scalar(sn))
 
     new_sample.add_field("Signed_Distance", sample.get_field("sdf", base_name="Base_2_2"))
 

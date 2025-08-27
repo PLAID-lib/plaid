@@ -65,7 +65,7 @@ for sample_index in tqdm(ids_test):
     for fn in out_fields_names:
         prediction[count][fn] = op.dot(sample_pred.get_field(fn))
     for sn in out_scalars_names:
-        prediction[count][sn] = sample_pred.scalars.get(sn)
+        prediction[count][sn] = sample_pred.get_scalar(sn)
 
     count += 1
 

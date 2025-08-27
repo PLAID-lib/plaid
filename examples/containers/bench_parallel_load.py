@@ -88,8 +88,8 @@ if __name__ == "__main__":
             smp = tmpsmp
 
             # ---# Add some random data
-            smp.scalars.add("id", i)
-            smp.scalars.add("s0", np.random.randn())
+            smp.add_scalar("id", i)
+            smp.add_scalar("s0", np.random.randn())
             smp.add_field("f0", np.random.randn(100))
 
             dset.add_sample(smp)

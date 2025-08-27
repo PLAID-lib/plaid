@@ -62,7 +62,7 @@ def initialize_dataset_with_tabular_data(
     for i in range(nb_samples):
         sample = Sample()
         for scalar_name, value in tabular_data.items():
-            sample.scalars.add(scalar_name, value[i])
+            sample.add_scalar(scalar_name, value[i])
         dataset.add_sample(sample)
 
     # TODO:
