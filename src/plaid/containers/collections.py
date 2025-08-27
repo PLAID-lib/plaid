@@ -38,7 +38,7 @@ class SampleScalars:
     """
 
     def __init__(self, scalars: Optional[dict[str, Scalar]]) -> None:
-        self._scalars: dict[str, Scalar] = scalars if scalars is not None else {}
+        self.data: dict[str, Scalar] = scalars if scalars is not None else {}
 
     def add(self, name: str, value: Scalar) -> None:
         """Add a scalar value to a dictionary.
@@ -48,7 +48,7 @@ class SampleScalars:
             value (Scalar): The scalar value to add or update in the dictionary.
         """
         _check_names(name)
-        self._scalars[name] = value
+        self.data[name] = value
 
     def remove(self, name: str) -> Scalar:
         """Delete a scalar value from the dictionary.
@@ -62,10 +62,10 @@ class SampleScalars:
         Returns:
             Scalar: The value of the deleted scalar.
         """
-        if name not in self._scalars:
+        if name not in self.data:
             raise KeyError(f"There is no scalar value with name {name}.")
 
-        return self._scalars.pop(name)
+        return self.data.pop(name)
 
     def get(self, name: str) -> Scalar | None:
         """Retrieve a scalar value associated with the given name.
@@ -76,7 +76,7 @@ class SampleScalars:
         Returns:
             Scalar or None: The scalar value associated with the given name, or None if the name is not found.
         """
-        return self._scalars.get(name)
+        return self.data.get(name)
 
     def get_names(self) -> list[str]:
         """Get a set of scalar names available in the object.
@@ -84,4 +84,4 @@ class SampleScalars:
         Returns:
             list[str]: A set containing the names of the available scalars.
         """
-        return sorted(self._scalars.keys())
+        return sorted(self.data.keys())

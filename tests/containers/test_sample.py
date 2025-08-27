@@ -596,7 +596,7 @@ class Test_Sample:
 
     # -------------------------------------------------------------------------#
     def test_get_scalar_names(self, sample):
-        assert sample.get_scalar_names( ) == []
+        assert sample.get_scalar_names() == []
 
     def test_get_scalar_empty(self, sample):
         assert sample.get_scalar("missing_scalar_name") is None
@@ -621,18 +621,18 @@ class Test_Sample:
             sample.del_scalar("non_existent_scalar")
 
     def test_del_scalar(self, sample_with_scalar):
-        assert len(sample_with_scalar.get_scalar_names( )) == 1
+        assert len(sample_with_scalar.get_scalar_names()) == 1
 
         sample_with_scalar.add_scalar("test_scalar_2", np.random.randn(5))
-        assert len(sample_with_scalar.get_scalar_names( )) == 2
+        assert len(sample_with_scalar.get_scalar_names()) == 2
 
         scalar = sample_with_scalar.del_scalar("test_scalar_1")
-        assert len(sample_with_scalar.get_scalar_names( )) == 1
+        assert len(sample_with_scalar.get_scalar_names()) == 1
         assert scalar is not None
         assert isinstance(scalar, float)
 
         scalar = sample_with_scalar.del_scalar("test_scalar_2")
-        assert len(sample_with_scalar.get_scalar_names( )) == 0
+        assert len(sample_with_scalar.get_scalar_names()) == 0
         assert scalar is not None
         assert isinstance(scalar, np.ndarray)
 
@@ -1161,14 +1161,14 @@ class Test_Sample:
         sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
         )
-        assert sample_.get_scalar_names( ) == ["test_scalar_1"]
+        assert sample_.get_scalar_names() == ["test_scalar_1"]
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
         sample_ = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
             feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
-        assert len(sample_.get_scalar_names( )) == 0
+        assert len(sample_.get_scalar_names()) == 0
         assert sample_.get_time_series_names() == ["test_time_series_1"]
         assert len(sample_.get_field_names()) == 0
 
@@ -1182,7 +1182,7 @@ class Test_Sample:
                 "time": 0.0,
             },
         )
-        assert len(sample_.get_scalar_names( )) == 0
+        assert len(sample_.get_scalar_names()) == 0
         assert len(sample_.get_time_series_names()) == 0
         assert sample_.get_field_names() == ["test_node_field_1"]
 
@@ -1194,7 +1194,7 @@ class Test_Sample:
                 "time": 0.0,
             },
         )
-        assert len(sample_.get_scalar_names( )) == 0
+        assert len(sample_.get_scalar_names()) == 0
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
@@ -1204,7 +1204,7 @@ class Test_Sample:
                 {"type": "nodes"},
             ],
         )
-        assert len(sample_.get_scalar_names( )) == 0
+        assert len(sample_.get_scalar_names()) == 0
         assert len(sample_.get_time_series_names()) == 0
         assert sample_.get_field_names() == ["test_node_field_1"]
 

@@ -31,7 +31,7 @@ def current_directory():
 
 def compare_two_samples(sample_1: Sample, sample_2: Sample):
     assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
-    assert set(sample_1.get_scalar_names( )) == set(sample_2.get_scalar_names( ))
+    assert set(sample_1.get_scalar_names()) == set(sample_2.get_scalar_names())
     assert set(sample_1.get_field_names()) == set(sample_2.get_field_names())
     assert set(sample_1.get_time_series_names()) == set(
         sample_2.get_time_series_names()

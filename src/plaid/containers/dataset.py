@@ -365,7 +365,7 @@ class Dataset(object):
 
         scalars_names = []
         for sample in self.get_samples(ids, as_list=True):
-            s_names = sample.get_scalar_names( )
+            s_names = sample.get_scalar_names()
             for s_name in s_names:
                 if s_name not in scalars_names:
                     scalars_names.append(s_name)

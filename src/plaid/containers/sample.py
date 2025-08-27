@@ -2328,7 +2328,7 @@ class Sample(BaseModel):
             "mesh_base_name": self._mesh_base_name,
             "mesh_zone_name": self._mesh_zone_name,
             "meshes": self._meshes,
-            "scalars": self._scalars._scalars,
+            "scalars": self._scalars.data,
             "time_series": self._time_series,
             "links": self._links,
             "paths": self._paths,

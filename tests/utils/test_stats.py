@@ -245,7 +245,7 @@ class Test_Stats:
         stats_dict = stats.get_stats()
 
         sample = samples[0]
-        feature_names = sample.get_scalar_names( )
+        feature_names = sample.get_scalar_names()
         feature_names.extend(
             item
             for ts_name in sample.get_time_series_names()
