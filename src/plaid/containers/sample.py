@@ -204,7 +204,7 @@ class Sample(BaseModel):
 
         self._extra_data = None
 
-    def get_scalar(self, name: str) -> Scalar | None:
+    def get_scalar(self, name: str) -> Optional[Scalar]:
         """Retrieve a scalar value associated with the given name.
 
         Args:
