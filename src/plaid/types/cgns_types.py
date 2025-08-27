@@ -42,5 +42,5 @@ CGNSNode: TypeAlias = list[
 CGNSTree: TypeAlias = CGNSNode
 
 # CGNS links and paths
-LinkType: TypeAlias = list[str]  # [dir, filename, source_path, target_path]
-PathType: TypeAlias = tuple[str, ...]  # a path in the CGNS tree
+CGNSLink: TypeAlias = list[str]  # [dir, filename, source_path, target_path]
+CGNSPath: TypeAlias = tuple[str, ...]  # a path in the CGNS tree

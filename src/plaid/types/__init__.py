@@ -8,13 +8,13 @@
 #
 
 from plaid.types.cgns_types import (
+    CGNSLink,
     CGNSNode,
+    CGNSPath,
     CGNSTree,
-    LinkType,
     NodeLabel,
     NodeName,
     NodeValue,
-    PathType,
 )
 from plaid.types.common import Array, ArrayDType, IndexType
 from plaid.types.feature_types import (
@@ -33,11 +33,11 @@ __all__ = [
     "IndexType",
     "CGNSNode",
     "CGNSTree",
-    "LinkType",
+    "CGNSLink",
     "NodeLabel",
     "NodeName",
     "NodeValue",
-    "PathType",
+    "CGNSPath",
     "Scalar",
     "Field",
     "TimeSequence",
