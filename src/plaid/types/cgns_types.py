@@ -17,9 +17,9 @@ except ImportError:  # pragma: no cover
 from plaid.types.common import Array
 
 # CGNS types inside a node
-NodeName: TypeAlias = str
-NodeLabel: TypeAlias = str
-NodeValue: TypeAlias = Union[
+CGNSNodeName: TypeAlias = str
+CGNSNodeLabel: TypeAlias = str
+CGNSNodeValue: TypeAlias = Union[
     None,
     str,
     bytes,
@@ -31,10 +31,10 @@ NodeValue: TypeAlias = Union[
 # A CGNSNode is a list of: [name, value, children, label]
 CGNSNode: TypeAlias = list[
     Union[
-        NodeName,
-        NodeValue,
+        CGNSNodeName,
+        CGNSNodeValue,
         list["CGNSNode"],
-        NodeLabel,
+        CGNSNodeLabel,
     ]
 ]
 
