@@ -40,13 +40,13 @@ from plaid.constants import (
 )
 from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
+    CGNSLink,
     CGNSNode,
+    CGNSPath,
     CGNSTree,
     Feature,
     FeatureIdentifier,
     Field,
-    LinkType,
-    PathType,
     Scalar,
     TimeSequence,
     TimeSeries,
@@ -169,8 +169,8 @@ class Sample(BaseModel):
         meshes: dict[float, CGNSTree] = None,
         scalars: dict[str, Scalar] = None,
         time_series: dict[str, TimeSeries] = None,
-        links: dict[float, list[LinkType]] = None,
-        paths: dict[float, list[PathType]] = None,
+        links: dict[float, list[CGNSLink]] = None,
+        paths: dict[float, list[CGNSPath]] = None,
     ) -> None:
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
@@ -181,8 +181,8 @@ class Sample(BaseModel):
             meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
             scalars (dict[str, Scalar], optional): A dictionary mapping scalar names to their values. Defaults to None.
             time_series (dict[str, TimeSeries], optional): A dictionary mapping time series names to their values. Defaults to None.
-            links (dict[float, list[LinkType]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
-            paths (dict[float, list[PathType]], optional): A dictionary mapping time steps to lists of paths. Defaults to None.
+            links (dict[float, list[CGNSLink]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
+            paths (dict[float, list[CGNSPath]], optional): A dictionary mapping time steps to lists of paths. Defaults to None.
 
         Example:
             .. code-block:: python
@@ -211,8 +211,8 @@ class Sample(BaseModel):
         self._scalars: dict[str, Scalar] = scalars
         self._time_series: dict[str, TimeSeries] = time_series
 
-        self._links: dict[float, list[LinkType]] = links
-        self._paths: dict[float, list[PathType]] = paths
+        self._links: dict[float, list[CGNSLink]] = links
+        self._paths: dict[float, list[CGNSPath]] = paths
 
         if directory_path is not None:
             directory_path = Path(directory_path)
@@ -559,7 +559,7 @@ class Sample(BaseModel):
 
         return tree
 
-    def get_links(self, time: float = None) -> list[LinkType]:
+    def get_links(self, time: float = None) -> list[CGNSLink]:
         """Retrieve the CGNS links for a specified time step, if available.
 
         Args:
