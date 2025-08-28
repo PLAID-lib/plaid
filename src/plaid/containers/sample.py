@@ -147,8 +147,8 @@ class Sample(BaseModel):
         meshes: Optional[dict[float, CGNSTree]] = None,
         scalars: Optional[dict[str, Scalar]] = None,
         time_series: Optional[dict[str, TimeSeries]] = None,
-        links: Optional[dict[float, list[LinkType]]] = None,
-        paths: Optional[dict[float, list[PathType]]] = None,
+        links: Optional[dict[float, list[CGNSLink]]] = None,
+        paths: Optional[dict[float, list[CGNSPath]]] = None,
     ) -> None:
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
@@ -189,8 +189,8 @@ class Sample(BaseModel):
         self._scalars = SampleScalars(scalars)
         self._time_series: Optional[dict[str, TimeSeries]] = time_series
 
-        self._links: Optional[dict[float, list[LinkType]]] = links
-        self._paths: Optional[dict[float, list[PathType]]] = paths
+        self._links: Optional[dict[float, list[CGNSLink]]] = links
+        self._paths: Optional[dict[float, list[CGNSPath]]] = paths
 
         if directory_path is not None:
             directory_path = Path(directory_path)
