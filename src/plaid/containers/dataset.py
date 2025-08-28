@@ -244,7 +244,10 @@ class Dataset(object):
             ValueError: If provided ids are not unique.
 
         Returns:
-            list[int]: Ids of added :class:`Samples <plaid.containers.sample.Sample>`.
+            list[int] | numpy.ndarray: IDs of the added :class:`Samples <plaid.containers.sample.Sample>`.
+            If ``ids`` is provided, the same list is returned. If ``ids`` is not
+            provided, a numpy array of sequential IDs is returned for convenience
+            and compatibility with existing tests/usages.
 
         Example:
             .. code-block:: python
@@ -269,7 +272,10 @@ class Dataset(object):
                 )
 
         if ids is None:
-            ids = list(range(len(self), len(self) + len(samples)))
+            # Compute python int ids for storage and numpy array for return value
+            start_id = len(self)
+            ids_list = list(range(start_id, start_id + len(samples)))
+            return_ids = np.arange(start_id, start_id + len(samples))
         else:
             if len(samples) != len(ids):
                 raise ValueError(
@@ -277,9 +283,12 @@ class Dataset(object):
                 )
             if len(set(ids)) != len(ids):
                 raise ValueError("IDS must be unique")
+            ids_list = ids
 
-        self._samples.update(dict(zip(ids, samples)))
-        return ids
+        self._samples.update(dict(zip(ids_list, samples)))
+        if ids is None:
+            return return_ids
+        return ids_list
 
     def del_samples(self, sample_ids: list[int]) -> None:
         """Delete  :class:`Sample <plaid.containers.sample.Sample>` from the :class:`Dataset <plaid.containers.dataset.Dataset>` and reorganize the remaining sample IDs to eliminate gaps.
