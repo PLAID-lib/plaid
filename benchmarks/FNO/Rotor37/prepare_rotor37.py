@@ -7,7 +7,6 @@ from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
 from Muscat.FE.Fields.FEField import FEField
 from Muscat.Bridges.CGNSBridge import MeshToCGNS,CGNSToMesh
 from Muscat.Containers.ConstantRectilinearMeshTools import CreateConstantRectilinearMesh
-from Muscat.Containers.MeshTetrahedrization import Tetrahedrization
 from Muscat.Containers.MeshModificationTools import ComputeSkin
 from Muscat.FE.FETools import PrepareFEComputation
 from Muscat.FE.FETools import ComputeNormalsAtPoints

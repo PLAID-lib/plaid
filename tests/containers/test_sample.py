@@ -19,9 +19,9 @@ from Muscat.MeshTools import MeshCreationTools as MCT
 from plaid.containers.sample import (
     Sample,
     _check_names,
-    read_index,
-    read_index_array,
-    read_index_range,
+    _read_index,
+    _read_index_array,
+    _read_index_range,
 )
 
 # %% Fixtures
@@ -128,15 +128,15 @@ def test_check_names():
 
 
 def test_read_index(tree, physical_dim):
-    read_index(tree, physical_dim)
+    _read_index(tree, physical_dim)
 
 
 def test_read_index_array(tree):
-    read_index_array(tree)
+    _read_index_array(tree)
 
 
 def test_read_index_range(tree, physical_dim):
-    read_index_range(tree, physical_dim)
+    _read_index_range(tree, physical_dim)
 
 
 @pytest.fixture()
@@ -605,10 +605,10 @@ class Test_Sample:
         assert sample_with_scalar.get_scalar("missing_scalar_name") is None
         assert sample_with_scalar.get_scalar("test_scalar_1") is not None
 
-    def test_add_scalar_empty(self, sample_with_scalar):
+    def test_scalars_add_empty(self, sample_with_scalar):
         assert isinstance(sample_with_scalar.get_scalar("test_scalar_1"), float)
 
-    def test_add_scalar(self, sample_with_scalar):
+    def test_scalars_add(self, sample_with_scalar):
         sample_with_scalar.add_scalar("test_scalar_2", np.random.randn())
 
     def test_del_scalar_unknown_scalar(self, sample_with_scalar):

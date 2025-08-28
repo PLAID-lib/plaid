@@ -1,11 +1,8 @@
 from plaid.problem_definition import ProblemDefinition
 from plaid.containers.sample import Sample
-import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
-import Muscat.Containers.ElementsDescription as ED
 from Muscat.Containers.ConstantRectilinearMeshTools import CreateConstantRectilinearMesh
 from Muscat.Containers.MeshTetrahedrization import Tetrahedrization
-from Muscat.Containers import MeshCreationTools as MCT
 import os, time, shutil
 from tqdm import tqdm
 

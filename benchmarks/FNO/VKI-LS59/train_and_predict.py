@@ -70,7 +70,7 @@ outputs = (outputs - min_out) / (max_out - min_out)
 
 
 import torch
-from torch.utils.data import Dataset, TensorDataset
+from torch.utils.data import Dataset
 
 class GridDataset(Dataset):
     def __init__(self, inputs, outputs):
