@@ -8,22 +8,22 @@
 #
 
 from plaid.types.cgns_types import (
+    CGNSLink,
     CGNSNode,
+    CGNSNodeLabel,
+    CGNSNodeName,
+    CGNSNodeValue,
+    CGNSPath,
     CGNSTree,
-    LinkType,
-    NodeLabel,
-    NodeName,
-    NodeValue,
-    PathType,
 )
 from plaid.types.common import Array, ArrayDType, IndexType
 from plaid.types.feature_types import (
+    Feature,
     FeatureIdentifier,
-    FeatureType,
-    FieldType,
-    ScalarType,
-    TimeSequenceType,
-    TimeSeriesType,
+    Field,
+    Scalar,
+    TimeSequence,
+    TimeSeries,
 )
 from plaid.types.sklearn_types import SklearnBlock
 
@@ -33,16 +33,16 @@ __all__ = [
     "IndexType",
     "CGNSNode",
     "CGNSTree",
-    "LinkType",
-    "NodeLabel",
-    "NodeName",
-    "NodeValue",
-    "PathType",
-    "ScalarType",
-    "FieldType",
-    "TimeSequenceType",
-    "TimeSeriesType",
-    "FeatureType",
+    "CGNSLink",
+    "CGNSNodeLabel",
+    "CGNSNodeName",
+    "CGNSNodeValue",
+    "CGNSPath",
+    "Scalar",
+    "Field",
+    "TimeSequence",
+    "TimeSeries",
+    "Feature",
     "FeatureIdentifier",
     "SklearnBlock",
 ]

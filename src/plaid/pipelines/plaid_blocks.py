@@ -153,6 +153,32 @@ class ColumnTransformer(ColumnTransformer):
         """
         return self.fit(dataset, y).transform(dataset)
 
+    def inverse_transform(self, dataset: Dataset) -> Dataset:
+        """Applies fitted inverse transformers to feature subsets and merges results.
+
+        Args:
+            dataset: A `Dataset` object or a list of samples.
+
+        Returns:
+            Dataset: A new `Dataset` with inverse transformed feature blocks, including
+            untransformed remainder features.
+        """
+        check_is_fitted(self, "transformers_")
+        if isinstance(dataset, list):
+            dataset = Dataset.from_list_of_samples(dataset)
+
+        transformed_datasets = [dataset.copy()]
+        for _, transformer_, _ in self.transformers_:
+            in_feat_id = (
+                transformer_[0].in_features_identifiers_
+                if isinstance(transformer_, Pipeline)
+                else transformer_.in_features_identifiers_
+            )
+            sub_dataset = dataset.from_features_identifier(in_feat_id)
+            transformed = transformer_.inverse_transform(sub_dataset)
+            transformed_datasets.append(transformed)
+        return Dataset.merge_dataset_by_features(transformed_datasets)
+
 
 class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
     """Meta-estimator that transforms the target before fit and inverses it at predict.
