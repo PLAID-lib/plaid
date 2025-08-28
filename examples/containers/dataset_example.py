@@ -137,7 +137,7 @@ sample_03.show_tree()
 print(f"{sample_03 = }", end="\n\n")
 
 # Print sample scalar data
-print(f"{sample_03.get_scalar_names( ) = }")
+print(f"{sample_03.get_scalar_names() = }")
 print(f"{sample_03.get_scalar('speed') = }")
 print(f"{sample_03.get_scalar('rotation') = }", end="\n\n")
 
@@ -238,9 +238,9 @@ print(f"{dataset(0) = }")  # call strategy
 print(f"{dataset[1] = }")  # getitem strategy
 print(f"{dataset[2] = }", end="\n\n")
 
-print("scalar of the first sample = ", dataset[0].get_scalar_names( ))
-print("scalar of the second sample = ", dataset[1].get_scalar_names( ))
-print("scalar of the third sample = ", dataset[2].get_scalar_names( ))
+print("scalar of the first sample = ", dataset[0].get_scalar_names())
+print("scalar of the second sample = ", dataset[1].get_scalar_names())
+print("scalar of the third sample = ", dataset[2].get_scalar_names())
 
 # %%
 # Access dataset information
@@ -253,7 +253,7 @@ print(f"{dataset[2].get_scalar('rotation') = }")
 
 # %%
 # Print scalars in tabular format
-print(f"{dataset.get_scalar_names( ) = }", end="\n\n")
+print(f"{dataset.get_scalar_names() = }", end="\n\n")
 
 dprint("get rotation scalar = ", dataset.get_scalars_to_tabular(["rotation"]))
 dprint("get speed scalar = ", dataset.get_scalars_to_tabular(["speed"]), end="\n\n")

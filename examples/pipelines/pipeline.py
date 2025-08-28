@@ -112,7 +112,7 @@ all_feature_id = config['input_scalar_scaler']['in_features_identifiers'] +\
 
 dataset_train = dataset_train.from_features_identifier(all_feature_id)
 print("dataset_train:", dataset_train)
-print("scalar names =", dataset_train.get_scalar_names( ))
+print("scalar names =", dataset_train.get_scalar_names())
 print("field names =", dataset_train.get_field_names())
 
 
@@ -143,7 +143,7 @@ preprocessor
 
 preprocessed_dataset = preprocessor.fit_transform(dataset_train)
 print("preprocessed_dataset:", preprocessed_dataset)
-print("scalar names =", preprocessed_dataset.get_scalar_names( ))
+print("scalar names =", preprocessed_dataset.get_scalar_names())
 print("field names =", preprocessed_dataset.get_field_names())
 
 

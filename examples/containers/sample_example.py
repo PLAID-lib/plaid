@@ -32,7 +32,7 @@ from plaid.utils import cgns_helper as CGH
 def show_sample(sample: Sample):
     print(f"{sample = }")
     sample.show_tree()
-    print(f"{sample.get_scalar_names( ) = }")
+    print(f"{sample.get_scalar_names() = }")
     print(f"{sample.get_field_names() = }")
 
 
@@ -223,7 +223,7 @@ show_sample(sample)
 
 # %%
 # It will look for a default base if no base and zone are given
-print(f"{sample.get_scalar_names( ) = }")
+print(f"{sample.get_scalar_names() = }")
 print(f"{sample.get_scalar('omega') = }")
 print(f"{sample.get_scalar('rotation') = }")
 
