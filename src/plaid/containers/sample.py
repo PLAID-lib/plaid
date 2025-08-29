@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import CGNS.MAP as CGM
+import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 from pydantic import BaseModel, model_serializer
@@ -34,7 +35,7 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.collections import SampleScalars, _check_names
+from plaid.containers.collections import SampleMeshes, SampleScalars, _check_names
 from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     CGNSLink,
@@ -55,80 +56,6 @@ logging.basicConfig(
     format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
     level=logging.INFO,
 )
-
-
-def _read_index(pyTree: list, dim: list[int]):
-    """Read Index Array or Index Range from CGNS.
-
-    Args:
-        pyTree (list): CGNS node which has a child Index to read
-        dim (list): dimensions of the coordinates
-
-    Returns:
-        indices
-    """
-    a = _read_index_array(pyTree)
-    b = _read_index_range(pyTree, dim)
-    return np.hstack((a, b))
-
-
-def _read_index_array(pyTree: list):
-    """Read Index Array from CGNS.
-
-    Args:
-        pyTree (list): CGNS node which has a child of type IndexArray_t to read
-
-    Returns:
-        indices
-    """
-    indexArrayPaths = CGU.getPathsByTypeSet(pyTree, ["IndexArray_t"])
-    res = []
-    for indexArrayPath in indexArrayPaths:
-        data = CGU.getNodeByPath(pyTree, indexArrayPath)
-        if data[1] is None:  # pragma: no cover
-            continue
-        else:
-            res.extend(data[1].ravel())
-    return np.array(res, dtype=int).ravel()
-
-
-def _read_index_range(pyTree: list, dim: list[int]):
-    """Read Index Range from CGNS.
-
-    Args:
-        pyTree (list): CGNS node which has a child of type IndexRange_t to read
-        dim (list[str]): dimensions of the coordinates
-
-    Returns:
-        indices
-    """
-    indexRangePaths = CGU.getPathsByTypeSet(pyTree, ["IndexRange_t"])
-    res = []
-
-    for indexRangePath in indexRangePaths:  # Is it possible there are several ?
-        indexRange = CGU.getValueByPath(pyTree, indexRangePath)
-
-        if indexRange.shape == (3, 2):  # 3D  # pragma: no cover
-            for k in range(indexRange[:, 0][2], indexRange[:, 1][2] + 1):
-                for j in range(indexRange[:, 0][1], indexRange[:, 1][1] + 1):
-                    global_id = (
-                        np.arange(indexRange[:, 0][0], indexRange[:, 1][0] + 1)
-                        + dim[0] * (j - 1)
-                        + dim[0] * dim[1] * (k - 1)
-                    )
-                    res.extend(global_id)
-
-        elif indexRange.shape == (2, 2):  # 2D  # pragma: no cover
-            for j in range(indexRange[:, 0][1], indexRange[:, 1][1]):
-                for i in range(indexRange[:, 0][0], indexRange[:, 1][0]):
-                    global_id = i + dim[0] * (j - 1)
-                    res.append(global_id)
-        else:
-            begin = indexRange[0]
-            end = indexRange[1]
-            res.extend(np.arange(begin, end + 1).ravel())
-
-    return np.array(res, dtype=int).ravel()
 
 
 class Sample(BaseModel):
@@ -177,10 +104,11 @@ class Sample(BaseModel):
         """
         super().__init__()
 
-        self._mesh_base_name: str = mesh_base_name
-        self._mesh_zone_name: str = mesh_zone_name
+        # self._mesh_base_name: str = mesh_base_name
+        # self._mesh_zone_name: str = mesh_zone_name
+        # self._meshes: Optional[dict[float, CGNSTree]] = meshes
 
-        self._meshes: Optional[dict[float, CGNSTree]] = meshes
+        self._meshes = SampleMeshes(meshes, mesh_base_name, mesh_zone_name)
         self._scalars = SampleScalars(scalars)
         self._time_series: Optional[dict[str, TimeSeries]] = time_series
 
@@ -198,6 +126,18 @@ class Sample(BaseModel):
         }
 
         self._extra_data = None
+
+    def copy(self) -> Self:
+        """Create a deep copy of the sample.
+
+        Returns:
+            A new `Sample` instance with all internal data (scalars, time series, fields, meshes, etc.)
+            deeply copied to ensure full isolation from the original.
+
+        Note:
+            This operation may be memory-intensive for large samples.
+        """
+        return copy.deepcopy(self)
 
     def get_scalar(self, name: str) -> Optional[Scalar]:
         """Retrieve a scalar value associated with the given name.
@@ -240,18 +180,6 @@ class Sample(BaseModel):
             list[str]: A set containing the names of the available scalars.
         """
         return self._scalars.get_names()
-
-    def copy(self) -> Self:
-        """Create a deep copy of the sample.
-
-        Returns:
-            A new `Sample` instance with all internal data (scalars, time series, fields, meshes, etc.)
-            deeply copied to ensure full isolation from the original.
-
-        Note:
-            This operation may be memory-intensive for large samples.
-        """
-        return copy.deepcopy(self)
 
     # -------------------------------------------------------------------------#
     def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
@@ -396,7 +324,123 @@ class Sample(BaseModel):
         self._defaults["active_time"] = time
 
     # -------------------------------------------------------------------------#
-    def show_tree(self, time: float = None) -> None:
+
+    def link_tree(
+        self,
+        path_linked_sample: Union[str, Path],
+        linked_sample: "Sample",
+        linked_time: float,
+        time: float,
+    ) -> CGNSTree:
+        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
+
+        Args:
+            path_linked_sample (Union[str, Path]): The absolute path of the folder containing the linked CGNS
+            linked_sample (Sample): The linked sample
+            linked_time (float): The time step of the linked CGNS in the linked sample
+            time (float): The time step the current sample to which the CGNS tree is linked.
+
+        Returns:
+            CGNSTree: The deleted CGNS tree.
+        """
+        # see https://pycgns.github.io/MAP/sids-to-python.html#links
+        # difficulty is to link only the geometrical objects, which can be complex
+
+        # https://pycgns.github.io/MAP/examples.html#save-with-links
+        # When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
+
+        path_linked_sample = Path(path_linked_sample)
+
+        if linked_time not in linked_sample._meshes:  # pragma: no cover
+            raise KeyError(
+                f"There is no CGNS tree for time {linked_time} in linked_sample."
+            )
+        if time in self._meshes:  # pragma: no cover
+            raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
+
+        tree = CGL.newCGNSTree()
+
+        base_names = linked_sample._meshes.get_base_names(time=linked_time)
+
+        for bn in base_names:
+            base_node = linked_sample._meshes.get_base(bn, time=linked_time)
+            base = [bn, base_node[1], [], "CGNSBase_t"]
+            tree[2].append(base)
+
+            family = [
+                "Bulk",
+                np.array([b"B", b"u", b"l", b"k"], dtype="|S1"),
+                [],
+                "FamilyName_t",
+            ]  # maybe get this from linked_sample as well ?
+            base[2].append(family)
+
+            zone_names = linked_sample._meshes.get_zone_names(bn, time=linked_time)
+            for zn in zone_names:
+                zone_node = linked_sample._meshes.get_zone(zn, bn, time=linked_time)
+                grid = [
+                    zn,
+                    zone_node[1],
+                    [
+                        [
+                            "ZoneType",
+                            np.array(
+                                [
+                                    b"U",
+                                    b"n",
+                                    b"s",
+                                    b"t",
+                                    b"r",
+                                    b"u",
+                                    b"c",
+                                    b"t",
+                                    b"u",
+                                    b"r",
+                                    b"e",
+                                    b"d",
+                                ],
+                                dtype="|S1",
+                            ),
+                            [],
+                            "ZoneType_t",
+                        ]
+                    ],
+                    "Zone_t",
+                ]
+                base[2].append(grid)
+                zone_family = [
+                    "FamilyName",
+                    np.array([b"B", b"u", b"l", b"k"], dtype="|S1"),
+                    [],
+                    "FamilyName_t",
+                ]
+                grid[2].append(zone_family)
+
+        def find_feature_roots(sample: Sample, time: float, Type_t: str):
+            Types_t = CGU.getAllNodesByTypeSet(sample._meshes.get_mesh(time), Type_t)
+            # in case the type is not present in the tree
+            if Types_t == []:  # pragma: no cover
+                return []
+            types = [Types_t[0]]
+            for t in Types_t[1:]:
+                for tt in types:
+                    if tt not in t:  # pragma: no cover
+                        types.append(t)
+            return types
+
+        feature_paths = []
+        for feature in ["ZoneBC_t", "Elements_t", "GridCoordinates_t"]:
+            feature_paths += find_feature_roots(linked_sample, linked_time, feature)
+
+        self._meshes.add_tree(tree, time=time)
+
+        dname = path_linked_sample.parent
+        bname = path_linked_sample.name
+        self._links[time] = [[str(dname), bname, fp, fp] for fp in feature_paths]
+
+        return tree
+
+    def show_tree(self, time: Optional[float] = None) -> None:
         """Display the structure of the CGNS tree for a specified time.
 
         Args:
@@ -411,10 +455,85 @@ class Sample(BaseModel):
                 # To display the CGNS tree structure for a specific time step:
                 sample.show_tree(0.5)
         """
-        time = self.get_time_assignment(time)
+        self._meshes.show_tree(time)
 
-        if self._meshes is not None:
-            CGH.show_cgns_tree(self._meshes[time])
+    def add_field(
+        self,
+        name: str,
+        field: Field,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
+        location: str = "Vertex",
+        time: Optional[float] = None,
+        warning_overwrite=True,
+    ) -> None:
+        """Add a field to a specified zone in the grid.
+
+        Args:
+            name (str): The name of the field to be added.
+            field (Field): The field data to be added.
+            zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
+            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
+            location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            time (float, optional): The time associated with the field. Defaults to 0.
+            warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
+
+        Raises:
+            KeyError: Raised if the specified zone does not exist in the given base.
+        """
+        self._meshes.add_field(
+            name, field, zone_name, base_name, location, time, warning_overwrite
+        )
+
+    def get_field(
+        self,
+        name: str,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
+        location: str = "Vertex",
+        time: Optional[float] = None,
+    ) -> Field:
+        """Retrieve a field with a specified name from a given zone, base, location, and time.
+
+        Args:
+            name (str): The name of the field to retrieve.
+            zone_name (str, optional): The name of the zone to search for. Defaults to None.
+            base_name (str, optional): The name of the base to search for. Defaults to None.
+            location (str, optional): The location at which to retrieve the field. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
+
+        Returns:
+            Field: A set containing the names of the fields that match the specified criteria.
+        """
+        return self._meshes.get_field(name, zone_name, base_name, location, time)
+
+    def del_field(
+        self,
+        name: str,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
+        location: str = "Vertex",
+        time: Optional[float] = None,
+    ) -> CGNSTree:
+        """Delete a field from a specified zone in the grid.
+
+        Args:
+            name (str): The name of the field to be deleted.
+            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
+            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
+            location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            time (float, optional): The time associated with the field. Defaults to 0.
+
+        Raises:
+            KeyError: Raised if the specified zone or field does not exist in the given base.
+
+        Returns:
+            CGNSTree: The tree at the provided time (without the deleted node)
+        """
+        return self._meshes.del_field(name, zone_name, base_name, location, time)
 
     # -------------------------------------------------------------------------#
     def get_time_series_names(self) -> set[str]:
@@ -920,12 +1039,12 @@ class Sample(BaseModel):
 
         mesh_dir = dir_path / "meshes"
 
-        if self._meshes is not None:
+        if self._meshes.data:
             mesh_dir.mkdir()
-            for i, time in enumerate(self._meshes.keys()):
+            for i, time in enumerate(self._meshes.data.keys()):
                 outfname = mesh_dir / f"mesh_{i:09d}.cgns"
                 status = CGM.save(
-                    str(outfname), self._meshes[time], links=self._links[time]
+                    str(outfname), self._meshes.data[time], links=self._links[time]
                 )
                 logger.debug(f"save -> {status=}")
 
@@ -1018,14 +1137,14 @@ class Sample(BaseModel):
         if meshes_dir.is_dir():
             meshes_names = list(meshes_dir.glob("*"))
             nb_meshes = len(meshes_names)
-            self._meshes = {}
+            # self._meshes = {}
             self._links = {}
             self._paths = {}
             for i in range(nb_meshes):
                 tree, links, paths = CGM.load(str(meshes_dir / f"mesh_{i:09d}.cgns"))
                 time = CGH.get_time_values(tree)
 
-                self._meshes[time], self._links[time], self._paths[time] = (
+                self._meshes.data[time], self._links[time], self._paths[time] = (
                     tree,
                     links,
                     paths,
@@ -1072,26 +1191,28 @@ class Sample(BaseModel):
         str_repr += f"{nb_ts} time series, "
 
         # fields
-        times = self.get_all_mesh_times()
+        times = self._meshes.get_all_mesh_times()
         nb_timestamps = len(times)
         str_repr += f"{nb_timestamps} timestamp{'' if nb_timestamps == 1 else 's'}, "
 
         field_names = set()
         for time in times:
             ## Need to include all possible location within the count
-            base_names = self.get_base_names(time=time)
+            base_names = self._meshes.get_base_names(time=time)
             for bn in base_names:
-                zone_names = self.get_zone_names(base_name=bn)
+                zone_names = self._meshes.get_zone_names(base_name=bn)
                 for zn in zone_names:
                     field_names = field_names.union(
-                        self.get_field_names(zone_name=zn, time=time, location="Vertex")
-                        + self.get_field_names(
+                        self._meshes.get_field_names(
+                            zone_name=zn, time=time, location="Vertex"
+                        )
+                        + self._meshes.get_field_names(
                             zone_name=zn, time=time, location="EdgeCenter"
                         )
-                        + self.get_field_names(
+                        + self._meshes.get_field_names(
                             zone_name=zn, time=time, location="FaceCenter"
                         )
-                        + self.get_field_names(
+                        + self._meshes.get_field_names(
                             zone_name=zn, time=time, location="CellCenter"
                         )
                     )
@@ -1099,7 +1220,7 @@ class Sample(BaseModel):
         str_repr += f"{nb_fields} field{'' if nb_fields == 1 else 's'}, "
 
         # CGNS tree
-        if self._meshes is None:
+        if not self._meshes.data:
             str_repr += "no tree, "
         else:
             # TODO
@@ -1115,9 +1236,9 @@ class Sample(BaseModel):
     def serialize_model(self):
         """Serialize the model to a dictionary."""
         return {
-            "mesh_base_name": self._mesh_base_name,
-            "mesh_zone_name": self._mesh_zone_name,
-            "meshes": self._meshes,
+            "mesh_base_name": self._meshes._mesh_base_name,
+            "mesh_zone_name": self._meshes._mesh_zone_name,
+            "meshes": self._meshes.data,
             "scalars": self._scalars.data,
             "time_series": self._time_series,
             "links": self._links,

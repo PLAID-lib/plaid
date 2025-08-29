@@ -15,7 +15,6 @@ from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 from plaid.constants import (
     CGNS_ELEMENT_NAMES,
 )
-from plaid.containers.sample import Sample
 from plaid.types import CGNSLink, CGNSNode, CGNSTree, Field, Scalar
 from plaid.utils import cgns_helper as CGH
 
@@ -473,121 +472,6 @@ class SampleMeshes:
         self._links.pop(time, None)
         self._paths.pop(time, None)
         return self._meshes.pop(time)
-
-    def link_tree(
-        self,
-        path_linked_sample: Union[str, Path],
-        linked_sample: Sample,
-        linked_time: float,
-        time: float,
-    ) -> CGNSTree:
-        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
-
-        Args:
-            path_linked_sample (Union[str, Path]): The absolute path of the folder containing the linked CGNS
-            linked_sample (Sample): The linked sample
-            linked_time (float): The time step of the linked CGNS in the linked sample
-            time (float): The time step the current sample to which the CGNS tree is linked.
-
-        Returns:
-            CGNSTree: The deleted CGNS tree.
-        """
-        # see https://pycgns.github.io/MAP/sids-to-python.html#links
-        # difficulty is to link only the geometrical objects, which can be complex
-
-        # https://pycgns.github.io/MAP/examples.html#save-with-links
-        # When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
-
-        path_linked_sample = Path(path_linked_sample)
-
-        if linked_time not in linked_sample._meshes:  # pragma: no cover
-            raise KeyError(
-                f"There is no CGNS tree for time {linked_time} in linked_sample."
-            )
-        if time in self._meshes:  # pragma: no cover
-            raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
-
-        tree = CGL.newCGNSTree()
-
-        base_names = linked_sample.get_base_names(time=linked_time)
-
-        for bn in base_names:
-            base_node = linked_sample.get_base(bn, time=linked_time)
-            base = [bn, base_node[1], [], "CGNSBase_t"]
-            tree[2].append(base)
-
-            family = [
-                "Bulk",
-                np.array([b"B", b"u", b"l", b"k"], dtype="|S1"),
-                [],
-                "FamilyName_t",
-            ]  # maybe get this from linked_sample as well ?
-            base[2].append(family)
-
-            zone_names = linked_sample.get_zone_names(bn, time=linked_time)
-            for zn in zone_names:
-                zone_node = linked_sample.get_zone(zn, bn, time=linked_time)
-                grid = [
-                    zn,
-                    zone_node[1],
-                    [
-                        [
-                            "ZoneType",
-                            np.array(
-                                [
-                                    b"U",
-                                    b"n",
-                                    b"s",
-                                    b"t",
-                                    b"r",
-                                    b"u",
-                                    b"c",
-                                    b"t",
-                                    b"u",
-                                    b"r",
-                                    b"e",
-                                    b"d",
-                                ],
-                                dtype="|S1",
-                            ),
-                            [],
-                            "ZoneType_t",
-                        ]
-                    ],
-                    "Zone_t",
-                ]
-                base[2].append(grid)
-                zone_family = [
-                    "FamilyName",
-                    np.array([b"B", b"u", b"l", b"k"], dtype="|S1"),
-                    [],
-                    "FamilyName_t",
-                ]
-                grid[2].append(zone_family)
-
-        def find_feature_roots(sample: Sample, time: float, Type_t: str):
-            Types_t = CGU.getAllNodesByTypeSet(sample.get_mesh(time), Type_t)
-            # in case the type is not present in the tree
-            if Types_t == []:  # pragma: no cover
-                return []
-            types = [Types_t[0]]
-            for t in Types_t[1:]:
-                for tt in types:
-                    if tt not in t:  # pragma: no cover
-                        types.append(t)
-            return types
-
-        feature_paths = []
-        for feature in ["ZoneBC_t", "Elements_t", "GridCoordinates_t"]:
-            feature_paths += find_feature_roots(linked_sample, linked_time, feature)
-
-        self.add_tree(tree, time=time)
-
-        dname = path_linked_sample.parent
-        bname = path_linked_sample.name
-        self._links[time] = [[str(dname), bname, fp, fp] for fp in feature_paths]
-
-        return tree
 
     # -------------------------------------------------------------------------#
     def get_topological_dim(
@@ -1200,7 +1084,7 @@ class SampleMeshes:
         base_name: Optional[str] = None,
         location: str = "Vertex",
         time: Optional[float] = None,
-    ) -> set[str]:
+    ) -> list[str]:
         """Get a set of field names associated with a specified zone, base, location, and time.
 
         Args:
@@ -1437,3 +1321,14 @@ class SampleMeshes:
             raise KeyError(f"There is no field with name {name} in the specified zone.")
 
         return updated_tree
+
+    def show_tree(self, time: Optional[float] = None) -> None:
+        """Display the structure of the CGNS tree for a specified time.
+
+        Args:
+            time (float, optional): The time step for which you want to display the CGNS tree structure. Defaults to None. If a specific time is not provided, the method will display the tree structure for the default time step.
+        """
+        time = self.get_time_assignment(time)
+
+        if self._meshes is not None:
+            CGH.show_cgns_tree(self.data[time])
