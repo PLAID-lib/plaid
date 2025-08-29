@@ -2323,6 +2323,107 @@ class Sample(BaseModel):
 
         return str_repr
 
+    def summarize(self) -> str:
+      """Provide detailed summary of the Sample content, showing feature names and mesh information.
+    
+      This provides more detailed information than the __repr__ method,
+      including the name of each feature and using summarize_cgns_tree for mesh features.
+    
+      Returns:
+          str: A detailed string representation of the sample content.
+      """
+      summary = "Sample Summary:\n"
+      summary += "=" * 50 + "\n"
+    
+      # Scalars with names
+      scalar_names = self.get_scalar_names()
+      summary += f"Scalars ({len(scalar_names)}):\n"
+      if scalar_names:
+          for name in scalar_names:
+              value = self.get_scalar(name)
+              summary += f"  - {name}: {value}\n"
+      else:
+          summary += "  None\n"
+      summary += "\n"
+    
+    # Time series with names
+      ts_names = self.get_time_series_names()
+      summary += f"Time Series ({len(ts_names)}):\n"
+      if ts_names:
+          for name in ts_names:
+              ts = self.get_time_series(name)
+              if ts is not None:
+                  summary += f"  - {name}: {len(ts[0])} time points\n"
+      else:
+          summary += "  None\n"
+      summary += "\n"
+    
+    # Mesh information using summarize_cgns_tree
+      times = self.get_all_mesh_times()
+      summary += f"Meshes ({len(times)} timestamps):\n"
+      if times:
+          for time in times:
+              summary += f"  Time: {time}\n"
+              base_names = self.get_base_names(time=time)
+              for base_name in base_names:
+                  summary += f"    Base: {base_name}\n"
+                  zone_names = self.get_zone_names(base_name=base_name, time=time)
+                  for zone_name in zone_names:
+                      summary += f"      Zone: {zone_name}\n"
+                    # Use summarize_cgns_tree for mesh features information
+                      tree = self.get_mesh(time=time)
+                      if tree is not None:
+                          try:
+                              from plaid.utils.cgns_helper import summarize_cgns_tree
+                              mesh_info = summarize_cgns_tree(tree)
+                              summary += f"        {mesh_info}\n"
+                          except ImportError:
+                              summary += f"        CGNS tree present\n"
+                    
+                      # Fields for this zone
+                      field_names = self.get_field_names(zone_name=zone_name, base_name=base_name, time=time)
+                      if field_names:
+                          summary += f"        Fields: {', '.join(field_names)}\n"
+                      else:
+                          summary += "  None\n"
+    
+      return summary
+
+    def check_completeness(self) -> str:
+      """Check the completeness of features in this sample.
+    
+      Returns:
+          str: A report on feature completeness.
+      """
+      report = "Sample Completeness Check:\n"
+      report += "=" * 30 + "\n"
+    
+      # Check if sample has basic features
+      has_scalars = len(self.get_scalar_names()) > 0
+      has_time_series = len(self.get_time_series_names()) > 0
+      has_meshes = len(self.get_all_mesh_times()) > 0
+    
+      report += f"Has scalars: {has_scalars}\n"
+      report += f"Has time series: {has_time_series}\n" 
+      report += f"Has meshes: {has_meshes}\n"
+    
+      if has_meshes:
+          times = self.get_all_mesh_times()
+          total_fields = set()
+          for time in times:
+              base_names = self.get_base_names(time=time)
+              for base_name in base_names:
+                  zone_names = self.get_zone_names(base_name=base_name, time=time)
+                  for zone_name in zone_names:
+                      field_names = self.get_field_names(zone_name=zone_name, base_name=base_name, time=time)
+                      total_fields.update(field_names)
+        
+          report += f"Total unique fields: {len(total_fields)}\n"
+          if total_fields:
+              report += f"Field names: {', '.join(sorted(total_fields))}\n"
+    
+      return report
+
     @model_serializer()
     def serialize_model(self):
         """Serialize the model to a dictionary."""
