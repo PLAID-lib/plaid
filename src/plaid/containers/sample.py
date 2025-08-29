@@ -104,10 +104,6 @@ class Sample(BaseModel):
         """
         super().__init__()
 
-        # self._mesh_base_name: str = mesh_base_name
-        # self._mesh_zone_name: str = mesh_zone_name
-        # self._meshes: Optional[dict[float, CGNSTree]] = meshes
-
         self._meshes = SampleMeshes(meshes, mesh_base_name, mesh_zone_name)
         self._scalars = SampleScalars(scalars)
         self._time_series: Optional[dict[str, TimeSeries]] = time_series
@@ -226,13 +222,13 @@ class Sample(BaseModel):
             self.set_default_time(time)
         if base_name in (self._defaults["active_base"], None):
             return
-        if not self.has_base(base_name, time):
+        if not self._meshes.has_base(base_name, time):
             raise ValueError(f"base {base_name} does not exist at time {time}")
 
         self._defaults["active_base"] = base_name
 
     def set_default_zone_base(
-        self, zone_name: str, base_name: str, time: float = None
+        self, zone_name: str, base_name: str, time: Optional[float] = None
     ) -> None:
         """Set the default base and active zone for the specified time (that will also be set as default if provided).
 
@@ -277,7 +273,7 @@ class Sample(BaseModel):
         self.set_default_base(base_name, time)
         if zone_name in (self._defaults["active_zone"], None):
             return
-        if not self.has_zone(zone_name, base_name, time):
+        if not self._meshes.has_zone(zone_name, base_name, time):
             raise ValueError(
                 f"zone {zone_name} does not exist for the base {base_name} at time {time}"
             )
@@ -318,10 +314,10 @@ class Sample(BaseModel):
         """
         if time in (self._defaults["active_time"], None):
             return
-        if time not in self.get_all_mesh_times():
+        if time not in self._meshes.get_all_mesh_times():
             raise ValueError(f"time {time} does not exist in mesh times")
 
-        self._defaults["active_time"] = time
+        self._meshes._default_active_time = time
 
     # -------------------------------------------------------------------------#
 
@@ -535,6 +531,23 @@ class Sample(BaseModel):
         """
         return self._meshes.del_field(name, zone_name, base_name, location, time)
 
+    def get_nodes(
+        self,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
+        time: Optional[float] = None,
+    ) -> Optional[np.ndarray]:
+        return self._meshes.get_nodes(zone_name, base_name, time)
+
+    def set_nodes(
+        self,
+        nodes: np.ndarray,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
+        time: Optional[float] = None,
+    ) -> None:
+        self._meshes.set_nodes(nodes, zone_name, base_name, time)
+
     # -------------------------------------------------------------------------#
     def get_time_series_names(self) -> set[str]:
         """Get the names of time series associated with the object.
@@ -547,7 +560,7 @@ class Sample(BaseModel):
         else:
             return list(self._time_series.keys())
 
-    def get_time_series(self, name: str) -> TimeSeries:
+    def get_time_series(self, name: str) -> Optional[TimeSeries]:
         """Retrieve a time series by name.
 
         Args:
@@ -649,10 +662,13 @@ class Sample(BaseModel):
             all_features_identifiers.append({"type": "scalar", "name": sn})
         for tsn in self.get_time_series_names():
             all_features_identifiers.append({"type": "time_series", "name": tsn})
-        for t in self.get_all_mesh_times():
-            for bn in self.get_base_names(time=t):
-                for zn in self.get_zone_names(base_name=bn, time=t):
-                    if self.get_nodes(base_name=bn, zone_name=zn, time=t) is not None:
+        for t in self._meshes.get_all_mesh_times():
+            for bn in self._meshes.get_base_names(time=t):
+                for zn in self._meshes.get_zone_names(base_name=bn, time=t):
+                    if (
+                        self._meshes.get_nodes(base_name=bn, zone_name=zn, time=t)
+                        is not None
+                    ):
                         all_features_identifiers.append(
                             {
                                 "type": "nodes",
@@ -662,7 +678,7 @@ class Sample(BaseModel):
                             }
                         )
                     for loc in CGNS_FIELD_LOCATIONS:
-                        for fn in self.get_field_names(
+                        for fn in self._meshes.get_field_names(
                             zone_name=zn, base_name=bn, location=loc, time=t
                         ):
                             all_features_identifiers.append(
@@ -877,7 +893,7 @@ class Sample(BaseModel):
             physical_dim_arg = {
                 k: v for k, v in feature_details.items() if k in ["base_name", "time"]
             }
-            phys_dim = self.get_physical_dim(**physical_dim_arg)
+            phys_dim = self._meshes.get_physical_dim(**physical_dim_arg)
             self.set_nodes(**feature_details, nodes=feature.reshape((-1, phys_dim)))
 
         return self
@@ -961,11 +977,11 @@ class Sample(BaseModel):
                 # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
                 if feat_id["type"] in ["field", "nodes"]:
                     # get time of current feature
-                    time = self.get_time_assignment(time=feat_id.get("time"))
+                    time = self._meshes.get_time_assignment(time=feat_id.get("time"))
 
                     # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                    if not sample.get_mesh(time):
-                        sample.add_tree(source_sample.get_mesh(time))
+                    if not sample._meshes.get_mesh(time):
+                        sample._meshes.add_tree(source_sample._meshes.get_mesh(time))
 
                 sample._add_feature(feat_id, feature)
 
@@ -1004,11 +1020,11 @@ class Sample(BaseModel):
             # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
             if feat_id["type"] in ["field", "nodes"]:
                 # get time of current feature
-                time = sample.get_time_assignment(time=feat_id.get("time"))
+                time = sample._meshes.get_time_assignment(time=feat_id.get("time"))
 
                 # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                if not merged_dataset.get_mesh(time):
-                    merged_dataset.add_tree(source_sample.get_mesh(time))
+                if not merged_dataset._meshes.get_mesh(time):
+                    merged_dataset._meshes.add_tree(source_sample.get_mesh(time))
 
         return merged_dataset.update_features_from_identifier(
             feature_identifiers=all_features_identifiers,
