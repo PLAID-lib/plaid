@@ -1029,167 +1029,179 @@ class Dataset(object):
         shutil.rmtree(save_dir)
 
     def summarize_features(self) -> str:
-      """Show the name of each feature and the number of samples containing it.
-    
-      Returns:
-          str: A summary of features across the dataset.
-      """
-      summary = "Dataset Feature Summary:\n"
-      summary += "=" * 50 + "\n"
-    
-      if len(self._samples) == 0:
-          return summary + "No samples in dataset.\n"
-    
-      # Collect all feature names across all samples
-      all_scalar_names = set()
-      all_ts_names = set()
-      all_field_names = set()
-    
-      # Count occurrences of each feature
-      scalar_counts = {}
-      ts_counts = {}
-      field_counts = {}
-    
-      for sample_id, sample in self._samples.items():
-          # Scalars
-          scalar_names = sample.get_scalar_names()
-          all_scalar_names.update(scalar_names)
-          for name in scalar_names:
-              scalar_counts[name] = scalar_counts.get(name, 0) + 1
-        
-          # Time series
-          ts_names = sample.get_time_series_names()
-          all_ts_names.update(ts_names)
-          for name in ts_names:
-              ts_counts[name] = ts_counts.get(name, 0) + 1
-        
-          # Fields
-          times = sample.get_all_mesh_times()
-          for time in times:
-              base_names = sample.get_base_names(time=time)
-              for base_name in base_names:
-                  zone_names = sample.get_zone_names(base_name=base_name, time=time)
-                  for zone_name in zone_names:
-                      field_names = sample.get_field_names(zone_name=zone_name, base_name=base_name, time=time)
-                      all_field_names.update(field_names)
-                      for name in field_names:
-                          field_counts[name] = field_counts.get(name, 0) + 1
-    
-      total_samples = len(self._samples)
-    
-      # Scalars summary
-      summary += f"Scalars ({len(all_scalar_names)} unique):\n"
-      if all_scalar_names:
-          for name in sorted(all_scalar_names):
-              count = scalar_counts.get(name, 0)
-              summary += f"  - {name}: {count}/{total_samples} samples ({count/total_samples*100:.1f}%)\n"
-      else:
-          summary += "  None\n"
-      summary += "\n"
-    
-      # Time series summary
-      summary += f"Time Series ({len(all_ts_names)} unique):\n"
-      if all_ts_names:
-          for name in sorted(all_ts_names):
-              count = ts_counts.get(name, 0)
-              summary += f"  - {name}: {count}/{total_samples} samples ({count/total_samples*100:.1f}%)\n"
-      else:
-          summary += "  None\n"
-      summary += "\n"
-    
-      # Fields summary
-      summary += f"Fields ({len(all_field_names)} unique):\n"
-      if all_field_names:
-          for name in sorted(all_field_names):
-              count = field_counts.get(name, 0)
-              summary += f"  - {name}: {count}/{total_samples} samples ({count/total_samples*100:.1f}%)\n"
-      else:
-          summary += "  None\n"
-    
-      return summary
+        """Show the name of each feature and the number of samples containing it.
+
+        Returns:
+            str: A summary of features across the dataset.
+        """
+        summary = "Dataset Feature Summary:\n"
+        summary += "=" * 50 + "\n"
+
+        if len(self._samples) == 0:
+            return summary + "No samples in dataset.\n"
+
+        # Collect all feature names across all samples
+        all_scalar_names = set()
+        all_ts_names = set()
+        all_field_names = set()
+
+        # Count occurrences of each feature
+        scalar_counts = {}
+        ts_counts = {}
+        field_counts = {}
+
+        for sample_id, sample in self._samples.items():
+            # Scalars
+            scalar_names = sample.get_scalar_names()
+            all_scalar_names.update(scalar_names)
+            for name in scalar_names:
+                scalar_counts[name] = scalar_counts.get(name, 0) + 1
+
+            # Time series
+            ts_names = sample.get_time_series_names()
+            all_ts_names.update(ts_names)
+            for name in ts_names:
+                ts_counts[name] = ts_counts.get(name, 0) + 1
+
+            # Fields
+            times = sample.get_all_mesh_times()
+            for time in times:
+                base_names = sample.get_base_names(time=time)
+                for base_name in base_names:
+                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    for zone_name in zone_names:
+                        field_names = sample.get_field_names(
+                            zone_name=zone_name, base_name=base_name, time=time
+                        )
+                        all_field_names.update(field_names)
+                        for name in field_names:
+                            field_counts[name] = field_counts.get(name, 0) + 1
+
+        total_samples = len(self._samples)
+
+        # Scalars summary
+        summary += f"Scalars ({len(all_scalar_names)} unique):\n"
+        if all_scalar_names:
+            for name in sorted(all_scalar_names):
+                count = scalar_counts.get(name, 0)
+                summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
+        else:
+            summary += "  None\n"
+        summary += "\n"
+
+        # Time series summary
+        summary += f"Time Series ({len(all_ts_names)} unique):\n"
+        if all_ts_names:
+            for name in sorted(all_ts_names):
+                count = ts_counts.get(name, 0)
+                summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
+        else:
+            summary += "  None\n"
+        summary += "\n"
+
+        # Fields summary
+        summary += f"Fields ({len(all_field_names)} unique):\n"
+        if all_field_names:
+            for name in sorted(all_field_names):
+                count = field_counts.get(name, 0)
+                summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
+        else:
+            summary += "  None\n"
+
+        return summary
 
     def check_feature_completeness(self) -> str:
-      """Detect and notify if some Samples don't contain all features.
-    
-      Returns:
-          str: A report on feature completeness across the dataset.
-      """
-      report = "Dataset Feature Completeness Check:\n"
-      report += "=" * 40 + "\n"
-    
-      if len(self._samples) == 0:
-          return report + "No samples in dataset.\n"
-    
-      # Collect all possible features across all samples
-      all_scalar_names = set()
-      all_ts_names = set()
-      all_field_names = set()
-    
-      for sample in self._samples.values():
-          all_scalar_names.update(sample.get_scalar_names())
-          all_ts_names.update(sample.get_time_series_names())
-        
-          times = sample.get_all_mesh_times()
-          for time in times:
-              base_names = sample.get_base_names(time=time)
-              for base_name in base_names:
-                  zone_names = sample.get_zone_names(base_name=base_name, time=time)
-                  for zone_name in zone_names:
-                      all_field_names.update(sample.get_field_names(zone_name=zone_name, base_name=base_name, time=time))
-    
-      total_samples = len(self._samples)
-      incomplete_samples = []
-    
-      # Check each sample for missing features
-      for sample_id, sample in self._samples.items():
-          missing_features = []
-        
-          # Check scalars
-          sample_scalars = set(sample.get_scalar_names())
-          missing_scalars = all_scalar_names - sample_scalars
-          if missing_scalars:
-              missing_features.extend([f"scalar:{name}" for name in missing_scalars])
-        
-          # Check time series
-          sample_ts = set(sample.get_time_series_names())
-          missing_ts = all_ts_names - sample_ts
-          if missing_ts:
-              missing_features.extend([f"time_series:{name}" for name in missing_ts])
-        
-          # Check fields
-          sample_fields = set()
-          times = sample.get_all_mesh_times()
-          for time in times:
-              base_names = sample.get_base_names(time=time)
-              for base_name in base_names:
-                  zone_names = sample.get_zone_names(base_name=base_name, time=time)
-                  for zone_name in zone_names:
-                      sample_fields.update(sample.get_field_names(zone_name=zone_name, base_name=base_name, time=time))
-        
-          missing_fields = all_field_names - sample_fields
-          if missing_fields:
-              missing_features.extend([f"field:{name}" for name in missing_fields])
-        
-          if missing_features:
-              incomplete_samples.append((sample_id, missing_features))
-    
-      # Generate report
-      complete_samples = total_samples - len(incomplete_samples)
-      report += f"Complete samples: {complete_samples}/{total_samples} ({complete_samples/total_samples*100:.1f}%)\n"
-      report += f"Incomplete samples: {len(incomplete_samples)}/{total_samples} ({len(incomplete_samples)/total_samples*100:.1f}%)\n\n"
-    
-      if incomplete_samples:
-          report += "Samples with missing features:\n"
-          for sample_id, missing_features in incomplete_samples:
-              report += f"  Sample {sample_id}: missing {len(missing_features)} features\n"
-              for feature in missing_features[:5]:  # Show first 5 missing features
-                  report += f"    - {feature}\n"
-              if len(missing_features) > 5:
-                  report += f"    ... and {len(missing_features) - 5} more\n"
-      else:
-          report += "All samples contain all features! ✓\n"
-    
-      return report    
+        """Detect and notify if some Samples don't contain all features.
+
+        Returns:
+            str: A report on feature completeness across the dataset.
+        """
+        report = "Dataset Feature Completeness Check:\n"
+        report += "=" * 40 + "\n"
+
+        if len(self._samples) == 0:
+            return report + "No samples in dataset.\n"
+
+        # Collect all possible features across all samples
+        all_scalar_names = set()
+        all_ts_names = set()
+        all_field_names = set()
+
+        for sample in self._samples.values():
+            all_scalar_names.update(sample.get_scalar_names())
+            all_ts_names.update(sample.get_time_series_names())
+
+            times = sample.get_all_mesh_times()
+            for time in times:
+                base_names = sample.get_base_names(time=time)
+                for base_name in base_names:
+                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    for zone_name in zone_names:
+                        all_field_names.update(
+                            sample.get_field_names(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                        )
+
+        total_samples = len(self._samples)
+        incomplete_samples = []
+
+        # Check each sample for missing features
+        for sample_id, sample in self._samples.items():
+            missing_features = []
+
+            # Check scalars
+            sample_scalars = set(sample.get_scalar_names())
+            missing_scalars = all_scalar_names - sample_scalars
+            if missing_scalars:
+                missing_features.extend([f"scalar:{name}" for name in missing_scalars])
+
+            # Check time series
+            sample_ts = set(sample.get_time_series_names())
+            missing_ts = all_ts_names - sample_ts
+            if missing_ts:
+                missing_features.extend([f"time_series:{name}" for name in missing_ts])
+
+            # Check fields
+            sample_fields = set()
+            times = sample.get_all_mesh_times()
+            for time in times:
+                base_names = sample.get_base_names(time=time)
+                for base_name in base_names:
+                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    for zone_name in zone_names:
+                        sample_fields.update(
+                            sample.get_field_names(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                        )
+
+            missing_fields = all_field_names - sample_fields
+            if missing_fields:
+                missing_features.extend([f"field:{name}" for name in missing_fields])
+
+            if missing_features:
+                incomplete_samples.append((sample_id, missing_features))
+
+        # Generate report
+        complete_samples = total_samples - len(incomplete_samples)
+        report += f"Complete samples: {complete_samples}/{total_samples} ({complete_samples / total_samples * 100:.1f}%)\n"
+        report += f"Incomplete samples: {len(incomplete_samples)}/{total_samples} ({len(incomplete_samples) / total_samples * 100:.1f}%)\n\n"
+
+        if incomplete_samples:
+            report += "Samples with missing features:\n"
+            for sample_id, missing_features in incomplete_samples:
+                report += (
+                    f"  Sample {sample_id}: missing {len(missing_features)} features\n"
+                )
+                for feature in missing_features[:5]:  # Show first 5 missing features
+                    report += f"    - {feature}\n"
+                if len(missing_features) > 5:
+                    report += f"    ... and {len(missing_features) - 5} more\n"
+        else:
+            report += "All samples contain all features! ✓\n"
+
+        return report
 
     @classmethod
     def from_list_of_samples(cls, list_of_samples: list[Sample]) -> Self:

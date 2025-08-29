@@ -203,3 +203,12 @@ def other_dataset_with_samples(other_samples):
     other_dataset = Dataset()
     other_dataset.add_samples(other_samples)
     return other_dataset
+
+
+@pytest.fixture()
+def heterogeneous_dataset(dataset_with_samples_with_tree, empty_sample):
+    dataset_with_samples_with_tree.add_sample(empty_sample)
+    sample_with_scalar = Sample()
+    sample_with_scalar.add_scalar("scalar", 1.0)
+    dataset_with_samples_with_tree.add_sample(sample_with_scalar)
+    return dataset_with_samples_with_tree

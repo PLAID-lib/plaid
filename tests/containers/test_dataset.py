@@ -858,6 +858,31 @@ class Test_Dataset:
         )
 
     # -------------------------------------------------------------------------#
+    def test_summarize_features(
+        self,
+        dataset_with_samples,
+        dataset_with_samples_with_tree,
+        empty_dataset,
+        heterogeneous_dataset,
+    ):
+        dataset_with_samples.summarize_features()
+        dataset_with_samples_with_tree.summarize_features()
+        empty_dataset.summarize_features()
+        heterogeneous_dataset.summarize_features()
+
+    def test_check_feature_completeness(
+        self,
+        dataset_with_samples,
+        dataset_with_samples_with_tree,
+        empty_dataset,
+        heterogeneous_dataset,
+    ):
+        dataset_with_samples.check_feature_completeness()
+        dataset_with_samples_with_tree.check_feature_completeness()
+        empty_dataset.check_feature_completeness()
+        heterogeneous_dataset.check_feature_completeness()
+
+    # -------------------------------------------------------------------------#
 
     def test_from_list_of_samples(self, samples):
         loaded_dataset = Dataset.from_list_of_samples(samples)
