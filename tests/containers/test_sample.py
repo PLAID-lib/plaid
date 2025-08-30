@@ -1379,3 +1379,33 @@ class Test_Sample:
         self, sample_with_tree_and_scalar_and_time_series
     ):
         print(sample_with_tree_and_scalar_and_time_series)
+
+    # -------------------------------------------------------------------------#
+
+    def test_summarize_empty(self, sample):
+        print(sample.summarize())
+
+    def test_summarize_with_scalar(self, sample_with_scalar):
+        print(sample_with_scalar.summarize())
+
+    def test_summarize_with_tree(self, sample_with_tree):
+        print(sample_with_tree.summarize())
+
+    def test_summarize_with_tree_and_scalar(
+        self, sample_with_tree_and_scalar_and_time_series
+    ):
+        print(sample_with_tree_and_scalar_and_time_series.summarize())
+
+    def test_check_completeness_empty(self, sample):
+        print(sample.check_completeness())
+
+    def test_check_completeness_with_scalar(self, sample_with_scalar):
+        print(sample_with_scalar.check_completeness())
+
+    def test_check_completeness_with_tree(self, sample_with_tree):
+        print(sample_with_tree.check_completeness())
+
+    def test_check_completeness_with_tree_and_scalar(
+        self, sample_with_tree_and_scalar_and_time_series
+    ):
+        print(sample_with_tree_and_scalar_and_time_series.check_completeness())
