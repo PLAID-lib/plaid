@@ -2354,7 +2354,7 @@ class Sample(BaseModel):
                     summary += f"  - {name}: {len(ts[0])} time points\n"
             summary += "\n"
 
-        # Mesh information using summarize_cgns_tree
+        # Mesh information
         times = self.get_all_mesh_times()
         summary += f"Meshes ({len(times)} timestamps):\n"
         if times:
