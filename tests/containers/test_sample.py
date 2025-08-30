@@ -16,14 +16,14 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
-from plaid.containers.collections import (
-    _read_index,
-    _read_index_array,
-    _read_index_range,
-)
 from plaid.containers.sample import (
     Sample,
     _check_names,
+)
+from plaid.containers.utils import (
+    _read_index,
+    _read_index_array,
+    _read_index_range,
 )
 
 # %% Fixtures
