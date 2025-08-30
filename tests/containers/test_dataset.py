@@ -864,11 +864,13 @@ class Test_Dataset:
         dataset_with_samples_with_tree,
         empty_dataset,
         heterogeneous_dataset,
+        scalar_dataset,
     ):
         dataset_with_samples.summarize_features()
         dataset_with_samples_with_tree.summarize_features()
         empty_dataset.summarize_features()
         heterogeneous_dataset.summarize_features()
+        scalar_dataset.summarize_features()
 
     def test_check_feature_completeness(
         self,
@@ -876,11 +878,13 @@ class Test_Dataset:
         dataset_with_samples_with_tree,
         empty_dataset,
         heterogeneous_dataset,
+        scalar_dataset,
     ):
         dataset_with_samples.check_feature_completeness()
         dataset_with_samples_with_tree.check_feature_completeness()
         empty_dataset.check_feature_completeness()
         heterogeneous_dataset.check_feature_completeness()
+        scalar_dataset.check_feature_completeness()
 
     # -------------------------------------------------------------------------#
 

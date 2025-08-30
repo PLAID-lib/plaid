@@ -1033,6 +1033,34 @@ class Dataset(object):
 
         Returns:
             str: A summary of features across the dataset.
+
+        Example:
+            .. code-block:: bash
+
+                Dataset Feature Summary:
+                ==================================================
+                Scalars (8 unique):
+                - Pr: 30/32 samples (93.8%)
+                - Q: 30/32 samples (93.8%)
+                - Tr: 30/32 samples (93.8%)
+                - angle_in: 32/32 samples (100.0%)
+                - angle_out: 30/32 samples (93.8%)
+                - eth_is: 30/32 samples (93.8%)
+                - mach_out: 32/32 samples (100.0%)
+                - power: 30/32 samples (93.8%)
+
+                Time Series (0 unique):
+                None
+
+                Fields (8 unique):
+                - M_iso: 30/32 samples (93.8%)
+                - mach: 30/32 samples (93.8%)
+                - nut: 30/32 samples (93.8%)
+                - ro: 30/32 samples (93.8%)
+                - roe: 30/32 samples (93.8%)
+                - rou: 30/32 samples (93.8%)
+                - rov: 30/32 samples (93.8%)
+                - sdf: 32/32 samples (100.0%)
         """
         summary = "Dataset Feature Summary:\n"
         summary += "=" * 50 + "\n"
@@ -1050,7 +1078,7 @@ class Dataset(object):
         ts_counts = {}
         field_counts = {}
 
-        for sample_id, sample in self._samples.items():
+        for _, sample in self._samples.items():
             # Scalars
             scalar_names = sample.get_scalar_names()
             all_scalar_names.update(scalar_names)
@@ -1115,6 +1143,30 @@ class Dataset(object):
 
         Returns:
             str: A report on feature completeness across the dataset.
+
+        Example:
+            .. code-block:: bash
+
+                Dataset Feature Completeness Check:
+                ========================================
+                Complete samples: 30/32 (93.8%)
+                Incomplete samples: 2/32 (6.2%)
+
+                Samples with missing features:
+                Sample 671: missing 13 features
+                    - scalar:Tr
+                    - scalar:angle_out
+                    - scalar:power
+                    - scalar:Pr
+                    - scalar:Q
+                    ... and 8 more
+                Sample 672: missing 13 features
+                    - scalar:Tr
+                    - scalar:angle_out
+                    - scalar:power
+                    - scalar:Pr
+                    - scalar:Q
+                    ... and 8 more
         """
         report = "Dataset Feature Completeness Check:\n"
         report += "=" * 40 + "\n"
