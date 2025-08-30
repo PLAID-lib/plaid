@@ -2331,6 +2331,35 @@ class Sample(BaseModel):
 
         Returns:
             str: A detailed string representation of the sample content.
+
+        Example:
+            .. code-block:: bash
+
+                Sample Summary:
+                ==================================================
+                Scalars (8):
+                - Pr: 0.9729006564945664
+                - Q: 0.2671142611487964
+                - Tr: 0.9983394202616822
+                - angle_in: 45.5066666666667
+                - angle_out: 61.89519547386746
+                - eth_is: 0.21238326882538008
+                - mach_out: 0.81003
+                - power: 0.0019118127462776008
+
+                Meshes (1 timestamps):
+                Time: 0.0
+                    Base: Base_2_2
+                        Nodes (36421)
+                        Tags (6): Intrado (122), Extrado (122), Inflow (121), Outflow (121), Periodic_1 (120), Periodic_2 (238)
+                        Fields (7): ro, sdf, rou, nut, mach, roe, rov
+                        Elements (36000)
+                        QUAD_4 (36000)
+                    Base: Base_1_2
+                        Nodes (244)
+                        Fields (1): M_iso
+                        Elements (242)
+                        BAR_2 (242)
         """
         summary = "Sample Summary:\n"
         summary += "=" * 50 + "\n"
@@ -2421,6 +2450,17 @@ class Sample(BaseModel):
 
         Returns:
             str: A report on feature completeness.
+
+        Example:
+            .. code-block:: bash
+
+                Sample Completeness Check:
+                ==============================
+                Has scalars: True
+                Has time series: False
+                Has meshes: True
+                Total unique fields: 8
+                Field names: M_iso, mach, nut, ro, roe, rou, rov, sdf
         """
         report = "Sample Completeness Check:\n"
         report += "=" * 30 + "\n"
