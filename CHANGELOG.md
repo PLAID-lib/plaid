@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (dataset.py) from_list_of_samples: add optional ids argument
 - (Hugging Face bridge) add datasetdict conversion, and simple function for plaid sample init from hf sample
 - (pipelines/plaid_blocks.py) add column transformer inverse_transform
 - Move to Muscat=2.5.0 (for tests and examples support)
