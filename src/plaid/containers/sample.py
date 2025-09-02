@@ -425,11 +425,11 @@ class Sample(BaseModel):
 
         path_linked_sample = Path(path_linked_sample)
 
-        if linked_time not in linked_sample._meshes:  # pragma: no cover
+        if linked_time not in linked_sample._meshes.data:  # pragma: no cover
             raise KeyError(
                 f"There is no CGNS tree for time {linked_time} in linked_sample."
             )
-        if time in self._meshes:  # pragma: no cover
+        if time in self._meshes.data:  # pragma: no cover
             raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
 
         tree = CGL.newCGNSTree()
@@ -510,7 +510,9 @@ class Sample(BaseModel):
 
         dname = path_linked_sample.parent
         bname = path_linked_sample.name
-        self._links[time] = [[str(dname), bname, fp, fp] for fp in feature_paths]
+        self._meshes._links[time] = [
+            [str(dname), bname, fp, fp] for fp in feature_paths
+        ]
 
         return tree
 
@@ -615,6 +617,23 @@ class Sample(BaseModel):
         base_name: Optional[str] = None,
         time: Optional[float] = None,
     ) -> Optional[np.ndarray]:
+        """Get grid node coordinates from a specified base, zone, and time.
+
+        Args:
+            zone_name (str, optional): The name of the zone to search for. Defaults to None.
+            base_name (str, optional): The name of the base to search for. Defaults to None.
+            time (float, optional):  The time value to consider when searching for the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
+
+        Raises:
+            TypeError: Raised if multiple <GridCoordinates> nodes are found. Only one is expected.
+
+        Returns:
+            Optional[np.ndarray]: A NumPy array containing the grid node coordinates.
+            If no matching zone or grid coordinates are found, None is returned.
+
+        Seealso:
+            This function can also be called using `get_points()` or `get_vertices()`.
+        """
         return self._meshes.get_nodes(zone_name, base_name, time)
 
     def set_nodes(
@@ -624,6 +643,21 @@ class Sample(BaseModel):
         base_name: Optional[str] = None,
         time: Optional[float] = None,
     ) -> None:
+        """Set the coordinates of nodes for a specified base and zone at a given time.
+
+        Args:
+            nodes (np.ndarray): A numpy array containing the new node coordinates.
+            zone_name (str, optional): The name of the zone where the nodes should be updated. Defaults to None.
+            base_name (str, optional): The name of the base where the nodes should be updated. Defaults to None.
+            time (float, optional): The time at which the node coordinates should be updated. If a specific time is not provided, the method will display the tree structure for the default time step.
+
+        Raises:
+            KeyError: Raised if the specified base or zone do not exist. You should first
+            create the base and zone using the `Sample.init_zone(zone_name,base_name)` method.
+
+        Seealso:
+            This function can also be called using `set_points()` or `set_vertices()`
+        """
         self._meshes.set_nodes(nodes, zone_name, base_name, time)
 
     # -------------------------------------------------------------------------#
@@ -1138,7 +1172,9 @@ class Sample(BaseModel):
             for i, time in enumerate(self._meshes.data.keys()):
                 outfname = mesh_dir / f"mesh_{i:09d}.cgns"
                 status = CGM.save(
-                    str(outfname), self._meshes.data[time], links=self._meshes._links[time]
+                    str(outfname),
+                    self._meshes.data[time],
+                    links=self._meshes._links[time],
                 )
                 logger.debug(f"save -> {status=}")
 

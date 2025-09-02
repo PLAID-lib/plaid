@@ -253,7 +253,7 @@ class SampleMeshes:
             list: The CGNS links for the specified time step if available; otherwise, returns None.
         """
         time = self.get_time_assignment(time)
-        return self._links[time] if (self._links is not None) else None
+        return self._links[time] if (self._links) else None
 
     def get_mesh(
         self, time: Optional[float] = None, apply_links: bool = False, in_memory=False
@@ -304,7 +304,7 @@ class SampleMeshes:
         Raises:
             KeyError: If there is already a CGNS tree set.
         """
-        if self.data is None:
+        if not self.data:
             self.data = meshes
             self._links = {}
             self._paths = {}
@@ -537,7 +537,7 @@ class SampleMeshes:
         """
         time = self.get_time_assignment(time)
 
-        if self.data is not None:
+        if self.data:
             if self.data[time] is not None:
                 return CGH.get_base_names(
                     self.data[time], full_path=full_path, unique=unique
@@ -575,7 +575,7 @@ class SampleMeshes:
         time = self.get_time_assignment(time)
         base_name = self.get_base_assignment(base_name, time)
 
-        if (self.data is None) or (self.data[time] is None):
+        if (not self.data) or (self.data[time] is None):
             logger.warning(f"No base with name {base_name} and this tree")
             return None
 
