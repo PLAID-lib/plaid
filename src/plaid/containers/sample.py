@@ -106,12 +106,11 @@ class Sample(BaseModel):
         """
         super().__init__()
 
-        self._meshes = SampleMeshes(meshes, mesh_base_name, mesh_zone_name)
+        self._meshes = SampleMeshes(
+            meshes, mesh_base_name, mesh_zone_name, links, paths
+        )
         self._scalars = SampleScalars(scalars)
         self._time_series: Optional[dict[str, TimeSeries]] = time_series
-
-        self._links: Optional[dict[float, list[CGNSLink]]] = links
-        self._paths: Optional[dict[float, list[CGNSPath]]] = paths
 
         if directory_path is not None:
             directory_path = Path(directory_path)
@@ -1268,19 +1267,25 @@ class Sample(BaseModel):
             meshes_names = list(meshes_dir.glob("*"))
             nb_meshes = len(meshes_names)
             # self._meshes = {}
-            self._links = {}
-            self._paths = {}
+            self._meshes._links = {}
+            self._meshes._paths = {}
             for i in range(nb_meshes):
                 tree, links, paths = CGM.load(str(meshes_dir / f"mesh_{i:09d}.cgns"))
                 time = CGH.get_time_values(tree)
 
-                self._meshes.data[time], self._links[time], self._paths[time] = (
+                (
+                    self._meshes.data[time],
+                    self._meshes._links[time],
+                    self._meshes._paths[time],
+                ) = (
                     tree,
                     links,
                     paths,
                 )
-                for i in range(len(self._links[time])):  # pragma: no cover
-                    self._links[time][i][0] = str(meshes_dir / self._links[time][i][0])
+                for i in range(len(self._meshes._links[time])):  # pragma: no cover
+                    self._meshes._links[time][i][0] = str(
+                        meshes_dir / self._meshes._links[time][i][0]
+                    )
 
         scalars_fname = dir_path / "scalars.csv"
         if scalars_fname.is_file():
@@ -1371,6 +1376,6 @@ class Sample(BaseModel):
             "meshes": self._meshes.data,
             "scalars": self._scalars.data,
             "time_series": self._time_series,
-            "links": self._links,
-            "paths": self._paths,
+            "links": self._meshes._links,
+            "paths": self._meshes._paths,
         }
