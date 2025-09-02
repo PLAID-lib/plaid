@@ -334,7 +334,7 @@ class SampleMeshes:
 
         time = self.get_time_assignment(time)
 
-        if self.data is None:
+        if not self.data:
             self.data = {time: tree}
             self._links = {time: None}
             self._paths = {time: None}
