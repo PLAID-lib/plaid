@@ -19,7 +19,7 @@ from plaid.containers.utils import (
     _check_names,
     _read_index,
 )
-from plaid.types import CGNSLink, CGNSNode, CGNSTree, Field, Scalar
+from plaid.types import CGNSLink, CGNSNode, CGNSPath, CGNSTree, Field, Scalar
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -98,8 +98,12 @@ class SampleMeshes:
         meshes: Optional[dict[float, CGNSTree]],
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
+        links: Optional[dict[float, list[CGNSLink]]] = None,
+        paths: Optional[dict[float, list[CGNSPath]]] = None,
     ):
         self.data: dict[float, CGNSTree] = meshes if meshes is not None else {}
+        self._links = links if links is not None else {}
+        self._paths = paths if paths is not None else {}
 
         self._default_active_base: Optional[str] = None
         self._default_active_zone: Optional[str] = None
@@ -264,7 +268,7 @@ class SampleMeshes:
         Returns:
             CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
         """
-        if self.data is None:
+        if not self.data:
             return None
 
         time = self.get_time_assignment(time)
@@ -300,11 +304,11 @@ class SampleMeshes:
         Raises:
             KeyError: If there is already a CGNS tree set.
         """
-        if self._meshes is None:
-            self._meshes = meshes
+        if self.data is None:
+            self.data = meshes
             self._links = {}
             self._paths = {}
-            for time in self._meshes.keys():
+            for time in self.data.keys():
                 self._links[time] = None
                 self._paths[time] = None
         else:
@@ -330,12 +334,12 @@ class SampleMeshes:
 
         time = self.get_time_assignment(time)
 
-        if self._meshes is None:
-            self._meshes = {time: tree}
+        if self.data is None:
+            self.data = {time: tree}
             self._links = {time: None}
             self._paths = {time: None}
-        elif time not in self._meshes:
-            self._meshes[time] = tree
+        elif time not in self.data:
+            self.data[time] = tree
             self._links[time] = None
             self._paths[time] = None
         else:
@@ -345,7 +349,7 @@ class SampleMeshes:
             base_nodes = CGU.getNodesFromTypeSet(tree, "CGNSBase_t")
             for _, node in base_nodes:
                 if node[__NAME__] not in local_bases:  # pragma: no cover
-                    self._meshes[time][__CHILDREN__].append(node)
+                    self.data[time][__CHILDREN__].append(node)
                 else:
                     logger.warning(
                         f"base <{node[__NAME__]}> already exists in self._tree --> ignored"
@@ -361,7 +365,7 @@ class SampleMeshes:
                 )
                 CGU.setValue(TimeValues_node, np.array([time]))
 
-        return self._meshes[time]
+        return self.data[time]
 
     def del_tree(self, time: float) -> CGNSTree:
         """Delete the CGNS tree for a specific time.
@@ -375,15 +379,15 @@ class SampleMeshes:
         Returns:
             CGNSTree: The deleted CGNS tree.
         """
-        if self._meshes is None:
+        if self.data is None:
             raise KeyError("There is no CGNS tree in this sample.")
 
-        if time not in self._meshes:
+        if time not in self.data:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
         self._links.pop(time, None)
         self._paths.pop(time, None)
-        return self._meshes.pop(time)
+        return self.data.pop(time)
 
     # -------------------------------------------------------------------------#
     def get_topological_dim(
@@ -468,7 +472,7 @@ class SampleMeshes:
         self.init_tree(time)
         if not (self.has_base(base_name, time)):
             base_node = CGL.newCGNSBase(
-                self._meshes[time], base_name, topological_dim, physical_dim
+                self.data[time], base_name, topological_dim, physical_dim
             )
 
         base_names = self.get_base_names(time=time)
@@ -499,14 +503,14 @@ class SampleMeshes:
         Returns:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
-        if self._meshes is None:
+        if self.data is None:
             raise KeyError("There is no CGNS tree in this sample.")
 
-        if time not in self._meshes:
+        if time not in self.data:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
         base_node = self.get_base(base_name, time)
-        mesh_tree = self._meshes[time]
+        mesh_tree = self.data[time]
 
         if base_node is None:
             raise KeyError(
@@ -533,10 +537,10 @@ class SampleMeshes:
         """
         time = self.get_time_assignment(time)
 
-        if self._meshes is not None:
-            if self._meshes[time] is not None:
+        if self.data is not None:
+            if self.data[time] is not None:
                 return CGH.get_base_names(
-                    self._meshes[time], full_path=full_path, unique=unique
+                    self.data[time], full_path=full_path, unique=unique
                 )
         else:
             return []
@@ -571,11 +575,11 @@ class SampleMeshes:
         time = self.get_time_assignment(time)
         base_name = self.get_base_assignment(base_name, time)
 
-        if (self._meshes is None) or (self._meshes[time] is None):
+        if (self.data is None) or (self.data[time] is None):
             logger.warning(f"No base with name {base_name} and this tree")
             return None
 
-        return CGU.getNodeByPath(self._meshes[time], f"/CGNSTree/{base_name}")
+        return CGU.getNodeByPath(self.data[time], f"/CGNSTree/{base_name}")
 
     # -------------------------------------------------------------------------#
     def init_zone(
@@ -634,14 +638,14 @@ class SampleMeshes:
         Returns:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
-        if self._meshes is None:  # pragma: no cover
+        if self.data is None:  # pragma: no cover
             raise KeyError("There is no CGNS tree in this sample.")
 
-        if time not in self._meshes:
+        if time not in self.data:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
         zone_node = self.get_zone(zone_name, base_name, time)
-        mesh_tree = self._meshes[time]
+        mesh_tree = self.data[time]
 
         if zone_node is None:
             raise KeyError(
@@ -1207,7 +1211,7 @@ class SampleMeshes:
         # get_zone will look for default zone_name, base_name, and time
         zone_node = self.get_zone(zone_name, base_name, time)
         time = self.get_time_assignment(time)
-        mesh_tree = self._meshes[time]
+        mesh_tree = self.data[time]
 
         if zone_node is None:
             raise KeyError(
@@ -1242,5 +1246,5 @@ class SampleMeshes:
         """
         time = self.get_time_assignment(time)
 
-        if self._meshes is not None:
+        if self.data is not None:
             CGH.show_cgns_tree(self.data[time])

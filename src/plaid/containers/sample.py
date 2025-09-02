@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 import CGNS.MAP as CGM
+import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
@@ -39,6 +40,7 @@ from plaid.containers.collections import SampleMeshes, SampleScalars, _check_nam
 from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     CGNSLink,
+    CGNSNode,
     CGNSPath,
     CGNSTree,
     Feature,
@@ -115,12 +117,6 @@ class Sample(BaseModel):
             directory_path = Path(directory_path)
             self.load(directory_path)
 
-        self._defaults: dict[str, Optional[str]] = {
-            "active_base": None,
-            "active_zone": None,
-            "active_time": None,
-        }
-
         self._extra_data = None
 
     def copy(self) -> Self:
@@ -178,6 +174,22 @@ class Sample(BaseModel):
         return self._scalars.get_names()
 
     # -------------------------------------------------------------------------#
+
+    def get_mesh(
+        self, time: Optional[float] = None, apply_links: bool = False, in_memory=False
+    ) -> Optional[CGNSTree]:
+        """Retrieve the CGNS tree structure for a specified time step, if available.
+
+        Args:
+            time (float, optional): The time step for which to retrieve the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
+            apply_links (bool, optional): Activates the following of the CGNS links to reconstruct the complete CGNS tree - in this case, a deepcopy of the tree is made to prevent from modifying the existing tree.
+            in_memory (bool, optional): Active if apply_links == True, ONLY WORKING if linked mesh is in the current sample. This option follows the link in memory from current sample.
+
+        Returns:
+            CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
+        """
+        return self._meshes.get_mesh(time, apply_links, in_memory)
+
     def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
         """Set the default base for the specified time (that will also be set as default if provided).
 
@@ -220,12 +232,12 @@ class Sample(BaseModel):
         """
         if time is not None:
             self.set_default_time(time)
-        if base_name in (self._defaults["active_base"], None):
+        if base_name in (self._meshes._default_active_base, None):
             return
         if not self._meshes.has_base(base_name, time):
             raise ValueError(f"base {base_name} does not exist at time {time}")
 
-        self._defaults["active_base"] = base_name
+        self._meshes._default_active_base = base_name
 
     def set_default_zone_base(
         self, zone_name: str, base_name: str, time: Optional[float] = None
@@ -271,14 +283,59 @@ class Sample(BaseModel):
                 >>> Unstructured
         """
         self.set_default_base(base_name, time)
-        if zone_name in (self._defaults["active_zone"], None):
+        if zone_name in (self._meshes._default_active_zone, None):
             return
         if not self._meshes.has_zone(zone_name, base_name, time):
             raise ValueError(
                 f"zone {zone_name} does not exist for the base {base_name} at time {time}"
             )
 
-        self._defaults["active_zone"] = zone_name
+        self._meshes._default_active_zone = zone_name
+
+    def init_base(
+        self,
+        topological_dim: int,
+        physical_dim: int,
+        base_name: Optional[str] = None,
+        time: Optional[float] = None,
+    ) -> CGNSNode:
+        """Create a Base node named `base_name` if it doesn't already exists.
+
+        Args:
+            topological_dim (int): Cell dimension, see [CGNS standard](https://pycgns.github.io/PAT/lib.html#CGNS.PAT.cgnslib.newCGNSBase).
+            physical_dim (int): Ambient space dimension, see [CGNS standard](https://pycgns.github.io/PAT/lib.html#CGNS.PAT.cgnslib.newCGNSBase).
+            base_name (str): If not specified, uses `mesh_base_name` specified in Sample initialization. Defaults to None.
+            time (float, optional): The time at which to initialize the base. If a specific time is not provided, the method will display the tree structure for the default time step.
+
+        Returns:
+            CGNSNode: The created Base node.
+        """
+        return self._meshes.init_base(topological_dim, physical_dim, base_name, time)
+
+    def init_zone(
+        self,
+        zone_shape: np.ndarray,
+        zone_type: str = CGK.Unstructured_s,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
+        time: Optional[float] = None,
+    ) -> CGNSNode:
+        """Initialize a new zone within a CGNS base.
+
+        Args:
+            zone_shape (np.ndarray): An array specifying the shape or dimensions of the zone.
+            zone_type (str, optional): The type of the zone. Defaults to CGK.Unstructured_s.
+            zone_name (str, optional): The name of the zone to initialize. If not provided, uses `mesh_zone_name` specified in Sample initialization. Defaults to None.
+            base_name (str, optional): The name of the base to which the zone will be added. If not provided, the zone will be added to the currently active base. Defaults to None.
+            time (float, optional): The time at which to initialize the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
+
+        Raises:
+            KeyError: If the specified base does not exist. You can create a base using `Sample.init_base(base_name)`.
+
+        Returns:
+            CGLNode: The newly initialized zone node within the CGNS tree.
+        """
+        return self._meshes.init_zone(zone_shape, zone_type, zone_name, base_name, time)
 
     def set_default_time(self, time: float) -> None:
         """Set the default time for the system.
@@ -312,12 +369,33 @@ class Sample(BaseModel):
                 print(sample.show_tree()) # show the cgns tree at the time 0.5
                 >>> ...
         """
-        if time in (self._defaults["active_time"], None):
+        if time in (self._meshes._default_active_time, None):
             return
         if time not in self._meshes.get_all_mesh_times():
             raise ValueError(f"time {time} does not exist in mesh times")
 
         self._meshes._default_active_time = time
+
+    def get_field_names(
+        self,
+        zone_name: Optional[str] = None,
+        base_name: Optional[str] = None,
+        location: str = "Vertex",
+        time: Optional[float] = None,
+    ) -> list[str]:
+        """Get a set of field names associated with a specified zone, base, location, and time.
+
+        Args:
+            zone_name (str, optional): The name of the zone to search for. Defaults to None.
+            base_name (str, optional): The name of the base to search for. Defaults to None.
+            location (str, optional): The desired grid location where the field is defined. Defaults to 'Vertex'.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
+
+        Returns:
+            set[str]: A set containing the names of the fields that match the specified criteria.
+        """
+        return self._meshes.get_field_names(zone_name, base_name, location, time)
 
     # -------------------------------------------------------------------------#
 
@@ -1060,7 +1138,7 @@ class Sample(BaseModel):
             for i, time in enumerate(self._meshes.data.keys()):
                 outfname = mesh_dir / f"mesh_{i:09d}.cgns"
                 status = CGM.save(
-                    str(outfname), self._meshes.data[time], links=self._links[time]
+                    str(outfname), self._meshes.data[time], links=self._meshes._links[time]
                 )
                 logger.debug(f"save -> {status=}")
 

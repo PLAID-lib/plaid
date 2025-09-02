@@ -416,7 +416,7 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = sample.get_all_mesh_times()
+            times = sample._meshes.get_all_mesh_times()
             for time in times:
                 f_names = sample.get_field_names(
                     zone_name=zone_name, base_name=base_name, time=time
