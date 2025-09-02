@@ -379,7 +379,7 @@ class SampleMeshes:
         Returns:
             CGNSTree: The deleted CGNS tree.
         """
-        if self.data is None:
+        if not self.data:
             raise KeyError("There is no CGNS tree in this sample.")
 
         if time not in self.data:
