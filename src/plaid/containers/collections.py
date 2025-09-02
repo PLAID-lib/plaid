@@ -503,7 +503,7 @@ class SampleMeshes:
         Returns:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
-        if self.data is None:
+        if not self.data:
             raise KeyError("There is no CGNS tree in this sample.")
 
         if time not in self.data:
