@@ -1174,7 +1174,7 @@ class Sample(BaseModel):
                 status = CGM.save(
                     str(outfname),
                     self._meshes.data[time],
-                    links=self._meshes._links[time],
+                    links=self._meshes._links.get(time),
                 )
                 logger.debug(f"save -> {status=}")
 
