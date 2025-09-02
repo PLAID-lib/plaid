@@ -1247,4 +1247,4 @@ class SampleMeshes:
         time = self.get_time_assignment(time)
 
         if self.data is not None:
-            CGH.show_cgns_tree(self.data[time])
+            CGH.show_cgns_tree(self.data.get(time))
