@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - (sample/dataset/problem_definition) fix incoherent path argument names in save/load methods -> `path` is now used everywhere
+- (plaid/examples) fix circular imports
+- (dataset.py) add optional `ids` argument to `from_list_of_samples`
 - (sample) add summarize and check_completeness functions
 - (dataset) add summarize_features and check_feature_completeness functions
 - (Hugging Face bridge) add datasetdict conversion, and simple function for plaid sample init from hf sample
