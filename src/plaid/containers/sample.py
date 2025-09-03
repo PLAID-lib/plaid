@@ -36,8 +36,8 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.features import SampleMeshes, SampleScalars, _check_names
-from plaid.containers.utils import get_feature_type_and_details_from
+from plaid.containers.features import SampleMeshes, SampleScalars
+from plaid.containers.utils import _check_names, get_feature_type_and_details_from
 from plaid.types import (
     CGNSLink,
     CGNSNode,
