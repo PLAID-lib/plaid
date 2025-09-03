@@ -79,6 +79,19 @@ class Test_Dataset:
         with pytest.raises(FileNotFoundError):
             Dataset(dataset_path)
 
+    def test__init__path(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        Dataset(path=dataset_path)
+
+    def test__init__directory_path(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        Dataset(directory_path=dataset_path)
+
+    def test__init__both_path_and_directory_path(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        with pytest.raises(ValueError):
+            Dataset(path=dataset_path, directory_path=dataset_path)
+
     # -------------------------------------------------------------------------#
     def test_get_samples(self, dataset_with_samples, nb_samples):
         dataset_with_samples.get_samples()
@@ -990,6 +1003,21 @@ class Test_Dataset:
         empty_dataset.add_to_dir(sample, save_dir, verbose=True)
         captured = capsys.readouterr()
         assert "Saving database to" in captured.out
+
+    def test__add_to_dir__path(self, empty_dataset, sample, current_directory):
+        save_dir = current_directory / "my_dataset_dir"
+        empty_dataset.add_to_dir(sample, path=save_dir)
+
+    def test__add_to_dir__save_dir(self, empty_dataset, sample, current_directory):
+        save_dir = current_directory / "my_dataset_dir"
+        empty_dataset.add_to_dir(sample, save_dir=save_dir)
+
+    def test__add_to_dir__both_path_and_save_dir(
+        self, empty_dataset, sample, current_directory
+    ):
+        save_dir = current_directory / "my_dataset_dir"
+        with pytest.raises(ValueError):
+            empty_dataset.add_to_dir(sample, path=save_dir, save_dir=save_dir)
 
     # -------------------------------------------------------------------------#
     def test__save_to_dir_(self, dataset_with_samples, tmp_path):
