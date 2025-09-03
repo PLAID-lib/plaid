@@ -411,3 +411,21 @@ class Test_ProblemDefinition:
         )
         all_split = problem.get_split()
         assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
+
+    def test__load_from_dir__empty_dir(self, tmp_path):
+        problem = ProblemDefinition()
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_dir_(tmp_path)
+
+    def test__load_from_dir__non_existing_dir(self):
+        problem = ProblemDefinition()
+        non_existing_dir = Path("non_existing_path")
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_dir_(non_existing_dir)
+
+    def test__load_from_dir__path_is_file(self, tmp_path):
+        problem = ProblemDefinition()
+        file_path = tmp_path / "file.yaml"
+        file_path.touch()  # Create an empty file
+        with pytest.raises(FileExistsError):
+            problem._load_from_dir_(file_path)
