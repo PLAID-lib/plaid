@@ -54,8 +54,8 @@ class ProblemDefinition(object):
         Use :meth:`add_inputs <plaid.problem_definition.ProblemDefinition.add_inputs>` or :meth:`add_output_scalars_names <plaid.problem_definition.ProblemDefinition.add_output_scalars_names>` to feed the :class:`ProblemDefinition`
 
         Args:
-            path (Union[str, Path], optional): The path from which to load PLAID problem definition files.
-            directory_path (Union[str, Path], optional): Deprecated, use `path` instead.
+            path (Union[str,Path], optional): The path from which to load PLAID problem definition files.
+            directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
 
         Example:
             .. code-block:: python
@@ -906,11 +906,11 @@ class ProblemDefinition(object):
     #     return res
 
     # -------------------------------------------------------------------------#
-    def _save_to_dir_(self, path: Union[Path, str]) -> None:
+    def _save_to_dir_(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
 
         Args:
-            path (Union[Path,str]): The directory where the problem information will be saved.
+            path (Union[str,Path]): The directory where the problem information will be saved.
 
         Example:
             .. code-block:: python
@@ -948,11 +948,11 @@ class ProblemDefinition(object):
                     write.writerow([name] + list(indices))
 
     @classmethod
-    def load(cls, path: Union[Path, str]) -> Self:  # pragma: no cover
+    def load(cls, path: Union[str, Path]) -> Self:  # pragma: no cover
         """Load data from a specified directory.
 
         Args:
-            path (Union[Path,str]): The path from which to load files.
+            path (Union[str,Path]): The path from which to load files.
 
         Returns:
             Self: The loaded dataset (Dataset).
@@ -961,11 +961,11 @@ class ProblemDefinition(object):
         instance._load_from_dir_(path)
         return instance
 
-    def _load_from_dir_(self, path: Union[Path, str]) -> None:
+    def _load_from_dir_(self, path: Union[str, Path]) -> None:
         """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
 
         Args:
-            path (Union[Path,str]): The directory from which to load the problem information.
+            path (Union[str,Path]): The directory from which to load the problem information.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory or file problem_infos.yaml does not exist
