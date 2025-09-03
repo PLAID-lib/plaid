@@ -91,7 +91,15 @@ class SampleScalars:
 
 
 class SampleMeshes:
-    """A container for meshes within a Sample."""
+    """A container for meshes within a Sample.
+
+    Args:
+        meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
+        mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
+        mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
+        links (dict[float, list[CGNSLink]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
+        paths (dict[float, list[CGNSPath]], optional): A dictionary mapping time steps to lists of paths. Defaults to None.
+    """
 
     def __init__(
         self,
