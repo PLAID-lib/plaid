@@ -10,9 +10,9 @@
 from pathlib import Path
 from typing import Union
 
-from plaid.containers.dataset import Dataset
+from plaid import Dataset
 from plaid.post.bisect import plot_bisect, prepare_datasets
-from plaid.problem_definition import ProblemDefinition
+from plaid import ProblemDefinition
 
 
 # %%

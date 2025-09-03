@@ -19,8 +19,8 @@ import numpy as np
 
 # %%
 # Import necessary libraries and functions
-from plaid.containers.dataset import Dataset, Sample
-from plaid.problem_definition import ProblemDefinition
+from plaid import Dataset, Sample
+from plaid import ProblemDefinition
 from plaid.utils.split import split_dataset
 
 # %% [markdown]

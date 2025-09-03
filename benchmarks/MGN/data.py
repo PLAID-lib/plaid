@@ -15,7 +15,7 @@ from rich.progress import track
 from sklearn.preprocessing import StandardScaler
 from torch.nn.functional import one_hot
 
-from plaid.containers.sample import Sample
+from plaid import Sample
 
 
 def tri_cells_to_edges(cells):

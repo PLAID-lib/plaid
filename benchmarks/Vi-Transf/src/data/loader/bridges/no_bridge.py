@@ -1,5 +1,5 @@
-from plaid.containers.sample import Sample
-from plaid.problem_definition import ProblemDefinition
+from plaid import Sample
+from plaid import ProblemDefinition
 
 
 def no_bridge(sample: Sample, sample_id: int, problem_definition: ProblemDefinition):

@@ -85,7 +85,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
 
                 # 1. Create empty instance of Dataset
                 dataset = Dataset()
@@ -173,7 +173,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 dataset.add_sample(sample)
                 print(dataset)
@@ -202,7 +202,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 dataset.add_samples(samples)
                 print(dataset)
@@ -249,7 +249,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 dataset.add_samples(samples)
                 print(len(samples))
@@ -299,7 +299,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 # Assume samples are already added to the dataset
                 print(dataset)
@@ -785,7 +785,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 infos = {"legal":{"owner":"CompX", "license":"li_X"}}
                 dataset.set_infos(infos)
@@ -827,7 +827,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 infos = {"legal":{"owner":"CompX", "license":"li_X"}}
                 dataset.set_infos(infos)
@@ -872,7 +872,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 infos = {"legal":{"owner":"CompX", "license":"li_X"}}
                 dataset.set_infos(infos)
@@ -903,7 +903,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 infos = {"legal":{"owner":"CompX", "license":"li_X"}}
                 dataset.set_infos(infos)
@@ -1656,7 +1656,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 len(dataset)
                 >>> 10  # Assuming there are 10 samples in the dataset
@@ -1696,7 +1696,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 sample = dataset[3]  # Retrieve the sample with ID 3
 
@@ -1730,7 +1730,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 print(dataset)
                 >>> Dataset(0 samples, 0 scalars, 0 fields)

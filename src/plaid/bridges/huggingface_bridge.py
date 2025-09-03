@@ -27,13 +27,11 @@ else:  # pragma: no cover
 import datasets
 from datasets import load_dataset
 
+from plaid import Dataset, ProblemDefinition, Sample
 from plaid.bridges._huggingface_helpers import (
     _HFShardToPlaidSampleConverter,
     _HFToPlaidSampleConverter,
 )
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
-from plaid.problem_definition import ProblemDefinition
 
 """
 Convention with hf (Hugging Face) datasets:
@@ -581,7 +579,7 @@ Example of commands:
 ```python
 import pickle
 from datasets import load_dataset
-from plaid.containers.sample import Sample
+from plaid import Sample
 
 # Load the dataset
 dataset = load_dataset("chanel/dataset", split="all_samples")

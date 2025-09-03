@@ -6,7 +6,7 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-from plaid.containers.dataset import Dataset
+from plaid import Dataset
 from datasets import load_dataset
 from plaid.bridges.huggingface_bridge import streamed_huggingface_dataset_to_plaid
 from plaid.examples import _HF_REPOS

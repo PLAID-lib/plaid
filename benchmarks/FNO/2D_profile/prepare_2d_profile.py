@@ -1,6 +1,6 @@
 
-from plaid.problem_definition import ProblemDefinition
-from plaid.containers.sample import Sample
+from plaid import ProblemDefinition
+from plaid import Sample
 from Muscat.Bridges.CGNSBridge import CGNSToMesh
 import numpy as np
 from Muscat.Containers.Filters.FilterObjects import ElementFilter
