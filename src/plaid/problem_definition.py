@@ -27,6 +27,7 @@ import yaml
 
 from plaid.constants import AUTHORIZED_TASKS
 from plaid.types import IndexType
+from plaid.types.feature_types import FeatureIdentifier
 
 # %% Globals
 
@@ -68,6 +69,8 @@ class ProblemDefinition(object):
                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
         self._task: str = None  # list[task name]
+        self.in_feature_identifiers: list[FeatureIdentifier] = []
+        self.out_feature_identifiers: list[FeatureIdentifier] = []
         self.in_scalars_names: list[str] = []
         self.out_scalars_names: list[str] = []
         self.in_timeseries_names: list[str] = []
@@ -164,6 +167,180 @@ class ProblemDefinition(object):
         if self._split is not None:  # pragma: no cover
             logger.warning("split already exists -> data will be replaced")
         self._split = split
+
+    # -------------------------------------------------------------------------#
+    def get_input_features_identifiers(self) -> list[str]:
+        """Get the input features identifiers or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of input feature identifiers or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                input_features_identifiers = problem.get_input_features_identifiers()
+                print(input_features_identifiers)
+                >>> ['omega', 'pressure']
+        """
+        return self.in_features_identifiers
+
+    def add_input_features_identifiers(self, inputs: list[str]) -> None:
+        """Add input features identifiers or identifiers to the problem.
+
+        Args:
+            inputs (list[str]): A list of input feature identifiers or identifiers to add.
+
+        Raises:
+            ValueError: If some :code:`inputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                input_features_identifiers = ['omega', 'pressure']
+                problem.add_input_features_identifiers(input_features_identifiers)
+        """
+        if not (len(set(inputs)) == len(inputs)):
+            raise ValueError("Some inputs have same identifiers")
+        for input in inputs:
+            self.add_input_feature_identifier(input)
+
+    def add_input_feature_identifier(self, input: str) -> None:
+        """Add an input feature identifier or identifier to the problem.
+
+        Args:
+            input (str):  The identifier or identifier of the input feature to add.
+
+        Raises:
+            ValueError: If the specified input feature is already in the list of inputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                input_identifier = 'pressure'
+                problem.add_input_feature_identifier(input_identifier)
+        """
+        if input in self.in_features_identifiers:
+            raise ValueError(f"{input} is already in self.in_features_identifiers")
+        self.in_features_identifiers.append(input)
+        self.in_features_identifiers.sort()
+
+    def filter_input_features_identifiers(self, identifiers: list[str]) -> list[str]:
+        """Filter and get input features features corresponding to a sorted list of identifiers.
+
+        Args:
+            identifiers (list[str]): A list of identifiers for which to retrieve corresponding input features.
+
+        Returns:
+            list[str]: A sorted list of input feature identifiers or categories corresponding to the provided identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                features_identifiers = ['omega', 'pressure', 'temperature']
+                input_features = problem.filter_input_features_identifiers(features_identifiers)
+                print(input_features)
+                >>> ['omega', 'pressure']
+        """
+        return sorted(
+            set(identifiers).intersection(self.get_input_features_identifiers())
+        )
+
+    # -------------------------------------------------------------------------#
+    def get_output_features_identifiers(self) -> list[str]:
+        """Get the output features identifiers or identifiers of the problem.
+
+        Returns:
+            list[str]: A list of output feature identifiers or identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                outputs_identifiers = problem.get_output_features_identifiers()
+                print(outputs_identifiers)
+                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+        """
+        return self.out_features_identifiers
+
+    def add_output_features_identifiers(self, outputs: list[str]) -> None:
+        """Add output features identifiers or identifiers to the problem.
+
+        Args:
+            outputs (list[str]): A list of output feature identifiers or identifiers to add.
+
+        Raises:
+            ValueError: if some :code:`outputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_features_identifiers = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                problem.add_output_features_identifiers(output_features_identifiers)
+        """
+        if not (len(set(outputs)) == len(outputs)):
+            raise ValueError("Some outputs have same identifiers")
+        for output in outputs:
+            self.add_output_feature_identifier(output)
+
+    def add_output_feature_identifier(self, output: str) -> None:
+        """Add an output feature identifier or identifier to the problem.
+
+        Args:
+            output (str):  The identifier or identifier of the output feature to add.
+
+        Raises:
+            ValueError: If the specified output feature is already in the list of outputs.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                output_features_identifiers = 'pressure'
+                problem.add_output_feature_identifier(output_features_identifiers)
+        """
+        if output in self.out_features_identifiers:
+            raise ValueError(f"{output} is already in self.out_features_identifiers")
+        self.out_features_identifiers.append(output)
+        self.in_features_identifiers.sort()
+
+    def filter_output_features_identifiers(self, identifiers: list[str]) -> list[str]:
+        """Filter and get output features corresponding to a sorted list of identifiers.
+
+        Args:
+            identifiers (list[str]): A list of identifiers for which to retrieve corresponding output features.
+
+        Returns:
+            list[str]: A sorted list of output feature identifiers or categories corresponding to the provided identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                features_identifiers = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+                output_features = problem.filter_output_features_identifiers(features_identifiers)
+                print(output_features)
+                >>> ['in_massflow']
+        """
+        return sorted(
+            set(identifiers).intersection(self.get_output_features_identifiers())
+        )
 
     # -------------------------------------------------------------------------#
     def get_input_scalars_names(self) -> list[str]:
