@@ -50,6 +50,19 @@ class Test_ProblemDefinition:
         assert problem_definition.get_task() is None
         print(problem_definition)
 
+    def test__init__path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        ProblemDefinition(path=d_path)
+
+    def test__init__directory_path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        ProblemDefinition(directory_path=d_path)
+
+    def test__init__both_path_and_directory_path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        with pytest.raises(ValueError):
+            ProblemDefinition(path=d_path, directory_path=d_path)
+
     # -------------------------------------------------------------------------#
     def test_task(self, problem_definition):
         # Unauthorized task
@@ -369,6 +382,9 @@ class Test_ProblemDefinition:
         problem_definition.set_split(new_split)
 
         problem_definition._save_to_dir_(current_directory / "problem_definition")
+
+    def test__save_to_dir_(self, problem_definition, tmp_path):
+        problem_definition._save_to_dir_(tmp_path / "problem_definition")
 
     def test_load_path_object(self, current_directory):
         from pathlib import Path
