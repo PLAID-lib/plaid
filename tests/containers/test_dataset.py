@@ -16,7 +16,7 @@ import pytest
 import plaid
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
-from plaid.utils.base import ShapeError
+from plaid.utils.base import DeprecatedError, ShapeError
 
 # %% Fixtures
 
@@ -1012,6 +1012,11 @@ class Test_Dataset:
         new_dataset = Dataset()
         new_dataset._load_from_dir_(savedir, [1, 2])
         assert len(new_dataset) == 2
+
+    # -------------------------------------------------------------------------#
+    def test__load_number_of_samples_(self, tmp_path):
+        with pytest.raises(DeprecatedError):
+            Dataset._load_number_of_samples_(tmp_path)
 
     # -------------------------------------------------------------------------#
     def test_set_samples(self, dataset, samples):
