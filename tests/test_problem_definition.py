@@ -67,18 +67,22 @@ class Test_ProblemDefinition:
         assert problem_definition.get_in_features_identifiers() == []
 
     def test_add_in_features_identifiers_fail_same_identifier(self, problem_definition):
-        dummy_identifier = {'type': 'scalar', 'name': 'dummy'}
+        dummy_identifier = {"type": "scalar", "name": "dummy"}
         with pytest.raises(ValueError):
-            problem_definition.add_in_features_identifiers([dummy_identifier, dummy_identifier])
+            problem_definition.add_in_features_identifiers(
+                [dummy_identifier, dummy_identifier]
+            )
         problem_definition.add_in_feature_identifier(dummy_identifier)
         with pytest.raises(ValueError):
             problem_definition.add_in_feature_identifier(dummy_identifier)
 
     def test_add_in_features_identifiers(self, problem_definition):
-        dummy_identifier_1 = {'type': 'scalar', 'name': 'dummy_1'}
-        dummy_identifier_2 = {'type': 'scalar', 'name': 'dummy_2'}
-        dummy_identifier_3 = {'type': 'scalar', 'name': 'dummy_3'}
-        problem_definition.add_in_features_identifiers([dummy_identifier_1, dummy_identifier_2])
+        dummy_identifier_1 = {"type": "scalar", "name": "dummy_1"}
+        dummy_identifier_2 = {"type": "scalar", "name": "dummy_2"}
+        dummy_identifier_3 = {"type": "scalar", "name": "dummy_3"}
+        problem_definition.add_in_features_identifiers(
+            [dummy_identifier_1, dummy_identifier_2]
+        )
         problem_definition.add_in_feature_identifier(dummy_identifier_3)
         inputs = problem_definition.get_in_features_identifiers()
         assert len(inputs) == 3
@@ -90,7 +94,7 @@ class Test_ProblemDefinition:
         assert problem_definition.get_out_features_identifiers() == []
 
     def test_add_out_features_identifiers_fail(self, problem_definition):
-        dummy_identifier = {'type': 'scalar', 'name': 'dummy'}
+        dummy_identifier = {"type": "scalar", "name": "dummy"}
         with pytest.raises(ValueError):
             problem_definition.add_out_features_identifiers(
                 [dummy_identifier, dummy_identifier]
@@ -100,10 +104,12 @@ class Test_ProblemDefinition:
             problem_definition.add_out_feature_identifier(dummy_identifier)
 
     def test_add_out_features_identifiers(self, problem_definition):
-        dummy_identifier_1 = {'type': 'scalar', 'name': 'dummy_1'}
-        dummy_identifier_2 = {'type': 'scalar', 'name': 'dummy_2'}
-        dummy_identifier_3 = {'type': 'scalar', 'name': 'dummy_3'}
-        problem_definition.add_out_features_identifiers([dummy_identifier_1, dummy_identifier_2])
+        dummy_identifier_1 = {"type": "scalar", "name": "dummy_1"}
+        dummy_identifier_2 = {"type": "scalar", "name": "dummy_2"}
+        dummy_identifier_3 = {"type": "scalar", "name": "dummy_3"}
+        problem_definition.add_out_features_identifiers(
+            [dummy_identifier_1, dummy_identifier_2]
+        )
         problem_definition.add_out_feature_identifier(dummy_identifier_3)
         outputs = problem_definition.get_out_features_identifiers()
         assert len(outputs) == 3
@@ -125,7 +131,10 @@ class Test_ProblemDefinition:
             "common inputs not sorted"
         )
 
-        assert len(filter_out) == 2 and filter_out == ["predict_feature", "test_feature"]
+        assert len(filter_out) == 2 and filter_out == [
+            "predict_feature",
+            "test_feature",
+        ]
         assert filter_out != ["test_feature", "predict_feature"], (
             "common outputs not sorted"
         )
