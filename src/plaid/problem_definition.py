@@ -1132,8 +1132,8 @@ class ProblemDefinition(object):
 
         data = {
             "task": self._task,
-            "input_feature": self.in_features_identifiers,
-            "output_feature": self.out_features_identifiers,
+            "input_features": [dict(**d) for d in self.in_features_identifiers],
+            "output_features": [dict(**d) for d in self.out_features_identifiers],
             "input_scalars": self.in_scalars_names,  # list[input scalar name]
             "output_scalars": self.out_scalars_names,  # list[output scalar name]
             "input_fields": self.in_fields_names,  # list[input field name]
@@ -1201,6 +1201,12 @@ class ProblemDefinition(object):
             )
 
         self._task = data["task"]
+        self.in_features_identifiers = [
+            FeatureIdentifier(**tup) for tup in data["input_features"]
+        ]
+        self.out_features_identifiers = [
+            FeatureIdentifier(**tup) for tup in data["output_features"]
+        ]
         self.in_scalars_names = data["input_scalars"]
         self.out_scalars_names = data["output_scalars"]
         self.in_fields_names = data["input_fields"]
