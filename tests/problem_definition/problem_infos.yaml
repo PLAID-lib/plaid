@@ -1,6 +1,18 @@
 task: regression
-input_feature: []
-output_feature: []
+input_features:
+- type: scalar
+  name: predict_feature
+- type: scalar
+  name: test_feature
+- type: scalar
+  name: feature
+output_features:
+- type: scalar
+  name: predict_feature
+- type: scalar
+  name: test_feature
+- type: scalar
+  name: feature
 input_scalars:
 - predict_scalar
 - scalar
