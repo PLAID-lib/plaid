@@ -1,4 +1,6 @@
 task: regression
+input_feature: []
+output_feature: []
 input_scalars:
 - predict_scalar
 - scalar
