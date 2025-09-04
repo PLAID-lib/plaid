@@ -70,6 +70,7 @@ class Dataset(object):
         directory_path: Optional[Union[str, Path]] = None,
         verbose: bool = False,
         processes_number: int = 0,
+        samples: Optional[list[Sample]] = None,
     ) -> None:
         """Initialize a :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
@@ -81,11 +82,13 @@ class Dataset(object):
             directory_path (Union[str,Path], optional): The path from which to load PLAID dataset files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
+            samples (list[Sample], optional): A list of :class:`Samples <plaid.containers.sample.Sample>` to initialize the :class:`Dataset <plaid.containers.dataset.Dataset>`. Defaults to None.
 
         Example:
             .. code-block:: python
 
                 from plaid.containers.dataset import Dataset
+                from plaid.containers.sample import Sample
 
                 # 1. Create empty instance of Dataset
                 dataset = Dataset()
@@ -106,6 +109,12 @@ class Dataset(object):
                     Sample(1 scalar, 0 time series, 0 timestamps, 0 fields)
                     Sample(2 scalars, 0 time series, 1 timestamp, 2 fields)
 
+                # 3. Create Dataset instance from a list of Samples
+                dataset = Dataset(samples=[sample1, sample2, sample3])
+                print(dataset)
+                >>> Dataset(3 samples, 0 scalars, 2 fields)
+
+
         Caution:
             It is assumed that you provided a compatible PLAID dataset.
         """
@@ -113,9 +122,11 @@ class Dataset(object):
         # info_name -> description
         self._infos: dict[str, dict[str, str]] = {}
 
+        if samples is not None and directory_path is not None:
+            raise ValueError("'samples' and 'directory_path' are mutually exclusive")
+
         if directory_path is not None:
             directory_path = Path(directory_path)
-
             if directory_path.suffix == ".plaid":
                 self.load(
                     directory_path, verbose=verbose, processes_number=processes_number
@@ -124,6 +135,8 @@ class Dataset(object):
                 self._load_from_dir_(
                     directory_path, verbose=verbose, processes_number=processes_number
                 )
+        elif samples is not None:
+            self.add_samples(samples)
 
     def copy(self) -> Self:
         """Create a deep copy of the dataset.
@@ -1032,15 +1045,25 @@ class Dataset(object):
     def from_list_of_samples(cls, list_of_samples: list[Sample]) -> Self:
         """Initialise a dataset from a list of samples.
 
+        DEPRECATED: use `Dataset(samples=...)` instead. This classmethod will be
+        removed in a future release. It currently returns an instance
+        equivalent to calling `Dataset(samples=list_of_samples)` and emits a
+        `DeprecationWarning`.
+
         Args:
             list_of_samples (list[Sample]): The list of samples.
 
         Returns:
-            Self: The intialized dataset (Dataset).
+            Self: The initialized dataset (Dataset).
         """
-        instance = cls()
-        instance.add_samples(list_of_samples)
-        return instance
+        import warnings
+
+        warnings.warn(
+            "Dataset.from_list_of_samples is deprecated; use Dataset(samples=...) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return cls(samples=list_of_samples)
 
     @classmethod
     def load_from_file(

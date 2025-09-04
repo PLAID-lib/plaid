@@ -435,7 +435,7 @@ def streamed_huggingface_dataset_to_plaid(
         hf_sample = next(iter(ds_stream))
         samples.append(to_plaid_sample(hf_sample))
 
-    dataset = Dataset.from_list_of_samples(samples)
+    dataset = Dataset(samples=samples)
 
     infos = {}
     if "legal" in ds_stream.description:
