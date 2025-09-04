@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from plaid.containers.dataset import Dataset as Plaid_Dataset
+from plaid import Dataset as Plaid_Dataset
 
 
 class TemporalFractureReader(Dataset):

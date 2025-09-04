@@ -2,8 +2,8 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from plaid.containers.sample import Sample
-from plaid.problem_definition import ProblemDefinition
+from plaid import Sample
+from plaid import ProblemDefinition
 
 from .utils import faces_to_edges
 
@@ -14,7 +14,7 @@ def airfrans_sample_to_geometric(
     """Converts a Plaid sample to PytorchGeometric Data object.
 
     Args:
-        sample (plaid.containers.sample.Sample): data sample
+        sample (plaid.Sample): data sample
 
     Returns:
         Data: the converted data sample

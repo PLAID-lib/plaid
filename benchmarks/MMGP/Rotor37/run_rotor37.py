@@ -11,7 +11,7 @@ from sklearn.decomposition import PCA
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
-from plaid.containers.sample import Sample
+from plaid import Sample
 
 dataset = load_dataset("PLAID-datasets/Rotor37", split="all_samples")
 

@@ -11,8 +11,8 @@ from dgl.dataloading import GraphDataLoader
 from torch.utils.data import Dataset
 from torch.utils.data.distributed import DistributedSampler
 
-from plaid.containers.dataset import Dataset as PlaidDataset
-from plaid.problem_definition import ProblemDefinition
+from plaid import Dataset as PlaidDataset
+from plaid import ProblemDefinition
 
 from data import *
 from utils import *

@@ -15,7 +15,7 @@ import torch
 from physicsnemo.models.fno.fno import FNO
 import torch.nn as nn
 from Muscat.MeshTools.MeshTools import ComputeSignedDistance
-from plaid.containers.dataset import Dataset as Plaid_Dataset
+from plaid import Dataset as Plaid_Dataset
 import pickle
 
 

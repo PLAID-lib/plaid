@@ -20,8 +20,7 @@ except ImportError:  # pragma: no cover
 
 import numpy as np
 
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
+from plaid import Dataset, Sample
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(

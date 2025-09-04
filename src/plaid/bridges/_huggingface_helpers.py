@@ -13,7 +13,7 @@ from pathlib import Path
 import datasets
 from datasets import load_from_disk
 
-from plaid.containers.sample import Sample
+from plaid import Sample
 
 
 class _HFToPlaidSampleConverter(object):
