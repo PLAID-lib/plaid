@@ -40,6 +40,26 @@ def test_deprecated_class_warns():
     assert obj.val == 42
 
 
+def test_deprecated_invalid_type():
+    decorator = dep.deprecated("invalid use")
+    with pytest.raises(
+        TypeError, match="@deprecated can only be applied to functions or classes"
+    ):
+        decorator(pytest)
+    with pytest.raises(
+        TypeError, match="@deprecated can only be applied to functions or classes"
+    ):
+        decorator(3)
+    with pytest.raises(
+        TypeError, match="@deprecated can only be applied to functions or classes"
+    ):
+        decorator(3.14)
+    with pytest.raises(
+        TypeError, match="@deprecated can only be applied to functions or classes"
+    ):
+        decorator("test")
+
+
 def test_deprecated_argument_warns_and_converts():
     @dep.deprecated_argument(
         "old", "new", converter=lambda v: v + 1, version="1.2", removal="2.0"
