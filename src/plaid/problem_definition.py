@@ -1238,8 +1238,8 @@ class ProblemDefinition(object):
 
         # if it was saved with version <=0.1.7 it is a .csv else it is .json
         split = {}
-        split_fname_csv = save_dir / "split.csv"
-        split_fname_json = save_dir / "split.json"
+        split_fname_csv = path / "split.csv"
+        split_fname_json = path / "split.json"
         if split_fname_csv.is_file():
             with split_fname_csv.open("r") as file:
                 reader = csv.reader(file, delimiter=",")
