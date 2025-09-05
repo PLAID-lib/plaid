@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+- (docs) update logos
 - (imports) add imports of `Sample`, `Dataset` from `plaid` and `plaid.containers` and `ProblemDefinition` from `plaid`
 - (dataset.py) add optional `ids` argument to `from_list_of_samples`
 - (sample) add summarize and check_completeness functions
