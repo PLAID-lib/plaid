@@ -21,7 +21,7 @@ else:  # pragma: no cover
 import csv
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import yaml
 
@@ -44,13 +44,18 @@ logging.basicConfig(
 class ProblemDefinition(object):
     """Gathers all necessary informations to define a learning problem."""
 
-    def __init__(self, directory_path: Union[str, Path] = None) -> None:
+    def __init__(
+        self,
+        path: Optional[Union[str, Path]] = None,
+        directory_path: Optional[Union[str, Path]] = None,
+    ) -> None:
         """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`.
 
         Use :meth:`add_inputs <plaid.problem_definition.ProblemDefinition.add_inputs>` or :meth:`add_output_scalars_names <plaid.problem_definition.ProblemDefinition.add_output_scalars_names>` to feed the :class:`ProblemDefinition`
 
         Args:
-            directory_path (Union[str, Path], optional): The path from which to load PLAID problem definition files.
+            path (Union[str,Path], optional): The path from which to load PLAID problem definition files.
+            directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
 
         Example:
             .. code-block:: python
@@ -79,8 +84,19 @@ class ProblemDefinition(object):
         self._split: dict[str, IndexType] = None
 
         if directory_path is not None:
-            directory_path = Path(directory_path)
-            self._load_from_dir_(directory_path)
+            if path is not None:
+                raise ValueError(
+                    "Arguments `path` and `directory_path` cannot be both set. Use only `path` as `directory_path` is deprecated."
+                )
+            else:
+                path = directory_path
+                logger.warning(
+                    "DeprecationWarning: 'directory_path' is deprecated, use 'path' instead."
+                )
+
+        if path is not None:
+            path = Path(path)
+            self._load_from_dir_(path)
 
     # -------------------------------------------------------------------------#
     def get_task(self) -> str:
@@ -890,11 +906,11 @@ class ProblemDefinition(object):
     #     return res
 
     # -------------------------------------------------------------------------#
-    def _save_to_dir_(self, savedir: Path) -> None:
+    def _save_to_dir_(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
 
         Args:
-            savedir (Path): The directory where the problem information will be saved.
+            path (Union[str,Path]): The directory where the problem information will be saved.
 
         Example:
             .. code-block:: python
@@ -903,8 +919,10 @@ class ProblemDefinition(object):
                 problem = ProblemDefinition()
                 problem._save_to_dir_("/path/to/save_directory")
         """
-        if not (savedir.is_dir()):  # pragma: no cover
-            savedir.mkdir()
+        path = Path(path)
+
+        if not (path.is_dir()):
+            path.mkdir()
 
         data = {
             "task": self._task,
@@ -918,11 +936,11 @@ class ProblemDefinition(object):
             "output_meshes": self.out_meshes_names,  # list[output mesh name]
         }
 
-        pbdef_fname = savedir / "problem_infos.yaml"
+        pbdef_fname = path / "problem_infos.yaml"
         with open(pbdef_fname, "w") as file:
             yaml.dump(data, file, default_flow_style=False, sort_keys=False)
 
-        split_fname = savedir / "split.csv"
+        split_fname = path / "split.csv"
         if self._split is not None:
             with open(split_fname, "w", newline="") as file:
                 write = csv.writer(file)
@@ -930,27 +948,27 @@ class ProblemDefinition(object):
                     write.writerow([name] + list(indices))
 
     @classmethod
-    def load(cls, save_dir: str) -> Self:  # pragma: no cover
+    def load(cls, path: Union[str, Path]) -> Self:  # pragma: no cover
         """Load data from a specified directory.
 
         Args:
-            save_dir (str): The path from which to load files.
+            path (Union[str,Path]): The path from which to load files.
 
         Returns:
             Self: The loaded dataset (Dataset).
         """
         instance = cls()
-        instance._load_from_dir_(save_dir)
+        instance._load_from_dir_(path)
         return instance
 
-    def _load_from_dir_(self, save_dir: Path) -> None:
+    def _load_from_dir_(self, path: Union[str, Path]) -> None:
         """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
 
         Args:
-            save_dir (Path): The directory from which to load the problem information.
+            path (Union[str,Path]): The directory from which to load the problem information.
 
         Raises:
-            FileNotFoundError: Triggered if the provided directory does not exist.
+            FileNotFoundError: Triggered if the provided directory or file problem_infos.yaml does not exist
             FileExistsError: Triggered if the provided path is a file instead of a directory.
 
         Example:
@@ -960,20 +978,22 @@ class ProblemDefinition(object):
                 problem = ProblemDefinition()
                 problem._load_from_dir_("/path/to/load_directory")
         """
-        if not save_dir.exists():  # pragma: no cover
-            raise FileNotFoundError(f'Directory "{save_dir}" does not exist. Abort')
+        path = Path(path)
 
-        if not save_dir.is_dir():  # pragma: no cover
-            raise FileExistsError(f'"{save_dir}" is not a directory. Abort')
+        if not path.exists():
+            raise FileNotFoundError(f'Directory "{path}" does not exist. Abort')
 
-        pbdef_fname = save_dir / "problem_infos.yaml"
+        if not path.is_dir():
+            raise FileExistsError(f'"{path}" is not a directory. Abort')
+
+        pbdef_fname = path / "problem_infos.yaml"
         data = {}  # To avoid crash if pbdef_fname does not exist
         if pbdef_fname.is_file():
             with open(pbdef_fname, "r") as file:
                 data = yaml.safe_load(file)
-        else:  # pragma: no cover
-            logger.warning(
-                f"file with path `{pbdef_fname}` does not exist. Task, inputs, and outputs will not be set"
+        else:
+            raise FileNotFoundError(
+                f"file with path `{pbdef_fname}` does not exist. Abort"
             )
 
         self._task = data["task"]
@@ -986,7 +1006,7 @@ class ProblemDefinition(object):
         self.in_meshes_names = data["input_meshes"]
         self.out_meshes_names = data["output_meshes"]
 
-        split_fname = save_dir / "split.csv"
+        split_fname = path / "split.csv"
         split = {}
         if split_fname.is_file():
             with open(split_fname) as file:
