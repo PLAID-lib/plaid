@@ -1,8 +1,8 @@
 from datasets import load_dataset
 
 from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
-from plaid.containers.dataset import Dataset as PlaidDataset
-from plaid.problem_definition import ProblemDefinition
+from plaid import Dataset as PlaidDataset
+from plaid import ProblemDefinition
 
 from .loader import Loader
 

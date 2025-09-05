@@ -9,8 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from plaid.containers.dataset import Dataset
-from plaid.problem_definition import ProblemDefinition
+from plaid import Dataset, ProblemDefinition
 
 
 def prepare_datasets(

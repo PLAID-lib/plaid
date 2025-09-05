@@ -1,7 +1,7 @@
 import torch.nn as nn
 from torch_geometric.data import Batch, Data
 
-from plaid.containers.dataset import Dataset as PlaidDataset
+from plaid import Dataset as PlaidDataset
 
 
 class BaseModel(nn.Module):

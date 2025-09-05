@@ -165,7 +165,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
 
                 # 1. Create empty instance of Sample
                 sample = Sample()
@@ -278,7 +278,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -330,7 +330,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -379,7 +379,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -1210,7 +1210,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample.add_time_series('stuff', np.arange(2), np.random.randn(2))
                 print(sample.get_time_series('stuff'))
                 >>> (array([0, 1]), array([-0.59630135, -1.15572306]))
@@ -2185,7 +2185,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample.load_from_dir(dir_path)
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -2211,7 +2211,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample()
                 sample.load(dir_path)
                 print(sample)

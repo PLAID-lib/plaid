@@ -16,8 +16,8 @@ import numpy as np
 import rich
 from tqdm import tqdm
 
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
+from plaid import Dataset
+from plaid import Sample
 
 # %% Functions
 

@@ -12,10 +12,16 @@ try:
 except ImportError:  # pragma: no cover
     __version__ = "None"
 
+from .containers.dataset import Dataset
+from .containers.sample import Sample
 from .containers.utils import get_number_of_samples, get_sample_ids
+from .problem_definition import ProblemDefinition
 
 __all__ = [
     "__version__",
     "get_number_of_samples",
     "get_sample_ids",
+    "Dataset",
+    "Sample",
+    "ProblemDefinition",
 ]
