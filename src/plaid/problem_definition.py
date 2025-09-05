@@ -1163,10 +1163,10 @@ class ProblemDefinition(object):
         }
 
         pbdef_fname = path / "problem_infos.yaml"
-        with open(pbdef_fname, "w") as file:
+        with pbdef_fname.open("w") as file:
             yaml.dump(data, file, default_flow_style=False, sort_keys=False)
 
-        split_fname = path / "split.csv"
+        split_fname = path / "split.json"
         if self._split is not None:
             with split_fname.open("w") as file:
                 json.dump(self._split, file)
@@ -1236,7 +1236,7 @@ class ProblemDefinition(object):
         self.in_meshes_names = data["input_meshes"]
         self.out_meshes_names = data["output_meshes"]
 
-        split_fname = path / "split.csv"
+        # if it was saved with version <=0.1.7 it is a .csv else it is .json
         split = {}
         split_fname_csv = save_dir / "split.csv"
         split_fname_json = save_dir / "split.json"
