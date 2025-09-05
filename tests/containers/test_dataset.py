@@ -30,22 +30,26 @@ def current_directory():
 
 
 def compare_two_samples(sample_1: Sample, sample_2: Sample):
-    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
+    assert set(sample_1._meshes.get_all_mesh_times()) == set(
+        sample_2._meshes.get_all_mesh_times()
+    )
     assert set(sample_1.get_scalar_names()) == set(sample_2.get_scalar_names())
     assert set(sample_1.get_field_names()) == set(sample_2.get_field_names())
     assert set(sample_1.get_time_series_names()) == set(
         sample_2.get_time_series_names()
     )
     assert np.array_equal(sample_1.get_nodes(), sample_2.get_nodes())
-    assert set(sample_1.get_base_names()) == set(sample_2.get_base_names())
-    for base_name in sample_1.get_base_names():
-        assert set(sample_1.get_zone_names(base_name)) == set(
-            sample_2.get_zone_names(base_name)
+    assert set(sample_1._meshes.get_base_names()) == set(
+        sample_2._meshes.get_base_names()
+    )
+    for base_name in sample_1._meshes.get_base_names():
+        assert set(sample_1._meshes.get_zone_names(base_name)) == set(
+            sample_2._meshes.get_zone_names(base_name)
         )
-        for zone_name in sample_1.get_zone_names(base_name):
-            assert sample_1.get_zone_type(
+        for zone_name in sample_1._meshes.get_zone_names(base_name):
+            assert sample_1._meshes.get_zone_type(
                 zone_name, base_name
-            ) == sample_2.get_zone_type(zone_name, base_name)
+            ) == sample_2._meshes.get_zone_type(zone_name, base_name)
 
 
 # %% Tests
