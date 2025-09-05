@@ -89,3 +89,6 @@ dev = [
 
 [tool.coverage.run]
 omit = ["src/plaid/examples/*"]
+
+[tool.pytest.ini_options]
+filterwarnings = "ignore::DeprecationWarning"
