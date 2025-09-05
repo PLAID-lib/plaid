@@ -41,14 +41,14 @@ def deprecated(
         message_parts.append(f"(will be removed in v{removal})")
     full_message = " ".join(message_parts)
 
-    if deprecated_builtin is not None:
-        ...
-        # TODO: Uncomment next block when python 3.13+ is available
-        # def decorator(obj):
-        #     return deprecated_builtin(
-        #         full_message, category=DeprecationWarning, stacklevel=2
-        #     )(obj)
-        # return decorator
+    if deprecated_builtin is not None:  # pragma: no cover
+
+        def decorator(obj):
+            return deprecated_builtin(
+                full_message, category=DeprecationWarning, stacklevel=2
+            )(obj)
+
+        return decorator
 
     def decorator(obj):
         if isinstance(obj, type):
@@ -72,7 +72,10 @@ def deprecated(
             return wrapper
 
         else:
-            raise TypeError("@deprecated can only be applied to functions or classes")
+            raise TypeError(
+                "@deprecated decorator with non-None category must be applied to "
+                f"a class or callable, not {obj!r}"
+            )
 
     return decorator
 
@@ -105,16 +108,14 @@ def deprecated_argument(
         def wrapper(*args, **kwargs):
             if old_arg in kwargs:
                 # Emit deprecation warning
-                if deprecated_builtin is not None:
-                    ...
-                # TODO: Uncomment next block when python 3.13+ is available
-                # # In Python 3.13+, link warning to the function itself
-                # decorated = deprecated_builtin(
-                #     full_message, category=DeprecationWarning, stacklevel=2
-                # )(func)
-                # return decorated(
-                #     *args, **{new_arg: converter(kwargs.pop(old_arg)), **kwargs}
-                # )
+                if deprecated_builtin is not None:  # pragma: no cover
+                    # In Python 3.13+, link warning to the function itself
+                    decorated = deprecated_builtin(
+                        full_message, category=DeprecationWarning, stacklevel=2
+                    )(func)
+                    return decorated(
+                        *args, **{new_arg: converter(kwargs.pop(old_arg)), **kwargs}
+                    )
                 else:
                     warnings.warn(full_message, DeprecationWarning, stacklevel=2)
                 kwargs[new_arg] = converter(kwargs.pop(old_arg))

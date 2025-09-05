@@ -43,19 +43,23 @@ def test_deprecated_class_warns():
 def test_deprecated_invalid_type():
     decorator = dep.deprecated("invalid use")
     with pytest.raises(
-        TypeError, match="@deprecated can only be applied to functions or classes"
+        TypeError,
+        match="@deprecated decorator with non-None category must be applied to a class or callable, not *",
     ):
         decorator(pytest)
     with pytest.raises(
-        TypeError, match="@deprecated can only be applied to functions or classes"
+        TypeError,
+        match=f"@deprecated decorator with non-None category must be applied to a class or callable, not {3!r}",
     ):
         decorator(3)
     with pytest.raises(
-        TypeError, match="@deprecated can only be applied to functions or classes"
+        TypeError,
+        match=f"@deprecated decorator with non-None category must be applied to a class or callable, not {3.14!r}",
     ):
         decorator(3.14)
     with pytest.raises(
-        TypeError, match="@deprecated can only be applied to functions or classes"
+        TypeError,
+        match=f"@deprecated decorator with non-None category must be applied to a class or callable, not {'test'!r}",
     ):
         decorator("test")
 
