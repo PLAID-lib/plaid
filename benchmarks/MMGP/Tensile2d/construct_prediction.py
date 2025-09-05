@@ -1,5 +1,5 @@
-from plaid.containers.dataset import Dataset
-from plaid.problem_definition import ProblemDefinition
+from plaid import Dataset
+from plaid import ProblemDefinition
 
 from tqdm import tqdm
 

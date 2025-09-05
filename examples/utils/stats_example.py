@@ -26,7 +26,7 @@ import rich
 
 # %%
 # Import necessary libraries and functions
-from plaid.containers.sample import Sample
+from plaid import Sample
 from plaid.utils.stats import OnlineStatistics, Stats
 
 

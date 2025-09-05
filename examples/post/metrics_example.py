@@ -10,9 +10,9 @@
 from pathlib import Path
 from typing import Union
 
-from plaid.containers.dataset import Dataset
+from plaid import Dataset
 from plaid.post.metrics import compute_metrics, prepare_datasets, pretty_metrics
-from plaid.problem_definition import ProblemDefinition
+from plaid import ProblemDefinition
 
 
 # %%

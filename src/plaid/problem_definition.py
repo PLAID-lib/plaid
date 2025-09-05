@@ -60,7 +60,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
 
                 # 1. Create empty instance of ProblemDefinition
                 problem_definition = ProblemDefinition()
@@ -144,7 +144,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 split_indices = problem.get_split()
@@ -172,7 +172,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 new_split = {'train': [0, 1, 2], 'test': [3, 4]}
                 problem.set_split(new_split)
@@ -191,7 +191,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 input_scalars_names = problem.get_input_scalars_names()
@@ -212,7 +212,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 input_scalars_names = ['omega', 'pressure']
                 problem.add_input_scalars_names(input_scalars_names)
@@ -234,7 +234,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 input_name = 'pressure'
                 problem.add_input_scalar_name(input_name)
@@ -256,7 +256,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 scalars_names = ['omega', 'pressure', 'temperature']
@@ -276,7 +276,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 outputs_names = problem.get_output_scalars_names()
@@ -297,7 +297,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 output_scalars_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
                 problem.add_output_scalars_names(output_scalars_names)
@@ -319,7 +319,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 output_scalars_names = 'pressure'
                 problem.add_output_scalar_name(output_scalars_names)
@@ -341,7 +341,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 scalars_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
@@ -361,7 +361,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 input_fields_names = problem.get_input_fields_names()
@@ -382,7 +382,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 input_fields_names = ['omega', 'pressure']
                 problem.add_input_fields_names(input_fields_names)
@@ -404,7 +404,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 input_name = 'pressure'
                 problem.add_input_field_name(input_name)
@@ -426,7 +426,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 input_fields_names = ['omega', 'pressure', 'temperature']
@@ -446,7 +446,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 outputs_names = problem.get_output_fields_names()
@@ -467,7 +467,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 output_fields_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
                 problem.add_output_fields_names(output_fields_names)
@@ -489,7 +489,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 output_fields_names = 'pressure'
                 problem.add_output_field_name(output_fields_names)
@@ -511,7 +511,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 output_fields_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
@@ -531,7 +531,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 input_timeseries_names = problem.get_input_timeseries_names()
@@ -552,7 +552,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 input_timeseries_names = ['omega', 'pressure']
                 problem.add_input_timeseries_names(input_timeseries_names)
@@ -574,7 +574,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 input_name = 'pressure'
                 problem.add_input_timeseries_name(input_name)
@@ -596,7 +596,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 input_timeseries_names = ['omega', 'pressure', 'temperature']
@@ -616,7 +616,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 outputs_names = problem.get_output_timeseries_names()
@@ -637,7 +637,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 output_timeseries_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
                 problem.add_output_timeseries_names(output_timeseries_names)
@@ -659,7 +659,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 output_timeseries_names = 'pressure'
                 problem.add_output_timeseries_name(output_timeseries_names)
@@ -681,7 +681,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 output_timeseries_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
@@ -701,7 +701,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 input_meshes_names = problem.get_input_meshes_names()
@@ -722,7 +722,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 input_meshes_names = ['omega', 'pressure']
                 problem.add_input_meshes_names(input_meshes_names)
@@ -744,7 +744,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 input_name = 'pressure'
                 problem.add_input_mesh_name(input_name)
@@ -766,7 +766,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 input_meshes_names = ['omega', 'pressure', 'temperature']
@@ -786,7 +786,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 outputs_names = problem.get_output_meshes_names()
@@ -807,7 +807,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 output_meshes_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
                 problem.add_output_meshes_names(output_meshes_names)
@@ -829,7 +829,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 output_meshes_names = 'pressure'
                 problem.add_output_mesh_name(output_meshes_names)
@@ -851,7 +851,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 output_meshes_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
@@ -915,7 +915,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 problem._save_to_dir_("/path/to/save_directory")
         """
@@ -974,7 +974,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 problem._load_from_dir_("/path/to/load_directory")
         """
@@ -1029,7 +1029,7 @@ class ProblemDefinition(object):
         Example:
             .. code-block:: python
 
-                from plaid.problem_definition import ProblemDefinition
+                from plaid import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
                 print(problem)
