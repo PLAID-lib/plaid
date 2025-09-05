@@ -51,6 +51,19 @@ class Test_ProblemDefinition:
         assert problem_definition.get_task() is None
         print(problem_definition)
 
+    def test__init__path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        ProblemDefinition(path=d_path)
+
+    def test__init__directory_path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        ProblemDefinition(directory_path=d_path)
+
+    def test__init__both_path_and_directory_path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        with pytest.raises(ValueError):
+            ProblemDefinition(path=d_path, directory_path=d_path)
+
     # -------------------------------------------------------------------------#
     def test_task(self, problem_definition):
         # Unauthorized task
@@ -491,6 +504,9 @@ class Test_ProblemDefinition:
 
         problem_definition._save_to_dir_(current_directory / "problem_definition")
 
+    def test__save_to_dir_(self, problem_definition, tmp_path):
+        problem_definition._save_to_dir_(tmp_path / "problem_definition")
+
     def test_load_path_object(self, current_directory):
         from pathlib import Path
 
@@ -532,3 +548,21 @@ class Test_ProblemDefinition:
         )
         all_split = problem.get_split()
         assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
+
+    def test__load_from_dir__empty_dir(self, tmp_path):
+        problem = ProblemDefinition()
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_dir_(tmp_path)
+
+    def test__load_from_dir__non_existing_dir(self):
+        problem = ProblemDefinition()
+        non_existing_dir = Path("non_existing_path")
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_dir_(non_existing_dir)
+
+    def test__load_from_dir__path_is_file(self, tmp_path):
+        problem = ProblemDefinition()
+        file_path = tmp_path / "file.yaml"
+        file_path.touch()  # Create an empty file
+        with pytest.raises(FileExistsError):
+            problem._load_from_dir_(file_path)
