@@ -2,8 +2,8 @@ import numpy as np
 import torch
 from torch_geometric.data import Data
 
-from plaid.containers.sample import Sample
-from plaid.problem_definition import ProblemDefinition
+from plaid import Sample
+from plaid import ProblemDefinition
 
 from .multiscale_sample_to_geometric import get_distance_to_ids
 from .utils import faces_to_edges

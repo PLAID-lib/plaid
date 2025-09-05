@@ -1,5 +1,5 @@
 
-from plaid.containers.sample import Sample
+from plaid import Sample
 from Muscat.Bridges.CGNSBridge import CGNSToMesh
 import numpy as np
 from Muscat.Containers.Filters.FilterObjects import ElementFilter
@@ -25,7 +25,7 @@ prepared_data_dir= # path to update
 start = time.time()
 
 
-from plaid.problem_definition import ProblemDefinition
+from plaid import ProblemDefinition
 
 
 def compute_signed_distance(mesh,eval_points):

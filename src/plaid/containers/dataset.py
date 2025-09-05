@@ -85,7 +85,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
 
                 # 1. Create empty instance of Dataset
                 dataset = Dataset()
@@ -173,7 +173,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 dataset.add_sample(sample)
                 print(dataset)
@@ -202,7 +202,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 dataset.add_samples(samples)
                 print(dataset)
@@ -249,7 +249,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 dataset.add_samples(samples)
                 print(len(samples))
@@ -299,7 +299,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 # Assume samples are already added to the dataset
                 print(dataset)
@@ -785,7 +785,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 infos = {"legal":{"owner":"CompX", "license":"li_X"}}
                 dataset.set_infos(infos)
@@ -827,7 +827,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 infos = {"legal":{"owner":"CompX", "license":"li_X"}}
                 dataset.set_infos(infos)
@@ -872,7 +872,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 infos = {"legal":{"owner":"CompX", "license":"li_X"}}
                 dataset.set_infos(infos)
@@ -903,7 +903,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 infos = {"legal":{"owner":"CompX", "license":"li_X"}}
                 dataset.set_infos(infos)
@@ -1028,18 +1028,248 @@ class Dataset(object):
         # Finally : removes directory <save_dir>
         shutil.rmtree(save_dir)
 
+    def summarize_features(self) -> str:
+        """Show the name of each feature and the number of samples containing it.
+
+        Returns:
+            str: A summary of features across the dataset.
+
+        Example:
+            .. code-block:: bash
+
+                Dataset Feature Summary:
+                ==================================================
+                Scalars (8 unique):
+                - Pr: 30/32 samples (93.8%)
+                - Q: 30/32 samples (93.8%)
+                - Tr: 30/32 samples (93.8%)
+                - angle_in: 32/32 samples (100.0%)
+                - angle_out: 30/32 samples (93.8%)
+                - eth_is: 30/32 samples (93.8%)
+                - mach_out: 32/32 samples (100.0%)
+                - power: 30/32 samples (93.8%)
+
+                Time Series (0 unique):
+                None
+
+                Fields (8 unique):
+                - M_iso: 30/32 samples (93.8%)
+                - mach: 30/32 samples (93.8%)
+                - nut: 30/32 samples (93.8%)
+                - ro: 30/32 samples (93.8%)
+                - roe: 30/32 samples (93.8%)
+                - rou: 30/32 samples (93.8%)
+                - rov: 30/32 samples (93.8%)
+                - sdf: 32/32 samples (100.0%)
+        """
+        summary = "Dataset Feature Summary:\n"
+        summary += "=" * 50 + "\n"
+
+        if len(self._samples) == 0:
+            return summary + "No samples in dataset.\n"
+
+        # Collect all feature names across all samples
+        all_scalar_names = set()
+        all_ts_names = set()
+        all_field_names = set()
+
+        # Count occurrences of each feature
+        scalar_counts = {}
+        ts_counts = {}
+        field_counts = {}
+
+        for _, sample in self._samples.items():
+            # Scalars
+            scalar_names = sample.get_scalar_names()
+            all_scalar_names.update(scalar_names)
+            for name in scalar_names:
+                scalar_counts[name] = scalar_counts.get(name, 0) + 1
+
+            # Time series
+            ts_names = sample.get_time_series_names()
+            all_ts_names.update(ts_names)
+            for name in ts_names:
+                ts_counts[name] = ts_counts.get(name, 0) + 1
+
+            # Fields
+            times = sample.get_all_mesh_times()
+            for time in times:
+                base_names = sample.get_base_names(time=time)
+                for base_name in base_names:
+                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    for zone_name in zone_names:
+                        field_names = sample.get_field_names(
+                            zone_name=zone_name, base_name=base_name, time=time
+                        )
+                        all_field_names.update(field_names)
+                        for name in field_names:
+                            field_counts[name] = field_counts.get(name, 0) + 1
+
+        total_samples = len(self._samples)
+
+        # Scalars summary
+        summary += f"Scalars ({len(all_scalar_names)} unique):\n"
+        if all_scalar_names:
+            for name in sorted(all_scalar_names):
+                count = scalar_counts.get(name, 0)
+                summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
+        else:
+            summary += "  None\n"
+        summary += "\n"
+
+        # Time series summary
+        summary += f"Time Series ({len(all_ts_names)} unique):\n"
+        if all_ts_names:
+            for name in sorted(all_ts_names):
+                count = ts_counts.get(name, 0)
+                summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
+        else:
+            summary += "  None\n"
+        summary += "\n"
+
+        # Fields summary
+        summary += f"Fields ({len(all_field_names)} unique):\n"
+        if all_field_names:
+            for name in sorted(all_field_names):
+                count = field_counts.get(name, 0)
+                summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
+        else:
+            summary += "  None\n"
+
+        return summary
+
+    def check_feature_completeness(self) -> str:
+        """Detect and notify if some Samples don't contain all features.
+
+        Returns:
+            str: A report on feature completeness across the dataset.
+
+        Example:
+            .. code-block:: bash
+
+                Dataset Feature Completeness Check:
+                ========================================
+                Complete samples: 30/32 (93.8%)
+                Incomplete samples: 2/32 (6.2%)
+
+                Samples with missing features:
+                Sample 671: missing 13 features
+                    - scalar:Tr
+                    - scalar:angle_out
+                    - scalar:power
+                    - scalar:Pr
+                    - scalar:Q
+                    ... and 8 more
+                Sample 672: missing 13 features
+                    - scalar:Tr
+                    - scalar:angle_out
+                    - scalar:power
+                    - scalar:Pr
+                    - scalar:Q
+                    ... and 8 more
+        """
+        report = "Dataset Feature Completeness Check:\n"
+        report += "=" * 40 + "\n"
+
+        if len(self._samples) == 0:
+            return report + "No samples in dataset.\n"
+
+        # Collect all possible features across all samples
+        all_scalar_names = set()
+        all_ts_names = set()
+        all_field_names = set()
+
+        for sample in self._samples.values():
+            all_scalar_names.update(sample.get_scalar_names())
+            all_ts_names.update(sample.get_time_series_names())
+
+            times = sample.get_all_mesh_times()
+            for time in times:
+                base_names = sample.get_base_names(time=time)
+                for base_name in base_names:
+                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    for zone_name in zone_names:
+                        all_field_names.update(
+                            sample.get_field_names(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                        )
+
+        total_samples = len(self._samples)
+        incomplete_samples = []
+
+        # Check each sample for missing features
+        for sample_id, sample in self._samples.items():
+            missing_features = []
+
+            # Check scalars
+            sample_scalars = set(sample.get_scalar_names())
+            missing_scalars = all_scalar_names - sample_scalars
+            if missing_scalars:
+                missing_features.extend([f"scalar:{name}" for name in missing_scalars])
+
+            # Check time series
+            sample_ts = set(sample.get_time_series_names())
+            missing_ts = all_ts_names - sample_ts
+            if missing_ts:
+                missing_features.extend([f"time_series:{name}" for name in missing_ts])
+
+            # Check fields
+            sample_fields = set()
+            times = sample.get_all_mesh_times()
+            for time in times:
+                base_names = sample.get_base_names(time=time)
+                for base_name in base_names:
+                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    for zone_name in zone_names:
+                        sample_fields.update(
+                            sample.get_field_names(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                        )
+
+            missing_fields = all_field_names - sample_fields
+            if missing_fields:
+                missing_features.extend([f"field:{name}" for name in missing_fields])
+
+            if missing_features:
+                incomplete_samples.append((sample_id, missing_features))
+
+        # Generate report
+        complete_samples = total_samples - len(incomplete_samples)
+        report += f"Complete samples: {complete_samples}/{total_samples} ({complete_samples / total_samples * 100:.1f}%)\n"
+        report += f"Incomplete samples: {len(incomplete_samples)}/{total_samples} ({len(incomplete_samples) / total_samples * 100:.1f}%)\n\n"
+
+        if incomplete_samples:
+            report += "Samples with missing features:\n"
+            for sample_id, missing_features in incomplete_samples:
+                report += (
+                    f"  Sample {sample_id}: missing {len(missing_features)} features\n"
+                )
+                for feature in missing_features[:5]:  # Show first 5 missing features
+                    report += f"    - {feature}\n"
+                if len(missing_features) > 5:
+                    report += f"    ... and {len(missing_features) - 5} more\n"
+        else:
+            report += "All samples contain all features! ✓\n"
+
+        return report
+
     @classmethod
-    def from_list_of_samples(cls, list_of_samples: list[Sample]) -> Self:
+    def from_list_of_samples(
+        cls, list_of_samples: list[Sample], ids: Optional[list[int]] = None
+    ) -> Self:
         """Initialise a dataset from a list of samples.
 
         Args:
             list_of_samples (list[Sample]): The list of samples.
+            ids (list[int], optional): An optional list of IDs for the new samples. If not provided, the IDs will be automatically generated based on the current number of samples in the dataset.
 
         Returns:
             Self: The intialized dataset (Dataset).
         """
         instance = cls()
-        instance.add_samples(list_of_samples)
+        instance.add_samples(list_of_samples, ids)
         return instance
 
     @classmethod
@@ -1429,7 +1659,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 len(dataset)
                 >>> 10  # Assuming there are 10 samples in the dataset
@@ -1469,7 +1699,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 sample = dataset[3]  # Retrieve the sample with ID 3
 
@@ -1503,7 +1733,7 @@ class Dataset(object):
         Example:
             .. code-block:: python
 
-                from plaid.containers.dataset import Dataset
+                from plaid import Dataset
                 dataset = Dataset()
                 print(dataset)
                 >>> Dataset(0 samples, 0 scalars, 0 fields)
