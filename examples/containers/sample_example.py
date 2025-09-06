@@ -555,7 +555,7 @@ Image(filename=filename)
 # ### Save Sample to as a file tree
 
 # %%
-test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}")
+test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
 test_pth.mkdir(parents=True, exist_ok=True)
 
 sample_save_fname = test_pth / "test"

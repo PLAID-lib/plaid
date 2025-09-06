@@ -135,7 +135,7 @@ print(f"{problem.filter_output_scalars_names(['out', 'out3', 'out5']) = }")
 # ### Save a Problem Definition to a directory
 
 # %%
-test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}")
+test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
 pb_def_save_fname = test_pth / "test"
 test_pth.mkdir(parents=True, exist_ok=True)
 print(f"saving path: {pb_def_save_fname}")
