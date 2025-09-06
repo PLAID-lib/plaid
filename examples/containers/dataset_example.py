@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Dataset Examples
 #
@@ -16,15 +31,19 @@
 # Import required libraries
 from pathlib import Path
 
+import numpy as np
+
 # %%
 # Import necessary libraries and functions
 import Muscat.MeshContainers.ElementsDescription as ElementsDescription
-import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
 import plaid
 from plaid import Dataset
+### The 2 following commented lines are equivalent to the one above
+# from plaid.containers import Dataset
+# from plaid import Dataset
 from plaid import Sample
 
 
@@ -264,7 +283,7 @@ dprint("get all scalars =", dataset.get_scalars_to_tabular())
 
 # %%
 # Get specific scalars np.array
-print("get all scalar arrays =", dataset.get_scalars_to_tabular(as_nparray=True))
+print("get all scalar arrays = ", dataset.get_scalars_to_tabular(as_nparray=True))
 
 # %% [markdown]
 # ### Get Dataset fields
@@ -338,7 +357,7 @@ dataset.print_infos()
 # ### Save a Dataset as a file tree
 
 # %%
-tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
+tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}"
 print(f"Save dataset in: {tmpdir}")
 
 dataset._save_to_dir_(tmpdir)
@@ -348,32 +367,27 @@ dataset._save_to_dir_(tmpdir)
 
 # %%
 nb_samples = plaid.get_number_of_samples(tmpdir)
-
 print(f"{nb_samples = }")
-
-# %% [markdown]
-# ### Get the Samples ids that can be loaded from a directory
-
-# %%
-sample_ids = plaid.get_sample_ids(tmpdir)
-
-print(f"{sample_ids = }")
 
 # %% [markdown]
 # ### Load a Dataset from a directory via initialization
 
 # %%
 loaded_dataset_from_init = Dataset(tmpdir)
-
 print(f"{loaded_dataset_from_init = }")
+
+multi_process_loaded_dataset = Dataset(tmpdir, processes_number=3)
+print(f"{multi_process_loaded_dataset = }")
 
 # %% [markdown]
 # ### Load a Dataset from a directory via the Dataset class
 
 # %%
 loaded_dataset_from_class = Dataset.load_from_dir(tmpdir)
-
 print(f"{loaded_dataset_from_class = }")
+
+multi_process_loaded_dataset = Dataset.load_from_dir(tmpdir, processes_number=3)
+print(f"{multi_process_loaded_dataset = }")
 
 # %% [markdown]
 # ### Load the dataset from a directory via a Dataset instance
@@ -384,11 +398,15 @@ loaded_dataset_from_instance._load_from_dir_(tmpdir)
 
 print(f"{loaded_dataset_from_instance = }")
 
+multi_process_loaded_dataset = Dataset()
+multi_process_loaded_dataset._load_from_dir_(tmpdir, processes_number=3)
+print(f"{multi_process_loaded_dataset = }")
+
 # %% [markdown]
 # ### Save the dataset to a TAR (Tape Archive) file
 
 # %%
-tmpdir = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+tmpdir = Path(f"/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}")
 tmpfile = tmpdir / "test_file.plaid"
 
 print(f"Save dataset in: {tmpfile}")

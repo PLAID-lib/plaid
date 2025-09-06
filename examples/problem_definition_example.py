@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Problem Definition Examples
 #
@@ -21,6 +36,8 @@ import numpy as np
 # Import necessary libraries and functions
 from plaid import Dataset, Sample
 from plaid import ProblemDefinition
+### The following commented line is equivalent to the one above
+# from plaid import ProblemDefinition
 from plaid.utils.split import split_dataset
 
 # %% [markdown]
@@ -40,63 +57,17 @@ print(f"{problem = }")
 # ### Add inputs / outputs to a Problem Definition
 
 # %%
-# Add unique input and output scalar variables
-problem.add_input_scalar_name("in_scalar")
-problem.add_output_scalar_name("out_scalar")
+# Add unique input and output variables
+problem.add_input_scalar_name("in")
+problem.add_output_scalar_name("out")
 
-# Add list of input and output scalar variables
-problem.add_input_scalars_names(["in_scalar2", "in_scalar3"])
-problem.add_output_scalars_names(["out_scalar2"])
+# Add list of input and output variables
+problem.add_input_scalars_names(["in2", "in3"])
+problem.add_output_scalars_names(["out2"])
 
-print()
 print(f"{problem.get_input_scalars_names() = }")
 print(
     f"{problem.get_output_scalars_names() = }",
-)
-
-# %%
-# Add unique input and output field variables
-problem.add_input_field_name("in_field")
-problem.add_output_field_name("out_field")
-
-# Add list of input and output field variables
-problem.add_input_fields_names(["in_field2", "in_field3"])
-problem.add_output_fields_names(["out_field2"])
-
-print()
-print(f"{problem.get_input_fields_names() = }")
-print(
-    f"{problem.get_output_fields_names() = }",
-)
-
-# %%
-# Add unique input and output timeseries variables
-problem.add_input_timeseries_name("in_timeseries")
-problem.add_output_timeseries_name("out_timeseries")
-
-# Add list of input and output timeserie variables
-problem.add_input_timeseries_names(["in_timeseries2", "in_timeseries3"])
-problem.add_output_timeseries_names(["out_timeseries2"])
-
-print()
-print(f"{problem.get_input_timeseries_names() = }")
-print(
-    f"{problem.get_output_timeseries_names() = }",
-)
-
-# %%
-# Add unique input and output mesh variables
-problem.add_input_mesh_name("in_mesh")
-problem.add_output_mesh_name("out_mesh")
-
-# Add list of input and output meshe variables
-problem.add_input_meshes_names(["in_mesh2", "in_mesh3"])
-problem.add_output_meshes_names(["out_mesh2"])
-
-print()
-print(f"{problem.get_input_meshes_names() = }")
-print(
-    f"{problem.get_output_meshes_names() = }",
 )
 
 # %% [markdown]
@@ -110,7 +81,6 @@ print(
 # %%
 # Set the task type (e.g., regression)
 problem.set_task("regression")
-print()
 print(f"{problem.get_task() = }")
 
 # %% [markdown]
@@ -119,12 +89,10 @@ print(f"{problem.get_task() = }")
 # %%
 # Init an empty Dataset
 dataset = Dataset()
-print()
 print(f"{dataset = }")
 
 # Add Samples
 dataset.add_samples([Sample(), Sample(), Sample(), Sample()])
-print()
 print(f"{dataset = }")
 
 # %%
@@ -138,12 +106,10 @@ options = {
 }
 
 split = split_dataset(dataset, options)
-print()
 print(f"{split = }")
 
 # %%
 problem.set_split(split)
-print()
 print(f"{problem.get_split() = }")
 
 # %% [markdown]
@@ -151,37 +117,14 @@ print(f"{problem.get_split() = }")
 
 # %%
 # Get all split indices
-print()
 print(f"{problem.get_all_indices() = }")
 
 # %% [markdown]
 # ### Filter Problem Definition inputs / outputs by name
 
 # %%
-print()
-print(
-    f"{problem.filter_input_scalars_names(['in_scalar', 'in_scalar3', 'in_scalar5']) = }"
-)
-print(
-    f"{problem.filter_output_scalars_names(['out_scalar', 'out_scalar3', 'out_scalar5']) = }"
-)
-print()
-print(f"{problem.filter_input_fields_names(['in_field', 'in_field3', 'in_field5']) = }")
-print(
-    f"{problem.filter_output_fields_names(['out_field', 'out_field3', 'out_field5']) = }"
-)
-print()
-print(
-    f"{problem.filter_input_timeseries_names(['in_timeseries', 'in_timeseries3', 'in_timeseries5']) = }"
-)
-print(
-    f"{problem.filter_output_timeseries_names(['out_timeseries', 'out_timeseries3', 'out_timeseries5']) = }"
-)
-print()
-print(f"{problem.filter_input_meshes_names(['in_mesh', 'in_mesh3', 'in_mesh5']) = }")
-print(
-    f"{problem.filter_output_meshes_names(['out_mesh', 'out_mesh3', 'out_mesh5']) = }"
-)
+print(f"{problem.filter_input_scalars_names(['in', 'in3', 'in5']) = }")
+print(f"{problem.filter_output_scalars_names(['out', 'out3', 'out5']) = }")
 
 # %% [markdown]
 # ## Section 3: Saving and Loading Problem Definitions
@@ -192,10 +135,9 @@ print(
 # ### Save a Problem Definition to a directory
 
 # %%
-test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}")
 pb_def_save_fname = test_pth / "test"
 test_pth.mkdir(parents=True, exist_ok=True)
-print()
 print(f"saving path: {pb_def_save_fname}")
 
 problem._save_to_dir_(pb_def_save_fname)
@@ -205,7 +147,6 @@ problem._save_to_dir_(pb_def_save_fname)
 
 # %%
 problem = ProblemDefinition(pb_def_save_fname)
-print()
 print(problem)
 
 # %% [markdown]
@@ -213,7 +154,6 @@ print(problem)
 
 # %%
 problem = ProblemDefinition.load(pb_def_save_fname)
-print()
 print(problem)
 
 # %% [markdown]
@@ -222,5 +162,4 @@ print(problem)
 # %%
 problem = ProblemDefinition()
 problem._load_from_dir_(pb_def_save_fname)
-print()
 print(problem)

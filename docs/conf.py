@@ -14,7 +14,7 @@
 # -- Path setup --------------------------------------------------------------
 
 import datetime
-import os, sys
+import os, sys, shutil
 import subprocess
 from pathlib import Path
 
@@ -28,6 +28,19 @@ sys.path.insert(0, basedir / "src" / "plaid")
 sys.path.insert(0, basedir / "examples")
 print(sys.path)
 
+
+
+# -- Copy and convert notebooks -----------------------------------------------------
+shutil.copytree(basedir / "examples", basedir / "docs" / "source" / "notebooks", dirs_exist_ok=True)
+
+root = basedir / "docs" / "source" / "notebooks"
+for file in root.rglob("*_example.py"):
+    print(file)
+    subprocess.run([
+        "jupytext",
+        "--to", "ipynb",
+        file
+    ], check=True)
 
 # -- Project information -----------------------------------------------------
 root_doc = "index"  # default is already <index>
@@ -59,6 +72,9 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinxcontrib.bibtex",
 ]
+
+nb_execution_mode = "force"
+jupytext_formats = "ipynb,py:percent"
 
 bibtex_bibfiles = ["refs.bib"]
 bibtex_encoding = "latin"

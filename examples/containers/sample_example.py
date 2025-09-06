@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: plaid_dev
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Sample Examples
 #
@@ -16,21 +31,26 @@
 # Import required libraries
 from pathlib import Path
 
+import numpy as np
+
 # %%
 # Import necessary libraries and functions
 import CGNS.PAT.cgnskeywords as CGK
-import numpy as np
+
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
 from plaid import Sample
+### The 2 following commented lines are equivalent to the one above
+# from plaid.containers import Sample
+# from plaid import Sample
 from plaid.utils import cgns_helper as CGH
 
 
 # %%
 # Print Sample util
 def show_sample(sample: Sample):
-    print(f"{sample = }")
+    print(f"sample = {sample}")
     sample.show_tree()
     print(f"{sample.get_scalar_names() = }")
     print(f"{sample.get_field_names() = }")
@@ -69,12 +89,15 @@ Mesh.nodeFields["test_node_field_1"] = np.random.randn(5)
 Mesh.elemFields["test_elem_field_1"] = np.random.randn(3)
 tree = MeshToCGNS(Mesh)
 
-# Display CGNS Tree
+# %%
+print("#---# Show CGNS Tree")
 CGH.show_cgns_tree(tree)
 
-# %%
-# Print CGNS tree summary for a concise overview
-CGH.summarize_cgns_tree(tree, verbose=True)
+print("\n#---# Summarize CGNS Tree")
+CGH.summarize_cgns_tree(tree)
+
+print("\n#---# Summarize CGNS Tree without additional Field Information")
+CGH.summarize_cgns_tree(tree, verbose=False)
 
 # %% [markdown]
 # ### Initialize a new empty Sample and print it
@@ -140,7 +163,16 @@ meshes_dict = {0.0: tree, 0.5: tree, 1.0: tree}
 new_sample_mult_mesh.set_meshes(meshes_dict)
 
 print(f"{new_sample_mult_mesh.get_all_mesh_times() = }")
-# new_sample_mult_mesh.show_tree(1.)
+
+# %% [markdown]
+# ### Link tree from another sample
+
+# %%
+path_linked_sample = Path.cwd() / "dataset/samples/sample_000000000/meshes/mesh_000000000.cgns"
+new_sample_mult_mesh.link_tree(
+    path_linked_sample, linked_sample=sample, linked_time=0.0, time=1.5
+)
+print(f"{new_sample_mult_mesh.get_all_mesh_times() = }")
 
 # %% [markdown]
 # ## Section 2: Accessing and Modifying Sample Data
@@ -506,8 +538,13 @@ print(
 # %% [markdown]
 # ### More information on how default values work
 
-# %% [markdown]
-# ![Alt text](../../docs/source/images/default_value_selection.png "default values flowchart")
+# %%
+from IPython.display import Image
+try:
+    filename = Path(__file__).parent.parent.parent / "docs" / "source" / "images" / "default_value_selection.png"
+except NameError:
+    filename = Path("..") / ".." / "images" / "default_value_selection.png"
+Image(filename=filename)
 
 # %% [markdown]
 # ## Section 4: Saving and Loading Sample
@@ -518,7 +555,7 @@ print(
 # ### Save Sample to as a file tree
 
 # %%
-test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(1e10, 1e12)}")
 test_pth.mkdir(parents=True, exist_ok=True)
 
 sample_save_fname = test_pth / "test"
@@ -540,7 +577,7 @@ show_sample(new_sample)
 # %%
 new_sample_2 = Sample.load_from_dir(test_pth / "test")
 
-show_sample(new_sample)
+show_sample(new_sample_2)
 
 # %% [markdown]
 # ### Load the Sample from a directory via a Sample instance
@@ -550,10 +587,3 @@ new_sample = Sample()
 new_sample.load(sample_save_fname)
 
 show_sample(new_sample)
-
-new_sample.add_scalar("a", 2.1)
-serialized_sample = new_sample.model_dump()
-
-unserialized_sample = Sample.model_validate(serialized_sample)
-print()
-show_sample(unserialized_sample)
