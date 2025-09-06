@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Move jupytext for notebooks and examples handling (unique source for both)
+- Move to jupytext for notebooks and examples handling (unique source for both)
 - Move to Muscat=2.5.0 (for tests and examples support)
 - Update repo configuration (actions: rely more on pypi dependencies, action versions)
 - Rename types to remove `Type` from name of types: https://github.com/PLAID-lib/plaid/pull/164
