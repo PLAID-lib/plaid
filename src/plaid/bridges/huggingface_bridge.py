@@ -6,7 +6,6 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-import os
 import pickle
 import shutil
 import sys
@@ -371,8 +370,9 @@ def huggingface_dataset_to_plaid(
 
         dataset.add_samples(samples, ids)
 
-        if os.path.exists("shards"):
-            shutil.rmtree("shards")
+        shards_dir = Path(".") / "shards"
+        if shards_dir.exists() and shards_dir.is_dir():
+            shutil.rmtree(shards_dir)
 
     else:
         if ids:
