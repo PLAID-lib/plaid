@@ -30,6 +30,7 @@
 # %%
 # Import required libraries
 from pathlib import Path
+import platform
 
 import numpy as np
 
@@ -376,8 +377,9 @@ print(f"{nb_samples = }")
 loaded_dataset_from_init = Dataset(tmpdir)
 print(f"{loaded_dataset_from_init = }")
 
-multi_process_loaded_dataset = Dataset(tmpdir, processes_number=3)
-print(f"{multi_process_loaded_dataset = }")
+if platform.system() == "Linux":
+    multi_process_loaded_dataset = Dataset(tmpdir, processes_number=3)
+    print(f"{multi_process_loaded_dataset = }")
 
 # %% [markdown]
 # ### Load a Dataset from a directory via the Dataset class
@@ -386,8 +388,9 @@ print(f"{multi_process_loaded_dataset = }")
 loaded_dataset_from_class = Dataset.load_from_dir(tmpdir)
 print(f"{loaded_dataset_from_class = }")
 
-multi_process_loaded_dataset = Dataset.load_from_dir(tmpdir, processes_number=3)
-print(f"{multi_process_loaded_dataset = }")
+if platform.system() == "Linux":
+    multi_process_loaded_dataset = Dataset.load_from_dir(tmpdir, processes_number=3)
+    print(f"{multi_process_loaded_dataset = }")
 
 # %% [markdown]
 # ### Load the dataset from a directory via a Dataset instance
@@ -398,9 +401,10 @@ loaded_dataset_from_instance._load_from_dir_(tmpdir)
 
 print(f"{loaded_dataset_from_instance = }")
 
-multi_process_loaded_dataset = Dataset()
-multi_process_loaded_dataset._load_from_dir_(tmpdir, processes_number=3)
-print(f"{multi_process_loaded_dataset = }")
+if platform.system() == "Linux":
+    multi_process_loaded_dataset = Dataset()
+    multi_process_loaded_dataset._load_from_dir_(tmpdir, processes_number=3)
+    print(f"{multi_process_loaded_dataset = }")
 
 # %% [markdown]
 # ### Save the dataset to a TAR (Tape Archive) file
