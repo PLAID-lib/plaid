@@ -1,14 +1,29 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
-# # Plaid Bisect Plot Use Case
+# # Bisect Plot Examples
 #
 # ## Introduction
-# This notebook explains the use case of the `plot_bisect` function from the Plaid library. The function is used to generate bisect plots for different scenarios using file paths and PLAID objects.
+# This notebook explains the use case of the `prepare_datasets`, and `plot_bisect` functions from the Plaid library. The function is used to generate bisect plots for different scenarios using file paths and PLAID objects.
 #
 
 # %%
 # Importing Required Libraries
 from pathlib import Path
-from typing import Union
+import os
 
 from plaid import Dataset
 from plaid.post.bisect import plot_bisect, prepare_datasets
@@ -16,26 +31,12 @@ from plaid import ProblemDefinition
 
 
 # %%
-def get_project_root(path: Union[str, Path], index: int=3) -> Path:
-    """Find the project root path.
-
-    Args:
-        path (Union[str, Path]): Current path of the notebook
-        index (int, optional): The number of parents to go back. Defaults to 3.
-
-    Returns:
-        Path: The project root path
-    """
-    path = Path(path)
-    if index == 0:
-        return path
-    return get_project_root(path.parent, index - 1)
-
-
 # Setting up Directories
-current_directory = Path.cwd()
-# dataset_directory = get_project_root(current_directory) / "tests" / "post"
-dataset_directory = get_project_root(current_directory, 1) / "tests" / "post"
+try:
+    dataset_directory = Path(__file__).parent.parent.parent / "tests" / "post"
+except NameError:
+    dataset_directory = Path("..") / ".." / ".." / ".." / "tests" / "post"
+
 # %% [markdown]
 # ## Prepare Datasets for comparision
 #
@@ -96,7 +97,7 @@ print("=== Plot with PLAID objects ===")
 
 # Load PLAID datasets and problem metadata objects
 ref_path = Dataset(dataset_directory / "dataset_ref")
-pred_path = Dataset(dataset_directory / "dataset_ref")
+pred_path = Dataset(dataset_directory / "dataset_pred")
 problem_path = ProblemDefinition(dataset_directory / "problem_definition")
 
 # Using PLAID objects to generate bisect plot on scalar_2
@@ -126,19 +127,6 @@ plot_bisect(
     verbose=True,
 )
 
-# %%
-# Move generated files to post/ directory
-import shutil
-
-shutil.move(
-    current_directory / "differ_bisect_plot.png",
-    current_directory / "post" / "differ_bisect_plot.png",
-)
-shutil.move(
-    current_directory / "equal_bisect_plot.png",
-    current_directory / "post" / "equal_bisect_plot.png",
-)
-shutil.move(
-    current_directory / "converge_bisect_plot.png",
-    current_directory / "post" / "converge_bisect_plot.png",
-)
+os.remove("converge_bisect_plot.png")
+os.remove("differ_bisect_plot.png")
+os.remove("equal_bisect_plot.png")

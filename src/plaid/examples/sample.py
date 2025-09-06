@@ -7,7 +7,7 @@
 #
 #
 from plaid import Sample
-from plaid.examples import datasets
+from plaid.examples.dataset import datasets
 from plaid.examples.config import _HF_REPOS
 
 

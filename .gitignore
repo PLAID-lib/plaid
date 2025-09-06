@@ -55,6 +55,7 @@ report.xml
 
 # Jupyter Notebook
 .ipynb_checkpoints
+.ipynb
 
 # VisualStudioCode
 .vscode/*
@@ -71,8 +72,7 @@ docs/_build/
 docs/api_reference/
 docs/autoapi/
 docs/_extra/
-docs/source/notebooks/*.png
-docs/source/notebooks/*.yaml
+docs/source/notebooks
 
 ###############################################################################
 # .gitignore PATTERN FORMAT:

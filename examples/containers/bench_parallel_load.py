@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# @author: Xavier Roynard (d606912)
-""" """
-
-# %% Imports
-
 import argparse
 import os
 import tempfile
@@ -19,11 +12,6 @@ from tqdm import tqdm
 from plaid import Dataset
 from plaid import Sample
 
-# %% Functions
-
-# %% Classes
-
-# %% Main Script
 if __name__ == "__main__":
     # ---# Input parameters
     parser = argparse.ArgumentParser(
@@ -130,3 +118,5 @@ if __name__ == "__main__":
         plt.savefig(
             f"bench_{args.number_of_samples}_{args.number_of_tests}_{NB_CORES}.png"
         )
+
+    os.remove("bench_100_5_2.png")

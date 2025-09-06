@@ -1,14 +1,29 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
-# # PLAID Metrics Use Case
+# # Metrics Examples
 #
 # ## Introduction
-# This notebook demonstrates the use case of the `compute_metrics` function from the PLAID library. The function is used to compute metrics for comparing reference and predicted datasets based on a given problem definition.
+# This notebook demonstrates the use case of the `prepare_datasets`, `compute_metrics`, and `pretty_metrics` functions from the PLAID library. The function is used to compute metrics for comparing reference and predicted datasets based on a given problem definition.
 #
 
 # %%
 # Importing Required Libraries
 from pathlib import Path
-from typing import Union
+import os
 
 from plaid import Dataset
 from plaid.post.metrics import compute_metrics, prepare_datasets, pretty_metrics
@@ -16,26 +31,11 @@ from plaid import ProblemDefinition
 
 
 # %%
-def get_project_root(path: Union[str, Path], index: int=3) -> Path:
-    """Find the project root path.
-
-    Args:
-        path (Union[str, Path]): Current path of the notebook
-        index (int, optional): The number of parents to go back. Defaults to 3.
-
-    Returns:
-        Path: The project root path
-    """
-    path = Path(path)
-    if index == 0:
-        return path
-    return get_project_root(path.parent, index - 1)
-
-
 # Setting up Directories
-current_directory = Path.cwd()
-# dataset_directory = get_project_root(current_directory) / "tests" / "post"
-dataset_directory = get_project_root(current_directory, 1) / "tests" / "post"
+try:
+    dataset_directory = Path(__file__).parent.parent.parent / "tests" / "post"
+except NameError:
+    dataset_directory = Path("..") / ".." / ".." / ".." / "tests" / "post"
 
 # %% [markdown]
 # ## Prepare Datasets for comparision
@@ -122,15 +122,5 @@ dictionary: dict = {
 
 pretty_metrics(dictionary)
 
-# %%
-# Move generated files to post/ directory
-import shutil
-
-shutil.move(
-    current_directory / "first_metrics.yaml",
-    current_directory / "post" / "first_metrics.yaml",
-)
-shutil.move(
-    current_directory / "second_metrics.yaml",
-    current_directory / "post" / "second_metrics.yaml",
-)
+os.remove("first_metrics.yaml")
+os.remove("second_metrics.yaml")

@@ -83,8 +83,8 @@ dev = [
     "sphinxcontrib.bibtex",
     "myst-nb",
     "myst-parser",
-    "nbconvert",
     "furo",
+    "jupytext",
 ]
 
 [tool.coverage.run]

@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Initializing a Dataset with Tabular Data
 #
@@ -58,7 +73,6 @@ print("Initialized Dataset: ", dataset)
 # Retrieve and print the dataset and specific samples
 sample_1 = dataset[1]
 print(f"{sample_1 = }")
-
 
 # %%
 # Access and display the value of a particular scalar within a sample
