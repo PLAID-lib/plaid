@@ -998,8 +998,11 @@ class Sample(BaseModel):
         time = self.get_time_assignment(time)
         base_name = self.get_base_assignment(base_name, time)
 
-        if (self._meshes is None) or (self._meshes[time] is None):
-            logger.warning(f"No base with name {base_name} and this tree")
+        if (self._meshes is None):
+            logger.warning("No mesh exists in the sample")
+            return None
+        if (self._meshes[time] is None):
+            logger.warning(f"No mesh exists in the sample at {time=}")
             return None
 
         return CGU.getNodeByPath(self._meshes[time], f"/CGNSTree/{base_name}")
@@ -1147,13 +1150,13 @@ class Sample(BaseModel):
         # get_base will look for default base_name and time
         base_node = self.get_base(base_name, time)
         if base_node is None:
-            logger.warning(f"No base with name {base_name} and this tree")
+            logger.warning(f"No base with name {base_name} in this tree")
             return None
 
         # _zone_attribution will look for default base_name
         zone_name = self.get_zone_assignment(zone_name, base_name, time)
         if zone_name is None:
-            logger.warning(f"No zone with name {zone_name} and this base ({base_name})")
+            logger.warning(f"No zone with name {zone_name} in this base ({base_name})")
             return None
 
         return CGU.getNodeByPath(base_node, zone_name)
@@ -1498,7 +1501,7 @@ class Sample(BaseModel):
 
         def get_field_names_one_base(base_name: str) -> list[str]:
             # get_zone will look for default zone_name, base_name, time
-            search_node = self.get_zone(zone_name, base_name, time)
+            search_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
             if search_node is None:  # pragma: no cover
                 return []
 
@@ -2401,60 +2404,43 @@ class Sample(BaseModel):
         summary += f"Meshes ({len(times)} timestamps):\n"
         if times:
             for time in times:
-                summary += f"  Time: {time}\n"
+                summary += f"    Time: {time}\n"
                 base_names = self.get_base_names(time=time)
                 for base_name in base_names:
-                    summary += f"    Base: {base_name}\n"
+                    summary += f"        Base: {base_name}\n"
                     zone_names = self.get_zone_names(base_name=base_name, time=time)
                     for zone_name in zone_names:
+                        summary += f"            Zone: {zone_name}\n"
                         # Nodes, nodal tags and fields at verticies
-                        nb_nodes = self.get_nodes(
-                            zone_name=zone_name, base_name=base_name, time=time
-                        ).shape[0]
-                        nodal_tags = self.get_nodal_tags(
+                        nodes = self.get_nodes(
                             zone_name=zone_name, base_name=base_name, time=time
                         )
-                        summary += f"        Nodes ({nb_nodes})\n"
-                        if len(nodal_tags) > 0:
-                            summary += f"          Tags ({len(nodal_tags)}): {', '.join([f'{k} ({len(v)})' for k, v in nodal_tags.items()])}\n"
-                        field_names = self.get_field_names(
-                            zone_name=zone_name,
-                            base_name=base_name,
-                            location="Vertex",
-                            time=time,
-                        )
-                        if field_names:
-                            summary += f"          Fields ({len(field_names)}): {', '.join(field_names)}\n"
+                        if nodes is not None:
+                            nb_nodes = nodes.shape[0]
+                            nodal_tags = self.get_nodal_tags(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                            summary += f"                Nodes ({nb_nodes})\n"
+                            if len(nodal_tags) > 0:
+                                summary += f"                Tags ({len(nodal_tags)}): {', '.join([f'{k} ({len(v)})' for k, v in nodal_tags.items()])}\n"
+
+                        for location in CGNS_FIELD_LOCATIONS:
+                            field_names = self.get_field_names(
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                location=location,
+                                time=time,
+                            )
+                            if field_names:
+                                summary += f"                Location: {location}\n                    Fields ({len(field_names)}): {', '.join(field_names)}\n"
 
                         # Elements and fields at elements
                         elements = self.get_elements(
                             zone_name=zone_name, base_name=base_name, time=time
                         )
-                        summary += f"        Elements ({sum([v.shape[0] for v in elements.values()])})"
+                        summary += f"                Elements ({sum([v.shape[0] for v in elements.values()])})\n"
                         if len(elements) > 0:
-                            summary += f"\n          {', '.join([f'{k} ({v.shape[0]})' for k, v in elements.items()])}\n"
-                        field_names = (
-                            self.get_field_names(
-                                zone_name=zone_name,
-                                base_name=base_name,
-                                location="EdgeCenter",
-                                time=time,
-                            )
-                            + self.get_field_names(
-                                zone_name=zone_name,
-                                base_name=base_name,
-                                location="FaceCenter",
-                                time=time,
-                            )
-                            + self.get_field_names(
-                                zone_name=zone_name,
-                                base_name=base_name,
-                                location="CellCenter",
-                                time=time,
-                            )
-                        )
-                        if field_names:
-                            summary += f"          Fields ({len(field_names)}): {', '.join(field_names)}\n"
+                            summary += f"                    {', '.join([f'{k} ({v.shape[0]})' for k, v in elements.items()])}\n"
 
         return summary
 
