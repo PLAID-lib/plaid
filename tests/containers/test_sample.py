@@ -96,14 +96,14 @@ def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
 
 
 @pytest.fixture()
-def sample_with_tree3d(sample, tree3d):
+def sample_with_tree3d(sample: Sample, tree3d):
     sample.add_tree(tree3d)
     return sample
 
 
 @pytest.fixture()
 def sample_with_tree_and_scalar_and_time_series(
-    sample_with_tree,
+    sample_with_tree: Sample,
 ):
     sample_with_tree.add_scalar("r", np.random.randn())
     sample_with_tree.add_scalar("test_scalar_1", np.random.randn())
@@ -111,6 +111,29 @@ def sample_with_tree_and_scalar_and_time_series(
         "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
     )
     return sample_with_tree
+
+
+@pytest.fixture()
+def full_sample(sample_with_tree_and_scalar_and_time_series: Sample, tree3d):
+    sample_with_tree_and_scalar_and_time_series.add_scalar("r", np.random.randn())
+    sample_with_tree_and_scalar_and_time_series.add_scalar(
+        "test_scalar_1", np.random.randn()
+    )
+    sample_with_tree_and_scalar_and_time_series.add_time_series(
+        "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
+    )
+    sample_with_tree_and_scalar_and_time_series.add_field(
+        "test_field_1", np.random.randn(5, 3), location="CellCenter"
+    )
+    sample_with_tree_and_scalar_and_time_series.init_zone(
+        zone_shape=np.array([5, 3]), zone_name="test_field_1"
+    )
+    sample_with_tree_and_scalar_and_time_series.init_base(
+        topological_dim=2, physical_dim=3, base_name="test_base_1"
+    )
+    sample_with_tree_and_scalar_and_time_series.init_tree(time=1.0)
+    sample_with_tree_and_scalar_and_time_series.add_tree(tree=tree3d)
+    return sample_with_tree_and_scalar_and_time_series
 
 
 # %% Test
@@ -750,6 +773,9 @@ class Test_Sample:
     def test_get_field_names(self, sample):
         assert sample.get_field_names() == []
         assert sample.get_field_names(location="CellCenter") == []
+
+    def test_get_field_names_full(self, full_sample):
+        full_sample.get_field_names()
 
     def test_get_field_empty(self, sample):
         assert sample.get_field("missing_field_name") is None
@@ -1392,6 +1418,9 @@ class Test_Sample:
         self, sample_with_tree_and_scalar_and_time_series
     ):
         print(sample_with_tree_and_scalar_and_time_series)
+
+    def test___repr__full_sample(self, full_sample):
+        print(full_sample)
 
     # -------------------------------------------------------------------------#
 
