@@ -130,7 +130,7 @@ class ProblemDefinition(object):
     # -------------------------------------------------------------------------#
 
     def get_split(
-        self, indices_name: str = None
+        self, indices_name: Optional[str] = None
     ) -> Union[IndexType, dict[str, IndexType]]:
         """Get the split indices. This function returns the split indices, either for a specific split with the provided `indices_name` or all split indices if `indices_name` is not specified.
 
