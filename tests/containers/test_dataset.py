@@ -858,6 +858,35 @@ class Test_Dataset:
         )
 
     # -------------------------------------------------------------------------#
+    def test_summarize_features(
+        self,
+        dataset_with_samples,
+        dataset_with_samples_with_tree,
+        empty_dataset,
+        heterogeneous_dataset,
+        scalar_dataset,
+    ):
+        dataset_with_samples.summarize_features()
+        dataset_with_samples_with_tree.summarize_features()
+        empty_dataset.summarize_features()
+        heterogeneous_dataset.summarize_features()
+        scalar_dataset.summarize_features()
+
+    def test_check_feature_completeness(
+        self,
+        dataset_with_samples,
+        dataset_with_samples_with_tree,
+        empty_dataset,
+        heterogeneous_dataset,
+        scalar_dataset,
+    ):
+        dataset_with_samples.check_feature_completeness()
+        dataset_with_samples_with_tree.check_feature_completeness()
+        empty_dataset.check_feature_completeness()
+        heterogeneous_dataset.check_feature_completeness()
+        scalar_dataset.check_feature_completeness()
+
+    # -------------------------------------------------------------------------#
 
     def test_from_list_of_samples_deprecated(self, samples):
         loaded_dataset = Dataset.from_list_of_samples(samples)
@@ -866,6 +895,12 @@ class Test_Dataset:
     def test_from_list_of_samples(self, samples):
         loaded_dataset = Dataset(samples=samples)
         assert len(loaded_dataset) == len(samples)
+
+    def test_from_list_of_samples_with_ids(self, samples):
+        ids = [10, 20, 30, 40]
+        loaded_dataset = Dataset(samples=samples, sample_ids=ids)
+        assert len(loaded_dataset) == len(samples)
+        assert loaded_dataset.get_sample_ids() == ids
 
     # -------------------------------------------------------------------------#
 

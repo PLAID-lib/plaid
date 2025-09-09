@@ -8,7 +8,7 @@
 #
 from plaid.containers.sample import Sample
 from plaid.examples import datasets
-from plaid.examples import _HF_REPOS
+from plaid.examples.config import _HF_REPOS
 
 
 class _LazySamples:

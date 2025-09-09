@@ -7,23 +7,18 @@
 #
 #
 
-_HF_REPOS = {
-'vki_ls59':'PLAID-datasets/VKI-LS59',
-'elastoplastodynamics':'PLAID-datasets/2D_ElastoPlastoDynamics',
-'multiscale_hyperelasticity':'PLAID-datasets/2D_Multiscale_Hyperelasticity',
-'tensile2d':'PLAID-datasets/Tensile2d',
-'rotor37':'PLAID-datasets/Rotor37',
-'profile2d':'PLAID-datasets/2D_profile',
-'airfrans_clipped':'PLAID-datasets/AirfRANS_clipped',
-'airfrans_original':'PLAID-datasets/AirfRANS_original',
-'airfrans_remeshed':'PLAID-datasets/AirfRANS_remeshed',
-}
-
+from plaid.examples.config import _HF_REPOS
 
 AVAILABLE_EXAMPLES = list(_HF_REPOS.keys())
 
+__all__ = ["datasets", "samples", "AVAILABLE_EXAMPLES"]
 
-from .dataset import datasets
-from .sample import samples
-
-__all__ = ["datasets", "samples"]
+# Lazy imports to avoid circular dependency
+def __getattr__(name):
+    if name == "datasets":
+        from plaid.examples.dataset import datasets
+        return datasets
+    if name == "samples":
+        from plaid.examples.sample import samples
+        return samples
+    raise AttributeError(f"module {__name__} has no attribute {name}")
