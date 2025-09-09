@@ -64,10 +64,10 @@ def test_get_2Darray_from_homogeneous_identifiers(
 
 
 def test_get_2Darray_from_homogeneous_identifiers_nodes(
-    dataset_with_samples_with_tree, dataset_with_samples_with_tree_nodes_feat_ids
+    dataset_with_samples_with_mesh, dataset_with_samples_with_mesh_nodes_feat_ids
 ):
     X = get_2Darray_from_homogeneous_identifiers(
-        dataset_with_samples_with_tree, dataset_with_samples_with_tree_nodes_feat_ids
+        dataset_with_samples_with_mesh, dataset_with_samples_with_mesh_nodes_feat_ids
     )
     assert X.shape == (4, 10)
 

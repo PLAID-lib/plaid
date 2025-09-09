@@ -55,20 +55,20 @@ def dataset_with_samples_time_series_feat_ids(dataset_with_samples):
 
 
 @pytest.fixture()
-def dataset_with_samples_with_tree_field_feat_ids(dataset_with_samples_with_tree):
+def dataset_with_samples_with_mesh_field_feat_ids(dataset_with_samples_with_mesh):
     return dataset_with_samples_with_tree.get_all_features_identifiers_by_type("field")
 
 
 @pytest.fixture()
-def dataset_with_samples_with_tree_1field_feat_ids(dataset_with_samples_with_tree):
+def dataset_with_samples_with_mesh_1field_feat_ids(dataset_with_samples_with_mesh):
     return [
         dataset_with_samples_with_tree.get_all_features_identifiers_by_type("field")[0]
     ]
 
 
 @pytest.fixture()
-def dataset_with_samples_with_tree_nodes_feat_ids(dataset_with_samples_with_tree):
-    return dataset_with_samples_with_tree.get_all_features_identifiers_by_type("nodes")
+def dataset_with_samples_with_mesh_nodes_feat_ids(dataset_with_samples_with_mesh):
+    return dataset_with_samples_with_mesh.get_all_features_identifiers_by_type("nodes")
 
 
 # ---------------------------------------------------------------------------------------

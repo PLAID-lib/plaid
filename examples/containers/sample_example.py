@@ -31,7 +31,7 @@ from plaid.utils import cgns_helper as CGH
 # Print Sample util
 def show_sample(sample: Sample):
     print(f"{sample = }")
-    sample.show_tree()
+    sample.show_mesh()
     print(f"{sample.get_scalar_names() = }")
     print(f"{sample.get_field_names() = }")
 
@@ -121,10 +121,10 @@ show_sample(sample)
 
 # %%
 # Add the previously created CGNS tree to the sample
-sample.add_tree(tree)
+sample.add_mesh(tree)
 
 # Display the Sample CGNS tree
-sample.show_tree()
+sample.show_mesh()
 
 # %% [markdown]
 # ### Set all meshes with their corresponding time step
@@ -140,7 +140,7 @@ meshes_dict = {0.0: tree, 0.5: tree, 1.0: tree}
 new_sample_mult_mesh.set_meshes(meshes_dict)
 
 print(f"{new_sample_mult_mesh.get_all_mesh_times() = }")
-# new_sample_mult_mesh.show_tree(1.)
+# new_sample_mult_mesh.show_mesh(1.)
 
 # %% [markdown]
 # ## Section 2: Accessing and Modifying Sample Data
@@ -264,7 +264,7 @@ print(f"{sample.get_vertices() = }")  # same as get_nodes
 tmp_sample = Sample()
 
 # Add the previously created CGNS tree in the Sample
-tmp_sample.add_tree(tree)
+tmp_sample.add_mesh(tree)
 
 print("element connectivity = \n", f"{tmp_sample.get_elements()}")
 
@@ -357,7 +357,7 @@ print(sample_mesh)
 print(f"{sample.get_all_mesh_times() = }")
 
 # Add one CGNS tree at time 1.
-sample.add_tree(tree, 1.0)
+sample.add_mesh(tree, 1.0)
 
 # After adding new tree
 print(f"{sample.get_all_mesh_times() = }")
@@ -399,11 +399,11 @@ sample.set_default_time(1.0)
 print(f"{sample.get_time_assignment() = }", end="\n\n")
 
 # Print the tree at time 1.0
-sample.show_tree()  # == sample.show_tree(1.0)
+sample.show_mesh()  # == sample.show_tree(1.0)
 
 # %%
 # If time is specified as an argument in a function, it takes precedence over the default time.
-sample.show_tree(0.0)  # Print the tree at time 0.0 even if default time is 1.0
+sample.show_mesh(0.0)  # Print the mesh at time 0.0 even if default time is 1.0
 
 # %% [markdown]
 # ### Set and use default base and time in a Sample

@@ -67,7 +67,7 @@ def sample_with_scalar(np_samples_3):
 def sample_with_field(np_samples_6):
     s = Sample()
     # 1. Initialize the CGNS tree
-    s.init_tree()
+    s.init_mesh()
     # 2. Create a base and a zone
     s.init_base(topological_dim=3, physical_dim=3)
     s.init_zone(zone_shape=np.array([np_samples_6.shape[0], 0, 0]))

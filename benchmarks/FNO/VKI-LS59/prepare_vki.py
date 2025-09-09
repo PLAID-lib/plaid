@@ -49,7 +49,7 @@ for sample_index in tqdm(range(nSamples)):
     tree = MeshToCGNS(rec_mesh)
 
     new_sample = Sample()
-    new_sample.add_tree(tree)
+    new_sample.add_mesh(tree)
 
     if sample_index in ids_train:
         scalar_names = in_scalars_names + out_scalars_names

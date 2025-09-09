@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move to Muscat=2.5.0 (for tests and examples support)
 - Update repo configuration (actions: rely more on pypi dependencies, action versions)
 - Rename types to remove `Type` from name of types: https://github.com/PLAID-lib/plaid/pull/164
+- Refactored all `tree` methods, fixtures, and examples to use `mesh` instead:
+  - Methods: `add_tree` → `add_mesh`, `del_tree` → `del_mesh`, `show_tree` → `show_mesh`,
+    `init_tree` → `init_mesh`, `link_tree` → `link_mesh`
+  - Fixtures: `sample_with_tree` → `sample_with_mesh`, `tree` → `mesh`, etc.
+  - Updated usage in tests, docs, examples, and benchmarks
+- Deprecated old `tree` methods for backward compatibility
+- Fixed `_links` and `_paths` initialization in `add_mesh` to prevent `KeyError`
 
 ### Fixes
 

@@ -132,30 +132,30 @@ def cell_center_field():
 
 
 @pytest.fixture()
-def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
+def mesh(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
     Mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
     Mesh.GetNodalTag("tag").AddToTag(nodal_tags)
     Mesh.nodeFields["test_node_field_1"] = vertex_field
     Mesh.nodeFields["big_node_field"] = np.random.randn(50)
     Mesh.elemFields["test_elem_field_1"] = cell_center_field
-    tree = MeshToCGNS(Mesh)
-    return tree
+    mesh = MeshToCGNS(Mesh)
+    return mesh
 
 
 @pytest.fixture()
-def sample_with_tree(tree: CGNSTree) -> Sample:
-    """Generate a Sample objects with a tree."""
+def sample_with_mesh(mesh: CGNSTree) -> Sample:
+    """Generate a Sample objects with a mesh."""
     sample = Sample()
-    sample.add_tree(tree)
+    sample.add_mesh(mesh)
     return sample
 
 
 @pytest.fixture()
-def samples_with_tree(nb_samples: int, sample_with_tree: Sample) -> list[Sample]:
-    """Generate a list of Sample objects with a tree."""
+def samples_with_mesh(nb_samples: int, sample_with_mesh: Sample) -> list[Sample]:
+    """Generate a list of Sample objects with a mesh."""
     sample_list = []
     for _ in range(nb_samples):
-        sample_list.append(copy.deepcopy(sample_with_tree))
+        sample_list.append(copy.deepcopy(sample_with_mesh))
     return sample_list
 
 
@@ -192,9 +192,9 @@ def dataset_with_samples(dataset, samples, infos):
 
 
 @pytest.fixture()
-def dataset_with_samples_with_tree(samples_with_tree, infos):
+def dataset_with_samples_with_mesh(samples_with_mesh, infos):
     dataset = Dataset()
-    dataset.add_samples(samples_with_tree)
+    dataset.add_samples(samples_with_mesh)
     dataset.set_infos(infos)
     return dataset
 
@@ -207,8 +207,8 @@ def other_dataset_with_samples(other_samples):
 
 
 @pytest.fixture()
-def heterogeneous_dataset(dataset_with_samples_with_tree):
-    dataset = dataset_with_samples_with_tree.copy()
+def heterogeneous_dataset(dataset_with_samples_with_mesh):
+    dataset = dataset_with_samples_with_mesh.copy()
     dataset.add_sample(Sample())
     sample_with_scalar = Sample()
     sample_with_scalar.add_scalar("scalar", 1.0)

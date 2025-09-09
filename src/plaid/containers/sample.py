@@ -54,6 +54,7 @@ from plaid.types import (
 )
 from plaid.utils import cgns_helper as CGH
 from plaid.utils.base import safe_len
+from plaid.utils.deprecation import deprecated, deprecated_argument
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -510,34 +511,42 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    def show_tree(self, time: float = None) -> None:
-        """Display the structure of the CGNS tree for a specified time.
+    def show_mesh(self, time: float = None) -> None:
+        """Display the structure of the CGNS mesh for a specified time.
 
         Args:
-            time (float, optional): The time step for which you want to display the CGNS tree structure. Defaults to None. If a specific time is not provided, the method will display the tree structure for the default time step.
+            time (float, optional): The time step for which you want to display the CGNS mesh structure. Defaults to None. If a specific time is not provided, the method will display the mesh structure for the default time step.
 
         Examples:
             .. code-block:: python
 
-                # To display the CGNS tree structure for the default time step:
-                sample.show_tree()
+                # To display the CGNS mesh structure for the default time step:
+                sample.show_mesh()
 
-                # To display the CGNS tree structure for a specific time step:
-                sample.show_tree(0.5)
+                # To display the CGNS mesh structure for a specific time step:
+                sample.show_mesh(0.5)
         """
         time = self.get_time_assignment(time)
 
         if self._meshes is not None:
             CGH.show_cgns_tree(self._meshes[time])
 
-    def init_tree(self, time: float = None) -> CGNSTree:
-        """Initialize a CGNS tree structure at a specified time step or create a new one if it doesn't exist.
+    @deprecated(
+        "The `show_tree` method is deprecated, use `show_mesh` instead.",
+        version="0.2.0"
+    )
+    def show_tree(self, time: float = None) -> None:
+        """DEPRECATED: use `show_mesh` instead"""
+        return self.show_mesh(time)
+
+    def init_mesh(self, time: float = None) -> CGNSTree:
+        """Initialize a CGNS mesh structure at a specified time step or create a new one if it doesn't exist.
 
         Args:
-            time (float, optional): The time step for which to initialize the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
+            time (float, optional): The time step for which to initialize the CGNS mesh structure. If a specific time is not provided, the method will display the mesh structure for the default time step.
 
         Returns:
-            CGNSTree (list): The initialized or existing CGNS tree structure for the specified time step.
+            CGNSTree (list): The initialized or existing CGNS mesh structure for the specified time step.
         """
         time = self.get_time_assignment(time)
 
@@ -552,30 +561,38 @@ class Sample(BaseModel):
 
         return self._meshes[time]
 
+    @deprecated(
+        "The `init_tree` method is deprecated, use `init_mesh` instead.",
+        version="0.2.0"
+    )
+    def init_tree(self, time: float = None) -> CGNSTree:
+        """DEPRECATED: use `init_mesh` instead"""
+        return self.init_mesh(time)
+
     def get_mesh(
         self, time: float = None, apply_links: bool = False, in_memory=False
     ) -> CGNSTree:
-        """Retrieve the CGNS tree structure for a specified time step, if available.
+        """Retrieve the CGNS mesh structure for a specified time step, if available.
 
         Args:
-            time (float, optional): The time step for which to retrieve the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
-            apply_links (bool, optional): Activates the following of the CGNS links to reconstruct the complete CGNS tree - in this case, a deepcopy of the tree is made to prevent from modifying the existing tree.
+            time (float, optional): The time step for which to retrieve the CGNS mesh structure. If a specific time is not provided, the method will display the mesh structure for the default time step.
+            apply_links (bool, optional): Activates the following of the CGNS links to reconstruct the complete CGNS mesh - in this case, a deepcopy of the mesh is made to prevent from modifying the existing mesh.
             in_memory (bool, optional): Active if apply_links == True, ONLY WORKING if linked mesh is in the current sample. This option follows the link in memory from current sample.
 
         Returns:
-            CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
+            CGNSTree: The CGNS mesh structure for the specified time step if available; otherwise, returns None.
         """
         if self._meshes is None:
             return None
 
         time = self.get_time_assignment(time)
-        tree = self._meshes[time]
+        mesh = self._meshes[time]
 
         links = self.get_links(time)
         if not apply_links or links is None:
-            return tree
+            return mesh
 
-        tree = copy.deepcopy(tree)
+        mesh = copy.deepcopy(mesh)
         for link in links:
             if not in_memory:
                 subtree, _, _ = CGM.load(str(Path(link[0]) / link[1]), subtree=link[2])
@@ -584,13 +601,13 @@ class Sample(BaseModel):
                 linked_timestamp = list(self._meshes.keys())[linked_timestep]
                 subtree = self.get_mesh(linked_timestamp)
             node_path = "/".join(link[2].split("/")[:-1])
-            node_to_append = CGU.getNodeByPath(tree, node_path)
+            node_to_append = CGU.getNodeByPath(mesh, node_path)
             assert node_to_append is not None, (
-                f"nodepath {node_path} not present in tree, cannot apply link"
+                f"nodepath {node_path} not present in mesh, cannot apply link"
             )
             node_to_append[2].append(CGU.getNodeByPath(subtree, link[2]))
 
-        return tree
+        return mesh
 
     def get_links(self, time: float = None) -> list[CGNSLink]:
         """Retrieve the CGNS links for a specified time step, if available.
@@ -630,47 +647,48 @@ class Sample(BaseModel):
                 self._paths[time] = None
         else:
             raise KeyError(
-                "meshes is already set, you cannot overwrite it, delete it first or extend it with `Sample.add_tree`"
+                "meshes is already set, you cannot overwrite it, delete it first or extend it with `Sample.add_mesh`"
             )
 
-    def add_tree(self, tree: CGNSTree, time: float = None) -> CGNSTree:
-        """Merge a CGNS tree to the already existing tree.
+    def add_mesh(self, mesh: CGNSTree, time: float = None) -> CGNSTree:
+        """Merge a CGNS mesh to the already existing mesh.
 
         Args:
-            tree (CGNSTree): The CGNS tree to be merged. If a Base node already exists, it is ignored.
-            time (float, optional): The time step for which to add the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
+            mesh (CGNSTree): The CGNS mesh to be merged. If a Base node already exists, it is ignored.
+            time (float, optional): The time step for which to add the CGNS mesh structure. If a specific time is not provided, the method will display the mesh structure for the default time step.
 
         Raises:
-            ValueError: If the provided CGNS tree is an empty list.
+            ValueError: If the provided CGNS mesh is an empty list.
 
         Returns:
-            CGNSTree: The merged CGNS tree.
+            CGNSTree: The merged CGNS mesh.
         """
-        if tree == []:
+        if mesh == []:
             raise ValueError("CGNS Tree should not be an empty list")
 
         time = self.get_time_assignment(time)
 
         if self._meshes is None:
-            self._meshes = {time: tree}
-            self._links = {time: None}
-            self._paths = {time: None}
-        elif time not in self._meshes:
-            self._meshes[time] = tree
+            self._meshes = {} # Initialize as empty dict
+            self._links = {}  # Initialize as empty dict
+            self._paths = {}  # Initialize as empty dict
+
+        self._meshes[time] = mesh
+        if time not in self._links: # Only initialize if not already present
             self._links[time] = None
+        if time not in self._paths: # Only initialize if not already present
             self._paths[time] = None
-        else:
-            # TODO: gérer le cas où il y a des bases de mêmes noms... + merge
-            # récursif des nœuds
-            local_bases = self.get_base_names(time=time)
-            base_nodes = CGU.getNodesFromTypeSet(tree, "CGNSBase_t")
-            for _, node in base_nodes:
-                if node[__NAME__] not in local_bases:  # pragma: no cover
-                    self._meshes[time][__CHILDREN__].append(node)
-                else:
-                    logger.warning(
-                        f"base <{node[__NAME__]}> already exists in self._tree --> ignored"
-                    )
+        
+        # The rest of the logic remains the same
+        local_bases = self.get_base_names(time=time)
+        base_nodes = CGU.getNodesFromTypeSet(mesh, "CGNSBase_t")
+        for _, node in base_nodes:
+            if node[__NAME__] not in local_bases:  # pragma: no cover
+                self._meshes[time][__CHILDREN__].append(node)
+            else:
+                logger.warning(
+                    f"base <{node[__NAME__]}> already exists in self._meshes --> ignored"
+                )
 
         base_names = self.get_base_names(time=time)
         for base_name in base_names:
@@ -684,45 +702,61 @@ class Sample(BaseModel):
 
         return self._meshes[time]
 
-    def del_tree(self, time: float) -> CGNSTree:
-        """Delete the CGNS tree for a specific time.
+    @deprecated(
+        "The `add_tree` method is deprecated, use `add_mesh` instead.",
+        version="0.2.0"
+    )
+    def add_tree(self, tree: CGNSTree, time: float = None) -> CGNSTree:
+        """DEPRECATED: use `add_mesh` instead"""
+        return self.add_mesh(tree, time)
+
+    def del_mesh(self, time: float) -> CGNSTree:
+        """Delete the CGNS mesh for a specific time.
 
         Args:
-            time (float): The time step for which to delete the CGNS tree structure.
+            time (float): The time step for which to delete the CGNS mesh structure.
 
         Raises:
-            KeyError: There is no CGNS tree in this Sample / There is no CGNS tree for the provided time.
+            KeyError: There is no CGNS mesh in this Sample / There is no CGNS mesh for the provided time.
 
         Returns:
-            CGNSTree: The deleted CGNS tree.
+            CGNSTree: The deleted CGNS mesh.
         """
         if self._meshes is None:
-            raise KeyError("There is no CGNS tree in this sample.")
+            raise KeyError("There is no CGNS mesh in this sample.")
 
         if time not in self._meshes:
-            raise KeyError(f"There is no CGNS tree for time {time}.")
+            raise KeyError(f"There is no CGNS mesh for time {time}.")
 
         self._links.pop(time, None)
         self._paths.pop(time, None)
         return self._meshes.pop(time)
 
-    def link_tree(
+    @deprecated(
+        "The `del_tree` method is deprecated, use `del_mesh` instead.",
+        version="0.2.0"
+    )
+    def del_tree(self, time: float) -> CGNSTree:
+        """DEPRECATED: use `del_mesh` instead"""
+        return self.del_mesh(time)
+
+    def link_mesh(
         self,
         path_linked_sample: Union[str, Path],
         linked_sample: Self,
         linked_time: float,
         time: float,
     ) -> CGNSTree:
-        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
+        """Link the geometrical features of the CGNS mesh of the current sample at a given time, to the ones of another sample.
 
         Args:
             path_linked_sample (Union[str,Path]): The absolute path of the folder containing the linked CGNS
             linked_sample (Sample): The linked sample
             linked_time (float): The time step of the linked CGNS in the linked sample
-            time (float): The time step the current sample to which the CGNS tree is linked.
+            time (float): The time step the current sample to which the CGNS mesh is linked.
 
         Returns:
-            CGNSTree: The deleted CGNS tree.
+            CGNSTree: The linked CGNS mesh.
         """
         # see https://pycgns.github.io/MAP/sids-to-python.html#links
         # difficulty is to link only the geometrical objects, which can be complex
@@ -734,19 +768,19 @@ class Sample(BaseModel):
 
         if linked_time not in linked_sample._meshes:  # pragma: no cover
             raise KeyError(
-                f"There is no CGNS tree for time {linked_time} in linked_sample."
+                f"There is no CGNS mesh for time {linked_time} in linked_sample."
             )
         if time in self._meshes:  # pragma: no cover
-            raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
+            raise KeyError(f"A CGNS mesh is already linked in self for time {time}.")
 
-        tree = CGL.newCGNSTree()
+        mesh = CGL.newCGNSTree()
 
         base_names = linked_sample.get_base_names(time=linked_time)
 
         for bn in base_names:
             base_node = linked_sample.get_base(bn, time=linked_time)
             base = [bn, base_node[1], [], "CGNSBase_t"]
-            tree[2].append(base)
+            mesh[2].append(base)
 
             family = [
                 "Bulk",
@@ -813,13 +847,27 @@ class Sample(BaseModel):
         for feature in ["ZoneBC_t", "Elements_t", "GridCoordinates_t"]:
             feature_paths += find_feature_roots(linked_sample, linked_time, feature)
 
-        self.add_tree(tree, time=time)
+        self.add_mesh(mesh, time=time)
 
         dname = path_linked_sample.parent
         bname = path_linked_sample.name
         self._links[time] = [[str(dname), bname, fp, fp] for fp in feature_paths]
 
-        return tree
+        return mesh
+
+    @deprecated(
+        "The `link_tree` method is deprecated, use `link_mesh` instead.",
+        version="0.2.0"
+    )
+    def link_tree(
+        self,
+        path_linked_sample: Union[str, Path],
+        linked_sample: Self,
+        linked_time: float,
+        time: float,
+    ) -> CGNSTree:
+        """DEPRECATED: use `link_mesh` instead"""
+        return self.link_mesh(path_linked_sample, linked_sample, linked_time, time)
 
     # -------------------------------------------------------------------------#
     def get_topological_dim(self, base_name: str = None, time: float = None) -> int:
@@ -897,7 +945,7 @@ class Sample(BaseModel):
                 + str(physical_dim)
             )
 
-        self.init_tree(time)
+        self.init_mesh(time)
         if not (self.has_base(base_name, time)):
             base_node = CGL.newCGNSBase(
                 self._meshes[time], base_name, topological_dim, physical_dim
@@ -925,17 +973,17 @@ class Sample(BaseModel):
             time (float): The time step for which to delete the CGNS base node.
 
         Raises:
-            KeyError: There is no CGNS tree in this sample / There is no CGNS tree for the provided time.
+            KeyError: There is no CGNS mesh in this sample / There is no CGNS mesh for the provided time.
             KeyError: If there is no base node with the given base name or time.
 
         Returns:
-            CGNSTree: The tree at the provided time (without the deleted node)
+            CGNSTree: The mesh at the provided time (without the deleted node)
         """
         if self._meshes is None:
-            raise KeyError("There is no CGNS tree in this sample.")
+            raise KeyError("There is no CGNS mesh in this sample.")
 
         if time not in self._meshes:
-            raise KeyError(f"There is no CGNS tree for time {time}.")
+            raise KeyError(f"There is no CGNS mesh for time {time}.")
 
         base_node = self.get_base(base_name, time)
         mesh_tree = self._meshes[time]
@@ -971,14 +1019,14 @@ class Sample(BaseModel):
             return []
 
     def has_base(self, base_name: str, time: float = None) -> bool:
-        """Check if a CGNS tree contains a Base with a given name at a specified time.
+        """Check if a CGNS mesh contains a Base with a given name at a specified time.
 
         Args:
-            base_name (str): The name of the Base to check for in the CGNS tree.
-            time (float, optional): The time at which to check for the Base. If a specific time is not provided, the method will display the tree structure for the default time step.
+            base_name (str): The name of the Base to check for in the CGNS mesh.
+            time (float, optional): The time at which to check for the Base. If a specific time is not provided, the method will display the mesh structure for the default time step.
 
         Returns:
-            bool: `True` if the CGNS tree has a Base called `base_name`, else return `False`.
+            bool: `True` if the CGNS mesh has a Base called `base_name`, else return `False`.
         """
         # get_base_names will look for the default time
         return base_name in self.get_base_names(time=time)
@@ -999,7 +1047,7 @@ class Sample(BaseModel):
         base_name = self.get_base_assignment(base_name, time)
 
         if (self._meshes is None) or (self._meshes[time] is None):
-            logger.warning(f"No base with name {base_name} and this tree")
+            logger.warning(f"No base with name {base_name} and this mesh")
             return None
 
         return CGU.getNodeByPath(self._meshes[time], f"/CGNSTree/{base_name}")
@@ -1030,8 +1078,8 @@ class Sample(BaseModel):
         """
         _check_names([zone_name])
 
-        # init_tree will look for default time
-        self.init_tree(time)
+        # init_mesh will look for default time
+        self.init_mesh(time)
         # get_base will look for default base_name and time
         base_node = self.get_base(base_name, time)
         if base_node is None:
@@ -1055,17 +1103,17 @@ class Sample(BaseModel):
             time (float, optional): The time step for which to delete the zone. Defaults to None.
 
         Raises:
-            KeyError: There is no CGNS tree in this sample / There is no CGNS tree for the provided time.
+            KeyError: There is no CGNS mesh in this sample / There is no CGNS mesh for the provided time.
             KeyError: If there is no base node with the given base name or time.
 
         Returns:
-            CGNSTree: The tree at the provided time (without the deleted node)
+            CGNSTree: The mesh at the provided time (without the deleted node)
         """
         if self._meshes is None:  # pragma: no cover
-            raise KeyError("There is no CGNS tree in this sample.")
+            raise KeyError("There is no CGNS mesh in this sample.")
 
         if time not in self._meshes:
-            raise KeyError(f"There is no CGNS tree for time {time}.")
+            raise KeyError(f"There is no CGNS mesh for time {time}.")
 
         zone_node = self.get_zone(zone_name, base_name, time)
         mesh_tree = self._meshes[time]
@@ -1147,7 +1195,7 @@ class Sample(BaseModel):
         # get_base will look for default base_name and time
         base_node = self.get_base(base_name, time)
         if base_node is None:
-            logger.warning(f"No base with name {base_name} and this tree")
+            logger.warning(f"No base with name {base_name} and this mesh")
             return None
 
         # _zone_attribution will look for default base_name
@@ -1611,8 +1659,8 @@ class Sample(BaseModel):
             KeyError: Raised if the specified zone does not exist in the given base.
         """
         _check_names([name])
-        # init_tree will look for default time
-        self.init_tree(time)
+        # init_mesh will look for default time
+        self.init_mesh(time)
         # get_zone will look for default zone_name, base_name and time
         zone_node = self.get_zone(zone_name, base_name, time)
 

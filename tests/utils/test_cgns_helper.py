@@ -19,8 +19,8 @@ from plaid.utils.cgns_helper import (
 
 # %% Tests
 class Test_cgns_helper:
-    def test_get_base_names(self, sample_with_tree):
-        tree = sample_with_tree.get_mesh()
+    def test_get_base_names(self, sample_with_mesh):
+        tree = sample_with_mesh.get_mesh()
         # Test with full_path=False and unique=False
         base_names = get_base_names(tree, full_path=False, unique=False)
         assert base_names == ["Base_2_2"]
@@ -35,8 +35,8 @@ class Test_cgns_helper:
         print(base_names_unique)
         assert base_names_unique == ["Base_2_2"]
 
-    def test_get_time_values(self, sample_with_tree):
-        tree = sample_with_tree.get_mesh()
+    def test_get_time_values(self, sample_with_mesh):
+        tree = sample_with_mesh.get_mesh()
         time_value = get_time_values(tree)
         assert time_value == 0.0
 
@@ -44,15 +44,15 @@ class Test_cgns_helper:
         with pytest.raises(IndexError):
             get_time_values(empty_tree)
 
-    def test_show_cgns_tree(self, tree):
-        show_cgns_tree(tree)
+    def test_show_cgns_tree(self, mesh):
+        show_cgns_tree(mesh)
 
     def test_show_cgns_tree_not_a_list(self):
         with pytest.raises(TypeError):
             show_cgns_tree({1: 2})
 
-    def test_summarize_cgns_tree(self, tree):
-        summarize_cgns_tree(tree, verbose=False)
+    def test_summarize_cgns_tree(self, mesh):
+        summarize_cgns_tree(mesh, verbose=False)
 
-    def test_summarize_cgns_tree_verbose(self, tree):
-        summarize_cgns_tree(tree, verbose=True)
+    def test_summarize_cgns_tree_verbose(self, mesh):
+        summarize_cgns_tree(mesh, verbose=True)
