@@ -533,11 +533,11 @@ class Sample(BaseModel):
 
     @deprecated(
         "The `show_tree` method is deprecated, use `show_mesh` instead.",
-        version="0.2.0"
+        version="0.2.0",
     )
     def show_tree(self, time: float = None) -> None:
         """DEPRECATED: use `show_mesh` instead."""
-        return self.show_mesh(time) # pragma: no cover
+        return self.show_mesh(time)  # pragma: no cover
 
     def init_mesh(self, time: float = None) -> CGNSTree:
         """Initialize a CGNS mesh structure at a specified time step or create a new one if it doesn't exist.
@@ -563,11 +563,11 @@ class Sample(BaseModel):
 
     @deprecated(
         "The `init_tree` method is deprecated, use `init_mesh` instead.",
-        version="0.2.0"
+        version="0.2.0",
     )
     def init_tree(self, time: float = None) -> CGNSTree:
         """DEPRECATED: use `init_mesh` instead."""
-        return self.init_mesh(time) # pragma: no cover
+        return self.init_mesh(time)  # pragma: no cover
 
     def get_mesh(
         self, time: float = None, apply_links: bool = False, in_memory=False
@@ -669,16 +669,16 @@ class Sample(BaseModel):
         time = self.get_time_assignment(time)
 
         if self._meshes is None:
-            self._meshes = {} # Initialize as empty dict
+            self._meshes = {}  # Initialize as empty dict
             self._links = {}  # Initialize as empty dict
             self._paths = {}  # Initialize as empty dict
 
         self._meshes[time] = mesh
-        if time not in self._links: # Only initialize if not already present
+        if time not in self._links:  # Only initialize if not already present
             self._links[time] = None
-        if time not in self._paths: # Only initialize if not already present
+        if time not in self._paths:  # Only initialize if not already present
             self._paths[time] = None
-                # The rest of the logic remains the same
+            # The rest of the logic remains the same
         local_bases = self.get_base_names(time=time)
         base_nodes = CGU.getNodesFromTypeSet(mesh, "CGNSBase_t")
         for _, node in base_nodes:
@@ -702,8 +702,7 @@ class Sample(BaseModel):
         return self._meshes[time]
 
     @deprecated(
-        "The `add_tree` method is deprecated, use `add_mesh` instead.",
-        version="0.2.0"
+        "The `add_tree` method is deprecated, use `add_mesh` instead.", version="0.2.0"
     )
     def add_tree(self, tree: CGNSTree, time: float = None) -> CGNSTree:
         """DEPRECATED: use `add_mesh` instead."""
@@ -732,12 +731,11 @@ class Sample(BaseModel):
         return self._meshes.pop(time)
 
     @deprecated(
-        "The `del_tree` method is deprecated, use `del_mesh` instead.",
-        version="0.2.0"
+        "The `del_tree` method is deprecated, use `del_mesh` instead.", version="0.2.0"
     )
     def del_tree(self, time: float) -> CGNSTree:
         """DEPRECATED: use `del_mesh` instead."""
-        return self.del_mesh(time) # pragma: no cover
+        return self.del_mesh(time)  # pragma: no cover
 
     def link_mesh(
         self,
@@ -856,7 +854,7 @@ class Sample(BaseModel):
 
     @deprecated(
         "The `link_tree` method is deprecated, use `link_mesh` instead.",
-        version="0.2.0"
+        version="0.2.0",
     )
     def link_tree(
         self,
@@ -866,7 +864,9 @@ class Sample(BaseModel):
         time: float,
     ) -> CGNSTree:
         """DEPRECATED: use `link_mesh` instead."""
-        return self.link_mesh(path_linked_sample, linked_sample, linked_time, time) # pragma: no cover
+        return self.link_mesh(
+            path_linked_sample, linked_sample, linked_time, time
+        )  # pragma: no cover
 
     # -------------------------------------------------------------------------#
     def get_topological_dim(self, base_name: str = None, time: float = None) -> int:
