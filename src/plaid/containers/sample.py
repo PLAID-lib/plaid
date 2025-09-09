@@ -54,7 +54,7 @@ from plaid.types import (
 )
 from plaid.utils import cgns_helper as CGH
 from plaid.utils.base import safe_len
-from plaid.utils.deprecation import deprecated, deprecated_argument
+from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -536,8 +536,8 @@ class Sample(BaseModel):
         version="0.2.0"
     )
     def show_tree(self, time: float = None) -> None:
-        """DEPRECATED: use `show_mesh` instead"""
-        return self.show_mesh(time)
+        """DEPRECATED: use `show_mesh` instead."""
+        return self.show_mesh(time) # pragma: no cover
 
     def init_mesh(self, time: float = None) -> CGNSTree:
         """Initialize a CGNS mesh structure at a specified time step or create a new one if it doesn't exist.
@@ -566,8 +566,8 @@ class Sample(BaseModel):
         version="0.2.0"
     )
     def init_tree(self, time: float = None) -> CGNSTree:
-        """DEPRECATED: use `init_mesh` instead"""
-        return self.init_mesh(time)
+        """DEPRECATED: use `init_mesh` instead."""
+        return self.init_mesh(time) # pragma: no cover
 
     def get_mesh(
         self, time: float = None, apply_links: bool = False, in_memory=False
@@ -678,8 +678,7 @@ class Sample(BaseModel):
             self._links[time] = None
         if time not in self._paths: # Only initialize if not already present
             self._paths[time] = None
-        
-        # The rest of the logic remains the same
+                # The rest of the logic remains the same
         local_bases = self.get_base_names(time=time)
         base_nodes = CGU.getNodesFromTypeSet(mesh, "CGNSBase_t")
         for _, node in base_nodes:
@@ -707,7 +706,7 @@ class Sample(BaseModel):
         version="0.2.0"
     )
     def add_tree(self, tree: CGNSTree, time: float = None) -> CGNSTree:
-        """DEPRECATED: use `add_mesh` instead"""
+        """DEPRECATED: use `add_mesh` instead."""
         return self.add_mesh(tree, time)
 
     def del_mesh(self, time: float) -> CGNSTree:
@@ -737,8 +736,8 @@ class Sample(BaseModel):
         version="0.2.0"
     )
     def del_tree(self, time: float) -> CGNSTree:
-        """DEPRECATED: use `del_mesh` instead"""
-        return self.del_mesh(time)
+        """DEPRECATED: use `del_mesh` instead."""
+        return self.del_mesh(time) # pragma: no cover
 
     def link_mesh(
         self,
@@ -866,8 +865,8 @@ class Sample(BaseModel):
         linked_time: float,
         time: float,
     ) -> CGNSTree:
-        """DEPRECATED: use `link_mesh` instead"""
-        return self.link_mesh(path_linked_sample, linked_sample, linked_time, time)
+        """DEPRECATED: use `link_mesh` instead."""
+        return self.link_mesh(path_linked_sample, linked_sample, linked_time, time) # pragma: no cover
 
     # -------------------------------------------------------------------------#
     def get_topological_dim(self, base_name: str = None, time: float = None) -> int:

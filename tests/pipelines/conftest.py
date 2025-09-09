@@ -56,13 +56,13 @@ def dataset_with_samples_time_series_feat_ids(dataset_with_samples):
 
 @pytest.fixture()
 def dataset_with_samples_with_mesh_field_feat_ids(dataset_with_samples_with_mesh):
-    return dataset_with_samples_with_tree.get_all_features_identifiers_by_type("field")
+    return dataset_with_samples_with_mesh.get_all_features_identifiers_by_type("field")
 
 
 @pytest.fixture()
 def dataset_with_samples_with_mesh_1field_feat_ids(dataset_with_samples_with_mesh):
     return [
-        dataset_with_samples_with_tree.get_all_features_identifiers_by_type("field")[0]
+        dataset_with_samples_with_mesh.get_all_features_identifiers_by_type("field")[0]
     ]
 
 
