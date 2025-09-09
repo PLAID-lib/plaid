@@ -131,8 +131,8 @@ class Dataset(object):
         # info_name -> description
         self._infos: dict[str, dict[str, str]] = {}
 
-        if samples is not None and directory_path is not None:
-            raise ValueError("'samples' and 'directory_path' are mutually exclusive")
+        if samples is not None and (directory_path is not None or path is not None):
+            raise ValueError("'samples' and 'path' are mutually exclusive")
 
         if directory_path is not None:
             if path is not None:
