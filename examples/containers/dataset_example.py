@@ -24,8 +24,8 @@ from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
 import plaid
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
+from plaid import Dataset
+from plaid import Sample
 
 
 # %%

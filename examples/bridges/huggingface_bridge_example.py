@@ -6,9 +6,9 @@ from Muscat.MeshTools import MeshCreationTools as MCT
 from tqdm import tqdm
 
 from plaid.bridges import huggingface_bridge
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
-from plaid.problem_definition import ProblemDefinition
+from plaid import Dataset
+from plaid import Sample
+from plaid import ProblemDefinition
 from plaid.utils.split import split_dataset
 
 ##############################################

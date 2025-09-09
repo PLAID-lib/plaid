@@ -1,4 +1,10 @@
 task: regression
+input_features:
+  - name: feature_1
+    type: scalar
+output_features:
+  - name: feature_2
+    type: scalar
 input_scalars:
 - scalar_1
 output_scalars:

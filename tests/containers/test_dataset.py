@@ -16,7 +16,7 @@ import pytest
 import plaid
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
-from plaid.utils.base import ShapeError
+from plaid.utils.base import DeprecatedError, ShapeError
 
 # %% Fixtures
 
@@ -78,6 +78,19 @@ class Test_Dataset:
         dataset_path = current_directory / "bad_dataset_test"
         with pytest.raises(FileNotFoundError):
             Dataset(dataset_path)
+
+    def test__init__path(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        Dataset(path=dataset_path)
+
+    def test__init__directory_path(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        Dataset(directory_path=dataset_path)
+
+    def test__init__both_path_and_directory_path(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        with pytest.raises(ValueError):
+            Dataset(path=dataset_path, directory_path=dataset_path)
 
     # -------------------------------------------------------------------------#
     def test_get_samples(self, dataset_with_samples, nb_samples):
@@ -1001,6 +1014,21 @@ class Test_Dataset:
         captured = capsys.readouterr()
         assert "Saving database to" in captured.out
 
+    def test__add_to_dir__path(self, empty_dataset, sample, current_directory):
+        save_dir = current_directory / "my_dataset_dir"
+        empty_dataset.add_to_dir(sample, path=save_dir)
+
+    def test__add_to_dir__save_dir(self, empty_dataset, sample, current_directory):
+        save_dir = current_directory / "my_dataset_dir"
+        empty_dataset.add_to_dir(sample, save_dir=save_dir)
+
+    def test__add_to_dir__both_path_and_save_dir(
+        self, empty_dataset, sample, current_directory
+    ):
+        save_dir = current_directory / "my_dataset_dir"
+        with pytest.raises(ValueError):
+            empty_dataset.add_to_dir(sample, path=save_dir, save_dir=save_dir)
+
     # -------------------------------------------------------------------------#
     def test__save_to_dir_(self, dataset_with_samples, tmp_path):
         savedir = tmp_path / "testdir"
@@ -1022,6 +1050,11 @@ class Test_Dataset:
         new_dataset = Dataset()
         new_dataset._load_from_dir_(savedir, [1, 2])
         assert len(new_dataset) == 2
+
+    # -------------------------------------------------------------------------#
+    def test__load_number_of_samples_(self, tmp_path):
+        with pytest.raises(DeprecatedError):
+            Dataset._load_number_of_samples_(tmp_path)
 
     # -------------------------------------------------------------------------#
     def test_set_samples(self, dataset, samples):

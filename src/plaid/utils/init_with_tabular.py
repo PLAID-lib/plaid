@@ -13,8 +13,7 @@ import logging
 
 import numpy as np
 
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
+from plaid import Dataset, Sample
 
 # from plaid.quantity import QuantityValueType
 

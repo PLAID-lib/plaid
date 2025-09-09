@@ -7,8 +7,8 @@ from Muscat.Containers import MeshModificationTools as MMT
 from Muscat.Containers.Filters import FilterObjects as FO
 from torch_geometric.data import Data
 
-from plaid.containers.sample import Sample
-from plaid.problem_definition import ProblemDefinition
+from plaid import Sample
+from plaid import ProblemDefinition
 from src.data.loader.bridges.multiscale_sample_to_geometric import get_distance_to_ids
 from src.data.loader.bridges.utils import faces_to_edges
 
@@ -23,7 +23,7 @@ def elasto_plasto_dynamics_sample_to_geometric(
     """Converts a Plaid sample to PytorchGeometric Data object.
 
     Args:
-        sample (plaid.containers.sample.Sample): data sample
+        sample (plaid.Sample): data sample
 
     Returns:
         Data: the converted data sample

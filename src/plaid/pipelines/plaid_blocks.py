@@ -28,7 +28,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
 
-from plaid.containers.dataset import Dataset
+from plaid import Dataset
 from plaid.containers.utils import has_duplicates_feature_ids
 
 

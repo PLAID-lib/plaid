@@ -141,6 +141,7 @@ class Sample(BaseModel):
 
     def __init__(
         self,
+        path: Optional[Union[str, Path]] = None,
         directory_path: Optional[Union[str, Path]] = None,
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
@@ -153,7 +154,8 @@ class Sample(BaseModel):
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
         Args:
-            directory_path (Union[str, Path], optional): The path from which to load PLAID sample files.
+            path (Union[str,Path], optional): The path from which to load PLAID sample files.
+            directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
             mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
             mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
             meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
@@ -165,7 +167,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
 
                 # 1. Create empty instance of Sample
                 sample = Sample()
@@ -193,8 +195,19 @@ class Sample(BaseModel):
         self._paths: Optional[dict[float, list[CGNSPath]]] = paths
 
         if directory_path is not None:
-            directory_path = Path(directory_path)
-            self.load(directory_path)
+            if path is not None:
+                raise ValueError(
+                    "Arguments `path` and `directory_path` cannot be both set. Use only `path` as `directory_path` is deprecated."
+                )
+            else:
+                path = directory_path
+                logger.warning(
+                    "DeprecationWarning: 'directory_path' is deprecated, use 'path' instead."
+                )
+
+        if path is not None:
+            path = Path(path)
+            self.load(path)
 
         self._defaults: dict[str, Optional[str]] = {
             "active_base": None,
@@ -278,7 +291,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -330,7 +343,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -379,7 +392,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -703,7 +716,7 @@ class Sample(BaseModel):
         """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
 
         Args:
-            path_linked_sample (Union[str, Path]): The absolute path of the folder containing the linked CGNS
+            path_linked_sample (Union[str,Path]): The absolute path of the folder containing the linked CGNS
             linked_sample (Sample): The linked sample
             linked_time (float): The time step of the linked CGNS in the linked sample
             time (float): The time step the current sample to which the CGNS tree is linked.
@@ -1210,7 +1223,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample.add_time_series('stuff', np.arange(2), np.random.randn(2))
                 print(sample.get_time_series('stuff'))
                 >>> (array([0, 1]), array([-0.59630135, -1.15572306]))
@@ -2110,27 +2123,27 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    def save(self, dir_path: Union[str, Path], overwrite: bool = False) -> None:
-        """Save the Sample in directory `dir_path`.
+    def save(self, path: Union[str, Path], overwrite: bool = False) -> None:
+        """Save the Sample in directory `path`.
 
         Args:
-            dir_path (Union[str,Path]): relative or absolute directory path.
+            path (Union[str,Path]): relative or absolute directory path.
             overwrite (bool): target directory overwritten if True.
         """
-        dir_path = Path(dir_path)
+        path = Path(path)
 
-        if dir_path.is_dir():
+        if path.is_dir():
             if overwrite:
-                shutil.rmtree(dir_path)
-                logger.warning(f"Existing {dir_path} directory has been reset.")
-            elif len(list(dir_path.glob("*"))):
+                shutil.rmtree(path)
+                logger.warning(f"Existing {path} directory has been reset.")
+            elif len(list(path.glob("*"))):
                 raise ValueError(
-                    f"directory {dir_path} already exists and is not empty. Set `overwrite` to True if needed."
+                    f"directory {path} already exists and is not empty. Set `overwrite` to True if needed."
                 )
 
-        dir_path.mkdir(exist_ok=True)
+        path.mkdir(exist_ok=True)
 
-        mesh_dir = dir_path / "meshes"
+        mesh_dir = path / "meshes"
 
         if self._meshes is not None:
             mesh_dir.mkdir()
@@ -2149,7 +2162,7 @@ class Sample(BaseModel):
             scalars = np.array(scalars).reshape((1, -1))
             header = ",".join(scalars_names)
             np.savetxt(
-                dir_path / "scalars.csv",
+                path / "scalars.csv",
                 scalars,
                 header=header,
                 delimiter=",",
@@ -2163,7 +2176,7 @@ class Sample(BaseModel):
                 data = np.vstack((ts[0], ts[1])).T
                 header = ",".join(["t", ts_name])
                 np.savetxt(
-                    dir_path / f"time_series_{ts_name}.csv",
+                    path / f"time_series_{ts_name}.csv",
                     data,
                     header=header,
                     delimiter=",",
@@ -2171,13 +2184,13 @@ class Sample(BaseModel):
                 )
 
     @classmethod
-    def load_from_dir(cls, dir_path: Union[str, Path]) -> Self:
-        """Load the Sample from directory `dir_path`.
+    def load_from_dir(cls, path: Union[str, Path]) -> Self:
+        """Load the Sample from directory `path`.
 
         This is a class method, you don't need to instantiate a `Sample` first.
 
         Args:
-            dir_path (Union[str,Path]): Relative or absolute directory path.
+            path (Union[str,Path]): Relative or absolute directory path.
 
         Returns:
             Sample
@@ -2185,7 +2198,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample.load_from_dir(dir_path)
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -2193,16 +2206,16 @@ class Sample(BaseModel):
         Note:
             It calls 'load' function during execution.
         """
-        dir_path = Path(dir_path)
+        path = Path(path)
         instance = cls()
-        instance.load(dir_path)
+        instance.load(path)
         return instance
 
-    def load(self, dir_path: Union[str, Path]) -> None:
-        """Load the Sample from directory `dir_path`.
+    def load(self, path: Union[str, Path]) -> None:
+        """Load the Sample from directory `path`.
 
         Args:
-            dir_path (Union[str,Path]): Relative or absolute directory path.
+            path (Union[str,Path]): Relative or absolute directory path.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
@@ -2211,22 +2224,22 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample()
-                sample.load(dir_path)
+                sample.load(path)
                 print(sample)
                 >>> Sample(3 scalars, 1 timestamp, 3 fields)
 
         """
-        dir_path = Path(dir_path)
+        path = Path(path)
 
-        if not dir_path.exists():
-            raise FileNotFoundError(f'Directory "{dir_path}" does not exist. Abort')
+        if not path.exists():
+            raise FileNotFoundError(f'Directory "{path}" does not exist. Abort')
 
-        if not dir_path.is_dir():
-            raise FileExistsError(f'"{dir_path}" is not a directory. Abort')
+        if not path.is_dir():
+            raise FileExistsError(f'"{path}" is not a directory. Abort')
 
-        meshes_dir = dir_path / "meshes"
+        meshes_dir = path / "meshes"
         if meshes_dir.is_dir():
             meshes_names = list(meshes_dir.glob("*"))
             nb_meshes = len(meshes_names)
@@ -2245,7 +2258,7 @@ class Sample(BaseModel):
                 for i in range(len(self._links[time])):  # pragma: no cover
                     self._links[time][i][0] = str(meshes_dir / self._links[time][i][0])
 
-        scalars_fname = dir_path / "scalars.csv"
+        scalars_fname = path / "scalars.csv"
         if scalars_fname.is_file():
             names = np.loadtxt(
                 scalars_fname, dtype=str, max_rows=1, delimiter=","
@@ -2256,7 +2269,7 @@ class Sample(BaseModel):
             for name, value in zip(names, scalars):
                 self.add_scalar(name, value)
 
-        time_series_files = list(dir_path.glob("time_series_*.csv"))
+        time_series_files = list(path.glob("time_series_*.csv"))
         for ts_fname in time_series_files:
             names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
                 (-1,)
