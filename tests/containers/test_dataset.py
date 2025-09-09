@@ -909,17 +909,17 @@ class Test_Dataset:
         loaded_dataset = Dataset(samples=samples)
         assert len(loaded_dataset) == len(samples)
 
-    #    def test_from_list_of_samples_with_ids(self, samples):
-    #        ids = [10, 20, 30, 40]
-    #        loaded_dataset = Dataset(samples=samples, sample_ids=ids)
-    #        assert len(loaded_dataset) == len(samples)
-    #        assert loaded_dataset.get_sample_ids() == ids
+    def test_from_list_of_samples_with_ids(self, samples):
+        ids = [10, 20, 30, 40]
+        loaded_dataset = Dataset(samples=samples, sample_ids=ids)
+        assert len(loaded_dataset) == len(samples)
+        assert loaded_dataset.get_sample_ids() == ids
 
-    #    def test_from_list_of_samples_and_path(self, samples, tmp_path):
-    #        # Expects an error since path and samples are provided
-    #        fname = tmp_path / "test.plaid"
-    #        with pytest.raises(ValueError):
-    #            Dataset(samples=samples, path=str(fname))
+    def test_from_list_of_samples_and_path(self, samples, tmp_path):
+        # Expects an error since path and samples are provided
+        fname = tmp_path / "test.plaid"
+        with pytest.raises(ValueError):
+            Dataset(samples=samples, path=str(fname))
 
     # -------------------------------------------------------------------------#
 
