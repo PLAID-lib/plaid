@@ -84,7 +84,7 @@ for sample_index in tqdm(range(len(ids_train)+len(ids_test))):
 
     new_sample=Sample()
     tree = MeshToCGNS(ref_mesh)
-    new_sample.add_mesh(tree)
+    new_sample.add_tree(tree)
 
 
     if sample_index in ids_train:

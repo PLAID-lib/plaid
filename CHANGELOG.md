@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Methods: `add_tree` → `add_mesh`, `del_tree` → `del_mesh`, `show_tree` → `show_mesh`,
     `init_tree` → `init_mesh`, `link_tree` → `link_mesh`
   - Fixtures: `sample_with_tree` → `sample_with_mesh`, `tree` → `mesh`, etc.
-  - Updated usage in tests, docs, examples, and benchmarks
+  - Updated usage in tests, docs and examples
 - Deprecated old `tree` methods for backward compatibility
 - Fixed `_links` and `_paths` initialization in `add_mesh` to prevent `KeyError`
 

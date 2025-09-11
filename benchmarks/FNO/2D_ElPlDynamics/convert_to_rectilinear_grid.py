@@ -72,7 +72,7 @@ for sample_index in range(1000):
     # Building a new sample
     new_sample = Sample()
     tree = MeshToCGNS(ref_mesh)
-    new_sample.add_mesh(tree, time=0)
+    new_sample.add_tree(tree, time=0)
 
     ux = sample.get_field(name="U_x", zone_name="Zone",
                           base_name="Base_2_3", time=0)
@@ -128,7 +128,7 @@ for sample_index in range(1000):
         uy = old_mesh.nodeFields["U_y"]
         path_linked_sample = os.path.join(
             rect_dataset_path, f"dataset/samples/sample_{sample_index:09d}/meshes/mesh_{0:09d}.cgns")
-        new_sample.link_mesh(
+        new_sample.link_tree(
             path_linked_sample,
             linked_sample=new_sample,
             linked_time=0,

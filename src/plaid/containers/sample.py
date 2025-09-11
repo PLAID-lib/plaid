@@ -533,7 +533,8 @@ class Sample(BaseModel):
 
     @deprecated(
         "The `show_tree` method is deprecated, use `show_mesh` instead.",
-        version="0.2.0",
+        version="0.1.8",
+        removal="0.2",
     )
     def show_tree(self, time: float = None) -> None:
         """DEPRECATED: use `show_mesh` instead."""
@@ -563,7 +564,8 @@ class Sample(BaseModel):
 
     @deprecated(
         "The `init_tree` method is deprecated, use `init_mesh` instead.",
-        version="0.2.0",
+        version="0.1.8",
+        removal="0.2",
     )
     def init_tree(self, time: float = None) -> CGNSTree:
         """DEPRECATED: use `init_mesh` instead."""
@@ -702,7 +704,9 @@ class Sample(BaseModel):
         return self._meshes[time]
 
     @deprecated(
-        "The `add_tree` method is deprecated, use `add_mesh` instead.", version="0.2.0"
+        "The `add_tree` method is deprecated, use `add_mesh` instead.",
+        version="0.1.8",
+        removal="0.2",
     )
     def add_tree(self, tree: CGNSTree, time: float = None) -> CGNSTree:
         """DEPRECATED: use `add_mesh` instead."""
@@ -731,7 +735,9 @@ class Sample(BaseModel):
         return self._meshes.pop(time)
 
     @deprecated(
-        "The `del_tree` method is deprecated, use `del_mesh` instead.", version="0.2.0"
+        "The `del_tree` method is deprecated, use `del_mesh` instead.",
+        version="0.1.8",
+        removal="0.2",
     )
     def del_tree(self, time: float) -> CGNSTree:
         """DEPRECATED: use `del_mesh` instead."""
@@ -854,7 +860,8 @@ class Sample(BaseModel):
 
     @deprecated(
         "The `link_tree` method is deprecated, use `link_mesh` instead.",
-        version="0.2.0",
+        version="0.1.8",
+        removal="0.2",
     )
     def link_tree(
         self,
