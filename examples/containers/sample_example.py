@@ -41,9 +41,6 @@ from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
 from plaid import Sample
-### The 2 following commented lines are equivalent to the one above
-# from plaid.containers import Sample
-# from plaid import Sample
 from plaid.utils import cgns_helper as CGH
 
 

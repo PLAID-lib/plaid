@@ -42,9 +42,6 @@ from Muscat.MeshTools import MeshCreationTools as MCT
 
 import plaid
 from plaid import Dataset
-### The 2 following commented lines are equivalent to the one above
-# from plaid.containers import Dataset
-# from plaid import Dataset
 from plaid import Sample
 
 
