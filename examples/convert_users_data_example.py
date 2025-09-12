@@ -1,21 +1,44 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
-# # Example for converting user data into PLAID
+# # Example of converting user data into PLAID
 #
 # This code provides an example for converting user data into the PLAID (Physics Informed AI Datamodel) format.
 
 # %%
+from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
-from tqdm import tqdm
 
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
+from plaid import Dataset
+from plaid import Sample
 
 # %% [markdown]
 # ## Construction stages
-# ![Alt text](to_plaid.png)
+
+# %%
+from IPython.display import Image
+try:
+    filename = Path(__file__).parent.parent / "docs" / "source" / "images" / "to_plaid.png"
+except NameError:
+    filename = Path("..") / "images" / "to_plaid.png"
+Image(filename=filename)
+
 
 # %% [markdown]
 # ## Define a 3D Mesh
@@ -44,12 +67,22 @@ triangles = np.array(
     ]
 )
 
+print(f"nb nodes: {len(nodes_3D)}")
+print(f"nb triangles: {len(triangles)}")
+
 # %% [markdown]
 # ### Visualize the Mesh
 #
 # Create a 3D plot to visualize the mesh.
 
 # %%
+def in_notebook():
+    try:
+        from IPython import get_ipython
+        return 'IPKernelApp' in get_ipython().config
+    except Exception:
+        return False
+
 # Create a 3D plot
 fig = plt.figure()
 ax = fig.add_subplot(111, projection="3d")
@@ -66,7 +99,8 @@ ax.set_ylabel("Y")
 ax.set_zlabel("Z")
 
 # Show the plot
-# plt.show()
+if in_notebook():
+    plt.show()
 
 # %% [markdown]
 # ## Create Meshes Dataset from external data
@@ -74,12 +108,11 @@ ax.set_zlabel("Z")
 # Generates a dataset (python list) of 3D meshes with random fields defined over nodes and elements
 
 # %%
-
 nb_meshes = 5000
 meshes = []
 
 print("Creating meshes dataset...")
-for _ in tqdm(range(nb_meshes)):
+for _ in range(nb_meshes):
     """Create a Unstructured mesh using only points
     and the connectivity matrix for the triangles.
     Nodes id are given by there position in the list
@@ -98,15 +131,19 @@ for _ in tqdm(range(nb_meshes)):
 
     meshes.append(Mesh)
 
+print(f"{len(meshes) = }")
+
 # %% [markdown]
 # ## Convert to CGNS meshes
 
 # %%
 CGNS_meshes = []
-for mesh in tqdm(meshes):
+for mesh in meshes:
     # Converts a Mesh (muscat mesh following vtk conventions) to a CGNS Mesh
     CGNS_tree = MeshToCGNS(mesh)
     CGNS_meshes.append(CGNS_tree)
+
+print(f"{len(CGNS_meshes) = }")
 
 # %% [markdown]
 # ## Create PLAID Samples from CGNS meshes
@@ -117,7 +154,7 @@ out_scalars_names = ["max_von_mises", "max_q", "max_U2_top", "max_sig22_top"]
 out_fields_names = ["U1", "U2", "q", "sig11", "sig22", "sig12"]
 
 samples = []
-for cgns_tree in tqdm(CGNS_meshes):
+for cgns_tree in CGNS_meshes:
     # Add CGNS Meshe to samples with specific time steps
     sample = Sample()
 

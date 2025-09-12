@@ -2,7 +2,7 @@ import copy
 
 from torch_geometric.data import Data
 
-from plaid.containers.dataset import Dataset as PlaidDataset
+from plaid import Dataset as PlaidDataset
 
 
 def extract_plaid_dataset(plaid_dataset: PlaidDataset, ids: list[int]) -> PlaidDataset:

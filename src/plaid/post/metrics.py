@@ -8,9 +8,8 @@ import yaml
 from sklearn.metrics import r2_score
 from tqdm import tqdm
 
-from plaid.containers.dataset import Dataset
+from plaid import Dataset, ProblemDefinition
 from plaid.post.bisect import prepare_datasets
-from plaid.problem_definition import ProblemDefinition
 
 
 def compute_rRMSE_RMSE(

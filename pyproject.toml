@@ -83,9 +83,12 @@ dev = [
     "sphinxcontrib.bibtex",
     "myst-nb",
     "myst-parser",
-    "nbconvert",
     "furo",
+    "jupytext",
 ]
 
 [tool.coverage.run]
 omit = ["src/plaid/examples/*"]
+
+[tool.pytest.ini_options]
+filterwarnings = "ignore::DeprecationWarning"

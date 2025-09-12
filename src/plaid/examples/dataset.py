@@ -6,10 +6,9 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-from plaid.containers.dataset import Dataset
-from datasets import load_dataset
+from plaid import Dataset
 from plaid.bridges.huggingface_bridge import streamed_huggingface_dataset_to_plaid
-from plaid.examples import _HF_REPOS
+from plaid.examples.config import _HF_REPOS
 
 
 class _LazyDatasets:

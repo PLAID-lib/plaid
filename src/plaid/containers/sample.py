@@ -65,6 +65,7 @@ class Sample(BaseModel):
 
     def __init__(
         self,
+        path: Optional[Union[str, Path]] = None,
         directory_path: Optional[Union[str, Path]] = None,
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
@@ -77,7 +78,8 @@ class Sample(BaseModel):
         """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
 
         Args:
-            directory_path (Union[str, Path], optional): The path from which to load PLAID sample files.
+            path (Union[str,Path], optional): The path from which to load PLAID sample files.
+            directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
             mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
             mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
             meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
@@ -89,7 +91,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
 
                 # 1. Create empty instance of Sample
                 sample = Sample()
@@ -113,8 +115,19 @@ class Sample(BaseModel):
         self._time_series: Optional[dict[str, TimeSeries]] = time_series
 
         if directory_path is not None:
-            directory_path = Path(directory_path)
-            self.load(directory_path)
+            if path is not None:
+                raise ValueError(
+                    "Arguments `path` and `directory_path` cannot be both set. Use only `path` as `directory_path` is deprecated."
+                )
+            else:
+                path = directory_path
+                logger.warning(
+                    "DeprecationWarning: 'directory_path' is deprecated, use 'path' instead."
+                )
+
+        if path is not None:
+            path = Path(path)
+            self.load(path)
 
         self._extra_data = None
 
@@ -208,7 +221,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -260,7 +273,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -354,7 +367,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -408,7 +421,7 @@ class Sample(BaseModel):
         """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
 
         Args:
-            path_linked_sample (Union[str, Path]): The absolute path of the folder containing the linked CGNS
+            path_linked_sample (Union[str,Path]): The absolute path of the folder containing the linked CGNS
             linked_sample (Sample): The linked sample
             linked_time (float): The time step of the linked CGNS in the linked sample
             time (float): The time step the current sample to which the CGNS tree is linked.
@@ -699,7 +712,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample.add_time_series('stuff', np.arange(2), np.random.randn(2))
                 print(sample.get_time_series('stuff'))
                 >>> (array([0, 1]), array([-0.59630135, -1.15572306]))
@@ -1144,27 +1157,27 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    def save(self, dir_path: Union[str, Path], overwrite: bool = False) -> None:
-        """Save the Sample in directory `dir_path`.
+    def save(self, path: Union[str, Path], overwrite: bool = False) -> None:
+        """Save the Sample in directory `path`.
 
         Args:
-            dir_path (Union[str,Path]): relative or absolute directory path.
+            path (Union[str,Path]): relative or absolute directory path.
             overwrite (bool): target directory overwritten if True.
         """
-        dir_path = Path(dir_path)
+        path = Path(path)
 
-        if dir_path.is_dir():
+        if path.is_dir():
             if overwrite:
-                shutil.rmtree(dir_path)
-                logger.warning(f"Existing {dir_path} directory has been reset.")
-            elif len(list(dir_path.glob("*"))):
+                shutil.rmtree(path)
+                logger.warning(f"Existing {path} directory has been reset.")
+            elif len(list(path.glob("*"))):
                 raise ValueError(
-                    f"directory {dir_path} already exists and is not empty. Set `overwrite` to True if needed."
+                    f"directory {path} already exists and is not empty. Set `overwrite` to True if needed."
                 )
 
-        dir_path.mkdir(exist_ok=True)
+        path.mkdir(exist_ok=True)
 
-        mesh_dir = dir_path / "meshes"
+        mesh_dir = path / "meshes"
 
         if self._meshes.data:
             mesh_dir.mkdir()
@@ -1185,7 +1198,7 @@ class Sample(BaseModel):
             scalars = np.array(scalars).reshape((1, -1))
             header = ",".join(scalars_names)
             np.savetxt(
-                dir_path / "scalars.csv",
+                path / "scalars.csv",
                 scalars,
                 header=header,
                 delimiter=",",
@@ -1199,7 +1212,7 @@ class Sample(BaseModel):
                 data = np.vstack((ts[0], ts[1])).T
                 header = ",".join(["t", ts_name])
                 np.savetxt(
-                    dir_path / f"time_series_{ts_name}.csv",
+                    path / f"time_series_{ts_name}.csv",
                     data,
                     header=header,
                     delimiter=",",
@@ -1207,13 +1220,13 @@ class Sample(BaseModel):
                 )
 
     @classmethod
-    def load_from_dir(cls, dir_path: Union[str, Path]) -> Self:
-        """Load the Sample from directory `dir_path`.
+    def load_from_dir(cls, path: Union[str, Path]) -> Self:
+        """Load the Sample from directory `path`.
 
         This is a class method, you don't need to instantiate a `Sample` first.
 
         Args:
-            dir_path (Union[str,Path]): Relative or absolute directory path.
+            path (Union[str,Path]): Relative or absolute directory path.
 
         Returns:
             Sample
@@ -1221,7 +1234,7 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample.load_from_dir(dir_path)
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
@@ -1229,16 +1242,16 @@ class Sample(BaseModel):
         Note:
             It calls 'load' function during execution.
         """
-        dir_path = Path(dir_path)
+        path = Path(path)
         instance = cls()
-        instance.load(dir_path)
+        instance.load(path)
         return instance
 
-    def load(self, dir_path: Union[str, Path]) -> None:
-        """Load the Sample from directory `dir_path`.
+    def load(self, path: Union[str, Path]) -> None:
+        """Load the Sample from directory `path`.
 
         Args:
-            dir_path (Union[str,Path]): Relative or absolute directory path.
+            path (Union[str,Path]): Relative or absolute directory path.
 
         Raises:
             FileNotFoundError: Triggered if the provided directory does not exist.
@@ -1247,22 +1260,22 @@ class Sample(BaseModel):
         Example:
             .. code-block:: python
 
-                from plaid.containers.sample import Sample
+                from plaid import Sample
                 sample = Sample()
-                sample.load(dir_path)
+                sample.load(path)
                 print(sample)
                 >>> Sample(3 scalars, 1 timestamp, 3 fields)
 
         """
-        dir_path = Path(dir_path)
+        path = Path(path)
 
-        if not dir_path.exists():
-            raise FileNotFoundError(f'Directory "{dir_path}" does not exist. Abort')
+        if not path.exists():
+            raise FileNotFoundError(f'Directory "{path}" does not exist. Abort')
 
-        if not dir_path.is_dir():
-            raise FileExistsError(f'"{dir_path}" is not a directory. Abort')
+        if not path.is_dir():
+            raise FileExistsError(f'"{path}" is not a directory. Abort')
 
-        meshes_dir = dir_path / "meshes"
+        meshes_dir = path / "meshes"
         if meshes_dir.is_dir():
             meshes_names = list(meshes_dir.glob("*"))
             nb_meshes = len(meshes_names)
@@ -1287,7 +1300,7 @@ class Sample(BaseModel):
                         meshes_dir / self._meshes._links[time][i][0]
                     )
 
-        scalars_fname = dir_path / "scalars.csv"
+        scalars_fname = path / "scalars.csv"
         if scalars_fname.is_file():
             names = np.loadtxt(
                 scalars_fname, dtype=str, max_rows=1, delimiter=","
@@ -1298,7 +1311,7 @@ class Sample(BaseModel):
             for name, value in zip(names, scalars):
                 self.add_scalar(name, value)
 
-        time_series_files = list(dir_path.glob("time_series_*.csv"))
+        time_series_files = list(path.glob("time_series_*.csv"))
         for ts_fname in time_series_files:
             names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
                 (-1,)
@@ -1366,6 +1379,176 @@ class Sample(BaseModel):
         str_repr = str_repr + ")"
 
         return str_repr
+
+    def summarize(self) -> str:
+        """Provide detailed summary of the Sample content, showing feature names and mesh information.
+
+        This provides more detailed information than the __repr__ method,
+        including the name of each feature.
+
+        Returns:
+            str: A detailed string representation of the sample content.
+
+        Example:
+            .. code-block:: bash
+
+                Sample Summary:
+                ==================================================
+                Scalars (8):
+                - Pr: 0.9729006564945664
+                - Q: 0.2671142611487964
+                - Tr: 0.9983394202616822
+                - angle_in: 45.5066666666667
+                - angle_out: 61.89519547386746
+                - eth_is: 0.21238326882538008
+                - mach_out: 0.81003
+                - power: 0.0019118127462776008
+
+                Meshes (1 timestamps):
+                Time: 0.0
+                    Base: Base_2_2
+                        Nodes (36421)
+                        Tags (6): Intrado (122), Extrado (122), Inflow (121), Outflow (121), Periodic_1 (120), Periodic_2 (238)
+                        Fields (7): ro, sdf, rou, nut, mach, roe, rov
+                        Elements (36000)
+                        QUAD_4 (36000)
+                    Base: Base_1_2
+                        Nodes (244)
+                        Fields (1): M_iso
+                        Elements (242)
+                        BAR_2 (242)
+        """
+        summary = "Sample Summary:\n"
+        summary += "=" * 50 + "\n"
+
+        # Scalars with names
+        scalar_names = self.get_scalar_names()
+        if scalar_names:
+            summary += f"Scalars ({len(scalar_names)}):\n"
+            for name in scalar_names:
+                value = self.get_scalar(name)
+                summary += f"  - {name}: {value}\n"
+            summary += "\n"
+
+        # Time series with names
+        ts_names = self.get_time_series_names()
+        if ts_names:
+            summary += f"Time Series ({len(ts_names)}):\n"
+            for name in ts_names:
+                ts = self.get_time_series(name)
+                if ts is not None:
+                    summary += f"  - {name}: {len(ts[0])} time points\n"
+            summary += "\n"
+
+        # Mesh information
+        times = self.get_all_mesh_times()
+        summary += f"Meshes ({len(times)} timestamps):\n"
+        if times:
+            for time in times:
+                summary += f"  Time: {time}\n"
+                base_names = self.get_base_names(time=time)
+                for base_name in base_names:
+                    summary += f"    Base: {base_name}\n"
+                    zone_names = self.get_zone_names(base_name=base_name, time=time)
+                    for zone_name in zone_names:
+                        # Nodes, nodal tags and fields at verticies
+                        nb_nodes = self.get_nodes(
+                            zone_name=zone_name, base_name=base_name, time=time
+                        ).shape[0]
+                        nodal_tags = self.get_nodal_tags(
+                            zone_name=zone_name, base_name=base_name, time=time
+                        )
+                        summary += f"        Nodes ({nb_nodes})\n"
+                        if len(nodal_tags) > 0:
+                            summary += f"          Tags ({len(nodal_tags)}): {', '.join([f'{k} ({len(v)})' for k, v in nodal_tags.items()])}\n"
+                        field_names = self.get_field_names(
+                            zone_name=zone_name,
+                            base_name=base_name,
+                            location="Vertex",
+                            time=time,
+                        )
+                        if field_names:
+                            summary += f"          Fields ({len(field_names)}): {', '.join(field_names)}\n"
+
+                        # Elements and fields at elements
+                        elements = self.get_elements(
+                            zone_name=zone_name, base_name=base_name, time=time
+                        )
+                        summary += f"        Elements ({sum([v.shape[0] for v in elements.values()])})"
+                        if len(elements) > 0:
+                            summary += f"\n          {', '.join([f'{k} ({v.shape[0]})' for k, v in elements.items()])}\n"
+                        field_names = (
+                            self.get_field_names(
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                location="EdgeCenter",
+                                time=time,
+                            )
+                            + self.get_field_names(
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                location="FaceCenter",
+                                time=time,
+                            )
+                            + self.get_field_names(
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                location="CellCenter",
+                                time=time,
+                            )
+                        )
+                        if field_names:
+                            summary += f"          Fields ({len(field_names)}): {', '.join(field_names)}\n"
+
+        return summary
+
+    def check_completeness(self) -> str:
+        """Check the completeness of features in this sample.
+
+        Returns:
+            str: A report on feature completeness.
+
+        Example:
+            .. code-block:: bash
+
+                Sample Completeness Check:
+                ==============================
+                Has scalars: True
+                Has time series: False
+                Has meshes: True
+                Total unique fields: 8
+                Field names: M_iso, mach, nut, ro, roe, rou, rov, sdf
+        """
+        report = "Sample Completeness Check:\n"
+        report += "=" * 30 + "\n"
+
+        # Check if sample has basic features
+        has_scalars = len(self.get_scalar_names()) > 0
+        has_time_series = len(self.get_time_series_names()) > 0
+        has_meshes = len(self.get_all_mesh_times()) > 0
+
+        report += f"Has scalars: {has_scalars}\n"
+        report += f"Has time series: {has_time_series}\n"
+        report += f"Has meshes: {has_meshes}\n"
+
+        if has_meshes:
+            times = self.get_all_mesh_times()
+            total_fields = set()
+            for time in times:
+                base_names = self.get_base_names(time=time)
+                for base_name in base_names:
+                    zone_names = self.get_zone_names(base_name=base_name, time=time)
+                    for zone_name in zone_names:
+                        field_names = self.get_field_names(
+                            zone_name=zone_name, base_name=base_name, time=time
+                        )
+                        total_fields.update(field_names)
+
+            report += f"Total unique fields: {len(total_fields)}\n"
+            if total_fields:
+                report += f"Field names: {', '.join(sorted(total_fields))}\n"
+
+        return report
 
     @model_serializer()
     def serialize_model(self):

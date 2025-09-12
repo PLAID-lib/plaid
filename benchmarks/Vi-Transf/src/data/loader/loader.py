@@ -5,8 +5,8 @@ from typing import Union
 from torch_geometric.data import Data
 from tqdm import tqdm
 
-from plaid.containers.dataset import Dataset as PlaidDataset
-from plaid.problem_definition import ProblemDefinition
+from plaid import Dataset as PlaidDataset
+from plaid import ProblemDefinition
 
 
 class Loader:

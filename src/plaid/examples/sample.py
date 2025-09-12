@@ -6,9 +6,9 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-from plaid.containers.sample import Sample
-from plaid.examples import datasets
-from plaid.examples import _HF_REPOS
+from plaid import Sample
+from plaid.examples.dataset import datasets
+from plaid.examples.config import _HF_REPOS
 
 
 class _LazySamples:
@@ -39,4 +39,3 @@ for ex_name in _HF_REPOS.keys():
 
 # Generate class
 samples = _LazySamples()
-

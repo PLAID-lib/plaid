@@ -1,5 +1,5 @@
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
+from plaid import Dataset
+from plaid import Sample
 from Muscat.Bridges.CGNSBridge import CGNSToMesh
 import numpy as np
 from Muscat.MeshTools.MeshFieldOperations import GetFieldTransferOp

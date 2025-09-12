@@ -152,12 +152,12 @@ def current_directory() -> Path:
 class Test_Sample:
     # -------------------------------------------------------------------------#
     def test___init__(self, current_directory):
-        dataset_path_1 = current_directory / "dataset" / "samples" / "sample_000000000"
-        dataset_path_2 = current_directory / "dataset" / "samples" / "sample_000000001"
-        dataset_path_3 = current_directory / "dataset" / "samples" / "sample_000000002"
-        sample_already_filled_1 = Sample(dataset_path_1)
-        sample_already_filled_2 = Sample(dataset_path_2)
-        sample_already_filled_3 = Sample(dataset_path_3)
+        sample_path_1 = current_directory / "dataset" / "samples" / "sample_000000000"
+        sample_path_2 = current_directory / "dataset" / "samples" / "sample_000000001"
+        sample_path_3 = current_directory / "dataset" / "samples" / "sample_000000002"
+        sample_already_filled_1 = Sample(sample_path_1)
+        sample_already_filled_2 = Sample(sample_path_2)
+        sample_already_filled_3 = Sample(sample_path_3)
         assert (
             sample_already_filled_1._meshes is not None
             and sample_already_filled_1._scalars is not None
@@ -172,14 +172,27 @@ class Test_Sample:
         )
 
     def test__init__unknown_directory(self, current_directory):
-        dataset_path = current_directory / "dataset" / "samples" / "sample_000000298"
+        sample_path = current_directory / "dataset" / "samples" / "sample_000000298"
         with pytest.raises(FileNotFoundError):
-            Sample(dataset_path)
+            Sample(sample_path)
 
     def test__init__file_provided(self, current_directory):
-        dataset_path = current_directory / "dataset" / "samples" / "sample_000067392"
+        sample_path = current_directory / "dataset" / "samples" / "sample_000067392"
         with pytest.raises(FileExistsError):
-            Sample(dataset_path)
+            Sample(sample_path)
+
+    def test__init__path(self, current_directory):
+        sample_path = current_directory / "dataset" / "samples" / "sample_000000000"
+        Sample(path=sample_path)
+
+    def test__init__directory_path(self, current_directory):
+        sample_path = current_directory / "dataset" / "samples" / "sample_000000000"
+        Sample(directory_path=sample_path)
+
+    def test__init__both_path_and_directory_path(self, current_directory):
+        sample_path = current_directory / "dataset" / "samples" / "sample_000000000"
+        with pytest.raises(ValueError):
+            Sample(path=sample_path, directory_path=sample_path)
 
     def test_copy(self, sample_with_tree_and_scalar_and_time_series):
         sample_with_tree_and_scalar_and_time_series.copy()
@@ -1413,3 +1426,33 @@ class Test_Sample:
         self, sample_with_tree_and_scalar_and_time_series
     ):
         print(sample_with_tree_and_scalar_and_time_series)
+
+    # -------------------------------------------------------------------------#
+
+    def test_summarize_empty(self, sample):
+        print(sample.summarize())
+
+    def test_summarize_with_scalar(self, sample_with_scalar):
+        print(sample_with_scalar.summarize())
+
+    def test_summarize_with_tree(self, sample_with_tree):
+        print(sample_with_tree.summarize())
+
+    def test_summarize_with_tree_and_scalar(
+        self, sample_with_tree_and_scalar_and_time_series
+    ):
+        print(sample_with_tree_and_scalar_and_time_series.summarize())
+
+    def test_check_completeness_empty(self, sample):
+        print(sample.check_completeness())
+
+    def test_check_completeness_with_scalar(self, sample_with_scalar):
+        print(sample_with_scalar.check_completeness())
+
+    def test_check_completeness_with_tree(self, sample_with_tree):
+        print(sample_with_tree.check_completeness())
+
+    def test_check_completeness_with_tree_and_scalar(
+        self, sample_with_tree_and_scalar_and_time_series
+    ):
+        print(sample_with_tree_and_scalar_and_time_series.check_completeness())

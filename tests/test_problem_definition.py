@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 
 from plaid.problem_definition import ProblemDefinition
+from plaid.types.feature_types import FeatureIdentifier
 
 # %% Fixtures
 
@@ -50,6 +51,19 @@ class Test_ProblemDefinition:
         assert problem_definition.get_task() is None
         print(problem_definition)
 
+    def test__init__path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        ProblemDefinition(path=d_path)
+
+    def test__init__directory_path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        ProblemDefinition(directory_path=d_path)
+
+    def test__init__both_path_and_directory_path(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        with pytest.raises(ValueError):
+            ProblemDefinition(path=d_path, directory_path=d_path)
+
     # -------------------------------------------------------------------------#
     def test_task(self, problem_definition):
         # Unauthorized task
@@ -60,6 +74,110 @@ class Test_ProblemDefinition:
             problem_definition.set_task("regression")
         assert problem_definition.get_task() == "classification"
         print(problem_definition)
+
+    # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
+    # -------------------------------------------------------------------------#
+    def test_get_in_features_identifiers(self, problem_definition):
+        assert problem_definition.get_in_features_identifiers() == []
+
+    def test_add_in_features_identifiers_fail_same_identifier(self, problem_definition):
+        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
+        with pytest.raises(ValueError):
+            problem_definition.add_in_features_identifiers(
+                [dummy_identifier, dummy_identifier]
+            )
+        problem_definition.add_in_feature_identifier(dummy_identifier)
+        with pytest.raises(ValueError):
+            problem_definition.add_in_feature_identifier(dummy_identifier)
+
+    def test_add_in_features_identifiers(self, problem_definition):
+        dummy_identifier_1 = FeatureIdentifier({"type": "scalar", "name": "dummy_1"})
+        dummy_identifier_2 = FeatureIdentifier({"type": "scalar", "name": "dummy_2"})
+        dummy_identifier_3 = FeatureIdentifier({"type": "scalar", "name": "dummy_3"})
+        problem_definition.add_in_features_identifiers(
+            [dummy_identifier_1, dummy_identifier_2]
+        )
+        problem_definition.add_in_feature_identifier(dummy_identifier_3)
+        inputs = problem_definition.get_in_features_identifiers()
+        assert len(inputs) == 3
+        assert set(inputs) == set(
+            [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
+        )
+        print(problem_definition)
+
+    # -------------------------------------------------------------------------#
+    def test_get_out_features_identifiers(self, problem_definition):
+        assert problem_definition.get_out_features_identifiers() == []
+
+    def test_add_out_features_identifiers_fail(self, problem_definition):
+        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
+        with pytest.raises(ValueError):
+            problem_definition.add_out_features_identifiers(
+                [dummy_identifier, dummy_identifier]
+            )
+        problem_definition.add_out_feature_identifier(dummy_identifier)
+        with pytest.raises(ValueError):
+            problem_definition.add_out_feature_identifier(dummy_identifier)
+
+    def test_add_out_features_identifiers(self, problem_definition):
+        dummy_identifier_1 = FeatureIdentifier({"type": "scalar", "name": "dummy_1"})
+        dummy_identifier_2 = FeatureIdentifier({"type": "scalar", "name": "dummy_2"})
+        dummy_identifier_3 = FeatureIdentifier({"type": "scalar", "name": "dummy_3"})
+        problem_definition.add_out_features_identifiers(
+            [dummy_identifier_1, dummy_identifier_2]
+        )
+        problem_definition.add_out_feature_identifier(dummy_identifier_3)
+        outputs = problem_definition.get_out_features_identifiers()
+        assert len(outputs) == 3
+        assert set(outputs) == set(
+            [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
+        )
+        print(problem_definition)
+
+    # -------------------------------------------------------------------------#
+    def test_filter_features_identifiers(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        problem = ProblemDefinition(d_path)
+        predict_feature_identifier = FeatureIdentifier(
+            {"type": "scalar", "name": "predict_feature"}
+        )
+        test_feature_identifier = FeatureIdentifier(
+            {"type": "scalar", "name": "test_feature"}
+        )
+        filter_in = problem.filter_in_features_identifiers(
+            [predict_feature_identifier, test_feature_identifier]
+        )
+        filter_out = problem.filter_out_features_identifiers(
+            [predict_feature_identifier, test_feature_identifier]
+        )
+        assert len(filter_in) == 2 and filter_in == [
+            predict_feature_identifier,
+            test_feature_identifier,
+        ]
+        assert filter_in != [test_feature_identifier, predict_feature_identifier], (
+            "common inputs not sorted"
+        )
+
+        assert len(filter_out) == 2 and filter_out == [
+            predict_feature_identifier,
+            test_feature_identifier,
+        ]
+        assert filter_out != [test_feature_identifier, predict_feature_identifier], (
+            "common outputs not sorted"
+        )
+
+        inexisting_feature_identifier = FeatureIdentifier(
+            {"type": "scalar", "name": "inexisting_feature"}
+        )
+        fail_filter_in = problem.filter_in_features_identifiers(
+            [inexisting_feature_identifier]
+        )
+        fail_filter_out = problem.filter_out_features_identifiers(
+            [inexisting_feature_identifier]
+        )
+
+        assert fail_filter_in == []
+        assert fail_filter_out == []
 
     # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
     # -------------------------------------------------------------------------#
@@ -343,6 +461,22 @@ class Test_ProblemDefinition:
     def test_save(self, problem_definition, current_directory):
         problem_definition.set_task("regression")
 
+        feature_identifier = FeatureIdentifier({"type": "scalar", "name": "feature"})
+        predict_feature_identifier = FeatureIdentifier(
+            {"type": "scalar", "name": "predict_feature"}
+        )
+        test_feature_identifier = FeatureIdentifier(
+            {"type": "scalar", "name": "test_feature"}
+        )
+        problem_definition.add_in_features_identifiers(
+            [predict_feature_identifier, test_feature_identifier]
+        )
+        problem_definition.add_in_feature_identifier(feature_identifier)
+        problem_definition.add_out_features_identifiers(
+            [predict_feature_identifier, test_feature_identifier]
+        )
+        problem_definition.add_out_feature_identifier(feature_identifier)
+
         problem_definition.add_input_scalars_names(["scalar", "test_scalar"])
         problem_definition.add_input_scalar_name("predict_scalar")
         problem_definition.add_output_scalars_names(["scalar", "test_scalar"])
@@ -369,6 +503,9 @@ class Test_ProblemDefinition:
         problem_definition.set_split(new_split)
 
         problem_definition._save_to_dir_(current_directory / "problem_definition")
+
+    def test__save_to_dir_(self, problem_definition, tmp_path):
+        problem_definition._save_to_dir_(tmp_path / "problem_definition")
 
     def test_load_path_object(self, current_directory):
         from pathlib import Path
@@ -411,3 +548,21 @@ class Test_ProblemDefinition:
         )
         all_split = problem.get_split()
         assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
+
+    def test__load_from_dir__empty_dir(self, tmp_path):
+        problem = ProblemDefinition()
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_dir_(tmp_path)
+
+    def test__load_from_dir__non_existing_dir(self):
+        problem = ProblemDefinition()
+        non_existing_dir = Path("non_existing_path")
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_dir_(non_existing_dir)
+
+    def test__load_from_dir__path_is_file(self, tmp_path):
+        problem = ProblemDefinition()
+        file_path = tmp_path / "file.yaml"
+        file_path.touch()  # Create an empty file
+        with pytest.raises(FileExistsError):
+            problem._load_from_dir_(file_path)

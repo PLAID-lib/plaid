@@ -16,7 +16,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial.distance import cdist
 
-from plaid.containers.dataset import Dataset
+from plaid import Dataset
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
