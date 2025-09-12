@@ -6,7 +6,6 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-import os
 import pickle
 import shutil
 import sys
@@ -355,10 +354,10 @@ def huggingface_dataset_to_plaid(
             )
         for i in range(processes_number):
             shard = ds.shard(num_shards=processes_number, index=i)
-            shard.save_to_disk(f"shards/dataset_shard_{i}")
+            shard.save_to_disk(f"./shards/dataset_shard_{i}")
 
         def parallel_convert(shard_path, n_workers):
-            converter = _HFShardToPlaidSampleConverter(Path(shard_path))
+            converter = _HFShardToPlaidSampleConverter(shard_path)
             with Pool(processes=n_workers) as pool:
                 return list(
                     tqdm(
@@ -371,14 +370,15 @@ def huggingface_dataset_to_plaid(
         samples = []
 
         for i in range(processes_number):
-            shard_path = os.path.join("shards", f"dataset_shard_{i}")
+            shard_path = Path(".") / "shards" / f"dataset_shard_{i}"
             shard_samples = parallel_convert(shard_path, n_workers=processes_number)
             samples.extend(shard_samples)
 
         dataset.add_samples(samples, ids)
 
-        if os.path.exists("shards"):
-            shutil.rmtree("shards")
+        shards_dir = Path(".") / "shards"
+        if shards_dir.exists() and shards_dir.is_dir():
+            shutil.rmtree(shards_dir)
 
     else:
         if ids:
