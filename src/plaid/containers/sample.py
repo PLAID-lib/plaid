@@ -1441,21 +1441,21 @@ class Sample(BaseModel):
             summary += "\n"
 
         # Mesh information
-        times = self.get_all_mesh_times()
+        times = self._meshes.get_all_mesh_times()
         summary += f"Meshes ({len(times)} timestamps):\n"
         if times:
             for time in times:
                 summary += f"  Time: {time}\n"
-                base_names = self.get_base_names(time=time)
+                base_names = self._meshes.get_base_names(time=time)
                 for base_name in base_names:
                     summary += f"    Base: {base_name}\n"
-                    zone_names = self.get_zone_names(base_name=base_name, time=time)
+                    zone_names = self._meshes.get_zone_names(base_name=base_name, time=time)
                     for zone_name in zone_names:
                         # Nodes, nodal tags and fields at verticies
                         nb_nodes = self.get_nodes(
                             zone_name=zone_name, base_name=base_name, time=time
                         ).shape[0]
-                        nodal_tags = self.get_nodal_tags(
+                        nodal_tags = self._meshes.get_nodal_tags(
                             zone_name=zone_name, base_name=base_name, time=time
                         )
                         summary += f"        Nodes ({nb_nodes})\n"
@@ -1471,7 +1471,7 @@ class Sample(BaseModel):
                             summary += f"          Fields ({len(field_names)}): {', '.join(field_names)}\n"
 
                         # Elements and fields at elements
-                        elements = self.get_elements(
+                        elements = self._meshes.get_elements(
                             zone_name=zone_name, base_name=base_name, time=time
                         )
                         summary += f"        Elements ({sum([v.shape[0] for v in elements.values()])})"
@@ -1525,19 +1525,19 @@ class Sample(BaseModel):
         # Check if sample has basic features
         has_scalars = len(self.get_scalar_names()) > 0
         has_time_series = len(self.get_time_series_names()) > 0
-        has_meshes = len(self.get_all_mesh_times()) > 0
+        has_meshes = len(self._meshes.get_all_mesh_times()) > 0
 
         report += f"Has scalars: {has_scalars}\n"
         report += f"Has time series: {has_time_series}\n"
         report += f"Has meshes: {has_meshes}\n"
 
         if has_meshes:
-            times = self.get_all_mesh_times()
+            times = self._meshes.get_all_mesh_times()
             total_fields = set()
             for time in times:
-                base_names = self.get_base_names(time=time)
+                base_names = self._meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = self.get_zone_names(base_name=base_name, time=time)
+                    zone_names = self._meshes.get_zone_names(base_name=base_name, time=time)
                     for zone_name in zone_names:
                         field_names = self.get_field_names(
                             zone_name=zone_name, base_name=base_name, time=time
