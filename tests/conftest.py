@@ -37,13 +37,16 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
             float(i**3) * np.arange(11, dtype=float),
         )
         sample.add_field(
-            "test_field_same_size", float(i**4) * np.ones(17), zone_name, base_name
+            name="test_field_same_size",
+            field=float(i**4) * np.ones(17),
+            zone_name=zone_name,
+            base_name=base_name,
         )
         sample.add_field(
-            "test_field_2785",
-            float(i**5) * np.ones(3 * i),
-            zone_name,
-            base_name,
+            name="test_field_2785",
+            field=float(i**5) * np.ones(3 * i),
+            zone_name=zone_name,
+            base_name=base_name,
         )
         sample_list.append(sample)
     return sample_list

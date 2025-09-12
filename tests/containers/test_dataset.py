@@ -407,27 +407,27 @@ class Test_Dataset:
             "field::test_field_same_size"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/TestBaseName"
+            "field::test_field_same_size///TestBaseName"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/TestBaseName/TestZoneName"
+            "field::test_field_same_size//TestZoneName/TestBaseName"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/TestBaseName/TestZoneName/Vertex"
+            "field::test_field_same_size/Vertex/TestZoneName/TestBaseName"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/TestBaseName/TestZoneName/Vertex/0"
+            "field::test_field_same_size/Vertex/TestZoneName/TestBaseName/0"
         )
 
         dataset_with_samples_with_tree.get_feature_from_string_identifier("nodes::")
         dataset_with_samples_with_tree.get_feature_from_string_identifier(
-            "nodes::Base_2_2"
+            "nodes::/Base_2_2"
         )
         dataset_with_samples_with_tree.get_feature_from_string_identifier(
-            "nodes::Base_2_2/Zone"
+            "nodes::Zone/Base_2_2"
         )
         dataset_with_samples_with_tree.get_feature_from_string_identifier(
-            "nodes::Base_2_2/Zone/0"
+            "nodes::Zone/Base_2_2/0"
         )
 
     def test_get_feature_from_identifier(
