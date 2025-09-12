@@ -218,6 +218,13 @@ print("get_sample_ids =", dataset.get_sample_ids())
 print(f"{dataset = }")
 print("length of dataset =", len(dataset))
 
+# %%
+# Create a new dataset with the sample list and ids
+# (ids can be provided optionally)
+new_dataset = Dataset(samples=[sample_01, sample_02, sample_03], sample_ids=[3, 5, 7])
+print(f"{new_dataset = }")
+print("new dataset sample ids =", new_dataset.get_sample_ids())
+
 # %% [markdown]
 # ### Add a list of Sample to a Dataset
 
