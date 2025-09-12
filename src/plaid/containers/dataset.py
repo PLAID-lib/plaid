@@ -29,7 +29,7 @@ import numpy as np
 import yaml
 from tqdm import tqdm
 
-from plaid.constants import CGNS_FIELD_LOCATIONS, AUTHORIZED_INFO_KEYS
+from plaid.constants import AUTHORIZED_INFO_KEYS, CGNS_FIELD_LOCATIONS
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
 from plaid.types import Array, Feature, FeatureIdentifier
@@ -443,9 +443,7 @@ class Dataset(object):
                         else sample.get_zone_names(time=time, base_name=base_name)
                     )
                     for zone_name in zone_names:
-                        locations = (
-                            [location] if location else CGNS_FIELD_LOCATIONS
-                        )
+                        locations = [location] if location else CGNS_FIELD_LOCATIONS
                         for location in locations:
                             f_names = sample.get_field_names(
                                 zone_name=zone_name, base_name=base_name, time=time

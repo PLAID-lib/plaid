@@ -758,7 +758,9 @@ class Sample(BaseModel):
 
             zone_names = linked_sample.get_zone_names(bn, time=linked_time)
             for zn in zone_names:
-                zone_node = linked_sample.get_zone(zn, bn, time=linked_time)
+                zone_node = linked_sample.get_zone(
+                    zone_name=zn, base_name=bn, time=linked_time
+                )
                 grid = [
                     zn,
                     zone_node[1],
@@ -998,10 +1000,10 @@ class Sample(BaseModel):
         time = self.get_time_assignment(time)
         base_name = self.get_base_assignment(base_name, time)
 
-        if (self._meshes is None):
+        if self._meshes is None:
             logger.warning("No mesh exists in the sample")
             return None
-        if (self._meshes[time] is None):
+        if self._meshes[time] is None:
             logger.warning(f"No mesh exists in the sample at {time=}")
             return None
 
@@ -1070,7 +1072,7 @@ class Sample(BaseModel):
         if time not in self._meshes:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
-        zone_node = self.get_zone(zone_name, base_name, time)
+        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
         mesh_tree = self._meshes[time]
 
         if zone_node is None:
@@ -1178,7 +1180,7 @@ class Sample(BaseModel):
             str: The type of the specified zone as a string.
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone_name, base_name, time)
+        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
 
         if zone_node is None:
             raise KeyError(
@@ -1279,7 +1281,7 @@ class Sample(BaseModel):
             The NumPy arrays have shape (num_nodal_tags).
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone_name, base_name, time)
+        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
 
         if zone_node is None:
             return {}
@@ -1350,7 +1352,7 @@ class Sample(BaseModel):
             This function can also be called using `get_points()` or `get_vertices()`.
         """
         # get_zone will look for default base_name, zone_name and time
-        search_node = self.get_zone(zone_name, base_name, time)
+        search_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
 
         if search_node is None:
             return None
@@ -1406,7 +1408,7 @@ class Sample(BaseModel):
             This function can also be called using `set_points()` or `set_vertices()`
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone_name, base_name, time)
+        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
 
         if zone_node is None:
             raise KeyError(
@@ -1452,7 +1454,7 @@ class Sample(BaseModel):
             The NumPy arrays have shape (num_elements, num_nodes_per_element), and element indices are 0-based.
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone_name, base_name, time)
+        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
 
         if zone_node is None:
             return {}
@@ -1481,17 +1483,17 @@ class Sample(BaseModel):
     # -------------------------------------------------------------------------#
     def get_field_names(
         self,
+        location: str = None,
         zone_name: str = None,
         base_name: str = None,
-        location: str = "Vertex",
         time: float = None,
     ) -> set[str]:
-        """Get a set of field names associated with a specified zone, base, location, and time.
+        """Get a set of field names associated with a specified zone, base, location, and/or time.
 
         Args:
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
-            location (str, optional): The desired grid location where the field is defined. Defaults to 'Vertex'.
+            location (str, optional): The desired grid location where the field is defined. Defaults to None.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
 
@@ -1499,9 +1501,13 @@ class Sample(BaseModel):
             set[str]: A set containing the names of the fields that match the specified criteria.
         """
 
-        def get_field_names_one_base(base_name: str) -> list[str]:
+        def get_field_names_one_time_base_zone_location(
+            location: str, zone_name: str, base_name: str, time: float
+        ) -> list[str]:
             # get_zone will look for default zone_name, base_name, time
-            search_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+            search_node = self.get_zone(
+                zone_name=zone_name, base_name=base_name, time=time
+            )
             if search_node is None:  # pragma: no cover
                 return []
 
@@ -1522,27 +1528,40 @@ class Sample(BaseModel):
                         names.append(field_name)
             return names
 
-        if base_name is None:
-            # get_base_names will look for default time
-            base_names = self.get_base_names(time=time)
-        else:
-            base_names = [base_name]
+        field_names = []
+        times = [time] if time is not None else self.get_all_mesh_times()
+        for time in times:
+            base_names = (
+                [base_name] if base_name is not None else self.get_base_names(time=time)
+            )
+            for base_name in base_names:
+                zone_names = (
+                    [zone_name]
+                    if zone_name is not None
+                    else self.get_zone_names(base_name=base_name, time=time)
+                )
+                for zone_name in zone_names:
+                    locations = (
+                        [location] if location is not None else CGNS_FIELD_LOCATIONS
+                    )
+                    for location in locations:
+                        field_names += get_field_names_one_time_base_zone_location(
+                            location=location,
+                            zone_name=zone_name,
+                            base_name=base_name,
+                            time=time,
+                        )
 
-        all_names = []
-        for bn in base_names:
-            all_names += get_field_names_one_base(bn)
+        field_names = sorted(set(field_names))
 
-        all_names.sort()
-        all_names = list(set(all_names))
-
-        return all_names
+        return field_names
 
     def get_field(
         self,
         name: str,
+        location: str = "Vertex",
         zone_name: str = None,
         base_name: str = None,
-        location: str = "Vertex",
         time: float = None,
     ) -> Field:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
@@ -1559,7 +1578,7 @@ class Sample(BaseModel):
             Field: A set containing the names of the fields that match the specified criteria.
         """
         # get_zone will look for default time
-        search_node = self.get_zone(zone_name, base_name, time)
+        search_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
         if search_node is None:
             return None
 
@@ -1592,9 +1611,9 @@ class Sample(BaseModel):
         self,
         name: str,
         field: Field,
+        location: str = "Vertex",
         zone_name: str = None,
         base_name: str = None,
-        location: str = "Vertex",
         time: float = None,
         warning_overwrite=True,
     ) -> None:
@@ -1603,10 +1622,10 @@ class Sample(BaseModel):
         Args:
             name (str): The name of the field to be added.
             field (Field): The field data to be added.
-            zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
-            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
+            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             time (float, optional): The time associated with the field. Defaults to 0.
             warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
 
@@ -1617,7 +1636,7 @@ class Sample(BaseModel):
         # init_tree will look for default time
         self.init_tree(time)
         # get_zone will look for default zone_name, base_name and time
-        zone_node = self.get_zone(zone_name, base_name, time)
+        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
 
         if zone_node is None:
             raise KeyError(
@@ -1672,19 +1691,19 @@ class Sample(BaseModel):
     def del_field(
         self,
         name: str,
+        location: str = "Vertex",
         zone_name: str = None,
         base_name: str = None,
-        location: str = "Vertex",
         time: float = None,
     ) -> CGNSTree:
-        """Delete a field from a specified zone in the grid.
+        """Delete a field with specified name in the mesh.
 
         Args:
             name (str): The name of the field to be deleted.
-            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
-            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
+            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
@@ -1694,7 +1713,7 @@ class Sample(BaseModel):
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         # get_zone will look for default zone_name, base_name, and time
-        zone_node = self.get_zone(zone_name, base_name, time)
+        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
         time = self.get_time_assignment(time)
         mesh_tree = self._meshes[time]
 
@@ -1737,9 +1756,9 @@ class Sample(BaseModel):
             if feat_id["type"] == "field":
                 self.del_field(
                     name=feat_id["name"],
+                    location=feat_id["location"],
                     zone_name=feat_id["zone_name"],
                     base_name=feat_id["base_name"],
-                    location=feat_id["location"],
                     time=feat_id["time"],
                 )
         return self
@@ -1772,7 +1791,7 @@ class Sample(BaseModel):
                         )
                     for loc in CGNS_FIELD_LOCATIONS:
                         for fn in self.get_field_names(
-                            zone_name=zn, base_name=bn, location=loc, time=t
+                            location=loc, zone_name=zn, base_name=bn, time=t
                         ):
                             all_features_identifiers.append(
                                 {
@@ -1843,6 +1862,7 @@ class Sample(BaseModel):
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
 
         arg_names = AUTHORIZED_FEATURE_INFOS[feature_type]
+        assert len(arg_names) >= len(feature_details), "Too much details provided"
 
         if feature_type == "scalar":
             val = self.get_scalar(feature_details[0])
@@ -1855,11 +1875,17 @@ class Sample(BaseModel):
             return self.get_time_series(feature_details[0])
         elif feature_type == "field":
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
+            for k in kwargs:
+                if kwargs[k] == "":
+                    kwargs[k] = None
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
             return self.get_field(**kwargs)
         elif feature_type == "nodes":
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
+            for k in kwargs:
+                if kwargs[k] == "":
+                    kwargs[k] = None
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
             return self.get_nodes(**kwargs).flatten()
@@ -2312,15 +2338,15 @@ class Sample(BaseModel):
                 zone_names = self.get_zone_names(base_name=bn)
                 for zn in zone_names:
                     field_names = field_names.union(
-                        self.get_field_names(zone_name=zn, time=time, location="Vertex")
+                        self.get_field_names(location="Vertex", zone_name=zn, time=time)
                         + self.get_field_names(
-                            zone_name=zn, time=time, location="EdgeCenter"
+                            location="EdgeCenter", zone_name=zn, time=time
                         )
                         + self.get_field_names(
-                            zone_name=zn, time=time, location="FaceCenter"
+                            location="FaceCenter", zone_name=zn, time=time
                         )
                         + self.get_field_names(
-                            zone_name=zn, time=time, location="CellCenter"
+                            location="CellCenter", zone_name=zn, time=time
                         )
                     )
         nb_fields = len(field_names)
@@ -2426,9 +2452,9 @@ class Sample(BaseModel):
 
                         for location in CGNS_FIELD_LOCATIONS:
                             field_names = self.get_field_names(
+                                location=location,
                                 zone_name=zone_name,
                                 base_name=base_name,
-                                location=location,
                                 time=time,
                             )
                             if field_names:
@@ -2481,10 +2507,14 @@ class Sample(BaseModel):
                 for base_name in base_names:
                     zone_names = self.get_zone_names(base_name=base_name, time=time)
                     for zone_name in zone_names:
-                        field_names = self.get_field_names(
-                            zone_name=zone_name, base_name=base_name, time=time
-                        )
-                        total_fields.update(field_names)
+                        for location in CGNS_FIELD_LOCATIONS:
+                            field_names = self.get_field_names(
+                                location=location,
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                time=time,
+                            )
+                            total_fields.update(field_names)
 
             report += f"Total unique fields: {len(total_fields)}\n"
             if total_fields:
