@@ -88,7 +88,7 @@ print(f"{sample_01 = }")
 
 # %%
 # Add a CGNS tree structure to the Sample
-sample_01.add_tree(cgns_mesh)
+sample_01.add_mesh(cgns_mesh)
 print(f"{sample_01 = }")
 
 # %%
@@ -119,15 +119,15 @@ print("#---# Empty Sample")
 sample_03 = Sample()
 sample_03.add_scalar("speed", np.random.randn())
 sample_03.add_scalar("rotation", sample_01.get_scalar("rotation"))
-sample_03.add_tree(cgns_mesh)
+sample_03.add_mesh(cgns_mesh)
 
 # Show Sample CGNS content
-sample_03.show_tree()
+sample_03.show_mesh()
 
 # %%
 # Add a field to the third empty Sample
 sample_03.add_field("temperature", np.random.rand(5), "Zone", "Base_2_2")
-sample_03.show_tree()
+sample_03.show_mesh()
 
 # %% [markdown]
 # ### Get Sample data
