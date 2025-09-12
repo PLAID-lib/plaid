@@ -1449,7 +1449,9 @@ class Sample(BaseModel):
                 base_names = self._meshes.get_base_names(time=time)
                 for base_name in base_names:
                     summary += f"    Base: {base_name}\n"
-                    zone_names = self._meshes.get_zone_names(base_name=base_name, time=time)
+                    zone_names = self._meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         # Nodes, nodal tags and fields at verticies
                         nb_nodes = self.get_nodes(
@@ -1537,7 +1539,9 @@ class Sample(BaseModel):
             for time in times:
                 base_names = self._meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = self._meshes.get_zone_names(base_name=base_name, time=time)
+                    zone_names = self._meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         field_names = self.get_field_names(
                             zone_name=zone_name, base_name=base_name, time=time

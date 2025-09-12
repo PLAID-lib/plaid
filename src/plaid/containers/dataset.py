@@ -1103,11 +1103,13 @@ class Dataset(object):
                 ts_counts[name] = ts_counts.get(name, 0) + 1
 
             # Fields
-            times = sample.get_all_mesh_times()
+            times = sample._meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample._meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample._meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         field_names = sample.get_field_names(
                             zone_name=zone_name, base_name=base_name, time=time
@@ -1194,11 +1196,13 @@ class Dataset(object):
             all_scalar_names.update(sample.get_scalar_names())
             all_ts_names.update(sample.get_time_series_names())
 
-            times = sample.get_all_mesh_times()
+            times = sample._meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample._meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample._meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         all_field_names.update(
                             sample.get_field_names(
@@ -1227,11 +1231,13 @@ class Dataset(object):
 
             # Check fields
             sample_fields = set()
-            times = sample.get_all_mesh_times()
+            times = sample._meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample._meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample._meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         sample_fields.update(
                             sample.get_field_names(
