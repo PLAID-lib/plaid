@@ -378,7 +378,6 @@ class Test_Dataset:
         assert len(dataset.get_scalars_to_tabular()) == 0
         assert dataset.get_scalars_to_tabular() == {}
         dataset.add_tabular_scalars(tabular, scalar_names)
-        print(tabular.shape, scalar_names.shape)
         assert dataset.get_scalars_to_tabular(as_nparray=True).shape == (
             len(tabular),
             len(scalar_names),
