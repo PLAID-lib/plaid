@@ -7,7 +7,7 @@
 #
 #
 
-from typing import Any, Union
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -42,9 +42,17 @@ except ImportError:  # pragma: no cover
 
 
 class CGNSNode(BaseModel):
-    """Custom type that represents a CGNS node."""
+    """Custom type for a CGNS node.
+
+    Attributes:
+        name (str): The name of the CGNS node.
+        value (Optional[Any]): The value of the CGNS node, which can be of any type or None.
+        children (list[CGNSNode]): A list of child CGNS nodes.
+        label (str): The label of the CGNS node.
+    """
+
     name: str
-    value: Any | None = None
+    value: Optional[Any] = None
     children: list["CGNSNode"]
     label: str
 
