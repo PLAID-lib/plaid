@@ -30,6 +30,7 @@ import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 from pydantic import BaseModel, ConfigDict, PrivateAttr, model_serializer
+from pydantic import Field as PydanticField
 
 from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
@@ -78,7 +79,6 @@ class Sample(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         revalidate_instances="always",
-        validate_assignment=True,
     )
 
     # Attributes
@@ -87,8 +87,12 @@ class Sample(BaseModel):
     mesh_base_name: str = "Base"
     mesh_zone_name: str = "Zone"
 
-    meshes: SampleMeshes = SampleMeshes(meshes=None)
-    scalars: SampleScalars = SampleScalars(scalars=None)
+    meshes: SampleMeshes = PydanticField(
+        default_factory=lambda _: SampleMeshes(meshes=None)
+    )
+    scalars: SampleScalars = PydanticField(
+        default_factory=lambda _: SampleScalars(scalars=None)
+    )
     time_series: Optional[dict[str, TimeSeries]] = None
     links: Optional[dict[float, list[CGNSLink]]] = None
     paths: Optional[dict[float, list[CGNSPath]]] = None
@@ -102,6 +106,20 @@ class Sample(BaseModel):
         if self.path is not None:
             path = Path(self.path)
             self.load(path)
+
+    def copy(self) -> Self:  # pyright: ignore[reportIncompatibleMethodOverride]
+        """Create a deep copy of the current `Sample` instance.
+
+        Usage of `model_copy(deep=True)` from Pydantic to ensure all internal data is deeply copied.
+
+        Returns:
+            A new `Sample` instance with all internal data (scalars, time series, fields, meshes, etc.)
+            deeply copied to ensure full isolation from the original.
+
+        Note:
+            This operation may be memory-intensive for large samples.
+        """
+        return self.model_copy(deep=True)
 
     def get_scalar(self, name: str) -> Optional[Scalar]:
         """Retrieve a scalar value associated with the given name.
@@ -397,7 +415,7 @@ class Sample(BaseModel):
 
         path_linked_sample = Path(path_linked_sample)
 
-        if linked_time not in linked_sample._meshes.data:  # pragma: no cover
+        if linked_time not in linked_sample.meshes.data:  # pragma: no cover
             raise KeyError(
                 f"There is no CGNS tree for time {linked_time} in linked_sample."
             )
@@ -406,10 +424,10 @@ class Sample(BaseModel):
 
         tree = CGL.newCGNSTree()
 
-        base_names = linked_sample._meshes.get_base_names(time=linked_time)
+        base_names = linked_sample.meshes.get_base_names(time=linked_time)
 
         for bn in base_names:
-            base_node = linked_sample._meshes.get_base(bn, time=linked_time)
+            base_node = linked_sample.meshes.get_base(bn, time=linked_time)
             base = [bn, base_node[1], [], "CGNSBase_t"]
             tree[2].append(base)
 
@@ -421,9 +439,9 @@ class Sample(BaseModel):
             ]  # maybe get this from linked_sample as well ?
             base[2].append(family)
 
-            zone_names = linked_sample._meshes.get_zone_names(bn, time=linked_time)
+            zone_names = linked_sample.meshes.get_zone_names(bn, time=linked_time)
             for zn in zone_names:
-                zone_node = linked_sample._meshes.get_zone(zn, bn, time=linked_time)
+                zone_node = linked_sample.meshes.get_zone(zn, bn, time=linked_time)
                 grid = [
                     zn,
                     zone_node[1],
@@ -463,7 +481,7 @@ class Sample(BaseModel):
                 grid[2].append(zone_family)
 
         def find_feature_roots(sample: Sample, time: float, Type_t: str):
-            Types_t = CGU.getAllNodesByTypeSet(sample._meshes.get_mesh(time), Type_t)
+            Types_t = CGU.getAllNodesByTypeSet(sample.meshes.get_mesh(time), Type_t)
             # in case the type is not present in the tree
             if Types_t == []:  # pragma: no cover
                 return []
@@ -1062,8 +1080,8 @@ class Sample(BaseModel):
                     time = self.meshes.get_time_assignment(time=feat_id.get("time"))
 
                     # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                    if not sample._meshes.get_mesh(time):
-                        sample._meshes.add_tree(source_sample._meshes.get_mesh(time))
+                    if not sample.meshes.get_mesh(time):
+                        sample.meshes.add_tree(source_sample.meshes.get_mesh(time))
 
                 sample._add_feature(feat_id, feature)
 
@@ -1102,11 +1120,11 @@ class Sample(BaseModel):
             # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
             if feat_id["type"] in ["field", "nodes"]:
                 # get time of current feature
-                time = sample._meshes.get_time_assignment(time=feat_id.get("time"))
+                time = sample.meshes.get_time_assignment(time=feat_id.get("time"))
 
                 # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                if not merged_dataset._meshes.get_mesh(time):
-                    merged_dataset._meshes.add_tree(source_sample.get_mesh(time))
+                if not merged_dataset.meshes.get_mesh(time):
+                    merged_dataset.meshes.add_tree(source_sample.get_mesh(time))
 
         return merged_dataset.update_features_from_identifier(
             feature_identifiers=all_features_identifiers,
