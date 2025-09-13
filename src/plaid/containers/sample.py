@@ -29,7 +29,7 @@ import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-from pydantic import BaseModel, ConfigDict, PrivateAttr, model_serializer
+from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic import Field as PydanticField
 
 from plaid.constants import (
@@ -40,9 +40,7 @@ from plaid.constants import (
 from plaid.containers.features import SampleMeshes, SampleScalars
 from plaid.containers.utils import _check_names, get_feature_type_and_details_from
 from plaid.types import (
-    CGNSLink,
     CGNSNode,
-    CGNSPath,
     CGNSTree,
     Feature,
     FeatureIdentifier,
@@ -64,15 +62,23 @@ logging.basicConfig(
 class Sample(BaseModel):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
 
+    By default, the sample is empty but:
+        - You can provide a path to a folder containing the sample data, and it will be loaded during initialization.
+        - You can provide `SampleMeshes` and `SampleScalars` instances to initialize the sample with existing data.
+        - You can also provide a dictionary of time series data.
+
+    The default `SampleMeshes` instance is initialized with:
+        - `meshes=None`, `links=None`, and `paths=None` (i.e., no mesh data).
+        - `mesh_base_name="Base"` and `mesh_zone_name="Zone"`.
+
+    The default `SampleScalars` instance is initialized with:
+        - `scalars=None` (i.e., no scalar data).
+
     Args:
         path (Optional[Union[str, Path]], optional): Path to the folder containing the sample data. If provided, the sample will be loaded from this path during initialization. Defaults to None.
-        mesh_base_name (str, optional): Default name for the mesh base. Defaults to "Base".
-        mesh_zone_name (str, optional): Default name for the mesh zone. Defaults to "Zone".
-        meshes (SampleMeshes, optional): An instance of SampleMeshes containing mesh data. Defaults to an empty SampleMeshes object.
-        scalars (SampleScalars, optional): An instance of SampleScalars containing scalar data. Defaults to an empty SampleScalars object.
+        meshes (SampleMeshes, optional): An instance of SampleMeshes containing mesh data. Defaults to an empty `SampleMeshes` object.
+        scalars (SampleScalars, optional): An instance of SampleScalars containing scalar data. Defaults to an empty `SampleScalars` object.
         time_series (Optional[dict[str, TimeSeries]], optional): A dictionary mapping time series names to their corresponding data. Defaults to None.
-        links (Optional[dict[float, list[CGNSLink]]], optional): A dictionary mapping time steps to lists of CGNS links. Defaults to None.
-        paths (Optional[dict[float, list[CGNSPath]]], optional): A dictionary mapping time steps to lists of CGNS paths. Defaults to None.
     """
 
     # Pydantic configuration
@@ -84,17 +90,19 @@ class Sample(BaseModel):
     # Attributes
     path: Optional[Union[str, Path]] = None
 
-    meshes: SampleMeshes = PydanticField(
+    meshes: Optional[SampleMeshes] = PydanticField(
         default_factory=lambda _: SampleMeshes(
-            meshes=None, mesh_base_name="Base", mesh_zone_name="Zone"
+            meshes=None,
+            mesh_base_name="Base",
+            mesh_zone_name="Zone",
+            links=None,
+            paths=None,
         )
     )
-    scalars: SampleScalars = PydanticField(
+    scalars: Optional[SampleScalars] = PydanticField(
         default_factory=lambda _: SampleScalars(scalars=None)
     )
     time_series: Optional[dict[str, TimeSeries]] = None
-    links: Optional[dict[float, list[CGNSLink]]] = None
-    paths: Optional[dict[float, list[CGNSPath]]] = None
 
     # Private attributes
     _extra_data: Optional[dict] = PrivateAttr(default=None)
@@ -1529,15 +1537,13 @@ class Sample(BaseModel):
 
         return report
 
-    @model_serializer()
-    def serialize_model(self):
-        """Serialize the model to a dictionary."""
-        return {
-            "mesh_base_name": self.meshes._mesh_base_name,
-            "mesh_zone_name": self.meshes._mesh_zone_name,
-            "meshes": self.meshes.data,
-            "scalars": self.scalars.data,
-            "time_series": self.time_series,
-            "links": self.meshes._links,
-            "paths": self.meshes._paths,
-        }
+    # @model_serializer()
+    # def serialize_model(self):
+    #     """Serialize the model to a dictionary."""
+    #     return {
+    #         "meshes": self.meshes,
+    #         "scalars": self.scalars,
+    #         "time_series": self.time_series,
+    #         "links": self.meshes._links,
+    #         "paths": self.meshes._paths,
+    #     }
