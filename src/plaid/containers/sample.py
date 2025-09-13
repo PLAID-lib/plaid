@@ -22,21 +22,20 @@ import logging
 import shutil
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-from pydantic import BaseModel, model_serializer
+from pydantic import BaseModel, ConfigDict, PrivateAttr, model_serializer
 
 from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.features import SampleMeshes, SampleScalars
 from plaid.containers.utils import _check_names, get_feature_type_and_details_from
 from plaid.types import (
     CGNSLink,
@@ -63,85 +62,27 @@ logging.basicConfig(
 class Sample(BaseModel):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset."""
 
-    def __init__(
-        self,
-        path: Optional[Union[str, Path]] = None,
-        directory_path: Optional[Union[str, Path]] = None,
-        mesh_base_name: str = "Base",
-        mesh_zone_name: str = "Zone",
-        meshes: Optional[dict[float, CGNSTree]] = None,
-        scalars: Optional[dict[str, Scalar]] = None,
-        time_series: Optional[dict[str, TimeSeries]] = None,
-        links: Optional[dict[float, list[CGNSLink]]] = None,
-        paths: Optional[dict[float, list[CGNSPath]]] = None,
-    ) -> None:
-        """Initialize an empty :class:`Sample <plaid.containers.sample.Sample>`.
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-        Args:
-            path (Union[str,Path], optional): The path from which to load PLAID sample files.
-            directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
-            mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
-            mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
-            meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
-            scalars (dict[str, Scalar], optional): A dictionary mapping scalar names to their values. Defaults to None.
-            time_series (dict[str, TimeSeries], optional): A dictionary mapping time series names to their values. Defaults to None.
-            links (dict[float, list[CGNSLink]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
-            paths (dict[float, list[CGNSPath]], optional): A dictionary mapping time steps to lists of paths. Defaults to None.
+    path: Optional[Union[str, Path]] = None
 
-        Example:
-            .. code-block:: python
+    mesh_base_name: str = "Base"
+    mesh_zone_name: str = "Zone"
 
-                from plaid import Sample
+    meshes: Optional[dict[float, CGNSTree]] = None
+    scalars: Optional[dict[str, Scalar]] = None
+    time_series: Optional[dict[str, TimeSeries]] = None
+    links: Optional[dict[float, list[CGNSLink]]] = None
+    paths: Optional[dict[float, list[CGNSPath]]] = None
 
-                # 1. Create empty instance of Sample
-                sample = Sample()
-                print(sample)
-                >>> Sample(0 scalars, 0 timestamps, 0 fields, no tree)
+    _extra_data: Optional[dict] = PrivateAttr(default=None)
 
-                # 2. Load sample  and create Sample instance
-                sample = Sample("path_to_plaid_sample")
-                print(sample)
-                >>> Sample(2 scalars, 1 timestamp, 5 fields)
-
-        Caution:
-            It is assumed that you provided a compatible PLAID sample.
-        """
-        super().__init__()
-
-        self._meshes = SampleMeshes(
-            meshes, mesh_base_name, mesh_zone_name, links, paths
-        )
-        self._scalars = SampleScalars(scalars)
-        self._time_series: Optional[dict[str, TimeSeries]] = time_series
-
-        if directory_path is not None:
-            if path is not None:
-                raise ValueError(
-                    "Arguments `path` and `directory_path` cannot be both set. Use only `path` as `directory_path` is deprecated."
-                )
-            else:
-                path = directory_path
-                logger.warning(
-                    "DeprecationWarning: 'directory_path' is deprecated, use 'path' instead."
-                )
-
-        if path is not None:
-            path = Path(path)
+    def model_post_init(self, _context: Any) -> None:
+        """Custom initialization after Pydantic model is built."""
+        # Load if path is provided
+        if self.path is not None:
+            path = Path(self.path)
             self.load(path)
-
-        self._extra_data = None
-
-    def copy(self) -> Self:
-        """Create a deep copy of the sample.
-
-        Returns:
-            A new `Sample` instance with all internal data (scalars, time series, fields, meshes, etc.)
-            deeply copied to ensure full isolation from the original.
-
-        Note:
-            This operation may be memory-intensive for large samples.
-        """
-        return copy.deepcopy(self)
 
     def get_scalar(self, name: str) -> Optional[Scalar]:
         """Retrieve a scalar value associated with the given name.
