@@ -84,11 +84,10 @@ class Sample(BaseModel):
     # Attributes
     path: Optional[Union[str, Path]] = None
 
-    mesh_base_name: str = "Base"
-    mesh_zone_name: str = "Zone"
-
     meshes: SampleMeshes = PydanticField(
-        default_factory=lambda _: SampleMeshes(meshes=None)
+        default_factory=lambda _: SampleMeshes(
+            meshes=None, mesh_base_name="Base", mesh_zone_name="Zone"
+        )
     )
     scalars: SampleScalars = PydanticField(
         default_factory=lambda _: SampleScalars(scalars=None)
