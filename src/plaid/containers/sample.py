@@ -36,6 +36,7 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
+from plaid.containers.features import SampleMeshes, SampleScalars
 from plaid.containers.utils import _check_names, get_feature_type_and_details_from
 from plaid.types import (
     CGNSLink,
@@ -69,8 +70,10 @@ class Sample(BaseModel):
     mesh_base_name: str = "Base"
     mesh_zone_name: str = "Zone"
 
-    meshes: Optional[dict[float, CGNSTree]] = None
-    scalars: Optional[dict[str, Scalar]] = None
+    # meshes: Optional[dict[float, CGNSTree]] = None
+    # scalars: Optional[dict[str, Scalar]] = None
+    meshes: Optional[SampleMeshes] = None
+    scalars: Optional[SampleScalars] = None
     time_series: Optional[dict[str, TimeSeries]] = None
     links: Optional[dict[float, list[CGNSLink]]] = None
     paths: Optional[dict[float, list[CGNSPath]]] = None
@@ -93,7 +96,7 @@ class Sample(BaseModel):
         Returns:
             Scalar or None: The scalar value associated with the given name, or None if the name is not found.
         """
-        return self._scalars.get(name)
+        return self.scalars.get(name)
 
     def add_scalar(self, name: str, value: Scalar) -> None:
         """Add a scalar value to a dictionary.
@@ -102,7 +105,7 @@ class Sample(BaseModel):
             name (str): The name of the scalar value.
             value (Scalar): The scalar value to add or update in the dictionary.
         """
-        self._scalars.add(name, value)
+        self.scalars.add(name, value)
 
     def del_scalar(self, name: str) -> Scalar:
         """Delete a scalar value from the dictionary.
@@ -116,7 +119,7 @@ class Sample(BaseModel):
         Returns:
             Scalar: The value of the deleted scalar.
         """
-        return self._scalars.remove(name)
+        return self.scalars.remove(name)
 
     def get_scalar_names(self) -> list[str]:
         """Get a set of scalar names available in the object.
@@ -124,7 +127,7 @@ class Sample(BaseModel):
         Returns:
             list[str]: A set containing the names of the available scalars.
         """
-        return self._scalars.get_names()
+        return self.scalars.get_names()
 
     # -------------------------------------------------------------------------#
 
@@ -1502,7 +1505,7 @@ class Sample(BaseModel):
             "mesh_base_name": self._meshes._mesh_base_name,
             "mesh_zone_name": self._meshes._mesh_zone_name,
             "meshes": self._meshes.data,
-            "scalars": self._scalars.data,
+            "scalars": self.scalars.data,
             "time_series": self._time_series,
             "links": self._meshes._links,
             "paths": self._meshes._paths,
