@@ -1536,14 +1536,3 @@ class Sample(BaseModel):
                 report += f"Field names: {', '.join(sorted(total_fields))}\n"
 
         return report
-
-    # @model_serializer()
-    # def serialize_model(self):
-    #     """Serialize the model to a dictionary."""
-    #     return {
-    #         "meshes": self.meshes,
-    #         "scalars": self.scalars,
-    #         "time_series": self.time_series,
-    #         "links": self.meshes._links,
-    #         "paths": self.meshes._paths,
-    #     }

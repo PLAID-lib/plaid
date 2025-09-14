@@ -16,30 +16,6 @@ try:
 except ImportError:  # pragma: no cover
     from typing_extensions import TypeAlias
 
-# from plaid.types.common import Array
-
-# CGNS types inside a node
-# CGNSNodeName: TypeAlias = str
-# CGNSNodeLabel: TypeAlias = str
-# CGNSNodeValue: TypeAlias = Union[
-#     None,
-#     str,
-#     bytes,
-#     int,
-#     float,
-#     Array,
-# ]
-
-# A CGNSNode is a list of: [name, value, children, label]
-# CGNSNode: TypeAlias = list[
-#     Union[
-#         CGNSNodeName,
-#         CGNSNodeValue,
-#         list["CGNSNode"],
-#         CGNSNodeLabel,
-#     ]
-# ]
-
 
 class CGNSNode(BaseModel):
     """Custom type for a CGNS node.
