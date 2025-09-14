@@ -10,9 +10,6 @@
 from plaid.types.cgns_types import (
     CGNSLink,
     CGNSNode,
-    # CGNSNodeLabel,
-    # CGNSNodeName,
-    # CGNSNodeValue,
     CGNSPath,
     CGNSTree,
 )
@@ -34,9 +31,6 @@ __all__ = [
     "CGNSNode",
     "CGNSTree",
     "CGNSLink",
-    # "CGNSNodeLabel",
-    # "CGNSNodeName",
-    # "CGNSNodeValue",
     "CGNSPath",
     "Scalar",
     "Field",
