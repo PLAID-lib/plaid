@@ -47,13 +47,8 @@ from plaid.utils import cgns_helper as CGH
 # %%
 # Print Sample util
 def show_sample(sample: Sample):
-<<<<<<< HEAD
     print(f"{sample = }")
     sample.show_mesh()
-=======
-    print(f"sample = {sample}")
-    sample.show_tree()
->>>>>>> main
     print(f"{sample.get_scalar_names() = }")
     print(f"{sample.get_field_names() = }")
 
@@ -165,9 +160,7 @@ meshes_dict = {0.0: tree, 0.5: tree, 1.0: tree}
 new_sample_mult_mesh.set_meshes(meshes_dict)
 
 print(f"{new_sample_mult_mesh.get_all_mesh_times() = }")
-<<<<<<< HEAD
 # new_sample_mult_mesh.show_mesh(1.)
-=======
 
 # %% [markdown]
 # ### Link tree from another sample
@@ -178,7 +171,6 @@ new_sample_mult_mesh.link_tree(
     path_linked_sample, linked_sample=sample, linked_time=0.0, time=1.5
 )
 print(f"{new_sample_mult_mesh.get_all_mesh_times() = }")
->>>>>>> main
 
 # %% [markdown]
 # ## Section 2: Accessing and Modifying Sample Data
