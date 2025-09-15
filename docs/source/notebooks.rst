@@ -14,15 +14,15 @@ You can find here detailed examples for different parts of plaid, explained in j
    :glob:
    :maxdepth: 1
 
-   notebooks/sample
-   notebooks/dataset
-   notebooks/problem_definition
-   notebooks/split
-   notebooks/stats
-   notebooks/bisect
-   notebooks/metrics
-   notebooks/init_with_tabular
-   notebooks/interpolation
-   notebooks/huggingface
-   notebooks/pipeline
-   notebooks/downloadable_examples
+   notebooks/containers/sample_example
+   notebooks/containers/dataset_example
+   notebooks/problem_definition_example
+   notebooks/utils/split_example
+   notebooks/utils/stats_example
+   notebooks/post/bisect_example
+   notebooks/post/metrics_example
+   notebooks/utils/init_with_tabular_example
+   notebooks/utils/interpolation_example
+   notebooks/bridges/huggingface_example
+   notebooks/pipelines/pipeline_example
+   notebooks/examples/downloadable_example
