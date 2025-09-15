@@ -143,7 +143,7 @@ sample_03.show_tree()
 
 # %%
 # Add a field to the third empty Sample
-sample_03.add_field("temperature", np.random.rand(5), "Zone", "Base_2_2")
+sample_03.add_field("temperature", np.random.rand(5), zone_name="Zone", base_name="Base_2_2")
 sample_03.show_tree()
 
 # %% [markdown]
