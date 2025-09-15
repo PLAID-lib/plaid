@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (dataset) fix get tabular from dataset of samples containing multidimensional scalars
 - (plaid/examples) fix circular imports
 - (sample/dataset/problem_definition) fix incoherent path argument names in save/load methods -> `path` is now used everywhere
 
