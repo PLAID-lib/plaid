@@ -476,6 +476,7 @@ class Test_Sample:
         assert sample.get_base() is not None
         sample.init_base(3, 3, "other_base_name")
         assert sample.get_base(base_name) is not None
+        assert sample.get_base(time=1.0) is None
         with pytest.raises(KeyError):
             sample.get_base()
         # check dims getters

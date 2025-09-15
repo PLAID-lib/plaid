@@ -964,13 +964,16 @@ class Sample(BaseModel):
         """
         time = self.get_time_assignment(time)
 
-        if self._meshes is not None:
-            if self._meshes[time] is not None:
-                return CGH.get_base_names(
-                    self._meshes[time], full_path=full_path, unique=unique
-                )
-        else:
-            return []
+        if (
+            self._meshes is not None
+            and time in self._meshes
+            and self._meshes[time] is not None
+        ):
+            return CGH.get_base_names(
+                self._meshes[time], full_path=full_path, unique=unique
+            )
+
+        return []
 
     def has_base(self, base_name: str, time: float = None) -> bool:
         """Check if a CGNS tree contains a Base with a given name at a specified time.
@@ -1003,7 +1006,7 @@ class Sample(BaseModel):
         if self._meshes is None:
             logger.warning("No mesh exists in the sample")
             return None
-        if self._meshes[time] is None:
+        if time not in self._meshes or self._meshes[time] is None:
             logger.warning(f"No mesh exists in the sample at {time=}")
             return None
 
@@ -1855,9 +1858,7 @@ class Sample(BaseModel):
         splitted_identifier = feature_string_identifier.split("::")
 
         feature_type = splitted_identifier[0]
-        feature_details = [
-            detail for detail in splitted_identifier[1].split("/") if detail
-        ]
+        feature_details = [detail for detail in splitted_identifier[1].split("/")]
 
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
 
