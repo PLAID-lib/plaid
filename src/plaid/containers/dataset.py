@@ -601,7 +601,7 @@ class Dataset(object):
         }
 
     def get_feature_from_identifier(
-        self, feature_identifier: dict[str : Union[str, float]]
+        self, feature_identifier: FeatureIdentifier
     ) -> dict[int, Feature]:
         """Get a list of features from the dataset based on the provided feature identifier.
 
@@ -617,7 +617,7 @@ class Dataset(object):
         }
 
     def get_features_from_identifiers(
-        self, feature_identifiers: list[dict[str : Union[str, float]]]
+        self, feature_identifiers: list[FeatureIdentifier]
     ) -> dict[int, list[Feature]]:
         """Get a list of features from the dataset based on the provided feature identifiers.
 
