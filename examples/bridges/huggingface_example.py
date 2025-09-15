@@ -18,7 +18,7 @@
 #
 # This Jupyter Notebook demonstrates various operations involving the Hugging Face bridge:
 #
-# 1. Converting a plaid dataset to Hugging Face 
+# 1. Converting a plaid dataset to Hugging Face
 # 2. Generating a Hugging Face dataset with a generator
 # 3. Converting a Hugging Face dataset to plaid
 # 4. Saving and Loading Hugging Face datasets
@@ -84,9 +84,9 @@ for _ in range(3):
 
     sample.add_tree(MeshToCGNS(mesh))
     sample.add_scalar("scalar", np.random.randn())
-    sample.add_field("node_field", np.random.rand(1, len(points)), location="Vertex")
+    sample.add_field("node_field", np.random.rand(len(points)), location="Vertex")
     sample.add_field(
-        "cell_field", np.random.rand(1, len(points)), location="CellCenter"
+        "cell_field", np.random.rand(len(triangles)), location="CellCenter"
     )
 
     dataset.add_sample(sample)
@@ -113,7 +113,7 @@ print(f" {problem = }")
 # %% [markdown]
 # ## Section 1: Convert plaid dataset to Hugging Face
 #
-# The description field of Hugging Face dataset is automatically configured to include data from the plaid dataset info and problem_definition to prevent loss of information and equivalence of format. 
+# The description field of Hugging Face dataset is automatically configured to include data from the plaid dataset info and problem_definition to prevent loss of information and equivalence of format.
 
 # %%
 hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset, problem)
@@ -122,7 +122,7 @@ print(f"{hf_dataset = }")
 print(f"{hf_dataset.description = }")
 
 # %% [markdown]
-# The previous code generates a Hugging Face dataset containing all the samples from the plaid dataset, the splits being defined in the hf_dataset descriptions. For splits, Hugging Face proposes `DatasetDict`, which are dictionaries of hf datasets, with keys being the name of the corresponding splits. It is possible de generate a hf datasetdict directly from plaid: 
+# The previous code generates a Hugging Face dataset containing all the samples from the plaid dataset, the splits being defined in the hf_dataset descriptions. For splits, Hugging Face proposes `DatasetDict`, which are dictionaries of hf datasets, with keys being the name of the corresponding splits. It is possible de generate a hf datasetdict directly from plaid:
 
 # %%
 hf_datasetdict = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, problem, main_splits = ['train', 'test'])
@@ -203,7 +203,7 @@ print(f"{loaded_hf_dataset.description = }")
 #
 # First login the huggingface cli:
 # ```bash
-#     
+#
 #     huggingface-cli login
 #
 # ```
@@ -211,7 +211,7 @@ print(f"{loaded_hf_dataset.description = }")
 #
 # Then, the following python instruction enable pushing a dataset to the hub:
 # ```python
-#     
+#
 #     hf_dataset.push_to_hub("chanel/dataset")
 #
 #     from datasets import load_dataset_builder
