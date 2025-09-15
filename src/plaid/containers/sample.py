@@ -1615,7 +1615,7 @@ class Sample(BaseModel):
         zone_name: str = None,
         base_name: str = None,
         time: float = None,
-        warning_overwrite=True,
+        warning_overwrite: bool = True,
     ) -> None:
         """Add a field to a specified zone in the grid.
 
@@ -1627,7 +1627,7 @@ class Sample(BaseModel):
             zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
             base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             time (float, optional): The time associated with the field. Defaults to 0.
-            warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
+            warning_overwrite (bool, optional): Show warning if a preexisting field is being overwritten. Defaults to True.
 
         Raises:
             KeyError: Raised if the specified zone does not exist in the given base.
