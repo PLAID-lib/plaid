@@ -374,13 +374,17 @@ class Test_Dataset:
         assert len(dataset.get_scalars_to_tabular()) == 0
         assert dataset.get_scalars_to_tabular() == {}
         dataset.add_tabular_scalars(tabular, scalar_names)
+        for sample in dataset:
+            sample.add_scalar("test_scalar", np.random.rand())
+        scalar_names.append("test_scalar")
         assert dataset.get_scalars_to_tabular(as_nparray=True).shape == (
             len(tabular),
             len(scalar_names),
         )
         dict_tabular = dataset.get_scalars_to_tabular()
         for i_s, sname in enumerate(scalar_names):
-            assert np.all(dict_tabular[sname] == tabular[:, i_s])
+            if not sname == "test_scalar":
+                assert np.all(dict_tabular[sname] == tabular[:, i_s])
 
     def test_get_scalars_to_tabular_multidimensional_scalars(
         self, dataset, tabular, scalar_names

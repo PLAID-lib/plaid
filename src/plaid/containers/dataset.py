@@ -568,7 +568,7 @@ class Dataset(object):
             for i_, id in enumerate(sample_ids):
                 val = self[id].get_scalar(s_name)
                 if val is not None:
-                    res[i_] = val.reshape((-1,))
+                    res[i_] = val.reshape((-1,)) if isinstance(val, np.ndarray) else val
             named_tabular[s_name] = res
 
         if as_nparray:
