@@ -671,25 +671,24 @@ class Sample(BaseModel):
         time = self.get_time_assignment(time)
 
         if self._meshes is None:
-            self._meshes = {}  # Initialize as empty dict
-            self._links = {}  # Initialize as empty dict
-            self._paths = {}  # Initialize as empty dict
-
-        self._meshes[time] = mesh
-        if time not in self._links:  # Only initialize if not already present
+            self._meshes = {time: mesh}
+            self._links = {time: None}
+            self._paths = {time: None}
+        elif time not in self._meshes:
+            self._meshes[time] = mesh
             self._links[time] = None
-        if time not in self._paths:  # Only initialize if not already present
             self._paths[time] = None
-            # The rest of the logic remains the same
-        local_bases = self.get_base_names(time=time)
-        base_nodes = CGU.getNodesFromTypeSet(mesh, "CGNSBase_t")
-        for _, node in base_nodes:
-            if node[__NAME__] not in local_bases:  # pragma: no cover
-                self._meshes[time][__CHILDREN__].append(node)
-            else:
-                logger.warning(
-                    f"base <{node[__NAME__]}> already exists in self._meshes --> ignored"
-                )
+        else:
+            # TODO: handle merging bases with same names + recursive node merge
+            local_bases = self.get_base_names(time=time)
+            base_nodes = CGU.getNodesFromTypeSet(mesh, "CGNSBase_t")
+            for _, node in base_nodes:
+                if node[__NAME__] not in local_bases:  # pragma: no cover
+                    self._meshes[time][__CHILDREN__].append(node)
+                else:
+                    logger.warning(
+                        f"base <{node[__NAME__]}> already exists in self._meshes --> ignored"
+                    )
 
         base_names = self.get_base_names(time=time)
         for base_name in base_names:

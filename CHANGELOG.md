@@ -28,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixtures: `sample_with_tree` → `sample_with_mesh`, `tree` → `mesh`, etc.
   - Updated usage in tests, docs and examples
 - Deprecated old `tree` methods for backward compatibility
-- Fixed `_links` and `_paths` initialization in `add_mesh` to prevent `KeyError`
 
 ### Fixes
 
