@@ -95,12 +95,16 @@ class Sample(BaseModel):
             links=None,
             paths=None,
         ),
-        description="An instance of SampleMeshes containing mesh data. Defaults to an empty `SampleMeshes` object."
+        description="An instance of SampleMeshes containing mesh data. Defaults to an empty `SampleMeshes` object.",
     )
     scalars: Optional[SampleScalars] = PydanticField(
-        default_factory=lambda _: SampleScalars(scalars=None), description="An instance of SampleScalars containing scalar data. Defaults to an empty `SampleScalars` object."
+        default_factory=lambda _: SampleScalars(scalars=None),
+        description="An instance of SampleScalars containing scalar data. Defaults to an empty `SampleScalars` object.",
     )
-    time_series: Optional[dict[str, TimeSeries]] = PydanticField(None, description="A dictionary mapping time series names to their corresponding data. Defaults to None.")
+    time_series: Optional[dict[str, TimeSeries]] = PydanticField(
+        None,
+        description="A dictionary mapping time series names to their corresponding data. Defaults to None.",
+    )
 
     # Private attributes
     _extra_data: Optional[dict] = PrivateAttr(default=None)
