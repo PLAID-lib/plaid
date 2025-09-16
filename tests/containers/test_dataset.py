@@ -663,17 +663,17 @@ class Test_Dataset:
             in_place=True,
         )
 
-    def test_from_features_identifier(
+    def test_extract_dataset_from_identifier(
         self, dataset_with_samples, dataset_with_samples_with_tree
     ):
-        dataset_with_samples.from_features_identifier(
+        dataset_with_samples.extract_dataset_from_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar"},
         )
-        dataset_with_samples.from_features_identifier(
+        dataset_with_samples.extract_dataset_from_identifier(
             feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
 
-        dataset_with_samples_with_tree.from_features_identifier(
+        dataset_with_samples_with_tree.extract_dataset_from_identifier(
             feature_identifiers={
                 "type": "field",
                 "name": "test_node_field_1",
@@ -684,7 +684,7 @@ class Test_Dataset:
             },
         )
 
-        dataset_with_samples_with_tree.from_features_identifier(
+        dataset_with_samples_with_tree.extract_dataset_from_identifier(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "nodes"},
@@ -765,14 +765,14 @@ class Test_Dataset:
                 ],
             )
 
-    def test_from_tabular(self, dataset_with_samples_with_tree):
+    def test_add_features_from_tabular(self, dataset_with_samples_with_tree):
         X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "field", "name": "OriginalIds"},
             ],
         )
-        dataset = dataset_with_samples_with_tree.from_tabular(
+        dataset = dataset_with_samples_with_tree.add_features_from_tabular(
             tabular=X,
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
@@ -804,7 +804,7 @@ class Test_Dataset:
                 {"type": "field", "name": "OriginalIds"},
             ],
         )
-        dataset = dataset_with_samples_with_tree.from_tabular(
+        dataset = dataset_with_samples_with_tree.add_features_from_tabular(
             tabular=X,
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
@@ -830,7 +830,7 @@ class Test_Dataset:
             dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
         ).all()
 
-        dataset = dataset_with_samples_with_tree.from_tabular(
+        dataset = dataset_with_samples_with_tree.add_features_from_tabular(
             tabular=X,
             feature_identifiers={"type": "field", "name": "OriginalIds"},
         )
@@ -894,10 +894,10 @@ class Test_Dataset:
         feat_id = [
             fid for fid in feat_id if fid["type"] not in ["scalar", "time_series"]
         ]
-        dataset_1 = dataset_with_samples.from_features_identifier(feat_id)
+        dataset_1 = dataset_with_samples.extract_dataset_from_identifier(feat_id)
         feat_id = other_dataset_with_samples.get_all_features_identifiers()
         feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "node"]]
-        dataset_2 = other_dataset_with_samples.from_features_identifier(feat_id)
+        dataset_2 = other_dataset_with_samples.extract_dataset_from_identifier(feat_id)
         dataset_merge_1 = dataset_1.merge_features(dataset_2, in_place=False)
         dataset_merge_2 = dataset_2.merge_features(dataset_1, in_place=False)
         assert (
