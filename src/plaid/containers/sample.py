@@ -73,12 +73,6 @@ class Sample(BaseModel):
 
     The default `SampleScalars` instance is initialized with:
         - `scalars=None` (i.e., no scalar data).
-
-    Args:
-        path (Optional[Union[str, Path]], optional): Path to the folder containing the sample data. If provided, the sample will be loaded from this path during initialization. Defaults to None.
-        meshes (SampleMeshes, optional): An instance of SampleMeshes containing mesh data. Defaults to an empty `SampleMeshes` object.
-        scalars (SampleScalars, optional): An instance of SampleScalars containing scalar data. Defaults to an empty `SampleScalars` object.
-        time_series (Optional[dict[str, TimeSeries]], optional): A dictionary mapping time series names to their corresponding data. Defaults to None.
     """
 
     # Pydantic configuration
@@ -88,7 +82,10 @@ class Sample(BaseModel):
     )
 
     # Attributes
-    path: Optional[Union[str, Path]] = None
+    path: Optional[Union[str, Path]] = PydanticField(
+        None,
+        description="Path to the folder containing the sample data. If provided, the sample will be loaded from this path during initialization. Defaults to None.",
+    )
 
     meshes: Optional[SampleMeshes] = PydanticField(
         default_factory=lambda _: SampleMeshes(
@@ -97,12 +94,13 @@ class Sample(BaseModel):
             mesh_zone_name="Zone",
             links=None,
             paths=None,
-        )
+        ),
+        description="An instance of SampleMeshes containing mesh data. Defaults to an empty `SampleMeshes` object."
     )
     scalars: Optional[SampleScalars] = PydanticField(
-        default_factory=lambda _: SampleScalars(scalars=None)
+        default_factory=lambda _: SampleScalars(scalars=None), description="An instance of SampleScalars containing scalar data. Defaults to an empty `SampleScalars` object."
     )
-    time_series: Optional[dict[str, TimeSeries]] = None
+    time_series: Optional[dict[str, TimeSeries]] = PydanticField(None, description="A dictionary mapping time series names to their corresponding data. Defaults to None.")
 
     # Private attributes
     _extra_data: Optional[dict] = PrivateAttr(default=None)
