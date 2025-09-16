@@ -1,8 +1,11 @@
 """Module for implementing collections of features within a Sample."""
 
 import logging
-from typing import Optional, Union
+from typing import Optional
 
+from plaid.containers.utils import (
+    _check_names,
+)
 from plaid.types import Scalar
 
 logger = logging.getLogger(__name__)
@@ -12,29 +15,15 @@ logging.basicConfig(
 )
 
 
-def _check_names(names: Union[str, list[str]]):
-    """Check that names do not contain invalid character ``/``.
-
-    Args:
-        names (Union[str, list[str]]): The names to check.
-
-    Raises:
-        ValueError: If any name contains the invalid character ``/``.
-    """
-    if isinstance(names, str):
-        names = [names]
-    for name in names:
-        if (name is not None) and ("/" in name):
-            raise ValueError(
-                f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurence of `/` with something else, for example: `name.replace('/','__')`"
-            )
-
-
 class SampleScalars:
     """A container for scalar features within a Sample.
 
     Provides dict-like operations for adding, retrieving, and removing scalars.
+
     Names must be unique and may not contain the character ``/``.
+
+    Args:
+        scalars (dict[str, Scalar], optional): a dict containing the pairs of (name, value) for each scalar in the `Sample`.
     """
 
     def __init__(self, scalars: Optional[dict[str, Scalar]]) -> None:

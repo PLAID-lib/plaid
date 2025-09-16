@@ -67,7 +67,7 @@ def sample_with_scalar(np_samples_3):
 def sample_with_field(np_samples_6):
     s = Sample()
     # 1. Initialize the CGNS tree
-    s.init_tree()
+    s._meshes.init_tree()
     # 2. Create a base and a zone
     s.init_base(topological_dim=3, physical_dim=3)
     s.init_zone(zone_shape=np.array([np_samples_6.shape[0], 0, 0]))
@@ -244,15 +244,15 @@ class Test_Stats:
         stats.add_samples(samples)
         stats_dict = stats.get_stats()
 
-        sample = samples[0]
+        sample: Sample = samples[0]
         feature_names = sample.get_scalar_names()
         feature_names.extend(
             item
             for ts_name in sample.get_time_series_names()
             for item in (f"time_series/{ts_name}", f"timestamps/{ts_name}")
         )
-        for base_name in sample.get_base_names():
-            for zone_name in sample.get_zone_names(base_name=base_name):
+        for base_name in sample._meshes.get_base_names():
+            for zone_name in sample._meshes.get_zone_names(base_name=base_name):
                 for field_name in sample.get_field_names(
                     zone_name=zone_name, base_name=base_name
                 ):
@@ -293,7 +293,7 @@ class Test_Stats:
         stats.clear_statistics()
         assert len(stats.get_available_statistics()) == 0
 
-    def test_add_samples_time_series_case_1(self, sample_with_time_series):
+    def test_add_samples_time_series_case_1(self, sample_with_time_series: Sample):
         # 1st case: adding time series with same sizes with 2 calls to add_samples
         stats1 = Stats()
         stats1.add_samples([sample_with_time_series])
