@@ -9,7 +9,7 @@
 
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 try:
     from typing import TypeAlias  # Python 3.10+
@@ -18,19 +18,17 @@ except ImportError:  # pragma: no cover
 
 
 class CGNSNode(BaseModel):
-    """Custom type for a CGNS node.
+    """Custom type for a CGNS node."""
 
-    Attributes:
-        name (str): The name of the CGNS node.
-        value (Optional[Any]): The value of the CGNS node, which can be of any type or None.
-        children (list[CGNSNode]): A list of child CGNS nodes.
-        label (str): The label of the CGNS node.
-    """
-
-    name: str
-    value: Optional[Any] = None
-    children: list["CGNSNode"]
-    label: str
+    name: str = Field(..., description="The name of the CGNS node.")
+    value: Optional[Any] = Field(
+        None,
+        description="The value of the CGNS node, which can be of any type or None.",
+    )
+    children: list["CGNSNode"] = Field(
+        default_factory=list, description="A list of child CGNS nodes."
+    )
+    label: str = Field(..., description="The label of the CGNS node.")
 
 
 # A CGNSTree is simply the root CGNSNode
