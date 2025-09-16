@@ -612,17 +612,17 @@ class Test_Dataset:
             in_place=True,
         )
 
-    def test_from_features_identifier(
+    def test_extract_dataset_from_identifier(
         self, dataset_with_samples, dataset_with_samples_with_mesh
     ):
-        dataset_with_samples.from_features_identifier(
+        dataset_with_samples.extract_dataset_from_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar"},
         )
-        dataset_with_samples.from_features_identifier(
+        dataset_with_samples.extract_dataset_from_identifier(
             feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
 
-        dataset_with_samples_with_mesh.from_features_identifier(
+        dataset_with_samples_with_mesh.extract_dataset_from_identifier(
             feature_identifiers={
                 "type": "field",
                 "name": "test_node_field_1",
@@ -633,7 +633,7 @@ class Test_Dataset:
             },
         )
 
-        dataset_with_samples_with_mesh.from_features_identifier(
+        dataset_with_samples_with_mesh.extract_dataset_from_identifier(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "nodes"},
@@ -714,14 +714,14 @@ class Test_Dataset:
                 ],
             )
 
-    def test_from_tabular(self, dataset_with_samples_with_mesh):
+    def test_add_features_from_tabular(self, dataset_with_samples_with_mesh):
         X = dataset_with_samples_with_mesh.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "field", "name": "OriginalIds"},
             ],
         )
-        dataset = dataset_with_samples_with_mesh.from_tabular(
+        dataset = dataset_with_samples_with_mesh.add_features_from_tabular(
             tabular=X,
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
@@ -753,7 +753,7 @@ class Test_Dataset:
                 {"type": "field", "name": "OriginalIds"},
             ],
         )
-        dataset = dataset_with_samples_with_mesh.from_tabular(
+        dataset = dataset_with_samples_with_mesh.add_features_from_tabular(
             tabular=X,
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
@@ -779,7 +779,7 @@ class Test_Dataset:
             dataset_with_samples_with_mesh[last_index].get_field("test_node_field_1"),
         ).all()
 
-        dataset = dataset_with_samples_with_mesh.from_tabular(
+        dataset = dataset_with_samples_with_mesh.add_features_from_tabular(
             tabular=X,
             feature_identifiers={"type": "field", "name": "OriginalIds"},
         )

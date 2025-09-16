@@ -2080,7 +2080,7 @@ class Sample(BaseModel):
 
         return sample
 
-    def from_features_identifier(
+    def extract_sample_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
     ) -> Self:
@@ -2131,6 +2131,18 @@ class Sample(BaseModel):
         sample._extra_data = copy.deepcopy(self._extra_data)
 
         return sample
+
+    @deprecated(
+        "Use extract_sample_from_identifier() instead",
+        version="0.1.8",
+        removal="0.2",
+    )
+    def from_features_identifier(
+        self,
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+    ) -> Self:
+        """DEPRECATED: Use extract_sample_from_identifier() instead."""
+        return self.extract_sample_from_identifier(feature_identifiers)
 
     def merge_features(self, sample: Self, in_place: bool = False) -> Self:
         """Merge features from another sample into the current sample.

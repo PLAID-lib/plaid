@@ -96,7 +96,7 @@ class ColumnTransformer(ColumnTransformer):
                 if isinstance(transformer, Pipeline)
                 else transformer.in_features_identifiers
             )
-            sub_dataset = dataset.from_features_identifier(in_feat_id)
+            sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
             transformer_ = clone(transformer).fit(sub_dataset)
             self.transformers_.append((name, transformer_, "_"))
 
@@ -136,7 +136,7 @@ class ColumnTransformer(ColumnTransformer):
                 if isinstance(transformer_, Pipeline)
                 else transformer_.in_features_identifiers_
             )
-            sub_dataset = dataset.from_features_identifier(in_feat_id)
+            sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
             transformed = transformer_.transform(sub_dataset)
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)
@@ -174,7 +174,7 @@ class ColumnTransformer(ColumnTransformer):
                 if isinstance(transformer_, Pipeline)
                 else transformer_.in_features_identifiers_
             )
-            sub_dataset = dataset.from_features_identifier(in_feat_id)
+            sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
             transformed = transformer_.inverse_transform(sub_dataset)
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)

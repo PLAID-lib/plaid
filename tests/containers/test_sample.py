@@ -1168,54 +1168,67 @@ class Test_Sample:
         ref_2 = sample_.get_field("test_node_field_1")
         assert np.any(np.isclose(ref_1, ref_2))
 
-    def test_from_features_identifier(
+    def test_extract_sample_from_identifier(
         self, sample_with_mesh_and_scalar_and_time_series
     ):
-        sample_ = sample_with_mesh_and_scalar_and_time_series.from_features_identifier(
-            feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
+        sample_ = (
+            sample_with_mesh_and_scalar_and_time_series.extract_sample_from_identifier(
+                feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
+            )
         )
         assert sample_.get_scalar_names() == ["test_scalar_1"]
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = sample_with_mesh_and_scalar_and_time_series.from_features_identifier(
-            feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
+        sample_ = (
+            sample_with_mesh_and_scalar_and_time_series.extract_sample_from_identifier(
+                feature_identifiers={
+                    "type": "time_series",
+                    "name": "test_time_series_1",
+                },
+            )
         )
         assert len(sample_.get_scalar_names()) == 0
         assert sample_.get_time_series_names() == ["test_time_series_1"]
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = sample_with_mesh_and_scalar_and_time_series.from_features_identifier(
-            feature_identifiers={
-                "type": "field",
-                "name": "test_node_field_1",
-                "base_name": "Base_2_2",
-                "zone_name": "Zone",
-                "location": "Vertex",
-                "time": 0.0,
-            },
+        sample_ = (
+            sample_with_mesh_and_scalar_and_time_series.extract_sample_from_identifier(
+                feature_identifiers={
+                    "type": "field",
+                    "name": "test_node_field_1",
+                    "base_name": "Base_2_2",
+                    "zone_name": "Zone",
+                    "location": "Vertex",
+                    "time": 0.0,
+                },
+            )
         )
         assert len(sample_.get_scalar_names()) == 0
         assert len(sample_.get_time_series_names()) == 0
         assert sample_.get_field_names() == ["test_node_field_1"]
 
-        sample_ = sample_with_mesh_and_scalar_and_time_series.from_features_identifier(
-            feature_identifiers={
-                "type": "nodes",
-                "base_name": "Base_2_2",
-                "zone_name": "Zone",
-                "time": 0.0,
-            },
+        sample_ = (
+            sample_with_mesh_and_scalar_and_time_series.extract_sample_from_identifier(
+                feature_identifiers={
+                    "type": "nodes",
+                    "base_name": "Base_2_2",
+                    "zone_name": "Zone",
+                    "time": 0.0,
+                },
+            )
         )
         assert len(sample_.get_scalar_names()) == 0
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = sample_with_mesh_and_scalar_and_time_series.from_features_identifier(
-            feature_identifiers=[
-                {"type": "field", "name": "test_node_field_1"},
-                {"type": "nodes"},
-            ],
+        sample_ = (
+            sample_with_mesh_and_scalar_and_time_series.extract_sample_from_identifier(
+                feature_identifiers=[
+                    {"type": "field", "name": "test_node_field_1"},
+                    {"type": "nodes"},
+                ],
+            )
         )
         assert len(sample_.get_scalar_names()) == 0
         assert len(sample_.get_time_series_names()) == 0
@@ -1333,12 +1346,14 @@ class Test_Sample:
         feat_id = [
             fid for fid in feat_id if fid["type"] not in ["scalar", "time_series"]
         ]
-        sample_1 = sample_with_mesh_and_scalar_and_time_series.from_features_identifier(
-            feat_id
+        sample_1 = (
+            sample_with_mesh_and_scalar_and_time_series.extract_sample_from_identifier(
+                feat_id
+            )
         )
         feat_id = sample_with_mesh.get_all_features_identifiers()
         feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "node"]]
-        sample_2 = sample_with_mesh.from_features_identifier(feat_id)
+        sample_2 = sample_with_mesh.extract_sample_from_identifier(feat_id)
         sample_merge_1 = sample_1.merge_features(sample_2, in_place=False)
         sample_merge_2 = sample_2.merge_features(sample_1, in_place=False)
         assert (
