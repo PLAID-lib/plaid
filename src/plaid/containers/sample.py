@@ -128,18 +128,6 @@ class Sample(BaseModel):
         """
         return self.model_copy(deep=True)
 
-    def copy(self) -> Self:
-        """Create a deep copy of the sample.
-
-        Returns:
-            A new `Sample` instance with all internal data (scalars, time series, fields, meshes, etc.)
-            deeply copied to ensure full isolation from the original.
-
-        Note:
-            This operation may be memory-intensive for large samples.
-        """
-        return copy.deepcopy(self)
-
     def get_scalar(self, name: str) -> Optional[Scalar]:
         """Retrieve a scalar value associated with the given name.
 
