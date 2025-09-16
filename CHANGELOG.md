@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Reorder arguments in methods working on fields in `Sample` and `Dataset`, always use keyword arguments when using `add_field`, `get_field` or `del_field`
+- Refactor the `containers/sample.py` module by introducting `SampleScalars` and `SampleMeshes` in `containers/features.py` that handle the scalars and meshes mechanics. Some methods are removed from `Sample`.
 - Move to jupytext for notebooks and examples handling (unique source for both)
 - Move to Muscat=2.5.0 (for tests and examples support)
 - Update repo configuration (actions: rely more on pypi dependencies, action versions)
@@ -27,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (dataset) fix get tabular from dataset of samples containing multidimensional scalars
 - (plaid/examples) fix circular imports
 - (sample/dataset/problem_definition) fix incoherent path argument names in save/load methods -> `path` is now used everywhere
 

@@ -431,7 +431,7 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = [time] if time else sample.get_all_mesh_times()
+            times = [time] if time else sample._meshes.get_all_mesh_times()
             for time in times:
                 base_names = (
                     [base_name] if base_name else sample.get_base_names(time=time)
@@ -561,26 +561,36 @@ class Dataset(object):
         if scalar_names is None:
             scalar_names = self.get_scalar_names(sample_ids)
         elif len(set(scalar_names)) != len(scalar_names):
-            logger.warning("Provided scalar names are not unique")
+            logger.warning(
+                "Provided scalar names are not unique, this will lead to duplicate columns in output array"
+            )
 
         if sample_ids is None:
             sample_ids = self.get_sample_ids()
         elif len(set(sample_ids)) != len(sample_ids):
-            logger.warning("Provided sample ids are not unique")
+            logger.warning(
+                "Provided sample ids are not unique, this will lead to duplicate rows in output array"
+            )
         nb_samples = len(sample_ids)
 
         named_tabular = {}
         for s_name in scalar_names:
+            tmp = self[sample_ids[0]].get_scalar(s_name)
             res = np.empty(nb_samples)
+            if isinstance(tmp, np.ndarray) and tmp.size > 1:
+                assert tmp.ndim < 3
+                res = np.empty((nb_samples, tmp.size))
             res.fill(None)
             for i_, id in enumerate(sample_ids):
                 val = self[id].get_scalar(s_name)
                 if val is not None:
-                    res[i_] = val
+                    res[i_] = val.reshape((-1,)) if isinstance(val, np.ndarray) else val
             named_tabular[s_name] = res
 
         if as_nparray:
-            named_tabular = np.array(list(named_tabular.values())).T
+            named_tabular = np.concatenate(
+                [v.reshape((nb_samples, -1)) for v in named_tabular.values()], axis=1
+            )
         return named_tabular
 
     # -------------------------------------------------------------------------#
@@ -1119,11 +1129,13 @@ class Dataset(object):
                 ts_counts[name] = ts_counts.get(name, 0) + 1
 
             # Fields
-            times = sample.get_all_mesh_times()
+            times = sample._meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample._meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample._meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         field_names = sample.get_field_names(
                             zone_name=zone_name, base_name=base_name, time=time
@@ -1210,11 +1222,13 @@ class Dataset(object):
             all_scalar_names.update(sample.get_scalar_names())
             all_ts_names.update(sample.get_time_series_names())
 
-            times = sample.get_all_mesh_times()
+            times = sample._meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample._meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample._meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         all_field_names.update(
                             sample.get_field_names(
@@ -1243,11 +1257,13 @@ class Dataset(object):
 
             # Check fields
             sample_fields = set()
-            times = sample.get_all_mesh_times()
+            times = sample._meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample._meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample._meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         sample_fields.update(
                             sample.get_field_names(
