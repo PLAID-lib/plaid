@@ -36,8 +36,6 @@ import numpy as np
 # Import necessary libraries and functions
 from plaid import Dataset, Sample
 from plaid import ProblemDefinition
-### The following commented line is equivalent to the one above
-# from plaid import ProblemDefinition
 from plaid.utils.split import split_dataset
 
 # %% [markdown]
