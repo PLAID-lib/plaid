@@ -28,6 +28,8 @@ AUTHORIZED_FEATURE_INFOS = {
 
 AUTHORIZED_FIELD_LOCATIONS = ["Vertex", "EdgeCenter", "FaceCenter", "CellCenter"]
 
+# Information keys for dataset metadata
+# key ["plaid"]["version"] is not included as it is managed internally
 AUTHORIZED_INFO_KEYS = {
     "legal": ["owner", "license"],
     "data_production": [

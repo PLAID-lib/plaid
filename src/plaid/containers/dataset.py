@@ -27,8 +27,11 @@ from typing import Iterator, Literal, Optional, Union
 
 import numpy as np
 import yaml
+from packaging.version import Version
+from packaging.specifiers import SpecifierSet
 from tqdm import tqdm
 
+import plaid
 from plaid.constants import AUTHORIZED_INFO_KEYS
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
@@ -113,7 +116,9 @@ class Dataset(object):
         """
         self._samples: dict[int, Sample] = {}  # sample_id -> sample
         # info_name -> description
-        self._infos: dict[str, dict[str, str]] = {}
+        self._infos: dict[str, dict[str, Union[str, Version, SpecifierSet]]] = {
+            "plaid": {"version": Version(plaid.__version__)}
+        }
 
         if directory_path is not None:
             if path is not None:
@@ -1454,28 +1459,28 @@ class Dataset(object):
         if verbose:  # pragma: no cover
             print(f"Saving database to: {path}")
 
+        # Save infos
+        assert "plaid" in self._infos
+        assert "version" in self._infos["plaid"]
+        plaid_version = Version(plaid.__version__)
+        if isinstance(self._infos["plaid"]["version"], SpecifierSet) or self._infos["plaid"]["version"] != plaid_version:
+            logger.warning(
+                f"Version mismatch: Dataset was loaded from version: {self._infos['plaid']['version']}, and will be saved with version: {plaid_version}"
+            )
+            self._infos["plaid"]["old_version"] = str(self._infos["plaid"]["version"])
+            self._infos["plaid"]["version"] = str(plaid_version)
+        infos_fname = path / "infos.yaml"
+        with open(infos_fname, "w") as file:
+            yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
+
+        # Save samples
         samples_dir = path / "samples"
         if not (samples_dir.is_dir()):
             samples_dir.mkdir(parents=True)
 
-        # ---# save samples
         for i_sample, sample in tqdm(self._samples.items(), disable=not (verbose)):
             sample_fname = samples_dir / f"sample_{i_sample:09d}"
             sample.save(sample_fname)
-
-        # ---# save infos
-        if len(self._infos) > 0:
-            infos_fname = path / "infos.yaml"
-            with open(infos_fname, "w") as file:
-                yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
-
-        # #---# save stats
-        # stats_fname = path / 'stats.yaml'
-        # self._stats.save(stats_fname)
-
-        # #---# save flags
-        # flags_fname = path / 'flags.yaml'
-        # self._flags.save(flags_fname)
 
     def _load_from_dir_(
         self,
@@ -1511,6 +1516,18 @@ class Dataset(object):
         if verbose:  # pragma: no cover
             print(f"Reading database located at: {path}")
 
+        # Load infos
+        infos_fname = path / "infos.yaml"
+        if infos_fname.is_file():
+            with open(infos_fname, "r") as file:
+                self._infos = yaml.safe_load(file)
+        if "plaid" not in self._infos or "version" not in self._infos["plaid"]:
+            self._infos.setdefault("plaid", {})["version"] = SpecifierSet("<=0.1.7")
+        else:
+            self._infos["plaid"]["version"] = Version(self._infos["plaid"]["version"])
+        print(f"=== Loaded dataset version: {self._infos['plaid']['version']}")
+
+        # Load samples
         sample_paths = sorted(
             [path for path in (path / "samples").glob("sample_*") if path.is_dir()]
         )
@@ -1573,11 +1590,6 @@ class Dataset(object):
                 id, sample = s.get()
                 self.set_sample(id, sample)
             """
-
-        infos_fname = path / "infos.yaml"
-        if infos_fname.is_file():
-            with open(infos_fname, "r") as file:
-                self._infos = yaml.safe_load(file)
 
         if len(self) == 0:  # pragma: no cover
             print("Warning: dataset contains no sample")
