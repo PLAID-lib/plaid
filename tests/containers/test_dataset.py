@@ -378,13 +378,60 @@ class Test_Dataset:
         assert len(dataset.get_scalars_to_tabular()) == 0
         assert dataset.get_scalars_to_tabular() == {}
         dataset.add_tabular_scalars(tabular, scalar_names)
+        for sample in dataset:
+            sample.add_scalar("test_scalar", np.random.rand())
+        scalar_names.append("test_scalar")
         assert dataset.get_scalars_to_tabular(as_nparray=True).shape == (
             len(tabular),
             len(scalar_names),
         )
         dict_tabular = dataset.get_scalars_to_tabular()
         for i_s, sname in enumerate(scalar_names):
-            assert np.all(dict_tabular[sname] == tabular[:, i_s])
+            if not sname == "test_scalar":
+                assert np.all(dict_tabular[sname] == tabular[:, i_s])
+
+    def test_get_scalars_to_tabular_multidimensional_scalars(
+        self, dataset, tabular, scalar_names
+    ):
+        dataset.add_tabular_scalars(tabular, scalar_names)
+        dataset.get_scalars_to_tabular(as_nparray=True)
+        # add multidimensional scalars
+        test_scalar_1D = np.random.rand(len(dataset), 4)
+        test_scalar_2D_row = np.random.rand(len(dataset), 1, 3)
+        test_scalar_2D_col = np.random.rand(len(dataset), 5, 1)
+        for i_sample, sample in enumerate(dataset):
+            sample: Sample
+            sample.add_scalar("test_scalar_1D", test_scalar_1D[i_sample])
+            sample.add_scalar("test_scalar_2D_row", test_scalar_2D_row[i_sample])
+            sample.add_scalar("test_scalar_2D_col", test_scalar_2D_col[i_sample])
+        # get tabulars and assert shapes and values
+        tab = dataset.get_scalars_to_tabular(
+            scalar_names=["test_scalar_1D"], as_nparray=True
+        )
+        assert tab.shape == (len(tabular), 4)
+        assert np.all(tab == test_scalar_1D)
+        tab = dataset.get_scalars_to_tabular(
+            scalar_names=["test_scalar_2D_row"], as_nparray=True
+        )
+        assert tab.shape == (len(tabular), 3)
+        assert np.all(tab == test_scalar_2D_row.squeeze(1))
+        tab = dataset.get_scalars_to_tabular(
+            scalar_names=["test_scalar_2D_col"], as_nparray=True
+        )
+        assert tab.shape == (len(tabular), 5)
+        assert np.all(tab == test_scalar_2D_col.squeeze(2))
+
+        # assert values
+        dict_tabular = dataset.get_scalars_to_tabular(
+            scalar_names=["test_scalar_1D", "test_scalar_2D_row", "test_scalar_2D_col"]
+        )
+        assert np.all(dict_tabular["test_scalar_1D"] == test_scalar_1D)
+        assert np.all(
+            dict_tabular["test_scalar_2D_row"] == test_scalar_2D_row.squeeze(1)
+        )
+        assert np.all(
+            dict_tabular["test_scalar_2D_col"] == test_scalar_2D_col.squeeze(2)
+        )
 
     def test_get_scalars_to_tabular_same_scalars_name(
         self, dataset, tabular, scalar_names
