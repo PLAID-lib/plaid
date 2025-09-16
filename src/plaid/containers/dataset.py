@@ -545,26 +545,36 @@ class Dataset(object):
         if scalar_names is None:
             scalar_names = self.get_scalar_names(sample_ids)
         elif len(set(scalar_names)) != len(scalar_names):
-            logger.warning("Provided scalar names are not unique")
+            logger.warning(
+                "Provided scalar names are not unique, this will lead to duplicate columns in output array"
+            )
 
         if sample_ids is None:
             sample_ids = self.get_sample_ids()
         elif len(set(sample_ids)) != len(sample_ids):
-            logger.warning("Provided sample ids are not unique")
+            logger.warning(
+                "Provided sample ids are not unique, this will lead to duplicate rows in output array"
+            )
         nb_samples = len(sample_ids)
 
         named_tabular = {}
         for s_name in scalar_names:
+            tmp = self[sample_ids[0]].get_scalar(s_name)
             res = np.empty(nb_samples)
+            if isinstance(tmp, np.ndarray) and tmp.size > 1:
+                assert tmp.ndim < 3
+                res = np.empty((nb_samples, tmp.size))
             res.fill(None)
             for i_, id in enumerate(sample_ids):
                 val = self[id].get_scalar(s_name)
                 if val is not None:
-                    res[i_] = val
+                    res[i_] = val.reshape((-1,)) if isinstance(val, np.ndarray) else val
             named_tabular[s_name] = res
 
         if as_nparray:
-            named_tabular = np.array(list(named_tabular.values())).T
+            named_tabular = np.concatenate(
+                [v.reshape((nb_samples, -1)) for v in named_tabular.values()], axis=1
+            )
         return named_tabular
 
     # -------------------------------------------------------------------------#
