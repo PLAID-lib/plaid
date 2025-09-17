@@ -121,19 +121,11 @@ all_feature_id = config['input_scalar_scaler']['in_features_identifiers'] +\
 # %% [markdown]
 # In this example, we aim to predict the ``mach`` field based on two input scalars ``angle_in`` and ``mach_out``, and the mesh node coordinates. To contain memory consumption, we restrict the dataset to the features required for this example:
 
-# %% [markdown]
-# ```python
-# dataset_train = dataset_train.from_features_identifier(all_feature_id)
-# print("dataset_train:", dataset_train)
+# %%
+# dataset_train = dataset_train.extract_dataset_from_identifier(all_feature_id)
+# print("dataset_train =", dataset_train)
 # print("scalar names =", dataset_train.get_scalar_names())
 # print("field names =", dataset_train.get_field_names())
-# ```
-#
-# ```bash
-# dataset_train: Dataset(24 samples, 2 scalars, 0 time_series, 1 field)
-# scalar names = ['angle_in', 'mach_out']
-# field names = ['mach']
-# ```
 
 # %% [markdown]
 # We notive that only the 2 scalars and the field of interest are kept after restriction.
