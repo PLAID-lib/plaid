@@ -88,3 +88,58 @@ You accept and agree to the following terms and conditions for Your present and 
 ---
 
 Thank you for considering contributing to PLAID Project! Your help is greatly appreciated.
+
+## 5. Backward compatibility policy (API and disk format)
+
+We care about stability. Changes that break users’ code or data must follow a strict process.
+
+References:
+- Disk format retrocompatibility: https://github.com/PLAID-lib/plaid/issues/97
+- API retrocompatibility: https://github.com/PLAID-lib/plaid/issues/14
+
+### 5.1 Versioning and stability expectations
+- We follow semantic versioning (MAJOR.MINOR.PATCH).
+  - PATCH: bug fixes, no behavior or signature changes.
+  - MINOR: backward-compatible additions, deprecations with warnings, new features.
+  - MAJOR: may remove previously deprecated APIs or drop support for legacy on-disk artifacts, with clear migration paths.
+
+### 5.2 API changes
+- Prefer additive changes. Avoid renaming/removing public functions, classes, arguments.
+- If you must change or remove behavior:
+  - Introduce a replacement API alongside the old one.
+  - Mark the old API as deprecated using our deprecation utilities (`plaid.utils.deprecation.deprecated`).
+  - Emit clear warnings with the suggested replacement and planned removal version (e.g., removal in 0.(MINOR+2) or next MAJOR).
+  - Update docs and examples to the new API immediately.
+  - Add unit tests for both old (ensuring warning) and new APIs during the deprecation window.
+  - Add entries to CHANGELOG and document in “Breaking changes” for the release.
+
+Example in the codebase: transition to feature identifiers introduced identifier-based methods while keeping name-based methods deprecated until removal (see `ProblemDefinition` and `Sample`).
+
+### 5.3 Disk format changes
+- Maintain read-compatibility across MINOR releases whenever feasible.
+- When evolving on-disk files:
+  - Readers should detect legacy variants and handle them transparently (example: `split.csv` vs `split.json` already supported in `ProblemDefinition`).
+  - Writers should prefer the newest format by default.
+  - Provide a migration utility or documented steps when an automatic upgrade is not trivial.
+  - Document the change in the docs (Core Concepts or a dedicated migration note) and CHANGELOG.
+  - Never silently misinterpret legacy files: if auto-detection fails, raise a clear, actionable error.
+
+Recommended pattern for format bumps:
+- Add detection logic (e.g., prefer `split.json`, fallback to `split.csv`).
+- Gate writing with a single, current format.
+- Include a small migration script or a helper function to convert old artifacts when the mapping is deterministic.
+
+### 5.4 Deprecation timelines
+- Default window for removing deprecated APIs: at least two MINOR releases or one MAJOR, whichever comes first after a minimum of 3 months.
+- Disk format support removal: MAJOR release only, with at least one prior MINOR release providing deprecation notices and a migration path.
+
+### 5.5 Testing and CI
+- Add regression tests that:
+  - Load legacy on-disk artifacts and verify parity.
+  - Exercise deprecated APIs and assert that deprecation warnings are raised.
+- Add tests for the new format/API to ensure the pathway forward is solid.
+
+### 5.6 Documentation and communication
+- Update `docs/` concurrently with code changes: reference the new behavior and mark deprecated flows.
+- Provide cross-links from Quickstart/Core Concepts to migration notes when relevant.
+- Clearly summarize in the release notes: what changed, what to do, and how long old flows will work.

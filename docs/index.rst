@@ -68,7 +68,7 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: Getting Started
+   :caption: Start here
 
    source/quickstart.md
    source/description.md
@@ -76,7 +76,7 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: Core Concepts
+   :caption: Concepts
 
    source/core_concepts.md
    source/feature_identifiers.md
@@ -85,16 +85,22 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: Documentation
+   :caption: How-to & examples
 
-   API Reference <autoapi/plaid/index>
    Examples & Tutorials <source/notebooks.rst>
    Data Conversion Guide <source/notebooks/convert_users_data_example>
 
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: Going further
+   :caption: API reference
+
+   API Reference <autoapi/plaid/index>
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
+   :caption: Ecosystem & benchmarks
 
    CGNS Standard <http://cgns.github.io/>
    PLAID Benchmarks <source/plaid_benchmarks.rst>
@@ -109,7 +115,7 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: Contributing
+   :caption: Contribute
 
    source/contributing.md
 
