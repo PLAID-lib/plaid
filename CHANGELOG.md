@@ -21,11 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - (examples/docs) update use of deprecated functions
+- Reorder arguments in methods working on fields in `Sample` and `Dataset`, always use keyword arguments when using `add_field`, `get_field` or `del_field`
 - Refactor the `containers/sample.py` module by introducting `SampleScalars` and `SampleMeshes` in `containers/features.py` that handle the scalars and meshes mechanics. Some methods are removed from `Sample`.
 - Move to jupytext for notebooks and examples handling (unique source for both)
 - Move to Muscat=2.5.0 (for tests and examples support)
 - Update repo configuration (actions: rely more on pypi dependencies, action versions)
 - Rename types to remove `Type` from name of types: https://github.com/PLAID-lib/plaid/pull/164
+- Refactored method names for improved clarity:
+  - `Dataset.from_tabular` → `Dataset.add_features_from_tabular`
+  - `Dataset.from_features_identifier` → `Dataset.extract_dataset_from_identifier`
+  - `Sample.from_features_identifier` → `Sample.extract_sample_from_identifier`
 
 ### Fixes
 
