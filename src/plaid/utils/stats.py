@@ -433,9 +433,9 @@ class Stats:
             sample (Sample): Sample containing field data
             data_dict (dict[str, list]): Dictionary to store processed data
         """
-        for time in sample._meshes.get_all_mesh_times():
-            for base_name in sample._meshes.get_base_names(time=time):
-                for zone_name in sample._meshes.get_zone_names(
+        for time in sample.meshes.get_all_mesh_times():
+            for base_name in sample.meshes.get_base_names(time=time):
+                for zone_name in sample.meshes.get_zone_names(
                     base_name=base_name, time=time
                 ):
                     for field_name in sample.get_field_names(

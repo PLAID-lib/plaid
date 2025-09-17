@@ -56,7 +56,7 @@ def process_sample(path: Union[str, Path]) -> tuple:  # pragma: no cover
     """
     path = Path(path)
     id = int(path.stem.split("_")[-1])
-    return id, Sample(path)
+    return id, Sample(path=path)
 
 
 # %% Classes
@@ -431,7 +431,7 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = [time] if time else sample._meshes.get_all_mesh_times()
+            times = [time] if time else sample.meshes.get_all_mesh_times()
             for time in times:
                 base_names = (
                     [base_name] if base_name else sample.get_base_names(time=time)
@@ -1129,11 +1129,11 @@ class Dataset(object):
                 ts_counts[name] = ts_counts.get(name, 0) + 1
 
             # Fields
-            times = sample._meshes.get_all_mesh_times()
+            times = sample.meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample._meshes.get_base_names(time=time)
+                base_names = sample.meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample._meshes.get_zone_names(
+                    zone_names = sample.meshes.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
@@ -1222,11 +1222,11 @@ class Dataset(object):
             all_scalar_names.update(sample.get_scalar_names())
             all_ts_names.update(sample.get_time_series_names())
 
-            times = sample._meshes.get_all_mesh_times()
+            times = sample.meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample._meshes.get_base_names(time=time)
+                base_names = sample.meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample._meshes.get_zone_names(
+                    zone_names = sample.meshes.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
@@ -1257,11 +1257,11 @@ class Dataset(object):
 
             # Check fields
             sample_fields = set()
-            times = sample._meshes.get_all_mesh_times()
+            times = sample.meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample._meshes.get_base_names(time=time)
+                base_names = sample.meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample._meshes.get_zone_names(
+                    zone_names = sample.meshes.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
@@ -1569,7 +1569,7 @@ class Dataset(object):
         if processes_number == 0 or processes_number == 1:
             for sample_path in tqdm(sample_paths, disable=not (verbose)):
                 id = int(sample_path.stem.split("_")[-1])
-                sample = Sample(sample_path)
+                sample = Sample(path=sample_path)
                 self.add_sample(sample, id)
         else:
             with Pool(processes_number) as p:

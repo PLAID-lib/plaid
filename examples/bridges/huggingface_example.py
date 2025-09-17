@@ -82,7 +82,7 @@ for _ in range(3):
 
     sample = Sample()
 
-    sample.add_tree(MeshToCGNS(mesh))
+    sample.meshes.add_tree(MeshToCGNS(mesh))
     sample.add_scalar("scalar", np.random.randn())
     sample.add_field("node_field", np.random.rand(len(points)), location="Vertex")
     sample.add_field(
@@ -203,31 +203,27 @@ print(f"{loaded_hf_dataset.description = }")
 #
 # First login the huggingface cli:
 # ```bash
-#
-#     huggingface-cli login
-#
+# huggingface-cli login
 # ```
 # and enter you access token.
 #
 # Then, the following python instruction enable pushing a dataset to the hub:
 # ```python
+# hf_dataset.push_to_hub("chanel/dataset")
 #
-#     hf_dataset.push_to_hub("chanel/dataset")
+# from datasets import load_dataset_builder
 #
-#     from datasets import load_dataset_builder
+# datasetInfo = load_dataset_builder("chanel/dataset").__getstate__()['info']
 #
-#     datasetInfo = load_dataset_builder("chanel/dataset").__getstate__()['info']
+# from huggingface_hub import DatasetCard
 #
-#     from huggingface_hub import DatasetCard
-#
-#     card_text = create_string_for_huggingface_dataset_card(
-#         description = description,
-#         download_size_bytes = datasetInfo.download_size,
-#         dataset_size_bytes = datasetInfo.dataset_size,
-#         ...)
-#     dataset_card = DatasetCard(card_text)
-#     dataset_card.push_to_hub("chanel/dataset")
-#
+# card_text = create_string_for_huggingface_dataset_card(
+#     description = description,
+#     download_size_bytes = datasetInfo.download_size,
+#     dataset_size_bytes = datasetInfo.dataset_size,
+#     ...)
+# dataset_card = DatasetCard(card_text)
+# dataset_card.push_to_hub("chanel/dataset")
 # ```
 #
 # The second upload of the dataset_card is required to ensure that load_dataset from the hub will populate
@@ -237,20 +233,15 @@ print(f"{loaded_hf_dataset.description = }")
 # ### Load from hub
 #
 # ```python
-#
-#     dataset = load_dataset("chanel/dataset", split="all_samples")
-#
+# dataset = load_dataset("chanel/dataset", split="all_samples")
 # ```
 #
 # More efficient retrieval are made possible by partial loads and  split laods (in the case of a datasetdict):
 #
 # ```python
-#
-#     dataset_train = load_dataset("chanel/dataset", split="train")
-#     dataset_train_extract = load_dataset("chanel/dataset", split="train[:10]")
-#
+# dataset_train = load_dataset("chanel/dataset", split="train")
+# dataset_train_extract = load_dataset("chanel/dataset", split="train[:10]")
 # ```
-#
 
 # %% [markdown]
 # ## Section 5: Handle plaid samples from Hugging Face datasets without converting the complete dataset to plaid

@@ -7,36 +7,29 @@
 #
 #
 
-from typing import Union
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
 
 try:
     from typing import TypeAlias  # Python 3.10+
 except ImportError:  # pragma: no cover
     from typing_extensions import TypeAlias
 
-from plaid.types.common import Array
 
-# CGNS types inside a node
-CGNSNodeName: TypeAlias = str
-CGNSNodeLabel: TypeAlias = str
-CGNSNodeValue: TypeAlias = Union[
-    None,
-    str,
-    bytes,
-    int,
-    float,
-    Array,
-]
+class CGNSNode(BaseModel):
+    """Custom type for a CGNS node."""
 
-# A CGNSNode is a list of: [name, value, children, label]
-CGNSNode: TypeAlias = list[
-    Union[
-        CGNSNodeName,
-        CGNSNodeValue,
-        list["CGNSNode"],
-        CGNSNodeLabel,
-    ]
-]
+    name: str = Field(..., description="The name of the CGNS node.")
+    value: Optional[Any] = Field(
+        None,
+        description="The value of the CGNS node, which can be of any type or None.",
+    )
+    children: list["CGNSNode"] = Field(
+        default_factory=list, description="A list of child CGNS nodes."
+    )
+    label: str = Field(..., description="The label of the CGNS node.")
+
 
 # A CGNSTree is simply the root CGNSNode
 CGNSTree: TypeAlias = CGNSNode
