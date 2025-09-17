@@ -49,7 +49,9 @@ class _HFToPlaidSampleConverter:
                 )
                 return Sample.model_validate(sample)
             except KeyError as e:
-                raise KeyError(f"Missing key {e!s} in HF payload (sample_id={sample_id})") from e
+                raise KeyError(
+                    f"Missing key {e!s} in HF payload (sample_id={sample_id})"
+                ) from e
 
 
 class _HFShardToPlaidSampleConverter(object):
