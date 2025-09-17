@@ -378,24 +378,26 @@ class Sample(BaseModel):
 
     def get_field_names(
         self,
+        location: str = None,
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
-        location: str = "Vertex",
         time: Optional[float] = None,
     ) -> list[str]:
         """Get a set of field names associated with a specified zone, base, location, and time.
 
         Args:
+            location (str, optional): The desired grid location where the field is defined. Defaults to None.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
-            location (str, optional): The desired grid location where the field is defined. Defaults to 'Vertex'.
-                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
             set[str]: A set containing the names of the fields that match the specified criteria.
         """
-        return self.meshes.get_field_names(zone_name, base_name, location, time)
+        return self.meshes.get_field_names(
+            location=location, zone_name=zone_name, base_name=base_name, time=time
+        )
 
     # -------------------------------------------------------------------------#
 
@@ -451,7 +453,9 @@ class Sample(BaseModel):
 
             zone_names = linked_sample.meshes.get_zone_names(bn, time=linked_time)
             for zn in zone_names:
-                zone_node = linked_sample.meshes.get_zone(zn, bn, time=linked_time)
+                zone_node = linked_sample.meshes.get_zone(
+                    zone_name=zn, base_name=bn, time=linked_time
+                )
                 grid = [
                     zn,
                     zone_node[1],
@@ -535,9 +539,9 @@ class Sample(BaseModel):
         self,
         name: str,
         field: Field,
+        location: str = "Vertex",
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
-        location: str = "Vertex",
         time: Optional[float] = None,
         warning_overwrite=True,
     ) -> None:
@@ -557,48 +561,60 @@ class Sample(BaseModel):
             KeyError: Raised if the specified zone does not exist in the given base.
         """
         self.meshes.add_field(
-            name, field, zone_name, base_name, location, time, warning_overwrite
+            name,
+            field,
+            location=location,
+            zone_name=zone_name,
+            base_name=base_name,
+            time=time,
+            warning_overwrite=warning_overwrite,
         )
 
     def get_field(
         self,
         name: str,
+        location: str = "Vertex",
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
-        location: str = "Vertex",
         time: Optional[float] = None,
     ) -> Field:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
 
         Args:
             name (str): The name of the field to retrieve.
-            zone_name (str, optional): The name of the zone to search for. Defaults to None.
-            base_name (str, optional): The name of the base to search for. Defaults to None.
             location (str, optional): The location at which to retrieve the field. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            zone_name (str, optional): The name of the zone to search for. Defaults to None.
+            base_name (str, optional): The name of the base to search for. Defaults to None.
             time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
             Field: A set containing the names of the fields that match the specified criteria.
         """
-        return self.meshes.get_field(name, zone_name, base_name, location, time)
+        return self.meshes.get_field(
+            name=name,
+            location=location,
+            zone_name=zone_name,
+            base_name=base_name,
+            time=time,
+        )
 
     def del_field(
         self,
         name: str,
+        location: str = "Vertex",
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
-        location: str = "Vertex",
         time: Optional[float] = None,
     ) -> CGNSTree:
         """Delete a field from a specified zone in the grid.
 
         Args:
             name (str): The name of the field to be deleted.
-            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
-            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
+            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
@@ -607,7 +623,13 @@ class Sample(BaseModel):
         Returns:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
-        return self.meshes.del_field(name, zone_name, base_name, location, time)
+        return self.meshes.del_field(
+            name=name,
+            location=location,
+            zone_name=zone_name,
+            base_name=base_name,
+            time=time,
+        )
 
     def get_nodes(
         self,
@@ -751,9 +773,9 @@ class Sample(BaseModel):
             if feat_id["type"] == "field":
                 self.del_field(
                     name=feat_id["name"],
+                    location=feat_id["location"],
                     zone_name=feat_id["zone_name"],
                     base_name=feat_id["base_name"],
-                    location=feat_id["location"],
                     time=feat_id["time"],
                 )
         return self
@@ -789,7 +811,7 @@ class Sample(BaseModel):
                         )
                     for loc in CGNS_FIELD_LOCATIONS:
                         for fn in self.meshes.get_field_names(
-                            zone_name=zn, base_name=bn, location=loc, time=t
+                            location=loc, zone_name=zn, base_name=bn, time=t
                         ):
                             all_features_identifiers.append(
                                 {
@@ -853,13 +875,12 @@ class Sample(BaseModel):
         splitted_identifier = feature_string_identifier.split("::")
 
         feature_type = splitted_identifier[0]
-        feature_details = [
-            detail for detail in splitted_identifier[1].split("/") if detail
-        ]
+        feature_details = [detail for detail in splitted_identifier[1].split("/")]
 
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
 
         arg_names = AUTHORIZED_FEATURE_INFOS[feature_type]
+        assert len(arg_names) >= len(feature_details), "Too much details provided"
 
         if feature_type == "scalar":
             val = self.get_scalar(feature_details[0])
@@ -872,11 +893,17 @@ class Sample(BaseModel):
             return self.get_time_series(feature_details[0])
         elif feature_type == "field":
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
+            for k in kwargs:
+                if kwargs[k] == "":
+                    kwargs[k] = None
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
             return self.get_field(**kwargs)
         elif feature_type == "nodes":
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
+            for k in kwargs:
+                if kwargs[k] == "":
+                    kwargs[k] = None
             if "time" in kwargs:
                 kwargs["time"] = float(kwargs["time"])
             return self.get_nodes(**kwargs).flatten()
@@ -1350,20 +1377,12 @@ class Sample(BaseModel):
             for bn in base_names:
                 zone_names = self.meshes.get_zone_names(base_name=bn)
                 for zn in zone_names:
-                    field_names = field_names.union(
-                        self.meshes.get_field_names(
-                            zone_name=zn, time=time, location="Vertex"
+                    for location in CGNS_FIELD_LOCATIONS:
+                        field_names = field_names.union(
+                            self.meshes.get_field_names(
+                                location=location, zone_name=zn, base_name=bn, time=time
+                            )
                         )
-                        + self.meshes.get_field_names(
-                            zone_name=zn, time=time, location="EdgeCenter"
-                        )
-                        + self.meshes.get_field_names(
-                            zone_name=zn, time=time, location="FaceCenter"
-                        )
-                        + self.meshes.get_field_names(
-                            zone_name=zn, time=time, location="CellCenter"
-                        )
-                    )
         nb_fields = len(field_names)
         str_repr += f"{nb_fields} field{'' if nb_fields == 1 else 's'}, "
 
@@ -1445,62 +1464,45 @@ class Sample(BaseModel):
         summary += f"Meshes ({len(times)} timestamps):\n"
         if times:
             for time in times:
-                summary += f"  Time: {time}\n"
+                summary += f"    Time: {time}\n"
                 base_names = self.meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    summary += f"    Base: {base_name}\n"
+                    summary += f"        Base: {base_name}\n"
                     zone_names = self.meshes.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
+                        summary += f"            Zone: {zone_name}\n"
                         # Nodes, nodal tags and fields at verticies
-                        nb_nodes = self.get_nodes(
-                            zone_name=zone_name, base_name=base_name, time=time
-                        ).shape[0]
-                        nodal_tags = self.meshes.get_nodal_tags(
+                        nodes = self.get_nodes(
                             zone_name=zone_name, base_name=base_name, time=time
                         )
-                        summary += f"        Nodes ({nb_nodes})\n"
-                        if len(nodal_tags) > 0:
-                            summary += f"          Tags ({len(nodal_tags)}): {', '.join([f'{k} ({len(v)})' for k, v in nodal_tags.items()])}\n"
-                        field_names = self.get_field_names(
-                            zone_name=zone_name,
-                            base_name=base_name,
-                            location="Vertex",
-                            time=time,
-                        )
-                        if field_names:
-                            summary += f"          Fields ({len(field_names)}): {', '.join(field_names)}\n"
+                        if nodes is not None:
+                            nb_nodes = nodes.shape[0]
+                            nodal_tags = self.meshes.get_nodal_tags(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                            summary += f"                Nodes ({nb_nodes})\n"
+                            if len(nodal_tags) > 0:
+                                summary += f"                Tags ({len(nodal_tags)}): {', '.join([f'{k} ({len(v)})' for k, v in nodal_tags.items()])}\n"
+
+                        for location in CGNS_FIELD_LOCATIONS:
+                            field_names = self.get_field_names(
+                                location=location,
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                time=time,
+                            )
+                            if field_names:
+                                summary += f"                Location: {location}\n                    Fields ({len(field_names)}): {', '.join(field_names)}\n"
 
                         # Elements and fields at elements
                         elements = self.meshes.get_elements(
                             zone_name=zone_name, base_name=base_name, time=time
                         )
-                        summary += f"        Elements ({sum([v.shape[0] for v in elements.values()])})"
+                        summary += f"                Elements ({sum([v.shape[0] for v in elements.values()])})\n"
                         if len(elements) > 0:
-                            summary += f"\n          {', '.join([f'{k} ({v.shape[0]})' for k, v in elements.items()])}\n"
-                        field_names = (
-                            self.get_field_names(
-                                zone_name=zone_name,
-                                base_name=base_name,
-                                location="EdgeCenter",
-                                time=time,
-                            )
-                            + self.get_field_names(
-                                zone_name=zone_name,
-                                base_name=base_name,
-                                location="FaceCenter",
-                                time=time,
-                            )
-                            + self.get_field_names(
-                                zone_name=zone_name,
-                                base_name=base_name,
-                                location="CellCenter",
-                                time=time,
-                            )
-                        )
-                        if field_names:
-                            summary += f"          Fields ({len(field_names)}): {', '.join(field_names)}\n"
+                            summary += f"                    {', '.join([f'{k} ({v.shape[0]})' for k, v in elements.items()])}\n"
 
         return summary
 
@@ -1543,10 +1545,14 @@ class Sample(BaseModel):
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
-                        field_names = self.get_field_names(
-                            zone_name=zone_name, base_name=base_name, time=time
-                        )
-                        total_fields.update(field_names)
+                        for location in CGNS_FIELD_LOCATIONS:
+                            field_names = self.get_field_names(
+                                location=location,
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                time=time,
+                            )
+                            total_fields.update(field_names)
 
             report += f"Total unique fields: {len(total_fields)}\n"
             if total_fields:

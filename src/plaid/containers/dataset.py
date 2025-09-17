@@ -29,7 +29,7 @@ import numpy as np
 import yaml
 from tqdm import tqdm
 
-from plaid.constants import AUTHORIZED_INFO_KEYS
+from plaid.constants import AUTHORIZED_INFO_KEYS, CGNS_FIELD_LOCATIONS
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
 from plaid.types import Array, Feature, FeatureIdentifier
@@ -152,7 +152,7 @@ class Dataset(object):
     # -------------------------------------------------------------------------#
     def get_samples(
         self, ids: Optional[list[int]] = None, as_list: bool = False
-    ) -> dict[int, Sample]:
+    ) -> Union[list[Sample], dict[int, Sample]]:
         """Return dictionnary of samples with ids corresponding to :code:`ids` if specified, else all samples.
 
         Args:
@@ -410,15 +410,19 @@ class Dataset(object):
     def get_field_names(
         self,
         ids: Optional[list[int]] = None,
+        location: Optional[str] = None,
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
+        time: Optional[float] = None,
     ) -> list[str]:
         """Return union of fields names in all samples with id in ids.
 
         Args:
             ids (list[int], optional): Select fields depending on sample id. If None, take all samples. Defaults to None.
+            location (str, optional): If provided, only field names from this location will be included. Defaults to None.
             zone_name (str, optional): If provided, only field names from this zone will be included. Defaults to None.
             base_name (str, optional): If provided, only field names containing this base name will be included. Defaults to None.
+            time (float, optional): If provided, only field names from this time will be included. Defaults to None.
 
         Returns:
             list[str]: List of all fields names.
@@ -428,14 +432,30 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = sample.meshes.get_all_mesh_times()
+            times = [time] if time else sample.meshes.get_all_mesh_times()
             for time in times:
-                f_names = sample.get_field_names(
-                    zone_name=zone_name, base_name=base_name, time=time
+                base_names = (
+                    [base_name]
+                    if base_name
+                    else sample.meshes.get_base_names(time=time)
                 )
-                for f_name in f_names:
-                    if f_name not in fields_names:
-                        fields_names.append(f_name)
+                for base_name in base_names:
+                    zone_names = (
+                        [zone_name]
+                        if zone_name
+                        else sample.meshes.get_zone_names(
+                            time=time, base_name=base_name
+                        )
+                    )
+                    for zone_name in zone_names:
+                        locations = [location] if location else CGNS_FIELD_LOCATIONS
+                        for location in locations:
+                            f_names = sample.get_field_names(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                            for f_name in f_names:
+                                if f_name not in fields_names:
+                                    fields_names.append(f_name)
         fields_names.sort()
         return fields_names
 

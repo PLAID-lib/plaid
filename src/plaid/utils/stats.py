@@ -21,6 +21,7 @@ except ImportError:  # pragma: no cover
 import numpy as np
 
 from plaid import Dataset, Sample
+from plaid.constants import CGNS_FIELD_LOCATIONS
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -438,37 +439,44 @@ class Stats:
                 for zone_name in sample.meshes.get_zone_names(
                     base_name=base_name, time=time
                 ):
-                    for field_name in sample.get_field_names(
-                        zone_name=zone_name, base_name=base_name, time=time
-                    ):
-                        stat_key = f"{base_name}/{zone_name}/{field_name}"
-                        if stat_key not in data_dict:
-                            data_dict[stat_key] = []
-                        field = sample.get_field(
-                            field_name,
+                    for location in CGNS_FIELD_LOCATIONS:
+                        for field_name in sample.get_field_names(
+                            location=location,
                             zone_name=zone_name,
                             base_name=base_name,
                             time=time,
-                        ).reshape((1, -1))
-                        if field is not None:
-                            # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
-                            if len(
-                                data_dict[stat_key]
-                            ) > 0 and not self._feature_is_flattened.get(
-                                stat_key, False
-                            ):
-                                prev_shape = data_dict[stat_key][0].shape
-                                if field.shape != prev_shape:
-                                    # set this stat as flattened
-                                    self._feature_is_flattened[stat_key] = True
-                                    # flatten corresponding stat
-                                    if stat_key in self._stats:
-                                        self._stats[stat_key].flatten_array()
+                        ):
+                            stat_key = (
+                                f"{base_name}/{zone_name}/{location}/{field_name}"
+                            )
+                            if stat_key not in data_dict:
+                                data_dict[stat_key] = []
+                            field = sample.get_field(
+                                field_name,
+                                location=location,
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                time=time,
+                            ).reshape((1, -1))
+                            if field is not None:
+                                # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
+                                if len(
+                                    data_dict[stat_key]
+                                ) > 0 and not self._feature_is_flattened.get(
+                                    stat_key, False
+                                ):
+                                    prev_shape = data_dict[stat_key][0].shape
+                                    if field.shape != prev_shape:
+                                        # set this stat as flattened
+                                        self._feature_is_flattened[stat_key] = True
+                                        # flatten corresponding stat
+                                        if stat_key in self._stats:
+                                            self._stats[stat_key].flatten_array()
 
-                            if self._feature_is_flattened.get(stat_key, False):
-                                field = field.reshape((-1, 1))
+                                if self._feature_is_flattened.get(stat_key, False):
+                                    field = field.reshape((-1, 1))
 
-                            data_dict[stat_key].append(field)
+                                data_dict[stat_key].append(field)
 
     def _update_statistics(self, new_data: dict[str, list]) -> None:
         """Update running statistics with new data.

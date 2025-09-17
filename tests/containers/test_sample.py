@@ -105,7 +105,7 @@ def sample_with_tree3d(sample, tree3d):
 
 @pytest.fixture()
 def sample_with_tree_and_scalar_and_time_series(
-    sample_with_tree,
+    sample_with_tree: Sample,
 ):
     sample_with_tree.add_scalar("r", np.random.randn())
     sample_with_tree.add_scalar("test_scalar_1", np.random.randn())
@@ -113,6 +113,29 @@ def sample_with_tree_and_scalar_and_time_series(
         "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
     )
     return sample_with_tree
+
+
+@pytest.fixture()
+def full_sample(sample_with_tree_and_scalar_and_time_series: Sample, tree3d):
+    sample_with_tree_and_scalar_and_time_series.add_scalar("r", np.random.randn())
+    sample_with_tree_and_scalar_and_time_series.add_scalar(
+        "test_scalar_1", np.random.randn()
+    )
+    sample_with_tree_and_scalar_and_time_series.add_time_series(
+        "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
+    )
+    sample_with_tree_and_scalar_and_time_series.add_field(
+        name="test_field_1", field=np.random.randn(5, 3), location="CellCenter"
+    )
+    sample_with_tree_and_scalar_and_time_series.init_zone(
+        zone_shape=np.array([5, 3]), zone_name="test_field_1"
+    )
+    sample_with_tree_and_scalar_and_time_series.init_base(
+        topological_dim=2, physical_dim=3, base_name="test_base_1"
+    )
+    sample_with_tree_and_scalar_and_time_series.meshes.init_tree(time=1.0)
+    sample_with_tree_and_scalar_and_time_series.meshes.add_tree(tree=tree3d)
+    return sample_with_tree_and_scalar_and_time_series
 
 
 # %% Test
@@ -478,6 +501,7 @@ class Test_Sample:
         assert sample.meshes.get_base() is not None
         sample.init_base(3, 3, "other_base_name")
         assert sample.meshes.get_base(base_name) is not None
+        assert sample.meshes.get_base(time=1.0) is None
         with pytest.raises(KeyError):
             sample.meshes.get_base()
         # check dims getters
@@ -783,6 +807,9 @@ class Test_Sample:
         assert sample.get_field_names() == []
         assert sample.get_field_names(location="CellCenter") == []
 
+    def test_get_field_names_full(self, full_sample):
+        full_sample.get_field_names()
+
     def test_get_field_empty(self, sample: Sample):
         assert sample.get_field("missing_field_name") is None
         assert sample.get_field("missing_field_name", location="CellCenter") is None
@@ -797,11 +824,21 @@ class Test_Sample:
     def test_add_field_vertex(self, sample: Sample, vertex_field, zone_name, base_name):
         sample.init_base(3, 3, base_name)
         with pytest.raises(KeyError):
-            sample.add_field("test_node_field_2", vertex_field, zone_name, base_name)
+            sample.add_field(
+                name="test_node_field_2",
+                field=vertex_field,
+                zone_name=zone_name,
+                base_name=base_name,
+            )
         sample.init_zone(
             np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
         )
-        sample.add_field("test_node_field_2", vertex_field, zone_name, base_name)
+        sample.add_field(
+            name="test_node_field_2",
+            field=vertex_field,
+            zone_name=zone_name,
+            base_name=base_name,
+        )
 
     def test_add_field_cell_center(
         self, sample: Sample, cell_center_field, zone_name, base_name
@@ -809,21 +846,21 @@ class Test_Sample:
         sample.init_base(3, 3, base_name)
         with pytest.raises(KeyError):
             sample.add_field(
-                "test_elem_field_2",
-                cell_center_field,
-                zone_name,
-                base_name,
+                name="test_elem_field_2",
+                field=cell_center_field,
                 location="CellCenter",
+                zone_name=zone_name,
+                base_name=base_name,
             )
         sample.init_zone(
             np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
         )
         sample.add_field(
-            "test_elem_field_2",
-            cell_center_field,
-            zone_name,
-            base_name,
+            name="test_elem_field_2",
             location="CellCenter",
+            field=cell_center_field,
+            zone_name=zone_name,
+            base_name=base_name,
         )
 
     def test_add_field_vertex_already_present(
@@ -832,7 +869,10 @@ class Test_Sample:
         # with pytest.raises(KeyError):
         sample_with_tree.show_tree()
         sample_with_tree.add_field(
-            "test_node_field_1", vertex_field, "Zone", "Base_2_2"
+            name="test_node_field_1",
+            field=vertex_field,
+            zone_name="Zone",
+            base_name="Base_2_2",
         )
 
     def test_add_field_cell_center_already_present(
@@ -841,21 +881,27 @@ class Test_Sample:
         # with pytest.raises(KeyError):
         sample_with_tree.show_tree()
         sample_with_tree.add_field(
-            "test_elem_field_1",
-            cell_center_field,
-            "Zone",
-            "Base_2_2",
+            name="test_elem_field_1",
+            field=cell_center_field,
             location="CellCenter",
+            zone_name="Zone",
+            base_name="Base_2_2",
         )
 
     def test_del_field_existing(self, sample_with_tree):
         with pytest.raises(KeyError):
             sample_with_tree.del_field(
-                "unknown", "Zone", "Base_2_2", location="CellCenter"
+                name="unknown",
+                location="CellCenter",
+                zone_name="Zone",
+                base_name="Base_2_2",
             )
         with pytest.raises(KeyError):
             sample_with_tree.del_field(
-                "unknown", "unknown_zone", "Base_2_2", location="CellCenter"
+                name="unknown",
+                location="CellCenter",
+                zone_name="unknown_zone",
+                base_name="Base_2_2",
             )
 
     def test_del_field_nonexistent(self, base_name):
@@ -863,7 +909,10 @@ class Test_Sample:
         sample.init_base(2, 2, base_name)
         with pytest.raises(KeyError):
             sample.del_field(
-                "unknown", "unknown_zone", base_name, location="CellCenter"
+                name="unknown",
+                location="CellCenter",
+                zone_name="unknown_zone",
+                base_name=base_name,
             )
 
     def test_del_field_in_zone(self, zone_name, base_name, cell_center_field):
@@ -873,31 +922,37 @@ class Test_Sample:
             np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
         )
         sample.add_field(
-            "test_elem_field_1",
-            cell_center_field,
-            zone_name,
-            base_name,
+            name="test_elem_field_1",
+            field=cell_center_field,
             location="CellCenter",
+            zone_name=zone_name,
+            base_name=base_name,
         )
 
         # Add field 'test_elem_field_2'
         sample.add_field(
-            "test_elem_field_2",
-            cell_center_field,
-            zone_name,
-            base_name,
+            name="test_elem_field_2",
+            field=cell_center_field,
             location="CellCenter",
+            zone_name=zone_name,
+            base_name=base_name,
         )
         assert isinstance(
             sample.get_field(
-                "test_elem_field_2", zone_name, base_name, location="CellCenter"
+                name="test_elem_field_2",
+                location="CellCenter",
+                zone_name=zone_name,
+                base_name=base_name,
             ),
             np.ndarray,
         )
 
         # Del field 'test_elem_field_2'
         new_tree = sample.del_field(
-            "test_elem_field_2", zone_name, base_name, location="CellCenter"
+            name="test_elem_field_2",
+            location="CellCenter",
+            zone_name=zone_name,
+            base_name=base_name,
         )
 
         # Testing new tree on field 'test_elem_field_2'
@@ -906,18 +961,26 @@ class Test_Sample:
 
         assert (
             new_sample.get_field(
-                "test_elem_field_2", zone_name, base_name, location="CellCenter"
+                name="test_elem_field_2",
+                location="CellCenter",
+                zone_name=zone_name,
+                base_name=base_name,
             )
             is None
         )
-        fields = new_sample.get_field_names(zone_name, base_name, location="CellCenter")
+        fields = new_sample.get_field_names(
+            location="CellCenter", zone_name=zone_name, base_name=base_name
+        )
 
         assert "test_elem_field_2" not in fields
         assert "test_elem_field_1" in fields
 
         # Del field 'test_elem_field_1'
         new_tree = sample.del_field(
-            "test_elem_field_1", zone_name, base_name, location="CellCenter"
+            name="test_elem_field_1",
+            location="CellCenter",
+            zone_name=zone_name,
+            base_name=base_name,
         )
 
         # Testing new tree on field 'test_elem_field_1'
@@ -926,11 +989,16 @@ class Test_Sample:
 
         assert (
             new_sample.get_field(
-                "test_elem_field_1", zone_name, base_name, location="CellCenter"
+                name="test_elem_field_1",
+                location="CellCenter",
+                zone_name=zone_name,
+                base_name=base_name,
             )
             is None
         )
-        fields = new_sample.get_field_names(zone_name, base_name, location="CellCenter")
+        fields = new_sample.get_field_names(
+            location="CellCenter", zone_name=zone_name, base_name=base_name
+        )
         assert len(fields) == 0
 
     def test_del_all_fields(self, sample_with_tree):
@@ -952,29 +1020,29 @@ class Test_Sample:
             "field::test_node_field_1"
         )
         sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
-            "field::test_node_field_1/Base_2_2"
+            "field::test_node_field_1///Base_2_2"
         )
         sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
-            "field::test_node_field_1/Base_2_2/Zone"
+            "field::test_node_field_1//Zone/Base_2_2"
         )
         sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
-            "field::test_node_field_1/Base_2_2/Zone/Vertex"
+            "field::test_node_field_1/Vertex/Zone/Base_2_2"
         )
         sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
-            "field::test_node_field_1/Base_2_2/Zone/Vertex/0"
+            "field::test_node_field_1/Vertex/Zone/Base_2_2/0"
         )
 
         sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
             "nodes::"
         )
         sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
-            "nodes::Base_2_2"
+            "nodes::/Base_2_2"
         )
         sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
-            "nodes::Base_2_2/Zone"
+            "nodes::Zone/Base_2_2"
         )
         sample_with_tree_and_scalar_and_time_series.get_feature_from_string_identifier(
-            "nodes::Base_2_2/Zone/0"
+            "nodes::Zone/Base_2_2/0"
         )
 
     def test_get_feature_from_identifier(
@@ -1205,7 +1273,7 @@ class Test_Sample:
     def test_extract_sample_from_identifier(
         self, sample_with_tree_and_scalar_and_time_series
     ):
-        sample_ = (
+        sample_: Sample = (
             sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
             )
@@ -1214,7 +1282,7 @@ class Test_Sample:
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = (
+        sample_: Sample = (
             sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers={
                     "type": "time_series",
@@ -1226,7 +1294,7 @@ class Test_Sample:
         assert sample_.get_time_series_names() == ["test_time_series_1"]
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = (
+        sample_: Sample = (
             sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers={
                     "type": "field",
@@ -1242,7 +1310,7 @@ class Test_Sample:
         assert len(sample_.get_time_series_names()) == 0
         assert sample_.get_field_names() == ["test_node_field_1"]
 
-        sample_ = (
+        sample_: Sample = (
             sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers={
                     "type": "nodes",
@@ -1256,7 +1324,7 @@ class Test_Sample:
         assert len(sample_.get_time_series_names()) == 0
         assert len(sample_.get_field_names()) == 0
 
-        sample_ = (
+        sample_: Sample = (
             sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers=[
                     {"type": "field", "name": "test_node_field_1"},
@@ -1441,6 +1509,9 @@ class Test_Sample:
         self, sample_with_tree_and_scalar_and_time_series
     ):
         print(sample_with_tree_and_scalar_and_time_series)
+
+    def test___repr__full_sample(self, full_sample):
+        print(full_sample)
 
     # -------------------------------------------------------------------------#
 
