@@ -12,26 +12,46 @@ from pathlib import Path
 
 import datasets
 from datasets import load_from_disk
+from pydantic import ValidationError
 
 from plaid import Sample
+from plaid.containers.features import SampleMeshes, SampleScalars
 
 
-class _HFToPlaidSampleConverter(object):
-    """Class to convert a huggingface dataset sample to a plaid sample."""
+class _HFToPlaidSampleConverter:
+    """Class to convert a Hugging Face dataset sample to a plaid :ref:`Sample`."""
 
     def __init__(self, ds: datasets.Dataset):
-        """Initialization.
-
-        Args:
-            ds (datasets.Dataset): Hugging Face dataset.
-        """
         self.ds = ds
 
-    def __call__(
-        self, sample_id: int
-    ):  # pragma: no cover  (not reported with multiprocessing)
-        """Convert a single sample from the huggingface dataset to a plaid sample."""
-        return Sample.model_validate(pickle.loads(self.ds[sample_id]["sample"]))
+    def __call__(self, sample_id: int) -> "Sample":  # pragma: no cover
+        data = pickle.loads(self.ds[sample_id]["sample"])
+
+        try:
+            # Try to validate the sample
+            return Sample.model_validate(data)
+        except ValidationError:
+            # If it fails, try to build the sample from its components
+            try:
+                scalars = SampleScalars(scalars=data["scalars"])
+                meshes = SampleMeshes(
+                    meshes=data["meshes"],
+                    mesh_base_name=data.get("mesh_base_name"),
+                    mesh_zone_name=data.get("mesh_zone_name"),
+                    links=data.get("links"),
+                    paths=data.get("paths"),
+                )
+                sample = Sample(
+                    path=data.get("path"),
+                    meshes=meshes,
+                    scalars=scalars,
+                    time_series=data.get("time_series"),
+                )
+                return Sample.model_validate(sample)
+            except KeyError as e:
+                raise KeyError(
+                    f"Missing key {e!s} in HF payload (sample_id={sample_id})"
+                ) from e
 
 
 class _HFShardToPlaidSampleConverter(object):
