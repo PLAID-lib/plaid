@@ -19,7 +19,7 @@ from plaid.containers.features import SampleMeshes, SampleScalars
 
 
 class _HFToPlaidSampleConverter:
-    """Class to convert a Hugging Face dataset sample to a plaid Sample."""
+    """Class to convert a Hugging Face dataset sample to a plaid :ref:`Sample`."""
 
     def __init__(self, ds: datasets.Dataset):
         self.ds = ds
