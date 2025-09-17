@@ -753,7 +753,7 @@ class Dataset(object):
         if dim_features == 0:
             tabular = np.expand_dims(tabular, axis=-1)
         assert tabular.ndim == 3, (
-            "tabular must be constructed to have 3 dimensions: (nb_sample, nb_features, dim_features)"
+            f"tabular must be constructed to have 3 dimensions: (nb_sample, nb_features, dim_features), but {tabular.ndim=} | {tabular.shape=}"
         )
 
         return tabular
@@ -779,7 +779,11 @@ class Dataset(object):
             tabular.append(np.hstack([np.atleast_1d(e) for e in local_feats]))
         tabular = np.stack(tabular)
 
-        return tabular
+        feat_dims = [0]
+        feat_dims.extend([len(np.atleast_1d(e)) for e in local_feats])
+        cumulated_feat_dims = np.cumsum(feat_dims)
+
+        return tabular, cumulated_feat_dims
 
     def add_features_from_tabular(
         self,

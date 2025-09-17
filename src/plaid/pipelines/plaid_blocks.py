@@ -170,9 +170,9 @@ class ColumnTransformer(ColumnTransformer):
         transformed_datasets = [dataset.copy()]
         for _, transformer_, _ in self.transformers_:
             in_feat_id = (
-                transformer_[0].in_features_identifiers_
+                transformer_[-1].out_features_identifiers_
                 if isinstance(transformer_, Pipeline)
-                else transformer_.in_features_identifiers_
+                else transformer_.out_features_identifiers_
             )
             sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
             transformed = transformer_.inverse_transform(sub_dataset)
