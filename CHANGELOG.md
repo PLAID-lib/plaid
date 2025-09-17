@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (docs) configure `make clean`
 - (problem_definition) add methods using feature identifiers instead of names
 - (imports) add imports of `Sample`, `Dataset` from `plaid` and `plaid.containers` and `ProblemDefinition` from `plaid`
 - (dataset.py) add optional `ids` argument to `from_list_of_samples`
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (examples/docs) update use of deprecated functions
 - Reorder arguments in methods working on fields in `Sample` and `Dataset`, always use keyword arguments when using `add_field`, `get_field` or `del_field`
 - Refactor the `containers/sample.py` module by introducting `SampleScalars` and `SampleMeshes` in `containers/features.py` that handle the scalars and meshes mechanics. Some methods are removed from `Sample`.
 - Move to jupytext for notebooks and examples handling (unique source for both)
@@ -27,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename types to remove `Type` from name of types: https://github.com/PLAID-lib/plaid/pull/164
 - Refactored method names for improved clarity:
   - `Dataset.from_tabular` → `Dataset.add_features_from_tabular`
-  - `Dataset.from_features_identifier` → `Dataset.extract_dataset_from_identifier`  
+  - `Dataset.from_features_identifier` → `Dataset.extract_dataset_from_identifier`
   - `Sample.from_features_identifier` → `Sample.extract_sample_from_identifier`
 
 ### Fixes
