@@ -110,7 +110,6 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
    :maxdepth: 1
    :caption: Contributing
 
-   source/contributing.md
 
 Indices and tables
 ==================
