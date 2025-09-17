@@ -151,7 +151,7 @@ class Dataset(object):
     # -------------------------------------------------------------------------#
     def get_samples(
         self, ids: Optional[list[int]] = None, as_list: bool = False
-    ) -> dict[int, Sample]:
+    ) -> Union[list[Sample], dict[int, Sample]]:
         """Return dictionnary of samples with ids corresponding to :code:`ids` if specified, else all samples.
 
         Args:
@@ -434,13 +434,17 @@ class Dataset(object):
             times = [time] if time else sample.meshes.get_all_mesh_times()
             for time in times:
                 base_names = (
-                    [base_name] if base_name else sample.get_base_names(time=time)
+                    [base_name]
+                    if base_name
+                    else sample.meshes.get_base_names(time=time)
                 )
                 for base_name in base_names:
                     zone_names = (
                         [zone_name]
                         if zone_name
-                        else sample.get_zone_names(time=time, base_name=base_name)
+                        else sample.meshes.get_zone_names(
+                            time=time, base_name=base_name
+                        )
                     )
                     for zone_name in zone_names:
                         locations = [location] if location else CGNS_FIELD_LOCATIONS

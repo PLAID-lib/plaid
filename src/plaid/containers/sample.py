@@ -377,24 +377,26 @@ class Sample(BaseModel):
 
     def get_field_names(
         self,
+        location: str = None,
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
-        location: str = "Vertex",
         time: Optional[float] = None,
     ) -> list[str]:
         """Get a set of field names associated with a specified zone, base, location, and time.
 
         Args:
+            location (str, optional): The desired grid location where the field is defined. Defaults to None.
+                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             zone_name (str, optional): The name of the zone to search for. Defaults to None.
             base_name (str, optional): The name of the base to search for. Defaults to None.
-            location (str, optional): The desired grid location where the field is defined. Defaults to 'Vertex'.
-                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
             set[str]: A set containing the names of the fields that match the specified criteria.
         """
-        return self.meshes.get_field_names(zone_name, base_name, location, time)
+        return self.meshes.get_field_names(
+            location=location, zone_name=zone_name, base_name=base_name, time=time
+        )
 
     # -------------------------------------------------------------------------#
 
@@ -536,9 +538,9 @@ class Sample(BaseModel):
         self,
         name: str,
         field: Field,
+        location: str = "Vertex",
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
-        location: str = "Vertex",
         time: Optional[float] = None,
         warning_overwrite=True,
     ) -> None:
@@ -558,48 +560,60 @@ class Sample(BaseModel):
             KeyError: Raised if the specified zone does not exist in the given base.
         """
         self.meshes.add_field(
-            name, field, zone_name, base_name, location, time, warning_overwrite
+            name,
+            field,
+            location=location,
+            zone_name=zone_name,
+            base_name=base_name,
+            time=time,
+            warning_overwrite=warning_overwrite,
         )
 
     def get_field(
         self,
         name: str,
+        location: str = "Vertex",
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
-        location: str = "Vertex",
         time: Optional[float] = None,
     ) -> Field:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
 
         Args:
             name (str): The name of the field to retrieve.
-            zone_name (str, optional): The name of the zone to search for. Defaults to None.
-            base_name (str, optional): The name of the base to search for. Defaults to None.
             location (str, optional): The location at which to retrieve the field. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            zone_name (str, optional): The name of the zone to search for. Defaults to None.
+            base_name (str, optional): The name of the base to search for. Defaults to None.
             time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
             Field: A set containing the names of the fields that match the specified criteria.
         """
-        return self.meshes.get_field(name, zone_name, base_name, location, time)
+        return self.meshes.get_field(
+            name=name,
+            location=location,
+            zone_name=zone_name,
+            base_name=base_name,
+            time=time,
+        )
 
     def del_field(
         self,
         name: str,
+        location: str = "Vertex",
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
-        location: str = "Vertex",
         time: Optional[float] = None,
     ) -> CGNSTree:
         """Delete a field from a specified zone in the grid.
 
         Args:
             name (str): The name of the field to be deleted.
-            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
-            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
+            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
+            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
             time (float, optional): The time associated with the field. Defaults to 0.
 
         Raises:
@@ -608,7 +622,13 @@ class Sample(BaseModel):
         Returns:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
-        return self.meshes.del_field(name, zone_name, base_name, location, time)
+        return self.meshes.del_field(
+            name=name,
+            location=location,
+            zone_name=zone_name,
+            base_name=base_name,
+            time=time,
+        )
 
     def get_nodes(
         self,
@@ -1345,7 +1365,7 @@ class Sample(BaseModel):
                     for location in CGNS_FIELD_LOCATIONS:
                         field_names = field_names.union(
                             self.meshes.get_field_names(
-                                location=location, zone_name=zn, time=time
+                                location=location, zone_name=zn, base_name=bn, time=time
                             )
                         )
         nb_fields = len(field_names)

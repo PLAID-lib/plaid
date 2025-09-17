@@ -115,6 +115,29 @@ def sample_with_tree_and_scalar_and_time_series(
     return sample_with_tree
 
 
+@pytest.fixture()
+def full_sample(sample_with_tree_and_scalar_and_time_series: Sample, tree3d):
+    sample_with_tree_and_scalar_and_time_series.add_scalar("r", np.random.randn())
+    sample_with_tree_and_scalar_and_time_series.add_scalar(
+        "test_scalar_1", np.random.randn()
+    )
+    sample_with_tree_and_scalar_and_time_series.add_time_series(
+        "test_time_series_1", np.arange(111, dtype=float), np.random.randn(111)
+    )
+    sample_with_tree_and_scalar_and_time_series.add_field(
+        name="test_field_1", field=np.random.randn(5, 3), location="CellCenter"
+    )
+    sample_with_tree_and_scalar_and_time_series.init_zone(
+        zone_shape=np.array([5, 3]), zone_name="test_field_1"
+    )
+    sample_with_tree_and_scalar_and_time_series.init_base(
+        topological_dim=2, physical_dim=3, base_name="test_base_1"
+    )
+    sample_with_tree_and_scalar_and_time_series.meshes.init_tree(time=1.0)
+    sample_with_tree_and_scalar_and_time_series.meshes.add_tree(tree=tree3d)
+    return sample_with_tree_and_scalar_and_time_series
+
+
 # %% Test
 
 
