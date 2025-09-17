@@ -22,4 +22,4 @@ help:
 clean:
 	rm -rf $(BUILDDIR)/*
 	rm -rf autoapi
-	rm -rf sources/notebooks
+	rm -rf source/notebooks
