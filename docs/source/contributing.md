@@ -143,3 +143,11 @@ Recommended pattern for format bumps:
 - Update `docs/` concurrently with code changes: reference the new behavior and mark deprecated flows.
 - Provide cross-links from Quickstart/Core Concepts to migration notes when relevant.
 - Clearly summarize in the release notes: what changed, what to do, and how long old flows will work.
+
+## 6. CGNS standard and resources
+
+PLAID relies on the CGNS standard for mesh and field representations. Please refer to the CGNS documentation when contributing to mesh/field handling or IO:
+
+- CGNS standard: <http://cgns.github.io/>
+
+When proposing changes that touch CGNS semantics, include references to the relevant parts of the specification and ensure compatibility with the conventions already used across the codebase.
