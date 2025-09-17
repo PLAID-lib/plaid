@@ -1270,11 +1270,11 @@ class Test_Sample:
         ref_2 = sample_.get_field("test_node_field_1")
         assert np.any(np.isclose(ref_1, ref_2))
 
-    def test_from_features_identifier(
+    def test_extract_sample_from_identifier(
         self, sample_with_tree_and_scalar_and_time_series
     ):
         sample_: Sample = (
-            sample_with_tree_and_scalar_and_time_series.from_features_identifier(
+            sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
             )
         )
@@ -1283,7 +1283,7 @@ class Test_Sample:
         assert len(sample_.get_field_names()) == 0
 
         sample_: Sample = (
-            sample_with_tree_and_scalar_and_time_series.from_features_identifier(
+            sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers={
                     "type": "time_series",
                     "name": "test_time_series_1",
@@ -1295,7 +1295,7 @@ class Test_Sample:
         assert len(sample_.get_field_names()) == 0
 
         sample_: Sample = (
-            sample_with_tree_and_scalar_and_time_series.from_features_identifier(
+            sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers={
                     "type": "field",
                     "name": "test_node_field_1",
@@ -1311,7 +1311,7 @@ class Test_Sample:
         assert sample_.get_field_names() == ["test_node_field_1"]
 
         sample_: Sample = (
-            sample_with_tree_and_scalar_and_time_series.from_features_identifier(
+            sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers={
                     "type": "nodes",
                     "base_name": "Base_2_2",
@@ -1325,7 +1325,7 @@ class Test_Sample:
         assert len(sample_.get_field_names()) == 0
 
         sample_: Sample = (
-            sample_with_tree_and_scalar_and_time_series.from_features_identifier(
+            sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
                 feature_identifiers=[
                     {"type": "field", "name": "test_node_field_1"},
                     {"type": "nodes"},
@@ -1448,12 +1448,14 @@ class Test_Sample:
         feat_id = [
             fid for fid in feat_id if fid["type"] not in ["scalar", "time_series"]
         ]
-        sample_1 = sample_with_tree_and_scalar_and_time_series.from_features_identifier(
-            feat_id
+        sample_1 = (
+            sample_with_tree_and_scalar_and_time_series.extract_sample_from_identifier(
+                feat_id
+            )
         )
         feat_id = sample_with_tree.get_all_features_identifiers()
         feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "node"]]
-        sample_2 = sample_with_tree.from_features_identifier(feat_id)
+        sample_2 = sample_with_tree.extract_sample_from_identifier(feat_id)
         sample_merge_1 = sample_1.merge_features(sample_2, in_place=False)
         sample_merge_2 = sample_2.merge_features(sample_1, in_place=False)
         assert (
