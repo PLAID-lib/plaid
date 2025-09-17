@@ -710,7 +710,7 @@ class Test_Dataset:
     def test_get_tabular_from_stacked_identifiers(
         self, nb_samples, dataset_with_samples
     ):
-        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+        X, _ = dataset_with_samples.get_tabular_from_stacked_identifiers(
             feature_identifiers=[
                 {"type": "scalar", "name": "test_scalar"},
                 {"type": "field", "name": "test_field_same_size"},
@@ -719,14 +719,14 @@ class Test_Dataset:
         )
         assert X.shape == (nb_samples, 19)
 
-        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+        X, _ = dataset_with_samples.get_tabular_from_stacked_identifiers(
             feature_identifiers=[
                 {"type": "field", "name": "test_field_same_size"},
             ],
         )
         assert X.shape == (nb_samples, 17)
 
-        X = dataset_with_samples.get_tabular_from_stacked_identifiers(
+        X, _ = dataset_with_samples.get_tabular_from_stacked_identifiers(
             feature_identifiers=[
                 {"type": "scalar", "name": "test_scalar"},
             ],

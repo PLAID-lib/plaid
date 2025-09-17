@@ -761,7 +761,7 @@ class Dataset(object):
     def get_tabular_from_stacked_identifiers(
         self,
         feature_identifiers: list[FeatureIdentifier],
-    ) -> Array:
+    ) -> tuple[Array, Array]:
         """Extract features of the dataset by their identifier(s), stack them and return an array containing these features.
 
         After stacking, each sample has one feature of dimension dim_stacked_features
@@ -771,6 +771,7 @@ class Dataset(object):
 
         Returns:
             Array: An containing the provided feature identifiers, size (nb_sample, dim_stacked_features)
+            Array: An containing the cumulated feature dimensions, starts with 0, size (len(feature_identifiers)+1, )
         """
         features = self.get_features_from_identifiers(feature_identifiers)
 
@@ -1074,7 +1075,9 @@ class Dataset(object):
         Returns:
             Dataset: A new dataset containing all samples from the input datasets.
         """
-        assert len(datasets_list) > 1, "Provide more than one dataset"
+        if len(datasets_list) == 1:
+            return datasets_list[0]
+
         merged_dataset = datasets_list[0]
         for dataset in datasets_list[1:]:
             merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
