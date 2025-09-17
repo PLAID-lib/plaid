@@ -76,6 +76,14 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 .. toctree::
    :glob:
    :maxdepth: 1
+   :caption: Core Concepts
+
+   source/core_concepts.md
+   source/feature_identifiers.md
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
    :caption: Documentation
 
    API Reference <autoapi/plaid/index>

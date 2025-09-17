@@ -11,6 +11,11 @@ This page, still under construction, provides elements on PLAID functionalities.
 
 ## 1. Datamodel
 
+For a high-level overview of the entities manipulated by PLAID, see the Core Concepts page. It introduces `Dataset`, `Sample`, features and the learning `ProblemDefinition`, as well as how features are addressed using feature identifiers.
+
+- Core concepts: {doc}`source/core_concepts`
+- Feature identifiers: {doc}`source/feature_identifiers`
+
 
 PLAID is the name of a datamodel, described in this section, and also the name of the present library, which is an implementation of this datamodel, and the format when the data is saved on disk.
 
@@ -46,6 +51,6 @@ The datamodel heavily relies on CGNS, see [Seven keys for practical understandin
 
 
 PLAID proposes high-level functions to construct and handling datasets.
-In practice, the user should only use the classes [`Dataset`](plaid.containers.dataset.Dataset) and [`Sample`](plaid.containers.sample.Sample) when handling a database of physical solutions.
+In practice, the user should only use the classes [`Dataset`](plaid.containers.dataset.Dataset) and [`Sample`](plaid.containers.sample.Sample) when handling a database of physical solutions. Inputs/outputs for learning tasks should be expressed with feature identifiers. See {doc}`source/feature_identifiers` for details.
 
 Example usage of each class are available and documented in the [`notebooks`](notebooks).

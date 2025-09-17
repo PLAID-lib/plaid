@@ -29,6 +29,10 @@ pip install pyplaid
 
 Only the conda-forge package comes with a bundled HDF5 dependency.
 
+See also:
+- Core concepts: {doc}`source/core_concepts`
+- Feature identifiers: {doc}`source/feature_identifiers`
+
 
 ## 2 Contributing to the library
 
