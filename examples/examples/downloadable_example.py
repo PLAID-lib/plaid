@@ -36,68 +36,40 @@ from plaid.examples import AVAILABLE_EXAMPLES
 
 print(AVAILABLE_EXAMPLES)
 
-# %% [markdown]
-# # Pipeline Examples
-#
-# ```python
-# from plaid.examples import datasets
-# import time
-#
-# start = time.perf_counter()
-# print(datasets.tensile2d)
-# end = time.perf_counter()
-# print(f"First dataset retrieval duration: {end - start:.6f} seconds")
-# ```
-#
-# ```bash
-# Dataset(2 samples, 10 scalars, 0 time_series, 6 fields)
-# First dataset retrieval duration: 1.267167 seconds
-# ```
+# %%
+from plaid.examples import datasets
+import time
 
-# %% [markdown]
-# ```python
-# start = time.perf_counter()
-# print(datasets.tensile2d)
-# end = time.perf_counter()
-# print(f"Second dataset retrieval duration: {end - start:.6f} seconds")
-# ```
-#
-# ```bash
-# Dataset(2 samples, 10 scalars, 0 time_series, 6 fields)
-# Second dataset retrieval duration: 0.000408 seconds
-# ```
+start = time.perf_counter()
+print(datasets.tensile2d)
+end = time.perf_counter()
+print(f"First dataset retrieval duration: {end - start:.6f} seconds")
+
+
+# %%
+start = time.perf_counter()
+print(datasets.tensile2d)
+end = time.perf_counter()
+print(f"Second dataset retrieval duration: {end - start:.6f} seconds")
+
 
 # %% [markdown]
 # ## Section 2: Samples
 
-# %% [markdown]
-# ```python
-# from plaid.examples import samples
-#
-# start = time.perf_counter()
-# print(samples.vki_ls59)
-#
-# end = time.perf_counter()
-# print(f"First sample retrieval duration: {end - start:.6f} seconds")
-# ```
-#
-# ```bash
-# Sample(8 scalars, 0 time series, 1 timestamp, 8 fields)
-# First sample retrieval duration: 6.660080 seconds
-# ```
+# %%
+from plaid.examples import samples
 
-# %% [markdown]
-# ```python
-# from plaid.examples import samples
-#
-# start = time.perf_counter()
-# print(samples.tensile2d)
-#
-# end = time.perf_counter()
-# print(f"The tensile2d dataset being already loaded: sample retrieval duration: {end - start:.6f} seconds")
-# ```
-#
-# ```bash
-# Sample(10 scalars, 0 time series, 1 timestamp, 6 fields)
-# The tensile2d dataset being already loaded: sample retrieval duration: 0.000446 seconds
-# ```
+start = time.perf_counter()
+print(samples.vki_ls59)
+
+end = time.perf_counter()
+print(f"First sample retrieval duration: {end - start:.6f} seconds")
+
+# %%
+from plaid.examples import samples
+
+start = time.perf_counter()
+print(samples.tensile2d)
+
+end = time.perf_counter()
+print(f"The tensile2d dataset being already loaded: sample retrieval duration: {end - start:.6f} seconds")
