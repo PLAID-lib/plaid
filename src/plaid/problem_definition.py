@@ -25,7 +25,10 @@ from pathlib import Path
 from typing import Optional, Union
 
 import yaml
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 
+import plaid
 from plaid.constants import AUTHORIZED_TASKS
 from plaid.types import IndexType
 from plaid.types.feature_types import FeatureIdentifier
@@ -75,7 +78,8 @@ class ProblemDefinition(object):
                 print(problem_definition)
                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
-        self._task: str = None  # list[task name]
+        self._version: Version = Version(plaid.__version__)
+        self._task: str = None
         self.in_features_identifiers: list[FeatureIdentifier] = []
         self.out_features_identifiers: list[FeatureIdentifier] = []
         self.in_scalars_names: list[str] = []
@@ -1149,23 +1153,38 @@ class ProblemDefinition(object):
             path.mkdir()
 
         data = {
+            "version": str(self._version),
             "task": self._task,
             "input_features": [dict(**d) for d in self.in_features_identifiers],
             "output_features": [dict(**d) for d in self.out_features_identifiers],
-            "input_scalars": self.in_scalars_names,  # list[input scalar name]
-            "output_scalars": self.out_scalars_names,  # list[output scalar name]
-            "input_fields": self.in_fields_names,  # list[input field name]
-            "output_fields": self.out_fields_names,  # list[output field name]
-            "input_timeseries": self.in_timeseries_names,  # list[input timeseries name]
-            "output_timeseries": self.out_timeseries_names,  # list[output timeseries name]
-            "input_meshes": self.in_meshes_names,  # list[input mesh name]
-            "output_meshes": self.out_meshes_names,  # list[output mesh name]
         }
+        if Version(plaid.__version__) < Version("0.2.0"):
+            data.update(
+                {
+                    "input_scalars": self.in_scalars_names,
+                    "output_scalars": self.out_scalars_names,
+                    "input_fields": self.in_fields_names,
+                    "output_fields": self.out_fields_names,
+                    "input_timeseries": self.in_timeseries_names,
+                    "output_timeseries": self.out_timeseries_names,
+                    "input_meshes": self.in_meshes_names,
+                    "output_meshes": self.out_meshes_names,
+                }
+            )
+
+        # Save infos
+        if self._version != Version(plaid.__version__):
+            logger.warning(
+                f"Version mismatch: ProblemDefinition was loaded from version: {self._version}, and will be saved with version: {Version(plaid.__version__)}"
+            )
+            data["old_version"] = str(self._version)
+            data["version"] = str(Version(plaid.__version__))
 
         pbdef_fname = path / "problem_infos.yaml"
         with pbdef_fname.open("w") as file:
             yaml.dump(data, file, default_flow_style=False, sort_keys=False)
 
+        # Save split
         split_fname = path / "split.json"
         if self._split is not None:
             with split_fname.open("w") as file:
@@ -1219,6 +1238,10 @@ class ProblemDefinition(object):
             raise FileNotFoundError(
                 f"file with path `{pbdef_fname}` does not exist. Abort"
             )
+        if "version" not in data:
+            self._version = SpecifierSet("<=0.1.7")
+        else:
+            self._version = Version(data["version"])
 
         self._task = data["task"]
         self.in_features_identifiers = [
@@ -1227,14 +1250,15 @@ class ProblemDefinition(object):
         self.out_features_identifiers = [
             FeatureIdentifier(**tup) for tup in data["output_features"]
         ]
-        self.in_scalars_names = data["input_scalars"]
-        self.out_scalars_names = data["output_scalars"]
-        self.in_fields_names = data["input_fields"]
-        self.out_fields_names = data["output_fields"]
-        self.in_timeseries_names = data["input_timeseries"]
-        self.out_timeseries_names = data["output_timeseries"]
-        self.in_meshes_names = data["input_meshes"]
-        self.out_meshes_names = data["output_meshes"]
+        if data["version"] < "0.2.0":
+            self.in_scalars_names = data["input_scalars"]
+            self.out_scalars_names = data["output_scalars"]
+            self.in_fields_names = data["input_fields"]
+            self.out_fields_names = data["output_fields"]
+            self.in_timeseries_names = data["input_timeseries"]
+            self.out_timeseries_names = data["output_timeseries"]
+            self.in_meshes_names = data["input_meshes"]
+            self.out_meshes_names = data["output_meshes"]
 
         # if it was saved with version <=0.1.7 it is a .csv else it is .json
         split = {}
