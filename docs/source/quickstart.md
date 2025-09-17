@@ -33,6 +33,13 @@ See also:
 - Core concepts: {doc}`source/core_concepts`
 - Feature identifiers: {doc}`source/feature_identifiers`
 
+Key concepts and APIs:
+- Dataset: {doc}`source/core_concepts` → API: `plaid.containers.dataset.Dataset`
+- Sample: {doc}`source/core_concepts` → API: `plaid.containers.sample.Sample`
+- Problem definition: {doc}`source/core_concepts` → API: `plaid.problem_definition.ProblemDefinition`
+- Feature identifiers: {doc}`source/feature_identifiers` → API: `plaid.types.feature_types.FeatureIdentifier`
+- Default values: {doc}`source/default_values` (flowchart)
+
 
 ## 2 Contributing to the library
 

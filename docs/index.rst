@@ -80,6 +80,7 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
    source/core_concepts.md
    source/feature_identifiers.md
+   Default Values Flowchart <source/default_values.rst>
 
 .. toctree::
    :glob:
@@ -89,7 +90,6 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
    API Reference <autoapi/plaid/index>
    Examples & Tutorials <source/notebooks.rst>
    Data Conversion Guide <source/notebooks/convert_users_data_example>
-   Default Values Flowchart <source/default_values.rst>
 
 .. toctree::
    :glob:
