@@ -522,9 +522,6 @@ class SampleMeshes:
         time = self.get_time_assignment(time)
         base_name = self.get_base_assignment(base_name, time)
 
-        if self.data is None:
-            logger.warning("No mesh exists in the sample")
-            return None
         if time not in self.data or self.data[time] is None:
             logger.warning(f"No mesh exists in the sample at {time=}")
             return None
