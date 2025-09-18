@@ -4,7 +4,7 @@ title: Problem definition
 
 # Problem definition
 
-{py:class}`plaid.problem_definition.ProblemDefinition` gathers all the information defining a learning problem:
+{py:class}`~plaid.problem_definition.ProblemDefinition` gathers all the information defining a learning problem:
 - task: e.g., regression or classification
 - inputs: list of FeatureIdentifiers
 - outputs: list of FeatureIdentifiers

@@ -11,7 +11,7 @@ Feature identifiers are a concise, unambiguous way to point to any feature in PL
 
 Why this matters:
 - Names alone can be ambiguous (e.g., a field called "pressure" may exist at several locations, times, or zones). Identifiers remove ambiguity and make operations deterministic and hashable.
-- Identifiers are stable keys, so they can be used in sets, dicts, and sorting. See the underlying implementation in {py:class}`plaid.types.feature_types.FeatureIdentifier`.
+- Identifiers are stable keys, so they can be used in sets, dicts, and sorting. See the underlying implementation in {py:class}`~plaid.types.feature_types.FeatureIdentifier`.
 - Discussion and design notes are available in the project discussion: [Feature identifier concept](https://github.com/orgs/PLAID-lib/discussions/107).
 
 ## Structure
@@ -56,9 +56,9 @@ fid_nodes = FeatureIdentifier({
 })
 ```
 
-## Using identifiers with `Sample`
+## Using identifiers with {py:class}`~plaid.containers.sample.Sample`
 
-The {py:class}`plaid.containers.sample.Sample` container exposes helpers to retrieve, update, extract and merge features via identifiers.
+The {py:class}`~plaid.containers.sample.Sample` container exposes helpers to retrieve, update, extract and merge features via identifiers.
 
 ```python
 from plaid.containers.sample import Sample
@@ -96,7 +96,7 @@ String format is: `<type>::<detail1>/<detail2>/...`. The order is fixed per type
 
 ## Using identifiers with {py:class}`~plaid.problem_definition.ProblemDefinition`
 
-{py:class}`plaid.problem_definition.ProblemDefinition` stores learning inputs/outputs as lists of FeatureIdentifiers and offers utilities to add and filter them.
+{py:class}`~plaid.problem_definition.ProblemDefinition` stores learning inputs/outputs as lists of FeatureIdentifiers and offers utilities to add and filter them.
 
 ```python
 from plaid.problem_definition import ProblemDefinition
