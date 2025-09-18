@@ -85,13 +85,14 @@ bibtex_default_style = "unsrt"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "pytest": ("https://pytest.org/en/stable/", None),
-    # 'ipykernel': ('https://ipykernel.readthedocs.io/en/latest/', None),
+    # "ipykernel": ("https://ipykernel.readthedocs.io/en/latest/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
-    # 'scipy': ('https://docs.scipy.org/doc/scipy/', None),
-    # 'matplotlib': ('http://matplotlib.org/', None),
-    # 'torch': ('https://pytorch.org/docs/stable/', None),
-    # 'dgl': ('https://docs.dgl.ai/', None),
-    # 'torch_geometric': ('https://pytorch-geometric.readthedocs.io/en/latest/', None),
+    "scikit-learn": ("https://scikit-learn.org/stable/", None)
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    # "matplotlib": ("http://matplotlib.org/", None),
+    # "torch": ("https://pytorch.org/docs/stable/", None),
+    # "dgl": ("https://docs.dgl.ai/", None),
+    # "torch_geometric": ("https://pytorch-geometric.readthedocs.io/en/latest/", None),
 }
 # sphinx.ext.extlinks options
 extlinks_detect_hardcoded_links = True
