@@ -50,7 +50,7 @@ See also: {doc}`notebooks` for hands-on examples.
 
 PLAID uses feature identifiers to refer to features unambiguously (type + context such as base, zone, location, time). This is the preferred way to select inputs/outputs and manipulate data programmatically.
 
-Start here for details and examples: {doc}`source/feature_identifiers`.
+Start here for details and examples: {doc}`feature_identifiers`.
 
 ## Problem definition
 
@@ -84,7 +84,7 @@ pb._save_to_dir_("problem_definition")
 
 ## Default values mechanics
 
-Some keys in identifiers (e.g., `base_name`, `zone_name`, `location`, `time`) can be omitted when defaults are configured or inferable. The defaulting behavior is described in: {doc}`source/default_values`.
+Some keys in identifiers (e.g., `base_name`, `zone_name`, `location`, `time`) can be omitted when defaults are configured or inferable. The defaulting behavior is described in: {doc}`default_values`.
 
 ## Interoperability
 
