@@ -79,21 +79,17 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
    source/core_concepts.rst
    source/feature_identifiers.md
-   API Reference <autoapi/plaid/index>
-
-.. toctree::
-   :glob:
-   :maxdepth: 1
-   :caption: Tutorials & how-to
-
-   Examples & Tutorials <source/notebooks.rst>
    Data Conversion Guide <source/notebooks/convert_users_data_example>
+   Examples & Tutorials <source/notebooks.rst>
+   API Reference <autoapi/plaid/index>
 
 .. toctree::
    :glob:
    :maxdepth: 1
    :caption: Ecosystem & Benchmarks
 
+   CGNS Standard <https://cgns.org/>
+   Muscat library <https://muscat.readthedocs.io/>
    PLAID Benchmarks <source/plaid_benchmarks.rst>
 
 Indices and tables
