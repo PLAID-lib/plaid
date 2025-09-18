@@ -1,15 +1,12 @@
-# How to Cite
+#  Citation
 
-If you have used PLAID in your work and found it useful, please consider citing the following papers.
+If you use PLAID in your work, please cite the following.
 
-## JOSS paper
-
-Currently under review:
+JOSS paper (under review):
 
 [![JOSS status](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg)](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e)
 
-
-## PLAID datasets
+PLAID datasets:
 
 ```bibtex
 @misc{casenave2025plaid,
@@ -21,4 +18,3 @@ Currently under review:
       url={https://arxiv.org/abs/2505.02974},
 }
 ```
-
