@@ -11,7 +11,7 @@ Feature identifiers are a concise, unambiguous way to point to any feature in PL
 
 Why this matters:
 - Names alone can be ambiguous (e.g., a field called "pressure" may exist at several locations, times, or zones). Identifiers remove ambiguity and make operations deterministic and hashable.
-- Identifiers are stable keys, so they can be used in sets, dicts, and sorting. See the underlying implementation in `plaid.types.feature_types.FeatureIdentifier`.
+- Identifiers are stable keys, so they can be used in sets, dicts, and sorting. See the underlying implementation in {py:class}`plaid.types.feature_types.FeatureIdentifier`.
 - Discussion and design notes are available in the project discussion: [Feature identifier concept](https://github.com/orgs/PLAID-lib/discussions/107).
 
 ## Structure
@@ -94,7 +94,7 @@ Re = sample.get_feature_from_string_identifier("scalar::Re")
 
 String format is: `<type>::<detail1>/<detail2>/...`. The order is fixed per type. If `time` is provided, it is parsed as float.
 
-## Using identifiers with `ProblemDefinition`
+## Using identifiers with {py:class}`~plaid.problem_definition.ProblemDefinition`
 
 {py:class}`plaid.problem_definition.ProblemDefinition` stores learning inputs/outputs as lists of FeatureIdentifiers and offers utilities to add and filter them.
 
@@ -121,13 +121,12 @@ Legacy name-based methods (e.g., `add_input_scalars_names`) are deprecated; pref
 ## Best practices
 
 - Always include enough context to disambiguate a feature. For fields/nodes on multiple bases/zones/times, set all relevant keys.
-- Use `Sample.get_all_features_identifiers()` to introspect what identifiers exist in a sample.
+- Use {py:meth}`~plaid.containers.sample.Sample.get_all_features_identifiers()` to introspect what identifiers exist in a sample.
 - Use sets to deduplicate identifiers safely: `set(list_of_identifiers)`.
-- When authoring problem definitions on disk, `ProblemDefinition._save_to_dir_` persists identifiers under `problem_definition/problem_infos.yaml` (keys `input_features` and `output_features`).
+- When authoring problem definitions on disk, {py:meth}`~plaid.problem_definition.ProblemDefinition._save_to_dir_` persists identifiers under `problem_definition/problem_infos.yaml` (keys `input_features` and `output_features`).
 
 ## See also
 
 - Core concepts: {doc}`core_concepts`
 - Default values: {doc}`default_values`
 - Notebooks: {doc}`notebooks`
-

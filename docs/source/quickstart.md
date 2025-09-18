@@ -33,11 +33,13 @@ Only the conda-forge package comes with a bundled HDF5 dependency.
 
 ## 2 {doc}`core_concepts`
 
-- [Dataset](#core-concepts-dataset) → API: {py:class}`plaid.containers.dataset.Dataset`
-- [Sample](#core-concepts-sample) → API: {py:class}`plaid.containers.sample.Sample`
-- [Problem definition](#core-concepts-problem) → API: {py:class}`plaid.problem_definition.ProblemDefinition`
-- Feature identifiers: {doc}`feature_identifiers` → API: {py:class}`plaid.types.feature_types.FeatureIdentifier`
-- [Default values](#core-concepts-default) (flowchart)
+- {doc}`core_concepts/sample` → API: {py:class}`plaid.containers.sample.Sample`
+- {doc}`core_concepts/dataset` → API: {py:class}`plaid.containers.dataset.Dataset`
+- {doc}`core_concepts/problem` → API: {py:class}`plaid.problem_definition.ProblemDefinition`
+- {doc}`core_concepts/feature_identifiers` → API: {py:class}`plaid.types.feature_types.FeatureIdentifier`
+- {doc}`core_concepts/default` (flowchart)
+- {doc}`core_concepts/disk_format`
+- {doc}`core_concepts/interoperability`
 
 ## 3 Citation
 
@@ -128,6 +130,26 @@ ruff --config ruff.toml format .           # auto-format code
 ```
 
 ### 4.5 Setting up pre-commit
+
+Pre-commit is configured to run the following hooks:
+
+* Ruff check
+* Ruff format
+* Pytest
+
+The selected hooks are defined in the `.pre-commit-config.yaml` file.
+
+To run all hooks manually on the full codebase:
+
+```bash
+pre-commit run --all-files
+```
+
+You can also run (once):
+
+```bash
+pre-commit install
+```
 
 ### 4.6 How to contribute
 

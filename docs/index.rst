@@ -77,7 +77,7 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
    :maxdepth: 1
    :caption: User guide
 
-   source/core_concepts.md
+   source/core_concepts.rst
    source/feature_identifiers.md
    API Reference <autoapi/plaid/index>
 
