@@ -143,7 +143,7 @@ extensions.append("autoapi.extension")
 autoapi_dirs = ["../src/plaid"]
 # autoapi_dirs = ['../src/plaid', '../tests', '../examples']
 autoapi_type = "python"
-autoapi_options = ["show-inheritance", "show-module-summary", "undoc-members"]
+autoapi_options = ["show-inheritance", "show-module-summary", "undoc-members", "private-members", "members"]
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members']
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members', 'inherited-members', 'undoc-members', 'private-members', 'special-members', 'imported-members']
 # 'members': Display children of an object
