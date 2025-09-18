@@ -12,10 +12,9 @@ from pathlib import Path
 
 import datasets
 from datasets import load_from_disk
-from pydantic import ValidationError
 
 from plaid import Sample
-from plaid.containers.features import SampleMeshes, SampleScalars
+from plaid.bridges.huggingface_bridge import to_plaid_sample
 
 
 class _HFToPlaidSampleConverter:
@@ -26,32 +25,7 @@ class _HFToPlaidSampleConverter:
 
     def __call__(self, sample_id: int) -> "Sample":  # pragma: no cover
         data = pickle.loads(self.ds[sample_id]["sample"])
-
-        try:
-            # Try to validate the sample
-            return Sample.model_validate(data)
-        except ValidationError:
-            # If it fails, try to build the sample from its components
-            try:
-                scalars = SampleScalars(scalars=data["scalars"])
-                meshes = SampleMeshes(
-                    meshes=data["meshes"],
-                    mesh_base_name=data.get("mesh_base_name"),
-                    mesh_zone_name=data.get("mesh_zone_name"),
-                    links=data.get("links"),
-                    paths=data.get("paths"),
-                )
-                sample = Sample(
-                    path=data.get("path"),
-                    meshes=meshes,
-                    scalars=scalars,
-                    time_series=data.get("time_series"),
-                )
-                return Sample.model_validate(sample)
-            except KeyError as e:
-                raise KeyError(
-                    f"Missing key {e!s} in HF payload (sample_id={sample_id})"
-                ) from e
+        return to_plaid_sample(data)
 
 
 class _HFShardToPlaidSampleConverter(object):
