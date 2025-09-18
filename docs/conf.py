@@ -85,13 +85,14 @@ bibtex_default_style = "unsrt"
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "pytest": ("https://pytest.org/en/stable/", None),
-    # 'ipykernel': ('https://ipykernel.readthedocs.io/en/latest/', None),
+    # "ipykernel": ("https://ipykernel.readthedocs.io/en/latest/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
-    # 'scipy': ('https://docs.scipy.org/doc/scipy/', None),
-    # 'matplotlib': ('http://matplotlib.org/', None),
-    # 'torch': ('https://pytorch.org/docs/stable/', None),
-    # 'dgl': ('https://docs.dgl.ai/', None),
-    # 'torch_geometric': ('https://pytorch-geometric.readthedocs.io/en/latest/', None),
+    "scikit-learn": ("https://scikit-learn.org/stable/", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/", None),
+    # "matplotlib": ("http://matplotlib.org/", None),
+    # "torch": ("https://pytorch.org/docs/stable/", None),
+    # "dgl": ("https://docs.dgl.ai/", None),
+    # "torch_geometric": ("https://pytorch-geometric.readthedocs.io/en/latest/", None),
 }
 # sphinx.ext.extlinks options
 extlinks_detect_hardcoded_links = True
@@ -143,7 +144,7 @@ extensions.append("autoapi.extension")
 autoapi_dirs = ["../src/plaid"]
 # autoapi_dirs = ['../src/plaid', '../tests', '../examples']
 autoapi_type = "python"
-autoapi_options = ["show-inheritance", "show-module-summary", "undoc-members"]
+autoapi_options = ["show-inheritance", "show-module-summary", "undoc-members", "private-members", "members"]
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members']
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members', 'inherited-members', 'undoc-members', 'private-members', 'special-members', 'imported-members']
 # 'members': Display children of an object
@@ -239,10 +240,15 @@ def skip_logger_attribute(app, what, name, obj, skip, options):
         skip = True
     return skip
 
+def skip_version_module(app, what, name, obj, skip, options):
+    if what == "module" and name == "_version":
+        print(f"WILL SKIP: {what=}, {name=}")
+        skip = True
+    return skip
 
 def setup(sphinx):
     sphinx.connect("autoapi-skip-member", skip_logger_attribute)
-
+    sphinx.connect("autoapi-skip-member", skip_version_module)
 
 # -----------------------------------------------------------------------------#
 
