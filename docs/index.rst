@@ -64,7 +64,6 @@ It has been developped at SafranTech, the research center of `Safran group <http
 
 The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
-
 .. toctree::
    :glob:
    :maxdepth: 1
@@ -80,7 +79,7 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
    source/core_concepts.md
    source/feature_identifiers.md
-   Default Values Flowchart <source/default_values.rst>
+   API Reference <autoapi/plaid/index>
 
 .. toctree::
    :glob:
@@ -93,23 +92,9 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: API Reference
-
-   API Reference <autoapi/plaid/index>
-
-.. toctree::
-   :glob:
-   :maxdepth: 1
    :caption: Ecosystem & Benchmarks
 
    PLAID Benchmarks <source/plaid_benchmarks.rst>
-
-
-.. toctree::
-   :glob:
-   :maxdepth: 1
-   :caption: Contributing
-
 
 Indices and tables
 ==================
