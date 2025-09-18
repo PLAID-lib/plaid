@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- (envs/packaging) drop python3.9 support and packaging
+
 ## [0.1.7] - 2025-08-14
 
 ### Added
