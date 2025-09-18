@@ -14,7 +14,7 @@ import datasets
 from datasets import load_from_disk
 
 from plaid import Sample
-from plaid.bridges.huggingface_bridge import to_plaid_sample
+from plaid.bridges import huggingface_bridge
 
 
 class _HFToPlaidSampleConverter:
@@ -25,7 +25,7 @@ class _HFToPlaidSampleConverter:
 
     def __call__(self, sample_id: int) -> "Sample":  # pragma: no cover
         data = pickle.loads(self.ds[sample_id]["sample"])
-        return to_plaid_sample(data)
+        return huggingface_bridge.to_plaid_sample(data)
 
 
 class _HFShardToPlaidSampleConverter(object):
