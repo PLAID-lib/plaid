@@ -87,7 +87,7 @@ intersphinx_mapping = {
     "pytest": ("https://pytest.org/en/stable/", None),
     # "ipykernel": ("https://ipykernel.readthedocs.io/en/latest/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
-    "scikit-learn": ("https://scikit-learn.org/stable/", None)
+    "scikit-learn": ("https://scikit-learn.org/stable/", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/", None),
     # "matplotlib": ("http://matplotlib.org/", None),
     # "torch": ("https://pytorch.org/docs/stable/", None),
