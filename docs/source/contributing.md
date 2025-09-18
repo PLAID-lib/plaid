@@ -41,7 +41,7 @@ The only deviations from PEP 8 are the following :
 - Tests must be local (as little imports as possible). Please limit the use of
 functions from other file and use small and simple data.
 - Favor imports at the beginning of files.
-- Ideally, consider providing examples in the ``test`` folder in notebooks compiled in the documentation in the {doc}`source/notebooks` folder.
+- Ideally, consider providing examples in the ``test`` folder in notebooks compiled in the documentation in the {doc}`notebooks` folder.
 - Coverage must be kept at 100%.
 
 ## 2. Reporting Issues

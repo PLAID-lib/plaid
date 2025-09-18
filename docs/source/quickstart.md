@@ -32,17 +32,17 @@ pip install pyplaid
 Only the conda-forge package comes with a bundled HDF5 dependency.
 
 See also:
-- Core concepts: {doc}`source/core_concepts`
-- Feature identifiers: {doc}`source/feature_identifiers`
+- Core concepts: {doc}`core_concepts`
+- Feature identifiers: {doc}`feature_identifiers`
 
 
 ## 2 Core concepts
 
-- Dataset: {doc}`source/core_concepts` → API: `plaid.containers.dataset.Dataset`
-- Sample: {doc}`source/core_concepts` → API: `plaid.containers.sample.Sample`
-- Problem definition: {doc}`source/core_concepts` → API: `plaid.problem_definition.ProblemDefinition`
-- Feature identifiers: {doc}`source/feature_identifiers` → API: `plaid.types.feature_types.FeatureIdentifier`
-- Default values: {doc}`source/default_values` (flowchart)
+- Dataset: {doc}`core_concepts` → API: `plaid.containers.dataset.Dataset`
+- Sample: {doc}`core_concepts` → API: `plaid.containers.sample.Sample`
+- Problem definition: {doc}`core_concepts` → API: `plaid.problem_definition.ProblemDefinition`
+- Feature identifiers: {doc}`feature_identifiers` → API: `plaid.types.feature_types.FeatureIdentifier`
+- Default values: {doc}`default_values` (flowchart)
 
 ## 3 Citation
 

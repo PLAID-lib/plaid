@@ -44,7 +44,7 @@ Key APIs include:
 - Feature updates: `add_scalar`, `add_time_series`, `add_field`, `set_nodes`, and high-level identifier-based updates
 - Discovery: `get_all_features_identifiers()` to list all available features with their context
 
-See also: {doc}`source/notebooks` for hands-on examples.
+See also: {doc}`notebooks` for hands-on examples.
 
 ## Features and feature identifiers
 
