@@ -41,8 +41,7 @@ The only deviations from PEP 8 are the following :
 - Tests must be local (as little imports as possible). Please limit the use of
 functions from other file and use small and simple data.
 - Favor imports at the beginning of files.
-- Ideally, consider providing examples in the ``test`` folder in notebooks
-compiled in the documentation in the ``docs/source/notebooks`` folder.
+- Ideally, consider providing examples in the ``test`` folder in notebooks compiled in the documentation in the {doc}`source/notebooks` folder.
 - Coverage must be kept at 100%.
 
 ## 2. Reporting Issues
@@ -113,12 +112,12 @@ References:
   - Add unit tests for both old (ensuring warning) and new APIs during the deprecation window.
   - Add entries to CHANGELOG and document in “Breaking changes” for the release.
 
-Example in the codebase: transition to feature identifiers introduced identifier-based methods while keeping name-based methods deprecated until removal (see `ProblemDefinition` and `Sample`).
+Example in the codebase: transition to feature identifiers introduced identifier-based methods while keeping name-based methods deprecated until removal (see {py:class}`plaid.problem_definition.ProblemDefinition` and {py:class}`plaid.containers.sample.Sample`).
 
 ### 5.3 Disk format changes
 - Maintain read-compatibility across MINOR releases whenever feasible.
 - When evolving on-disk files:
-  - Readers should detect legacy variants and handle them transparently (example: `split.csv` vs `split.json` already supported in `ProblemDefinition`).
+  - Readers should detect legacy variants and handle them transparently (example: `split.csv` vs `split.json` already supported in {py:class}`plaid.problem_definition.ProblemDefinition`).
   - Writers should prefer the newest format by default.
   - Provide a migration utility or documented steps when an automatic upgrade is not trivial.
   - Document the change in the docs (Core Concepts or a dedicated migration note) and CHANGELOG.

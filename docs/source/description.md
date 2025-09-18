@@ -31,6 +31,6 @@ The datamodel heavily relies on CGNS, see [Seven keys for practical understandin
 
 
 PLAID proposes high-level functions to construct and handling datasets.
-In practice, the user should only use the classes [`Dataset`](plaid.containers.dataset.Dataset) and [`Sample`](plaid.containers.sample.Sample) when handling a database of physical solutions. Inputs/outputs for learning tasks should be expressed with feature identifiers. See {doc}`source/feature_identifiers` for details.
+In practice, the user should only use the classes {py:class}`plaid.containers.dataset.Dataset` and {py:class}`plaid.containers.sample.Sample` when handling a database of physical solutions. Inputs/outputs for learning tasks should be expressed with feature identifiers. See {doc}`source/feature_identifiers` for details.
 
-Example usage of each class are available and documented in the [`notebooks`](notebooks).
+Example usage of each class are available and documented in the {doc}`source/notebooks`.

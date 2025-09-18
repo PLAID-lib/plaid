@@ -22,7 +22,7 @@ FeatureIdentifier is a `dict[str, str | float]` with a mandatory `type` key. Dep
 - time_series: `{"type": "time_series", "name": <str>}`
 - field: `{"type": "field", "name": <str>, "base_name": <str>, "zone_name": <str>, "location": <str>, "time": <float>}`
   - `location` must be one of: `Vertex`, `EdgeCenter`, `FaceCenter`, `CellCenter`.
-  - `base_name`, `zone_name`, `location`, `time` are optional if default value mechanics apply (see Default values).
+  - `base_name`, `zone_name`, `location`, `time` are optional if default value mechanics apply (see {doc}`source/default_values`).
 - nodes: `{"type": "nodes", "base_name": <str>, "zone_name": <str>, "time": <float>}`
 
 Notes:
@@ -58,7 +58,7 @@ fid_nodes = FeatureIdentifier({
 
 ## Using identifiers with `Sample`
 
-The `Sample` container exposes helpers to retrieve, update, extract and merge features via identifiers.
+The {py:class}`plaid.containers.sample.Sample` container exposes helpers to retrieve, update, extract and merge features via identifiers.
 
 ```python
 from plaid.containers.sample import Sample
@@ -96,7 +96,7 @@ String format is: `<type>::<detail1>/<detail2>/...`. The order is fixed per type
 
 ## Using identifiers with `ProblemDefinition`
 
-`ProblemDefinition` stores learning inputs/outputs as lists of FeatureIdentifiers and offers utilities to add and filter them.
+{py:class}`plaid.problem_definition.ProblemDefinition` stores learning inputs/outputs as lists of FeatureIdentifiers and offers utilities to add and filter them.
 
 ```python
 from plaid.problem_definition import ProblemDefinition
