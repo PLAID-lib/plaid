@@ -240,10 +240,15 @@ def skip_logger_attribute(app, what, name, obj, skip, options):
         skip = True
     return skip
 
+def skip_version_module(app, what, name, obj, skip, options):
+    if what == "module" and name == "_version":
+        print(f"WILL SKIP: {what=}, {name=}")
+        skip = True
+    return skip
 
 def setup(sphinx):
     sphinx.connect("autoapi-skip-member", skip_logger_attribute)
-
+    sphinx.connect("autoapi-skip-member", skip_version_module)
 
 # -----------------------------------------------------------------------------#
 
