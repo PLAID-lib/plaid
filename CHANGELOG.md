@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixes
+
+### Removed
+
+## [0.1.8] - 2025-09-18
+
+### Added
+
 - (docs) configure `make clean`
 - (problem_definition) add methods using feature identifiers instead of names
 - (imports) add imports of `Sample`, `Dataset` from `plaid` and `plaid.containers` and `ProblemDefinition` from `plaid`
@@ -120,7 +130,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migration from [GitLab](https://gitlab.com/drti/plaid).
 
-[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.7...HEAD
+[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.8...HEAD
+[0.1.8]: https://github.com/PLAID-lib/plaid/compare/0.1.7...0.1.8
 [0.1.7]: https://github.com/PLAID-lib/plaid/compare/0.1.6...0.1.7
 [0.1.6]: https://github.com/PLAID-lib/plaid/compare/0.1.5...0.1.6
 [0.1.5]: https://github.com/PLAID-lib/plaid/compare/0.1.4...0.1.5
