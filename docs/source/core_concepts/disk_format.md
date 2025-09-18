@@ -4,7 +4,7 @@ title: On-disk format
 
 # On-disk format
 
-A PLAID dataset is a collection of physics configurations, stored on disk in a human-readable, tool-friendly structure:
+A PLAID {py:class}`~plaid.containers.dataset.Dataset` is a collection of physics configurations, stored on disk in a human-readable, tool-friendly structure:
 
 ```
 folder
@@ -22,7 +22,7 @@ folder
     └── split.json (or split.csv for <=0.1.7)
 ```
 
-- `dataset/samples/`: one directory per sample.
+- `dataset/samples/`: one directory per {py:class}`~plaid.containers.sample.Sample`.
 - `meshes/`: CGNS files for time steps; can be explored in ParaView.
-- `scalars.csv`: constant scalars for the sample.
+- `scalars.csv`: constant scalars for the {py:class}`~plaid.containers.sample.Sample`.
 - `problem_definition/`: learning task definition and splits.

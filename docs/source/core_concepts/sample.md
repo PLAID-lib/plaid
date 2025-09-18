@@ -21,4 +21,4 @@ Key APIs include:
 - Feature updates: {py:meth}`~plaid.containers.sample.Sample.add_scalar`, {py:meth}`~plaid.containers.sample.Sample.add_time_series`, {py:meth}`~plaid.containers.sample.Sample.add_field`, {py:meth}`~plaid.containers.sample.Sample.set_nodes`, and high-level identifier-based updates
 - Discovery: {py:meth}`~plaid.containers.sample.Sample.get_all_features_identifiers()` or {py:meth}`~plaid.containers.sample.Sample.get_all_features_identifiers_by_type()` to list all available features with their context
 
-See also: {doc}`notebooks` for hands-on examples.
+See also: {doc}`../notebooks` for hands-on examples.
