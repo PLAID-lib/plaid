@@ -70,7 +70,8 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
    :caption: Overview
 
    source/quickstart.md
-   source/description.md
+   source/citation.md
+   source/contributing.md
 
 .. toctree::
    :glob:
