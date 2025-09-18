@@ -2,6 +2,8 @@
 title: On-disk format
 ---
 
+# On-disk format
+
 A PLAID dataset is a collection of physics configurations, stored on disk in a human-readable, tool-friendly structure:
 
 ```

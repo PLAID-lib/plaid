@@ -12,4 +12,5 @@ PLAID is both a datamodel and a library implementing it. This page introduces th
    core_concepts/problem_definition
    core_concepts/feature_identifiers
    core_concepts/defaults
+   core_concepts/disk_format
    core_concepts/interoperability
