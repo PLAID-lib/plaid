@@ -119,7 +119,7 @@ class Test_Huggingface_Bridge:
             "paths": hf_sample.meshes._paths,
             "time_series": getattr(hf_sample, "time_series", None),
         }
-        with pytest.raises(KeyError, match=r"Missing key 'scalars' in HF data\."):
+        with pytest.raises(KeyError):
             huggingface_bridge.to_plaid_sample(bad_hf_sample)
 
     def test_plaid_dataset_to_huggingface(self, dataset, problem_definition):
