@@ -13,6 +13,7 @@ from typing import Callable
 import pytest
 
 from plaid.bridges import huggingface_bridge
+from plaid.bridges._huggingface_helpers import _to_plaid_sample
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
@@ -79,7 +80,7 @@ class Test_Huggingface_Bridge:
         hfds = huggingface_bridge.plaid_generator_to_huggingface(
             generator, infos, problem_definition
         )
-        huggingface_bridge.to_plaid_sample(hfds[0])
+        _to_plaid_sample(hfds[0])
 
     def test_to_plaid_sample_fallback_build_succeeds(
         self, generator, infos, problem_definition
@@ -99,7 +100,7 @@ class Test_Huggingface_Bridge:
             "paths": hf_sample.meshes._paths,
             "time_series": getattr(hf_sample, "time_series", None),
         }
-        plaid_sample = huggingface_bridge.to_plaid_sample(bad_hf_sample)
+        plaid_sample = _to_plaid_sample(bad_hf_sample)
         assert isinstance(plaid_sample, Sample)
 
     def test_to_plaid_sample_missing_key_raises_keyerror(
@@ -120,7 +121,7 @@ class Test_Huggingface_Bridge:
             "time_series": getattr(hf_sample, "time_series", None),
         }
         with pytest.raises(KeyError):
-            huggingface_bridge.to_plaid_sample(bad_hf_sample)
+            _to_plaid_sample(bad_hf_sample)
 
     def test_plaid_dataset_to_huggingface(self, dataset, problem_definition):
         hfds = huggingface_bridge.plaid_dataset_to_huggingface(
