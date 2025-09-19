@@ -31,7 +31,7 @@ jobs:
 
       - name: Create environment
         run: |
-          conda create -n plaid-dev -f environment.yml
+          conda create -f environment.yml
           conda run -n plaid-dev pip install -e .[dev]
 
       - name: Compile documentation

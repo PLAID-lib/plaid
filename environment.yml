@@ -1,4 +1,4 @@
-name: plaid
+name: plaid-dev
 channels:
   - conda-forge
 channel_priority: strict
