@@ -26,10 +26,11 @@ else:  # pragma: no cover
 import datasets
 from datasets import load_dataset
 
-from plaid import Dataset, ProblemDefinition, Sample
+from plaid import Dataset, ProblemDefinition
 from plaid.bridges._huggingface_helpers import (
     _HFShardToPlaidSampleConverter,
     _HFToPlaidSampleConverter,
+    _to_plaid_sample,
 )
 from plaid.types import IndexType
 
@@ -289,18 +290,6 @@ def huggingface_description_to_problem_definition(
     return problem_definition
 
 
-def to_plaid_sample(hf_sample: dict[str, Any]) -> Sample:
-    """Convert a Hugging Face sample dictionary to a PLAID Sample instance.
-
-    Args:
-        hf_sample (dict[str, Any]): A dictionary with a "sample" key containing the pickled sample bytes.
-
-    Returns:
-        Sample: The deserialized PLAID Sample object.
-    """
-    return Sample.model_validate(pickle.loads(hf_sample["sample"]))
-
-
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
     ids: Optional[list[int]] = None,
@@ -437,7 +426,7 @@ def streamed_huggingface_dataset_to_plaid(
     samples = []
     for _ in range(number_of_samples):
         hf_sample = next(iter(ds_stream))
-        samples.append(to_plaid_sample(hf_sample))
+        samples.append(_to_plaid_sample(hf_sample))
 
     dataset = Dataset.from_list_of_samples(samples)
 

@@ -13,6 +13,7 @@ from typing import Callable
 import pytest
 
 from plaid.bridges import huggingface_bridge
+from plaid.bridges._huggingface_helpers import _to_plaid_sample
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
@@ -79,7 +80,48 @@ class Test_Huggingface_Bridge:
         hfds = huggingface_bridge.plaid_generator_to_huggingface(
             generator, infos, problem_definition
         )
-        huggingface_bridge.to_plaid_sample(hfds[0])
+        _to_plaid_sample(hfds[0])
+
+    def test_to_plaid_sample_fallback_build_succeeds(
+        self, generator, infos, problem_definition
+    ):
+        hfds = huggingface_bridge.plaid_generator_to_huggingface(
+            generator, infos, problem_definition
+        )
+
+        hf_sample = pickle.loads(hfds[0]["sample"])
+        bad_hf_sample = {
+            "path": getattr(hf_sample, "path", None),
+            "scalars": hf_sample.scalars.data,
+            "meshes": hf_sample.meshes.data,
+            "mesh_base_name": hf_sample.meshes._mesh_base_name,
+            "mesh_zone_name": hf_sample.meshes._mesh_zone_name,
+            "links": hf_sample.meshes._links,
+            "paths": hf_sample.meshes._paths,
+            "time_series": getattr(hf_sample, "time_series", None),
+        }
+        plaid_sample = _to_plaid_sample(bad_hf_sample)
+        assert isinstance(plaid_sample, Sample)
+
+    def test_to_plaid_sample_missing_key_raises_keyerror(
+        self, generator, infos, problem_definition
+    ):
+        hfds = huggingface_bridge.plaid_generator_to_huggingface(
+            generator, infos, problem_definition
+        )
+
+        hf_sample = pickle.loads(hfds[0]["sample"])
+        bad_hf_sample = {
+            "path": getattr(hf_sample, "path", None),
+            "meshes": hf_sample.meshes.data,
+            "mesh_base_name": hf_sample.meshes._mesh_base_name,
+            "mesh_zone_name": hf_sample.meshes._mesh_zone_name,
+            "links": hf_sample.meshes._links,
+            "paths": hf_sample.meshes._paths,
+            "time_series": getattr(hf_sample, "time_series", None),
+        }
+        with pytest.raises(KeyError):
+            _to_plaid_sample(bad_hf_sample)
 
     def test_plaid_dataset_to_huggingface(self, dataset, problem_definition):
         hfds = huggingface_bridge.plaid_dataset_to_huggingface(
