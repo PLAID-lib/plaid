@@ -71,6 +71,7 @@ include = ["plaid*"]
 
 [project.optional-dependencies]
 dev = [
+    "rich",
     "optuna",
     "pytest",
     "pytest-cov",

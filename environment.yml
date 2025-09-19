@@ -21,6 +21,8 @@ dependencies:
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs
   - muscat-core=2.5
+#---# base
+  - rich
 #---# optim
   - optuna
 #---# testing
