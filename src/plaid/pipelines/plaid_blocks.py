@@ -15,12 +15,16 @@ Includes:
 #
 
 import copy
+import sys
 from typing import Union
 
-try:
-    from typing import Self  # Python 3.10+
-except ImportError:  # pragma: no cover
-    from typing_extensions import Self
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:  # pragma: no cover
+    from typing import TypeVar
+
+    Self = TypeVar("Self")
+
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone

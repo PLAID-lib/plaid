@@ -4,7 +4,7 @@ title: Sample
 
 # Sample
 
-{py:class}`~plaid.containers.sample.Sample` represents one observation. It contains {doc}`Features <core_concept/feature_identifiers>` among (all optional):
+{py:class}`~plaid.containers.sample.Sample` represents one observation. It contains {doc}`feature_identifiers` among (all optional):
 - scalars: name → value
 - time series: name → (time_sequence, values)
 - meshes containing:

@@ -79,7 +79,6 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
    :caption: User guide
 
    source/core_concepts.rst
-   source/feature_identifiers.md
    Data Conversion Guide <source/notebooks/convert_users_data_example>
    Examples & Tutorials <source/notebooks.rst>
    API Reference <autoapi/plaid/index>

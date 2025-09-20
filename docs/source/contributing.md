@@ -6,7 +6,7 @@ To contribute to the library, you need to clone the repo using git:
 git clone https://github.com/PLAID-lib/plaid.git
 ```
 
-### 4.1 Development dependencies
+## 4.1 Development dependencies
 
 To configure an environment manually, you can follow the dependencies listed in ``environment.yml``, or generate it using conda:
 
@@ -25,7 +25,7 @@ pip install -e .
 The development dependency [**Muscat=2.5.0**](https://muscat.readthedocs.io/) is available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) but not on [``PyPi``](https://pypi.org/project/muscat). A a consequence, using a conda environment is the only way to run tests and examples, and compile the documentation.
 
 
-### 4.2 Tests and examples
+## 4.2 Tests and examples
 
 To check the installation, you can run the unit test suite:
 
@@ -41,7 +41,7 @@ bash run_examples.sh  # [unix]
 run_examples.bat      # [win]
 ```
 
-### 4.3 Documentation
+## 4.3 Documentation
 
 To compile locally the documentation, you can run:
 
@@ -52,7 +52,7 @@ make html
 
 Various notebooks are executed during compilation. The documentation can then be explored in ``docs/_build/html``.
 
-### 4.4 Formatting and linting with Ruff
+## 4.4 Formatting and linting with Ruff
 
 We use [**Ruff**](https://docs.astral.sh/ruff/) for linting and formatting.
 
@@ -65,7 +65,7 @@ ruff --config ruff.toml check . --fix      # auto-fix linting issues
 ruff --config ruff.toml format .           # auto-format code
 ```
 
-### 4.5 Setting up pre-commit
+## 4.5 Setting up pre-commit
 
 Pre-commit is configured to run the following hooks:
 
@@ -87,7 +87,7 @@ You can also run (once):
 pre-commit install
 ```
 
-### 4.6 How to contribute
+## 4.6 How to contribute
 
 Before contributing, please review our guidelines and backward-compatibility policy.
 
@@ -101,7 +101,7 @@ Backward compatibility (API and disk format): see policy in this page and detail
 
 CGNS resources: <http://cgns.github.io/>
 
-#### Contributor License Agreement (CLA)
+### Contributor License Agreement (CLA)
 
 By contributing, you agree to the CLA terms summarized below (full text previously in Contributing page):
 - Perpetual, worldwide, non-exclusive licenses for copyright and patent.

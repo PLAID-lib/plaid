@@ -73,8 +73,11 @@ extensions = [
     "sphinxcontrib.bibtex",
 ]
 
+nb_execution_timeout = 300
 nb_execution_mode = "force"
-jupytext_formats = "ipynb,py:percent"
+nb_execution_allow_errors = False
+nb_execution_raise_on_error = True
+
 
 bibtex_bibfiles = ["refs.bib"]
 bibtex_encoding = "latin"
@@ -174,8 +177,6 @@ autoapi_python_class_content = "both"  # default is 'class'
 #     #     - Functions
 #     #     - Methods
 
-nb_execution_mode = 'auto'
-nb_execution_timeout = 300
 
 numfig = True
 
