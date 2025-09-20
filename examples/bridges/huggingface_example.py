@@ -183,7 +183,7 @@ hf_dataset.save_to_disk("/tmp/path/to/dir")
 
 # %%
 # Load from disk
-from datasets import load_from_disk, load_dataset
+from datasets import load_from_disk
 
 loaded_hf_dataset = load_from_disk("/tmp/path/to/dir")
 
