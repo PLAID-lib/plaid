@@ -52,7 +52,7 @@ print("#---# Empty ProblemDefinition")
 problem = ProblemDefinition()
 print(f"{problem = }")
 
-# %% [markdown]
+# %%
 # ### Initialize some feature identifiers
 scalar_1_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_1"})
 scalar_2_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_2"})

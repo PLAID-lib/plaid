@@ -62,7 +62,7 @@ class Test_Huggingface_Bridge:
         assert hfds.description["task"] == "regression"
         assert hfds.description["in_scalars_names"][0] == "feature_name_1"
         assert hfds.description["in_scalars_names"][1] == "feature_name_2"
-        self.assert_sample(Sample.model_validate(pickle.loads(hfds[0]["sample"])))
+        self.assert_sample(to_plaid_sample(pickle.loads(hfds[0]["sample"])))
 
     def assert_plaid_dataset(self, ds, pbdef):
         assert ds.get_infos()["legal"] == {"owner": "PLAID2", "license": "BSD-3"}

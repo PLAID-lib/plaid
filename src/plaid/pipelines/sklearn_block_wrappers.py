@@ -15,12 +15,16 @@ Provides adapters to use scikit-learn estimators within the PLAID feature/block 
 #
 
 import copy
+import sys
 from typing import Optional
 
-try:
-    from typing import Self  # Python 3.10+
-except ImportError:  # pragma: no cover
-    from typing_extensions import Self
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:  # pragma: no cover
+    from typing import TypeVar
+
+    Self = TypeVar("Self")
+
 
 from sklearn.base import (
     BaseEstimator,

@@ -38,7 +38,7 @@ samples = [Sample(...), Sample(...)]
 dataset = Dataset.from_list_of_samples(samples)
 ```
 
-See also: {doc}`notebooks/containers/dataset_example`.
+See also: {doc}`../notebooks/containers/dataset_example`.
 
 ## Basic usage
 
@@ -71,7 +71,7 @@ feat_ids = dataset.get_all_features_identifiers(ids=None)
 node_ids = dataset.get_all_features_identifiers_by_type("nodes")
 ```
 
-Learn more about identifiers: {doc}`core_concepts/feature_identifiers`.
+Learn more about identifiers: {doc}`feature_identifiers`.
 
 ## Retrieve features by identifier(s)
 

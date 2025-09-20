@@ -7,13 +7,14 @@
 #
 #
 
+import sys
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-try:
-    from typing import TypeAlias  # Python 3.10+
-except ImportError:  # pragma: no cover
+if sys.version_info >= (3, 11):
+    from typing import TypeAlias
+else:  # pragma: no cover
     from typing_extensions import TypeAlias
 
 

@@ -22,7 +22,7 @@ FeatureIdentifier is a `dict[str, str | float]` with a mandatory `type` key. Dep
 - time_series: `{"type": "time_series", "name": <str>}`
 - field: `{"type": "field", "name": <str>, "base_name": <str>, "zone_name": <str>, "location": <str>, "time": <float>}`
   - `location` must be one of: `Vertex`, `EdgeCenter`, `FaceCenter`, `CellCenter`.
-  - `base_name`, `zone_name`, `location`, `time` are optional if default value mechanics apply (see {doc}`default_values`).
+  - `base_name`, `zone_name`, `location`, `time` are optional if default value mechanics apply (see {doc}`defaults`).
 - nodes: `{"type": "nodes", "base_name": <str>, "zone_name": <str>, "time": <float>}`
 
 Notes:

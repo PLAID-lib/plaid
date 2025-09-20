@@ -35,14 +35,14 @@ from plaid.types import IndexType
 Convention with hf (Hugging Face) datasets:
 - hf-datasets contains a single Hugging Face split, named 'all_samples'.
 - samples contains a single Hugging Face feature, named called "sample".
-- Samples are instances of plaid.containers.sample.Sample.
+- Samples are instances of :ref:`Sample`.
 - Mesh objects included in samples follow the CGNS standard, and can be converted in Muscat.Containers.Mesh.Mesh.
 - problem_definition info is stored in hf-datasets "description" parameter
 """
 
 
 def to_plaid_sample(hf_sample: dict[str, Any]) -> Sample:
-    """Convert a Hugging Face dataset sample (pickle) to a plaid :ref:`Sample`.
+    """Convert a Hugging Face dataset sample (pickle) to a plaid :class:`Sample <plaid.containers.sample.Sample>`.
 
     If the sample is not valid, it tries to build it from its components.
     If it still fails because of a missing key, it raises a KeyError.
@@ -351,7 +351,7 @@ def huggingface_dataset_to_plaid(
             dataset = load_from_disk("chanel/dataset")
             plaid_dataset, plaid_problem = huggingface_dataset_to_plaid(dataset)
     """
-    from plaid.bridges._huggingface_helpers import (
+    from plaid.bridges.huggingface_helpers import (
         _HFShardToPlaidSampleConverter,
         _HFToPlaidSampleConverter,
     )
@@ -383,8 +383,8 @@ def huggingface_dataset_to_plaid(
             with Pool(processes=n_workers) as pool:
                 return list(
                     tqdm(
-                        pool.imap(converter, range(len(converter.ds))),
-                        total=len(converter.ds),
+                        pool.imap(converter, range(len(converter.hf_ds))),
+                        total=len(converter.hf_ds),
                         disable=not verbose,
                     )
                 )
