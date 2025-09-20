@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
-from sklearn.compose import ColumnTransformer
+from sklearn.compose import ColumnTransformer as SklearnColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
 
@@ -32,7 +32,7 @@ from plaid import Dataset
 from plaid.containers.utils import has_duplicates_feature_ids
 
 
-class ColumnTransformer(ColumnTransformer):
+class ColumnTransformer(SklearnColumnTransformer):
     """Custom column-wise transformer for PLAID-style datasets.
 
     Similar to scikit-learn's `ColumnTransformer`, this class applies a list
