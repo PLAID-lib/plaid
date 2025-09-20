@@ -69,7 +69,7 @@ class ColumnTransformer(ColumnTransformer):
             self: The fitted PlaidColumnTransformer.
         """
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
 
         self.in_features_identifiers_ = []
         for _, transformer in self.plaid_transformers:
@@ -127,7 +127,7 @@ class ColumnTransformer(ColumnTransformer):
         """
         check_is_fitted(self, "transformers_")
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
 
         transformed_datasets = [dataset.copy()]
         for _, transformer_, _ in self.transformers_:
@@ -165,7 +165,7 @@ class ColumnTransformer(ColumnTransformer):
         """
         check_is_fitted(self, "transformers_")
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
 
         transformed_datasets = [dataset.copy()]
         for _, transformer_, _ in self.transformers_:
@@ -213,7 +213,7 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
             self: The fitted estimator.
         """
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
 
         self.transformer_ = clone(self.transformer).fit(dataset)
 
@@ -248,7 +248,7 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
         """
         check_is_fitted(self, "regressor_")
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
         dataset_pred_transformed = self.regressor_.predict(dataset)
         return self.transformer_.inverse_transform(dataset_pred_transformed)
 
@@ -276,9 +276,9 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
         if dataset_y is None:
             dataset_y = dataset_X
         if isinstance(dataset_X, list):
-            dataset_X = Dataset.from_list_of_samples(dataset_X)
+            dataset_X = Dataset(samples=dataset_X)
         if isinstance(dataset_y, list):
-            dataset_y = Dataset.from_list_of_samples(dataset_y)
+            dataset_y = Dataset(samples=dataset_y)
 
         dataset_y_pred = self.predict(dataset_X)
 
