@@ -753,7 +753,7 @@ class Dataset(object):
         if dim_features == 0:
             tabular = np.expand_dims(tabular, axis=-1)
         assert tabular.ndim == 3, (
-            "tabular must be constructed to have 3 dimensions: (nb_sample, nb_features, dim_features)"
+            f"tabular must be constructed to have 3 dimensions: (nb_sample, nb_features, dim_features), but {tabular.ndim=} | {tabular.shape=}"
         )
 
         return tabular
@@ -761,7 +761,7 @@ class Dataset(object):
     def get_tabular_from_stacked_identifiers(
         self,
         feature_identifiers: list[FeatureIdentifier],
-    ) -> Array:
+    ) -> tuple[Array, Array]:
         """Extract features of the dataset by their identifier(s), stack them and return an array containing these features.
 
         After stacking, each sample has one feature of dimension dim_stacked_features
@@ -771,6 +771,7 @@ class Dataset(object):
 
         Returns:
             Array: An containing the provided feature identifiers, size (nb_sample, dim_stacked_features)
+            Array: An containing the cumulated feature dimensions, starts with 0, size (len(feature_identifiers)+1, )
         """
         features = self.get_features_from_identifiers(feature_identifiers)
 
@@ -779,7 +780,11 @@ class Dataset(object):
             tabular.append(np.hstack([np.atleast_1d(e) for e in local_feats]))
         tabular = np.stack(tabular)
 
-        return tabular
+        feat_dims = [0]
+        feat_dims.extend([len(np.atleast_1d(e)) for e in local_feats])
+        cumulated_feat_dims = np.cumsum(feat_dims)
+
+        return tabular, cumulated_feat_dims
 
     def add_features_from_tabular(
         self,
@@ -1070,7 +1075,9 @@ class Dataset(object):
         Returns:
             Dataset: A new dataset containing all samples from the input datasets.
         """
-        assert len(datasets_list) > 1, "Provide more than one dataset"
+        if len(datasets_list) == 1:
+            return datasets_list[0]
+
         merged_dataset = datasets_list[0]
         for dataset in datasets_list[1:]:
             merged_dataset = merged_dataset.merge_features(dataset, in_place=False)

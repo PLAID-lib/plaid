@@ -191,7 +191,9 @@ def get_feature_type_and_details_from(
 
     assert all(
         key in AUTHORIZED_FEATURE_INFOS[feature_type] for key in feature_details
-    ), "Unexpected key(s) in feature_identifier"
+    ), (
+        f"Unexpected key(s) in feature_identifier {feature_details=} | {feature_type=} -> {AUTHORIZED_FEATURE_INFOS[feature_type]}"
+    )
 
     return feature_type, feature_details
 
