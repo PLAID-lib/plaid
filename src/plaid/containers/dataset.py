@@ -686,6 +686,7 @@ class Dataset(object):
     def extract_dataset_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        keep_cgns: bool = False,
     ) -> Self:
         """Extract features of the dataset by their identifier(s) and return a new dataset containing these features.
 
@@ -694,6 +695,7 @@ class Dataset(object):
 
         Args:
             feature_identifiers (dict or list of dict): One or more feature identifiers.
+            keep_cgns (bool): If True, keeps the CGNS tree structure in the extracted dataset.
 
         Returns:
             Self: New dataset containing the provided feature identifiers
@@ -708,6 +710,37 @@ class Dataset(object):
             extracted_sample = self[id].extract_sample_from_identifier(
                 feature_identifiers
             )
+
+            if keep_cgns and not extracted_sample.meshes and self[id].meshes:
+                for time in self[id].meshes.get_all_mesh_times():
+                    extracted_sample.meshes.init_tree(time=time)
+                    for base_name in self[id].meshes.get_base_names(time=time):
+                        original_base = self[id].meshes.get_base(
+                            base_name=base_name, time=time
+                        )
+                        extracted_sample.meshes.init_base(
+                            topological_dim=original_base[1][0],
+                            physical_dim=original_base[1][1],
+                            base_name=base_name,
+                            time=time,
+                        )
+                        for zone_name in self[id].meshes.get_zone_names(
+                            time=time, base_name=base_name
+                        ):
+                            original_zone = self[id].meshes.get_zone(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                            original_zone_type = self[id].meshes.get_zone_type(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                            extracted_sample.meshes.init_zone(
+                                zone_shape=original_zone[1],
+                                zone_type=original_zone_type,
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                time=time,
+                            )
+
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
 
