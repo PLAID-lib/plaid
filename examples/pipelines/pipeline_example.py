@@ -47,7 +47,6 @@ import numpy as np
 import optuna
 
 from datasets.utils.logging import disable_progress_bar
-from datasets import load_dataset
 
 from sklearn.base import clone
 from sklearn.pipeline import Pipeline
@@ -60,9 +59,10 @@ from sklearn.multioutput import MultiOutputRegressor
 
 from sklearn.model_selection import KFold, GridSearchCV
 
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, huggingface_description_to_problem_definition
+from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, load_hf_dataset_from_hub
 from plaid.pipelines.sklearn_block_wrappers import WrappedSklearnTransformer, WrappedSklearnRegressor
 from plaid.pipelines.plaid_blocks import TransformedTargetRegressor, ColumnTransformer
+
 
 disable_progress_bar()
 n_processes = min(max(1, os.cpu_count()), 6)
@@ -73,7 +73,7 @@ n_processes = min(max(1, os.cpu_count()), 6)
 # We load the `VKI-LS59` dataset from Hugging Face and restrict ourselves to the first 24 samples of the training set.
 
 # %%
-hf_dataset = load_dataset("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
+hf_dataset = load_hf_dataset_from_hub("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
 dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
 
 
@@ -249,7 +249,7 @@ def objective(trial):
 # We maximize the defined objective function over 4 trials selected by Optuna.
 
 
-# %% 
+# %%
 preprocessed_dataset = preprocessor.fit_transform(dataset_train)
 print("preprocessed_dataset:", preprocessed_dataset)
 print("scalar names =", preprocessed_dataset.get_scalar_names())
