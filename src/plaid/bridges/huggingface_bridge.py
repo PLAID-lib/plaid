@@ -119,8 +119,8 @@ def load_hf_dataset_from_hub(
     return load_dataset(repo_id, streaming=streaming, *args, **kwargs)
 
 
-def to_plaid_sample(hf_sample: dict[str, Any]) -> Sample:
-    """Convert a Hugging Face dataset sample (pickle) to a plaid :class:`Sample <plaid.containers.sample.Sample>`.
+def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
+    """Convert a Hugging Face dataset sample to a plaid :class:`Sample <plaid.containers.sample.Sample>`.
 
     If the sample is not valid, it tries to build it from its components.
     If it still fails because of a missing key, it raises a KeyError.
@@ -551,17 +551,6 @@ def streamed_huggingface_dataset_to_plaid(
     for _ in range(number_of_samples):
         hf_sample = next(iter(ds_stream))
         samples.append(to_plaid_sample(hf_sample))
-
-    # if isinstance(ds_stream, (datasets.IterableDataset, datasets.IterableDatasetDict)):
-    #     for _ in range(number_of_samples):
-    #         hf_sample = next(iter(ds_stream))
-    #         samples.append(to_plaid_sample(hf_sample))
-    # else:
-    #     assert isinstance(ds_stream, (datasets.Dataset, datasets.DatasetDict))
-    #     split_keys = list(problem_definition._split.keys())
-    #     ids = problem_definition.get_split(split_keys[0])
-    #     for i in range(number_of_samples):
-    #         samples.append(to_plaid_sample(ds_stream[ids[i]]))
 
     dataset = Dataset.from_list_of_samples(samples)
 

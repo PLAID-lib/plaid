@@ -40,11 +40,6 @@ print(AVAILABLE_EXAMPLES)
 from plaid.examples import datasets
 import time
 
-# # from datasets import load_dataset
-# # load_dataset("PLAID-datasets/Tensile2d")
-# from huggingface_hub import snapshot_download
-# snapshot_download(repo_id = "PLAID-datasets/Tensile2d", repo_type = "dataset")
-
 start = time.perf_counter()
 print(datasets.tensile2d)
 end = time.perf_counter()
