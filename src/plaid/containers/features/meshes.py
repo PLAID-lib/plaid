@@ -24,10 +24,6 @@ from plaid.types import CGNSLink, CGNSNode, CGNSPath, CGNSTree, Field
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
 
 
 class SampleMeshes:

@@ -34,10 +34,6 @@ from plaid.utils.deprecation import deprecated
 # %% Globals
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
 
 # %% Functions
 

@@ -19,10 +19,7 @@ from scipy.spatial.distance import cdist
 from plaid import Dataset
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
+
 
 # %% Functions
 
