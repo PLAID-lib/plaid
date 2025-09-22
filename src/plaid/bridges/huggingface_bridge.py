@@ -58,10 +58,14 @@ def load_hf_dataset_from_hub(
     """Loads a Hugging Face dataset from the public hub, a private mirror, or local cache, with automatic handling of streaming and download modes.
 
     Behavior:
+
     - If the environment variable `HF_ENDPOINT` is set, uses a private Hugging Face mirror.
+
       - Streaming is disabled.
       - The dataset is downloaded locally via `snapshot_download` and loaded from disk.
+
     - If `HF_ENDPOINT` is not set, attempts to load from the public Hugging Face hub.
+
       - If the dataset is already cached locally, loads from disk.
       - Otherwise, loads from the hub, optionally using streaming mode.
 

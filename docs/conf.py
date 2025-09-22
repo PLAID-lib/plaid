@@ -146,6 +146,12 @@ extensions.append("autoapi.extension")
 
 autoapi_dirs = ["../src/plaid"]
 # autoapi_dirs = ['../src/plaid', '../tests', '../examples']
+autoapi_ignore = [
+    "**/_version.py",
+    "**/_version.*",
+    "**/plaid/_version.py",
+    "plaid._version*",
+]
 autoapi_type = "python"
 autoapi_options = ["show-inheritance", "show-module-summary", "undoc-members", "private-members", "members"]
 # autoapi_options = ['show-inheritance', 'show-inheritance-diagram', 'show-module-summary', 'members']
