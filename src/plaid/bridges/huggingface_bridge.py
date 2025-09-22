@@ -22,14 +22,20 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
+import logging
+import os
+from typing import Union
 
 import datasets
 from datasets import load_dataset
+from huggingface_hub import snapshot_download
 from pydantic import ValidationError
 
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleMeshes, SampleScalars
 from plaid.types import IndexType
+
+logger = logging.getLogger(__name__)
 
 """
 Convention with hf (Hugging Face) datasets:
@@ -41,31 +47,100 @@ Convention with hf (Hugging Face) datasets:
 """
 
 
-def to_plaid_sample(hf_sample: dict[str, Any]) -> Sample:
-    """Convert a Hugging Face dataset sample (pickle) to a plaid :class:`Sample <plaid.containers.sample.Sample>`.
+def load_hf_dataset_from_hub(
+    repo_id: str, streaming: bool = False, *args, **kwargs
+) -> Union[
+    datasets.Dataset,
+    datasets.DatasetDict,
+    datasets.IterableDataset,
+    datasets.IterableDatasetDict,
+]:  # pragma: no cover (to prevent testing from downloading, this is run by examples)
+    """Loads a Hugging Face dataset from the public hub, a private mirror, or local cache, with automatic handling of streaming and download modes.
+
+    Behavior:
+    - If the environment variable `HF_ENDPOINT` is set, uses a private Hugging Face mirror.
+      - Streaming is disabled.
+      - The dataset is downloaded locally via `snapshot_download` and loaded from disk.
+    - If `HF_ENDPOINT` is not set, attempts to load from the public Hugging Face hub.
+      - If the dataset is already cached locally, loads from disk.
+      - Otherwise, loads from the hub, optionally using streaming mode.
+
+    Args:
+        repo_id (str): The Hugging Face dataset repository ID (e.g., 'username/dataset').
+        streaming (bool, optional): If True, attempts to stream the dataset (only supported on the public hub).
+        *args: Additional positional arguments passed to `datasets.load_dataset` or `datasets.load_from_disk`.
+        **kwargs: Additional keyword arguments passed to `datasets.load_dataset` or `datasets.load_from_disk`.
+
+    Returns:
+        Union[datasets.Dataset, datasets.DatasetDict]: The loaded Hugging Face dataset object.
+
+    Raises:
+        Exception: Propagates any exceptions raised by `datasets.load_dataset`, `datasets.load_from_disk`, or `huggingface_hub.snapshot_download` if loading fails.
+
+    Notes:
+        - Streaming mode is not supported when using a private mirror.
+        - If the dataset is found in the local cache, loads from disk instead of streaming.
+        - To use behind a proxy or with a private mirror, you may need to set:
+            - HF_ENDPOINT to your private mirror address
+            - CURL_CA_BUNDLE to your trusted CA certificates
+            - HF_HOME to a shared cache directory if needed
+    """
+    hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
+
+    # Helper to check if dataset repo is already cached
+    def _get_cached_path(repo_id_):
+        try:
+            return snapshot_download(
+                repo_id=repo_id_, repo_type="dataset", local_files_only=True
+            )
+        except FileNotFoundError:
+            return None
+
+    # Private mirror case
+    if hf_endpoint:
+        if streaming:
+            logger.warning(
+                "Streaming mode not compatible with private mirror. Falling back to download mode."
+            )
+        local_path = snapshot_download(repo_id=repo_id, repo_type="dataset")
+        return load_dataset(local_path, *args, **kwargs)
+
+    # Public case
+    local_path = _get_cached_path(repo_id)
+    if local_path is not None and streaming is True:
+        # Even though streaming mode: rely on local files if already downloaded
+        logger.info("Dataset found in cache. Loading from disk instead of streaming.")
+        return load_dataset(local_path, *args, **kwargs)
+
+    return load_dataset(repo_id, streaming=streaming, *args, **kwargs)
+
+
+def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
+    """Convert a Hugging Face dataset sample to a plaid :class:`Sample <plaid.containers.sample.Sample>`.
 
     If the sample is not valid, it tries to build it from its components.
     If it still fails because of a missing key, it raises a KeyError.
     """
+    pickled_hf_sample = pickle.loads(hf_sample["sample"])
     try:
         # Try to validate the sample
-        return Sample.model_validate(hf_sample)
+        return Sample.model_validate(pickled_hf_sample)
     except ValidationError:
         # If it fails, try to build the sample from its components
         try:
-            scalars = SampleScalars(scalars=hf_sample["scalars"])
+            scalars = SampleScalars(scalars=pickled_hf_sample["scalars"])
             meshes = SampleMeshes(
-                meshes=hf_sample["meshes"],
-                mesh_base_name=hf_sample.get("mesh_base_name"),
-                mesh_zone_name=hf_sample.get("mesh_zone_name"),
-                links=hf_sample.get("links"),
-                paths=hf_sample.get("paths"),
+                meshes=pickled_hf_sample["meshes"],
+                mesh_base_name=pickled_hf_sample.get("mesh_base_name"),
+                mesh_zone_name=pickled_hf_sample.get("mesh_zone_name"),
+                links=pickled_hf_sample.get("links"),
+                paths=pickled_hf_sample.get("paths"),
             )
             sample = Sample(
-                path=hf_sample.get("path"),
+                path=pickled_hf_sample.get("path"),
                 meshes=meshes,
                 scalars=scalars,
-                time_series=hf_sample.get("time_series"),
+                time_series=pickled_hf_sample.get("time_series"),
             )
             return Sample.model_validate(sample)
         except KeyError as e:
@@ -434,7 +509,9 @@ def huggingface_dataset_to_plaid(
 def streamed_huggingface_dataset_to_plaid(
     hf_repo: str,
     number_of_samples: int,
-) -> tuple[Dataset, ProblemDefinition]:  # pragma: no cover
+) -> tuple[
+    Dataset, ProblemDefinition
+]:  # pragma: no cover (to prevent testing from downloading, this is run by examples)
     """Use this function for creating a plaid dataset by streaming on Hugging Face.
 
     The indices of the retrieved sample is not controled.
@@ -454,7 +531,17 @@ def streamed_huggingface_dataset_to_plaid(
 
             dataset, pb_def = streamed_huggingface_dataset_to_plaid('PLAID-datasets/VKI-LS59', 2)
     """
-    ds_stream = load_dataset(hf_repo, split="all_samples", streaming=True)
+    ds_stream = load_hf_dataset_from_hub(hf_repo, split="all_samples", streaming=True)
+
+    infos = {}
+    if "legal" in ds_stream.description:
+        infos["legal"] = ds_stream.description["legal"]
+    if "data_production" in ds_stream.description:
+        infos["data_production"] = ds_stream.description["data_production"]
+
+    problem_definition = huggingface_description_to_problem_definition(
+        ds_stream.description
+    )
 
     samples = []
     for _ in range(number_of_samples):
@@ -463,17 +550,7 @@ def streamed_huggingface_dataset_to_plaid(
 
     dataset = Dataset.from_list_of_samples(samples)
 
-    infos = {}
-    if "legal" in ds_stream.description:
-        infos["legal"] = ds_stream.description["legal"]
-    if "data_production" in ds_stream.description:
-        infos["data_production"] = ds_stream.description["data_production"]
-
     dataset.set_infos(infos)
-
-    problem_definition = huggingface_description_to_problem_definition(
-        ds_stream.description
-    )
 
     return dataset, problem_definition
 

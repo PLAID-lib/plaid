@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (`huggingface_bridge.load_hf_dataset_from_hub`) new utility to load datasets from the Hugging Face Hub, supporting both proxy and non-proxy environments.
+
 ### Changed
 
+- (`huggingface_bridge.to_plaid_sample`) now accepts hf_dataset[id] directly as input (with pickle loading handled internally).
+
 ### Fixes
+
+- (examples) corrected and improved downloadable examples and the associated documentation notebook.
+  - Improved integration with huggingface_bridge.to_plaid_sample.
+  - Significantly faster on first retrieval when the dataset is already cached locally.
 
 ### Removed
 

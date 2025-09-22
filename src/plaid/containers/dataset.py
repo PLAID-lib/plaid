@@ -37,10 +37,6 @@ from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
 
 
 # %% Functions
