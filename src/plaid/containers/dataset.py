@@ -452,18 +452,18 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = [time] if time else sample.meshes.get_all_mesh_times()
+            times = [time] if time else sample.features.get_all_mesh_times()
             for time in times:
                 base_names = (
                     [base_name]
                     if base_name
-                    else sample.meshes.get_base_names(time=time)
+                    else sample.features.get_base_names(time=time)
                 )
                 for base_name in base_names:
                     zone_names = (
                         [zone_name]
                         if zone_name
-                        else sample.meshes.get_zone_names(
+                        else sample.features.get_zone_names(
                             time=time, base_name=base_name
                         )
                     )
@@ -1192,11 +1192,11 @@ class Dataset(object):
                 ts_counts[name] = ts_counts.get(name, 0) + 1
 
             # Fields
-            times = sample.meshes.get_all_mesh_times()
+            times = sample.features.get_all_mesh_times()
             for time in times:
-                base_names = sample.meshes.get_base_names(time=time)
+                base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.meshes.get_zone_names(
+                    zone_names = sample.features.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
@@ -1285,11 +1285,11 @@ class Dataset(object):
             all_scalar_names.update(sample.get_scalar_names())
             all_ts_names.update(sample.get_time_series_names())
 
-            times = sample.meshes.get_all_mesh_times()
+            times = sample.features.get_all_mesh_times()
             for time in times:
-                base_names = sample.meshes.get_base_names(time=time)
+                base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.meshes.get_zone_names(
+                    zone_names = sample.features.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
@@ -1320,11 +1320,11 @@ class Dataset(object):
 
             # Check fields
             sample_fields = set()
-            times = sample.meshes.get_all_mesh_times()
+            times = sample.features.get_all_mesh_times()
             for time in times:
-                base_names = sample.meshes.get_base_names(time=time)
+                base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.meshes.get_zone_names(
+                    zone_names = sample.features.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:

@@ -32,7 +32,8 @@ from huggingface_hub import snapshot_download
 from pydantic import ValidationError
 
 from plaid import Dataset, ProblemDefinition, Sample
-from plaid.containers.features import SampleData, SampleScalars
+from plaid.containers.features import SampleFeatures
+from plaid.containers.features2 import SampleScalars
 from plaid.types import IndexType
 
 logger = logging.getLogger(__name__)
@@ -133,7 +134,7 @@ def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
         # If it fails, try to build the sample from its components
         try:
             scalars = SampleScalars(scalars=pickled_hf_sample["scalars"])
-            meshes = SampleData(
+            meshes = SampleFeatures(
                 data=pickled_hf_sample["meshes"],
                 mesh_base_name=pickled_hf_sample.get("mesh_base_name"),
                 mesh_zone_name=pickled_hf_sample.get("mesh_zone_name"),

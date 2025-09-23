@@ -87,11 +87,11 @@ class Test_Huggingface_Bridge:
         bad_sample = {
             "path": getattr(sample, "path", None),
             "scalars": sample.scalars.data,
-            "meshes": sample.meshes.data,
-            "mesh_base_name": sample.meshes._mesh_base_name,
-            "mesh_zone_name": sample.meshes._mesh_zone_name,
-            "links": sample.meshes._links,
-            "paths": sample.meshes._paths,
+            "meshes": sample.features.data,
+            "mesh_base_name": sample.features._mesh_base_name,
+            "mesh_zone_name": sample.features._mesh_zone_name,
+            "links": sample.features._links,
+            "paths": sample.features._paths,
             "time_series": getattr(sample, "time_series", None),
         }
         bad_hf_sample = {"sample": pickle.dumps(bad_sample)}
@@ -102,11 +102,11 @@ class Test_Huggingface_Bridge:
         sample = dataset[0]
         bad_sample = {
             "path": getattr(sample, "path", None),
-            "meshes": sample.meshes.data,
-            "mesh_base_name": sample.meshes._mesh_base_name,
-            "mesh_zone_name": sample.meshes._mesh_zone_name,
-            "links": sample.meshes._links,
-            "paths": sample.meshes._paths,
+            "meshes": sample.features.data,
+            "mesh_base_name": sample.features._mesh_base_name,
+            "mesh_zone_name": sample.features._mesh_zone_name,
+            "links": sample.features._links,
+            "paths": sample.features._paths,
             "time_series": getattr(sample, "time_series", None),
         }
         bad_hf_sample = {"sample": pickle.dumps(bad_sample)}

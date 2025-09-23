@@ -149,7 +149,7 @@ def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
 def sample_with_tree(tree: CGNSTree) -> Sample:
     """Generate a Sample objects with a tree."""
     sample = Sample()
-    sample.meshes.add_tree(tree)
+    sample.features.add_tree(tree)
     return sample
 
 

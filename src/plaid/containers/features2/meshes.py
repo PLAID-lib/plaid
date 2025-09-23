@@ -26,7 +26,7 @@ from plaid.utils import cgns_helper as CGH
 logger = logging.getLogger(__name__)
 
 
-class SampleData:
+class SampleFeatures:
     """A container for meshes within a Sample.
 
     Args:
@@ -789,16 +789,29 @@ class SampleData:
         base_node = self.get_base("Global", time=time)
         return CGU.getValueByPath(base_node, name)
 
-    def set_global(
+    def add_global(
         self,
         name: str,
         global_array: np.ndarray,
         time: Optional[float] = None,
     ) -> None:
+        _check_names(name)
         tree_node = self.init_base(1, 1, "Global", time)
         CGL.newDataArray(tree_node, name, value=global_array)
 
-    # -------------------------------------------------------------------------#
+    def del_global(
+        self,
+        name: str,
+        time: Optional[float] = None,
+    ) -> CGNSTree:
+        base_node = self.get_base("Global", time=time)
+        updated_tree = CGU.nodeDelete(base_node, name)
+
+        # If the function reaches here, the field was not found
+        if updated_tree is None:
+            raise KeyError(f"There is no global with name {name} at the specified time.")
+
+        return updated_tree
 
     # -------------------------------------------------------------------------#
     def get_nodes(

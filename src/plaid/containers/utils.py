@@ -25,7 +25,6 @@ from plaid.types import (
 )
 from plaid.utils.base import safe_len
 
-
 def _check_names(names: Union[str, list[str]]):
     """Check that names do not contain invalid character ``/``.
 
