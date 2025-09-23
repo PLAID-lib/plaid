@@ -16,6 +16,7 @@ import pytest
 import plaid
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
+from plaid.types.feature_types import FeatureIdentifier
 from plaid.utils.base import DeprecatedError, ShapeError
 
 # %% Fixtures
@@ -584,20 +585,24 @@ class Test_Dataset:
         )
 
     def test_update_features_from_identifier(
-        self, dataset_with_samples, dataset_with_samples_with_tree
+        self, dataset_with_samples: Dataset, dataset_with_samples_with_tree: Dataset
     ):
         indices = dataset_with_samples.get_sample_ids()
         dataset_with_samples.update_features_from_identifier(
-            feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
+            feature_identifiers=FeatureIdentifier(
+                {"type": "scalar", "name": "test_scalar_1"}
+            ),
             features={ind: 3.1415 for ind in indices},
             in_place=False,
         )
 
         dataset_with_samples.update_features_from_identifier(
-            feature_identifiers={
-                "type": "time_series",
-                "name": "test_time_series_1",
-            },
+            feature_identifiers=FeatureIdentifier(
+                {
+                    "type": "time_series",
+                    "name": "test_time_series_1",
+                }
+            ),
             features={
                 ind: (np.array([0, 1]), np.array([3.14, 3.15])) for ind in indices
             },
@@ -614,14 +619,16 @@ class Test_Dataset:
         )
 
         dataset_with_samples_with_tree.update_features_from_identifier(
-            feature_identifiers={
-                "type": "field",
-                "name": "test_node_field_1",
-                "base_name": "Base_2_2",
-                "zone_name": "Zone",
-                "location": "Vertex",
-                "time": 0.0,
-            },
+            feature_identifiers=FeatureIdentifier(
+                {
+                    "type": "field",
+                    "name": "test_node_field_1",
+                    "base_name": "Base_2_2",
+                    "zone_name": "Zone",
+                    "location": "Vertex",
+                    "time": 0.0,
+                }
+            ),
             features={ind: np.random.rand(*before.shape) for ind in indices},
             in_place=False,
         )
@@ -630,12 +637,14 @@ class Test_Dataset:
             zone_name="Zone", base_name="Base_2_2", time=0.0
         )
         dataset_with_samples_with_tree.update_features_from_identifier(
-            feature_identifiers={
-                "type": "nodes",
-                "base_name": "Base_2_2",
-                "zone_name": "Zone",
-                "time": 0.0,
-            },
+            feature_identifiers=FeatureIdentifier(
+                {
+                    "type": "nodes",
+                    "base_name": "Base_2_2",
+                    "zone_name": "Zone",
+                    "time": 0.0,
+                }
+            ),
             features={ind: np.random.rand(*before.shape) for ind in indices},
             in_place=False,
         )
@@ -644,8 +653,8 @@ class Test_Dataset:
         before_2 = dataset_with_samples_with_tree[0].get_nodes()
         dataset_with_samples_with_tree.update_features_from_identifier(
             feature_identifiers=[
-                {"type": "field", "name": "test_node_field_1"},
-                {"type": "nodes"},
+                FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                FeatureIdentifier({"type": "nodes"}),
             ],
             features={
                 ind: [
@@ -658,51 +667,76 @@ class Test_Dataset:
         )
 
         dataset_with_samples_with_tree.update_features_from_identifier(
-            feature_identifiers=[{"type": "field", "name": "test_node_field_1"}],
+            feature_identifiers=[
+                FeatureIdentifier({"type": "field", "name": "test_node_field_1"})
+            ],
             features={ind: [np.random.rand(*before_1.shape)] for ind in indices},
             in_place=True,
         )
 
     def test_extract_dataset_from_identifier(
-        self, dataset_with_samples, dataset_with_samples_with_tree
+        self, dataset_with_samples: Dataset, dataset_with_samples_with_tree: Dataset
     ):
         dataset_with_samples.extract_dataset_from_identifier(
-            feature_identifiers={"type": "scalar", "name": "test_scalar"},
+            feature_identifiers=FeatureIdentifier(
+                {"type": "scalar", "name": "test_scalar"}
+            ),
         )
         dataset_with_samples.extract_dataset_from_identifier(
-            feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
+            feature_identifiers=FeatureIdentifier(
+                {"type": "time_series", "name": "test_time_series_1"}
+            ),
         )
 
         dataset_with_samples_with_tree.extract_dataset_from_identifier(
-            feature_identifiers={
-                "type": "field",
-                "name": "test_node_field_1",
-                "base_name": "Base_2_2",
-                "zone_name": "Zone",
-                "location": "Vertex",
-                "time": 0.0,
-            },
+            feature_identifiers=FeatureIdentifier(
+                {
+                    "type": "field",
+                    "name": "test_node_field_1",
+                    "base_name": "Base_2_2",
+                    "zone_name": "Zone",
+                    "location": "Vertex",
+                    "time": 0.0,
+                }
+            ),
         )
 
         dataset_with_samples_with_tree.extract_dataset_from_identifier(
             feature_identifiers=[
-                {"type": "field", "name": "test_node_field_1"},
-                {"type": "nodes"},
+                FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                FeatureIdentifier({"type": "nodes"}),
             ],
         )
 
+        new_dset = dataset_with_samples_with_tree.extract_dataset_from_identifier(
+            feature_identifiers=[
+                FeatureIdentifier({"type": "scalar", "name": "test_scalar"}),
+                FeatureIdentifier({"type": "nodes"}),
+            ],
+            keep_cgns=True,
+        )
+        for smp in new_dset:
+            assert smp.meshes.get_base_names() == ["Base_2_2"]
+            assert smp.meshes.get_zone_names() == ["Zone"]
+            assert smp.meshes.get_field_names() == []
+
     def test_get_tabular_from_homogeneous_identifiers(
-        self, nb_samples, dataset_with_samples, dataset_with_samples_with_tree
+        self,
+        nb_samples,
+        dataset_with_samples: Dataset,
+        dataset_with_samples_with_tree: Dataset,
     ):
         X = dataset_with_samples.get_tabular_from_homogeneous_identifiers(
-            feature_identifiers=[{"type": "scalar", "name": "test_scalar"}],
+            feature_identifiers=[
+                FeatureIdentifier({"type": "scalar", "name": "test_scalar"})
+            ],
         )
         assert X.shape == (nb_samples, 1, 1)
 
         X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
-                {"type": "field", "name": "test_node_field_1"},
-                {"type": "field", "name": "OriginalIds"},
+                FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
             ],
         )
         assert X.shape == (nb_samples, 2, 5)
@@ -712,29 +746,29 @@ class Test_Dataset:
     ):
         X, _ = dataset_with_samples.get_tabular_from_stacked_identifiers(
             feature_identifiers=[
-                {"type": "scalar", "name": "test_scalar"},
-                {"type": "field", "name": "test_field_same_size"},
-                {"type": "scalar", "name": "test_scalar"},
+                FeatureIdentifier({"type": "scalar", "name": "test_scalar"}),
+                FeatureIdentifier({"type": "field", "name": "test_field_same_size"}),
+                FeatureIdentifier({"type": "scalar", "name": "test_scalar"}),
             ],
         )
         assert X.shape == (nb_samples, 19)
 
         X, _ = dataset_with_samples.get_tabular_from_stacked_identifiers(
             feature_identifiers=[
-                {"type": "field", "name": "test_field_same_size"},
+                FeatureIdentifier({"type": "field", "name": "test_field_same_size"}),
             ],
         )
         assert X.shape == (nb_samples, 17)
 
         X, _ = dataset_with_samples.get_tabular_from_stacked_identifiers(
             feature_identifiers=[
-                {"type": "scalar", "name": "test_scalar"},
+                FeatureIdentifier({"type": "scalar", "name": "test_scalar"}),
             ],
         )
         assert X.shape == (nb_samples, 1)
 
     def test_get_tabular_from_homogeneous_identifiers_inconsistent_features_through_features(
-        self, dataset_with_samples_with_tree
+        self, dataset_with_samples_with_tree: Dataset
     ):
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
         for sample in dataset_with_samples_with_tree_:
@@ -742,13 +776,13 @@ class Test_Dataset:
         with pytest.raises(AssertionError):
             dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
                 feature_identifiers=[
-                    {"type": "field", "name": "test_node_field_1"},
-                    {"type": "field", "name": "OriginalIds"},
+                    FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                    FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
                 ],
             )
 
     def test_get_tabular_from_homogeneous_identifiers_inconsistent_features_through_samples(
-        self, dataset_with_samples_with_tree
+        self, dataset_with_samples_with_tree: Dataset
     ):
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
         dataset_with_samples_with_tree_[0].add_field(
@@ -760,23 +794,25 @@ class Test_Dataset:
         with pytest.raises(AssertionError):
             dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
                 feature_identifiers=[
-                    {"type": "field", "name": "test_node_field_1"},
-                    {"type": "field", "name": "OriginalIds"},
+                    FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                    FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
                 ],
             )
 
-    def test_add_features_from_tabular(self, dataset_with_samples_with_tree):
+    def test_add_features_from_tabular_restrict_to_features_True(
+        self, dataset_with_samples_with_tree: Dataset
+    ):
         X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
-                {"type": "field", "name": "test_node_field_1"},
-                {"type": "field", "name": "OriginalIds"},
+                FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
             ],
         )
         dataset = dataset_with_samples_with_tree.add_features_from_tabular(
             tabular=X,
             feature_identifiers=[
-                {"type": "field", "name": "test_node_field_1"},
-                {"type": "field", "name": "OriginalIds"},
+                FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
             ],
             restrict_to_features=True,
         )
@@ -798,17 +834,20 @@ class Test_Dataset:
             dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
         ).all()
 
+    def test_add_features_from_tabular_restrict_to_features_False(
+        self, dataset_with_samples_with_tree: Dataset
+    ):
         X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
-                {"type": "field", "name": "test_node_field_1"},
-                {"type": "field", "name": "OriginalIds"},
+                FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
             ],
         )
         dataset = dataset_with_samples_with_tree.add_features_from_tabular(
             tabular=X,
             feature_identifiers=[
-                {"type": "field", "name": "test_node_field_1"},
-                {"type": "field", "name": "OriginalIds"},
+                FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
             ],
             restrict_to_features=False,
         )
@@ -829,11 +868,6 @@ class Test_Dataset:
             dataset[last_index].get_field("test_node_field_1"),
             dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
         ).all()
-
-        dataset = dataset_with_samples_with_tree.add_features_from_tabular(
-            tabular=X,
-            feature_identifiers={"type": "field", "name": "OriginalIds"},
-        )
 
     # -------------------------------------------------------------------------#
     def test_add_info(self, dataset):

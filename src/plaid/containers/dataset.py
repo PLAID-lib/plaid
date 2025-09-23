@@ -803,8 +803,8 @@ class Dataset(object):
             feature_identifiers (list of dict): Feature identifiers.
 
         Returns:
-            Array: An containing the provided feature identifiers, size (nb_sample, dim_stacked_features)
-            Array: An containing the cumulated feature dimensions, starts with 0, size (len(feature_identifiers)+1, )
+            Array: An array containing the provided feature identifiers, size (nb_sample, dim_stacked_features)
+            Array: An array containing the cumulated feature dimensions, starts with 0, size (len(feature_identifiers)+1, )
         """
         features = self.get_features_from_identifiers(feature_identifiers)
 
@@ -847,8 +847,10 @@ class Dataset(object):
                 If the number of rows in `tabular` does not match the number of samples in the dataset,
                 or if the number of feature identifiers does not match the number of columns in `tabular`.
         """
-        if isinstance(feature_identifiers, dict):
+        if not isinstance(feature_identifiers, list):
             feature_identifiers = [feature_identifiers]
+        for i_id, feat_id in enumerate(feature_identifiers):
+            feature_identifiers[i_id] = FeatureIdentifier(feat_id)
 
         assert tabular.shape[0] == len(self)
         # assert tabular.shape[1] == len(feature_identifiers)
