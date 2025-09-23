@@ -711,7 +711,7 @@ class Dataset(object):
                 feature_identifiers
             )
 
-            if keep_cgns and not extracted_sample.meshes and self[id].meshes:
+            if keep_cgns and not extracted_sample.meshes.data and self[id].meshes.data:
                 for time in self[id].meshes.get_all_mesh_times():
                     extracted_sample.meshes.init_tree(time=time)
                     for base_name in self[id].meshes.get_base_names(time=time):
