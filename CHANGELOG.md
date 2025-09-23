@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (dataset) `get_tabular_from_stacked_identifiers` now returns stacked tabular and the cumulated feature dims, to be able to split columns to match features and then to revert the operation.
+- (dataset) add option `keep_cgns` to `extract_dataset_from_identifier` to keep CGNS tree structure even if no identifiers need it.
 - (problem_definition) add methods using feature identifiers instead of names
 - (imports) add imports of `Sample`, `Dataset` from `plaid` and `plaid.containers` and `ProblemDefinition` from `plaid`
 - (dataset.py) add optional `ids` argument to `from_list_of_samples`
@@ -27,11 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rename types to remove `Type` from name of types: https://github.com/PLAID-lib/plaid/pull/164
 - Refactored method names for improved clarity:
   - `Dataset.from_tabular` → `Dataset.add_features_from_tabular`
-  - `Dataset.from_features_identifier` → `Dataset.extract_dataset_from_identifier`  
+  - `Dataset.from_features_identifier` → `Dataset.extract_dataset_from_identifier`
   - `Sample.from_features_identifier` → `Sample.extract_sample_from_identifier`
 
 ### Fixes
 
+- (pipelines) fix `ColumnTransformer.inverse_transform` to use appropriate input identifier, and to keep CGNS tree structure when extracting sub-dataset.
 - (dataset) fix get tabular from dataset of samples containing multidimensional scalars
 - (plaid/examples) fix circular imports
 - (sample/dataset/problem_definition) fix incoherent path argument names in save/load methods -> `path` is now used everywhere
