@@ -37,7 +37,7 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.features import SampleMeshes, SampleScalars
+from plaid.containers.features import SampleData, SampleScalars
 from plaid.containers.utils import _check_names, get_feature_type_and_details_from
 from plaid.types import (
     CGNSNode,
@@ -61,11 +61,11 @@ class Sample(BaseModel):
 
     By default, the sample is empty but:
         - You can provide a path to a folder containing the sample data, and it will be loaded during initialization.
-        - You can provide `SampleMeshes` and `SampleScalars` instances to initialize the sample with existing data.
+        - You can provide `SampleData` and `SampleScalars` instances to initialize the sample with existing data.
         - You can also provide a dictionary of time series data.
 
-    The default `SampleMeshes` instance is initialized with:
-        - `meshes=None`, `links=None`, and `paths=None` (i.e., no mesh data).
+    The default `SampleData` instance is initialized with:
+        - `data=None`, `links=None`, and `paths=None` (i.e., no mesh data).
         - `mesh_base_name="Base"` and `mesh_zone_name="Zone"`.
 
     The default `SampleScalars` instance is initialized with:
@@ -84,15 +84,15 @@ class Sample(BaseModel):
         description="Path to the folder containing the sample data. If provided, the sample will be loaded from this path during initialization. Defaults to None.",
     )
 
-    meshes: Optional[SampleMeshes] = PydanticField(
-        default_factory=lambda _: SampleMeshes(
-            meshes=None,
+    meshes: Optional[SampleData] = PydanticField(
+        default_factory=lambda _: SampleData(
+            data=None,
             mesh_base_name="Base",
             mesh_zone_name="Zone",
             links=None,
             paths=None,
         ),
-        description="An instance of SampleMeshes containing mesh data. Defaults to an empty `SampleMeshes` object.",
+        description="An instance of SampleData containing mesh data. Defaults to an empty `SampleData` object.",
     )
     scalars: Optional[SampleScalars] = PydanticField(
         default_factory=lambda _: SampleScalars(scalars=None),

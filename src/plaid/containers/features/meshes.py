@@ -26,11 +26,11 @@ from plaid.utils import cgns_helper as CGH
 logger = logging.getLogger(__name__)
 
 
-class SampleMeshes:
+class SampleData:
     """A container for meshes within a Sample.
 
     Args:
-        meshes (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
+        data (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
         mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
         mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
         links (dict[float, list[CGNSLink]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
@@ -39,13 +39,13 @@ class SampleMeshes:
 
     def __init__(
         self,
-        meshes: Optional[dict[float, CGNSTree]],
+        data: Optional[dict[float, CGNSTree]],
         mesh_base_name: str = "Base",
         mesh_zone_name: str = "Zone",
         links: Optional[dict[float, list[CGNSLink]]] = None,
         paths: Optional[dict[float, list[CGNSPath]]] = None,
     ):
-        self.data: dict[float, CGNSTree] = meshes if meshes is not None else {}
+        self.data: dict[float, CGNSTree] = data if data is not None else {}
         self._links = links if links is not None else {}
         self._paths = paths if paths is not None else {}
 
@@ -779,6 +779,26 @@ class SampleMeshes:
         sorted_nodal_tags = {key: np.sort(value) for key, value in nodal_tags.items()}
 
         return sorted_nodal_tags
+
+    # -------------------------------------------------------------------------#
+    def get_global(
+        self,
+        name: str,
+        time: Optional[float] = None,
+    ) -> Optional[np.ndarray]:
+        base_node = self.get_base("Global", time=time)
+        return CGU.getValueByPath(base_node, name)
+
+    def set_global(
+        self,
+        name: str,
+        global_array: np.ndarray,
+        time: Optional[float] = None,
+    ) -> None:
+        tree_node = self.init_base(1, 1, "Global", time)
+        CGL.newDataArray(tree_node, name, value=global_array)
+
+    # -------------------------------------------------------------------------#
 
     # -------------------------------------------------------------------------#
     def get_nodes(
