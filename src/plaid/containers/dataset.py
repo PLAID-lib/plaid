@@ -1362,6 +1362,11 @@ class Dataset(object):
         return report
 
     @classmethod
+    @deprecated(
+        "`Dataset.from_list_of_samples(samples)` is deprecated, use instead `Dataset(samples=samples)`",
+        version="0.1.8",
+        removal="0.2.0",
+    )
     def from_list_of_samples(
         cls, list_of_samples: list[Sample], ids: Optional[list[int]] = None
     ) -> Self:
@@ -1379,13 +1384,6 @@ class Dataset(object):
         Returns:
             Self: The initialized dataset (Dataset).
         """
-        import warnings
-
-        warnings.warn(
-            "Dataset.from_list_of_samples is deprecated; use Dataset(samples=...) instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return cls(samples=list_of_samples, sample_ids=ids)
 
     @classmethod

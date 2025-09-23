@@ -953,20 +953,21 @@ class Test_Dataset:
     # -------------------------------------------------------------------------#
 
     def test_from_list_of_samples_deprecated(self, samples):
-        loaded_dataset = Dataset.from_list_of_samples(samples)
+        with pytest.warns(DeprecationWarning):
+            loaded_dataset = Dataset.from_list_of_samples(samples)
         assert len(loaded_dataset) == len(samples)
 
-    def test_from_list_of_samples(self, samples):
+    def test___init___samples(self, samples):
         loaded_dataset = Dataset(samples=samples)
         assert len(loaded_dataset) == len(samples)
 
-    def test_from_list_of_samples_with_ids(self, samples):
+    def test___init___samples_with_ids(self, samples):
         ids = [10, 20, 30, 40]
         loaded_dataset = Dataset(samples=samples, sample_ids=ids)
         assert len(loaded_dataset) == len(samples)
         assert loaded_dataset.get_sample_ids() == ids
 
-    def test_from_list_of_samples_and_path(self, samples, tmp_path):
+    def test___init___samples_and_path(self, samples, tmp_path):
         # Expects an error since path and samples are provided
         fname = tmp_path / "test.plaid"
         with pytest.raises(ValueError):
