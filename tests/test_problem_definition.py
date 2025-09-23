@@ -566,3 +566,14 @@ class Test_ProblemDefinition:
         file_path.touch()  # Create an empty file
         with pytest.raises(FileExistsError):
             problem._load_from_dir_(file_path)
+
+    def test_extract_problem_definition_from_identifiers(self, current_directory):
+        d_path = current_directory / "problem_definition"
+        identifiers = {"problem_definition_path": str(d_path)}
+        problem_definition = (
+            ProblemDefinition.extract_problem_definition_from_identifiers(identifiers)
+        )
+        assert problem_definition is not None
+
+
+# %%

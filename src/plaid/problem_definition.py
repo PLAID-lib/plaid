@@ -1250,6 +1250,20 @@ class ProblemDefinition(object):
             )
         self._split = split
 
+    @classmethod
+    def extract_problem_definition_from_identifiers(
+        cls, identifiers: dict[str, str]
+    ) -> "ProblemDefinition":
+        """Create a :class:`ProblemDefinition` from a dict of identifiers.
+
+        Args:
+            identifiers (dict[str, str]): Dictionnary of identifiers.
+
+        Returns:
+            ProblemDefinition: A new :class:`ProblemDefinition` instance.
+        """
+        return ProblemDefinition(path=identifiers["problem_definition_path"])
+
     # -------------------------------------------------------------------------#
     def __repr__(self) -> str:
         """Return a string representation of the problem.

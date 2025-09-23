@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (problem_definition) add extract_problem_definition_from_identifiers method
 - (`huggingface_bridge.load_hf_dataset_from_hub`) new utility to load datasets from the Hugging Face Hub, supporting both proxy and non-proxy environments.
 
 ### Changed
