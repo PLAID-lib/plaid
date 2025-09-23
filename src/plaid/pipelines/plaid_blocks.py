@@ -15,12 +15,16 @@ Includes:
 #
 
 import copy
+import sys
 from typing import Union
 
-try:
-    from typing import Self  # Python 3.10+
-except ImportError:  # pragma: no cover
-    from typing_extensions import Self
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:  # pragma: no cover
+    from typing import TypeVar
+
+    Self = TypeVar("Self")
+
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
@@ -96,7 +100,7 @@ class ColumnTransformer(ColumnTransformer):
                 if isinstance(transformer, Pipeline)
                 else transformer.in_features_identifiers
             )
-            sub_dataset = dataset.from_features_identifier(in_feat_id)
+            sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
             transformer_ = clone(transformer).fit(sub_dataset)
             self.transformers_.append((name, transformer_, "_"))
 
@@ -136,7 +140,7 @@ class ColumnTransformer(ColumnTransformer):
                 if isinstance(transformer_, Pipeline)
                 else transformer_.in_features_identifiers_
             )
-            sub_dataset = dataset.from_features_identifier(in_feat_id)
+            sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
             transformed = transformer_.transform(sub_dataset)
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)
@@ -174,7 +178,7 @@ class ColumnTransformer(ColumnTransformer):
                 if isinstance(transformer_, Pipeline)
                 else transformer_.in_features_identifiers_
             )
-            sub_dataset = dataset.from_features_identifier(in_feat_id)
+            sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
             transformed = transformer_.inverse_transform(sub_dataset)
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)

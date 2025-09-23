@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "pyplaid"
 authors = [{name = "Safran", email = "fabien.casenave@safrangroup.com"}]
 description = "A package that implements a data model tailored for AI and ML in the context of physics problems"
-requires-python = ">=3.9, <3.14"
+requires-python = ">=3.10, <3.14"
 keywords=[
     "machine learning",
     "physics",
@@ -21,7 +21,6 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: POSIX",
     "Operating System :: Microsoft :: Windows",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -72,6 +71,7 @@ include = ["plaid*"]
 
 [project.optional-dependencies]
 dev = [
+    "rich",
     "optuna",
     "pytest",
     "pytest-cov",
@@ -83,8 +83,8 @@ dev = [
     "sphinxcontrib.bibtex",
     "myst-nb",
     "myst-parser",
-    "nbconvert",
     "furo",
+    "jupytext",
 ]
 
 [tool.coverage.run]

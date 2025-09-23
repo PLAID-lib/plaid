@@ -29,17 +29,14 @@ import numpy as np
 import yaml
 from tqdm import tqdm
 
-from plaid.constants import AUTHORIZED_INFO_KEYS
+from plaid.constants import AUTHORIZED_INFO_KEYS, CGNS_FIELD_LOCATIONS
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
 from plaid.types import Array, Feature, FeatureIdentifier
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
+from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
 
 
 # %% Functions
@@ -56,7 +53,7 @@ def process_sample(path: Union[str, Path]) -> tuple:  # pragma: no cover
     """
     path = Path(path)
     id = int(path.stem.split("_")[-1])
-    return id, Sample(path)
+    return id, Sample(path=path)
 
 
 # %% Classes
@@ -175,7 +172,7 @@ class Dataset(object):
     # -------------------------------------------------------------------------#
     def get_samples(
         self, ids: Optional[list[int]] = None, as_list: bool = False
-    ) -> dict[int, Sample]:
+    ) -> Union[list[Sample], dict[int, Sample]]:
         """Return dictionnary of samples with ids corresponding to :code:`ids` if specified, else all samples.
 
         Args:
@@ -433,15 +430,19 @@ class Dataset(object):
     def get_field_names(
         self,
         ids: Optional[list[int]] = None,
+        location: Optional[str] = None,
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
+        time: Optional[float] = None,
     ) -> list[str]:
         """Return union of fields names in all samples with id in ids.
 
         Args:
             ids (list[int], optional): Select fields depending on sample id. If None, take all samples. Defaults to None.
+            location (str, optional): If provided, only field names from this location will be included. Defaults to None.
             zone_name (str, optional): If provided, only field names from this zone will be included. Defaults to None.
             base_name (str, optional): If provided, only field names containing this base name will be included. Defaults to None.
+            time (float, optional): If provided, only field names from this time will be included. Defaults to None.
 
         Returns:
             list[str]: List of all fields names.
@@ -451,14 +452,30 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = sample.get_all_mesh_times()
+            times = [time] if time else sample.meshes.get_all_mesh_times()
             for time in times:
-                f_names = sample.get_field_names(
-                    zone_name=zone_name, base_name=base_name, time=time
+                base_names = (
+                    [base_name]
+                    if base_name
+                    else sample.meshes.get_base_names(time=time)
                 )
-                for f_name in f_names:
-                    if f_name not in fields_names:
-                        fields_names.append(f_name)
+                for base_name in base_names:
+                    zone_names = (
+                        [zone_name]
+                        if zone_name
+                        else sample.meshes.get_zone_names(
+                            time=time, base_name=base_name
+                        )
+                    )
+                    for zone_name in zone_names:
+                        locations = [location] if location else CGNS_FIELD_LOCATIONS
+                        for location in locations:
+                            f_names = sample.get_field_names(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                            for f_name in f_names:
+                                if f_name not in fields_names:
+                                    fields_names.append(f_name)
         fields_names.sort()
         return fields_names
 
@@ -569,26 +586,36 @@ class Dataset(object):
         if scalar_names is None:
             scalar_names = self.get_scalar_names(sample_ids)
         elif len(set(scalar_names)) != len(scalar_names):
-            logger.warning("Provided scalar names are not unique")
+            logger.warning(
+                "Provided scalar names are not unique, this will lead to duplicate columns in output array"
+            )
 
         if sample_ids is None:
             sample_ids = self.get_sample_ids()
         elif len(set(sample_ids)) != len(sample_ids):
-            logger.warning("Provided sample ids are not unique")
+            logger.warning(
+                "Provided sample ids are not unique, this will lead to duplicate rows in output array"
+            )
         nb_samples = len(sample_ids)
 
         named_tabular = {}
         for s_name in scalar_names:
+            tmp = self[sample_ids[0]].get_scalar(s_name)
             res = np.empty(nb_samples)
+            if isinstance(tmp, np.ndarray) and tmp.size > 1:
+                assert tmp.ndim < 3
+                res = np.empty((nb_samples, tmp.size))
             res.fill(None)
             for i_, id in enumerate(sample_ids):
                 val = self[id].get_scalar(s_name)
                 if val is not None:
-                    res[i_] = val
+                    res[i_] = val.reshape((-1,)) if isinstance(val, np.ndarray) else val
             named_tabular[s_name] = res
 
         if as_nparray:
-            named_tabular = np.array(list(named_tabular.values())).T
+            named_tabular = np.concatenate(
+                [v.reshape((nb_samples, -1)) for v in named_tabular.values()], axis=1
+            )
         return named_tabular
 
     # -------------------------------------------------------------------------#
@@ -676,7 +703,7 @@ class Dataset(object):
             )
         return dataset
 
-    def from_features_identifier(
+    def extract_dataset_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
     ) -> Self:
@@ -698,9 +725,25 @@ class Dataset(object):
         dataset.set_infos(copy.deepcopy(self.get_infos()))
 
         for id in self.get_sample_ids():
-            extracted_sample = self[id].from_features_identifier(feature_identifiers)
+            extracted_sample = self[id].extract_sample_from_identifier(
+                feature_identifiers
+            )
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
+
+    @deprecated(
+        "Use extract_dataset_from_identifier() instead",
+        version="0.1.8",
+        removal="0.2",
+    )
+    def from_features_identifier(
+        self,
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+    ) -> Self:
+        """DEPRECATED: Use extract_dataset_from_identifier() instead."""
+        return self.extract_dataset_from_identifier(
+            feature_identifiers
+        )  # pragma: no cover
 
     def get_tabular_from_homogeneous_identifiers(
         self,
@@ -758,22 +801,28 @@ class Dataset(object):
 
         return tabular
 
-    def from_tabular(
+    def add_features_from_tabular(
         self,
         tabular: Array,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
         restrict_to_features: bool = True,
     ) -> Self:
-        """Generates a dataset from tabular data and feature_identifiers.
+        """Add or update features in the dataset from tabular data using feature identifiers.
+
+        This method takes tabular data and applies it to the dataset, either by updating existing features
+        or adding new ones based on the provided feature identifiers. The method can either:
+        1. Extract only the specified features and return a new dataset with just those features (if restrict_to_features=True)
+        2. Update the specified features in the current dataset while keeping all other existing features (if restrict_to_features=False)
 
         Parameters:
             tabular (Array): of size (nb_sample, nb_features) or (nb_sample, nb_features, dim_feature) if dim_feature>1
-            feature_identifiers (dict or list of dict): One or more feature identifiers.
-            extract_features (bool, optional): If True, only returns the features from feature identifiers, otherwise keep the other features as well
+            feature_identifiers (dict or list of dict): One or more feature identifiers specifying which features to update/add.
+            restrict_to_features (bool, optional): If True, only returns the features from feature identifiers, otherwise keep the other features as well. Defaults to True.
 
         Returns:
-            Self
-                A new dataset defined from tabular data and feature_identifiers.
+            Self: A new dataset with features updated/added from the tabular data. If restrict_to_features=True,
+                  contains only the specified features. If restrict_to_features=False, contains all original
+                  features plus the updated/added ones.
 
         Raises:
             AssertionError
@@ -789,7 +838,7 @@ class Dataset(object):
         features = {id: tabular[i] for i, id in enumerate(self.get_sample_ids())}
 
         if restrict_to_features:
-            dataset = self.from_features_identifier(feature_identifiers)
+            dataset = self.extract_dataset_from_identifier(feature_identifiers)
             dataset.update_features_from_identifier(
                 feature_identifiers=feature_identifiers,
                 features=features,
@@ -803,6 +852,22 @@ class Dataset(object):
             )
 
         return dataset
+
+    @deprecated(
+        "Use add_features_from_tabular() instead",
+        version="0.1.8",
+        removal="0.2",
+    )
+    def from_tabular(
+        self,
+        tabular: Array,
+        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        restrict_to_features: bool = True,
+    ) -> Self:
+        """DEPRECATED: Use add_features_from_tabular() instead."""
+        return self.add_features_from_tabular(
+            tabular, feature_identifiers, restrict_to_features
+        )  # pragma: no cover
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
@@ -1127,11 +1192,13 @@ class Dataset(object):
                 ts_counts[name] = ts_counts.get(name, 0) + 1
 
             # Fields
-            times = sample.get_all_mesh_times()
+            times = sample.meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample.meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample.meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         field_names = sample.get_field_names(
                             zone_name=zone_name, base_name=base_name, time=time
@@ -1218,11 +1285,13 @@ class Dataset(object):
             all_scalar_names.update(sample.get_scalar_names())
             all_ts_names.update(sample.get_time_series_names())
 
-            times = sample.get_all_mesh_times()
+            times = sample.meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample.meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample.meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         all_field_names.update(
                             sample.get_field_names(
@@ -1251,11 +1320,13 @@ class Dataset(object):
 
             # Check fields
             sample_fields = set()
-            times = sample.get_all_mesh_times()
+            times = sample.meshes.get_all_mesh_times()
             for time in times:
-                base_names = sample.get_base_names(time=time)
+                base_names = sample.meshes.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.get_zone_names(base_name=base_name, time=time)
+                    zone_names = sample.meshes.get_zone_names(
+                        base_name=base_name, time=time
+                    )
                     for zone_name in zone_names:
                         sample_fields.update(
                             sample.get_field_names(
@@ -1571,7 +1642,7 @@ class Dataset(object):
         if processes_number == 0 or processes_number == 1:
             for sample_path in tqdm(sample_paths, disable=not (verbose)):
                 id = int(sample_path.stem.split("_")[-1])
-                sample = Sample(sample_path)
+                sample = Sample(path=sample_path)
                 self.add_sample(sample, id)
         else:
             with Pool(processes_number) as p:

@@ -1,7 +1,7 @@
-name: plaid
+name: plaid-dev
 channels:
   - conda-forge
-  - nodefaults
+channel_priority: strict
 dependencies:
   - python=3.11
 ##### RUN #####
@@ -20,7 +20,9 @@ dependencies:
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs
-  - muscat=2.5.0
+  - muscat-core=2.5
+#---# base
+  - rich
 #---# optim
   - optuna
 #---# testing
@@ -37,5 +39,5 @@ dependencies:
   - sphinxcontrib-bibtex
   - myst-nb
   - myst-parser
-  - nbconvert
   - furo
+  - jupytext

@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Statistics Calculation Examples
 #
@@ -33,8 +48,8 @@ from plaid.utils.stats import OnlineStatistics, Stats
 # %%
 def sprint(stats: dict):
     print("Stats:")
-    for k,v in stats.items():
-        print(f" - {k:>9} -> {v}")
+    for k in stats:
+        print(" - {} -> {}".format(k, stats[k]))
 
 
 # %% [markdown]
@@ -58,8 +73,7 @@ sprint(stats)
 # %%
 # First batch of samples
 first_batch_samples = 3.0 * np.random.randn(100, 3) + 10.0
-print()
-print(f"=== {first_batch_samples.shape = }")
+print(f"{first_batch_samples.shape = }")
 
 stats_computer.add_samples(first_batch_samples)
 stats = stats_computer.get_stats()
@@ -68,8 +82,7 @@ sprint(stats)
 
 # %%
 second_batch_samples = 10.0 * np.random.randn(1000, 3) - 1.0
-print()
-print(f"=== {second_batch_samples.shape = }")
+print(f"{second_batch_samples.shape = }")
 
 stats_computer.add_samples(second_batch_samples)
 stats = stats_computer.get_stats()
@@ -81,8 +94,7 @@ sprint(stats)
 
 # %%
 total_samples = np.concatenate((first_batch_samples, second_batch_samples), axis=0)
-print()
-print(f"=== {total_samples.shape = }")
+print(f"{total_samples.shape = }")
 
 new_stats_computer = OnlineStatistics()
 new_stats_computer.add_samples(total_samples)
@@ -113,23 +125,14 @@ print("#---# Feed Stats with samples")
 nb_samples = 11
 samples = [Sample() for _ in range(nb_samples)]
 
-spatial_shape_max = 5
+spatial_shape_max = 20
 #
 for sample in samples:
     sample.add_scalar("test_scalar", np.random.randn())
-    sample.add_scalar("test_ND_scalar", np.random.randn(3))
-    sample.init_base(2, 3,)
+    sample.init_base(2, 3, "test_base")
     zone_shape = np.array([0, 0, 0])
-    sample.init_zone(zone_shape)
+    sample.init_zone(zone_shape, zone_name="test_zone")
     sample.add_field("test_field", np.random.randn(spatial_shape_max))
-    sample.init_zone(zone_shape, zone_name="test_zone_2")
-    sample.add_field("test_field", np.random.randn(spatial_shape_max), zone_name='test_zone_2')
-    sample.init_base(2, 3, "test_base_2")
-    zone_shape = np.array([0, 0, 0])
-    sample.init_zone(zone_shape, zone_name="test_zone_1", base_name="test_base_2")
-    sample.add_field("test_field", np.random.randn(spatial_shape_max), base_name="test_base_2")
-    sample.init_zone(zone_shape, zone_name="test_zone_2", base_name="test_base_2")
-    sample.add_field("test_field", np.random.randn(spatial_shape_max), zone_name='test_zone_2', base_name="test_base_2")
 
 stats.add_samples(samples)
 
@@ -144,33 +147,19 @@ rich.print(stats.get_stats())
 # ### Feed Stats with more Samples
 
 # %%
-nb_samples = 13
-# spatial_shape_max = 20
+nb_samples = 11
+spatial_shape_max = 20
 samples = [Sample() for _ in range(nb_samples)]
 
 for sample in samples:
     sample.add_scalar("test_scalar", np.random.randn())
-    sample.init_base(2, 3,)
-    zone_shape = np.array([0, 0, 0])
-    sample.init_zone(zone_shape)
-    sample.add_field("test_field", np.random.randn(spatial_shape_max))
-    sample.init_zone(zone_shape, zone_name="test_zone_2")
-    sample.add_field("test_field", np.random.randn(spatial_shape_max), zone_name='test_zone_2')
-    sample.init_base(2, 3, "test_base_2")
-    zone_shape = np.array([0, 0, 0])
-    sample.init_zone(zone_shape, zone_name="test_zone_1", base_name="test_base_2")
-    sample.add_field("test_field", np.random.randn(spatial_shape_max), base_name="test_base_2")
-    sample.init_zone(zone_shape, zone_name="test_zone_2", base_name="test_base_2")
-    sample.add_field("test_field", np.random.randn(spatial_shape_max), zone_name='test_zone_2', base_name="test_base_2")
-
     sample.init_base(2, 3, "test_base")
     zone_shape = np.array([0, 0, 0])
-    sample.init_zone(zone_shape, zone_name="test_zone", base_name="test_base")
-    sample.add_field("test_field_same_size", np.random.randn(spatial_shape_max), zone_name="test_zone", base_name="test_base")
+    sample.init_zone(zone_shape, zone_name="test_zone")
+    sample.add_field("test_field_same_size", np.random.randn(7))
     sample.add_field(
         "test_field",
         np.random.randn(np.random.randint(spatial_shape_max // 2, spatial_shape_max)),
-        zone_name="test_zone", base_name="test_base"
     )
 
 stats.add_samples(samples)

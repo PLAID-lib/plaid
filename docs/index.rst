@@ -64,46 +64,33 @@ It has been developped at SafranTech, the research center of `Safran group <http
 
 The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
-
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: Getting Started
+   :caption: Overview
 
    source/quickstart.md
-   source/description.md
-
-.. toctree::
-   :glob:
-   :maxdepth: 1
-   :caption: Documentation
-
-   API Reference <autoapi/plaid/index>
-   Examples & Tutorials <source/notebooks.rst>
-   Data Conversion Guide <source/notebooks/convert_users_data_into_plaid>
-   Default Values Flowchart <source/default_values.rst>
-
-.. toctree::
-   :glob:
-   :maxdepth: 1
-   :caption: Going further
-
-   CGNS Standard <http://cgns.github.io/>
-   PLAID Benchmarks <source/plaid_benchmarks.rst>
-
-.. toctree::
-   :glob:
-   :maxdepth: 1
-   :caption: Citation
-
    source/citation.md
+   source/contributing.md
 
 .. toctree::
    :glob:
    :maxdepth: 1
-   :caption: Contributing
+   :caption: User guide
 
-   source/contributing.md
+   source/core_concepts.rst
+   Data Conversion Guide <source/notebooks/convert_users_data_example>
+   Examples & Tutorials <source/notebooks.rst>
+   API Reference <autoapi/plaid/index>
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
+   :caption: Ecosystem & Benchmarks
+
+   CGNS Standard <https://cgns.org/>
+   Muscat library <https://muscat.readthedocs.io/>
+   PLAID Benchmarks <source/plaid_benchmarks.rst>
 
 Indices and tables
 ==================

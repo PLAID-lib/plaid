@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.3
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
 # %% [markdown]
 # # Problem Definition Examples
 #
@@ -22,6 +37,7 @@ import numpy as np
 from plaid import Dataset, Sample
 from plaid import ProblemDefinition
 from plaid.utils.split import split_dataset
+from plaid.types import FeatureIdentifier
 
 # %% [markdown]
 # ## Section 1: Initializing an Empty ProblemDefinition
@@ -36,67 +52,29 @@ print("#---# Empty ProblemDefinition")
 problem = ProblemDefinition()
 print(f"{problem = }")
 
+# %%
+# ### Initialize some feature identifiers
+scalar_1_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_1"})
+scalar_2_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_2"})
+scalar_3_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_3"})
+field_1_feat_id = FeatureIdentifier({"type":"field", "name":"field_1", "base_name":"Base_2_2"})
+field_2_feat_id = FeatureIdentifier({"type":"field", "name":"field_2", "base_name":"Base_2_2", "location":"Vertex"})
+
 # %% [markdown]
 # ### Add inputs / outputs to a Problem Definition
 
 # %%
-# Add unique input and output scalar variables
-problem.add_input_scalar_name("in_scalar")
-problem.add_output_scalar_name("out_scalar")
+# Add unique input and output feature identifiers
+problem.add_in_feature_identifier(scalar_1_feat_id)
+problem.add_out_feature_identifier(scalar_2_feat_id)
 
-# Add list of input and output scalar variables
-problem.add_input_scalars_names(["in_scalar2", "in_scalar3"])
-problem.add_output_scalars_names(["out_scalar2"])
+# Add list of input and output feature identifiers
+problem.add_in_features_identifiers([scalar_3_feat_id, field_1_feat_id])
+problem.add_out_features_identifiers([field_2_feat_id])
 
-print()
-print(f"{problem.get_input_scalars_names() = }")
+print(f"{problem.get_in_features_identifiers() = }")
 print(
-    f"{problem.get_output_scalars_names() = }",
-)
-
-# %%
-# Add unique input and output field variables
-problem.add_input_field_name("in_field")
-problem.add_output_field_name("out_field")
-
-# Add list of input and output field variables
-problem.add_input_fields_names(["in_field2", "in_field3"])
-problem.add_output_fields_names(["out_field2"])
-
-print()
-print(f"{problem.get_input_fields_names() = }")
-print(
-    f"{problem.get_output_fields_names() = }",
-)
-
-# %%
-# Add unique input and output timeseries variables
-problem.add_input_timeseries_name("in_timeseries")
-problem.add_output_timeseries_name("out_timeseries")
-
-# Add list of input and output timeserie variables
-problem.add_input_timeseries_names(["in_timeseries2", "in_timeseries3"])
-problem.add_output_timeseries_names(["out_timeseries2"])
-
-print()
-print(f"{problem.get_input_timeseries_names() = }")
-print(
-    f"{problem.get_output_timeseries_names() = }",
-)
-
-# %%
-# Add unique input and output mesh variables
-problem.add_input_mesh_name("in_mesh")
-problem.add_output_mesh_name("out_mesh")
-
-# Add list of input and output meshe variables
-problem.add_input_meshes_names(["in_mesh2", "in_mesh3"])
-problem.add_output_meshes_names(["out_mesh2"])
-
-print()
-print(f"{problem.get_input_meshes_names() = }")
-print(
-    f"{problem.get_output_meshes_names() = }",
+    f"{problem.get_out_features_identifiers() = }",
 )
 
 # %% [markdown]
@@ -110,7 +88,6 @@ print(
 # %%
 # Set the task type (e.g., regression)
 problem.set_task("regression")
-print()
 print(f"{problem.get_task() = }")
 
 # %% [markdown]
@@ -119,12 +96,10 @@ print(f"{problem.get_task() = }")
 # %%
 # Init an empty Dataset
 dataset = Dataset()
-print()
 print(f"{dataset = }")
 
 # Add Samples
 dataset.add_samples([Sample(), Sample(), Sample(), Sample()])
-print()
 print(f"{dataset = }")
 
 # %%
@@ -138,12 +113,10 @@ options = {
 }
 
 split = split_dataset(dataset, options)
-print()
 print(f"{split = }")
 
 # %%
 problem.set_split(split)
-print()
 print(f"{problem.get_split() = }")
 
 # %% [markdown]
@@ -151,37 +124,15 @@ print(f"{problem.get_split() = }")
 
 # %%
 # Get all split indices
-print()
 print(f"{problem.get_all_indices() = }")
 
 # %% [markdown]
-# ### Filter Problem Definition inputs / outputs by name
+# ### Filter Problem Definition inputs / outputs by feature identifiers
 
 # %%
-print()
-print(
-    f"{problem.filter_input_scalars_names(['in_scalar', 'in_scalar3', 'in_scalar5']) = }"
-)
-print(
-    f"{problem.filter_output_scalars_names(['out_scalar', 'out_scalar3', 'out_scalar5']) = }"
-)
-print()
-print(f"{problem.filter_input_fields_names(['in_field', 'in_field3', 'in_field5']) = }")
-print(
-    f"{problem.filter_output_fields_names(['out_field', 'out_field3', 'out_field5']) = }"
-)
-print()
-print(
-    f"{problem.filter_input_timeseries_names(['in_timeseries', 'in_timeseries3', 'in_timeseries5']) = }"
-)
-print(
-    f"{problem.filter_output_timeseries_names(['out_timeseries', 'out_timeseries3', 'out_timeseries5']) = }"
-)
-print()
-print(f"{problem.filter_input_meshes_names(['in_mesh', 'in_mesh3', 'in_mesh5']) = }")
-print(
-    f"{problem.filter_output_meshes_names(['out_mesh', 'out_mesh3', 'out_mesh5']) = }"
-)
+all_feature_ids = [scalar_1_feat_id, scalar_2_feat_id, scalar_3_feat_id, field_1_feat_id, field_2_feat_id]
+print(f"{problem.filter_in_features_identifiers(all_feature_ids) = }")
+print(f"{problem.filter_out_features_identifiers(all_feature_ids) = }")
 
 # %% [markdown]
 # ## Section 3: Saving and Loading Problem Definitions
@@ -195,7 +146,6 @@ print(
 test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
 pb_def_save_fname = test_pth / "test"
 test_pth.mkdir(parents=True, exist_ok=True)
-print()
 print(f"saving path: {pb_def_save_fname}")
 
 problem._save_to_dir_(pb_def_save_fname)
@@ -205,7 +155,6 @@ problem._save_to_dir_(pb_def_save_fname)
 
 # %%
 problem = ProblemDefinition(pb_def_save_fname)
-print()
 print(problem)
 
 # %% [markdown]
@@ -213,7 +162,6 @@ print(problem)
 
 # %%
 problem = ProblemDefinition.load(pb_def_save_fname)
-print()
 print(problem)
 
 # %% [markdown]
@@ -222,5 +170,4 @@ print(problem)
 # %%
 problem = ProblemDefinition()
 problem._load_from_dir_(pb_def_save_fname)
-print()
 print(problem)

@@ -30,22 +30,26 @@ def current_directory():
 
 
 def compare_two_samples(sample_1: Sample, sample_2: Sample):
-    assert set(sample_1.get_all_mesh_times()) == set(sample_2.get_all_mesh_times())
+    assert set(sample_1.meshes.get_all_mesh_times()) == set(
+        sample_2.meshes.get_all_mesh_times()
+    )
     assert set(sample_1.get_scalar_names()) == set(sample_2.get_scalar_names())
     assert set(sample_1.get_field_names()) == set(sample_2.get_field_names())
     assert set(sample_1.get_time_series_names()) == set(
         sample_2.get_time_series_names()
     )
     assert np.array_equal(sample_1.get_nodes(), sample_2.get_nodes())
-    assert set(sample_1.get_base_names()) == set(sample_2.get_base_names())
-    for base_name in sample_1.get_base_names():
-        assert set(sample_1.get_zone_names(base_name)) == set(
-            sample_2.get_zone_names(base_name)
+    assert set(sample_1.meshes.get_base_names()) == set(
+        sample_2.meshes.get_base_names()
+    )
+    for base_name in sample_1.meshes.get_base_names():
+        assert set(sample_1.meshes.get_zone_names(base_name)) == set(
+            sample_2.meshes.get_zone_names(base_name)
         )
-        for zone_name in sample_1.get_zone_names(base_name):
-            assert sample_1.get_zone_type(
+        for zone_name in sample_1.meshes.get_zone_names(base_name):
+            assert sample_1.meshes.get_zone_type(
                 zone_name, base_name
-            ) == sample_2.get_zone_type(zone_name, base_name)
+            ) == sample_2.meshes.get_zone_type(zone_name, base_name)
 
 
 # %% Tests
@@ -374,13 +378,60 @@ class Test_Dataset:
         assert len(dataset.get_scalars_to_tabular()) == 0
         assert dataset.get_scalars_to_tabular() == {}
         dataset.add_tabular_scalars(tabular, scalar_names)
+        for sample in dataset:
+            sample.add_scalar("test_scalar", np.random.rand())
+        scalar_names.append("test_scalar")
         assert dataset.get_scalars_to_tabular(as_nparray=True).shape == (
             len(tabular),
             len(scalar_names),
         )
         dict_tabular = dataset.get_scalars_to_tabular()
         for i_s, sname in enumerate(scalar_names):
-            assert np.all(dict_tabular[sname] == tabular[:, i_s])
+            if not sname == "test_scalar":
+                assert np.all(dict_tabular[sname] == tabular[:, i_s])
+
+    def test_get_scalars_to_tabular_multidimensional_scalars(
+        self, dataset, tabular, scalar_names
+    ):
+        dataset.add_tabular_scalars(tabular, scalar_names)
+        dataset.get_scalars_to_tabular(as_nparray=True)
+        # add multidimensional scalars
+        test_scalar_1D = np.random.rand(len(dataset), 4)
+        test_scalar_2D_row = np.random.rand(len(dataset), 1, 3)
+        test_scalar_2D_col = np.random.rand(len(dataset), 5, 1)
+        for i_sample, sample in enumerate(dataset):
+            sample: Sample
+            sample.add_scalar("test_scalar_1D", test_scalar_1D[i_sample])
+            sample.add_scalar("test_scalar_2D_row", test_scalar_2D_row[i_sample])
+            sample.add_scalar("test_scalar_2D_col", test_scalar_2D_col[i_sample])
+        # get tabulars and assert shapes and values
+        tab = dataset.get_scalars_to_tabular(
+            scalar_names=["test_scalar_1D"], as_nparray=True
+        )
+        assert tab.shape == (len(tabular), 4)
+        assert np.all(tab == test_scalar_1D)
+        tab = dataset.get_scalars_to_tabular(
+            scalar_names=["test_scalar_2D_row"], as_nparray=True
+        )
+        assert tab.shape == (len(tabular), 3)
+        assert np.all(tab == test_scalar_2D_row.squeeze(1))
+        tab = dataset.get_scalars_to_tabular(
+            scalar_names=["test_scalar_2D_col"], as_nparray=True
+        )
+        assert tab.shape == (len(tabular), 5)
+        assert np.all(tab == test_scalar_2D_col.squeeze(2))
+
+        # assert values
+        dict_tabular = dataset.get_scalars_to_tabular(
+            scalar_names=["test_scalar_1D", "test_scalar_2D_row", "test_scalar_2D_col"]
+        )
+        assert np.all(dict_tabular["test_scalar_1D"] == test_scalar_1D)
+        assert np.all(
+            dict_tabular["test_scalar_2D_row"] == test_scalar_2D_row.squeeze(1)
+        )
+        assert np.all(
+            dict_tabular["test_scalar_2D_col"] == test_scalar_2D_col.squeeze(2)
+        )
 
     def test_get_scalars_to_tabular_same_scalars_name(
         self, dataset, tabular, scalar_names
@@ -407,27 +458,27 @@ class Test_Dataset:
             "field::test_field_same_size"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/TestBaseName"
+            "field::test_field_same_size///TestBaseName"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/TestBaseName/TestZoneName"
+            "field::test_field_same_size//TestZoneName/TestBaseName"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/TestBaseName/TestZoneName/Vertex"
+            "field::test_field_same_size/Vertex/TestZoneName/TestBaseName"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/TestBaseName/TestZoneName/Vertex/0"
+            "field::test_field_same_size/Vertex/TestZoneName/TestBaseName/0"
         )
 
         dataset_with_samples_with_tree.get_feature_from_string_identifier("nodes::")
         dataset_with_samples_with_tree.get_feature_from_string_identifier(
-            "nodes::Base_2_2"
+            "nodes::/Base_2_2"
         )
         dataset_with_samples_with_tree.get_feature_from_string_identifier(
-            "nodes::Base_2_2/Zone"
+            "nodes::Zone/Base_2_2"
         )
         dataset_with_samples_with_tree.get_feature_from_string_identifier(
-            "nodes::Base_2_2/Zone/0"
+            "nodes::Zone/Base_2_2/0"
         )
 
     def test_get_feature_from_identifier(
@@ -612,17 +663,17 @@ class Test_Dataset:
             in_place=True,
         )
 
-    def test_from_features_identifier(
+    def test_extract_dataset_from_identifier(
         self, dataset_with_samples, dataset_with_samples_with_tree
     ):
-        dataset_with_samples.from_features_identifier(
+        dataset_with_samples.extract_dataset_from_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar"},
         )
-        dataset_with_samples.from_features_identifier(
+        dataset_with_samples.extract_dataset_from_identifier(
             feature_identifiers={"type": "time_series", "name": "test_time_series_1"},
         )
 
-        dataset_with_samples_with_tree.from_features_identifier(
+        dataset_with_samples_with_tree.extract_dataset_from_identifier(
             feature_identifiers={
                 "type": "field",
                 "name": "test_node_field_1",
@@ -633,7 +684,7 @@ class Test_Dataset:
             },
         )
 
-        dataset_with_samples_with_tree.from_features_identifier(
+        dataset_with_samples_with_tree.extract_dataset_from_identifier(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "nodes"},
@@ -714,14 +765,14 @@ class Test_Dataset:
                 ],
             )
 
-    def test_from_tabular(self, dataset_with_samples_with_tree):
+    def test_add_features_from_tabular(self, dataset_with_samples_with_tree):
         X = dataset_with_samples_with_tree.get_tabular_from_homogeneous_identifiers(
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
                 {"type": "field", "name": "OriginalIds"},
             ],
         )
-        dataset = dataset_with_samples_with_tree.from_tabular(
+        dataset = dataset_with_samples_with_tree.add_features_from_tabular(
             tabular=X,
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
@@ -753,7 +804,7 @@ class Test_Dataset:
                 {"type": "field", "name": "OriginalIds"},
             ],
         )
-        dataset = dataset_with_samples_with_tree.from_tabular(
+        dataset = dataset_with_samples_with_tree.add_features_from_tabular(
             tabular=X,
             feature_identifiers=[
                 {"type": "field", "name": "test_node_field_1"},
@@ -779,7 +830,7 @@ class Test_Dataset:
             dataset_with_samples_with_tree[last_index].get_field("test_node_field_1"),
         ).all()
 
-        dataset = dataset_with_samples_with_tree.from_tabular(
+        dataset = dataset_with_samples_with_tree.add_features_from_tabular(
             tabular=X,
             feature_identifiers={"type": "field", "name": "OriginalIds"},
         )
@@ -843,10 +894,10 @@ class Test_Dataset:
         feat_id = [
             fid for fid in feat_id if fid["type"] not in ["scalar", "time_series"]
         ]
-        dataset_1 = dataset_with_samples.from_features_identifier(feat_id)
+        dataset_1 = dataset_with_samples.extract_dataset_from_identifier(feat_id)
         feat_id = other_dataset_with_samples.get_all_features_identifiers()
         feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "node"]]
-        dataset_2 = other_dataset_with_samples.from_features_identifier(feat_id)
+        dataset_2 = other_dataset_with_samples.extract_dataset_from_identifier(feat_id)
         dataset_merge_1 = dataset_1.merge_features(dataset_2, in_place=False)
         dataset_merge_2 = dataset_2.merge_features(dataset_1, in_place=False)
         assert (
