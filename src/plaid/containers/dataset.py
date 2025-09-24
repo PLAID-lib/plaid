@@ -405,28 +405,6 @@ class Dataset(object):
         return scalars_names
 
     # -------------------------------------------------------------------------#
-    def get_time_series_names(self, ids: Optional[list[int]] = None) -> list[str]:
-        """Return union of time series names in all samples with id in ids.
-
-        Args:
-            ids (list[int], optional): Select time series depending on sample id. If None, take all samples. Defaults to None.
-
-        Returns:
-            list[str]: List of all time series names
-        """
-        if ids is not None and len(set(ids)) != len(ids):
-            logger.warning("Provided ids are not unique")
-
-        time_series_names = []
-        for sample in self.get_samples(ids, as_list=True):
-            ts_names = sample.get_time_series_names()
-            for ts_name in ts_names:
-                if ts_name not in time_series_names:
-                    time_series_names.append(ts_name)
-        time_series_names.sort()
-        return time_series_names
-
-    # -------------------------------------------------------------------------#
     def get_field_names(
         self,
         ids: Optional[list[int]] = None,
@@ -506,7 +484,7 @@ class Dataset(object):
 
     def get_all_features_identifiers_by_type(
         self,
-        feature_type: Literal["scalar", "nodes", "field", "time_series"],
+        feature_type: Literal["scalar", "nodes", "field"],
         ids: list[int] = None,
     ) -> list[FeatureIdentifier]:
         """Get all features identifiers from the dataset.
@@ -759,9 +737,6 @@ class Dataset(object):
 
         Returns:
             Array: An containing the provided feature identifiers, size (nb_sample, nb_features, dim_features)
-
-        Notes:
-            Not working with time_series for the moment (time series have 2 elements: time_sequence and values)
 
         Raises:
             AssertionError: If feature sizes are inconsistent.
@@ -1185,12 +1160,6 @@ class Dataset(object):
             for name in scalar_names:
                 scalar_counts[name] = scalar_counts.get(name, 0) + 1
 
-            # Time series
-            ts_names = sample.get_time_series_names()
-            all_ts_names.update(ts_names)
-            for name in ts_names:
-                ts_counts[name] = ts_counts.get(name, 0) + 1
-
             # Fields
             times = sample.features.get_all_mesh_times()
             for time in times:
@@ -1283,7 +1252,6 @@ class Dataset(object):
 
         for sample in self._samples.values():
             all_scalar_names.update(sample.get_scalar_names())
-            all_ts_names.update(sample.get_time_series_names())
 
             times = sample.features.get_all_mesh_times()
             for time in times:
@@ -1311,12 +1279,6 @@ class Dataset(object):
             missing_scalars = all_scalar_names - sample_scalars
             if missing_scalars:
                 missing_features.extend([f"scalar:{name}" for name in missing_scalars])
-
-            # Check time series
-            sample_ts = set(sample.get_time_series_names())
-            missing_ts = all_ts_names - sample_ts
-            if missing_ts:
-                missing_features.extend([f"time_series:{name}" for name in missing_ts])
 
             # Check fields
             sample_fields = set()
@@ -1874,10 +1836,6 @@ class Dataset(object):
         # scalars
         nb_scalars = len(self.get_scalar_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
-
-        # time series
-        nb_time_series = len(self.get_time_series_names())
-        str_repr += f"{nb_time_series} time_series, "
 
         # fields
         nb_fields = len(self.get_field_names())
