@@ -684,6 +684,7 @@ class Dataset(object):
     def extract_dataset_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        keep_cgns: bool = False,
     ) -> Self:
         """Extract features of the dataset by their identifier(s) and return a new dataset containing these features.
 
@@ -692,6 +693,7 @@ class Dataset(object):
 
         Args:
             feature_identifiers (dict or list of dict): One or more feature identifiers.
+            keep_cgns (bool): If True, keeps the CGNS tree structure in the extracted dataset.
 
         Returns:
             Self: New dataset containing the provided feature identifiers
@@ -706,6 +708,41 @@ class Dataset(object):
             extracted_sample = self[id].extract_sample_from_identifier(
                 feature_identifiers
             )
+
+            if (
+                keep_cgns
+                and not extracted_sample.features.data
+                and self[id].features.data
+            ):
+                for time in self[id].features.get_all_mesh_times():
+                    extracted_sample.features.init_tree(time=time)
+                    for base_name in self[id].features.get_base_names(time=time):
+                        original_base = self[id].features.get_base(
+                            base_name=base_name, time=time
+                        )
+                        extracted_sample.features.init_base(
+                            topological_dim=original_base[1][0],
+                            physical_dim=original_base[1][1],
+                            base_name=base_name,
+                            time=time,
+                        )
+                        for zone_name in self[id].features.get_zone_names(
+                            time=time, base_name=base_name
+                        ):
+                            original_zone = self[id].features.get_zone(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                            original_zone_type = self[id].features.get_zone_type(
+                                zone_name=zone_name, base_name=base_name, time=time
+                            )
+                            extracted_sample.features.init_zone(
+                                zone_shape=original_zone[1],
+                                zone_type=original_zone_type,
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                time=time,
+                            )
+
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
 
@@ -748,7 +785,7 @@ class Dataset(object):
         if dim_features == 0:
             tabular = np.expand_dims(tabular, axis=-1)
         assert tabular.ndim == 3, (
-            "tabular must be constructed to have 3 dimensions: (nb_sample, nb_features, dim_features)"
+            f"tabular must be constructed to have 3 dimensions: (nb_sample, nb_features, dim_features), but {tabular.ndim=} | {tabular.shape=}"
         )
 
         return tabular
@@ -756,7 +793,7 @@ class Dataset(object):
     def get_tabular_from_stacked_identifiers(
         self,
         feature_identifiers: list[FeatureIdentifier],
-    ) -> Array:
+    ) -> tuple[Array, Array]:
         """Extract features of the dataset by their identifier(s), stack them and return an array containing these features.
 
         After stacking, each sample has one feature of dimension dim_stacked_features
@@ -765,7 +802,8 @@ class Dataset(object):
             feature_identifiers (list of dict): Feature identifiers.
 
         Returns:
-            Array: An containing the provided feature identifiers, size (nb_sample, dim_stacked_features)
+            Array: An array containing the provided feature identifiers, size (nb_sample, dim_stacked_features)
+            Array: An array containing the cumulated feature dimensions, starts with 0, size (len(feature_identifiers)+1, )
         """
         features = self.get_features_from_identifiers(feature_identifiers)
 
@@ -774,7 +812,11 @@ class Dataset(object):
             tabular.append(np.hstack([np.atleast_1d(e) for e in local_feats]))
         tabular = np.stack(tabular)
 
-        return tabular
+        feat_dims = [0]
+        feat_dims.extend([len(np.atleast_1d(e)) for e in local_feats])
+        cumulated_feat_dims = np.cumsum(feat_dims)
+
+        return tabular, cumulated_feat_dims
 
     def add_features_from_tabular(
         self,
@@ -804,8 +846,10 @@ class Dataset(object):
                 If the number of rows in `tabular` does not match the number of samples in the dataset,
                 or if the number of feature identifiers does not match the number of columns in `tabular`.
         """
-        if isinstance(feature_identifiers, dict):
+        if not isinstance(feature_identifiers, list):
             feature_identifiers = [feature_identifiers]
+        for i_id, feat_id in enumerate(feature_identifiers):
+            feature_identifiers[i_id] = FeatureIdentifier(feat_id)
 
         assert tabular.shape[0] == len(self)
         # assert tabular.shape[1] == len(feature_identifiers)
@@ -1065,7 +1109,9 @@ class Dataset(object):
         Returns:
             Dataset: A new dataset containing all samples from the input datasets.
         """
-        assert len(datasets_list) > 1, "Provide more than one dataset"
+        if len(datasets_list) == 1:
+            return datasets_list[0]
+
         merged_dataset = datasets_list[0]
         for dataset in datasets_list[1:]:
             merged_dataset = merged_dataset.merge_features(dataset, in_place=False)

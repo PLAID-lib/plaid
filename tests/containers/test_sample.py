@@ -23,6 +23,7 @@ from plaid.containers.utils import (
     _read_index_array,
     _read_index_range,
 )
+from plaid.types.feature_types import FeatureIdentifier
 from plaid.utils.cgns_helper import show_cgns_tree
 
 # %% Fixtures
@@ -1062,8 +1063,6 @@ class Test_Sample:
 
     def test_update_features_from_identifier(self, sample_with_tree_and_scalar):
         before = sample_with_tree_and_scalar.get_scalar("test_scalar_1")
-        show_cgns_tree(sample_with_tree_and_scalar.features.data[0])
-        print("==========================")
         sample_ = sample_with_tree_and_scalar.update_features_from_identifier(
             feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
             features=3.141592,
@@ -1081,14 +1080,16 @@ class Test_Sample:
             time=0.0,
         )
         sample_ = sample_with_tree_and_scalar.update_features_from_identifier(
-            feature_identifiers={
-                "type": "field",
-                "name": "test_node_field_1",
-                "base_name": "Base_2_2",
-                "zone_name": "Zone",
-                "location": "Vertex",
-                "time": 0.0,
-            },
+            feature_identifiers=FeatureIdentifier(
+                {
+                    "type": "field",
+                    "name": "test_node_field_1",
+                    "base_name": "Base_2_2",
+                    "zone_name": "Zone",
+                    "location": "Vertex",
+                    "time": 0.0,
+                }
+            ),
             features=np.random.rand(*before.shape),
             in_place=False,
         )
@@ -1105,12 +1106,14 @@ class Test_Sample:
             zone_name="Zone", base_name="Base_2_2", time=0.0
         )
         sample_ = sample_with_tree_and_scalar.update_features_from_identifier(
-            feature_identifiers={
-                "type": "nodes",
-                "base_name": "Base_2_2",
-                "zone_name": "Zone",
-                "time": 0.0,
-            },
+            feature_identifiers=FeatureIdentifier(
+                {
+                    "type": "nodes",
+                    "base_name": "Base_2_2",
+                    "zone_name": "Zone",
+                    "time": 0.0,
+                }
+            ),
             features=np.random.rand(*before.shape),
             in_place=False,
         )

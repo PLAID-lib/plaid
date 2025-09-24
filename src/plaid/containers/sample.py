@@ -20,7 +20,6 @@ else:  # pragma: no cover
 import copy
 import logging
 import shutil
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -578,7 +577,7 @@ class Sample(BaseModel):
         before applying updates, ensuring full isolation from the original.
 
         Args:
-            feature_identifiers (dict or list of dict): One or more feature identifiers.
+            feature_identifiers (FeatureIdentifier or list of FeatureIdentifier): One or more feature identifiers.
             features (Feature or list of Feature): One or more features corresponding
                 to the identifiers.
             in_place (bool, optional): If True, modifies the current sample in place.
@@ -590,12 +589,12 @@ class Sample(BaseModel):
         Raises:
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
-        assert isinstance(feature_identifiers, dict) or (
-            isinstance(feature_identifiers, Iterable) and isinstance(features, Iterable)
-        ), "Check types of feature_identifiers and features arguments"
-        if isinstance(feature_identifiers, dict):
+        if not isinstance(feature_identifiers, list):
             feature_identifiers = [feature_identifiers]
             features = [features]
+        assert len(feature_identifiers) == len(features)
+        for i_id, feat_id in enumerate(feature_identifiers):
+            feature_identifiers[i_id] = FeatureIdentifier(feat_id)
 
         sample = self if in_place else self.copy()
 
