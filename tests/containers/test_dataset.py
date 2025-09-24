@@ -857,9 +857,7 @@ class Test_Dataset:
 
     def test_merge_features(self, dataset_with_samples, other_dataset_with_samples):
         feat_id = dataset_with_samples.get_all_features_identifiers()
-        feat_id = [
-            fid for fid in feat_id if fid["type"] not in ["scalar"]
-        ]
+        feat_id = [fid for fid in feat_id if fid["type"] not in ["scalar"]]
         dataset_1 = dataset_with_samples.extract_dataset_from_identifier(feat_id)
         feat_id = other_dataset_with_samples.get_all_features_identifiers()
         feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "node"]]

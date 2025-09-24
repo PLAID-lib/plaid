@@ -37,8 +37,8 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.features import SampleFeatures, FEATURES_METHODS
-from plaid.containers.utils import _check_names, get_feature_type_and_details_from
+from plaid.containers.features import FEATURES_METHODS, SampleFeatures
+from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     CGNSNode,
     CGNSTree,
@@ -46,14 +46,13 @@ from plaid.types import (
     FeatureIdentifier,
     Field,
     Scalar,
-    TimeSequence,
-    TimeSeries,
 )
 from plaid.utils import cgns_helper as CGH
-from plaid.utils.base import safe_len, delegate
+from plaid.utils.base import delegate, safe_len
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
+
 
 @delegate("features", FEATURES_METHODS)
 class Sample(BaseModel):
@@ -74,9 +73,7 @@ class Sample(BaseModel):
 
     # Pydantic configuration
     model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        revalidate_instances="always",
-        extra="forbid"
+        arbitrary_types_allowed=True, revalidate_instances="always", extra="forbid"
     )
 
     # Attributes
@@ -324,7 +321,9 @@ class Sample(BaseModel):
         Returns:
             CGLNode: The newly initialized zone node within the CGNS tree.
         """
-        return self.features.init_zone(zone_shape, zone_type, zone_name, base_name, time)
+        return self.features.init_zone(
+            zone_shape, zone_type, zone_name, base_name, time
+        )
 
     def set_default_time(self, time: float) -> None:
         """Set the default time for the system.
@@ -503,7 +502,9 @@ class Sample(BaseModel):
 
         dname = path_linked_sample.parent
         bname = path_linked_sample.name
-        self.features._links[time] = [[str(dname), bname, fp, fp] for fp in feature_paths]
+        self.features._links[time] = [
+            [str(dname), bname, fp, fp] for fp in feature_paths
+        ]
 
         return tree
 
@@ -764,7 +765,6 @@ class Sample(BaseModel):
 
         Supported feature types:
             - "scalar": expects 1 detail → `scalars.get(name)`
-            - "time_series": expects 1 detail → `get_time_series(name)`
             - "field": up to 5 details → `get_field(name, base_name, zone_name, location, time)`
             - "nodes": up to 3 details → `get_nodes(base_name, zone_name, time)`
 
@@ -779,7 +779,7 @@ class Sample(BaseModel):
 
         Warnings:
             - If "time" is present in a field/nodes identifier, it is cast to float.
-            - `name` is required for scalar, time_series and field features.
+            - `name` is required for scalar and field features.
             - The order of the details must be respected. One cannot specify a detail in the feature_string_identifier string without specified the previous ones.
         """
         splitted_identifier = feature_string_identifier.split("::")
@@ -799,8 +799,6 @@ class Sample(BaseModel):
                     f"Unknown scalar {feature_details[0]}"
                 )  # pragma: no cover
             return val
-        elif feature_type == "time_series":
-            return self.get_time_series(feature_details[0])
         elif feature_type == "field":
             kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
             for k in kwargs:
@@ -825,12 +823,11 @@ class Sample(BaseModel):
 
         The `feature_identifier` must include a `"type"` key specifying the feature kind:
             - `"scalar"`       → calls `scalars.get(name)`
-            - `"time_series"`  → calls `get_time_series(name)`
             - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
             - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
 
         Required keys:
-            - `"type"`: one of `"scalar"`, `"time_series"`, `"field"`, or `"nodes"`
+            - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
             - `"name"`: required for all types except `"nodes"`
 
         Optional keys depending on type:
@@ -851,8 +848,6 @@ class Sample(BaseModel):
 
         if feature_type == "scalar":
             return self.get_scalar(**feature_details)
-        elif feature_type == "time_series":
-            return self.get_time_series(**feature_details)
         elif feature_type == "field":
             return self.get_field(**feature_details)
         elif feature_type == "nodes":
@@ -865,12 +860,11 @@ class Sample(BaseModel):
 
         Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
             - `"scalar"`       → calls `scalars.get(name)`
-            - `"time_series"`  → calls `get_time_series(name)`
             - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
             - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
 
         Required keys:
-            - `"type"`: one of `"scalar"`, `"time_series"`, `"field"`, or `"nodes"`
+            - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
             - `"name"`: required for all types except `"nodes"`
 
         Optional keys depending on type:
@@ -894,8 +888,6 @@ class Sample(BaseModel):
         for feature_type, feature_details in all_features_info:
             if feature_type == "scalar":
                 features.append(self.get_scalar(**feature_details))
-            elif feature_type == "time_series":
-                features.append(self.get_time_series(**feature_details))
             elif feature_type == "field":
                 features.append(self.get_field(**feature_details))
             elif feature_type == "nodes":
@@ -1017,7 +1009,7 @@ class Sample(BaseModel):
                 time = self.features.get_time_assignment(time=feat_id.get("time"))
 
                 # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                if len(sample.features.get_base_names(time=time, globals=False))==0:
+                if len(sample.features.get_base_names(time=time, globals=False)) == 0:
                     sample.features.add_tree(source_sample.features.get_mesh(time))
                     for name in sample.features.get_global_names(time=time):
                         sample.features.del_global(name, time)

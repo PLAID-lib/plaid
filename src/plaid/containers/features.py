@@ -1,5 +1,3 @@
-
-
 """Module for implementing collections of features within a Sample."""
 
 import copy
@@ -22,7 +20,7 @@ from plaid.containers.utils import (
     _check_names,
     _read_index,
 )
-from plaid.types import CGNSLink, CGNSNode, CGNSPath, CGNSTree, Field, Scalar
+from plaid.types import CGNSLink, CGNSNode, CGNSPath, CGNSTree, Field
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -30,8 +28,17 @@ logger = logging.getLogger(__name__)
 
 FEATURES_METHODS = [
     "get_all_mesh_times",
-    "another",
-    # add more here
+    "get_mesh",
+    "get_base_names",
+    "get_zone_names",
+    "get_nodal_tags",
+    "get_global",
+    "get_global_names",
+    "get_nodes",
+    "get_elements",
+    "get_field_names",
+    "get_field",
+    "show_tree",
 ]
 
 
@@ -94,7 +101,10 @@ class SampleFeatures:
         return self._default_active_time if time is None else time
 
     def get_base_assignment(
-        self, base_name: Optional[str] = None, time: Optional[float] = None, globals:bool = False
+        self,
+        base_name: Optional[str] = None,
+        time: Optional[float] = None,
+        globals: bool = False,
     ) -> str:
         """Retrieve the default base name for the CGNS operations.
 
@@ -104,6 +114,7 @@ class SampleFeatures:
         Args:
             base_name (str, optional): The name of the base to attribute the operation to. If not provided, the default base set in the system will be used.
             time (str, optional): The time value provided for the operation. If not provided, the default time set in the system will be used.
+            globals (bool, optional): If True, only consider the "Global" base. If False, consider all bases except "Global". Defaults to False.
 
         Raises:
             KeyError: If no default base can be determined based on the provided or default.
@@ -135,7 +146,7 @@ class SampleFeatures:
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
         time: Optional[float] = None,
-        globals: bool = False
+        globals: bool = False,
     ) -> str:
         """Retrieve the default zone name for the CGNS operations.
 
@@ -146,6 +157,7 @@ class SampleFeatures:
             zone_name (str, optional): The name of the zone to attribute the operation to. If not provided, the default zone set in the system within the specified base will be used.
             base_name (str, optional): The name of the base within which the zone should be attributed. If not provided, the default base set in the system will be used.
             time (str, optional): The time value provided for the operation. If not provided, the default time set in the system will be used.
+            globals (bool, optional): If True, only consider the "Global" base. If False, consider all bases except "Global". Defaults to False.
 
         Raises:
             KeyError: If no default zone can be determined based on the provided or default values.
@@ -280,6 +292,9 @@ class SampleFeatures:
         Raises:
             ValueError: If the provided CGNS tree is an empty list.
 
+        Note:
+            `tree` should not be reused after, since it will be modified by functions on the feature.
+
         Returns:
             CGNSTree: The merged CGNS tree.
         """
@@ -398,7 +413,7 @@ class SampleFeatures:
         physical_dim: int,
         base_name: Optional[str] = None,
         time: Optional[float] = None,
-        globals: str = False
+        globals: str = False,
     ) -> CGNSNode:
         """Create a Base node named `base_name` if it doesn't already exists.
 
@@ -407,6 +422,7 @@ class SampleFeatures:
             physical_dim (int): Ambient space dimension, see [CGNS standard](https://pycgns.github.io/PAT/lib.html#CGNS.PAT.cgnslib.newCGNSBase).
             base_name (str): If not specified, uses `mesh_base_name` specified in Sample initialization. Defaults to None.
             time (float, optional): The time at which to initialize the base. If a specific time is not provided, the method will display the tree structure for the default time step.
+            globals (bool, optional): If True, only consider the "Global" base. If False, consider all bases except "Global". Defaults to False.
 
         Returns:
             CGNSNode: The created Base node.
@@ -479,7 +495,7 @@ class SampleFeatures:
         full_path: bool = False,
         unique: bool = False,
         time: Optional[float] = None,
-        globals: bool = False
+        globals: bool = False,
     ) -> list[str]:
         """Return Base names.
 
@@ -487,6 +503,7 @@ class SampleFeatures:
             full_path (bool, optional): If True, returns full paths instead of only Base names. Defaults to False.
             unique (bool, optional): If True, returns unique names instead of potentially duplicated names. Defaults to False.
             time (float, optional): The time at which to check for the Base. If a specific time is not provided, the method will display the tree structure for the default time step.
+            globals (bool, optional): If True, only consider the "Global" base. If False, consider all bases except "Global". Defaults to False.
 
         Returns:
             list[str]:
@@ -495,9 +512,22 @@ class SampleFeatures:
 
         if self.data and time in self.data and self.data[time] is not None:
             if globals is False:
-                return [bn for bn in CGH.get_base_names(self.data[time], full_path=full_path, unique=unique) if bn != "Global"]
+                return [
+                    bn
+                    for bn in CGH.get_base_names(
+                        self.data[time], full_path=full_path, unique=unique
+                    )
+                    if bn != "Global"
+                ]
             else:
-                return ["Global"] if "Global" in CGH.get_base_names(self.data[time], full_path=full_path, unique=unique) else []
+                return (
+                    ["Global"]
+                    if "Global"
+                    in CGH.get_base_names(
+                        self.data[time], full_path=full_path, unique=unique
+                    )
+                    else []
+                )
         else:
             return []
 
@@ -615,7 +645,7 @@ class SampleFeatures:
         base_name: Optional[str] = None,
         full_path: bool = False,
         unique: bool = False,
-        time: Optional[float] = None
+        time: Optional[float] = None,
     ) -> list[str]:
         """Return list of Zone names in Base named `base_name` with specific time.
 
@@ -672,7 +702,7 @@ class SampleFeatures:
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
         time: Optional[float] = None,
-        globals: bool = False
+        globals: bool = False,
     ) -> CGNSNode:
         """Retrieve a CGNS Zone node by its name within a specific Base and time.
 
@@ -680,6 +710,7 @@ class SampleFeatures:
             zone_name (str, optional): The name of the Zone node to retrieve. If not specified, checks that there is **at most** one zone in the base, else raises an error. Defaults to None.
             base_name (str, optional): The Base in which to seek to zone retrieve. If not specified, checks that there is **at most** one base, else raises an error. Defaults to None.
             time (float, optional): Time at which you want to retrieve the Zone node.
+            globals (bool, optional): If True, only consider the "Global" base. If False, consider all bases except "Global". Defaults to False.
 
         Returns:
             CGNSNode: Returns a CGNS Zone node if found; otherwise, returns None.
@@ -800,6 +831,7 @@ class SampleFeatures:
         name: str,
         time: Optional[float] = None,
     ) -> Optional[np.ndarray]:
+        """get_global."""
         base_names = self.get_base_names(time=time, globals=True)
         if "Global" not in base_names:
             return None
@@ -813,6 +845,7 @@ class SampleFeatures:
         global_array: np.ndarray,
         time: Optional[float] = None,
     ) -> None:
+        """add_global."""
         _check_names(name)
         base_names = self.get_base_names(time=time, globals=True)
         if "Global" in base_names:
@@ -826,15 +859,17 @@ class SampleFeatures:
             global_node = CGU.getNodeByPath(base_node, f"{name}")
             CGU.setValue(global_node, np.asfortranarray(global_array))
 
-
     def del_global(
         self,
         name: str,
         time: Optional[float] = None,
     ) -> CGNSTree:
+        """del_global."""
         val = self.get_global(name, time)
         if val is None:
-            raise KeyError(f"There is no global with name {name} at the specified time.")
+            raise KeyError(
+                f"There is no global with name {name} at the specified time."
+            )
 
         base_node = self.get_base("Global", time=time)
         CGU.nodeDelete(base_node, name)
@@ -842,7 +877,8 @@ class SampleFeatures:
         return val
 
     def get_global_names(self, time: Optional[float] = None) -> list[str]:
-        if time == None:
+        """get_global_names."""
+        if time is None:
             all_times = self.get_all_mesh_times()
         else:
             all_times = [time]
@@ -1068,7 +1104,9 @@ class SampleFeatures:
         times = [time] if time is not None else self.get_all_mesh_times()
         for time in times:
             base_names = (
-                [base_name] if base_name is not None else self.get_base_names(time=time, globals=False)
+                [base_name]
+                if base_name is not None
+                else self.get_base_names(time=time, globals=False)
             )
             for base_name in base_names:
                 zone_names = (
@@ -1114,7 +1152,9 @@ class SampleFeatures:
             Field: A set containing the names of the fields that match the specified criteria.
         """
         # get_zone will look for default time
-        search_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time, globals=False)
+        search_node = self.get_zone(
+            zone_name=zone_name, base_name=base_name, time=time, globals=False
+        )
         if search_node is None:
             return None
 
@@ -1172,7 +1212,9 @@ class SampleFeatures:
         # init_tree will look for default time
         self.init_tree(time)
         # get_zone will look for default zone_name, base_name and time
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time, globals=False)
+        zone_node = self.get_zone(
+            zone_name=zone_name, base_name=base_name, time=time, globals=False
+        )
 
         if zone_node is None:
             raise KeyError(
@@ -1249,7 +1291,9 @@ class SampleFeatures:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         # get_zone will look for default zone_name, base_name, and time
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time, globals=False)
+        zone_node = self.get_zone(
+            zone_name=zone_name, base_name=base_name, time=time, globals=False
+        )
         time = self.get_time_assignment(time)
         mesh_tree = self.data[time]
 

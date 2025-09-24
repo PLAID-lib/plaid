@@ -1,6 +1,6 @@
-from plaid import Sample, Dataset
 import numpy as np
 
+from plaid import Dataset, Sample
 
 ins = []
 outs = []
@@ -22,8 +22,8 @@ dataset._save_to_dir_(path="dataset_ref", verbose=True)
 samples = []
 for i in range(30):
     sample = Sample()
-    sample.add_scalar("feature_1", 1.00001*ins[i])
-    sample.add_scalar("feature_2", 1.00001*outs[i])
+    sample.add_scalar("feature_1", 1.00001 * ins[i])
+    sample.add_scalar("feature_2", 1.00001 * outs[i])
     samples.append(sample)
 
 dataset = Dataset(samples=samples)
@@ -33,8 +33,8 @@ dataset._save_to_dir_(path="dataset_near_pred", verbose=True)
 samples = []
 for i in range(30):
     sample = Sample()
-    sample.add_scalar("feature_1", 0.5*ins[i])
-    sample.add_scalar("feature_2", 0.5*outs[i])
+    sample.add_scalar("feature_1", 0.5 * ins[i])
+    sample.add_scalar("feature_2", 0.5 * outs[i])
     samples.append(sample)
 
 dataset = Dataset(samples=samples)

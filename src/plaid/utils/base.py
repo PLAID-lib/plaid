@@ -9,10 +9,12 @@
 
 # %% Imports
 
-import numpy as np
 from functools import wraps
 
+import numpy as np
+
 # %% Functions
+
 
 def generate_random_ASCII(size: int = 16) -> str:
     """Generate a random ASCII string of the specified size.
@@ -50,18 +52,24 @@ def safe_len(obj):
     return len(obj) if hasattr(obj, "__len__") else 0
 
 
-def delegate(to: str, methods: list[str]):
+def delegate(to: str, methods: list[str]):  # pragma: no cover
     """Class decorator to forward specific methods from a delegate attribute."""
+
     def wrapper(cls):
         for name in methods:
+
             def make_delegate(name):
-                @wraps(getattr(getattr(cls, to, None), name, lambda *a, **k: None))
+                @wraps(getattr(getattr(cls, to, None), name, lambda *_, **__: None))
                 def method(self, *args, **kwargs):
                     return getattr(getattr(self, to), name)(*args, **kwargs)
+
                 return method
+
             setattr(cls, name, make_delegate(name))
         return cls
+
     return wrapper
+
 
 class NotAllowedError(Exception):
     """Exception for not allowed usage."""

@@ -86,7 +86,7 @@ class Test_Huggingface_Bridge:
         sample = dataset[0]
         old_hf_sample = {
             "path": getattr(sample, "path", None),
-            "scalars": {sn:sample.get_scalar(sn) for sn in sample.get_scalar_names()},
+            "scalars": {sn: sample.get_scalar(sn) for sn in sample.get_scalar_names()},
             "meshes": sample.features.data,
             "mesh_base_name": sample.features._mesh_base_name,
             "mesh_zone_name": sample.features._mesh_zone_name,

@@ -106,9 +106,9 @@ class Dataset(object):
                 >>> 3
                 for sample in dataset:
                     print(sample)
-                >>> Sample(1 scalar, 0 time series, 1 timestamp, 2 fields)
-                    Sample(1 scalar, 0 time series, 0 timestamps, 0 fields)
-                    Sample(2 scalars, 0 time series, 1 timestamp, 2 fields)
+                >>> Sample(1 scalar, 1 timestamp, 2 fields)
+                    Sample(1 scalar, 0 timestamps, 0 fields)
+                    Sample(2 scalars, 1 timestamp, 2 fields)
 
                 # 3. Create Dataset instance from a list of Samples
                 dataset = Dataset(samples=[sample1, sample2, sample3])
@@ -653,7 +653,7 @@ class Dataset(object):
     ) -> Self:
         """Update one or several features of the dataset by their identifier(s).
 
-        This method applies updates to scalars, time series, fields, or nodes
+        This method applies updates to scalars, fields, or nodes
         using feature identifiers, and corresponding feature data. When `in_place=False`, a deep copy of the dataset is created
         before applying updates, ensuring full isolation from the original.
 
@@ -687,7 +687,7 @@ class Dataset(object):
     ) -> Self:
         """Extract features of the dataset by their identifier(s) and return a new dataset containing these features.
 
-        This method applies updates to scalars, time series, fields, or nodes
+        This method applies updates to scalars, fields, or nodes
         using feature identifiers
 
         Args:
@@ -730,7 +730,7 @@ class Dataset(object):
         """Extract features of the dataset by their identifier(s) and return an array containing these features.
 
         Features must have identic sizes to be casted in an array. The first dimension of the array is the number of samples in the dataset.
-        This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
+        This method applies updates to scalars, fields, or nodes using feature identifiers.
 
         Args:
             feature_identifiers (list of dict): Feature identifiers.
@@ -1124,9 +1124,6 @@ class Dataset(object):
                 - mach_out: 32/32 samples (100.0%)
                 - power: 30/32 samples (93.8%)
 
-                Time Series (0 unique):
-                None
-
                 Fields (8 unique):
                 - M_iso: 30/32 samples (93.8%)
                 - mach: 30/32 samples (93.8%)
@@ -1145,12 +1142,10 @@ class Dataset(object):
 
         # Collect all feature names across all samples
         all_scalar_names = set()
-        all_ts_names = set()
         all_field_names = set()
 
         # Count occurrences of each feature
         scalar_counts = {}
-        ts_counts = {}
         field_counts = {}
 
         for _, sample in self._samples.items():
@@ -1183,16 +1178,6 @@ class Dataset(object):
         if all_scalar_names:
             for name in sorted(all_scalar_names):
                 count = scalar_counts.get(name, 0)
-                summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
-        else:
-            summary += "  None\n"
-        summary += "\n"
-
-        # Time series summary
-        summary += f"Time Series ({len(all_ts_names)} unique):\n"
-        if all_ts_names:
-            for name in sorted(all_ts_names):
-                count = ts_counts.get(name, 0)
                 summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
         else:
             summary += "  None\n"
@@ -1247,7 +1232,6 @@ class Dataset(object):
 
         # Collect all possible features across all samples
         all_scalar_names = set()
-        all_ts_names = set()
         all_field_names = set()
 
         for sample in self._samples.values():

@@ -269,8 +269,9 @@ class Test_Stats:
         check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 50)
 
-
-    def test_merge_stats_with_different_feautres(self, sample_with_scalar, sample_with_field):
+    def test_merge_stats_with_different_feautres(
+        self, sample_with_scalar, sample_with_field
+    ):
         stats1 = Stats()
         stats2 = Stats()
         stats1.add_samples([sample_with_scalar])
