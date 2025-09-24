@@ -1,6 +1,8 @@
 import numpy as np
 
-from plaid import Dataset, Sample
+from plaid import Dataset, ProblemDefinition, Sample
+from plaid.types import FeatureIdentifier
+from plaid.utils.split import split_dataset
 
 ins = []
 outs = []
@@ -43,3 +45,32 @@ dataset._save_to_dir_(path="dataset_pred", verbose=True)
 
 print("dataset =", dataset)
 print(dataset[0].get_scalar("feature_1"))
+
+
+pb_def = ProblemDefinition()
+
+scalar_1_feat_id = FeatureIdentifier({"type": "scalar", "name": "feature_1"})
+scalar_2_feat_id = FeatureIdentifier({"type": "scalar", "name": "feature_2"})
+
+pb_def.add_in_feature_identifier(scalar_1_feat_id)
+pb_def.add_out_feature_identifier(scalar_2_feat_id)
+
+pb_def.add_input_scalar_name("feature_1")
+pb_def.add_output_scalar_name("feature_2")
+
+pb_def.set_task("regression")
+
+options = {
+    "shuffle": False,
+    "split_sizes": {
+        "train": 20,
+        "test": 10,
+    },
+}
+
+split = split_dataset(dataset, options)
+print(f"{split = }")
+
+pb_def.set_split(split)
+
+pb_def._save_to_dir_("problem_definition")

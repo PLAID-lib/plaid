@@ -52,7 +52,7 @@ def safe_len(obj):
     return len(obj) if hasattr(obj, "__len__") else 0
 
 
-def delegate(to: str, methods: list[str]):  # pragma: no cover
+def delegate(to: str, methods: list[str]):
     """Class decorator to forward specific methods from a delegate attribute."""
 
     def wrapper(cls):

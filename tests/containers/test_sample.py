@@ -301,6 +301,7 @@ class Test_Sample:
 
     def test_get_mesh_empty(self, sample: Sample):
         sample.get_mesh()
+        sample.features.get_mesh()
 
     def test_get_mesh(self, sample_with_tree_and_scalar):
         sample_with_tree_and_scalar.get_mesh()

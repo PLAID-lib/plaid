@@ -26,22 +26,6 @@ from plaid.utils import cgns_helper as CGH
 logger = logging.getLogger(__name__)
 
 
-FEATURES_METHODS = [
-    "get_all_mesh_times",
-    "get_mesh",
-    "get_base_names",
-    "get_zone_names",
-    "get_nodal_tags",
-    "get_global",
-    "get_global_names",
-    "get_nodes",
-    "get_elements",
-    "get_field_names",
-    "get_field",
-    "show_tree",
-]
-
-
 class SampleFeatures:
     """A container for meshes within a Sample.
 
@@ -71,6 +55,151 @@ class SampleFeatures:
 
         self._mesh_base_name: str = mesh_base_name
         self._mesh_zone_name: str = mesh_zone_name
+
+    # -------------------------------------------------------------------------#
+
+    def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
+        """Set the default base for the specified time (that will also be set as default if provided).
+
+        The default base is a reference point for various operations in the system.
+
+        Args:
+            base_name (str): The name of the base to be set as the default.
+            time (float, optional): The time at which the base should be set as default. If not provided, the default base and active zone will be set with the default time.
+
+        Raises:
+            ValueError: If the specified base does not exist at the given time.
+
+        Note:
+            - Setting the default base and is important for synchronizing operations with a specific base in the system's data.
+            - The available mesh base can be obtained using the `get_base_names` method.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import Sample
+                sample = Sample("path_to_plaid_sample")
+                print(sample)
+                >>> Sample(2 scalars, 1 timestamp, 5 fields)
+                print(sample.get_physical_dim("BaseA", 0.5))
+                >>> 3
+
+                # Set "BaseA" as the default base for the default time
+                sample.set_default_base("BaseA")
+
+                # You can now use class functions with "BaseA" as default base
+                print(sample.get_physical_dim(0.5))
+                >>> 3
+
+                # Set "BaseB" as the default base for a specific time
+                sample.set_default_base("BaseB", 0.5)
+
+                # You can now use class functions with "BaseB" as default base and 0.5 as default time
+                print(sample.get_physical_dim()) # Physical dim of the base "BaseB"
+                >>> 3
+        """
+        if time is not None:
+            self.set_default_time(time)
+        if base_name in (self._default_active_base, None):
+            return
+        if not self.has_base(base_name, time):
+            raise ValueError(f"base {base_name} does not exist at time {time}")
+
+        self._default_active_base = base_name
+
+    def set_default_zone_base(
+        self, zone_name: str, base_name: str, time: Optional[float] = None
+    ) -> None:
+        """Set the default base and active zone for the specified time (that will also be set as default if provided).
+
+        The default base and active zone serve as reference points for various operations in the system.
+
+        Args:
+            zone_name (str): The name of the zone to be set as the active zone.
+            base_name (str): The name of the base to be set as the default.
+            time (float, optional): The time at which the base and zone should be set as default. If not provided, the default base and active zone will be set with the default time.
+
+        Raises:
+            ValueError: If the specified base or zone does not exist at the given time
+
+        Note:
+            - Setting the default base and zone are important for synchronizing operations with a specific base/zone in the system's data.
+            - The available mesh bases and zones can be obtained using the `get_base_names` and `get_base_zones` methods, respectively.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import Sample
+                sample = Sample("path_to_plaid_sample")
+                print(sample)
+                >>> Sample(2 scalars, 1 timestamp, 5 fields)
+                print(sample.get_zone_type("ZoneX", "BaseA", 0.5))
+                >>> Structured
+
+                # Set "BaseA" as the default base and "ZoneX" as the active zone for the default time
+                sample.set_default_zone_base("ZoneX", "BaseA")
+
+                # You can now use class functions with "BaseA" as default base with "ZoneX" as default zone
+                print(sample.get_zone_type(0.5)) # type of the zone "ZoneX" of base "BaseA"
+                >>> Structured
+
+                # Set "BaseB" as the default base and "ZoneY" as the active zone for a specific time
+                sample.set_default_zone_base("ZoneY", "BaseB", 0.5)
+
+                # You can now use class functions with "BaseB" as default base with "ZoneY" as default zone and 0.5 as default time
+                print(sample.get_zone_type()) # type of the zone "ZoneY" of base "BaseB" at 0.5
+                >>> Unstructured
+        """
+        self.set_default_base(base_name, time)
+        if zone_name in (self._default_active_zone, None):
+            return
+        if not self.has_zone(zone_name, base_name, time):
+            raise ValueError(
+                f"zone {zone_name} does not exist for the base {base_name} at time {time}"
+            )
+
+        self._default_active_zone = zone_name
+
+    def set_default_time(self, time: float) -> None:
+        """Set the default time for the system.
+
+        This function sets the default time to be used for various operations in the system.
+
+        Args:
+            time (float): The time value to be set as the default.
+
+        Raises:
+            ValueError: If the specified time does not exist in the available mesh times.
+
+        Note:
+            - Setting the default time is important for synchronizing operations with a specific time point in the system's data.
+            - The available mesh times can be obtained using the `get_all_mesh_times` method.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import Sample
+                sample = Sample("path_to_plaid_sample")
+                print(sample)
+                >>> Sample(2 scalars, 1 timestamp, 5 fields)
+                print(sample.show_tree(0.5))
+                >>> ...
+
+                # Set the default time to 0.5 seconds
+                sample.set_default_time(0.5)
+
+                # You can now use class functions with 0.5 as default time
+                print(sample.show_tree()) # show the cgns tree at the time 0.5
+                >>> ...
+        """
+        if time in (self._default_active_time, None):
+            return
+        if time not in self.get_all_mesh_times():
+            raise ValueError(f"time {time} does not exist in mesh times")
+
+        self._default_active_time = time
+
+    # -------------------------------------------------------------------------#
 
     def get_all_mesh_times(self) -> list[float]:
         """Retrieve all time steps corresponding to the meshes, if available.

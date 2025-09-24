@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 import CGNS.MAP as CGM
-import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
@@ -37,14 +36,12 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.features import FEATURES_METHODS, SampleFeatures
+from plaid.containers.features import SampleFeatures
 from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
-    CGNSNode,
     CGNSTree,
     Feature,
     FeatureIdentifier,
-    Field,
     Scalar,
 )
 from plaid.utils import cgns_helper as CGH
@@ -52,6 +49,31 @@ from plaid.utils.base import delegate, safe_len
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
+
+
+FEATURES_METHODS = [
+    "set_default_base",
+    "set_default_zone_base",
+    "set_default_time",
+    "get_all_mesh_times",
+    "get_mesh",
+    "get_base_names",
+    "get_zone_names",
+    "get_nodal_tags",
+    "get_global",
+    "get_global_names",
+    "get_nodes",
+    "get_elements",
+    "get_field_names",
+    "get_field",
+    "show_tree",
+    "set_nodes",
+    "del_field",
+    "add_field",
+    "show_tree",
+    "init_base",
+    "init_zone",
+]
 
 
 @delegate("features", FEATURES_METHODS)
@@ -158,234 +180,6 @@ class Sample(BaseModel):
             list[str]: A set containing the names of the available scalars.
         """
         return self.features.get_global_names()
-
-    # -------------------------------------------------------------------------#
-
-    def get_mesh(
-        self, time: Optional[float] = None, apply_links: bool = False, in_memory=False
-    ) -> Optional[CGNSTree]:
-        """Retrieve the CGNS tree structure for a specified time step, if available.
-
-        Args:
-            time (float, optional): The time step for which to retrieve the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
-            apply_links (bool, optional): Activates the following of the CGNS links to reconstruct the complete CGNS tree - in this case, a deepcopy of the tree is made to prevent from modifying the existing tree.
-            in_memory (bool, optional): Active if apply_links == True, ONLY WORKING if linked mesh is in the current sample. This option follows the link in memory from current sample.
-
-        Returns:
-            CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
-        """
-        return self.features.get_mesh(time, apply_links, in_memory)
-
-    def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
-        """Set the default base for the specified time (that will also be set as default if provided).
-
-        The default base is a reference point for various operations in the system.
-
-        Args:
-            base_name (str): The name of the base to be set as the default.
-            time (float, optional): The time at which the base should be set as default. If not provided, the default base and active zone will be set with the default time.
-
-        Raises:
-            ValueError: If the specified base does not exist at the given time.
-
-        Note:
-            - Setting the default base and is important for synchronizing operations with a specific base in the system's data.
-            - The available mesh base can be obtained using the `get_base_names` method.
-
-        Example:
-            .. code-block:: python
-
-                from plaid import Sample
-                sample = Sample("path_to_plaid_sample")
-                print(sample)
-                >>> Sample(2 scalars, 1 timestamp, 5 fields)
-                print(sample.get_physical_dim("BaseA", 0.5))
-                >>> 3
-
-                # Set "BaseA" as the default base for the default time
-                sample.set_default_base("BaseA")
-
-                # You can now use class functions with "BaseA" as default base
-                print(sample.get_physical_dim(0.5))
-                >>> 3
-
-                # Set "BaseB" as the default base for a specific time
-                sample.set_default_base("BaseB", 0.5)
-
-                # You can now use class functions with "BaseB" as default base and 0.5 as default time
-                print(sample.get_physical_dim()) # Physical dim of the base "BaseB"
-                >>> 3
-        """
-        if time is not None:
-            self.set_default_time(time)
-        if base_name in (self.features._default_active_base, None):
-            return
-        if not self.features.has_base(base_name, time):
-            raise ValueError(f"base {base_name} does not exist at time {time}")
-
-        self.features._default_active_base = base_name
-
-    def set_default_zone_base(
-        self, zone_name: str, base_name: str, time: Optional[float] = None
-    ) -> None:
-        """Set the default base and active zone for the specified time (that will also be set as default if provided).
-
-        The default base and active zone serve as reference points for various operations in the system.
-
-        Args:
-            zone_name (str): The name of the zone to be set as the active zone.
-            base_name (str): The name of the base to be set as the default.
-            time (float, optional): The time at which the base and zone should be set as default. If not provided, the default base and active zone will be set with the default time.
-
-        Raises:
-            ValueError: If the specified base or zone does not exist at the given time
-
-        Note:
-            - Setting the default base and zone are important for synchronizing operations with a specific base/zone in the system's data.
-            - The available mesh bases and zones can be obtained using the `get_base_names` and `get_base_zones` methods, respectively.
-
-        Example:
-            .. code-block:: python
-
-                from plaid import Sample
-                sample = Sample("path_to_plaid_sample")
-                print(sample)
-                >>> Sample(2 scalars, 1 timestamp, 5 fields)
-                print(sample.get_zone_type("ZoneX", "BaseA", 0.5))
-                >>> Structured
-
-                # Set "BaseA" as the default base and "ZoneX" as the active zone for the default time
-                sample.set_default_zone_base("ZoneX", "BaseA")
-
-                # You can now use class functions with "BaseA" as default base with "ZoneX" as default zone
-                print(sample.get_zone_type(0.5)) # type of the zone "ZoneX" of base "BaseA"
-                >>> Structured
-
-                # Set "BaseB" as the default base and "ZoneY" as the active zone for a specific time
-                sample.set_default_zone_base("ZoneY", "BaseB", 0.5)
-
-                # You can now use class functions with "BaseB" as default base with "ZoneY" as default zone and 0.5 as default time
-                print(sample.get_zone_type()) # type of the zone "ZoneY" of base "BaseB" at 0.5
-                >>> Unstructured
-        """
-        self.set_default_base(base_name, time)
-        if zone_name in (self.features._default_active_zone, None):
-            return
-        if not self.features.has_zone(zone_name, base_name, time):
-            raise ValueError(
-                f"zone {zone_name} does not exist for the base {base_name} at time {time}"
-            )
-
-        self.features._default_active_zone = zone_name
-
-    def init_base(
-        self,
-        topological_dim: int,
-        physical_dim: int,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> CGNSNode:
-        """Create a Base node named `base_name` if it doesn't already exists.
-
-        Args:
-            topological_dim (int): Cell dimension, see [CGNS standard](https://pycgns.github.io/PAT/lib.html#CGNS.PAT.cgnslib.newCGNSBase).
-            physical_dim (int): Ambient space dimension, see [CGNS standard](https://pycgns.github.io/PAT/lib.html#CGNS.PAT.cgnslib.newCGNSBase).
-            base_name (str): If not specified, uses `mesh_base_name` specified in Sample initialization. Defaults to None.
-            time (float, optional): The time at which to initialize the base. If a specific time is not provided, the method will display the tree structure for the default time step.
-
-        Returns:
-            CGNSNode: The created Base node.
-        """
-        return self.features.init_base(topological_dim, physical_dim, base_name, time)
-
-    def init_zone(
-        self,
-        zone_shape: np.ndarray,
-        zone_type: str = CGK.Unstructured_s,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> CGNSNode:
-        """Initialize a new zone within a CGNS base.
-
-        Args:
-            zone_shape (np.ndarray): An array specifying the shape or dimensions of the zone.
-            zone_type (str, optional): The type of the zone. Defaults to CGK.Unstructured_s.
-            zone_name (str, optional): The name of the zone to initialize. If not provided, uses `mesh_zone_name` specified in Sample initialization. Defaults to None.
-            base_name (str, optional): The name of the base to which the zone will be added. If not provided, the zone will be added to the currently active base. Defaults to None.
-            time (float, optional): The time at which to initialize the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
-
-        Raises:
-            KeyError: If the specified base does not exist. You can create a base using `Sample.init_base(base_name)`.
-
-        Returns:
-            CGLNode: The newly initialized zone node within the CGNS tree.
-        """
-        return self.features.init_zone(
-            zone_shape, zone_type, zone_name, base_name, time
-        )
-
-    def set_default_time(self, time: float) -> None:
-        """Set the default time for the system.
-
-        This function sets the default time to be used for various operations in the system.
-
-        Args:
-            time (float): The time value to be set as the default.
-
-        Raises:
-            ValueError: If the specified time does not exist in the available mesh times.
-
-        Note:
-            - Setting the default time is important for synchronizing operations with a specific time point in the system's data.
-            - The available mesh times can be obtained using the `get_all_mesh_times` method.
-
-        Example:
-            .. code-block:: python
-
-                from plaid import Sample
-                sample = Sample("path_to_plaid_sample")
-                print(sample)
-                >>> Sample(2 scalars, 1 timestamp, 5 fields)
-                print(sample.show_tree(0.5))
-                >>> ...
-
-                # Set the default time to 0.5 seconds
-                sample.set_default_time(0.5)
-
-                # You can now use class functions with 0.5 as default time
-                print(sample.show_tree()) # show the cgns tree at the time 0.5
-                >>> ...
-        """
-        if time in (self.features._default_active_time, None):
-            return
-        if time not in self.features.get_all_mesh_times():
-            raise ValueError(f"time {time} does not exist in mesh times")
-
-        self.features._default_active_time = time
-
-    def get_field_names(
-        self,
-        location: str = None,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> list[str]:
-        """Get a set of field names associated with a specified zone, base, location, and time.
-
-        Args:
-            location (str, optional): The desired grid location where the field is defined. Defaults to None.
-                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
-            zone_name (str, optional): The name of the zone to search for. Defaults to None.
-            base_name (str, optional): The name of the base to search for. Defaults to None.
-            time (float, optional): The specific time at which to retrieve field names. If a specific time is not provided, the method will display the tree structure for the default time step.
-
-        Returns:
-            set[str]: A set containing the names of the fields that match the specified criteria.
-        """
-        return self.features.get_field_names(
-            location=location, zone_name=zone_name, base_name=base_name, time=time
-        )
 
     # -------------------------------------------------------------------------#
 
@@ -507,168 +301,6 @@ class Sample(BaseModel):
         ]
 
         return tree
-
-    def show_tree(self, time: Optional[float] = None) -> None:
-        """Display the structure of the CGNS tree for a specified time.
-
-        Args:
-            time (float, optional): The time step for which you want to display the CGNS tree structure. Defaults to None. If a specific time is not provided, the method will display the tree structure for the default time step.
-
-        Examples:
-            .. code-block:: python
-
-                # To display the CGNS tree structure for the default time step:
-                sample.show_tree()
-
-                # To display the CGNS tree structure for a specific time step:
-                sample.show_tree(0.5)
-        """
-        self.features.show_tree(time)
-
-    def add_field(
-        self,
-        name: str,
-        field: Field,
-        location: str = "Vertex",
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-        warning_overwrite=True,
-    ) -> None:
-        """Add a field to a specified zone in the grid.
-
-        Args:
-            name (str): The name of the field to be added.
-            field (Field): The field data to be added.
-            zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
-            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
-            location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
-                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
-            time (float, optional): The time associated with the field. Defaults to 0.
-            warning_overwrite (bool, optional): Show warning if an preexisting field is being overwritten
-
-        Raises:
-            KeyError: Raised if the specified zone does not exist in the given base.
-        """
-        self.features.add_field(
-            name,
-            field,
-            location=location,
-            zone_name=zone_name,
-            base_name=base_name,
-            time=time,
-            warning_overwrite=warning_overwrite,
-        )
-
-    def get_field(
-        self,
-        name: str,
-        location: str = "Vertex",
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> Field:
-        """Retrieve a field with a specified name from a given zone, base, location, and time.
-
-        Args:
-            name (str): The name of the field to retrieve.
-            location (str, optional): The location at which to retrieve the field. Defaults to 'Vertex'.
-                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
-            zone_name (str, optional): The name of the zone to search for. Defaults to None.
-            base_name (str, optional): The name of the base to search for. Defaults to None.
-            time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
-
-        Returns:
-            Field: A set containing the names of the fields that match the specified criteria.
-        """
-        return self.features.get_field(
-            name=name,
-            location=location,
-            zone_name=zone_name,
-            base_name=base_name,
-            time=time,
-        )
-
-    def del_field(
-        self,
-        name: str,
-        location: str = "Vertex",
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> CGNSTree:
-        """Delete a field from a specified zone in the grid.
-
-        Args:
-            name (str): The name of the field to be deleted.
-            location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
-                Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
-            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
-            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
-            time (float, optional): The time associated with the field. Defaults to 0.
-
-        Raises:
-            KeyError: Raised if the specified zone or field does not exist in the given base.
-
-        Returns:
-            CGNSTree: The tree at the provided time (without the deleted node)
-        """
-        return self.features.del_field(
-            name=name,
-            location=location,
-            zone_name=zone_name,
-            base_name=base_name,
-            time=time,
-        )
-
-    def get_nodes(
-        self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> Optional[np.ndarray]:
-        """Get grid node coordinates from a specified base, zone, and time.
-
-        Args:
-            zone_name (str, optional): The name of the zone to search for. Defaults to None.
-            base_name (str, optional): The name of the base to search for. Defaults to None.
-            time (float, optional):  The time value to consider when searching for the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
-
-        Raises:
-            TypeError: Raised if multiple <GridCoordinates> nodes are found. Only one is expected.
-
-        Returns:
-            Optional[np.ndarray]: A NumPy array containing the grid node coordinates.
-            If no matching zone or grid coordinates are found, None is returned.
-
-        Seealso:
-            This function can also be called using `get_points()` or `get_vertices()`.
-        """
-        return self.features.get_nodes(zone_name, base_name, time)
-
-    def set_nodes(
-        self,
-        nodes: np.ndarray,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
-        time: Optional[float] = None,
-    ) -> None:
-        """Set the coordinates of nodes for a specified base and zone at a given time.
-
-        Args:
-            nodes (np.ndarray): A numpy array containing the new node coordinates.
-            zone_name (str, optional): The name of the zone where the nodes should be updated. Defaults to None.
-            base_name (str, optional): The name of the base where the nodes should be updated. Defaults to None.
-            time (float, optional): The time at which the node coordinates should be updated. If a specific time is not provided, the method will display the tree structure for the default time step.
-
-        Raises:
-            KeyError: Raised if the specified base or zone do not exist. You should first
-            create the base and zone using the `Sample.init_zone(zone_name,base_name)` method.
-
-        Seealso:
-            This function can also be called using `set_points()` or `set_vertices()`
-        """
-        self.features.set_nodes(nodes, zone_name, base_name, time)
 
     # -------------------------------------------------------------------------#
 

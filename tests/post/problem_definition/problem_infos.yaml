@@ -1,19 +1,17 @@
 task: regression
 input_features:
-  - name: feature_1
-    type: scalar
+- type: scalar
+  name: feature_1
 output_features:
-  - name: feature_2
-    type: scalar
+- type: scalar
+  name: feature_2
 input_scalars:
 - feature_1
 output_scalars:
 - feature_2
 input_fields: []
-output_fields:
-- field_1
+output_fields: []
 input_timeseries: []
 output_timeseries: []
-input_meshes:
-- mesh
+input_meshes: []
 output_meshes: []

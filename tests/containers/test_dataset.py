@@ -860,7 +860,7 @@ class Test_Dataset:
         feat_id = [fid for fid in feat_id if fid["type"] not in ["scalar"]]
         dataset_1 = dataset_with_samples.extract_dataset_from_identifier(feat_id)
         feat_id = other_dataset_with_samples.get_all_features_identifiers()
-        feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "node"]]
+        feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "nodes"]]
         dataset_2 = other_dataset_with_samples.extract_dataset_from_identifier(feat_id)
         dataset_merge_1 = dataset_1.merge_features(dataset_2, in_place=False)
         dataset_merge_2 = dataset_2.merge_features(dataset_1, in_place=False)
@@ -870,6 +870,22 @@ class Test_Dataset:
         )
         dataset_2.merge_features(dataset_1, in_place=True)
         dataset_1.merge_features(dataset_2, in_place=True)
+
+    # def test_merge_features2(self, dataset_with_samples, other_dataset_with_samples):
+    #     feat_id = dataset_with_samples.get_all_features_identifiers()
+    #     feat_id = [fid for fid in feat_id if fid["type"] == "scalar"]
+    #     dataset_1 = dataset_with_samples.extract_dataset_from_identifier(feat_id)
+    #     feat_id = other_dataset_with_samples.get_all_features_identifiers()
+    #     # feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "nodes"]]
+    #     dataset_2 = other_dataset_with_samples.extract_dataset_from_identifier(feat_id)
+    #     dataset_merge_1 = dataset_1.merge_features(dataset_2, in_place=False)
+    #     dataset_merge_2 = dataset_2.merge_features(dataset_1, in_place=False)
+    #     assert (
+    #         dataset_merge_1[0].get_all_features_identifiers()
+    #         == dataset_merge_2[0].get_all_features_identifiers()
+    #     )
+    #     dataset_2.merge_features(dataset_1, in_place=True)
+    #     dataset_1.merge_features(dataset_2, in_place=True)
 
     def test_merge_features_with_None(self, dataset_with_samples):
         dataset_with_samples.merge_features(None)
