@@ -76,6 +76,7 @@ class Sample(BaseModel):
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
         revalidate_instances="always",
+        extra="forbid"
     )
 
     # Attributes
@@ -669,83 +670,6 @@ class Sample(BaseModel):
         self.features.set_nodes(nodes, zone_name, base_name, time)
 
     # -------------------------------------------------------------------------#
-    def get_time_series_names(self) -> set[str]:
-        """Get the names of time series associated with the object.
-
-        Returns:
-            set[str]: A set of strings containing the names of the time series.
-        """
-        if self.time_series is None:
-            return []
-        else:
-            return list(self.time_series.keys())
-
-    def get_time_series(self, name: str) -> Optional[TimeSeries]:
-        """Retrieve a time series by name.
-
-        Args:
-            name (str): The name of the time series to retrieve.
-
-        Returns:
-            TimeSeries or None: If a time series with the given name exists, it returns the corresponding time series, or None otherwise.
-
-        """
-        if (self.time_series is None) or (name not in self.time_series):
-            return None
-        else:
-            return self.time_series[name]
-
-    def add_time_series(
-        self, name: str, time_sequence: TimeSequence, values: Field
-    ) -> None:
-        """Add a time series to the sample.
-
-        Args:
-            name (str): A descriptive name for the time series.
-            time_sequence (TimeSequence): The time sequence, array of time points.
-            values (Field): The values corresponding to the time sequence.
-
-        Example:
-            .. code-block:: python
-
-                from plaid import Sample
-                sample.add_time_series('stuff', np.arange(2), np.random.randn(2))
-                print(sample.get_time_series('stuff'))
-                >>> (array([0, 1]), array([-0.59630135, -1.15572306]))
-
-        Raises:
-            TypeError: Raised if the length of `time_sequence` is not equal to the length of `values`.
-        """
-        _check_names([name])
-        assert len(time_sequence) == len(values), (
-            "time sequence and values do not have the same size"
-        )
-        if self.time_series is None:
-            self.time_series = {name: (time_sequence, values)}
-        else:
-            self.time_series[name] = (time_sequence, values)
-
-    def del_time_series(self, name: str) -> tuple[TimeSequence, Field]:
-        """Delete a time series from the sample.
-
-        Args:
-            name (str): The name of the time series to be deleted.
-
-        Raises:
-            KeyError: Raised when there is no time series / there is no time series with the provided name.
-
-        Returns:
-            tuple[TimeSequence, Field]: A tuple containing the time sequence and values of the deleted time series.
-        """
-        if self.time_series is None:
-            raise KeyError("There is no time series inside this sample.")
-
-        if name not in self.time_series:
-            raise KeyError(f"There is no time series with name {name}.")
-
-        return self.time_series.pop(name)
-
-    # -------------------------------------------------------------------------#
 
     def del_all_fields(
         self,
@@ -1311,18 +1235,13 @@ class Sample(BaseModel):
         nb_fields = len(field_names)
         str_repr += f"{nb_fields} field{'' if nb_fields == 1 else 's'}, "
 
-        # CGNS tree
-        if not self.features.data:
-            str_repr += "no tree, "
-        else:
-            # TODO
-            pass
-
         if str_repr[-2:] == ", ":
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
 
         return str_repr
+
+    __repr__ = __str__
 
     def summarize(self) -> str:
         """Provide detailed summary of the Sample content, showing feature names and mesh information.

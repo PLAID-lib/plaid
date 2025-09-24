@@ -1,12 +1,13 @@
 # ---
 # jupyter:
 #   jupytext:
+#     custom_cell_magics: kql
 #     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.17.3
+#       jupytext_version: 1.11.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -366,6 +367,12 @@ tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000
 print(f"Save dataset in: {tmpdir}")
 
 dataset._save_to_dir_(tmpdir)
+
+print(dataset.get_scalar_names())
+
+for i in range(9):
+    print(dataset[i].show_tree())
+    print("===")
 
 # %% [markdown]
 # ### Get the number of Samples that can be loaded from a directory

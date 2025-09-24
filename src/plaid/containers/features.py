@@ -687,13 +687,13 @@ class SampleFeatures:
         # get_base will look for default base_name and time
         base_node = self.get_base(base_name, time)
         if base_node is None:
-            logger.warning(f"No base with name {base_name} in this tree")
+            # logger.warning(f"No base with name {base_name} in this tree")
             return None
 
         # _zone_attribution will look for default base_name
         zone_name = self.get_zone_assignment(zone_name, base_name, time, globals)
         if zone_name is None:
-            logger.warning(f"No zone with name {zone_name} in this base ({base_name})")
+            # logger.warning(f"No zone with name {zone_name} in this base ({base_name})")
             return None
 
         return CGU.getNodeByPath(base_node, zone_name)
@@ -800,10 +800,10 @@ class SampleFeatures:
         name: str,
         time: Optional[float] = None,
     ) -> Optional[np.ndarray]:
-        base_node = self.get_base("Global", time=time)
-        if base_node is None:
+        base_names = self.get_base_names(time=time, globals=True)
+        if "Global" not in base_names:
             return None
-
+        base_node = self.get_base("Global", time=time)
         global_ = CGU.getValueByPath(base_node, name)
         return global_.item() if getattr(global_, "size", None) == 1 else global_
 
@@ -814,8 +814,10 @@ class SampleFeatures:
         time: Optional[float] = None,
     ) -> None:
         _check_names(name)
-        base_node = self.get_base("Global", time=time)
-        if base_node is None:
+        base_names = self.get_base_names(time=time, globals=True)
+        if "Global" in base_names:
+            base_node = self.get_base("Global", time=time)
+        else:
             base_node = self.init_base(1, 1, "Global", time, globals=True)
 
         if CGU.getValueByPath(base_node, name) is None:
@@ -846,12 +848,14 @@ class SampleFeatures:
             all_times = [time]
         global_names = []
         for time in all_times:
-            base_node = self.get_base("Global", time=time)
-            if base_node is not None:
-                global_paths = CGU.getAllNodesByTypeSet(base_node, ["DataArray_t"])
-                for path in global_paths:
-                    if "Time" not in path:
-                        global_names.append(CGU.getNodeByPath(base_node, path)[0])
+            base_names = self.get_base_names(time=time, globals=True)
+            if "Global" in base_names:
+                base_node = self.get_base("Global", time=time)
+                if base_node is not None:
+                    global_paths = CGU.getAllNodesByTypeSet(base_node, ["DataArray_t"])
+                    for path in global_paths:
+                        if "Time" not in path:
+                            global_names.append(CGU.getNodeByPath(base_node, path)[0])
         return global_names
 
     # -------------------------------------------------------------------------#

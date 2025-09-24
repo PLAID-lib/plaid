@@ -94,9 +94,6 @@ def prepare_metrics_for_split(
     ref_scal = np.array([ref_out_specific_scalars[i] for i in split_indices])
     predict_scal = np.array([pred_out_specific_scalars[i] for i in split_indices])
 
-    print("ref_scal =", ref_scal)
-    print("predict_scal =", predict_scal)
-
     diff = predict_scal - ref_scal
     rel_SE_out_specific_scalars[:] = (diff / ref_scal) ** 2
     abs_SE_out_specific_scalars[:] = diff**2

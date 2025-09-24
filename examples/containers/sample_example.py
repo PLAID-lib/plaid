@@ -124,19 +124,6 @@ sample.add_scalar("other", np.random.randn())
 show_sample(sample)
 
 # %% [markdown]
-# ### Add time series to a Sample
-
-# %%
-# Add a time series named 'stuff'
-sample.add_time_series("stuff", np.arange(10), np.random.randn(10))
-
-# Add a time series named 'bluff'
-sample.add_time_series("bluff", np.arange(2, 6), np.random.randn(4))
-
-# As you can see it is not displayed when printing
-show_sample(sample)
-
-# %% [markdown]
 # ### Add a CGNS Tree to a Sample and display it
 
 # %%
@@ -264,17 +251,6 @@ print(f"{sample.get_scalar('rotation') = }")
 print(f"{sample.get_field_names() = }")
 print(f"{sample.get_field('T') = }")
 print(f"{sample.get_field('Temperature') = }")
-
-# %% [markdown]
-# ### Access time series data in Sample
-
-# %%
-# It will look for a default base if no base and zone are given
-sample.add_time_series("stuff", np.arange(10), np.random.randn(10))
-
-print(f"{sample.get_time_series_names() = }")
-print(f"{sample.get_time_series('S') = }")
-print(f"{sample.get_time_series('stuff') = }")
 
 # %% [markdown]
 # ### Access to points coordinates

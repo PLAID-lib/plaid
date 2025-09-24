@@ -84,30 +84,27 @@ class Test_Huggingface_Bridge:
 
     def test_to_plaid_sample_fallback_build_succeeds(self, dataset):
         sample = dataset[0]
-        bad_sample = {
+        old_hf_sample = {
             "path": getattr(sample, "path", None),
-            "scalars": sample.scalars.data,
+            "scalars": {sn:sample.get_scalar(sn) for sn in sample.get_scalar_names()},
             "meshes": sample.features.data,
             "mesh_base_name": sample.features._mesh_base_name,
             "mesh_zone_name": sample.features._mesh_zone_name,
             "links": sample.features._links,
             "paths": sample.features._paths,
-            "time_series": getattr(sample, "time_series", None),
         }
-        bad_hf_sample = {"sample": pickle.dumps(bad_sample)}
-        plaid_sample = to_plaid_sample(bad_hf_sample)
+        old_hf_sample = {"sample": pickle.dumps(old_hf_sample)}
+        plaid_sample = to_plaid_sample(old_hf_sample)
         assert isinstance(plaid_sample, Sample)
 
     def test_to_plaid_sample_missing_key_raises_keyerror(self, dataset):
         sample = dataset[0]
         bad_sample = {
             "path": getattr(sample, "path", None),
-            "meshes": sample.features.data,
             "mesh_base_name": sample.features._mesh_base_name,
             "mesh_zone_name": sample.features._mesh_zone_name,
             "links": sample.features._links,
             "paths": sample.features._paths,
-            "time_series": getattr(sample, "time_series", None),
         }
         bad_hf_sample = {"sample": pickle.dumps(bad_sample)}
         with pytest.raises(KeyError):

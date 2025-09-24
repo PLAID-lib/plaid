@@ -89,46 +89,6 @@ def field_data_of_different_size():
     return np.random.randn(51)
 
 
-@pytest.fixture()
-def time_series_data():
-    # 10 time steps, 1 feature
-    times = np.linspace(0, 1, 10)
-    values = np.random.randn(10)
-    return times, values
-
-
-@pytest.fixture()
-def time_series_data_of_different_size():
-    # 5 time steps, 1 feature
-    times = np.linspace(0, 1, 5)
-    values = np.random.randn(5)
-    return times, values
-
-
-@pytest.fixture()
-def sample_with_time_series(time_series_data, field_data):
-    s = Sample()
-    times, values = time_series_data
-    s.add_time_series("ts1", time_sequence=times, values=values)
-    s.init_base(1, 1)
-    s.init_zone(np.array([0, 0, 0]))
-    s.add_field(name="field1", field=field_data)
-    return s
-
-
-@pytest.fixture()
-def sample_with_time_series_of_different_size(
-    time_series_data_of_different_size, field_data_of_different_size
-):
-    s = Sample()
-    times, values = time_series_data_of_different_size
-    s.add_time_series("ts1", time_sequence=times, values=values)
-    s.init_base(1, 1)
-    s.init_zone(np.array([0, 0, 0]))
-    s.add_field(name="field1", field=field_data_of_different_size)
-    return s
-
-
 # %% Functions
 
 
@@ -247,11 +207,6 @@ class Test_Stats:
 
         sample: Sample = samples[0]
         feature_names = sample.get_scalar_names()
-        feature_names.extend(
-            item
-            for ts_name in sample.get_time_series_names()
-            for item in (f"time_series/{ts_name}", f"timestamps/{ts_name}")
-        )
         for base_name in sample.features.get_base_names():
             for zone_name in sample.features.get_zone_names(base_name=base_name):
                 for location in CGNS_FIELD_LOCATIONS:
@@ -297,184 +252,37 @@ class Test_Stats:
         stats.clear_statistics()
         assert len(stats.get_available_statistics()) == 0
 
-    def test_add_samples_time_series_case_1(self, sample_with_time_series: Sample):
-        # 1st case: adding time series with same sizes with 2 calls to add_samples
-        stats1 = Stats()
-        stats1.add_samples([sample_with_time_series])
-        stats1.add_samples([sample_with_time_series])
-        keys = stats1.get_available_statistics()
-
-        assert "Base_1_1/Zone/Vertex/field1" in keys
-        stat_field = stats1._stats["Base_1_1/Zone/Vertex/field1"]
-        assert stat_field.n_samples == 2
-        assert stat_field.n_points == 202
-        stats_dict = stat_field.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 101)
-
-        assert "time_series/ts1" in keys
-        assert "timestamps/ts1" in keys
-        stat = stats1._stats["time_series/ts1"]
-        assert stat.n_samples == 2
-        assert stat.n_points == 20
-        stats_dict = stat.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 10)
-
-    def test_add_samples_time_series_case_2(
-        self, sample_with_time_series, sample_with_time_series_of_different_size
-    ):
-        # 2nd case: adding time series with different sizes with 2 calls to add_samples
-        stats2 = Stats()
-        stats2.add_samples([sample_with_time_series])
-        stats2.add_samples([sample_with_time_series_of_different_size])
-        keys = stats2.get_available_statistics()
-
-        assert "Base_1_1/Zone/Vertex/field1" in keys
-        stat_field = stats2._stats["Base_1_1/Zone/Vertex/field1"]
-        assert stat_field.n_samples == 2
-        assert stat_field.n_points == 152
-        stats_dict = stat_field.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 1)
-
-        assert "time_series/ts1" in keys
-        assert "timestamps/ts1" in keys
-        stat = stats2._stats["time_series/ts1"]
-        assert stat.n_samples == 2
-        assert stat.n_points == 15
-        stats_dict = stat.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 1)
-
-    def test_add_samples_time_series_case_3(self, sample_with_time_series):
-        # 3rd case: adding time series with same sizes in a single call to add_samples, in empty stats
-        stats3 = Stats()
-        stats3.add_samples([sample_with_time_series, sample_with_time_series])
-        keys = stats3.get_available_statistics()
-
-        assert "Base_1_1/Zone/Vertex/field1" in keys
-        stat_field = stats3._stats["Base_1_1/Zone/Vertex/field1"]
-        assert stat_field.n_samples == 2
-        assert stat_field.n_points == 202
-        stats_dict = stat_field.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 101)
-
-        assert "time_series/ts1" in keys
-        assert "timestamps/ts1" in keys
-        stat = stats3._stats["time_series/ts1"]
-        assert stat.n_samples == 2
-        assert stat.n_points == 20
-        stats_dict = stat.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 10)
-
-    def test_add_samples_time_series_case_4(
-        self, sample_with_time_series, sample_with_time_series_of_different_size
-    ):
-        # 4th case: adding time series with different sizes in a single call to add_samples, in empty stats
-        stats4 = Stats()
-        stats4.add_samples(
-            [sample_with_time_series, sample_with_time_series_of_different_size]
-        )
-        keys = stats4.get_available_statistics()
-
-        assert "Base_1_1/Zone/Vertex/field1" in keys
-        stat_field = stats4._stats["Base_1_1/Zone/Vertex/field1"]
-        assert stat_field.n_samples == 2
-        assert stat_field.n_points == 152
-        stats_dict = stat_field.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 1)
-
-        assert "time_series/ts1" in keys
-        assert "timestamps/ts1" in keys
-        stat = stats4._stats["time_series/ts1"]
-        assert stat.n_samples == 2
-        assert stat.n_points == 15
-        stats_dict = stat.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 1)
-
-    def test_add_samples_time_series_case_5(
-        self, sample_with_time_series, sample_with_time_series_of_different_size
-    ):
-        # 5th case: adding time series with different sizes in a single call to add_samples, in non-empty stats
-        stats5 = Stats()
-        stats5.add_samples([sample_with_time_series])
-        stats5.add_samples(
-            [sample_with_time_series, sample_with_time_series_of_different_size]
-        )
-        keys = stats5.get_available_statistics()
-
-        assert "Base_1_1/Zone/Vertex/field1" in keys
-        stat_field = stats5._stats["Base_1_1/Zone/Vertex/field1"]
-        assert stat_field.n_samples == 3
-        assert stat_field.n_points == 253
-        stats_dict = stat_field.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 1)
-
-        assert "time_series/ts1" in keys
-        assert "timestamps/ts1" in keys
-        stat = stats5._stats["time_series/ts1"]
-        assert stat.n_samples == 3
-        assert stat.n_points == 25
-        stats_dict = stat.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 1)
-
-    def test_merge_stats_with_same_sizes(self, sample_with_time_series):
+    def test_merge_stats_with_same_sizes(self, sample_with_field):
         stats1 = Stats()
         stats2 = Stats()
-        stats1.add_samples([sample_with_time_series])
-        stats2.add_samples([sample_with_time_series])
+        stats1.add_samples([sample_with_field])
+        stats1.add_samples([sample_with_field])
         stats1.merge_stats(stats2)
         keys = stats1.get_available_statistics()
-        assert "Base_1_1/Zone/Vertex/field1" in keys
+        assert "Base_3_3/Zone/Vertex/bar" in keys
 
-        stat_field = stats1._stats["Base_1_1/Zone/Vertex/field1"]
+        stat_field = stats1._stats["Base_3_3/Zone/Vertex/bar"]
         assert stat_field.n_samples == 2
-        assert stat_field.n_points == 202
-        assert stat_field.n_features == 101
+        assert stat_field.n_points == 100
+        assert stat_field.n_features == 50
         stats_dict = stat_field.get_stats()
         check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 101)
+        assert stats_dict["mean"].shape == (1, 50)
 
-        assert "time_series/ts1" in keys
-        assert "timestamps/ts1" in keys
-        stat = stats1._stats["time_series/ts1"]
-        assert stat.n_samples == 2
-        assert stat.n_points == 20
-        assert stat.n_features == 10
-        stats_dict = stat.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 10)
 
-    def test_merge_stats_with_different_sizes(
-        self, sample_with_time_series, sample_with_time_series_of_different_size
-    ):
+    def test_merge_stats_with_different_feautres(self, sample_with_scalar, sample_with_field):
         stats1 = Stats()
         stats2 = Stats()
-        stats1.add_samples([sample_with_time_series])
-        stats2.add_samples([sample_with_time_series_of_different_size])
+        stats1.add_samples([sample_with_scalar])
+        stats2.add_samples([sample_with_field])
         stats1.merge_stats(stats2)
         keys = stats1.get_available_statistics()
-        assert "Base_1_1/Zone/Vertex/field1" in keys
+        assert "foo" in keys
 
-        stat_field = stats1._stats["Base_1_1/Zone/Vertex/field1"]
-        assert stat_field.n_samples == 2
-        assert stat_field.n_points == 152
+        stat_field = stats1._stats["foo"]
+        assert stat_field.n_samples == 1
+        assert stat_field.n_points == 1
+        assert stat_field.n_features == 1
         stats_dict = stat_field.get_stats()
-        check_stats_dict(stats_dict)
-        assert stats_dict["mean"].shape == (1, 1)
-
-        assert "time_series/ts1" in keys
-        assert "timestamps/ts1" in keys
-        stat = stats1._stats["time_series/ts1"]
-        assert stat.n_samples == 2
-        assert stat.n_points == 15
-        stats_dict = stat.get_stats()
         check_stats_dict(stats_dict)
         assert stats_dict["mean"].shape == (1, 1)

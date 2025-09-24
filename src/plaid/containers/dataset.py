@@ -1813,7 +1813,7 @@ class Dataset(object):
 
     __call__ = __getitem__
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         """Return a string representation of the dataset.
 
         Returns:
@@ -1845,3 +1845,5 @@ class Dataset(object):
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
         return str_repr
+
+    __repr__ = __str__
