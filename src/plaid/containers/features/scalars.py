@@ -9,10 +9,6 @@ from plaid.containers.utils import (
 from plaid.types import Scalar
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
 
 
 class SampleScalars:

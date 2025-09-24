@@ -37,10 +37,6 @@ from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
 
 
 # %% Functions
@@ -72,6 +68,8 @@ class Dataset(object):
         directory_path: Optional[Union[str, Path]] = None,
         verbose: bool = False,
         processes_number: int = 0,
+        samples: Optional[list[Sample]] = None,
+        sample_ids: Optional[list[int]] = None,
     ) -> None:
         """Initialize a :class:`Dataset <plaid.containers.dataset.Dataset>`.
 
@@ -84,11 +82,14 @@ class Dataset(object):
             directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
+            samples (list[Sample], optional): A list of :class:`Samples <plaid.containers.sample.Sample>` to initialize the :class:`Dataset <plaid.containers.dataset.Dataset>`. Defaults to None.
+            sample_ids (list[int], optional): An optional list of IDs for the new samples. If not provided, the IDs will be automatically generated based on the current number of samples in the dataset.
 
         Example:
             .. code-block:: python
 
                 from plaid import Dataset
+                from plaid import Sample
 
                 # 1. Create empty instance of Dataset
                 dataset = Dataset()
@@ -109,12 +110,26 @@ class Dataset(object):
                     Sample(1 scalar, 0 time series, 0 timestamps, 0 fields)
                     Sample(2 scalars, 0 time series, 1 timestamp, 2 fields)
 
+                # 3. Create Dataset instance from a list of Samples
+                dataset = Dataset(samples=[sample1, sample2, sample3])
+                print(dataset)
+                >>> Dataset(3 samples, 0 scalars, 2 fields)
+
+                # 4. Create Dataset instance from a list of Samples with specific ids
+                dataset = Dataset(samples=[sample1, sample2, sample3], sample_ids=[3, 5, 7])
+                print(dataset)
+                >>> Dataset(3 samples, 0 scalars, 2 fields)
+
+
         Caution:
             It is assumed that you provided a compatible PLAID dataset.
         """
         self._samples: dict[int, Sample] = {}  # sample_id -> sample
         # info_name -> description
         self._infos: dict[str, dict[str, str]] = {}
+
+        if samples is not None and (directory_path is not None or path is not None):
+            raise ValueError("'samples' and 'path' are mutually exclusive")
 
         if directory_path is not None:
             if path is not None:
@@ -136,6 +151,11 @@ class Dataset(object):
                 self._load_from_dir_(
                     path, verbose=verbose, processes_number=processes_number
                 )
+        elif samples is not None:
+            if sample_ids is None:
+                self.add_samples(samples)
+            else:
+                self.add_samples(samples, sample_ids)
 
     def copy(self) -> Self:
         """Create a deep copy of the dataset.
@@ -1384,21 +1404,29 @@ class Dataset(object):
         return report
 
     @classmethod
+    @deprecated(
+        "`Dataset.from_list_of_samples(samples)` is deprecated, use instead `Dataset(samples=samples)`",
+        version="0.1.8",
+        removal="0.2.0",
+    )
     def from_list_of_samples(
         cls, list_of_samples: list[Sample], ids: Optional[list[int]] = None
     ) -> Self:
         """Initialise a dataset from a list of samples.
+
+        DEPRECATED: use `Dataset(samples=..., sample_ids=...)` instead. This classmethod will be
+        removed in a future release. It currently returns an instance
+        equivalent to calling `Dataset(samples=list_of_samples, sample_ids=ids)` and emits a
+        `DeprecationWarning`.
 
         Args:
             list_of_samples (list[Sample]): The list of samples.
             ids (list[int], optional): An optional list of IDs for the new samples. If not provided, the IDs will be automatically generated based on the current number of samples in the dataset.
 
         Returns:
-            Self: The intialized dataset (Dataset).
+            Self: The initialized dataset (Dataset).
         """
-        instance = cls()
-        instance.add_samples(list_of_samples, ids)
-        return instance
+        return cls(samples=list_of_samples, sample_ids=ids)
 
     @classmethod
     def load_from_file(

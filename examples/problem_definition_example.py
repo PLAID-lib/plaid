@@ -37,6 +37,7 @@ import numpy as np
 from plaid import Dataset, Sample
 from plaid import ProblemDefinition
 from plaid.utils.split import split_dataset
+from plaid.types import FeatureIdentifier
 
 # %% [markdown]
 # ## Section 1: Initializing an Empty ProblemDefinition
@@ -51,21 +52,29 @@ print("#---# Empty ProblemDefinition")
 problem = ProblemDefinition()
 print(f"{problem = }")
 
+# %%
+# ### Initialize some feature identifiers
+scalar_1_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_1"})
+scalar_2_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_2"})
+scalar_3_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_3"})
+field_1_feat_id = FeatureIdentifier({"type":"field", "name":"field_1", "base_name":"Base_2_2"})
+field_2_feat_id = FeatureIdentifier({"type":"field", "name":"field_2", "base_name":"Base_2_2", "location":"Vertex"})
+
 # %% [markdown]
 # ### Add inputs / outputs to a Problem Definition
 
 # %%
-# Add unique input and output variables
-problem.add_input_scalar_name("in")
-problem.add_output_scalar_name("out")
+# Add unique input and output feature identifiers
+problem.add_in_feature_identifier(scalar_1_feat_id)
+problem.add_out_feature_identifier(scalar_2_feat_id)
 
-# Add list of input and output variables
-problem.add_input_scalars_names(["in2", "in3"])
-problem.add_output_scalars_names(["out2"])
+# Add list of input and output feature identifiers
+problem.add_in_features_identifiers([scalar_3_feat_id, field_1_feat_id])
+problem.add_out_features_identifiers([field_2_feat_id])
 
-print(f"{problem.get_input_scalars_names() = }")
+print(f"{problem.get_in_features_identifiers() = }")
 print(
-    f"{problem.get_output_scalars_names() = }",
+    f"{problem.get_out_features_identifiers() = }",
 )
 
 # %% [markdown]
@@ -118,11 +127,12 @@ print(f"{problem.get_split() = }")
 print(f"{problem.get_all_indices() = }")
 
 # %% [markdown]
-# ### Filter Problem Definition inputs / outputs by name
+# ### Filter Problem Definition inputs / outputs by feature identifiers
 
 # %%
-print(f"{problem.filter_input_scalars_names(['in', 'in3', 'in5']) = }")
-print(f"{problem.filter_output_scalars_names(['out', 'out3', 'out5']) = }")
+all_feature_ids = [scalar_1_feat_id, scalar_2_feat_id, scalar_3_feat_id, field_1_feat_id, field_2_feat_id]
+print(f"{problem.filter_in_features_identifiers(all_feature_ids) = }")
+print(f"{problem.filter_out_features_identifiers(all_feature_ids) = }")
 
 # %% [markdown]
 # ## Section 3: Saving and Loading Problem Definitions

@@ -47,7 +47,6 @@ import numpy as np
 import optuna
 
 from datasets.utils.logging import disable_progress_bar
-from datasets import load_dataset
 
 from sklearn.base import clone
 from sklearn.pipeline import Pipeline
@@ -60,9 +59,10 @@ from sklearn.multioutput import MultiOutputRegressor
 
 from sklearn.model_selection import KFold, GridSearchCV
 
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, huggingface_description_to_problem_definition
+from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, load_hf_dataset_from_hub
 from plaid.pipelines.sklearn_block_wrappers import WrappedSklearnTransformer, WrappedSklearnRegressor
 from plaid.pipelines.plaid_blocks import TransformedTargetRegressor, ColumnTransformer
+
 
 disable_progress_bar()
 n_processes = min(max(1, os.cpu_count()), 6)
@@ -72,23 +72,17 @@ n_processes = min(max(1, os.cpu_count()), 6)
 #
 # We load the `VKI-LS59` dataset from Hugging Face and restrict ourselves to the first 24 samples of the training set.
 
-# %% [markdown]
-# ```python
-# hf_dataset = load_dataset("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
-# dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
-# ```
+# %%
+hf_dataset = load_hf_dataset_from_hub("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
+dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
+
 
 # %% [markdown]
 # We print the summary of dataset_train, which contains 24 samples, with 8 scalars and 8 fields, which is consistent with the `VKI-LS59` dataset:
 
-# %% [markdown]
-# ```python
-# print(dataset_train)
-# ```
-#
-# ```bash
-# Dataset(24 samples, 8 scalars, 0 time_series, 8 fields)
-# ```
+# %%
+print(dataset_train)
+
 
 # %% [markdown]
 # ### ⚙️ Pipeline Configuration
@@ -122,10 +116,10 @@ all_feature_id = config['input_scalar_scaler']['in_features_identifiers'] +\
 # In this example, we aim to predict the ``mach`` field based on two input scalars ``angle_in`` and ``mach_out``, and the mesh node coordinates. To contain memory consumption, we restrict the dataset to the features required for this example:
 
 # %%
-# dataset_train = dataset_train.extract_dataset_from_identifier(all_feature_id)
-# print("dataset_train =", dataset_train)
-# print("scalar names =", dataset_train.get_scalar_names())
-# print("field names =", dataset_train.get_field_names())
+dataset_train = dataset_train.extract_dataset_from_identifier(all_feature_id)
+print("dataset_train =", dataset_train)
+print("scalar names =", dataset_train.get_scalar_names())
+print("field names =", dataset_train.get_field_names())
 
 # %% [markdown]
 # We notive that only the 2 scalars and the field of interest are kept after restriction.
@@ -149,19 +143,12 @@ preprocessor
 #
 # To verify this behavior, we apply the `preprocessor` to `dataset_train`:
 
-# %% [markdown]
-# ```python
-# preprocessed_dataset = preprocessor.fit_transform(dataset_train)
-# print("preprocessed_dataset:", preprocessed_dataset)
-# print("scalar names =", preprocessed_dataset.get_scalar_names())
-# print("field names =", preprocessed_dataset.get_field_names())
-# ```
-#
-# ```bash
-# preprocessed_dataset: Dataset(24 samples, 3 scalars, 0 time_series, 1 field)
-# scalar names = ['angle_in', 'mach_out', 'reduced_nodes_*']
-# field names = ['mach']
-# ```
+# %%
+preprocessed_dataset = preprocessor.fit_transform(dataset_train)
+print("preprocessed_dataset:", preprocessed_dataset)
+print("scalar names =", preprocessed_dataset.get_scalar_names())
+print("field names =", preprocessed_dataset.get_field_names())
+
 
 # %% [markdown]
 # Using `MinMaxScaler`, we scaled the `angle_in` and `mach_out` features, replacing their original values. In contrast, `PCA` compressed the node coordinates and produced new scalar features named `reduced_nodes_*`, representing the PCA components. Alternatively, we could have specified `out_features_identifiers` in the `.yml` file configuring the `MinMaxScaler` block to generate new scalars without overwriting the original inputs.
@@ -223,189 +210,136 @@ pipeline
 # We now use Optuna to optimize hyperparameters, specifically tuning the number of components for the two `PCA` blocks using three-fold cross-validation.
 
 
-# %% [markdown]
-# ```python
-# def objective(trial):
-#     # Suggest hyperparameters
-#     nodes_n_components = trial.suggest_int("preprocessor__pca_nodes__sklearn_block__n_components", 3, 4)
-#     mach_n_components = trial.suggest_int("regressor__transformer__sklearn_block__n_components", 4, 5)
-#
-#     # Clone and configure pipeline
-#     pipeline_run = clone(pipeline)
-#     pipeline_run.set_params(
-#         preprocessor__pca_nodes__sklearn_block__n_components=nodes_n_components,
-#         regressor__transformer__sklearn_block__n_components=mach_n_components,
-#         regressor__regressor__sklearn_block__estimator__kernel=Matern(
-#                     length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(nodes_n_components + len(config['input_scalar_scaler']['in_features_identifiers']))
-#                 )
-#     )
-#
-#     cv = KFold(n_splits=3, shuffle=True, random_state=42)
-#
-#     scores = []
-#
-#     indices = np.arange(len(dataset_train))
-#
-#     for train_idx, val_idx in cv.split(indices):
-#
-#         dataset_cv_train_ = dataset_train[train_idx]
-#         dataset_cv_val_   = dataset_train[val_idx]
-#
-#         pipeline_run.fit(dataset_cv_train_)
-#
-#         score = pipeline_run.score(dataset_cv_val_)
-#
-#         scores.append(score)
-#
-#     return np.mean(scores)
-# ```
+# %%
+def objective(trial):
+    # Suggest hyperparameters
+    nodes_n_components = trial.suggest_int("preprocessor__pca_nodes__sklearn_block__n_components", 3, 4)
+    mach_n_components = trial.suggest_int("regressor__transformer__sklearn_block__n_components", 4, 5)
+
+    # Clone and configure pipeline
+    pipeline_run = clone(pipeline)
+    pipeline_run.set_params(
+        preprocessor__pca_nodes__sklearn_block__n_components=nodes_n_components,
+        regressor__transformer__sklearn_block__n_components=mach_n_components,
+        regressor__regressor__sklearn_block__estimator__kernel=Matern(
+                    length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(nodes_n_components + len(config['input_scalar_scaler']['in_features_identifiers']))
+                )
+    )
+
+    cv = KFold(n_splits=3, shuffle=True, random_state=42)
+
+    scores = []
+
+    indices = np.arange(len(dataset_train))
+
+    for train_idx, val_idx in cv.split(indices):
+
+        dataset_cv_train_ = dataset_train[train_idx]
+        dataset_cv_val_   = dataset_train[val_idx]
+
+        pipeline_run.fit(dataset_cv_train_)
+
+        score = pipeline_run.score(dataset_cv_val_)
+
+        scores.append(score)
+
+    return np.mean(scores)
 
 # %% [markdown]
 # We maximize the defined objective function over 4 trials selected by Optuna.
 
 
-# %% [markdown]
-# ```python
-# preprocessed_dataset = preprocessor.fit_transform(dataset_train)
-# print("preprocessed_dataset:", preprocessed_dataset)
-# print("scalar names =", preprocessed_dataset.get_scalar_names())
-# print("field names =", preprocessed_dataset.get_field_names())
-# ```
-#
-# ```bash
-# preprocessed_dataset: Dataset(24 samples, 3 scalars, 0 time_series, 1 field)
-# scalar names = ['angle_in', 'mach_out', 'reduced_nodes_*']
-# field names = ['mach']
-# ```
+# %%
+preprocessed_dataset = preprocessor.fit_transform(dataset_train)
+print("preprocessed_dataset:", preprocessed_dataset)
+print("scalar names =", preprocessed_dataset.get_scalar_names())
+print("field names =", preprocessed_dataset.get_field_names())
 
-
-# %% [markdown]
-# ```python
-# study = optuna.create_study(direction='maximize')
-# study.optimize(objective, n_trials=4)
-# print("best_params =", study.best_params)
-# ```
-#
-# ```bash
-# best_params = {'preprocessor__pca_nodes__sklearn_block__n_components': 4, 'regressor__transformer__sklearn_block__n_components': 4}
-# ```
+# %%
+study = optuna.create_study(direction='maximize')
+study.optimize(objective, n_trials=4)
+print("best_params =", study.best_params)
 
 # %% [markdown]
 # We retrieve the best hyperparameters found by Optuna and use them to define the `optimized_pipeline`.
 
-# %% [markdown]
-# ```python
-# optimized_pipeline = clone(pipeline).set_params(**study.best_params)
-# optimized_pipeline.set_params(regressor__regressor__sklearn_block__estimator__kernel=Matern(
-#                     length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(study.best_params['preprocessor__pca_nodes__sklearn_block__n_components'] + len(config['input_scalar_scaler']['in_features_identifiers']))
-#                 )
-# )
-#
-# optimized_pipeline.fit(dataset_train)
-# ```
+# %%
+optimized_pipeline = clone(pipeline).set_params(**study.best_params)
+optimized_pipeline.set_params(regressor__regressor__sklearn_block__estimator__kernel=Matern(
+                    length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(study.best_params['preprocessor__pca_nodes__sklearn_block__n_components'] + len(config['input_scalar_scaler']['in_features_identifiers']))
+                )
+)
+
+optimized_pipeline.fit(dataset_train)
+
 
 # %% [markdown]
 # Next, we fit the `optimized_pipeline` to the `dataset_train` dataset and evaluate its performance on the same data.
 
-# %% [markdown]
-# ```python
-# dataset_pred = optimized_pipeline.predict(dataset_train)
-# score = optimized_pipeline.score(dataset_train)
-# print("score =", score, ", error =", 1. - score)
-# ```
-#
-# ```bash
-# score = 0.9615073680370873 , error = 0.03849263196291275
-# ```
+# %%
+dataset_pred = optimized_pipeline.predict(dataset_train)
+score = optimized_pipeline.score(dataset_train)
+print("score =", score, ", error =", 1. - score)
 
 # %% [markdown]
 # We use an anisotropic kernel in the Gaussian Process. Its optimized `length_scale` is a vector with dimensions equal to 2 plus the number of PCA components from `preprocessor__pca_nodes__sklearn_block__n_components`, accounting for the two input scalars.
 
-# %% [markdown]
-# ```python
-# print(optimized_pipeline.named_steps["regressor"].regressor_.sklearn_block_.estimators_[0].kernel_.get_params()['length_scale'])
-# ```
-#
-# ```bash
-# [8.18059014e-01 3.46865845e-01 3.82671445e+01 6.56887169e+00
-#  1.29524957e+03 1.00000000e+08]
-# ```
+# %%
+print(optimized_pipeline.named_steps["regressor"].regressor_.sklearn_block_.estimators_[0].kernel_.get_params()['length_scale'])
 
-# %% [markdown]
-# ```python
-# print("Dimension GP kernel length_scale =", len(optimized_pipeline.named_steps["regressor"].regressor_.sklearn_block_.estimators_[0].kernel_.get_params()['length_scale']))
-# print("Expected dimension =", 2 + study.best_params['preprocessor__pca_nodes__sklearn_block__n_components'])
-# ```
-#
-# ```bash
-# Dimension GP kernel length_scale = 6
-#  Expected dimension = 6
-# ```
+# %%
+print("Dimension GP kernel length_scale =", len(optimized_pipeline.named_steps["regressor"].regressor_.sklearn_block_.estimators_[0].kernel_.get_params()['length_scale']))
+print("Expected dimension =", 2 + study.best_params['preprocessor__pca_nodes__sklearn_block__n_components'])
 
 # %% [markdown]
 # The error remains non-zero due to the approximation introduced by PCA. Since the Gaussian Process regressor interpolates, the error is expected to vanish on the training set if all PCA modes are retained.
 
-# %% [markdown]
-# ```python
-# exact_pipeline = clone(pipeline).set_params(
-#     preprocessor__pca_nodes__sklearn_block__n_components = 24,
-#     regressor__transformer__sklearn_block__n_components = 24
-# )
-# exact_pipeline.fit(dataset_train)
-# dataset_pred = exact_pipeline.predict(dataset_train)
-# score = exact_pipeline.score(dataset_train)
-# print("score =", score, ", error =", 1. - score)
-# ```
-#
-# ```bash
-# Dimension GP kernel length_scale = 6
-# Expected dimension = 6
-# ```
+# %%
+exact_pipeline = clone(pipeline).set_params(
+    preprocessor__pca_nodes__sklearn_block__n_components = 24,
+    regressor__transformer__sklearn_block__n_components = 24
+)
+exact_pipeline.fit(dataset_train)
+dataset_pred = exact_pipeline.predict(dataset_train)
+score = exact_pipeline.score(dataset_train)
+print("score =", score, ", error =", 1. - score)
+
 
 # %% [markdown]
 # ### 🔍 GridSearchCV hyperparameter tuning
 #
 # Since our pipeline nodes conform to the scikit-learn API, the constructed pipeline can be used directly with `GridSearchCV`.
 
-# %% [markdown]
-# ```python
-# pca_n_components = [3, 4]
-# regressor_n_components = [4, 5]
-#
-# param_grid = []
-# for n, m in zip(pca_n_components, regressor_n_components):
-#     param_grid.append(
-#         {
-#             "preprocessor__pca_nodes__sklearn_block__n_components": [n],
-#             "regressor__transformer__sklearn_block__n_components": [m],
-#             "regressor__regressor__sklearn_block__estimator__kernel": [
-#                 Matern(
-#                     length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(n + 2)
-#                 )
-#             ],
-#         }
-#     )
-#
-# cv = KFold(n_splits=3, shuffle=True, random_state=42)
-# search = GridSearchCV(pipeline, param_grid=param_grid, cv=cv, verbose=3, error_score='raise')
-#
-# search.fit(dataset_train)
-# ```
+# %%
+pca_n_components = [3, 4]
+regressor_n_components = [4, 5]
+
+param_grid = []
+for n, m in zip(pca_n_components, regressor_n_components):
+    param_grid.append(
+        {
+            "preprocessor__pca_nodes__sklearn_block__n_components": [n],
+            "regressor__transformer__sklearn_block__n_components": [m],
+            "regressor__regressor__sklearn_block__estimator__kernel": [
+                Matern(
+                    length_scale_bounds=(1e-8, 1e8), nu=2.5, length_scale=np.ones(n + 2)
+                )
+            ],
+        }
+    )
+
+cv = KFold(n_splits=3, shuffle=True, random_state=42)
+search = GridSearchCV(pipeline, param_grid=param_grid, cv=cv, verbose=3, error_score='raise')
+
+search.fit(dataset_train)
 
 # %% [markdown]
 # We evaluate the performance of the optimized pipeline by computing its score on the training set.
 
-# %% [markdown]
-# ```python
-# print("best_params =", search.best_params_)
-# optimized_pipeline = clone(pipeline).set_params(**search.best_params_)
-# optimized_pipeline.fit(dataset_train)
-# dataset_pred = optimized_pipeline.predict(dataset_train)
-# score = optimized_pipeline.score(dataset_train)
-# print("score =", score, ", error =", 1. - score)
-# ```
-#
-# ```bash
-# best_params = {'preprocessor__pca_nodes__sklearn_block__n_components': 4, 'regressor__regressor__sklearn_block__estimator__kernel': Matern(length_scale=[1, 1, 1, 1, 1, 1], nu=2.5), 'regressor__transformer__sklearn_block__n_components': 5}
-# score = 0.9692695269883018 , error = 0.03073047301169818
-# ```
+# %%
+print("best_params =", search.best_params_)
+optimized_pipeline = clone(pipeline).set_params(**search.best_params_)
+optimized_pipeline.fit(dataset_train)
+dataset_pred = optimized_pipeline.predict(dataset_train)
+score = optimized_pipeline.score(dataset_train)
+print("score =", score, ", error =", 1. - score)

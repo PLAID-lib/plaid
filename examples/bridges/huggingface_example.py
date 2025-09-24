@@ -183,7 +183,7 @@ hf_dataset.save_to_disk("/tmp/path/to/dir")
 
 # %%
 # Load from disk
-from datasets import load_from_disk, load_dataset
+from datasets import load_from_disk
 
 loaded_hf_dataset = load_from_disk("/tmp/path/to/dir")
 
@@ -232,16 +232,36 @@ print(f"{loaded_hf_dataset.description = }")
 #
 # ### Load from hub
 #
+# #### General case
+#
 # ```python
 # dataset = load_dataset("chanel/dataset", split="all_samples")
 # ```
 #
-# More efficient retrieval are made possible by partial loads and  split laods (in the case of a datasetdict):
+# More efficient retrieval are made possible by partial loads and  split loads (in the case of a datasetdict):
 #
 # ```python
 # dataset_train = load_dataset("chanel/dataset", split="train")
 # dataset_train_extract = load_dataset("chanel/dataset", split="train[:10]")
 # ```
+#
+# #### Proxy
+#
+# A retrieval function robust to cases where you are behind a proxy and relying on a private mirror is avalable;
+#
+# ```python
+# from plaid.bridges.huggingface_bridge import load_hf_dataset_from_hub
+# hf_dataset = load_hf_dataset_from_hub("chanel/dataset", *args, **kwargs)
+# ```
+#
+# - Streaming mode is not supported when using a private mirror.
+# - Falls back to local download if streaming or public loading fails.
+# - To use behind a proxy, you may need to set:
+#   - `HF_ENDPOINT` to your private mirror address
+#   - `CURL_CA_BUNDLE` to your trusted CA certificates
+#   - `HF_HOME` to a shared cache directory if needed
+
+
 
 # %% [markdown]
 # ## Section 5: Handle plaid samples from Hugging Face datasets without converting the complete dataset to plaid
@@ -279,3 +299,14 @@ show_sample(plaid_sample)
 #
 # show_sample(plaid_sample)
 # ```
+#
+# Or initialize a plaid dataset and problem definition for any number of samples relying on this streaming mechanisme:
+#
+# ```python
+# from plaid.bridges.huggingface_bridge import streamed_huggingface_dataset_to_plaid
+#
+# dataset, pb_def = streamed_huggingface_dataset_to_plaid('PLAID-datasets/VKI-LS59', 2)
+# ```
+
+
+
