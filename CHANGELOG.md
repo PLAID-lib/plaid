@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (dataset) `get_tabular_from_stacked_identifiers` now returns stacked tabular and the cumulated feature dims, to be able to split columns to match features and then to revert the operation.
+- (dataset) add option `keep_cgns` to `extract_dataset_from_identifier` to keep CGNS tree structure even if no identifiers need it.
 - (`huggingface_bridge.load_hf_dataset_from_hub`) new utility to load datasets from the Hugging Face Hub, supporting both proxy and non-proxy environments.
 
 ### Changed
@@ -17,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (pipelines) fix `ColumnTransformer.inverse_transform` to use appropriate input identifier, and to keep CGNS tree structure when extracting sub-dataset.
 - (examples) corrected and improved downloadable examples and the associated documentation notebook.
   - Improved integration with huggingface_bridge.to_plaid_sample.
   - Significantly faster on first retrieval when the dataset is already cached locally.
