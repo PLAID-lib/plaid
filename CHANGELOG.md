@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (pipelines) fix `ColumnTransformer.inverse_transform` to use appropriate input identifier, and to keep CGNS tree structure when extracting sub-dataset.
 - (examples) corrected and improved downloadable examples and the associated documentation notebook.
   - Improved integration with huggingface_bridge.to_plaid_sample.
   - Significantly faster on first retrieval when the dataset is already cached locally.
@@ -54,7 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
-- (pipelines) fix `ColumnTransformer.inverse_transform` to use appropriate input identifier, and to keep CGNS tree structure when extracting sub-dataset.
 - (dataset) fix get tabular from dataset of samples containing multidimensional scalars
 - (plaid/examples) fix circular imports
 - (sample/dataset/problem_definition) fix incoherent path argument names in save/load methods -> `path` is now used everywhere
