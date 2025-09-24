@@ -693,15 +693,16 @@ class Sample(BaseModel):
             source_sample = sample.copy()
             source_sample.del_all_fields()
 
-        for feat_id in all_features_identifiers:
-            # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
-            if feat_id["type"] in ["field", "nodes"]:
-                # get time of current feature
-                time = sample.features.get_time_assignment(time=feat_id.get("time"))
+        # DELETE LATER IF CONFIRMED THIS IS NOT NEEDED (WITH GLOBAL, THERE IS ALWAYS A TREE)
+        # for feat_id in all_features_identifiers:
+        #     # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
+        #     if feat_id["type"] in ["field", "nodes"]:
+        #         # get time of current feature
+        #         time = sample.features.get_time_assignment(time=feat_id.get("time"))
 
-                # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                if not merged_dataset.features.get_mesh(time):
-                    merged_dataset.features.add_tree(source_sample.get_mesh(time))
+        #         # if the constructed sample does not have a tree, add the one from the source sample, with no field
+        #         if not merged_dataset.features.get_mesh(time):
+        #             merged_dataset.features.add_tree(source_sample.get_mesh(time))
 
         return merged_dataset.update_features_from_identifier(
             feature_identifiers=all_features_identifiers,
