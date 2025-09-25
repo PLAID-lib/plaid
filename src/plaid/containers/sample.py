@@ -53,6 +53,8 @@ logger = logging.getLogger(__name__)
 FEATURES_METHODS = [
     "set_default_base",
     "set_default_zone_base",
+    "get_base_assignment",
+    "get_zone_assignment",
     "set_default_time",
     "get_all_mesh_times",
     "get_mesh",
@@ -71,6 +73,8 @@ FEATURES_METHODS = [
     "add_field",
     "init_base",
     "init_zone",
+    "add_tree",
+    "del_tree",
 ]
 
 
@@ -564,7 +568,9 @@ class Sample(BaseModel):
 
     def update_features_from_identifier(
         self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        feature_identifiers: dict[
+            int, Union[FeatureIdentifier, list[FeatureIdentifier]]
+        ],
         features: Union[Feature, list[Feature]],
         in_place: bool = False,
     ) -> Self:
@@ -576,7 +582,7 @@ class Sample(BaseModel):
 
         Args:
             feature_identifiers (FeatureIdentifier or list of FeatureIdentifier): One or more feature identifiers.
-            features (Feature or list of Feature): One or more features corresponding
+            features (dict of Feature or list of Feature): One or more features corresponding
                 to the identifiers.
             in_place (bool, optional): If True, modifies the current sample in place.
                 If False, returns a deep copy with updated features.
@@ -590,6 +596,7 @@ class Sample(BaseModel):
         if not isinstance(feature_identifiers, list):
             feature_identifiers = [feature_identifiers]
             features = [features]
+        print(">>> ", len(feature_identifiers), len(features))
         assert len(feature_identifiers) == len(features)
         for i_id, feat_id in enumerate(feature_identifiers):
             feature_identifiers[i_id] = FeatureIdentifier(feat_id)
