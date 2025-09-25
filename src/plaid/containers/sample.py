@@ -82,7 +82,6 @@ class Sample(BaseModel):
     By default, the sample is empty but:
         - You can provide a path to a folder containing the sample data, and it will be loaded during initialization.
         - You can provide `SampleFeatures` and `SampleFeatures` instances to initialize the sample with existing data.
-        - You can also provide a dictionary of time series data.
 
     The default `SampleFeatures` instance is initialized with:
         - `data=None`, `links=None`, and `paths=None` (i.e., no mesh data).
@@ -130,7 +129,7 @@ class Sample(BaseModel):
         Usage of `model_copy(deep=True)` from Pydantic to ensure all internal data is deeply copied.
 
         Returns:
-            A new `Sample` instance with all internal data (scalars, time series, fields, meshes, etc.)
+            A new `Sample` instance with all internal data (scalars, fields, meshes, etc.)
             deeply copied to ensure full isolation from the original.
 
         Note:
@@ -572,7 +571,7 @@ class Sample(BaseModel):
     ) -> Self:
         """Update one or several features of the sample by their identifier(s).
 
-        This method applies updates to scalars, time series, fields, or nodes
+        This method applies updates to scalars, fields, or nodes
         using feature identifiers, and corresponding feature data. When `in_place=False`, a deep copy of the sample is created
         before applying updates, ensuring full isolation from the original.
 
@@ -609,7 +608,7 @@ class Sample(BaseModel):
     ) -> Self:
         """Extract features of the sample by their identifier(s) and return a new sample containing these features.
 
-        This method applies updates to scalars, time series, fields, or nodes
+        This method applies updates to scalars, fields, or nodes
         using feature identifiers
 
         Args:
@@ -668,7 +667,7 @@ class Sample(BaseModel):
     def merge_features(self, sample: Self, in_place: bool = False) -> Self:
         """Merge features from another sample into the current sample.
 
-        This method applies updates to scalars, time series, fields, or nodes
+        This method applies updates to scalars, fields, or nodes
         using features from another sample. When `in_place=False`, a deep copy of the sample is created
         before applying updates, ensuring full isolation from the original.
 
@@ -976,7 +975,6 @@ class Sample(BaseModel):
                 Sample Completeness Check:
                 ==============================
                 Has scalars: True
-                Has time series: False
                 Has meshes: True
                 Total unique fields: 8
                 Field names: M_iso, mach, nut, ro, roe, rou, rov, sdf

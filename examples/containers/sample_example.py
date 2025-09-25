@@ -56,7 +56,7 @@ def show_sample(sample: Sample):
 # %% [markdown]
 # ## Section 1: Initializing an Empty Sample and Adding Data
 #
-# This section demonstrates how to initialize an empty Sample and add scalars, time series data, and meshes / CGNS trees.
+# This section demonstrates how to initialize an empty Sample and add scalars, and meshes / CGNS trees.
 
 # %% [markdown]
 # ### Create and display CGNS tree from an unstructured mesh
@@ -161,7 +161,7 @@ print(f"{new_sample_mult_mesh.features.get_all_mesh_times() = }")
 # %% [markdown]
 # ## Section 2: Accessing and Modifying Sample Data
 #
-# This section demonstrates how to access and modify base, zone, node, scalar, field and time series data within the Sample.
+# This section demonstrates how to access and modify base, zone, node, scalar and field data within the Sample.
 
 # %% [markdown]
 # ### Initialize CGNS tree base

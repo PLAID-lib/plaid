@@ -684,7 +684,6 @@ class Dataset(object):
     def extract_dataset_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-        keep_cgns: bool = False,
     ) -> Self:
         """Extract features of the dataset by their identifier(s) and return a new dataset containing these features.
 
@@ -693,7 +692,6 @@ class Dataset(object):
 
         Args:
             feature_identifiers (dict or list of dict): One or more feature identifiers.
-            keep_cgns (bool): If True, keeps the CGNS tree structure in the extracted dataset.
 
         Returns:
             Self: New dataset containing the provided feature identifiers
@@ -708,41 +706,6 @@ class Dataset(object):
             extracted_sample = self[id].extract_sample_from_identifier(
                 feature_identifiers
             )
-
-            if (
-                keep_cgns
-                and not extracted_sample.features.data
-                and self[id].features.data
-            ):
-                for time in self[id].features.get_all_mesh_times():
-                    extracted_sample.features.init_tree(time=time)
-                    for base_name in self[id].features.get_base_names(time=time):
-                        original_base = self[id].features.get_base(
-                            base_name=base_name, time=time
-                        )
-                        extracted_sample.features.init_base(
-                            topological_dim=original_base[1][0],
-                            physical_dim=original_base[1][1],
-                            base_name=base_name,
-                            time=time,
-                        )
-                        for zone_name in self[id].features.get_zone_names(
-                            time=time, base_name=base_name
-                        ):
-                            original_zone = self[id].features.get_zone(
-                                zone_name=zone_name, base_name=base_name, time=time
-                            )
-                            original_zone_type = self[id].features.get_zone_type(
-                                zone_name=zone_name, base_name=base_name, time=time
-                            )
-                            extracted_sample.features.init_zone(
-                                zone_shape=original_zone[1],
-                                zone_type=original_zone_type,
-                                zone_name=zone_name,
-                                base_name=base_name,
-                                time=time,
-                            )
-
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
 
@@ -821,7 +784,7 @@ class Dataset(object):
     def add_features_from_tabular(
         self,
         tabular: Array,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        feature_identifiers: list[FeatureIdentifier],
         restrict_to_features: bool = True,
     ) -> Self:
         """Add or update features in the dataset from tabular data using feature identifiers.
@@ -833,7 +796,7 @@ class Dataset(object):
 
         Parameters:
             tabular (Array): of size (nb_sample, nb_features) or (nb_sample, nb_features, dim_feature) if dim_feature>1
-            feature_identifiers (dict or list of dict): One or more feature identifiers specifying which features to update/add.
+            feature_identifiers (list of dict): One or more feature identifiers specifying which features to update/add.
             restrict_to_features (bool, optional): If True, only returns the features from feature identifiers, otherwise keep the other features as well. Defaults to True.
 
         Returns:
@@ -846,8 +809,6 @@ class Dataset(object):
                 If the number of rows in `tabular` does not match the number of samples in the dataset,
                 or if the number of feature identifiers does not match the number of columns in `tabular`.
         """
-        if not isinstance(feature_identifiers, list):
-            feature_identifiers = [feature_identifiers]
         for i_id, feat_id in enumerate(feature_identifiers):
             feature_identifiers[i_id] = FeatureIdentifier(feat_id)
 
