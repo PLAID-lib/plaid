@@ -95,7 +95,7 @@ jobs:
         run: |
           PACKAGE_VER="${{ needs.build.outputs.package_ver }}"
           echo "🔍 Checking PyPI for plaid==$PACKAGE_VER"
-          if curl --silent --fail "https://pypi.org/pypi/plaid/$PACKAGE_VER/json" > /dev/null; then
+          if curl --silent --fail "https://pypi.org/pypi/pyplaid/$PACKAGE_VER/json" > /dev/null; then
             echo "❌ Version $PACKAGE_VER already exists on PyPI"
             exit 1
           fi
