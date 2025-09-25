@@ -6,6 +6,12 @@ on:
       - '**'
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (e.g. 0.1.9)"
+        required: true
+        type: string
 
 jobs:
   build:
@@ -15,9 +21,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # fetch full history and all tags
+          fetch-depth: 0   # fetch all history and tags
+
+      - name: Checkout tag if manual run
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags
+          git checkout ${{ github.event.inputs.tag }}
 
       - name: Install HDF5 dev libraries
         run: |
@@ -35,15 +47,19 @@ jobs:
           pip install build
 
       - name: Check version consistency
-        if: github.event_name == 'release'
         run: |
           pip install .
-          RELEASE_VER=${GITHUB_REF#refs/*/}
+          if [ "${{ github.event_name }}" = "release" ]; then
+            RELEASE_VER=${GITHUB_REF#refs/*/}
+          else
+            RELEASE_VER=${{ github.event.inputs.tag }}
+          fi
           PACKAGE_VER="$(python -c 'import plaid; print(plaid.__version__)')"
           if [ "$RELEASE_VER" != "$PACKAGE_VER" ]; then
-            echo "Package version ($PACKAGE_VER) doesn't match tag ($RELEASE_VER)"
+            echo "❌ Package version ($PACKAGE_VER) doesn't match tag ($RELEASE_VER)"
             exit 1
           fi
+          echo "✅ Version check passed: $PACKAGE_VER"
 
       - name: Build package
         run: |
@@ -57,7 +73,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: build
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
