@@ -87,15 +87,29 @@ You can also run (once):
 pre-commit install
 ```
 
+## Release process
+
+* Create a new release branch from `main`
+* Update the CHANGELOG
+  * Rename the section [Unreleased] to the new version number (e.g., [0.1.10]) followed by the release date (YYYY-MM-DD)
+  * Update links at the end of the file
+* Create a pull request and request reviews
+* Once approved, merge the pull request
+* Tag the release (e.g., `git tag 0.1.10`)
+* Create a new release on GitHub
+  * Click `Generate release notes`
+  * Include a link to the CHANGELOG file at the release tag https://github.com/PLAID-lib/plaid/blob/0.1.10/CHANGELOG.md
+* Create a new pull request to add a new `Unreleased` section to the CHANGELOG, with sub-sections `Added`, `Changed`, `Fixes`, `Removed`
+
 ## 4.6 How to contribute
 
 Before contributing, please review our guidelines and backward-compatibility policy.
 
-- Coding standards: PEP 8, PEP 257; snake_case, 80-char lines; one class per file preferred.
-- Rules: simple/flexible API, local/unit tests, examples preferred, 100% coverage.
-- Reporting issues: include steps, expected behavior, PLAID version, logs.
-- Feature requests: describe the feature and use cases.
-- Contributor License Agreement (CLA): see details below.
+* Coding standards: PEP 8, PEP 257; snake_case, 80-char lines; one class per file preferred.
+* Rules: simple/flexible API, local/unit tests, examples preferred, 100% coverage.
+* Reporting issues: include steps, expected behavior, PLAID version, logs.
+* Feature requests: describe the feature and use cases.
+* Contributor License Agreement (CLA): see details below.
 
 Backward compatibility (API and disk format): see policy in this page and details in issues `#97` and `#14`.
 
@@ -104,26 +118,6 @@ CGNS resources: <http://cgns.github.io/>
 ### Contributor License Agreement (CLA)
 
 By contributing, you agree to the CLA terms summarized below (full text previously in Contributing page):
-- Perpetual, worldwide, non-exclusive licenses for copyright and patent.
-- You represent rights to contribute, originality, and disclose third-party restrictions.
-- Contributions are provided “AS IS” without warranties.
-
-Pre-commit is configured to run the following hooks:
-
-* Ruff check
-* Ruff format
-* Pytest
-
-The selected hooks are defined in the `.pre-commit-config.yaml` file.
-
-To run all hooks manually on the full codebase:
-
-```bash
-pre-commit run --all-files
-```
-
-You can also run (once):
-
-```bash
-pre-commit install
-```
+* Perpetual, worldwide, non-exclusive licenses for copyright and patent.
+* You represent rights to contribute, originality, and disclose third-party restrictions.
+* Contributions are provided “AS IS” without warranties.
