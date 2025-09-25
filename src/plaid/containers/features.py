@@ -30,7 +30,7 @@ class SampleFeatures:
     """A container for meshes within a Sample.
 
     Args:
-        features (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
+        data (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
         mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
         mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
         links (dict[float, list[CGNSLink]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
@@ -960,7 +960,15 @@ class SampleFeatures:
         name: str,
         time: Optional[float] = None,
     ) -> Optional[np.ndarray]:
-        """get_global."""
+        """Retrieve a global array by name at a specified time.
+
+        Args:
+            name (str): The name of the global array to retrieve.
+            time (float, optional): The time step for which to retrieve the global array. If not provided, uses the default time.
+
+        Returns:
+            Optional[np.ndarray]: The global array if found, otherwise None. Returns a scalar if the array has size 1.
+        """
         base_names = self.get_base_names(time=time, globals=True)
         if "Global" not in base_names:
             return None
@@ -974,7 +982,17 @@ class SampleFeatures:
         global_array: np.ndarray,
         time: Optional[float] = None,
     ) -> None:
-        """add_global."""
+        """Add or update a global array at a specified time.
+
+        Args:
+            name (str): The name of the global array to add or update.
+            global_array (np.ndarray): The array to store.
+            time (float, optional): The time step for which to add the global array. If not provided, uses the default time.
+
+        Note:
+            If the "Global" base does not exist, it will be created.
+            If an array with the same name exists, its value will be updated.
+        """
         _check_names(name)
         base_names = self.get_base_names(time=time, globals=True)
         if "Global" in base_names:
@@ -992,8 +1010,19 @@ class SampleFeatures:
         self,
         name: str,
         time: Optional[float] = None,
-    ) -> CGNSTree:
-        """del_global."""
+    ) -> np.ndarray:
+        """Delete a global array by name at a specified time.
+
+        Args:
+            name (str): The name of the global array to delete.
+            time (float, optional): The time step for which to delete the global array. If not provided, uses the default time.
+
+        Raises:
+            KeyError: If the global array does not exist at the specified time.
+
+        Returns:
+            np.ndarray: The value of the deleted global array.
+        """
         val = self.get_global(name, time)
         if val is None:
             raise KeyError(
@@ -1006,7 +1035,14 @@ class SampleFeatures:
         return val
 
     def get_global_names(self, time: Optional[float] = None) -> list[str]:
-        """get_global_names."""
+        """Return a list of all global array names at the specified time(s).
+
+        Args:
+            time (float, optional): The time step for which to retrieve global names. If not provided, returns names for all available times.
+
+        Returns:
+            list[str]: List of global array names (excluding "Time" arrays).
+        """
         if time is None:
             all_times = self.get_all_mesh_times()
         else:
