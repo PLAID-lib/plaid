@@ -69,7 +69,6 @@ FEATURES_METHODS = [
     "set_nodes",
     "del_field",
     "add_field",
-    "show_tree",
     "init_base",
     "init_zone",
 ]
