@@ -25,6 +25,7 @@ from plaid.containers.utils import (
     _read_index_array,
     _read_index_range,
 )
+from plaid.types.feature_types import FeatureIdentifier
 
 # %% Fixtures
 
@@ -1157,13 +1158,15 @@ class Test_Sample:
             ]
         )
 
-    def test_update_features_from_identifier(
-        self, sample_with_tree_and_scalar_and_time_series
+    def test_update_features_from_identifier_scalar(
+        self, sample_with_tree_and_scalar_and_time_series: Sample
     ):
         before = sample_with_tree_and_scalar_and_time_series.get_scalar("test_scalar_1")
         sample_ = (
             sample_with_tree_and_scalar_and_time_series.update_features_from_identifier(
-                feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
+                feature_identifiers=FeatureIdentifier(
+                    {"type": "scalar", "name": "test_scalar_1"}
+                ),
                 features=3.1415,
                 in_place=False,
             )
@@ -1171,15 +1174,20 @@ class Test_Sample:
         after = sample_.get_scalar("test_scalar_1")
         assert after != before
 
+    def test_update_features_from_identifier_time_series(
+        self, sample_with_tree_and_scalar_and_time_series: Sample
+    ):
         before = sample_with_tree_and_scalar_and_time_series.get_time_series(
             "test_time_series_1"
         )
         sample_ = (
             sample_with_tree_and_scalar_and_time_series.update_features_from_identifier(
-                feature_identifiers={
-                    "type": "time_series",
-                    "name": "test_time_series_1",
-                },
+                feature_identifiers=FeatureIdentifier(
+                    {
+                        "type": "time_series",
+                        "name": "test_time_series_1",
+                    }
+                ),
                 features=(np.array([0, 1]), np.array([3.14, 3.15])),
                 in_place=False,
             )
@@ -1187,6 +1195,9 @@ class Test_Sample:
         after = sample_.get_time_series("test_time_series_1")
         assert len(after[0]) != len(before[0])
 
+    def test_update_features_from_identifier_field(
+        self, sample_with_tree_and_scalar_and_time_series: Sample
+    ):
         before = sample_with_tree_and_scalar_and_time_series.get_field(
             name="test_node_field_1",
             zone_name="Zone",
@@ -1196,14 +1207,16 @@ class Test_Sample:
         )
         sample_ = (
             sample_with_tree_and_scalar_and_time_series.update_features_from_identifier(
-                feature_identifiers={
-                    "type": "field",
-                    "name": "test_node_field_1",
-                    "base_name": "Base_2_2",
-                    "zone_name": "Zone",
-                    "location": "Vertex",
-                    "time": 0.0,
-                },
+                feature_identifiers=FeatureIdentifier(
+                    {
+                        "type": "field",
+                        "name": "test_node_field_1",
+                        "base_name": "Base_2_2",
+                        "zone_name": "Zone",
+                        "location": "Vertex",
+                        "time": 0.0,
+                    }
+                ),
                 features=np.random.rand(*before.shape),
                 in_place=False,
             )
@@ -1217,17 +1230,22 @@ class Test_Sample:
         )
         assert np.any(~np.isclose(after, before))
 
+    def test_update_features_from_identifier_nodes(
+        self, sample_with_tree_and_scalar_and_time_series: Sample
+    ):
         before = sample_with_tree_and_scalar_and_time_series.get_nodes(
             zone_name="Zone", base_name="Base_2_2", time=0.0
         )
         sample_ = (
             sample_with_tree_and_scalar_and_time_series.update_features_from_identifier(
-                feature_identifiers={
-                    "type": "nodes",
-                    "base_name": "Base_2_2",
-                    "zone_name": "Zone",
-                    "time": 0.0,
-                },
+                feature_identifiers=FeatureIdentifier(
+                    {
+                        "type": "nodes",
+                        "base_name": "Base_2_2",
+                        "zone_name": "Zone",
+                        "time": 0.0,
+                    }
+                ),
                 features=np.random.rand(*before.shape),
                 in_place=False,
             )
@@ -1235,6 +1253,9 @@ class Test_Sample:
         after = sample_.get_nodes(zone_name="Zone", base_name="Base_2_2", time=0.0)
         assert np.any(~np.isclose(after, before))
 
+    def test_update_features_from_identifier_field_and_nodes(
+        self, sample_with_tree_and_scalar_and_time_series: Sample
+    ):
         before_1 = sample_with_tree_and_scalar_and_time_series.get_field(
             "test_node_field_1"
         )
@@ -1242,8 +1263,8 @@ class Test_Sample:
         sample_ = (
             sample_with_tree_and_scalar_and_time_series.update_features_from_identifier(
                 feature_identifiers=[
-                    {"type": "field", "name": "test_node_field_1"},
-                    {"type": "nodes"},
+                    FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
+                    FeatureIdentifier({"type": "nodes"}),
                 ],
                 features=[
                     np.random.rand(*before_1.shape),
@@ -1259,7 +1280,9 @@ class Test_Sample:
 
         sample_ = (
             sample_with_tree_and_scalar_and_time_series.update_features_from_identifier(
-                feature_identifiers=[{"type": "field", "name": "test_node_field_1"}],
+                feature_identifiers=[
+                    FeatureIdentifier({"type": "field", "name": "test_node_field_1"})
+                ],
                 features=[np.random.rand(*before_1.shape)],
                 in_place=True,
             )
@@ -1440,7 +1463,9 @@ class Test_Sample:
         } in feat_ids
 
     def test_merge_features(
-        self, sample_with_tree_and_scalar_and_time_series, sample_with_tree
+        self,
+        sample_with_tree_and_scalar_and_time_series: Sample,
+        sample_with_tree: Sample,
     ):
         feat_id = (
             sample_with_tree_and_scalar_and_time_series.get_all_features_identifiers()

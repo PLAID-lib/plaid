@@ -28,7 +28,7 @@ else:  # pragma: no cover
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin, TransformerMixin, clone
-from sklearn.compose import ColumnTransformer
+from sklearn.compose import ColumnTransformer as SklearnColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.utils.validation import check_is_fitted
 
@@ -36,7 +36,7 @@ from plaid import Dataset
 from plaid.containers.utils import has_duplicates_feature_ids
 
 
-class ColumnTransformer(ColumnTransformer):
+class ColumnTransformer(SklearnColumnTransformer):
     """Custom column-wise transformer for PLAID-style datasets.
 
     Similar to scikit-learn's `ColumnTransformer`, this class applies a list
@@ -73,7 +73,7 @@ class ColumnTransformer(ColumnTransformer):
             self: The fitted PlaidColumnTransformer.
         """
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
 
         self.in_features_identifiers_ = []
         for _, transformer in self.plaid_transformers:
@@ -131,7 +131,7 @@ class ColumnTransformer(ColumnTransformer):
         """
         check_is_fitted(self, "transformers_")
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
 
         transformed_datasets = [dataset.copy()]
         for _, transformer_, _ in self.transformers_:
@@ -169,16 +169,18 @@ class ColumnTransformer(ColumnTransformer):
         """
         check_is_fitted(self, "transformers_")
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
 
         transformed_datasets = [dataset.copy()]
         for _, transformer_, _ in self.transformers_:
             in_feat_id = (
-                transformer_[0].in_features_identifiers_
+                transformer_[-1].out_features_identifiers_
                 if isinstance(transformer_, Pipeline)
-                else transformer_.in_features_identifiers_
+                else transformer_.out_features_identifiers_
             )
-            sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
+            sub_dataset = dataset.extract_dataset_from_identifier(
+                in_feat_id, keep_cgns=True
+            )
             transformed = transformer_.inverse_transform(sub_dataset)
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)
@@ -217,7 +219,7 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
             self: The fitted estimator.
         """
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
 
         self.transformer_ = clone(self.transformer).fit(dataset)
 
@@ -252,7 +254,7 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
         """
         check_is_fitted(self, "regressor_")
         if isinstance(dataset, list):
-            dataset = Dataset.from_list_of_samples(dataset)
+            dataset = Dataset(samples=dataset)
         dataset_pred_transformed = self.regressor_.predict(dataset)
         return self.transformer_.inverse_transform(dataset_pred_transformed)
 
@@ -280,9 +282,9 @@ class TransformedTargetRegressor(RegressorMixin, BaseEstimator):
         if dataset_y is None:
             dataset_y = dataset_X
         if isinstance(dataset_X, list):
-            dataset_X = Dataset.from_list_of_samples(dataset_X)
+            dataset_X = Dataset(samples=dataset_X)
         if isinstance(dataset_y, list):
-            dataset_y = Dataset.from_list_of_samples(dataset_y)
+            dataset_y = Dataset(samples=dataset_y)
 
         dataset_y_pred = self.predict(dataset_X)
 
