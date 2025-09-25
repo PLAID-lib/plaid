@@ -1250,6 +1250,34 @@ class ProblemDefinition(object):
             )
         self._split = split
 
+    def extract_problem_definition_from_identifiers(
+        self, identifiers: list[FeatureIdentifier]
+    ) -> Self:
+        """Create a new ProblemDefinition restricted to a subset of feature identifiers.
+
+        Args:
+            identifiers (list[FeatureIdentifier]): List of identifiers to keep.
+
+        Returns:
+            ProblemDefinition: A new :class:`ProblemDefinition` instance.
+        """
+        new_problem_definition = ProblemDefinition()
+        if self._task is not None:
+            new_problem_definition.set_task(self.get_task())
+
+        in_features = self.filter_in_features_identifiers(identifiers)
+        if len(in_features) > 0:
+            new_problem_definition.add_in_features_identifiers(in_features)
+
+        out_features = self.filter_out_features_identifiers(identifiers)
+        if len(out_features) > 0:
+            new_problem_definition.add_out_features_identifiers(out_features)
+
+        if self.get_split() is not None:
+            new_problem_definition.set_split(self.get_split())
+
+        return new_problem_definition
+
     # -------------------------------------------------------------------------#
     def __repr__(self) -> str:
         """Return a string representation of the problem.
