@@ -5,6 +5,8 @@ on:
     branches:
       - '**'
   pull_request:
+    branches:
+      - '**'
   release:
     types: [created]
   workflow_dispatch:
@@ -16,6 +18,7 @@ on:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     name: Build wheels
     permissions:
       contents: read
