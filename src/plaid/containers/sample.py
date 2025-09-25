@@ -596,7 +596,6 @@ class Sample(BaseModel):
         if not isinstance(feature_identifiers, list):
             feature_identifiers = [feature_identifiers]
             features = [features]
-        print(">>> ", len(feature_identifiers), len(features))
         assert len(feature_identifiers) == len(features)
         for i_id, feat_id in enumerate(feature_identifiers):
             feature_identifiers[i_id] = FeatureIdentifier(feat_id)
