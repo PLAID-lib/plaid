@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+### Changed
+
+- (sample) Restructuring of the Sample class to store a global (tensor of arbitrary order) at a given time step: replaces scalar and time_series. All Sample data are now stored in CGNS trees.
+
+### Fixes
+
+### Removed
+
+
 ## [0.1.9] - 2025-09-24
 
 ### Added
