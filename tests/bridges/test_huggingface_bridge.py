@@ -88,8 +88,6 @@ class Test_Huggingface_Bridge:
             "path": getattr(sample, "path", None),
             "scalars": {sn: sample.get_scalar(sn) for sn in sample.get_scalar_names()},
             "meshes": sample.features.data,
-            "mesh_base_name": sample.features._mesh_base_name,
-            "mesh_zone_name": sample.features._mesh_zone_name,
             "links": sample.features._links,
             "paths": sample.features._paths,
         }
@@ -101,8 +99,6 @@ class Test_Huggingface_Bridge:
         sample = dataset[0]
         bad_sample = {
             "path": getattr(sample, "path", None),
-            "mesh_base_name": sample.features._mesh_base_name,
-            "mesh_zone_name": sample.features._mesh_zone_name,
             "links": sample.features._links,
             "paths": sample.features._paths,
         }

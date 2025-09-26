@@ -134,13 +134,8 @@ def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
     except ValidationError:
         # If it fails, try to build the sample from its components
         try:
-            scalars = pickled_hf_sample["scalars"]
-            meshes = pickled_hf_sample["meshes"]
-
             features = SampleFeatures(
-                data=meshes,
-                mesh_base_name=pickled_hf_sample.get("mesh_base_name"),
-                mesh_zone_name=pickled_hf_sample.get("mesh_zone_name"),
+                data=pickled_hf_sample.get("meshes"),
                 links=pickled_hf_sample.get("links"),
                 paths=pickled_hf_sample.get("paths"),
             )
@@ -150,7 +145,7 @@ def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
                 features=features,
             )
 
-            for sn, val in scalars.items():
+            for sn, val in pickled_hf_sample.get("scalars").items():
                 sample.add_scalar(sn, val)
 
             return Sample.model_validate(sample)

@@ -108,13 +108,7 @@ class Sample(BaseModel):
     )
 
     features: Optional[SampleFeatures] = PydanticField(
-        default_factory=lambda _: SampleFeatures(
-            data=None,
-            mesh_base_name="Base",
-            mesh_zone_name="Zone",
-            links=None,
-            paths=None,
-        ),
+        default_factory=lambda _: SampleFeatures(data=None),
         description="An instance of SampleFeatures containing mesh data. Defaults to an empty `SampleFeatures` object.",
     )
 

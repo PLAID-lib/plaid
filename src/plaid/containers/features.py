@@ -40,8 +40,6 @@ class SampleFeatures:
     def __init__(
         self,
         data: Optional[dict[float, CGNSTree]],
-        mesh_base_name: str = "Base",
-        mesh_zone_name: str = "Zone",
         links: Optional[dict[float, list[CGNSLink]]] = None,
         paths: Optional[dict[float, list[CGNSPath]]] = None,
     ):
@@ -52,9 +50,6 @@ class SampleFeatures:
         self._default_active_base: Optional[str] = None
         self._default_active_zone: Optional[str] = None
         self._default_active_time: Optional[float] = None
-
-        self._mesh_base_name: str = mesh_base_name
-        self._mesh_zone_name: str = mesh_zone_name
 
     # -------------------------------------------------------------------------#
 
@@ -562,8 +557,7 @@ class SampleFeatures:
 
         if base_name is None:
             base_name = (
-                self._mesh_base_name
-                + "_"
+                "Base_"
                 + str(topological_dim)
                 + "_"
                 + str(physical_dim)
@@ -733,8 +727,7 @@ class SampleFeatures:
 
         zone_name = self.get_zone_assignment(zone_name, base_name, time)
         if zone_name is None:
-            zone_name = self._mesh_zone_name
-
+            zone_name = "2one"
         zone_node = CGL.newZone(base_node, zone_name, zone_shape, zone_type)
         return zone_node
 
