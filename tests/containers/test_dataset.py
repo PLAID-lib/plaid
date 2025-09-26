@@ -1023,6 +1023,10 @@ class Test_Dataset:
         loaded_dataset = Dataset.load_from_dir(dname)
         assert len(loaded_dataset) == len(dataset_with_samples)
 
+    def test_load_from_dir_old(self, current_directory):
+        loaded_dataset = Dataset.load_from_dir(current_directory / "dataset_old")
+        assert len(loaded_dataset) == 3
+
     # -------------------------------------------------------------------------#
     def test_add_to_dir_creates_and_saves(self, empty_dataset, sample, tmp_path):
         # Should create the directory and save the sample
