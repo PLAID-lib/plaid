@@ -866,7 +866,11 @@ class Sample(BaseModel):
             assert names[0] == "t"
             times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
             for i in range(times_and_val.shape[0]):
-                self.add_global(name=names[1], global_array=times_and_val[i, 1], time=times_and_val[i, 0])
+                self.add_global(
+                    name=names[1],
+                    global_array=times_and_val[i, 1],
+                    time=times_and_val[i, 0],
+                )
 
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:
