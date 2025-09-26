@@ -30,7 +30,9 @@ class Test_Bisect:
         ref_path = current_directory / "dataset_ref"
         pred_path = current_directory / "dataset_pred"
         problem_path = current_directory / "problem_definition"
-        plot_bisect(ref_path, pred_path, problem_path, "scalar_2", "differ_bisect_plot")
+        plot_bisect(
+            ref_path, pred_path, problem_path, "feature_2", "differ_bisect_plot"
+        )
         shutil.move(
             working_directory / "differ_bisect_plot.png",
             current_directory / "differ_bisect_plot.png",
@@ -40,7 +42,7 @@ class Test_Bisect:
         ref_path = Dataset(current_directory / "dataset_pred")
         pred_path = Dataset(current_directory / "dataset_pred")
         problem_path = ProblemDefinition(current_directory / "problem_definition")
-        plot_bisect(ref_path, pred_path, problem_path, "scalar_2", "equal_bisect_plot")
+        plot_bisect(ref_path, pred_path, problem_path, "feature_2", "equal_bisect_plot")
         shutil.move(
             working_directory / "equal_bisect_plot.png",
             current_directory / "equal_bisect_plot.png",

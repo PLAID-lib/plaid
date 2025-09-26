@@ -1244,7 +1244,7 @@ class ProblemDefinition(object):
         elif split_fname_json.is_file():
             with split_fname_json.open("r") as file:
                 split = json.load(file)
-        else:
+        else:  # pragma: no cover
             logger.warning(
                 f"file with path `{split_fname_csv}` or `{split_fname_json}` does not exist. Splits will not be set"
             )

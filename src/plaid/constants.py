@@ -8,7 +8,7 @@
 
 It includes:
 - AUTHORIZED_TASKS: List of supported task types (e.g., regression, classification).
-- AUTHORIZED_FEATURE_TYPES: List of supported feature types (e.g., scalar, time_series).
+- AUTHORIZED_FEATURE_TYPES: List of supported feature types (e.g., scalar, field, nodes).
 - AUTHORIZED_FEATURE_INFOS: Dictionary specifying allowed metadata keys for various feature types.
 - AUTHORIZED_INFO_KEYS: Dictionary specifying allowed metadata keys for various information sections.
 - CGNS_FIELD_LOCATIONS: List of valid field locations as defined by the CGNS standard.
@@ -19,11 +19,10 @@ These constants help standardize metadata, task types, and mesh element referenc
 
 AUTHORIZED_TASKS = ["regression", "classification"]
 
-AUTHORIZED_FEATURE_TYPES = ["scalar", "time_series", "field", "nodes"]
+AUTHORIZED_FEATURE_TYPES = ["scalar", "field", "nodes"]
 
 AUTHORIZED_FEATURE_INFOS = {
     "scalar": ["name"],
-    "time_series": ["name"],
     "field": ["name", "location", "zone_name", "base_name", "time"],
     "nodes": ["zone_name", "base_name", "time"],
 }

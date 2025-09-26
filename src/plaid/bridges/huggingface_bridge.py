@@ -32,7 +32,7 @@ from huggingface_hub import snapshot_download
 from pydantic import ValidationError
 
 from plaid import Dataset, ProblemDefinition, Sample
-from plaid.containers.features import SampleMeshes, SampleScalars
+from plaid.containers.features import SampleFeatures
 from plaid.types import IndexType
 
 logger = logging.getLogger(__name__)
@@ -126,26 +126,33 @@ def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
     If it still fails because of a missing key, it raises a KeyError.
     """
     pickled_hf_sample = pickle.loads(hf_sample["sample"])
+
     try:
         # Try to validate the sample
         return Sample.model_validate(pickled_hf_sample)
+
     except ValidationError:
         # If it fails, try to build the sample from its components
         try:
-            scalars = SampleScalars(scalars=pickled_hf_sample["scalars"])
-            meshes = SampleMeshes(
-                meshes=pickled_hf_sample["meshes"],
+            scalars = pickled_hf_sample["scalars"]
+            meshes = pickled_hf_sample["meshes"]
+
+            features = SampleFeatures(
+                data=meshes,
                 mesh_base_name=pickled_hf_sample.get("mesh_base_name"),
                 mesh_zone_name=pickled_hf_sample.get("mesh_zone_name"),
                 links=pickled_hf_sample.get("links"),
                 paths=pickled_hf_sample.get("paths"),
             )
+
             sample = Sample(
                 path=pickled_hf_sample.get("path"),
-                meshes=meshes,
-                scalars=scalars,
-                time_series=pickled_hf_sample.get("time_series"),
+                features=features,
             )
+
+            for sn, val in scalars.items():
+                sample.add_scalar(sn, val)
+
             return Sample.model_validate(sample)
         except KeyError as e:
             raise KeyError(f"Missing key {e!s} in HF data.") from e

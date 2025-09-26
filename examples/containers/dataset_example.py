@@ -1,12 +1,13 @@
 # ---
 # jupyter:
 #   jupytext:
+#     custom_cell_magics: kql
 #     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.17.3
+#       jupytext_version: 1.11.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -33,6 +34,7 @@ from pathlib import Path
 import platform
 
 import numpy as np
+import copy
 
 # %%
 # Import necessary libraries and functions
@@ -105,7 +107,7 @@ print(f"{sample_01 = }")
 
 # %%
 # Add a CGNS tree structure to the Sample
-sample_01.meshes.add_tree(cgns_mesh)
+sample_01.features.add_tree(copy.deepcopy(cgns_mesh))
 print(f"{sample_01 = }")
 
 # %%
@@ -136,7 +138,7 @@ print("#---# Empty Sample")
 sample_03 = Sample()
 sample_03.add_scalar("speed", np.random.randn())
 sample_03.add_scalar("rotation", sample_01.get_scalar("rotation"))
-sample_03.meshes.add_tree(cgns_mesh)
+sample_03.features.add_tree(copy.deepcopy(cgns_mesh))
 
 # Show Sample CGNS content
 sample_03.show_tree()
@@ -353,6 +355,7 @@ infos = {
 dataset.set_infos(infos)
 dataset.print_infos()
 
+
 # %% [markdown]
 # ## Section 4: Saving and Loading Dataset
 #
@@ -366,6 +369,7 @@ tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000
 print(f"Save dataset in: {tmpdir}")
 
 dataset._save_to_dir_(tmpdir)
+
 
 # %% [markdown]
 # ### Get the number of Samples that can be loaded from a directory

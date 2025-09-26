@@ -12,7 +12,6 @@ def test_get_2Darray_from_homogeneous_identifiers(
     dataset_with_samples,
     dataset_with_samples_scalar1_feat_ids,
     dataset_with_samples_scalar2_feat_ids,
-    dataset_with_samples_time_series_feat_ids,
 ):
     # dataset_with_samples.get_all_features_identifiers()
     X = get_2Darray_from_homogeneous_identifiers(
@@ -25,12 +24,6 @@ def test_get_2Darray_from_homogeneous_identifiers(
     )
     X = get_2Darray_from_homogeneous_identifiers(dataset_with_samples, feat_ids)
     assert X.shape == (4, 2)
-
-    dataset_with_samples_time_series_feat_ids
-    # not working yet for time series
-    # X = get_2Darray_from_homogeneous_identifiers(
-    #     dataset_with_samples, dataset_with_samples_time_series_feat_ids
-    # )
 
     field_same_size_feat_id = {
         "type": "field",

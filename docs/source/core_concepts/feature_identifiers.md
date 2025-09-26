@@ -6,7 +6,7 @@ title: Feature identifiers
 
 Feature identifiers are a concise, unambiguous way to point to any feature in PLAID. They replace legacy name-only APIs (now deprecated) and make it possible to uniquely address features across time steps, bases, zones and locations.
 
-- A feature is one of: scalar, time_series, field, nodes.
+- A feature is one of: scalar, field, nodes.
 - A FeatureIdentifier is a small dictionary that encodes the feature type and, when relevant, its context (e.g., base, zone, location, time).
 
 Why this matters:
@@ -19,7 +19,6 @@ Why this matters:
 FeatureIdentifier is a `dict[str, str | float]` with a mandatory `type` key. Depending on the feature type, other keys are required or optional:
 
 - scalar: `{"type": "scalar", "name": <str>}`
-- time_series: `{"type": "time_series", "name": <str>}`
 - field: `{"type": "field", "name": <str>, "base_name": <str>, "zone_name": <str>, "location": <str>, "time": <float>}`
   - `location` must be one of: `Vertex`, `EdgeCenter`, `FaceCenter`, `CellCenter`.
   - `base_name`, `zone_name`, `location`, `time` are optional if default value mechanics apply (see {doc}`defaults`).
@@ -37,7 +36,6 @@ Minimal identifiers:
 from plaid.types import FeatureIdentifier
 
 fid_scalar = FeatureIdentifier({"type": "scalar", "name": "Re"})
-fid_ts     = FeatureIdentifier({"type": "time_series", "name": "load_curve"})
 
 fid_field = FeatureIdentifier({
     "type": "field",
