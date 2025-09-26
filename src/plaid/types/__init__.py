@@ -8,9 +8,7 @@
 #
 
 from plaid.types.cgns_types import (
-    CGNSLink,
     CGNSNode,
-    CGNSPath,
     CGNSTree,
 )
 from plaid.types.common import Array, ArrayDType, IndexType
@@ -30,8 +28,6 @@ __all__ = [
     "IndexType",
     "CGNSNode",
     "CGNSTree",
-    "CGNSLink",
-    "CGNSPath",
     "Scalar",
     "Field",
     "TimeSequence",

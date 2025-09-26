@@ -34,7 +34,3 @@ class CGNSNode(BaseModel):
 
 # A CGNSTree is simply the root CGNSNode
 CGNSTree: TypeAlias = CGNSNode
-
-# CGNS links and paths
-CGNSLink: TypeAlias = list[str]  # [dir, filename, source_path, target_path]
-CGNSPath: TypeAlias = tuple[str, ...]  # a path in the CGNS tree
