@@ -1,7 +1,0 @@
-legal:
-  owner: Owner
-  license: Licence
-data_production:
-  type: Test
-  physics: test data for mmgp library
-  simulator: test

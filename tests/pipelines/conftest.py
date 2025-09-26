@@ -50,11 +50,6 @@ def dataset_with_samples_scalar2_feat_ids(dataset_with_samples):
 
 
 @pytest.fixture()
-def dataset_with_samples_time_series_feat_ids(dataset_with_samples):
-    return dataset_with_samples.get_all_features_identifiers_by_type("time_series")
-
-
-@pytest.fixture()
 def dataset_with_samples_with_tree_field_feat_ids(dataset_with_samples_with_tree):
     return dataset_with_samples_with_tree.get_all_features_identifiers_by_type("field")
 
