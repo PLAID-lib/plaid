@@ -44,7 +44,7 @@ from plaid.types import (
     Scalar,
 )
 from plaid.utils import cgns_helper as CGH
-from plaid.utils.base import delegate, safe_len
+from plaid.utils.base import delegate_methods, safe_len
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,8 @@ FEATURES_METHODS = [
     "get_zone_names",
     "get_nodal_tags",
     "get_global",
+    "add_global",
+    "del_global",
     "get_global_names",
     "get_nodes",
     "get_elements",
@@ -78,7 +80,7 @@ FEATURES_METHODS = [
 ]
 
 
-@delegate("features", FEATURES_METHODS)
+@delegate_methods("features", FEATURES_METHODS)
 class Sample(BaseModel):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
 
@@ -833,7 +835,7 @@ class Sample(BaseModel):
             self._load_old_scalars(old_scalars_file)
 
         old_time_series_files = list(path.glob("time_series_*.csv"))
-        if len(old_time_series_files) > 0:
+        if len(old_time_series_files) > 0: # pragma: no cover
             self._load_old_time_series(old_time_series_files)
 
     @deprecated(
