@@ -828,6 +828,43 @@ class Sample(BaseModel):
                         meshes_dir / self.features._links[time][i][0]
                     )
 
+        old_scalars_file = path / "scalars.csv"
+        if old_scalars_file.is_file():
+            self._load_old_scalars(old_scalars_file)
+
+        old_time_series_files = list(path.glob("time_series_*.csv"))
+        if len(old_time_series_files) > 0:
+            self._load_old_time_series(old_time_series_files)
+
+    @deprecated(
+        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
+        version="0.1.10",
+        removal="0.2.0",
+    )
+    def _load_old_scalars(self, scalars_file: Path):
+        names = np.loadtxt(scalars_file, dtype=str, max_rows=1, delimiter=",").reshape(
+            (-1,)
+        )
+        scalars = np.loadtxt(
+            scalars_file, dtype=float, skiprows=1, delimiter=","
+        ).reshape((-1,))
+        for name, value in zip(names, scalars):
+            self.add_scalar(name, value)
+
+    @deprecated(
+        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
+        version="0.1.10",
+        removal="0.2.0",
+    )
+    def _load_old_time_series(self, time_series_files: list[Path]):
+        for ts_fname in time_series_files:
+            names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
+                (-1,)
+            )
+            assert names[0] == "t"
+            times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
+            self.add_time_series(names[1], times_and_val[:, 0], times_and_val[:, 1])
+
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:
         """Return a string representation of the sample.
