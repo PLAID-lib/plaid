@@ -896,19 +896,25 @@ class Dataset(object):
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}}
         """
         for cat_key in infos.keys():  # Format checking on "infos"
-            if cat_key not in AUTHORIZED_INFO_KEYS:
-                raise KeyError(
-                    f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
-                )
-            for info_key in infos[cat_key].keys():
-                if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
+            if cat_key != "plaid":
+                if cat_key not in AUTHORIZED_INFO_KEYS:
                     raise KeyError(
-                        f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
+                        f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
                     )
+                for info_key in infos[cat_key].keys():
+                    if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
+                        raise KeyError(
+                            f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
+                        )
 
         if len(self._infos) > 0:
             logger.warning("infos not empty, replacing it anyway")
-        self._infos = infos
+        self._infos = copy.deepcopy(infos)
+
+        if "plaid" not in self._infos:
+            self._infos["plaid"] = {}
+        if "version" not in self._infos["plaid"]:
+            self._infos["plaid"]["version"] = Version(plaid.__version__)
 
     def get_infos(self) -> dict[str, dict[str, str]]:
         """Get information from an instance of :class:`Dataset <plaid.containers.dataset.Dataset>`.
@@ -1460,15 +1466,17 @@ class Dataset(object):
             print(f"Saving database to: {path}")
 
         # Save infos
-        assert "plaid" in self._infos
-        assert "version" in self._infos["plaid"]
+        assert "plaid" in self._infos, f"{self._infos.keys()=} should contain 'plaid'"
+        assert "version" in self._infos["plaid"], (
+            f"{self._infos['plaid'].keys()=} should contain 'version'"
+        )
         plaid_version = Version(plaid.__version__)
         if isinstance(self._infos["plaid"]["version"], SpecifierSet) or self._infos["plaid"]["version"] != plaid_version:
             logger.warning(
                 f"Version mismatch: Dataset was loaded from version: {self._infos['plaid']['version']}, and will be saved with version: {plaid_version}"
             )
             self._infos["plaid"]["old_version"] = str(self._infos["plaid"]["version"])
-            self._infos["plaid"]["version"] = str(plaid_version)
+        self._infos["plaid"]["version"] = str(plaid_version)
         infos_fname = path / "infos.yaml"
         with open(infos_fname, "w") as file:
             yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
@@ -1522,9 +1530,13 @@ class Dataset(object):
             with open(infos_fname, "r") as file:
                 self._infos = yaml.safe_load(file)
         if "plaid" not in self._infos or "version" not in self._infos["plaid"]:
-            self._infos.setdefault("plaid", {})["version"] = SpecifierSet("<=0.1.7")
+            self._infos.setdefault("plaid", {"version": Version(plaid.__version__)})
+            self._infos["plaid"].setdefault("old_version", SpecifierSet("<=0.1.9"))
         else:
-            self._infos["plaid"]["version"] = Version(self._infos["plaid"]["version"])
+            if not isinstance(self._infos["plaid"]["version"], (Version, SpecifierSet)):
+                self._infos["plaid"]["version"] = Version(
+                    self._infos["plaid"]["version"]
+                )
         print(f"=== Loaded dataset version: {self._infos['plaid']['version']}")
 
         # Load samples

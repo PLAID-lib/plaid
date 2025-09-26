@@ -78,7 +78,7 @@ class ProblemDefinition(object):
                 print(problem_definition)
                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
-        self._version: Version = Version(plaid.__version__)
+        self._version: Union[Version, SpecifierSet] = Version(plaid.__version__)
         self._task: str = None
         self.in_features_identifiers: list[FeatureIdentifier] = []
         self.out_features_identifiers: list[FeatureIdentifier] = []
@@ -1238,6 +1238,7 @@ class ProblemDefinition(object):
             raise FileNotFoundError(
                 f"file with path `{pbdef_fname}` does not exist. Abort"
             )
+
         if "version" not in data:
             self._version = SpecifierSet("<=0.1.7")
         else:
@@ -1250,7 +1251,7 @@ class ProblemDefinition(object):
         self.out_features_identifiers = [
             FeatureIdentifier(**tup) for tup in data["output_features"]
         ]
-        if data["version"] < "0.2.0":
+        if "version" not in data or Version(data["version"]) < Version("0.2.0"):
             self.in_scalars_names = data["input_scalars"]
             self.out_scalars_names = data["output_scalars"]
             self.in_fields_names = data["input_fields"]
@@ -1259,6 +1260,11 @@ class ProblemDefinition(object):
             self.out_timeseries_names = data["output_timeseries"]
             self.in_meshes_names = data["input_meshes"]
             self.out_meshes_names = data["output_meshes"]
+        else:
+            old_keys = ["input_scalars", "input_fields", "input_timeseries", "input_meshes", "output_scalars", "output_fields", "output_timeseries", "output_meshes"]
+            for k in old_keys:
+                if k in data:
+                    logger.warning(f"Key '{k}' is deprecated and will be ignored. You should convert your ProblemDefinition using FeatureIdentifiers.")
 
         # if it was saved with version <=0.1.7 it is a .csv else it is .json
         split = {}
