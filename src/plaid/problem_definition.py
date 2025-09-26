@@ -1126,11 +1126,11 @@ class ProblemDefinition(object):
         return list(set(all_indices))
 
     # -------------------------------------------------------------------------#
-    def _generate_problem_infos_dict(self):
+    def _generate_problem_infos_dict(self) -> dict[str, Union[str, list]]:
         """Generate a dictionary containing all relevant problem definition data.
 
         Returns:
-            dict: A dictionary with keys for task, input/output features, scalars, fields, timeseries, and meshes.
+            dict[str, Union[str, list]]: A dictionary with keys for task, input/output features, scalars, fields, timeseries, and meshes.
         """
         return {
             "task": self._task,
@@ -1191,7 +1191,9 @@ class ProblemDefinition(object):
         instance._load_from_dir_(path)
         return instance
 
-    def _initialize_from_problem_infos_dict(self, data) -> None:
+    def _initialize_from_problem_infos_dict(
+        self, data: dict[str, Union[str, list]]
+    ) -> None:
         self._task = data["task"]
         self.in_features_identifiers = [
             FeatureIdentifier(**tup) for tup in data["input_features"]
@@ -1261,7 +1263,7 @@ class ProblemDefinition(object):
             logger.warning(
                 f"file with path `{split_fname_csv}` or `{split_fname_json}` does not exist. Splits will not be set"
             )
-        self._split = split
+        self.set_split(split)
 
     def extract_problem_definition_from_identifiers(
         self, identifiers: list[FeatureIdentifier]
