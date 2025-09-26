@@ -1,23 +1,33 @@
-name: Publish to PyPI
+name: Build and Publish on Pypi
 
 on:
-  push:
-    branches:
-      - '**'
   release:
     types: [created]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (e.g. 0.1.9)"
+        required: true
+        type: string
 
 jobs:
-  build:
-    name: Build wheels
-    permissions:
-      contents: read
+  publish:
+    name: Build and Publish
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
 
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0   # fetch full history and all tags
+          fetch-depth: 0
+
+      - name: Checkout tag (for manual run)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags
+          git checkout ${{ github.event.inputs.tag }}
 
       - name: Install HDF5 dev libraries
         run: |
@@ -34,44 +44,36 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
 
-      - name: Check version consistency
-        if: github.event_name == 'release'
+      - name: Verify version matches tag
+        id: verify-version
         run: |
           pip install .
-          RELEASE_VER=${GITHUB_REF#refs/*/}
+          if [ "${{ github.event_name }}" = "release" ]; then
+            RELEASE_VER=${GITHUB_REF#refs/*/}
+          else
+            RELEASE_VER=${{ github.event.inputs.tag }}
+          fi
           PACKAGE_VER="$(python -c 'import plaid; print(plaid.__version__)')"
           if [ "$RELEASE_VER" != "$PACKAGE_VER" ]; then
-            echo "Package version ($PACKAGE_VER) doesn't match tag ($RELEASE_VER)"
+            echo "❌ Package version ($PACKAGE_VER) doesn't match tag ($RELEASE_VER)"
             exit 1
           fi
+          echo "✅ Version check passed: $PACKAGE_VER"
+          echo "package_ver=$PACKAGE_VER" >> $GITHUB_OUTPUT
+
+      - name: Check if version already on PyPI
+        run: |
+          PACKAGE_VER="${{ steps.verify-version.outputs.package_ver }}"
+          echo "🔍 Checking PyPI for plaid==$PACKAGE_VER"
+          if curl --silent --fail "https://pypi.org/pypi/pyplaid/$PACKAGE_VER/json" > /dev/null; then
+            echo "❌ Version $PACKAGE_VER already exists on PyPI"
+            exit 1
+          fi
+          echo "✅ Version $PACKAGE_VER not found on PyPI, safe to publish."
 
       - name: Build package
         run: |
           python -m build --wheel --outdir dist/
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wheels-3.11
-          path: dist/*.whl
-
-  publish:
-    name: Publish to PyPI
-    needs: build
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all wheel artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: wheels-*
-          path: dist
-          merge-multiple: true
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
