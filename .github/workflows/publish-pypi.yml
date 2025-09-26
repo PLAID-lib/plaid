@@ -73,6 +73,11 @@ jobs:
           git fetch --tags
           git checkout ${{ github.event.inputs.tag }}
 
+      - name: Install HDF5 dev libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libhdf5-dev
+          
       - name: Install Python
         uses: actions/setup-python@v5
         with:
