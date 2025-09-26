@@ -11,22 +11,24 @@
 
 import copy
 import logging
+import sys
 from typing import Union
 
-try:  # pragma: no cover
+if sys.version_info >= (3, 11):
     from typing import Self
-except ImportError:  # pragma: no cover
-    from typing import Any as Self
+else:  # pragma: no cover
+    from typing import TypeVar
+
+    Self = TypeVar("Self")
+
 
 import numpy as np
 
 from plaid import Dataset, Sample
+from plaid.constants import CGNS_FIELD_LOCATIONS
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
+
 
 # %% Functions
 
@@ -275,11 +277,11 @@ class Stats:
     def add_samples(self, samples: Union[list[Sample], Dataset]) -> None:
         """Add samples or a dataset to compute statistics for.
 
-        Compute stats for each features present in the samples among scalars, fields and time_series.
-        For fields and time_series, as long as the added samples have the same shape as the existing ones,
+        Compute stats for each features present in the samples among scalars and fields.
+        For fields, as long as the added samples have the same shape as the existing ones,
         the stats will be computed per-coordinates (n_features=x.shape[-1]).
-        But as soon as the shapes differ, the stats and added fields/time_series will be flattened (n_features=1),
-        then stats will be computed over all values of the field/time_series.
+        But as soon as the shapes differ, the stats and added fields will be flattened (n_features=1),
+        then stats will be computed over all values of the field.
 
         Args:
             samples (Union[list[Sample], Dataset]): List of samples or dataset to process
@@ -301,9 +303,6 @@ class Stats:
 
             # Process fields
             self._process_field_data(sample, new_data)
-
-            # ---# Time-Series
-            self._process_time_series_data(sample, new_data)
 
             # ---# SpatialSupport (Meshes)
             # TODO
@@ -382,50 +381,6 @@ class Stats:
             if value is not None:
                 data_dict[name].append(np.array(value).reshape((1, -1)))
 
-    def _process_time_series_data(
-        self, sample: Sample, data_dict: dict[str, list]
-    ) -> None:
-        """Process time series data from a sample.
-
-        Args:
-            sample (Sample): Sample containing time series data
-            data_dict (dict[str, list]): Dictionary to store processed data
-        """
-        for name in sample.get_time_series_names():
-            timestamps, time_series = sample.get_time_series(name)
-            timestamps = timestamps.reshape((1, -1))
-            time_series = time_series.reshape((1, -1))
-
-            timestamps_name = f"timestamps/{name}"
-            time_series_name = f"time_series/{name}"
-            if timestamps_name not in data_dict:
-                assert time_series_name not in data_dict
-                data_dict[timestamps_name] = []
-                data_dict[time_series_name] = []
-            if timestamps is not None and time_series is not None:
-                # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
-                if len(
-                    data_dict[time_series_name]
-                ) > 0 and not self._feature_is_flattened.get(time_series_name, False):
-                    prev_shape = data_dict[time_series_name][0].shape
-                    if time_series.shape != prev_shape:
-                        # set this stat as flattened
-                        self._feature_is_flattened[timestamps_name] = True
-                        self._feature_is_flattened[time_series_name] = True
-                        # flatten corresponding stat
-                        if time_series_name in self._stats:
-                            self._stats[time_series_name].flatten_array()
-
-                if self._feature_is_flattened.get(time_series_name, False):
-                    timestamps = timestamps.reshape((-1, 1))
-                    time_series = time_series.reshape((-1, 1))
-                else:
-                    timestamps = timestamps.reshape((1, -1))
-                    time_series = time_series.reshape((1, -1))
-
-                data_dict[timestamps_name].append(timestamps)
-                data_dict[time_series_name].append(time_series)
-
     def _process_field_data(self, sample: Sample, data_dict: dict[str, list]) -> None:
         """Process field data from a sample.
 
@@ -433,40 +388,49 @@ class Stats:
             sample (Sample): Sample containing field data
             data_dict (dict[str, list]): Dictionary to store processed data
         """
-        for time in sample.get_all_mesh_times():
-            for base_name in sample.get_base_names(time=time):
-                for zone_name in sample.get_zone_names(base_name=base_name, time=time):
-                    for field_name in sample.get_field_names(
-                        zone_name=zone_name, base_name=base_name, time=time
-                    ):
-                        stat_key = f"{base_name}/{zone_name}/{field_name}"
-                        if stat_key not in data_dict:
-                            data_dict[stat_key] = []
-                        field = sample.get_field(
-                            field_name,
+        for time in sample.features.get_all_mesh_times():
+            for base_name in sample.features.get_base_names(time=time):
+                for zone_name in sample.features.get_zone_names(
+                    base_name=base_name, time=time
+                ):
+                    for location in CGNS_FIELD_LOCATIONS:
+                        for field_name in sample.get_field_names(
+                            location=location,
                             zone_name=zone_name,
                             base_name=base_name,
                             time=time,
-                        ).reshape((1, -1))
-                        if field is not None:
-                            # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
-                            if len(
-                                data_dict[stat_key]
-                            ) > 0 and not self._feature_is_flattened.get(
-                                stat_key, False
-                            ):
-                                prev_shape = data_dict[stat_key][0].shape
-                                if field.shape != prev_shape:
-                                    # set this stat as flattened
-                                    self._feature_is_flattened[stat_key] = True
-                                    # flatten corresponding stat
-                                    if stat_key in self._stats:
-                                        self._stats[stat_key].flatten_array()
+                        ):
+                            stat_key = (
+                                f"{base_name}/{zone_name}/{location}/{field_name}"
+                            )
+                            if stat_key not in data_dict:
+                                data_dict[stat_key] = []
+                            field = sample.get_field(
+                                field_name,
+                                location=location,
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                time=time,
+                            ).reshape((1, -1))
+                            if field is not None:
+                                # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
+                                if len(
+                                    data_dict[stat_key]
+                                ) > 0 and not self._feature_is_flattened.get(
+                                    stat_key, False
+                                ):
+                                    prev_shape = data_dict[stat_key][0].shape
+                                    if field.shape != prev_shape:
+                                        # set this stat as flattened
+                                        self._feature_is_flattened[stat_key] = True
+                                        # flatten corresponding stat
+                                        if stat_key in self._stats:
+                                            self._stats[stat_key].flatten_array()
 
-                            if self._feature_is_flattened.get(stat_key, False):
-                                field = field.reshape((-1, 1))
+                                if self._feature_is_flattened.get(stat_key, False):
+                                    field = field.reshape((-1, 1))
 
-                            data_dict[stat_key].append(field)
+                                data_dict[stat_key].append(field)
 
     def _update_statistics(self, new_data: dict[str, list]) -> None:
         """Update running statistics with new data.

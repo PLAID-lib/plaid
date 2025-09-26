@@ -47,7 +47,6 @@ import numpy as np
 import optuna
 
 from datasets.utils.logging import disable_progress_bar
-from datasets import load_dataset
 
 from sklearn.base import clone
 from sklearn.pipeline import Pipeline
@@ -60,9 +59,10 @@ from sklearn.multioutput import MultiOutputRegressor
 
 from sklearn.model_selection import KFold, GridSearchCV
 
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, huggingface_description_to_problem_definition
+from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, load_hf_dataset_from_hub
 from plaid.pipelines.sklearn_block_wrappers import WrappedSklearnTransformer, WrappedSklearnRegressor
 from plaid.pipelines.plaid_blocks import TransformedTargetRegressor, ColumnTransformer
+
 
 disable_progress_bar()
 n_processes = min(max(1, os.cpu_count()), 6)
@@ -73,14 +73,16 @@ n_processes = min(max(1, os.cpu_count()), 6)
 # We load the `VKI-LS59` dataset from Hugging Face and restrict ourselves to the first 24 samples of the training set.
 
 # %%
-hf_dataset = load_dataset("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
+hf_dataset = load_hf_dataset_from_hub("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
 dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
+
 
 # %% [markdown]
 # We print the summary of dataset_train, which contains 24 samples, with 8 scalars and 8 fields, which is consistent with the `VKI-LS59` dataset:
 
 # %%
 print(dataset_train)
+
 
 # %% [markdown]
 # ### ⚙️ Pipeline Configuration
@@ -91,11 +93,11 @@ print(dataset_train)
 # ```yaml
 # pca_nodes:
 #   in_features_identifiers:
-#     - type: nodes
-#       base_name: Base_2_2
+# - type: nodes
+#   base_name: Base_2_2
 #   out_features_identifiers:
-#     - type: scalar
-#       name: reduced_nodes_*
+# - type: scalar
+#   name: reduced_nodes_*
 # ```
 
 # %%
@@ -114,8 +116,8 @@ all_feature_id = config['input_scalar_scaler']['in_features_identifiers'] +\
 # In this example, we aim to predict the ``mach`` field based on two input scalars ``angle_in`` and ``mach_out``, and the mesh node coordinates. To contain memory consumption, we restrict the dataset to the features required for this example:
 
 # %%
-dataset_train = dataset_train.from_features_identifier(all_feature_id)
-print("dataset_train:", dataset_train)
+dataset_train = dataset_train.extract_dataset_from_identifier(all_feature_id)
+print("dataset_train =", dataset_train)
 print("scalar names =", dataset_train.get_scalar_names())
 print("field names =", dataset_train.get_field_names())
 
@@ -146,6 +148,7 @@ preprocessed_dataset = preprocessor.fit_transform(dataset_train)
 print("preprocessed_dataset:", preprocessed_dataset)
 print("scalar names =", preprocessed_dataset.get_scalar_names())
 print("field names =", preprocessed_dataset.get_field_names())
+
 
 # %% [markdown]
 # Using `MinMaxScaler`, we scaled the `angle_in` and `mach_out` features, replacing their original values. In contrast, `PCA` compressed the node coordinates and produced new scalar features named `reduced_nodes_*`, representing the PCA components. Alternatively, we could have specified `out_features_identifiers` in the `.yml` file configuring the `MinMaxScaler` block to generate new scalars without overwriting the original inputs.
@@ -206,6 +209,7 @@ pipeline
 #
 # We now use Optuna to optimize hyperparameters, specifically tuning the number of components for the two `PCA` blocks using three-fold cross-validation.
 
+
 # %%
 def objective(trial):
     # Suggest hyperparameters
@@ -241,9 +245,15 @@ def objective(trial):
 
     return np.mean(scores)
 
-
 # %% [markdown]
 # We maximize the defined objective function over 4 trials selected by Optuna.
+
+
+# %%
+preprocessed_dataset = preprocessor.fit_transform(dataset_train)
+print("preprocessed_dataset:", preprocessed_dataset)
+print("scalar names =", preprocessed_dataset.get_scalar_names())
+print("field names =", preprocessed_dataset.get_field_names())
 
 # %%
 study = optuna.create_study(direction='maximize')
@@ -261,7 +271,7 @@ optimized_pipeline.set_params(regressor__regressor__sklearn_block__estimator__ke
 )
 
 optimized_pipeline.fit(dataset_train)
-optimized_pipeline
+
 
 # %% [markdown]
 # Next, we fit the `optimized_pipeline` to the `dataset_train` dataset and evaluate its performance on the same data.
@@ -294,6 +304,7 @@ dataset_pred = exact_pipeline.predict(dataset_train)
 score = exact_pipeline.score(dataset_train)
 print("score =", score, ", error =", 1. - score)
 
+
 # %% [markdown]
 # ### 🔍 GridSearchCV hyperparameter tuning
 #
@@ -319,6 +330,7 @@ for n, m in zip(pca_n_components, regressor_n_components):
 
 cv = KFold(n_splits=3, shuffle=True, random_state=42)
 search = GridSearchCV(pipeline, param_grid=param_grid, cv=cv, verbose=3, error_score='raise')
+
 search.fit(dataset_train)
 
 # %% [markdown]

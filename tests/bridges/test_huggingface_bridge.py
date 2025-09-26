@@ -13,6 +13,7 @@ from typing import Callable
 import pytest
 
 from plaid.bridges import huggingface_bridge
+from plaid.bridges.huggingface_bridge import to_plaid_sample
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
@@ -61,7 +62,7 @@ class Test_Huggingface_Bridge:
         assert hfds.description["task"] == "regression"
         assert hfds.description["in_scalars_names"][0] == "feature_name_1"
         assert hfds.description["in_scalars_names"][1] == "feature_name_2"
-        self.assert_sample(Sample.model_validate(pickle.loads(hfds[0]["sample"])))
+        self.assert_sample(to_plaid_sample(hfds[0]))
 
     def assert_plaid_dataset(self, ds, pbdef):
         assert ds.get_infos()["legal"] == {"owner": "PLAID2", "license": "BSD-3"}
@@ -79,7 +80,35 @@ class Test_Huggingface_Bridge:
         hfds = huggingface_bridge.plaid_generator_to_huggingface(
             generator, infos, problem_definition
         )
-        huggingface_bridge.to_plaid_sample(hfds[0])
+        to_plaid_sample(hfds[0])
+
+    def test_to_plaid_sample_fallback_build_succeeds(self, dataset):
+        sample = dataset[0]
+        old_hf_sample = {
+            "path": getattr(sample, "path", None),
+            "scalars": {sn: sample.get_scalar(sn) for sn in sample.get_scalar_names()},
+            "meshes": sample.features.data,
+            "mesh_base_name": sample.features._mesh_base_name,
+            "mesh_zone_name": sample.features._mesh_zone_name,
+            "links": sample.features._links,
+            "paths": sample.features._paths,
+        }
+        old_hf_sample = {"sample": pickle.dumps(old_hf_sample)}
+        plaid_sample = to_plaid_sample(old_hf_sample)
+        assert isinstance(plaid_sample, Sample)
+
+    def test_to_plaid_sample_missing_key_raises_keyerror(self, dataset):
+        sample = dataset[0]
+        bad_sample = {
+            "path": getattr(sample, "path", None),
+            "mesh_base_name": sample.features._mesh_base_name,
+            "mesh_zone_name": sample.features._mesh_zone_name,
+            "links": sample.features._links,
+            "paths": sample.features._paths,
+        }
+        bad_hf_sample = {"sample": pickle.dumps(bad_sample)}
+        with pytest.raises(KeyError):
+            to_plaid_sample(bad_hf_sample)
 
     def test_plaid_dataset_to_huggingface(self, dataset, problem_definition):
         hfds = huggingface_bridge.plaid_dataset_to_huggingface(

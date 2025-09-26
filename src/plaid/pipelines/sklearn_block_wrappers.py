@@ -15,12 +15,16 @@ Provides adapters to use scikit-learn estimators within the PLAID feature/block 
 #
 
 import copy
+import sys
 from typing import Optional
 
-try:
-    from typing import Self  # Python 3.10+
-except ImportError:  # pragma: no cover
-    from typing_extensions import Self
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:  # pragma: no cover
+    from typing import TypeVar
+
+    Self = TypeVar("Self")
+
 
 from sklearn.base import (
     BaseEstimator,
@@ -141,7 +145,7 @@ class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
             (len(dataset), len(self.out_features_identifiers_), -1)
         )
 
-        dataset_transformed = dataset.from_tabular(
+        dataset_transformed = dataset.add_features_from_tabular(
             X_transformed, self.out_features_identifiers_, restrict_to_features=False
         )
 
@@ -168,7 +172,7 @@ class WrappedSklearnTransformer(TransformerMixin, BaseEstimator):
             (len(dataset), len(self.in_features_identifiers_), -1)
         )
 
-        dataset_inv_transformed = dataset.from_tabular(
+        dataset_inv_transformed = dataset.add_features_from_tabular(
             X_inv_transformed, self.in_features_identifiers_, restrict_to_features=False
         )
 
@@ -213,8 +217,12 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
         self.in_features_identifiers_ = self.in_features_identifiers.copy()
         self.out_features_identifiers_ = self.out_features_identifiers.copy()
 
-        X = dataset.get_tabular_from_stacked_identifiers(self.in_features_identifiers_)
-        y = dataset.get_tabular_from_stacked_identifiers(self.out_features_identifiers_)
+        X, _ = dataset.get_tabular_from_stacked_identifiers(
+            self.in_features_identifiers_
+        )
+        y, self.cumulated_feat_dims = dataset.get_tabular_from_stacked_identifiers(
+            self.out_features_identifiers_
+        )
 
         self.sklearn_block_.fit(X, y)
 
@@ -231,14 +239,32 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
         """
         check_is_fitted(self, "sklearn_block_")
 
-        X = dataset.get_tabular_from_stacked_identifiers(self.in_features_identifiers_)
+        X, _ = dataset.get_tabular_from_stacked_identifiers(
+            self.in_features_identifiers_
+        )
 
         y = self.sklearn_block_.predict(X)
-        y = y.reshape((len(dataset), len(self.out_features_identifiers_), -1))
+        y = y.reshape((len(dataset), -1))
 
-        dataset_predicted = dataset.from_tabular(
-            y, self.out_features_identifiers_, restrict_to_features=False
+        dataset_predicted = Dataset.merge_dataset_by_features(
+            [
+                dataset.from_tabular(
+                    y[
+                        :,
+                        None,
+                        self.cumulated_feat_dims[i_feat] : self.cumulated_feat_dims[
+                            i_feat + 1
+                        ],
+                    ],
+                    feature_identifiers=[feat_ids],
+                )
+                for i_feat, feat_ids in enumerate(self.out_features_identifiers_)
+            ]
         )
+        # dataset_predicted = dataset.add_features_from_tabular(
+        #     y, self.out_features_identifiers_, restrict_to_features=False
+        # )
+        dataset_predicted = dataset.merge_features(dataset_predicted)
 
         return dataset_predicted
 

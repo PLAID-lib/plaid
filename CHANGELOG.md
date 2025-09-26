@@ -9,6 +9,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+- (sample) Restructuring of the Sample class to store a global (tensor of arbitrary order) at a given time step: replaces scalar and time_series. All Sample data are now stored in CGNS trees.
+
+### Fixes
+
+- (docs) explain release process in Contributing page
+
+### Changed
+
+
+### Removed
+
+- (sample) time_series support, now handle directly globals at time steps.
+
+
+## [0.1.9] - 2025-09-24
+
+### Added
+
+- (problem_definition) add extract_problem_definition_from_identifiers method
+- (dataset) `get_tabular_from_stacked_identifiers` now returns stacked tabular and the cumulated feature dims, to be able to split columns to match features and then to revert the operation.
+- (dataset) add option `keep_cgns` to `extract_dataset_from_identifier` to keep CGNS tree structure even if no identifiers need it.
+- (`huggingface_bridge.load_hf_dataset_from_hub`) new utility to load datasets from the Hugging Face Hub, supporting both proxy and non-proxy environments.
+
+### Changed
+
+- (`huggingface_bridge.to_plaid_sample`) now accepts hf_dataset[id] directly as input (with pickle loading handled internally).
+
+### Fixes
+
+- (pipelines) fix `ColumnTransformer.inverse_transform` to use appropriate input identifier, and to keep CGNS tree structure when extracting sub-dataset.
+- (examples) corrected and improved downloadable examples and the associated documentation notebook.
+  - Improved integration with huggingface_bridge.to_plaid_sample.
+  - Significantly faster on first retrieval when the dataset is already cached locally.
+
+## [0.1.8] - 2025-09-18
+
+### Added
+
+- (docs) configure `make clean`
 - (problem_definition) add methods using feature identifiers instead of names
 - (imports) add imports of `Sample`, `Dataset` from `plaid` and `plaid.containers` and `ProblemDefinition` from `plaid`
 - (dataset.py) add optional `ids` argument to `from_list_of_samples`
@@ -19,17 +60,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (examples/docs) update use of deprecated functions
+- Reorder arguments in methods working on fields in `Sample` and `Dataset`, always use keyword arguments when using `add_field`, `get_field` or `del_field`
+- Refactor the `containers/sample.py` module by introducting `SampleScalars` and `SampleMeshes` in `containers/features.py` that handle the scalars and meshes mechanics. Some methods are removed from `Sample`.
 - Move to jupytext for notebooks and examples handling (unique source for both)
 - Move to Muscat=2.5.0 (for tests and examples support)
 - Update repo configuration (actions: rely more on pypi dependencies, action versions)
 - Rename types to remove `Type` from name of types: https://github.com/PLAID-lib/plaid/pull/164
+- Refactored method names for improved clarity:
+  - `Dataset.from_tabular` → `Dataset.add_features_from_tabular`
+  - `Dataset.from_features_identifier` → `Dataset.extract_dataset_from_identifier`
+  - `Sample.from_features_identifier` → `Sample.extract_sample_from_identifier`
 
 ### Fixes
 
+- (dataset) fix get tabular from dataset of samples containing multidimensional scalars
 - (plaid/examples) fix circular imports
 - (sample/dataset/problem_definition) fix incoherent path argument names in save/load methods -> `path` is now used everywhere
 
 ### Removed
+
+- (envs/packaging) drop python3.9 support and packaging
 
 ## [0.1.7] - 2025-08-14
 
@@ -109,7 +160,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migration from [GitLab](https://gitlab.com/drti/plaid).
 
-[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.7...HEAD
+[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.9...HEAD
+[0.1.9]: https://github.com/PLAID-lib/plaid/compare/0.1.8...0.1.9
+[0.1.8]: https://github.com/PLAID-lib/plaid/compare/0.1.7...0.1.8
 [0.1.7]: https://github.com/PLAID-lib/plaid/compare/0.1.6...0.1.7
 [0.1.6]: https://github.com/PLAID-lib/plaid/compare/0.1.5...0.1.6
 [0.1.5]: https://github.com/PLAID-lib/plaid/compare/0.1.4...0.1.5

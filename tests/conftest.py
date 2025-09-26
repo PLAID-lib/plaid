@@ -31,19 +31,17 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
         sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
         sample.add_scalar("test_scalar", float(i))
         sample.add_scalar("test_scalar_2", float(i**2))
-        sample.add_time_series(
-            "test_time_series_1",
-            np.arange(11, dtype=float),
-            float(i**3) * np.arange(11, dtype=float),
+        sample.add_field(
+            name="test_field_same_size",
+            field=float(i**4) * np.ones(17),
+            zone_name=zone_name,
+            base_name=base_name,
         )
         sample.add_field(
-            "test_field_same_size", float(i**4) * np.ones(17), zone_name, base_name
-        )
-        sample.add_field(
-            "test_field_2785",
-            float(i**5) * np.ones(3 * i),
-            zone_name,
-            base_name,
+            name="test_field_2785",
+            field=float(i**5) * np.ones(3 * i),
+            zone_name=zone_name,
+            base_name=base_name,
         )
         sample_list.append(sample)
     return sample_list
@@ -146,7 +144,7 @@ def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
 def sample_with_tree(tree: CGNSTree) -> Sample:
     """Generate a Sample objects with a tree."""
     sample = Sample()
-    sample.add_tree(tree)
+    sample.features.add_tree(tree)
     return sample
 
 
@@ -214,11 +212,6 @@ def heterogeneous_dataset(dataset_with_samples_with_tree):
     sample_with_scalar.add_scalar("scalar", 1.0)
     dataset.add_sample(sample_with_scalar)
     sample_with_ts = Sample()
-    sample_with_ts.add_time_series(
-        "test_time_series_1",
-        np.arange(11, dtype=float),
-        np.arange(11, dtype=float),
-    )
     dataset.add_sample(sample_with_ts)
     return dataset
 

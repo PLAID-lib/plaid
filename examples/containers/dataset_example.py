@@ -1,12 +1,13 @@
 # ---
 # jupyter:
 #   jupytext:
+#     custom_cell_magics: kql
 #     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.17.3
+#       jupytext_version: 1.11.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -33,6 +34,7 @@ from pathlib import Path
 import platform
 
 import numpy as np
+import copy
 
 # %%
 # Import necessary libraries and functions
@@ -105,7 +107,7 @@ print(f"{sample_01 = }")
 
 # %%
 # Add a CGNS tree structure to the Sample
-sample_01.add_tree(cgns_mesh)
+sample_01.features.add_tree(copy.deepcopy(cgns_mesh))
 print(f"{sample_01 = }")
 
 # %%
@@ -136,14 +138,14 @@ print("#---# Empty Sample")
 sample_03 = Sample()
 sample_03.add_scalar("speed", np.random.randn())
 sample_03.add_scalar("rotation", sample_01.get_scalar("rotation"))
-sample_03.add_tree(cgns_mesh)
+sample_03.features.add_tree(copy.deepcopy(cgns_mesh))
 
 # Show Sample CGNS content
 sample_03.show_tree()
 
 # %%
 # Add a field to the third empty Sample
-sample_03.add_field("temperature", np.random.rand(5), "Zone", "Base_2_2")
+sample_03.add_field("temperature", np.random.rand(5), zone_name="Zone", base_name="Base_2_2")
 sample_03.show_tree()
 
 # %% [markdown]
@@ -234,6 +236,13 @@ print("get_sample_ids =", dataset.get_sample_ids())
 # Print the Dataset
 print(f"{dataset = }")
 print("length of dataset =", len(dataset))
+
+# %%
+# Create a new dataset with the sample list and ids
+# (ids can be provided optionally)
+new_dataset = Dataset(samples=[sample_01, sample_02, sample_03], sample_ids=[3, 5, 7])
+print(f"{new_dataset = }")
+print("new dataset sample ids =", new_dataset.get_sample_ids())
 
 # %% [markdown]
 # ### Add a list of Sample to a Dataset
@@ -346,6 +355,7 @@ infos = {
 dataset.set_infos(infos)
 dataset.print_infos()
 
+
 # %% [markdown]
 # ## Section 4: Saving and Loading Dataset
 #
@@ -359,6 +369,7 @@ tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000
 print(f"Save dataset in: {tmpdir}")
 
 dataset._save_to_dir_(tmpdir)
+
 
 # %% [markdown]
 # ### Get the number of Samples that can be loaded from a directory

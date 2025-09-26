@@ -18,10 +18,7 @@ from plaid import Dataset, Sample
 # from plaid.quantity import QuantityValueType
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
+
 
 # %% Functions
 

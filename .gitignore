@@ -5,9 +5,10 @@ tests/post/*.yaml
 tests/problem_definition/*.csv
 examples/**/*.png
 tests/problem_definition/split.csv
+
 # Heavy data
 *.cgns
-!notebooks/ex_rotor37_pv.cgns
+!tests/post/**/*.cgns
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -59,10 +60,6 @@ report.xml
 
 # VisualStudioCode
 .vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
 *.code-workspace
 **/.vscode
 *-jvsc-*.ipynb
