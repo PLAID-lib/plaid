@@ -1245,12 +1245,16 @@ class ProblemDefinition(object):
             self._version = Version(data["version"])
 
         self._task = data["task"]
-        self.in_features_identifiers = [
-            FeatureIdentifier(**tup) for tup in data["input_features"]
-        ]
-        self.out_features_identifiers = [
-            FeatureIdentifier(**tup) for tup in data["output_features"]
-        ]
+        self.in_features_identifiers = (
+            [FeatureIdentifier(**tup) for tup in data["input_features"]]
+            if "input_features" in data
+            else []
+        )
+        self.out_features_identifiers = (
+            [FeatureIdentifier(**tup) for tup in data["output_features"]]
+            if "output_features" in data
+            else []
+        )
         if "version" not in data or Version(data["version"]) < Version("0.2.0"):
             self.in_scalars_names = data["input_scalars"]
             self.out_scalars_names = data["output_scalars"]
@@ -1261,10 +1265,21 @@ class ProblemDefinition(object):
             self.in_meshes_names = data["input_meshes"]
             self.out_meshes_names = data["output_meshes"]
         else:
-            old_keys = ["input_scalars", "input_fields", "input_timeseries", "input_meshes", "output_scalars", "output_fields", "output_timeseries", "output_meshes"]
+            old_keys = [
+                "input_scalars",
+                "input_fields",
+                "input_timeseries",
+                "input_meshes",
+                "output_scalars",
+                "output_fields",
+                "output_timeseries",
+                "output_meshes",
+            ]
             for k in old_keys:
                 if k in data:
-                    logger.warning(f"Key '{k}' is deprecated and will be ignored. You should convert your ProblemDefinition using FeatureIdentifiers.")
+                    logger.warning(
+                        f"Key '{k}' is deprecated and will be ignored. You should convert your ProblemDefinition using FeatureIdentifiers."
+                    )
 
         # if it was saved with version <=0.1.7 it is a .csv else it is .json
         split = {}
