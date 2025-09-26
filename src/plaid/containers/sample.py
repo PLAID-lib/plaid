@@ -835,7 +835,7 @@ class Sample(BaseModel):
             self._load_old_scalars(old_scalars_file)
 
         old_time_series_files = list(path.glob("time_series_*.csv"))
-        if len(old_time_series_files) > 0: # pragma: no cover
+        if len(old_time_series_files) > 0:
             self._load_old_time_series(old_time_series_files)
 
     @deprecated(
@@ -865,7 +865,8 @@ class Sample(BaseModel):
             )
             assert names[0] == "t"
             times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
-            self.add_time_series(names[1], times_and_val[:, 0], times_and_val[:, 1])
+            for i in range(times_and_val.shape[0]):
+                self.add_global(name=names[1], global_array=times_and_val[i, 1], time=times_and_val[i, 0])
 
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:
