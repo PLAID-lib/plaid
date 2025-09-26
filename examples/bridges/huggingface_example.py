@@ -299,14 +299,6 @@ show_sample(plaid_sample)
 #
 # show_sample(plaid_sample)
 # ```
-#
-# Or initialize a plaid dataset and problem definition for any number of samples relying on this streaming mechanisme:
-#
-# ```python
-# from plaid.bridges.huggingface_bridge import streamed_huggingface_dataset_to_plaid
-#
-# dataset, pb_def = streamed_huggingface_dataset_to_plaid('PLAID-datasets/VKI-LS59', 2)
-# ```
 
 
 

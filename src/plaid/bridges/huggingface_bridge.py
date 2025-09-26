@@ -6,6 +6,8 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
+import io
+import json
 import pickle
 import shutil
 import sys
@@ -13,6 +15,7 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+import yaml
 from tqdm import tqdm
 
 if sys.version_info >= (3, 11):
@@ -28,7 +31,7 @@ from typing import Union
 
 import datasets
 from datasets import load_dataset
-from huggingface_hub import snapshot_download
+from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from pydantic import ValidationError
 
 from plaid import Dataset, ProblemDefinition, Sample
@@ -39,7 +42,6 @@ logger = logging.getLogger(__name__)
 
 """
 Convention with hf (Hugging Face) datasets:
-- hf-datasets contains a single Hugging Face split, named 'all_samples'.
 - samples contains a single Hugging Face feature, named called "sample".
 - Samples are instances of :ref:`Sample`.
 - Mesh objects included in samples follow the CGNS standard, and can be converted in Muscat.Containers.Mesh.Mesh.
@@ -147,6 +149,44 @@ def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
                 sample.add_scalar(sn, val)
 
         return Sample.model_validate(sample)
+
+
+def load_hf_problem_definition_from_hub(
+    repo_id: str, location: str
+) -> (
+    ProblemDefinition
+):  # pragma: no cover (to prevent testing from downloading, this is run by examples)
+    """Load a ProblemDefinition from the Hugging Face Hub.
+
+    Downloads the problem infos YAML and split JSON files from the specified repository and location,
+    then initializes a ProblemDefinition object with this information.
+
+    Args:
+        repo_id (str): The repository ID on the Hugging Face Hub.
+        location (str): The location (subdirectory) in the repo where the files are stored.
+
+    Returns:
+        ProblemDefinition: The loaded problem definition.
+    """
+    # Download split.json
+    json_path = hf_hub_download(
+        repo_id=repo_id, filename=f"{location}/split.json", repo_type="dataset"
+    )
+    with open(json_path, "r", encoding="utf-8") as f:
+        json_data = json.load(f)
+
+    # Download problem_infos.yaml
+    yaml_path = hf_hub_download(
+        repo_id=repo_id, filename=f"{location}/problem_infos.yaml", repo_type="dataset"
+    )
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        yaml_data = yaml.safe_load(f)
+
+    prob_def = ProblemDefinition()
+    prob_def._initialize_from_problem_infos_dict(yaml_data)
+    prob_def.set_split(json_data)
+
+    return prob_def
 
 
 def generate_huggingface_description(
@@ -508,53 +548,53 @@ def huggingface_dataset_to_plaid(
     return dataset, problem_definition
 
 
-def streamed_huggingface_dataset_to_plaid(
-    hf_repo: str,
-    number_of_samples: int,
-) -> tuple[
-    Dataset, ProblemDefinition
-]:  # pragma: no cover (to prevent testing from downloading, this is run by examples)
-    """Use this function for creating a plaid dataset by streaming on Hugging Face.
-
-    The indices of the retrieved sample is not controled.
+def push_dataset_to_hub(
+    hf_dataset: datasets.Dataset, repo_id: str
+) -> None:  # pragma: no cover (push not tested)
+    """Push a Hugging Face dataset to the Hugging Face Hub.
 
     Args:
-        hf_repo (str): the name of the repo on Hugging Face
-        number_of_samples (int): The number of samples to retrieve.
-
-    Returns:
-        dataset (Dataset): the converted dataset.
-        problem_definition (ProblemDefinition): the problem definition generated from the Hugging Face dataset
-
-    Notes:
-        .. code-block:: python
-
-            from plaid.bridges.huggingface_bridge import streamed_huggingface_dataset_to_plaid
-
-            dataset, pb_def = streamed_huggingface_dataset_to_plaid('PLAID-datasets/VKI-LS59', 2)
+        hf_dataset (datasets.Dataset): The Hugging Face dataset to push.
+        repo_id (str): The repository ID on the Hugging Face Hub.
     """
-    ds_stream = load_hf_dataset_from_hub(hf_repo, split="all_samples", streaming=True)
+    hf_dataset.push_to_hub(repo_id)
 
-    infos = {}
-    if "legal" in ds_stream.description:
-        infos["legal"] = ds_stream.description["legal"]
-    if "data_production" in ds_stream.description:
-        infos["data_production"] = ds_stream.description["data_production"]
 
-    problem_definition = huggingface_description_to_problem_definition(
-        ds_stream.description
+def push_problem_definition_to_hub(
+    pb_def: ProblemDefinition, repo_id: str, location: str
+) -> None:  # pragma: no cover (push not tested)
+    """Upload a ProblemDefinition and its split information to the Hugging Face Hub.
+
+    Args:
+        pb_def (ProblemDefinition): The problem definition to upload.
+        repo_id (str): The repository ID on the Hugging Face Hub.
+        location (str): The location (subdirectory) in the repo to store the files.
+    """
+    api = HfApi()
+    data = pb_def._generate_problem_infos_dict()
+    if data is not None:
+        yaml_str = yaml.dump(data)
+        yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+
+    api.upload_file(
+        path_or_fileobj=yaml_buffer,
+        path_in_repo=f"{location}/problem_infos.yaml",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message=f"Upload {location}/problem_infos.yaml",
     )
 
-    samples = []
-    for _ in range(number_of_samples):
-        hf_sample = next(iter(ds_stream))
-        samples.append(to_plaid_sample(hf_sample))
+    data = pb_def.get_split()
+    json_str = json.dumps(data)
+    json_buffer = io.BytesIO(json_str.encode("utf-8"))
 
-    dataset = Dataset(samples=samples)
-
-    dataset.set_infos(infos)
-
-    return dataset, problem_definition
+    api.upload_file(
+        path_or_fileobj=json_buffer,
+        path_in_repo=f"{location}/split.json",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message=f"Upload {location}/split.json",
+    )
 
 
 def create_string_for_huggingface_dataset_card(

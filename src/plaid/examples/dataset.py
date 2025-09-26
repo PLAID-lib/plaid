@@ -7,7 +7,7 @@
 #
 #
 from plaid import Dataset
-from plaid.bridges.huggingface_bridge import streamed_huggingface_dataset_to_plaid
+from plaid.bridges.huggingface_bridge import load_hf_dataset_from_hub, to_plaid_sample
 from plaid.examples.config import _HF_REPOS
 
 
@@ -40,7 +40,12 @@ class _LazyDatasets:
             return self._cache[ex_name]
 
         try:
-            dataset, _ = streamed_huggingface_dataset_to_plaid(hf_repo, 2)
+            ds_stream = load_hf_dataset_from_hub(hf_repo, split="all_samples", streaming=True)
+            samples = []
+            for _ in range(2):
+                hf_sample = next(iter(ds_stream))
+                samples.append(to_plaid_sample(hf_sample))
+            dataset = Dataset(samples=samples)
             self._cache[ex_name] = dataset
             return dataset
         except Exception as e: # pragma: no cover
