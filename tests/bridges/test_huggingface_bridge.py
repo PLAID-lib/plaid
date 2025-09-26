@@ -88,23 +88,10 @@ class Test_Huggingface_Bridge:
             "path": getattr(sample, "path", None),
             "scalars": {sn: sample.get_scalar(sn) for sn in sample.get_scalar_names()},
             "meshes": sample.features.data,
-            "links": sample.features._links,
-            "paths": sample.features._paths,
         }
         old_hf_sample = {"sample": pickle.dumps(old_hf_sample)}
         plaid_sample = to_plaid_sample(old_hf_sample)
         assert isinstance(plaid_sample, Sample)
-
-    def test_to_plaid_sample_missing_key_raises_keyerror(self, dataset):
-        sample = dataset[0]
-        bad_sample = {
-            "path": getattr(sample, "path", None),
-            "links": sample.features._links,
-            "paths": sample.features._paths,
-        }
-        bad_hf_sample = {"sample": pickle.dumps(bad_sample)}
-        with pytest.raises(KeyError):
-            to_plaid_sample(bad_hf_sample)
 
     def test_plaid_dataset_to_huggingface(self, dataset, problem_definition):
         hfds = huggingface_bridge.plaid_dataset_to_huggingface(

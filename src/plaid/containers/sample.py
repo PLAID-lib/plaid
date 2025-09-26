@@ -24,8 +24,6 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 import CGNS.MAP as CGM
-import CGNS.PAT.cgnslib as CGL
-import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic import Field as PydanticField
@@ -38,7 +36,6 @@ from plaid.constants import (
 from plaid.containers.features import SampleFeatures
 from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
-    CGNSTree,
     Feature,
     FeatureIdentifier,
     Scalar,
@@ -88,12 +85,7 @@ class Sample(BaseModel):
         - You can provide a path to a folder containing the sample data, and it will be loaded during initialization.
         - You can provide `SampleFeatures` and `SampleFeatures` instances to initialize the sample with existing data.
 
-    The default `SampleFeatures` instance is initialized with:
-        - `data=None`, `links=None`, and `paths=None` (i.e., no mesh data).
-        - `mesh_base_name="Base"` and `mesh_zone_name="Zone"`.
-
-    The default `SampleFeatures` instance is initialized with:
-        - `scalars=None` (i.e., no scalar data).
+    The default `SampleFeatures` instance is initialized with `data=None`(i.e., no mesh data).
     """
 
     # Pydantic configuration
@@ -177,127 +169,6 @@ class Sample(BaseModel):
             list[str]: A set containing the names of the available scalars.
         """
         return self.features.get_global_names()
-
-    # -------------------------------------------------------------------------#
-
-    def link_tree(
-        self,
-        path_linked_sample: Union[str, Path],
-        linked_sample: "Sample",
-        linked_time: float,
-        time: float,
-    ) -> CGNSTree:
-        """Link the geometrical features of the CGNS tree of the current sample at a given time, to the ones of another sample.
-
-        Args:
-            path_linked_sample (Union[str,Path]): The absolute path of the folder containing the linked CGNS
-            linked_sample (Sample): The linked sample
-            linked_time (float): The time step of the linked CGNS in the linked sample
-            time (float): The time step the current sample to which the CGNS tree is linked.
-
-        Returns:
-            CGNSTree: The deleted CGNS tree.
-        """
-        # see https://pycgns.github.io/MAP/sids-to-python.html#links
-        # difficulty is to link only the geometrical objects, which can be complex
-
-        # https://pycgns.github.io/MAP/examples.html#save-with-links
-        # When you load a file all the linked-to files are resolved to produce a full CGNS/Python tree with actual node data.
-
-        path_linked_sample = Path(path_linked_sample)
-
-        if linked_time not in linked_sample.features.data:  # pragma: no cover
-            raise KeyError(
-                f"There is no CGNS tree for time {linked_time} in linked_sample."
-            )
-        if time in self.features.data:  # pragma: no cover
-            raise KeyError(f"A CGNS tree is already linked in self for time {time}.")
-
-        tree = CGL.newCGNSTree()
-
-        base_names = linked_sample.features.get_base_names(time=linked_time)
-
-        for bn in base_names:
-            base_node = linked_sample.features.get_base(bn, time=linked_time)
-            base = [bn, base_node[1], [], "CGNSBase_t"]
-            tree[2].append(base)
-
-            family = [
-                "Bulk",
-                np.array([b"B", b"u", b"l", b"k"], dtype="|S1"),
-                [],
-                "FamilyName_t",
-            ]  # maybe get this from linked_sample as well ?
-            base[2].append(family)
-
-            zone_names = linked_sample.features.get_zone_names(bn, time=linked_time)
-            for zn in zone_names:
-                zone_node = linked_sample.features.get_zone(
-                    zone_name=zn, base_name=bn, time=linked_time
-                )
-                grid = [
-                    zn,
-                    zone_node[1],
-                    [
-                        [
-                            "ZoneType",
-                            np.array(
-                                [
-                                    b"U",
-                                    b"n",
-                                    b"s",
-                                    b"t",
-                                    b"r",
-                                    b"u",
-                                    b"c",
-                                    b"t",
-                                    b"u",
-                                    b"r",
-                                    b"e",
-                                    b"d",
-                                ],
-                                dtype="|S1",
-                            ),
-                            [],
-                            "ZoneType_t",
-                        ]
-                    ],
-                    "Zone_t",
-                ]
-                base[2].append(grid)
-                zone_family = [
-                    "FamilyName",
-                    np.array([b"B", b"u", b"l", b"k"], dtype="|S1"),
-                    [],
-                    "FamilyName_t",
-                ]
-                grid[2].append(zone_family)
-
-        def find_feature_roots(sample: Sample, time: float, Type_t: str):
-            Types_t = CGU.getAllNodesByTypeSet(sample.features.get_mesh(time), Type_t)
-            # in case the type is not present in the tree
-            if Types_t == []:  # pragma: no cover
-                return []
-            types = [Types_t[0]]
-            for t in Types_t[1:]:
-                for tt in types:
-                    if tt not in t:  # pragma: no cover
-                        types.append(t)
-            return types
-
-        feature_paths = []
-        for feature in ["ZoneBC_t", "Elements_t", "GridCoordinates_t"]:
-            feature_paths += find_feature_roots(linked_sample, linked_time, feature)
-
-        self.features.add_tree(tree, time=time)
-
-        dname = path_linked_sample.parent
-        bname = path_linked_sample.name
-        self.features._links[time] = [
-            [str(dname), bname, fp, fp] for fp in feature_paths
-        ]
-
-        return tree
 
     # -------------------------------------------------------------------------#
 
@@ -739,7 +610,6 @@ class Sample(BaseModel):
                 status = CGM.save(
                     str(outfname),
                     self.features.data[time],
-                    links=self.features._links.get(time),
                 )
                 logger.debug(f"save -> {status=}")
 
@@ -803,26 +673,11 @@ class Sample(BaseModel):
         if meshes_dir.is_dir():
             meshes_names = list(meshes_dir.glob("*"))
             nb_meshes = len(meshes_names)
-            # self.features = {}
-            self.features._links = {}
-            self.features._paths = {}
             for i in range(nb_meshes):
-                tree, links, paths = CGM.load(str(meshes_dir / f"mesh_{i:09d}.cgns"))
+                tree, _, _ = CGM.load(str(meshes_dir / f"mesh_{i:09d}.cgns"))
                 time = CGH.get_time_values(tree)
 
-                (
-                    self.features.data[time],
-                    self.features._links[time],
-                    self.features._paths[time],
-                ) = (
-                    tree,
-                    links,
-                    paths,
-                )
-                for i in range(len(self.features._links[time])):  # pragma: no cover
-                    self.features._links[time][i][0] = str(
-                        meshes_dir / self.features._links[time][i][0]
-                    )
+                (self.features.data[time],) = (tree,)
 
         old_scalars_file = path / "scalars.csv"
         if old_scalars_file.is_file():

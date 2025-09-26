@@ -132,25 +132,21 @@ def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
         return Sample.model_validate(pickled_hf_sample)
 
     except ValidationError:
-        # If it fails, try to build the sample from its components
-        try:
-            features = SampleFeatures(
-                data=pickled_hf_sample.get("meshes"),
-                links=pickled_hf_sample.get("links"),
-                paths=pickled_hf_sample.get("paths"),
-            )
+        features = SampleFeatures(
+            data=pickled_hf_sample.get("meshes"),
+        )
 
-            sample = Sample(
-                path=pickled_hf_sample.get("path"),
-                features=features,
-            )
+        sample = Sample(
+            path=pickled_hf_sample.get("path"),
+            features=features,
+        )
 
-            for sn, val in pickled_hf_sample.get("scalars").items():
+        scalars = pickled_hf_sample.get("scalars")
+        if scalars:
+            for sn, val in scalars.items():
                 sample.add_scalar(sn, val)
 
-            return Sample.model_validate(sample)
-        except KeyError as e:
-            raise KeyError(f"Missing key {e!s} in HF data.") from e
+        return Sample.model_validate(sample)
 
 
 def generate_huggingface_description(
