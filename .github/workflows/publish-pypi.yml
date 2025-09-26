@@ -1,12 +1,6 @@
-name: Build wheel and Publish on Pypi
+name: Build and Publish on Pypi
 
 on:
-  push:
-    branches:
-      - '**'
-  pull_request:
-    branches:
-      - '**'
   release:
     types: [created]
   workflow_dispatch:
@@ -17,17 +11,23 @@ on:
         type: string
 
 jobs:
-  build:
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
-    name: Build wheels
-    permissions:
-      contents: read
+  publish:
+    name: Build and Publish
     runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
 
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 0   # fetch full history and tags
+          fetch-depth: 0
+
+      - name: Checkout tag (for manual run)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git fetch --tags
+          git checkout ${{ github.event.inputs.tag }}
 
       - name: Install HDF5 dev libraries
         run: |
@@ -44,46 +44,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
 
-      - name: Build package
-        run: |
-          python -m build --wheel --outdir dist/
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: wheels-3.11
-          path: dist/*.whl
-
-  publish:
-    name: Publish to PyPI
-    needs: build
-    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    environment: pypi
-    permissions:
-      id-token: write
-
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Checkout tag if manual run
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          git fetch --tags
-          git checkout ${{ github.event.inputs.tag }}
-
-      - name: Install HDF5 dev libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libhdf5-dev
-          
-      - name: Install Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
       - name: Verify version matches tag
+        id: verify-version
         run: |
           pip install .
           if [ "${{ github.event_name }}" = "release" ]; then
@@ -99,13 +61,6 @@ jobs:
           echo "✅ Version check passed: $PACKAGE_VER"
           echo "package_ver=$PACKAGE_VER" >> $GITHUB_OUTPUT
 
-      - name: Download all wheel artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: wheels-*
-          path: dist
-          merge-multiple: true
-
       - name: Check if version already on PyPI
         run: |
           PACKAGE_VER="${{ steps.verify-version.outputs.package_ver }}"
@@ -115,6 +70,10 @@ jobs:
             exit 1
           fi
           echo "✅ Version $PACKAGE_VER not found on PyPI, safe to publish."
+
+      - name: Build package
+        run: |
+          python -m build --wheel --outdir dist/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
