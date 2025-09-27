@@ -139,7 +139,7 @@ def load_hf_infos_from_hub(
     """
     # Download infos.yaml
     yaml_path = hf_hub_download(
-        repo_id=repo_id, filename="data/infos.yaml", repo_type="dataset"
+        repo_id=repo_id, filename="infos.yaml", repo_type="dataset"
     )
     with open(yaml_path, "r", encoding="utf-8") as f:
         infos = yaml.safe_load(f)
@@ -148,7 +148,7 @@ def load_hf_infos_from_hub(
 
 
 def load_hf_problem_definition_from_hub(
-    repo_id: str, location: str
+    repo_id: str, name: str
 ) -> (
     ProblemDefinition
 ):  # pragma: no cover (to prevent testing from downloading, this is run by examples)
@@ -159,21 +159,25 @@ def load_hf_problem_definition_from_hub(
 
     Args:
         repo_id (str): The repository ID on the Hugging Face Hub.
-        location (str): The location (subdirectory) in the repo where the files are stored.
+        name (str): The name of the problem_definition stored in the repo.
 
     Returns:
         ProblemDefinition: The loaded problem definition.
     """
     # Download split.json
     json_path = hf_hub_download(
-        repo_id=repo_id, filename=f"{location}/split.json", repo_type="dataset"
+        repo_id=repo_id,
+        filename=f"problem_definitions/{name}/split.json",
+        repo_type="dataset",
     )
     with open(json_path, "r", encoding="utf-8") as f:
         json_data = json.load(f)
 
     # Download problem_infos.yaml
     yaml_path = hf_hub_download(
-        repo_id=repo_id, filename=f"{location}/problem_infos.yaml", repo_type="dataset"
+        repo_id=repo_id,
+        filename=f"problem_definitions/{name}/problem_infos.yaml",
+        repo_type="dataset",
     )
     with open(yaml_path, "r", encoding="utf-8") as f:
         yaml_data = yaml.safe_load(f)
@@ -183,9 +187,6 @@ def load_hf_problem_definition_from_hub(
     prob_def.set_split(json_data)
 
     return prob_def
-
-
-# ------------------------------------------------------------------------------
 
 
 def push_dataset_dict_to_hub(
@@ -220,24 +221,24 @@ def push_dataset_infos_to_hub(
         yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
         api.upload_file(
             path_or_fileobj=yaml_buffer,
-            path_in_repo="data/infos.yaml",
+            path_in_repo="infos.yaml",
             repo_id=repo_id,
             repo_type="dataset",
-            commit_message="Upload data/infos.yaml",
+            commit_message="Upload infos.yaml",
         )
     else:
         raise ValueError("'infos' must not be empty")
 
 
 def push_problem_definition_to_hub(
-    repo_id: str, pb_def: ProblemDefinition, location: str
+    repo_id: str, name: str, pb_def: ProblemDefinition
 ) -> None:  # pragma: no cover (push not tested)
     """Upload a ProblemDefinition and its split information to the Hugging Face Hub.
 
     Args:
         repo_id (str): The repository ID on the Hugging Face Hub.
+        name (str): The name of the problem_definition to store in the repo.
         pb_def (ProblemDefinition): The problem definition to upload.
-        location (str): The location (subdirectory) in the repo to store the files.
     """
     api = HfApi()
     data = pb_def._generate_problem_infos_dict()
@@ -247,10 +248,10 @@ def push_problem_definition_to_hub(
 
     api.upload_file(
         path_or_fileobj=yaml_buffer,
-        path_in_repo=f"{location}/problem_infos.yaml",
+        path_in_repo=f"problem_definitions/{name}/problem_infos.yaml",
         repo_id=repo_id,
         repo_type="dataset",
-        commit_message=f"Upload {location}/problem_infos.yaml",
+        commit_message=f"Upload problem_definitions/{name}/problem_infos.yaml",
     )
 
     data = pb_def.get_split()
@@ -259,54 +260,14 @@ def push_problem_definition_to_hub(
 
     api.upload_file(
         path_or_fileobj=json_buffer,
-        path_in_repo=f"{location}/split.json",
+        path_in_repo=f"problem_definitions/{name}/split.json",
         repo_id=repo_id,
         repo_type="dataset",
-        commit_message=f"Upload {location}/split.json",
+        commit_message=f"Upload problem_definitions/{name}/split.json",
     )
 
 
 # ------------------------------------------------------------------------------
-
-
-def save_dataset_dict_to_disk(
-    path: Union[str, Path], hf_dataset_dict: datasets.DatasetDict
-) -> None:
-    """Save a Hugging Face DatasetDict to disk.
-
-    Args:
-        path (Union[str, Path]): The directory path where the dataset dict will be saved.
-        hf_dataset_dict (datasets.DatasetDict): The Hugging Face DatasetDict to save.
-    """
-    hf_dataset_dict.save_to_disk(str(path))
-
-
-def save_dataset_infos_to_disk(
-    path: Union[str, Path], infos: dict[str, dict[str, str]]
-) -> None:
-    """Save dataset infos as a YAML file to disk.
-
-    Args:
-        path (Union[str, Path]): The directory path where the infos file will be saved.
-        infos (dict[str, dict[str, str]]): Dictionary containing dataset infos.
-    """
-    infos_fname = Path(path) / "data" / "infos.yaml"
-    infos_fname.parent.mkdir(parents=True, exist_ok=True)
-    with open(infos_fname, "w") as file:
-        yaml.dump(infos, file, default_flow_style=False, sort_keys=False)
-
-
-def save_problem_definition_to_disk(
-    path: Union[str, Path], pb_def: ProblemDefinition, location: Union[str, Path]
-) -> None:
-    """Save a ProblemDefinition and its split information to disk.
-
-    Args:
-        path (Union[str, Path]): The root directory path for saving.
-        pb_def (ProblemDefinition): The problem definition to save.
-        location (Union[str, Path]): Subdirectory location for saving the files.
-    """
-    pb_def._save_to_dir_(Path(path) / Path(location))
 
 
 def load_dataset_dict_from_to_disk(path: Union[str, Path]) -> datasets.DatasetDict:
@@ -330,27 +291,67 @@ def load_dataset_infos_from_disk(path: Union[str, Path]) -> dict[str, dict[str, 
     Returns:
         dict[str, dict[str, str]]: Dictionary containing dataset infos.
     """
-    infos_fname = Path(path) / "data" / "infos.yaml"
+    infos_fname = Path(path) / "infos.yaml"
     with infos_fname.open("r") as file:
         infos = yaml.safe_load(file)
     return infos
 
 
 def load_problem_definition_from_disk(
-    path: Union[str, Path], location: Union[str, Path]
+    path: Union[str, Path], name: Union[str, Path]
 ) -> ProblemDefinition:
     """Load a ProblemDefinition and its split information from disk.
 
     Args:
         path (Union[str, Path]): The root directory path for loading.
-        location (Union[str, Path]): Subdirectory location containing the files.
+        name (str): The name of the problem_definition stored in the disk directory.
 
     Returns:
         ProblemDefinition: The loaded problem definition.
     """
     pb_def = ProblemDefinition()
-    pb_def._load_from_dir_(Path(path) / Path(location))
+    pb_def._load_from_dir_(Path(path) / Path("problem_definitions") / Path(name))
     return pb_def
+
+
+def save_dataset_dict_to_disk(
+    path: Union[str, Path], hf_dataset_dict: datasets.DatasetDict
+) -> None:
+    """Save a Hugging Face DatasetDict to disk.
+
+    Args:
+        path (Union[str, Path]): The directory path where the dataset dict will be saved.
+        hf_dataset_dict (datasets.DatasetDict): The Hugging Face DatasetDict to save.
+    """
+    hf_dataset_dict.save_to_disk(str(path))
+
+
+def save_dataset_infos_to_disk(
+    path: Union[str, Path], infos: dict[str, dict[str, str]]
+) -> None:
+    """Save dataset infos as a YAML file to disk.
+
+    Args:
+        path (Union[str, Path]): The directory path where the infos file will be saved.
+        infos (dict[str, dict[str, str]]): Dictionary containing dataset infos.
+    """
+    infos_fname = Path(path) / "infos.yaml"
+    infos_fname.parent.mkdir(parents=True, exist_ok=True)
+    with open(infos_fname, "w") as file:
+        yaml.dump(infos, file, default_flow_style=False, sort_keys=False)
+
+
+def save_problem_definition_to_disk(
+    path: Union[str, Path], name: Union[str, Path], pb_def: ProblemDefinition
+) -> None:
+    """Save a ProblemDefinition and its split information to disk.
+
+    Args:
+        path (Union[str, Path]): The root directory path for saving.
+        name (str): The name of the problem_definition to store in the disk directory.
+        pb_def (ProblemDefinition): The problem definition to save.
+    """
+    pb_def._save_to_dir_(Path(path) / Path("problem_definitions") / Path(name))
 
 
 # ------------------------------------------------------------------------------
@@ -686,6 +687,29 @@ def huggingface_description_to_problem_definition(
             pass
 
     return problem_definition
+
+
+@deprecated("will be removed (no alternative)", version="0.1.9", removal="0.2.0")
+def huggingface_description_to_infos(
+    description: dict,
+) -> dict[str, dict[str, str]]:
+    """Convert a Hugging Face dataset description dictionary to a PLAID infos dictionary.
+
+    Extracts the "legal" and "data_production" sections from the Hugging Face description
+    and returns them in a format compatible with PLAID dataset infos.
+
+    Args:
+        description (dict): The Hugging Face dataset description dictionary.
+
+    Returns:
+        dict[str, dict[str, str]]: Dictionary containing "legal" and "data_production" infos if present.
+    """
+    infos = {}
+    if "legal" in description:
+        infos["legal"] = description["legal"]
+    if "data_production" in description:
+        infos["data_production"] = description["data_production"]
+    return infos
 
 
 @deprecated("will be removed (no alternative)", version="0.1.9", removal="0.2.0")

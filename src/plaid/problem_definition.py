@@ -1162,7 +1162,7 @@ class ProblemDefinition(object):
         path = Path(path)
 
         if not (path.is_dir()):
-            path.mkdir()
+            path.mkdir(parents=True)
 
         problem_infos_dict = self._generate_problem_infos_dict()
 

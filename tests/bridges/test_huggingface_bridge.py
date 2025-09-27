@@ -168,7 +168,7 @@ class Test_Huggingface_Bridge:
         huggingface_bridge.save_dataset_dict_to_disk(test_dir, hf_dataset_dict)
         huggingface_bridge.save_dataset_infos_to_disk(test_dir, infos)
         huggingface_bridge.save_problem_definition_to_disk(
-            test_dir, problem_definition, "task_1"
+            test_dir, "task_1", problem_definition
         )
         huggingface_bridge.load_dataset_dict_from_to_disk(test_dir)
         huggingface_bridge.load_dataset_infos_from_disk(test_dir)
@@ -182,6 +182,11 @@ class Test_Huggingface_Bridge:
         huggingface_bridge.huggingface_description_to_problem_definition(
             hf_dataset.description
         )
+
+    def test_huggingface_description_to_infos(self, infos):
+        hf_description = {}
+        hf_description.update(infos)
+        huggingface_bridge.huggingface_description_to_infos(hf_description)
 
     def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
         huggingface_bridge.create_string_for_huggingface_dataset_card(
