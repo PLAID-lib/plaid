@@ -189,15 +189,15 @@ def load_hf_problem_definition_from_hub(
 
 
 def push_dataset_to_hub(
-    repo_id: str, hf_dataset: datasets.DatasetDict
+    repo_id: str, hf_dataset_dict: datasets.DatasetDict
 ) -> None:  # pragma: no cover (push not tested)
     """Push a Hugging Face dataset to the Hugging Face Hub.
 
     Args:
         repo_id (str): The repository ID on the Hugging Face Hub.
-        hf_dataset (datasets.Dataset): The Hugging Face dataset to push.
+        hf_dataset_dict (datasets.Dataset): The Hugging Face dataset to push.
     """
-    hf_dataset.push_to_hub(repo_id)
+    hf_dataset_dict.push_to_hub(repo_id)
 
 
 def push_dataset_infos_to_hub(
