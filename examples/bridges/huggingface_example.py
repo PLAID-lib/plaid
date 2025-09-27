@@ -1,12 +1,13 @@
 # ---
 # jupyter:
 #   jupytext:
+#     custom_cell_magics: kql
 #     formats: ipynb,py:percent
 #     text_representation:
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.17.3
+#       jupytext_version: 1.11.2
 #   kernelspec:
 #     display_name: plaid-dev
 #     language: python
@@ -39,6 +40,7 @@ from plaid.bridges import huggingface_bridge
 from plaid import Dataset
 from plaid import Sample
 from plaid import ProblemDefinition
+from plaid.types import FeatureIdentifier
 
 
 # %%
@@ -51,7 +53,7 @@ def show_sample(sample: Sample):
 
 
 # %% [markdown]
-# ## Initialize plaid dataset and problem_definition
+# ## Initialize plaid dataset, infos and problem_definition
 
 # %%
 # Input data
@@ -73,8 +75,11 @@ triangles = np.array(
     ]
 )
 
-
 dataset = Dataset()
+
+scalar_feat_id = FeatureIdentifier({"type": "scalar", "name": "scalar"})
+node_field_feat_id = FeatureIdentifier({"type": "field", "name": "node_field", "location": "Vertex"})
+cell_field_feat_id = FeatureIdentifier({"type": "field", "name": "cell_field", "location": "CellCenter"})
 
 print("Creating meshes dataset...")
 for _ in range(3):
@@ -82,12 +87,11 @@ for _ in range(3):
 
     sample = Sample()
 
-    sample.features.add_tree(MeshToCGNS(mesh))
-    sample.add_scalar("scalar", np.random.randn())
-    sample.add_field("node_field", np.random.rand(len(points)), location="Vertex")
-    sample.add_field(
-        "cell_field", np.random.rand(len(triangles)), location="CellCenter"
-    )
+    sample.add_tree(MeshToCGNS(mesh, exportOriginalIDs = False))
+
+    sample.update_features_from_identifier(scalar_feat_id, np.random.randn(), in_place=True)
+    sample.update_features_from_identifier(node_field_feat_id, np.random.rand(len(points)), in_place=True)
+    sample.update_features_from_identifier(cell_field_feat_id, np.random.rand(len(triangles)), in_place=True)
 
     dataset.add_sample(sample)
 
@@ -99,36 +103,39 @@ infos = {
 dataset.set_infos(infos)
 
 print(f" {dataset = }")
+print(f" {infos = }")
 
-problem = ProblemDefinition()
-problem.add_output_scalars_names(["scalar"])
-problem.add_output_fields_names(["node_field", "cell_field"])
-problem.add_input_meshes_names(["/Base/Zone"])
+pb_def = ProblemDefinition()
+pb_def.add_in_features_identifiers([scalar_feat_id, node_field_feat_id])
+pb_def.add_out_features_identifiers([cell_field_feat_id])
 
-problem.set_task("regression")
-problem.set_split({"train": [0, 1], "test": [2]})
+pb_def.set_task("regression")
+pb_def.set_split({"train": [0, 1], "test": [2]})
 
-print(f" {problem = }")
+print(f" {pb_def = }")
 
 # %% [markdown]
-# ## Section 1: Convert plaid dataset to Hugging Face
-#
-# The description field of Hugging Face dataset is automatically configured to include data from the plaid dataset info and problem_definition to prevent loss of information and equivalence of format.
+# ## Section 1: Convert plaid dataset to Hugging Face Dataset
 
 # %%
-hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset, problem)
+hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset)
 print()
 print(f"{hf_dataset = }")
-print(f"{hf_dataset.description = }")
 
 # %% [markdown]
-# The previous code generates a Hugging Face dataset containing all the samples from the plaid dataset, the splits being defined in the hf_dataset descriptions. For splits, Hugging Face proposes `DatasetDict`, which are dictionaries of hf datasets, with keys being the name of the corresponding splits. It is possible de generate a hf datasetdict directly from plaid:
+# By default, all the indices from all splits are taken into account. One can generate a Hugging Face dataset for a given split by providing the problem_definition:
 
 # %%
-hf_datasetdict = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, problem, main_splits = ['train', 'test'])
+hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset, pb_def, split="train")
+print(hf_dataset)
+
+# %% [markdown]
+# The previous code generates a Hugging Face dataset containing all the samples from the plaid dataset, the splits being defined in the hf_dataset descriptions. For splits, Hugging Face proposes `DatasetDict`, which are dictionaries of hf datasets, with keys being the name of the corresponding splits. It is possible to generate a hf datasetdict directly from plaid:
+
+# %%
+hf_datasetdict = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, problem_definition = pb_def, main_splits = ['train', 'test'])
 print()
-print(f"{hf_datasetdict['train'] = }")
-print(f"{hf_datasetdict['test'] = }")
+print(f"{hf_datasetdict = }")
 
 
 # %% [markdown]
@@ -143,59 +150,55 @@ def generator():
 
 
 hf_dataset_gen = huggingface_bridge.plaid_generator_to_huggingface(
-    generator, infos, problem
+    generator
 )
-print()
 print(f"{hf_dataset_gen = }")
-print(f"{hf_dataset_gen.description = }")
 
 # %% [markdown]
 # The same is available with datasetdict:
 
 # %%
-hf_datasetdict_gen = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-    generator, infos, problem, main_splits = ['train', 'test']
+hf_datasetdict = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+    generator, main_splits = ['train', 'test']
 )
-print()
-print(f"{hf_datasetdict['train'] = }")
-print(f"{hf_datasetdict['test'] = }")
+print(f"{hf_datasetdict = }")
 
 # %% [markdown]
 # ## Section 3: Convert a Hugging Face dataset to plaid
-#
-# Plaid dataset infos and problem_defitinion are recovered from the huggingface dataset
 
 # %%
-dataset_2, problem_2 = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
+dataset_2 = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
 print()
 print(f"{dataset_2 = }")
-print(f"{dataset_2.get_infos() = }")
-print(f"{problem_2 = }")
 
 # %% [markdown]
 # ## Section 4: Save and Load Hugging Face datasets
 #
 # ### From and to disk
+#
+# Saving datasetdict, infos and problem definition to disk:
 
 # %%
-# Save to disk
-hf_dataset.save_to_disk("/tmp/path/to/dir")
+huggingface_bridge.save_dataset_dict_to_disk("/tmp/test_dir", hf_datasetdict)
+huggingface_bridge.save_dataset_infos_to_disk("/tmp/test_dir", infos)
+huggingface_bridge.save_problem_definition_to_disk("/tmp/test_dir", pb_def, location="task_1")
+
+# %% [markdown]
+# Loading datasetdict, infos and problem definition from disk:
 
 # %%
-# Load from disk
-from datasets import load_from_disk
+loaded_hf_datasetdict = huggingface_bridge.load_dataset_dict_from_to_disk("/tmp/test_dir")
+loaded_infos = huggingface_bridge.load_dataset_infos_from_disk("/tmp/test_dir")
+loaded_pb_def = huggingface_bridge.load_problem_definition_from_disk("/tmp/test_dir", location="task_1")
 
-loaded_hf_dataset = load_from_disk("/tmp/path/to/dir")
-
-print()
-print(f"{loaded_hf_dataset = }")
-print(f"{loaded_hf_dataset.description = }")
+print(f"{loaded_hf_datasetdict = }")
+print(f"{loaded_infos = }")
+print(f"{loaded_pb_def = }")
 
 # %% [markdown]
 # ### From and to the Hugging Face hub
 #
-# You need an huggingface account, with a configured access token, and to install huggingface_hub[cli].
-# Pushing and loading a huggingface dataset without loss of information requires the configuration of a DatasetCard.
+# To save a dataset on the Hub, you need an huggingface account, with a configured access token, and to install huggingface_hub[cli].
 #
 # Find below example of instruction (not executed by this notebook).
 #
@@ -207,38 +210,21 @@ print(f"{loaded_hf_dataset.description = }")
 # ```
 # and enter you access token.
 #
-# Then, the following python instruction enable pushing a dataset to the hub:
+# Then, the following python instruction enable pushing datasetdict, infos and problem_definitions to the hub:
 # ```python
-# hf_dataset.push_to_hub("chanel/dataset")
-#
-# from datasets import load_dataset_builder
-#
-# datasetInfo = load_dataset_builder("chanel/dataset").__getstate__()['info']
-#
-# from huggingface_hub import DatasetCard
-#
-# card_text = create_string_for_huggingface_dataset_card(
-#     description = description,
-#     download_size_bytes = datasetInfo.download_size,
-#     dataset_size_bytes = datasetInfo.dataset_size,
-#     ...)
-# dataset_card = DatasetCard(card_text)
-# dataset_card.push_to_hub("chanel/dataset")
+# huggingface_bridge.push_dataset_dict_to_hub("chanel/dataset", hf_dataset_dict)
+# huggingface_bridge.push_dataset_infos_to_hub("chanel/dataset", infos)
+# huggingface_bridge.push_problem_definition_to_hub("chanel/dataset", pb_def, "location")
 # ```
 #
-# The second upload of the dataset_card is required to ensure that load_dataset from the hub will populate
-# the hf-dataset.description field, and be compatible for conversion to plaid. Wihtout a dataset_card, the description field is lost.
-#
-#
+# The dataset card can then be customized online, on the dataset repo page directly.
+
+# %% [markdown]
 # ### Load from hub
 #
 # #### General case
 #
-# ```python
-# dataset = load_dataset("chanel/dataset", split="all_samples")
-# ```
-#
-# More efficient retrieval are made possible by partial loads and  split loads (in the case of a datasetdict):
+# Retrieval are made possible by partial loads and split loads:
 #
 # ```python
 # dataset_train = load_dataset("chanel/dataset", split="train")
@@ -261,44 +247,39 @@ print(f"{loaded_hf_dataset.description = }")
 #   - `CURL_CA_BUNDLE` to your trusted CA certificates
 #   - `HF_HOME` to a shared cache directory if needed
 
-
-
 # %% [markdown]
 # ## Section 5: Handle plaid samples from Hugging Face datasets without converting the complete dataset to plaid
 #
-# To fully exploit optimzed data handling of the Hugging Face datasets library, it is possible to extract information from the huggingface dataset without converting to plaid. The ``description`` atttribute includes the plaid dataset _infos attribute and plaid problem_definition attributes.
+# To fully exploit optimzed data handling of the Hugging Face datasets library, it is possible to extract information from the huggingface dataset without converting to plaid.
 
-# %%
-print(f"{loaded_hf_dataset.description = }")
 
 # %% [markdown]
 # Get the first sample of the first split
 
 # %%
-split_names = list(loaded_hf_dataset.description["split"].keys())
-id = loaded_hf_dataset.description["split"][split_names[0]]
-hf_sample = loaded_hf_dataset[id[0]]
+hf_sample = hf_dataset[0]
 
 print(f"{hf_sample = }")
 
 # %% [markdown]
-# We notice that ``hf_sample`` is a binary object efficiently handled by huggingface datasets. It can be converted into a plaid sample using a specific constructor relying on a pydantic validator.
+# We notice that ``hf_sample`` contains a binary object efficiently handled by huggingface datasets. It can be converted into a plaid sample using a specific constructor relying on a pydantic validator.
 
 # %%
 plaid_sample = huggingface_bridge.to_plaid_sample(hf_sample)
 
 show_sample(plaid_sample)
 
+
 # %% [markdown]
 # Very large datasets can be streamed directly from the Hugging Face hub:
 #
 # ```python
-# hf_dataset_stream = load_dataset("chanel/dataset", split="all_samples", streaming=True)
-#
+# hf_dataset_stream = load_dataset("chanel/dataset", split="train", streaming=True)
 # plaid_sample = huggingface_bridge.to_plaid_sample(next(iter(hf_dataset_stream)))
-#
-# show_sample(plaid_sample)
 # ```
-
-
-
+#
+# If you are behing a proxy:
+# ```python
+# hf_dataset_stream = huggingface_bridge.load_hf_dataset_from_hub("chanel/dataset", split="train", streaming=True)
+# plaid_sample = huggingface_bridge.to_plaid_sample(next(iter(hf_dataset_stream)))
+# ```

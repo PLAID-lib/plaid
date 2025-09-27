@@ -8,6 +8,8 @@
 # %% Imports
 
 import pickle
+import shutil
+from pathlib import Path
 from typing import Callable
 
 import pytest
@@ -17,6 +19,11 @@ from plaid.bridges.huggingface_bridge import to_plaid_sample
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
+
+
+@pytest.fixture()
+def current_directory():
+    return Path(__file__).absolute().parent
 
 
 # %% Fixtures
@@ -151,7 +158,25 @@ class Test_Huggingface_Bridge:
             )
 
     # ----------------------------------------------------------------
-    # deprecated function
+    def test_save_load_to_disk(
+        self, current_directory, generator, infos, problem_definition
+    ):
+        hf_dataset_dict = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+            generator, main_splits=["train", "test"]
+        )
+        test_dir = Path(current_directory) / Path("test")
+        huggingface_bridge.save_dataset_dict_to_disk(test_dir, hf_dataset_dict)
+        huggingface_bridge.save_dataset_infos_to_disk(test_dir, infos)
+        huggingface_bridge.save_problem_definition_to_disk(
+            test_dir, problem_definition, "task_1"
+        )
+        huggingface_bridge.load_dataset_dict_from_to_disk(test_dir)
+        huggingface_bridge.load_dataset_infos_from_disk(test_dir)
+        huggingface_bridge.load_problem_definition_from_disk(test_dir, "task_1")
+        shutil.rmtree(test_dir)
+
+    # ----------------------------------------------------------------
+    # deprecated functions
 
     def test_huggingface_description_to_problem_definition(self, hf_dataset):
         huggingface_bridge.huggingface_description_to_problem_definition(

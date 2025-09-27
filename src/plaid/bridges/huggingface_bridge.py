@@ -30,7 +30,7 @@ import os
 from typing import Union
 
 import datasets
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from pydantic import ValidationError
 
@@ -188,7 +188,7 @@ def load_hf_problem_definition_from_hub(
 # ------------------------------------------------------------------------------
 
 
-def push_dataset_to_hub(
+def push_dataset_dict_to_hub(
     repo_id: str, hf_dataset_dict: datasets.DatasetDict
 ) -> None:  # pragma: no cover (push not tested)
     """Push a Hugging Face dataset to the Hugging Face Hub.
@@ -264,6 +264,93 @@ def push_problem_definition_to_hub(
         repo_type="dataset",
         commit_message=f"Upload {location}/split.json",
     )
+
+
+# ------------------------------------------------------------------------------
+
+
+def save_dataset_dict_to_disk(
+    path: Union[str, Path], hf_dataset_dict: datasets.DatasetDict
+) -> None:
+    """Save a Hugging Face DatasetDict to disk.
+
+    Args:
+        path (Union[str, Path]): The directory path where the dataset dict will be saved.
+        hf_dataset_dict (datasets.DatasetDict): The Hugging Face DatasetDict to save.
+    """
+    hf_dataset_dict.save_to_disk(str(path))
+
+
+def save_dataset_infos_to_disk(
+    path: Union[str, Path], infos: dict[str, dict[str, str]]
+) -> None:
+    """Save dataset infos as a YAML file to disk.
+
+    Args:
+        path (Union[str, Path]): The directory path where the infos file will be saved.
+        infos (dict[str, dict[str, str]]): Dictionary containing dataset infos.
+    """
+    infos_fname = Path(path) / "data" / "infos.yaml"
+    infos_fname.parent.mkdir(parents=True, exist_ok=True)
+    with open(infos_fname, "w") as file:
+        yaml.dump(infos, file, default_flow_style=False, sort_keys=False)
+
+
+def save_problem_definition_to_disk(
+    path: Union[str, Path], pb_def: ProblemDefinition, location: Union[str, Path]
+) -> None:
+    """Save a ProblemDefinition and its split information to disk.
+
+    Args:
+        path (Union[str, Path]): The root directory path for saving.
+        pb_def (ProblemDefinition): The problem definition to save.
+        location (Union[str, Path]): Subdirectory location for saving the files.
+    """
+    pb_def._save_to_dir_(Path(path) / Path(location))
+
+
+def load_dataset_dict_from_to_disk(path: Union[str, Path]) -> datasets.DatasetDict:
+    """Load a Hugging Face DatasetDict from disk.
+
+    Args:
+        path (Union[str, Path]): The directory path from which to load the dataset dict.
+
+    Returns:
+        datasets.DatasetDict: The loaded Hugging Face DatasetDict.
+    """
+    return load_from_disk(str(path))
+
+
+def load_dataset_infos_from_disk(path: Union[str, Path]) -> dict[str, dict[str, str]]:
+    """Load dataset infos from a YAML file on disk.
+
+    Args:
+        path (Union[str, Path]): The directory path containing the infos file.
+
+    Returns:
+        dict[str, dict[str, str]]: Dictionary containing dataset infos.
+    """
+    infos_fname = Path(path) / "data" / "infos.yaml"
+    with infos_fname.open("r") as file:
+        infos = yaml.safe_load(file)
+    return infos
+
+
+def load_problem_definition_from_disk(
+    path: Union[str, Path], location: Union[str, Path]
+) -> ProblemDefinition:
+    """Load a ProblemDefinition and its split information from disk.
+
+    Args:
+        path (Union[str, Path]): The root directory path for loading.
+        location (Union[str, Path]): Subdirectory location containing the files.
+
+    Returns:
+        ProblemDefinition: The loaded problem definition.
+    """
+    pb_def = ProblemDefinition()
+    pb_def._load_from_dir_(Path(path) / Path(location))
+    return pb_def
 
 
 # ------------------------------------------------------------------------------
@@ -450,9 +537,9 @@ def plaid_generator_to_huggingface_datasetdict(
     Example:
         .. code-block:: python
 
-            dataset = plaid_generator_to_huggingface_datasetdict(generator, infos, problem_definition, main_splits)
-            push_dataset_to_hub("chanel/dataset")
-            dataset.save_to_disk("path/to/dir")
+            hf_dataset_dict = plaid_generator_to_huggingface_datasetdict(generator, infos, problem_definition, main_splits)
+            push_dataset_dict_to_hub("chanel/dataset", hf_dataset_dict)
+            hf_dataset_dict.save_to_disk("path/to/dir")
     """
     _dict = {}
     for _, split in enumerate(main_splits):
@@ -588,8 +675,6 @@ def huggingface_description_to_problem_definition(
         (problem_definition.set_split, "split"),
         (problem_definition.add_input_scalars_names, "in_scalars_names"),
         (problem_definition.add_output_scalars_names, "out_scalars_names"),
-        (problem_definition.add_input_timeseries_names, "in_timeseries_names"),
-        (problem_definition.add_output_timeseries_names, "out_timeseries_names"),
         (problem_definition.add_input_fields_names, "in_fields_names"),
         (problem_definition.add_output_fields_names, "out_fields_names"),
         (problem_definition.add_input_meshes_names, "in_meshes_names"),

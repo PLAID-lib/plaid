@@ -1,9 +1,9 @@
 #!/bin/bash
 
 if [[ "$(uname)" == "Linux" ]]; then
-    FILES="*.py utils/*.py containers/*.py post/*.py pipelines/*.py"
+    FILES="*.py examples/*.py bridges/*.py utils/*.py containers/*.py post/*.py pipelines/*.py"
 else
-    FILES="*.py utils/*.py containers/*.py post/*.py"
+    FILES="*.py examples/*.py utils/*.py containers/*.py post/*.py"
 fi
 
 for file in $FILES
