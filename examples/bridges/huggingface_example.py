@@ -181,7 +181,7 @@ print(f"{dataset_2 = }")
 # %%
 huggingface_bridge.save_dataset_dict_to_disk("/tmp/test_dir", hf_datasetdict)
 huggingface_bridge.save_dataset_infos_to_disk("/tmp/test_dir", infos)
-huggingface_bridge.save_problem_definition_to_disk("/tmp/test_dir", pb_def, location="task_1")
+huggingface_bridge.save_problem_definition_to_disk("/tmp/test_dir", "task_1", pb_def)
 
 # %% [markdown]
 # Loading datasetdict, infos and problem definition from disk:
@@ -189,7 +189,7 @@ huggingface_bridge.save_problem_definition_to_disk("/tmp/test_dir", pb_def, loca
 # %%
 loaded_hf_datasetdict = huggingface_bridge.load_dataset_dict_from_to_disk("/tmp/test_dir")
 loaded_infos = huggingface_bridge.load_dataset_infos_from_disk("/tmp/test_dir")
-loaded_pb_def = huggingface_bridge.load_problem_definition_from_disk("/tmp/test_dir", location="task_1")
+loaded_pb_def = huggingface_bridge.load_problem_definition_from_disk("/tmp/test_dir", "task_1")
 
 print(f"{loaded_hf_datasetdict = }")
 print(f"{loaded_infos = }")
