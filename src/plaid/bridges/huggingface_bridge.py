@@ -7,7 +7,6 @@
 #
 #
 import io
-import json
 import pickle
 import shutil
 import sys
@@ -165,13 +164,13 @@ def load_hf_problem_definition_from_hub(
         ProblemDefinition: The loaded problem definition.
     """
     # Download split.json
-    json_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=f"problem_definitions/{name}/split.json",
-        repo_type="dataset",
-    )
-    with open(json_path, "r", encoding="utf-8") as f:
-        json_data = json.load(f)
+    # json_path = hf_hub_download(
+    #     repo_id=repo_id,
+    #     filename=f"problem_definitions/{name}/split.json",
+    #     repo_type="dataset",
+    # )
+    # with open(json_path, "r", encoding="utf-8") as f:
+    #     json_data = json.load(f)
 
     # Download problem_infos.yaml
     yaml_path = hf_hub_download(
@@ -184,7 +183,7 @@ def load_hf_problem_definition_from_hub(
 
     prob_def = ProblemDefinition()
     prob_def._initialize_from_problem_infos_dict(yaml_data)
-    prob_def.set_split(json_data)
+    # prob_def.set_split(json_data)
 
     return prob_def
 
@@ -254,17 +253,17 @@ def push_problem_definition_to_hub(
         commit_message=f"Upload problem_definitions/{name}/problem_infos.yaml",
     )
 
-    data = pb_def.get_split()
-    json_str = json.dumps(data)
-    json_buffer = io.BytesIO(json_str.encode("utf-8"))
+    # data = pb_def.get_split()
+    # json_str = json.dumps(data)
+    # json_buffer = io.BytesIO(json_str.encode("utf-8"))
 
-    api.upload_file(
-        path_or_fileobj=json_buffer,
-        path_in_repo=f"problem_definitions/{name}/split.json",
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message=f"Upload problem_definitions/{name}/split.json",
-    )
+    # api.upload_file(
+    #     path_or_fileobj=json_buffer,
+    #     path_in_repo=f"problem_definitions/{name}/split.json",
+    #     repo_id=repo_id,
+    #     repo_type="dataset",
+    #     commit_message=f"Upload problem_definitions/{name}/split.json",
+    # )
 
 
 # ------------------------------------------------------------------------------
@@ -311,6 +310,7 @@ def load_problem_definition_from_disk(
     """
     pb_def = ProblemDefinition()
     pb_def._load_from_dir_(Path(path) / Path("problem_definitions") / Path(name))
+    pb_def.set_split({})
     return pb_def
 
 
@@ -351,6 +351,7 @@ def save_problem_definition_to_disk(
         name (str): The name of the problem_definition to store in the disk directory.
         pb_def (ProblemDefinition): The problem definition to save.
     """
+    pb_def.set_split({})
     pb_def._save_to_dir_(Path(path) / Path("problem_definitions") / Path(name))
 
 
