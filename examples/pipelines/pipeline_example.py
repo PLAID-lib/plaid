@@ -74,7 +74,7 @@ n_processes = min(max(1, os.cpu_count()), 6)
 
 # %%
 hf_dataset = load_hf_dataset_from_hub("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
-dataset_train, _ = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
+dataset_train = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
 
 
 # %% [markdown]

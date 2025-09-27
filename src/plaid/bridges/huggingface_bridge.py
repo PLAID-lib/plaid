@@ -13,7 +13,7 @@ import shutil
 import sys
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import yaml
 from tqdm import tqdm
@@ -36,7 +36,7 @@ from pydantic import ValidationError
 
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
-from plaid.types import IndexType
+from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +49,7 @@ Convention with hf (Hugging Face) datasets:
 """
 
 
+# ------------------------------------------------------------------------------
 def load_hf_dataset_from_hub(
     repo_id: str, streaming: bool = False, *args, **kwargs
 ) -> Union[
@@ -121,34 +122,29 @@ def load_hf_dataset_from_hub(
     return load_dataset(repo_id, streaming=streaming, *args, **kwargs)
 
 
-def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
-    """Convert a Hugging Face dataset sample to a plaid :class:`Sample <plaid.containers.sample.Sample>`.
+def load_hf_infos_from_hub(
+    repo_id: str,
+) -> dict[
+    str, dict[str, str]
+]:  # pragma: no cover (to prevent testing from downloading, this is run by examples)
+    """Load dataset infos from the Hugging Face Hub.
 
-    If the sample is not valid, it tries to build it from its components.
-    If it still fails because of a missing key, it raises a KeyError.
+    Downloads the infos.yaml file from the specified repository and parses it as a dictionary.
+
+    Args:
+        repo_id (str): The repository ID on the Hugging Face Hub.
+
+    Returns:
+        dict[str, dict[str, str]]: Dictionary containing dataset infos.
     """
-    pickled_hf_sample = pickle.loads(hf_sample["sample"])
+    # Download infos.yaml
+    yaml_path = hf_hub_download(
+        repo_id=repo_id, filename="data/infos.yaml", repo_type="dataset"
+    )
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        infos = yaml.safe_load(f)
 
-    try:
-        # Try to validate the sample
-        return Sample.model_validate(pickled_hf_sample)
-
-    except ValidationError:
-        features = SampleFeatures(
-            data=pickled_hf_sample.get("meshes"),
-        )
-
-        sample = Sample(
-            path=pickled_hf_sample.get("path"),
-            features=features,
-        )
-
-        scalars = pickled_hf_sample.get("scalars")
-        if scalars:
-            for sn, val in scalars.items():
-                sample.add_scalar(sn, val)
-
-        return Sample.model_validate(sample)
+    return infos
 
 
 def load_hf_problem_definition_from_hub(
@@ -189,43 +185,123 @@ def load_hf_problem_definition_from_hub(
     return prob_def
 
 
-def generate_huggingface_description(
-    infos: dict, problem_definition: ProblemDefinition
-) -> dict[str, Any]:
-    """Generates a Hugging Face dataset description field from a plaid dataset infos and problem definition.
+# ------------------------------------------------------------------------------
 
-    The conventions chosen here ensure working conversion to and from huggingset datasets.
+
+def push_dataset_to_hub(
+    repo_id: str, hf_dataset: datasets.DatasetDict
+) -> None:  # pragma: no cover (push not tested)
+    """Push a Hugging Face dataset to the Hugging Face Hub.
 
     Args:
-        infos (dict): infos entry of the plaid dataset from which the Hugging Face description is to be generated
-        problem_definition (ProblemDefinition): of which the Hugging Face description is to be generated
-
-    Returns:
-        dict[str]: Hugging Face dataset description
+        repo_id (str): The repository ID on the Hugging Face Hub.
+        hf_dataset (datasets.Dataset): The Hugging Face dataset to push.
     """
-    # type hinting the values as Any because they can be of various types
-    description: dict[str, Any] = {}
+    hf_dataset.push_to_hub(repo_id)
 
-    description.update(infos)
 
-    split: dict[str, IndexType] = problem_definition.get_split(indices_name=None)  # pyright: ignore[reportAssignmentType]
-    description["split"] = split
-    description["task"] = problem_definition.get_task()
+def push_dataset_infos_to_hub(
+    repo_id: str, infos: dict[str, dict[str, str]]
+) -> None:  # pragma: no cover (push not tested)
+    """Upload dataset infos to the Hugging Face Hub.
 
-    description["in_scalars_names"] = problem_definition.in_scalars_names
-    description["out_scalars_names"] = problem_definition.out_scalars_names
-    description["in_timeseries_names"] = problem_definition.in_timeseries_names
-    description["out_timeseries_names"] = problem_definition.out_timeseries_names
-    description["in_fields_names"] = problem_definition.in_fields_names
-    description["out_fields_names"] = problem_definition.out_fields_names
-    description["in_meshes_names"] = problem_definition.in_meshes_names
-    description["out_meshes_names"] = problem_definition.out_meshes_names
-    return description
+    Serializes the infos dictionary to YAML and uploads it to the specified repository as data/infos.yaml.
+
+    Args:
+        repo_id (str): The repository ID on the Hugging Face Hub.
+        infos (dict[str, dict[str, str]]): Dictionary containing dataset infos to upload.
+
+    Raises:
+        ValueError: If the infos dictionary is empty.
+    """
+    if len(infos) > 0:
+        api = HfApi()
+        yaml_str = yaml.dump(infos)
+        yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+        api.upload_file(
+            path_or_fileobj=yaml_buffer,
+            path_in_repo="data/infos.yaml",
+            repo_id=repo_id,
+            repo_type="dataset",
+            commit_message="Upload data/infos.yaml",
+        )
+    else:
+        raise ValueError("'infos' must not be empty")
+
+
+def push_problem_definition_to_hub(
+    repo_id: str, pb_def: ProblemDefinition, location: str
+) -> None:  # pragma: no cover (push not tested)
+    """Upload a ProblemDefinition and its split information to the Hugging Face Hub.
+
+    Args:
+        repo_id (str): The repository ID on the Hugging Face Hub.
+        pb_def (ProblemDefinition): The problem definition to upload.
+        location (str): The location (subdirectory) in the repo to store the files.
+    """
+    api = HfApi()
+    data = pb_def._generate_problem_infos_dict()
+    if data is not None:
+        yaml_str = yaml.dump(data)
+        yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+
+    api.upload_file(
+        path_or_fileobj=yaml_buffer,
+        path_in_repo=f"{location}/problem_infos.yaml",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message=f"Upload {location}/problem_infos.yaml",
+    )
+
+    data = pb_def.get_split()
+    json_str = json.dumps(data)
+    json_buffer = io.BytesIO(json_str.encode("utf-8"))
+
+    api.upload_file(
+        path_or_fileobj=json_buffer,
+        path_in_repo=f"{location}/split.json",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message=f"Upload {location}/split.json",
+    )
+
+
+# ------------------------------------------------------------------------------
+
+
+def to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
+    """Convert a Hugging Face dataset sample to a plaid :class:`Sample <plaid.containers.sample.Sample>`.
+
+    If the sample is not valid, it tries to build it from its components.
+    If it still fails because of a missing key, it raises a KeyError.
+    """
+    pickled_hf_sample = pickle.loads(hf_sample["sample"])
+
+    try:
+        # Try to validate the sample
+        return Sample.model_validate(pickled_hf_sample)
+
+    except ValidationError:
+        features = SampleFeatures(
+            data=pickled_hf_sample.get("meshes"),
+        )
+
+        sample = Sample(
+            path=pickled_hf_sample.get("path"),
+            features=features,
+        )
+
+        scalars = pickled_hf_sample.get("scalars")
+        if scalars:
+            for sn, val in scalars.items():
+                sample.add_scalar(sn, val)
+
+        return Sample.model_validate(sample)
 
 
 def plaid_dataset_to_huggingface(
     dataset: Dataset,
-    problem_definition: ProblemDefinition,
+    problem_definition: Optional[ProblemDefinition] = None,
     split: str = "all_samples",
     processes_number: int = 1,
 ) -> datasets.Dataset:
@@ -249,10 +325,16 @@ def plaid_dataset_to_huggingface(
             dataset.save_to_disk("path/to/dir)
             dataset.push_to_hub("chanel/dataset")
     """
-    if split == "all_samples":
+    if problem_definition is None and split == "all_samples":
         ids = dataset.get_sample_ids()
     else:
-        ids = problem_definition.get_split(split)
+        if split == "all_samples":
+            ids = range(len(dataset))
+        else:
+            assert problem_definition is not None, (
+                "if split is not 'all_samples', problem_definition must be set."
+            )
+            ids = problem_definition.get_split(split)
 
     def generator():
         for sample in dataset[ids]:
@@ -262,8 +344,6 @@ def plaid_dataset_to_huggingface(
 
     return plaid_generator_to_huggingface(
         generator=generator,
-        infos=dataset.get_infos(),
-        problem_definition=problem_definition,
         split=split,
         processes_number=processes_number,
     )
@@ -310,8 +390,6 @@ def plaid_dataset_to_huggingface_datasetdict(
 
 def plaid_generator_to_huggingface(
     generator: Callable,
-    infos: dict,
-    problem_definition: ProblemDefinition,
     split: str = "all_samples",
     processes_number: int = 1,
 ) -> datasets.Dataset:
@@ -319,12 +397,10 @@ def plaid_generator_to_huggingface(
 
     This function can be used when the plaid dataset cannot be loaded in RAM all at once due to its size.
     The generator enables loading samples one by one.
-    The dataset can then be saved to disk, or pushed to the Hugging Face hub.
 
     Args:
         generator (Callable): a function yielding a dict {"sample" : sample}, where sample is of type 'bytes'
         infos (dict):  the info is used to generate the description of the Hugging Face dataset.
-        problem_definition (ProblemDefinition): the problem definition is used to generate the description of the Hugging Face dataset.
         split (str): The name of the split. Default: "all_samples".
         processes_number (int): The number of processes used to generate the Hugging Face dataset. Default: 1.
 
@@ -334,9 +410,7 @@ def plaid_generator_to_huggingface(
     Example:
         .. code-block:: python
 
-            dataset = plaid_generator_to_huggingface(generator, infos, split, problem_definition)
-            dataset.push_to_hub("chanel/dataset")
-            dataset.save_to_disk("path/to/dir")
+            dataset = plaid_generator_to_huggingface(generator, infos, split)
     """
     ds: datasets.Dataset = datasets.Dataset.from_generator(  # pyright: ignore[reportAssignmentType]
         generator,
@@ -346,26 +420,11 @@ def plaid_generator_to_huggingface(
         split=datasets.splits.NamedSplit(split),
     )
 
-    def update_dataset_description(
-        ds: datasets.Dataset, new_desc: dict[str, Any]
-    ) -> datasets.Dataset:
-        info = ds.info.copy()
-        info.description = new_desc  # pyright: ignore[reportAttributeAccessIssue] -> info.description is HF's DatasetInfo. We might want to correct this later.
-        ds._info = info
-        return ds
-
-    new_description: dict[str, Any] = generate_huggingface_description(
-        infos, problem_definition
-    )
-    ds = update_dataset_description(ds, new_description)
-
     return ds
 
 
 def plaid_generator_to_huggingface_datasetdict(
     generator: Callable,
-    infos: dict,
-    problem_definition: ProblemDefinition,
     main_splits: list,
     processes_number: int = 1,
 ) -> datasets.DatasetDict:
@@ -392,15 +451,13 @@ def plaid_generator_to_huggingface_datasetdict(
         .. code-block:: python
 
             dataset = plaid_generator_to_huggingface_datasetdict(generator, infos, problem_definition, main_splits)
-            dataset.push_to_hub("chanel/dataset")
+            push_dataset_to_hub("chanel/dataset")
             dataset.save_to_disk("path/to/dir")
     """
     _dict = {}
     for _, split in enumerate(main_splits):
         ds = plaid_generator_to_huggingface(
             generator,
-            infos,
-            problem_definition=problem_definition,
             split=split,
             processes_number=processes_number,
         )
@@ -409,39 +466,13 @@ def plaid_generator_to_huggingface_datasetdict(
     return datasets.DatasetDict(_dict)
 
 
-def huggingface_description_to_problem_definition(
-    description: dict,
-) -> ProblemDefinition:
-    """Converts a Hugging Face dataset description to a plaid problem definition.
-
-    Args:
-        description (dict): the description field of a Hugging Face dataset, containing the problem definition
-
-    Returns:
-        problem_definition (ProblemDefinition): the plaid problem definition initialized from the Hugging Face dataset description
-    """
-    problem_definition = ProblemDefinition()
-    problem_definition.set_task(description["task"])
-    problem_definition.set_split(description["split"])
-    problem_definition.add_input_scalars_names(description["in_scalars_names"])
-    problem_definition.add_output_scalars_names(description["out_scalars_names"])
-    problem_definition.add_input_timeseries_names(description["in_timeseries_names"])
-    problem_definition.add_output_timeseries_names(description["out_timeseries_names"])
-    problem_definition.add_input_fields_names(description["in_fields_names"])
-    problem_definition.add_output_fields_names(description["out_fields_names"])
-    problem_definition.add_input_meshes_names(description["in_meshes_names"])
-    problem_definition.add_output_meshes_names(description["out_meshes_names"])
-
-    return problem_definition
-
-
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
     ids: Optional[list[int]] = None,
     processes_number: int = 1,
     large_dataset: bool = False,
     verbose: bool = True,
-) -> tuple[Dataset, ProblemDefinition]:
+) -> Dataset:
     """Use this function for converting a plaid dataset from a Hugging Face dataset.
 
     A Hugging Face dataset can be read from disk or the hub. From the hub, the
@@ -535,68 +566,44 @@ def huggingface_dataset_to_plaid(
             ):
                 dataset.add_sample(sample, id=indices[idx])
 
-    infos = {}
-    if "legal" in ds.description:
-        infos["legal"] = ds.description["legal"]
-    if "data_production" in ds.description:
-        infos["data_production"] = ds.description["data_production"]
-
-    dataset.set_infos(infos)
-
-    problem_definition = huggingface_description_to_problem_definition(ds.description)
-
-    return dataset, problem_definition
+    return dataset
 
 
-def push_dataset_to_hub(
-    hf_dataset: datasets.Dataset, repo_id: str
-) -> None:  # pragma: no cover (push not tested)
-    """Push a Hugging Face dataset to the Hugging Face Hub.
+@deprecated("will be removed (no alternative)", version="0.1.9", removal="0.2.0")
+def huggingface_description_to_problem_definition(
+    description: dict,
+) -> ProblemDefinition:
+    """Converts a Hugging Face dataset description to a plaid problem definition.
 
     Args:
-        hf_dataset (datasets.Dataset): The Hugging Face dataset to push.
-        repo_id (str): The repository ID on the Hugging Face Hub.
+        description (dict): the description field of a Hugging Face dataset, containing the problem definition
+
+    Returns:
+        problem_definition (ProblemDefinition): the plaid problem definition initialized from the Hugging Face dataset description
     """
-    hf_dataset.push_to_hub(repo_id)
+    description = {} if description == "" else description
+    problem_definition = ProblemDefinition()
+    for func, key in [
+        (problem_definition.set_task, "task"),
+        (problem_definition.set_split, "split"),
+        (problem_definition.add_input_scalars_names, "in_scalars_names"),
+        (problem_definition.add_output_scalars_names, "out_scalars_names"),
+        (problem_definition.add_input_timeseries_names, "in_timeseries_names"),
+        (problem_definition.add_output_timeseries_names, "out_timeseries_names"),
+        (problem_definition.add_input_fields_names, "in_fields_names"),
+        (problem_definition.add_output_fields_names, "out_fields_names"),
+        (problem_definition.add_input_meshes_names, "in_meshes_names"),
+        (problem_definition.add_output_meshes_names, "out_meshes_names"),
+    ]:
+        try:
+            func(description[key])
+        except KeyError:
+            pass
+
+    return problem_definition
 
 
-def push_problem_definition_to_hub(
-    pb_def: ProblemDefinition, repo_id: str, location: str
-) -> None:  # pragma: no cover (push not tested)
-    """Upload a ProblemDefinition and its split information to the Hugging Face Hub.
-
-    Args:
-        pb_def (ProblemDefinition): The problem definition to upload.
-        repo_id (str): The repository ID on the Hugging Face Hub.
-        location (str): The location (subdirectory) in the repo to store the files.
-    """
-    api = HfApi()
-    data = pb_def._generate_problem_infos_dict()
-    if data is not None:
-        yaml_str = yaml.dump(data)
-        yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
-
-    api.upload_file(
-        path_or_fileobj=yaml_buffer,
-        path_in_repo=f"{location}/problem_infos.yaml",
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message=f"Upload {location}/problem_infos.yaml",
-    )
-
-    data = pb_def.get_split()
-    json_str = json.dumps(data)
-    json_buffer = io.BytesIO(json_str.encode("utf-8"))
-
-    api.upload_file(
-        path_or_fileobj=json_buffer,
-        path_in_repo=f"{location}/split.json",
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message=f"Upload {location}/split.json",
-    )
-
-
+@deprecated("will be removed (no alternative)", version="0.1.9", removal="0.2.0")
 def create_string_for_huggingface_dataset_card(
     description: dict,
     download_size_bytes: int,
