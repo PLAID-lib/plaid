@@ -222,30 +222,32 @@ print(f"{loaded_pb_def = }")
 # %% [markdown]
 # ### Load from hub
 #
-# #### General case
+# To load datasetdict, infos and problem_definitions from the hub:
+# ```python
+# huggingface_bridge.load_hf_dataset_from_hub("chanel/dataset", *args, **kwargs)
+# huggingface_bridge.load_hf_infos_from_hub("chanel/dataset")
+# huggingface_bridge.load_hf_problem_definition_from_hub("chanel/dataset", "name")
+# ```
 #
-# Retrieval are made possible by partial loads and split loads:
+# Partial retrieval and streaming are compatible
+# ```python
+# huggingface_bridge.load_hf_dataset_from_hub("chanel/dataset", split="train[:10], *args, **kwargs)
+# huggingface_bridge.load_hf_dataset_from_hub("chanel/dataset", streaming=True, *args, **kwargs)
+# ```
+#
+# Native HF datasets commands are also possible:
 #
 # ```python
 # dataset_train = load_dataset("chanel/dataset", split="train")
+# dataset_train = load_dataset("chanel/dataset", split="train", streaming=True)
 # dataset_train_extract = load_dataset("chanel/dataset", split="train[:10]")
 # ```
 #
-# #### Proxy
-#
-# A retrieval function robust to cases where you are behind a proxy and relying on a private mirror is avalable;
-#
-# ```python
-# from plaid.bridges.huggingface_bridge import load_hf_dataset_from_hub
-# hf_dataset = load_hf_dataset_from_hub("chanel/dataset", *args, **kwargs)
-# ```
-#
-# - Streaming mode is not supported when using a private mirror.
-# - Falls back to local download if streaming or public loading fails.
-# - To use behind a proxy, you may need to set:
-#   - `HF_ENDPOINT` to your private mirror address
-#   - `CURL_CA_BUNDLE` to your trusted CA certificates
-#   - `HF_HOME` to a shared cache directory if needed
+# If you are behind a proxy and relying on a private mirror the function `load_hf_dataset_from_hub` is working provided the following is set:
+# - `HF_ENDPOINT` to your private mirror address
+# - `CURL_CA_BUNDLE` to your trusted CA certificates
+# - `HF_HOME` to a shared cache directory if needed
+
 
 # %% [markdown]
 # ## Section 5: Handle plaid samples from Hugging Face datasets without converting the complete dataset to plaid
