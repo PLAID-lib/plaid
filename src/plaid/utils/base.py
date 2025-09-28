@@ -52,6 +52,13 @@ def safe_len(obj):
     return len(obj) if hasattr(obj, "__len__") else 0
 
 
+def update_dict_only_new_keys(a: dict, b: dict):
+    """Update dictionary `a` with keys from `b` that are not already present in `a`."""
+    new_keys = b.keys() - a.keys()  # set difference is very fast
+    if new_keys:
+        a.update({k: b[k] for k in new_keys})
+
+
 def delegate_methods(to: str, methods: list[str]):
     """Class decorator to forward specific methods from a delegate attribute."""
 

@@ -107,6 +107,149 @@ def show_cgns_tree(pyTree: list, pre: str = ""):
     np.set_printoptions(edgeitems=3, threshold=1000)
 
 
+def flatten_cgns_tree(pyTree: list):
+    """Flatten CGNS tree into dict of primitives (for HF)."""
+    flat = {}
+    dtypes = {}
+    extras = {}
+
+    def visit(tree, path=""):
+        for node in tree[2]:
+            name, data, children, extra = node
+            new_path = f"{path}/{name}" if path else name
+
+            # Flatten values for HF: always primitive types
+            if isinstance(data, np.ndarray):
+                if data.dtype.kind == "S":  # string arrays
+                    flat[new_path] = [x.decode("utf-8") for x in data.tolist()]
+                else:
+                    flat[new_path] = data.tolist()
+                dtypes[new_path] = str(data.dtype)
+            elif data is None:
+                flat[new_path] = None
+                dtypes[new_path] = None
+            else:
+                flat[new_path] = data
+                dtypes[new_path] = str(np.array(data).dtype)
+
+            extras[new_path] = extra
+
+            if children:
+                visit(node, new_path)
+
+    visit(pyTree)
+    return flat, dtypes, extras
+
+
+def unflatten_cgns_tree(flat: dict, dtypes: dict, cgns_types: dict):
+    """Reconstruct a CGNS tree.
+
+      From
+      - flat: dict with Arrow-compatible primitives
+      - dtypes: dict with dtype strings
+      - cgns_types: dict with CGNS type names (ending in '_t')
+    Returns the root CGNSTree node.
+    """
+    # Build all nodes from paths
+    nodes = {}
+
+    for path, value in flat.items():
+        dtype = np.dtype(dtypes.get(path))
+        cgns_type = cgns_types.get(path)
+
+        # reconstruct data as numpy array or None
+        if value is None:
+            data = None
+        else:
+            if dtype is None:
+                data = None
+            else:
+                data = np.array(value, dtype=dtype)
+
+        # empty children for now
+        nodes[path] = [path.split("/")[-1], data, [], cgns_type]
+
+    # Re-link nodes into tree structure
+    root = None
+    for path, node in nodes.items():
+        parts = path.split("/")
+        if len(parts) == 1:
+            # root-level node
+            if root is None:
+                root = ["CGNSTree", None, [node], "CGNSTree_t"]
+            else:
+                root[2].append(node)
+        else:
+            parent_path = "/".join(parts[:-1])
+            parent = nodes[parent_path]
+            parent[2].append(node)
+
+    return root
+
+
+def compare_cgns_trees(tree1, tree2, path="CGNSTree"):
+    """Recursively compare two CGNS trees ignoring the order of children.
+
+    Checks:
+      - Node name
+      - Data (numpy arrays or scalars) with exact dtype
+      - Number of children
+      - CGNS type (extra field)
+    Returns True if identical, False otherwise.
+    """
+    # Compare node name
+    if tree1[0] != tree2[0]:
+        print(f"Name mismatch at {path}: {tree1[0]} != {tree2[0]}")
+        return False
+
+    # Compare data
+    data1, data2 = tree1[1], tree2[1]
+
+    if data1 is None and data2 is None:
+        pass
+    elif isinstance(data1, np.ndarray) and isinstance(data2, np.ndarray):
+        if data1.dtype != data2.dtype:
+            print(
+                f"Dtype mismatch at {path}/{tree1[0]}: {data1.dtype} != {data2.dtype}"
+            )
+            return False
+        if not np.array_equal(data1, data2):
+            print(f"Data mismatch at {path}/{tree1[0]}")
+            return False
+    else:
+        if isinstance(data1, np.ndarray) or isinstance(data2, np.ndarray):
+            print(f"Data type mismatch at {path}/{tree1[0]}")
+            return False
+        if data1 != data2:
+            print(f"Data mismatch at {path}/{tree1[0]}: {data1} != {data2}")
+            return False
+
+    # Compare extra (CGNS type)
+    extra1, extra2 = tree1[3], tree2[3]
+    if extra1 != extra2:
+        print(f"Type mismatch at {path}/{tree1[0]}: {extra1} != {extra2}")
+        return False
+
+    # Compare children ignoring order
+    children1_dict = {c[0]: c for c in tree1[2] or []}
+    children2_dict = {c[0]: c for c in tree2[2] or []}
+
+    if set(children1_dict.keys()) != set(children2_dict.keys()):
+        print(
+            f"Children name mismatch at {path}/{tree1[0]}: {set(children1_dict.keys())} != {set(children2_dict.keys())}"
+        )
+        return False
+
+    # Recursively compare children
+    for name in children1_dict:
+        if not compare_cgns_trees(
+            children1_dict[name], children2_dict[name], path=f"{path}/{tree1[0]}"
+        ):
+            return False
+
+    return True
+
+
 def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
     """Provide a summary of a CGNS tree's contents.
 

@@ -126,14 +126,14 @@ print(f"{hf_dataset = }")
 # By default, all the indices from all splits are taken into account. One can generate a Hugging Face dataset for a given split by providing the problem_definition:
 
 # %%
-hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset, pb_def, split="train")
+hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset, pb_def.get_split("train"), split_name="train")
 print(hf_dataset)
 
 # %% [markdown]
 # The previous code generates a Hugging Face dataset containing all the samples from the plaid dataset, the splits being defined in the hf_dataset descriptions. For splits, Hugging Face proposes `DatasetDict`, which are dictionaries of hf datasets, with keys being the name of the corresponding splits. It is possible to generate a hf datasetdict directly from plaid:
 
 # %%
-hf_datasetdict = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, problem_definition = pb_def, main_splits = ['train', 'test'])
+hf_datasetdict = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, main_splits = pb_def.get_split())
 print()
 print(f"{hf_datasetdict = }")
 
@@ -158,8 +158,15 @@ print(f"{hf_dataset_gen = }")
 # The same is available with datasetdict:
 
 # %%
+generators = {}
+for split_name, ids in pb_def.get_split().items():
+    def generator_(ids=ids):
+        for id in ids:
+            yield {"sample": pickle.dumps(dataset[id])}
+    generators[split_name] = generator_
+
 hf_datasetdict = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-    generator, main_splits = ['train', 'test']
+    generators
 )
 print(f"{hf_datasetdict = }")
 

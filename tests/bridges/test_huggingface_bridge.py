@@ -46,13 +46,26 @@ def problem_definition() -> ProblemDefinition:
 
 @pytest.fixture()
 def generator(dataset) -> Callable:
-    def generator():
-        for id in range(len(dataset)):
+    def generator_():
+        for sample in dataset:
             yield {
-                "sample": pickle.dumps(dataset[id]),
+                "sample": pickle.dumps(sample),
             }
 
-    return generator
+    return generator_
+
+
+@pytest.fixture()
+def generator_split(dataset, problem_definition) -> Callable:
+    generators = {}
+    for split_name, ids in problem_definition.get_split().items():
+
+        def generator_(ids=ids):
+            for id in ids:
+                yield {"sample": pickle.dumps(dataset[id])}
+
+        generators[split_name] = generator_
+    return generators
 
 
 @pytest.fixture()
@@ -96,36 +109,27 @@ class Test_Huggingface_Bridge:
         plaid_sample = to_plaid_sample(old_hf_sample)
         assert isinstance(plaid_sample, Sample)
 
-    def test_plaid_dataset_to_huggingface(self, dataset, problem_definition):
-        hfds = huggingface_bridge.plaid_dataset_to_huggingface(
-            dataset, problem_definition, split="train"
-        )
-        hfds = huggingface_bridge.plaid_dataset_to_huggingface(
-            dataset, split="all_samples"
-        )
-        hfds = huggingface_bridge.plaid_dataset_to_huggingface(
-            dataset, problem_definition
-        )
+    def test_plaid_dataset_to_huggingface(self, dataset):
+        hfds = huggingface_bridge.plaid_dataset_to_huggingface(dataset)
+        hfds = huggingface_bridge.plaid_dataset_to_huggingface(dataset, ids=[0, 1])
         self.assert_hf_dataset(hfds)
 
     def test_plaid_dataset_to_huggingface_datasetdict(
         self, dataset, problem_definition
     ):
         huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
-            dataset, problem_definition, main_splits=["train", "test"]
+            dataset, main_splits=problem_definition.get_split()
         )
 
     def test_plaid_generator_to_huggingface(self, generator):
-        hfds = huggingface_bridge.plaid_generator_to_huggingface(
-            generator, split="train"
-        )
         hfds = huggingface_bridge.plaid_generator_to_huggingface(generator)
+        hfds = huggingface_bridge.plaid_generator_to_huggingface(
+            generator, processes_number=2
+        )
         self.assert_hf_dataset(hfds)
 
-    def test_plaid_generator_to_huggingface_datasetdict(self, generator):
-        huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-            generator, main_splits=["train", "test"]
-        )
+    def test_plaid_generator_to_huggingface_datasetdict(self, generator_split):
+        huggingface_bridge.plaid_generator_to_huggingface_datasetdict(generator_split)
 
     def test_huggingface_dataset_to_plaid(self, hf_dataset):
         ds = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
@@ -159,10 +163,10 @@ class Test_Huggingface_Bridge:
 
     # ----------------------------------------------------------------
     def test_save_load_to_disk(
-        self, current_directory, generator, infos, problem_definition
+        self, current_directory, generator_split, infos, problem_definition
     ):
         hf_dataset_dict = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-            generator, main_splits=["train", "test"]
+            generator_split
         )
         test_dir = Path(current_directory) / Path("test")
         huggingface_bridge.save_dataset_dict_to_disk(test_dir, hf_dataset_dict)
