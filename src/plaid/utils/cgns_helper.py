@@ -67,11 +67,11 @@ def get_time_values(tree: CGNSTree) -> np.ndarray:
     return time_values[0]
 
 
-def show_cgns_tree(pyTree: list, pre: str = ""):
+def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
     """Pretty print for CGNS Tree.
 
     Args:
-        pyTree (list): CGNS tree to print
+        pyTree (CGNSTree): CGNS tree to print
         pre (str, optional): indentation of print. Defaults to ''.
     """
     if not (isinstance(pyTree, list)):
@@ -107,8 +107,30 @@ def show_cgns_tree(pyTree: list, pre: str = ""):
     np.set_printoptions(edgeitems=3, threshold=1000)
 
 
-def flatten_cgns_tree(pyTree: list):
-    """Flatten CGNS tree into dict of primitives (for HF)."""
+def flatten_cgns_tree(
+    pyTree: CGNSTree,
+) -> tuple[dict[str, object], dict[str, str], dict[str, object]]:
+    """Flatten a CGNS tree into dictionaries of primitives for Hugging Face serialization.
+
+    Traverses the CGNS tree and produces:
+      - flat: a dictionary mapping paths to primitive values (lists, scalars, or None)
+      - dtypes: a dictionary mapping paths to dtype strings
+      - extras: a dictionary mapping paths to extra CGNS metadata
+
+    Args:
+        pyTree (CGNSTree): The CGNS tree to flatten.
+
+    Returns:
+        tuple[dict[str, object], dict[str, str], dict[str, object]]:
+            - flat: dict of paths to primitive values
+            - dtypes: dict of paths to dtype strings
+            - extras: dict of paths to extra CGNS metadata
+
+    Example:
+        >>> flat, dtypes, extras = flatten_cgns_tree(pyTree)
+        >>> flat["Base1/Zone1/Solution1/Field1"]  # [1.0, 2.0, ...]
+        >>> dtypes["Base1/Zone1/Solution1/Field1"]  # 'float64'
+    """
     flat = {}
     dtypes = {}
     extras = {}
@@ -141,14 +163,23 @@ def flatten_cgns_tree(pyTree: list):
     return flat, dtypes, extras
 
 
-def unflatten_cgns_tree(flat: dict, dtypes: dict, cgns_types: dict):
-    """Reconstruct a CGNS tree.
+def unflatten_cgns_tree(
+    flat: dict[str, object],
+    dtypes: dict[str, str],
+    cgns_types: dict[str, str],
+) -> CGNSTree:
+    """Reconstruct a CGNS tree from flattened primitives, dtypes, and CGNS type information.
 
-      From
-      - flat: dict with Arrow-compatible primitives
-      - dtypes: dict with dtype strings
-      - cgns_types: dict with CGNS type names (ending in '_t')
-    Returns the root CGNSTree node.
+    Args:
+        flat (dict[str, object]): Dictionary mapping paths to primitive values (lists, scalars, or None).
+        dtypes (dict[str, str]): Dictionary mapping paths to dtype strings.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS type names (ending in '_t').
+
+    Returns:
+        CGNSTree: The reconstructed CGNSTree node.
+
+    Example:
+        >>> tree = unflatten_cgns_tree(flat, dtypes, cgns_types)
     """
     # Build all nodes from paths
     nodes = {}
@@ -187,15 +218,29 @@ def unflatten_cgns_tree(flat: dict, dtypes: dict, cgns_types: dict):
     return root
 
 
-def compare_cgns_trees(tree1, tree2, path="CGNSTree"):
-    """Recursively compare two CGNS trees ignoring the order of children.
+def compare_cgns_trees(
+    tree1: CGNSTree,
+    tree2: CGNSTree,
+    path: str = "CGNSTree",
+) -> bool:
+    """Recursively compare two CGNS trees, ignoring the order of children.
 
     Checks:
       - Node name
-      - Data (numpy arrays or scalars) with exact dtype
-      - Number of children
+      - Data (numpy arrays or scalars) with exact dtype and value
+      - Number and names of children
       - CGNS type (extra field)
-    Returns True if identical, False otherwise.
+
+    Args:
+        tree1 (CGNSTree): The first CGNS tree node.
+        tree2 (CGNSTree): The second CGNS tree node.
+        path (str, optional): Path for error reporting. Defaults to "CGNSTree".
+
+    Returns:
+        bool: True if trees are identical, False otherwise.
+
+    Example:
+        >>> identical = compare_cgns_trees(tree1, tree2)
     """
     # Compare node name
     if tree1[0] != tree2[0]:
@@ -250,11 +295,11 @@ def compare_cgns_trees(tree1, tree2, path="CGNSTree"):
     return True
 
 
-def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
+def summarize_cgns_tree(pyTree: CGNSTree, verbose=True) -> str:
     """Provide a summary of a CGNS tree's contents.
 
     Args:
-        pyTree (list): The CGNS tree to summarize.
+        pyTree (CGNSTree): The CGNS tree to summarize.
         verbose (bool, optional): If True, include detailed field information. Defaults to True.
 
     Example:
