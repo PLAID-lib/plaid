@@ -12,7 +12,7 @@ from tqdm import tqdm
 from plaid.bridges import huggingface_bridge
 from plaid.utils.base import update_dict_only_new_keys
 from plaid.utils.cgns_helper import (
-    flatten_cgns_tree,
+    flatten_cgns_tree, flatten_cgns_tree_optree
 )
 
 if __name__ == "__main__":
@@ -66,26 +66,12 @@ if __name__ == "__main__":
 
     split_names = ["train_500", "test", "OOD"]
 
-    for split_name in split_names:
-        flat_tree_list[split_name] = []
-
-        for id in tqdm(pb_def.get_split(split_name), desc=f"Processing {split_name}"):
-            sample = plaid_dataset[id]
-            flat_tree, dtypes_, cgns_types_ = flatten_cgns_tree(sample.features.data[0])
-            update_dict_only_new_keys(dtypes, dtypes_)
-            update_dict_only_new_keys(cgns_types, cgns_types_)
-
-            hf_features_ = huggingface_bridge.infer_hf_features(flat_tree, dtypes)
-            update_dict_only_new_keys(hf_features, hf_features_)
-
-            flat_tree_list[split_name].append(flat_tree)
-
     # for split_name in split_names:
     #     flat_tree_list[split_name] = []
 
     #     for id in tqdm(pb_def.get_split(split_name), desc=f"Processing {split_name}"):
     #         sample = plaid_dataset[id]
-    #         leaves, treedef = flatten_cgns_tree_optree(sample.features.data[0])
+    #         flat_tree, dtypes_, cgns_types_ = flatten_cgns_tree(sample.features.data[0])
     #         update_dict_only_new_keys(dtypes, dtypes_)
     #         update_dict_only_new_keys(cgns_types, cgns_types_)
 
@@ -94,12 +80,28 @@ if __name__ == "__main__":
 
     #         flat_tree_list[split_name].append(flat_tree)
 
+    for split_name in split_names:
+        flat_tree_list[split_name] = []
+
+        for id in tqdm(pb_def.get_split(split_name), desc=f"Processing {split_name}"):
+            sample = plaid_dataset[id]
+            leaves, treedef = flatten_cgns_tree_optree(sample.features.data[0])
+            # update_dict_only_new_keys(dtypes, dtypes_)
+            # update_dict_only_new_keys(cgns_types, cgns_types_)
+
+            hf_features_ = huggingface_bridge.infer_hf_features(flat_tree, dtypes)
+            # update_dict_only_new_keys(hf_features, hf_features_)
+
+            flat_tree_list[split_name].append(flat_tree)
+
     features_names = {}
     for fn in all_feat_names:
         for large_name in cgns_types.keys():
             if "/" + fn in large_name:
                 features_names[fn] = large_name
                 continue
+
+    1./0.
 
     print("Pushing key_mappings, pb_def and infos to the hub")
 

@@ -79,36 +79,41 @@ if __name__ == "__main__":
     end = time()
     print("binary blob conversion plaid dataset generation =", end - start)
 
-    tree = plaid_dataset[0].features.data[0]
+    # tree = plaid_dataset[0].features.data[0]
 
-    leaves, treedef = flatten_cgns_tree_optree(tree)
-    start = time()
-    for _ in range(1000):
-        unflat = unflatten_cgns_tree_optree(leaves, treedef)
-    end = time()
-    print("1000 unflatten_cgns_tree_optree duration =", end - start)
+    # leaves, treedef, data_dict, cgns_types_dict = flatten_cgns_tree_optree(tree)
+    # # print(leaves[0], leaves[1], leaves[2], leaves[3], leaves[4])
+    # # print(type(leaves))
+    # print(treedef)
+    # print(type(treedef))
+    # start = time()
+    # for _ in range(1000):
+    #     unflat = unflatten_cgns_tree_optree(leaves, treedef, data_dict, cgns_types_dict)
+    # end = time()
+    # print("1000 unflatten_cgns_tree_optree duration =", end - start)
 
-    flat, dtypes, extras = flatten_cgns_tree(tree)
-    start = time()
-    for _ in range(1000):
-        unflat = unflatten_cgns_tree(flat, dtypes, extras)
-    end = time()
-    print("1000 unflatten_cgns_tree duration =", end - start)
+    # flat, dtypes, cgns_types = flatten_cgns_tree(tree)
+    # start = time()
+    # for _ in range(1000):
+    #     unflat = unflatten_cgns_tree(flat, dtypes, cgns_types)
+    # end = time()
+    # print("1000 unflatten_cgns_tree duration =", end - start)
 
-    print(
-        "first sample CGNS trees identical?:",
-        compare_cgns_trees(tree, unflat),
-    )
+    # print(
+    #     "first sample CGNS trees identical?:",
+    #     compare_cgns_trees(tree, unflat),
+    # )
 
-    # show_cgns_tree(tree)
-    # print("--------------")
-    # show_cgns_tree(unflat)
+    # # show_cgns_tree(tree)
+    # # print("--------------")
+    # # show_cgns_tree(unflat)
 
-    1.0 / 0.0
+
+    # 1.0 / 0.0
 
     start = time()
     plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid_new(
-        hf_dataset_new, dtypes, cgns_types, processes_number=1
+        hf_dataset_new, dtypes, cgns_types, processes_number=12
     )
     end = time()
 

@@ -108,32 +108,112 @@ def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
     np.set_printoptions(edgeitems=3, threshold=1000)
 
 
-def flatten_cgns_tree_optree(pyTree) -> tuple[list, optree.PyTreeDef]:
+def flatten_cgns_tree_optree_dict(pyTree):
+    """
+    Flatten CGNS tree:
+    - treedef: for unflatten
+    - data_dict: path -> data
+    - cgns_types: path -> CGNS type
+    """
+    data_dict = {}
+    cgns_types = {}
+
+    def visit(node, prefix=""):
+        name, data, children, cgns_type = node
+        path = f"{prefix}/{name}" if prefix else name
+        data_dict[path] = data
+        cgns_types[path] = cgns_type
+
+        children_struct = tuple(visit(child, prefix=path) for child in (children or []))
+        leaf = path  # only the path is stored in leaves
+        return (leaf, children_struct)
+
+    struct_tree = visit(pyTree)
+    _, treedef = optree.tree_flatten(struct_tree)
+    return treedef, data_dict, cgns_types
+
+
+def unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types):
+    """
+    Reconstruct CGNS tree from:
+    - treedef: tree structure
+    - data_dict: path -> data
+    - cgns_types: path -> CGNS type
+    """
+
+    # Rebuild leaves as (path, data) using the path stored in leaves
+    leaves = [(path, data_dict[path]) for path in data_dict]
+
+    struct_tree = optree.tree_unflatten(treedef, leaves)
+
+    def build_node(struct_node):
+        leaf, children_tuple = struct_node
+        path, data = leaf
+        name = path.split("/")[-1]
+        cgns_type = cgns_types[path]
+        children = [build_node(child) for child in children_tuple]
+        return [name, data, children, cgns_type]
+
+    return build_node(struct_tree)
+
+
+def flatten_cgns_tree_optree(pyTree):
     """Flatten CGNS tree."""
+
+    cgns_types = {}
 
     def visit(node):
         name, data, children, cgns_type = node
+        cgns_types[name] = cgns_type
         children_struct = tuple(visit(child) for child in (children or []))
-        # leaf will contain everything except children
-        leaf = (name, data, cgns_type)
+        leaf = (name, data)
         return (leaf, children_struct)
 
     struct_tree = visit(pyTree)
     leaves, treedef = optree.tree_flatten(struct_tree)
-    return leaves, treedef
+    return leaves, treedef, cgns_types
 
 
-def unflatten_cgns_tree_optree(leaves, treedef):
+def unflatten_cgns_tree_optree(leaves, treedef, cgns_types):
     """Reconstruct CGNS tree from leaves + treedef."""
     struct_tree = optree.tree_unflatten(treedef, leaves)
 
     def build_node(struct_node):
         leaf, children_tuple = struct_node
-        name, data, cgns_type = leaf
+        name, data = leaf
+        cgns_type = cgns_types[name]
         children = [build_node(child) for child in children_tuple]
         return [name, data, children, cgns_type]
 
     return build_node(struct_tree)
+
+
+# def flatten_cgns_tree_optree(pyTree) -> tuple[list, optree.PyTreeDef]:
+#     """Flatten CGNS tree."""
+
+#     def visit(node):
+#         name, data, children, cgns_type = node
+#         children_struct = tuple(visit(child) for child in (children or []))
+#         # leaf will contain everything except children
+#         leaf = (name, data, cgns_type)
+#         return (leaf, children_struct)
+
+#     struct_tree = visit(pyTree)
+#     leaves, treedef = optree.tree_flatten(struct_tree)
+#     return leaves, treedef
+
+
+# def unflatten_cgns_tree_optree(leaves, treedef):
+#     """Reconstruct CGNS tree from leaves + treedef."""
+#     struct_tree = optree.tree_unflatten(treedef, leaves)
+
+#     def build_node(struct_node):
+#         leaf, children_tuple = struct_node
+#         name, data, cgns_type = leaf
+#         children = [build_node(child) for child in children_tuple]
+#         return [name, data, children, cgns_type]
+
+#     return build_node(struct_tree)
 
 
 # ------------- ORIGINAL ---------------------------

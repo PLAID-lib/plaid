@@ -674,7 +674,7 @@ def _process_sample(
         Sample: The reconstructed plaid Sample object.
     """
     flat_tree = reconstruct_flat_tree_from_hf_sample(ds[idx], dtypes)
-    unflatten_tree = unflatten_cgns_tree(flat_tree, dtypes, cgns_types)
+    unflatten_tree = unflatten_cgns_tree(ds[idx], dtypes, cgns_types)
     return Sample(features=SampleFeatures({0.0: unflatten_tree}))
 
 
@@ -699,6 +699,8 @@ def huggingface_dataset_to_plaid_new(
     """
     description = "Converting Hugging Face dataset to plaid"
 
+    ds.set_format("numpy")
+
     if processes_number == 1:
         sample_list = [
             _process_sample(idx, ds, dtypes, cgns_types)
@@ -719,6 +721,8 @@ def huggingface_dataset_to_plaid_new(
         )
 
     return Dataset(samples=sample_list)
+
+
 
 
 # ------
@@ -759,6 +763,40 @@ def reconstruct_flat_tree_from_hf_sample(
             flat_tree[key] = np.array(value, dtype=dtype)
 
     return flat_tree
+
+
+def reconstruct_flat_tree_from_hf_sample2(
+    ds: dict[str, object],
+    idx
+) -> dict[str, object]:
+    """Reconstruct a flat tree (dict) from a Hugging Face sample using provided dtypes.
+
+    Args:
+        sample (dict[str, object]): The Hugging Face sample dictionary.
+        dtypes (dict[str, str]): Dictionary mapping feature names to numpy dtype strings.
+
+    Returns:
+        dict[str, object]: Flat tree with numpy arrays or scalars for each feature.
+    """
+    import pyarrow as pa
+    import numpy as np
+    data_dict = {}
+
+    for key in ds.column_names:
+        val = ds.data[key][idx]
+
+        if val is None:
+            data_dict[key] = None
+        if isinstance(val, pa.Scalar):
+            data_dict[key] = val.as_py()
+        elif isinstance(val, (list, tuple)):
+            data_dict[key] = np.array(val)
+        elif isinstance(val, pa.Array):
+            data_dict[key] = val.to_numpy(zero_copy_only=False)
+        else:
+            data_dict[key] = val
+
+    return data_dict
 
 
 def infer_hf_features(
