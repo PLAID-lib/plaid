@@ -9,9 +9,11 @@
 
 # %% Imports
 
+import os
 from functools import wraps
 
 import numpy as np
+import psutil
 
 # %% Functions
 
@@ -57,6 +59,13 @@ def update_dict_only_new_keys(a: dict, b: dict):
     new_keys = b.keys() - a.keys()  # set difference is very fast
     if new_keys:
         a.update({k: b[k] for k in new_keys})
+
+
+def get_mem():
+    """Get the current memory usage of the process in MB."""
+    process = psutil.Process(os.getpid())
+    # rss = resident set size = actual RAM usage
+    return process.memory_info().rss / (1024**2)  # in MB
 
 
 def delegate_methods(to: str, methods: list[str]):

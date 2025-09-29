@@ -589,10 +589,9 @@ def huggingface_dataset_to_plaid(
             "Trying to parallelize with more processes than selected samples in dataset"
         )
 
-    dataset = Dataset()
+    description = "Converting Hugging Face dataset to plaid"
 
-    if verbose:
-        print("Converting Hugging Face dataset to plaid dataset...")
+    dataset = Dataset()
 
     if large_dataset:
         if ids:
@@ -611,6 +610,7 @@ def huggingface_dataset_to_plaid(
                         pool.imap(converter, range(len(converter.hf_ds))),
                         total=len(converter.hf_ds),
                         disable=not verbose,
+                        desc=description,
                     )
                 )
 
@@ -633,15 +633,24 @@ def huggingface_dataset_to_plaid(
         else:
             indices = range(len(ds))
 
-        with Pool(processes=processes_number) as pool:
-            for idx, sample in enumerate(
-                tqdm(
-                    pool.imap(_HFToPlaidSampleConverter(ds), indices),
-                    total=len(indices),
-                    disable=not verbose,
-                )
+        if processes_number == 1:
+            for idx in tqdm(
+                indices, total=len(indices), disable=not verbose, desc=description
             ):
-                dataset.add_sample(sample, id=indices[idx])
+                sample = _HFToPlaidSampleConverter(ds)(idx)
+                dataset.add_sample(sample, id=idx)
+
+        else:
+            with Pool(processes=processes_number) as pool:
+                for idx, sample in enumerate(
+                    tqdm(
+                        pool.imap(_HFToPlaidSampleConverter(ds), indices),
+                        total=len(indices),
+                        disable=not verbose,
+                        desc=description,
+                    )
+                ):
+                    dataset.add_sample(sample, id=indices[idx])
 
     return dataset
 
@@ -688,14 +697,25 @@ def huggingface_dataset_to_plaid_new(
     Returns:
         Dataset: The converted plaid Dataset.
     """
-    if verbose:
-        print("Converting Hugging Face dataset to plaid dataset...")
+    description = "Converting Hugging Face dataset to plaid"
+
+    if processes_number == 1:
+        sample_list = [
+            _process_sample(idx, ds, dtypes, cgns_types)
+            for idx in tqdm(range(len(ds)), desc=description)
+        ]
+        return Dataset(samples=sample_list)
 
     worker = partial(_process_sample, ds=ds, dtypes=dtypes, cgns_types=cgns_types)
 
     with Pool(processes_number) as pool:
         sample_list = list(
-            tqdm(pool.imap(worker, range(len(ds))), total=len(ds), disable=not verbose)
+            tqdm(
+                pool.imap(worker, range(len(ds))),
+                total=len(ds),
+                disable=not verbose,
+                desc=description,
+            )
         )
 
     return Dataset(samples=sample_list)
