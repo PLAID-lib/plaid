@@ -9,6 +9,7 @@
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
+import optree
 
 from plaid.types import CGNSTree
 
@@ -67,11 +68,11 @@ def get_time_values(tree: CGNSTree) -> np.ndarray:
     return time_values[0]
 
 
-def show_cgns_tree(pyTree: list, pre: str = ""):
+def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
     """Pretty print for CGNS Tree.
 
     Args:
-        pyTree (list): CGNS tree to print
+        pyTree (CGNSTree): CGNS tree to print
         pre (str, optional): indentation of print. Defaults to ''.
     """
     if not (isinstance(pyTree, list)):
@@ -107,11 +108,354 @@ def show_cgns_tree(pyTree: list, pre: str = ""):
     np.set_printoptions(edgeitems=3, threshold=1000)
 
 
-def summarize_cgns_tree(pyTree: list, verbose=True) -> str:
+def flatten_cgns_tree_optree_dict(pyTree):
+    """
+    Flatten CGNS tree:
+    - treedef: for unflatten
+    - data_dict: path -> data
+    - cgns_types: path -> CGNS type
+    """
+    data_dict = {}
+    cgns_types = {}
+
+    def visit(node, prefix=""):
+        name, data, children, cgns_type = node
+        path = f"{prefix}/{name}" if prefix else name
+        data_dict[path] = data
+        cgns_types[path] = cgns_type
+
+        children_struct = tuple(visit(child, prefix=path) for child in (children or []))
+        leaf = path  # only the path is stored in leaves
+        return (leaf, children_struct)
+
+    struct_tree = visit(pyTree)
+    _, treedef = optree.tree_flatten(struct_tree)
+    return treedef, data_dict, cgns_types
+
+
+def unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types):
+    """
+    Reconstruct CGNS tree from:
+    - treedef: tree structure
+    - data_dict: path -> data
+    - cgns_types: path -> CGNS type
+    """
+
+    # Rebuild leaves as (path, data) using the path stored in leaves
+    leaves = [(path, data_dict[path]) for path in data_dict]
+
+    struct_tree = optree.tree_unflatten(treedef, leaves)
+
+    def build_node(struct_node):
+        leaf, children_tuple = struct_node
+        path, data = leaf
+        name = path.split("/")[-1]
+        cgns_type = cgns_types[path]
+        children = [build_node(child) for child in children_tuple]
+        return [name, data, children, cgns_type]
+
+    return build_node(struct_tree)
+
+
+def flatten_cgns_tree_optree(pyTree):
+    """Flatten CGNS tree."""
+
+    cgns_types = {}
+
+    def visit(node):
+        name, data, children, cgns_type = node
+        cgns_types[name] = cgns_type
+        children_struct = tuple(visit(child) for child in (children or []))
+        leaf = (name, data)
+        return (leaf, children_struct)
+
+    struct_tree = visit(pyTree)
+    leaves, treedef = optree.tree_flatten(struct_tree)
+    return leaves, treedef, cgns_types
+
+
+def unflatten_cgns_tree_optree(leaves, treedef, cgns_types):
+    """Reconstruct CGNS tree from leaves + treedef."""
+    struct_tree = optree.tree_unflatten(treedef, leaves)
+
+    def build_node(struct_node):
+        leaf, children_tuple = struct_node
+        name, data = leaf
+        cgns_type = cgns_types[name]
+        children = [build_node(child) for child in children_tuple]
+        return [name, data, children, cgns_type]
+
+    return build_node(struct_tree)
+
+
+# def flatten_cgns_tree_optree(pyTree) -> tuple[list, optree.PyTreeDef]:
+#     """Flatten CGNS tree."""
+
+#     def visit(node):
+#         name, data, children, cgns_type = node
+#         children_struct = tuple(visit(child) for child in (children or []))
+#         # leaf will contain everything except children
+#         leaf = (name, data, cgns_type)
+#         return (leaf, children_struct)
+
+#     struct_tree = visit(pyTree)
+#     leaves, treedef = optree.tree_flatten(struct_tree)
+#     return leaves, treedef
+
+
+# def unflatten_cgns_tree_optree(leaves, treedef):
+#     """Reconstruct CGNS tree from leaves + treedef."""
+#     struct_tree = optree.tree_unflatten(treedef, leaves)
+
+#     def build_node(struct_node):
+#         leaf, children_tuple = struct_node
+#         name, data, cgns_type = leaf
+#         children = [build_node(child) for child in children_tuple]
+#         return [name, data, children, cgns_type]
+
+#     return build_node(struct_tree)
+
+
+# ------------- ORIGINAL ---------------------------
+
+
+def flatten_cgns_tree(
+    pyTree: CGNSTree,
+) -> tuple[dict[str, object], dict[str, str], dict[str, object]]:
+    """Flatten a CGNS tree into dictionaries of primitives for Hugging Face serialization.
+
+    Traverses the CGNS tree and produces:
+      - flat: a dictionary mapping paths to primitive values (lists, scalars, or None)
+      - dtypes: a dictionary mapping paths to dtype strings
+      - extras: a dictionary mapping paths to extra CGNS metadata
+
+    Args:
+        pyTree (CGNSTree): The CGNS tree to flatten.
+
+    Returns:
+        tuple[dict[str, object], dict[str, str], dict[str, object]]:
+            - flat: dict of paths to primitive values
+            - dtypes: dict of paths to dtype strings
+            - extras: dict of paths to extra CGNS metadata
+
+    Example:
+        >>> flat, dtypes, extras = flatten_cgns_tree(pyTree)
+        >>> flat["Base1/Zone1/Solution1/Field1"]  # [1.0, 2.0, ...]
+        >>> dtypes["Base1/Zone1/Solution1/Field1"]  # 'float64'
+    """
+    flat = {}
+    dtypes = {}
+    extras = {}
+
+    def visit(tree, path=""):
+        for node in tree[2]:
+            name, data, children, extra = node
+            new_path = f"{path}/{name}" if path else name
+
+            # Flatten values for HF: always primitive types
+            if isinstance(data, np.ndarray):
+                if data.dtype.kind == "S":  # string arrays
+                    flat[new_path] = [x.decode("utf-8") for x in data.tolist()]
+                else:
+                    flat[new_path] = data.tolist()
+                dtypes[new_path] = str(data.dtype)
+            elif data is None:
+                flat[new_path] = None
+                dtypes[new_path] = None
+            else:
+                flat[new_path] = data
+                dtypes[new_path] = str(np.array(data).dtype)
+
+            extras[new_path] = extra
+
+            if children:
+                visit(node, new_path)
+
+    visit(pyTree)
+    return flat, dtypes, extras
+
+
+def unflatten_cgns_tree(
+    flat: dict[str, object],
+    dtypes: dict[str, str],
+    cgns_types: dict[str, str],
+) -> CGNSTree:
+    """Reconstruct a CGNS tree from flattened primitives, dtypes, and CGNS type information.
+
+    Args:
+        flat (dict[str, object]): Dictionary mapping paths to primitive values (lists, scalars, or None).
+        dtypes (dict[str, str]): Dictionary mapping paths to dtype strings.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS type names (ending in '_t').
+
+    Returns:
+        CGNSTree: The reconstructed CGNSTree node.
+
+    Example:
+        >>> tree = unflatten_cgns_tree(flat, dtypes, cgns_types)
+    """
+    # Build all nodes from paths
+    nodes = {}
+
+    for path, value in flat.items():
+        dtype = np.dtype(dtypes.get(path))
+        cgns_type = cgns_types.get(path)
+
+        # reconstruct data as numpy array or None
+        if value is None:
+            data = None
+        else:
+            if dtype is None:
+                data = None
+            else:
+                data = np.array(value, dtype=dtype)
+
+        # empty children for now
+        nodes[path] = [path.split("/")[-1], data, [], cgns_type]
+
+    # Re-link nodes into tree structure
+    root = None
+    for path, node in nodes.items():
+        parts = path.split("/")
+        if len(parts) == 1:
+            # root-level node
+            if root is None:
+                root = ["CGNSTree", None, [node], "CGNSTree_t"]
+            else:
+                root[2].append(node)
+        else:
+            parent_path = "/".join(parts[:-1])
+            parent = nodes[parent_path]
+            parent[2].append(node)
+
+    return root
+
+
+# def unflatten_cgns_tree(flat: Dict[str, Any],
+#                              dtypes: Dict[str, str],
+#                              cgns_types: Dict[str, str]):
+
+#     nodes = {}
+#     children_map = defaultdict(list)
+
+#     # Precompute parent paths and node names
+#     parent_map = {}
+#     names = {}
+#     for path in flat:
+#         last_slash = path.rfind("/")
+#         if last_slash == -1:
+#             parent_map[path] = None
+#             names[path] = path
+#         else:
+#             parent_map[path] = path[:last_slash]
+#             names[path] = path[last_slash+1:]
+#             children_map[path[:last_slash]].append(path)
+
+#     # Build all nodes: [name, data, empty children list, cgns_type]
+#     for path, value in flat.items():
+#         dtype_str = dtypes.get(path)
+#         dtype = np.dtype(dtype_str) if dtype_str else None
+#         cgns_type = cgns_types.get(path)
+#         if value is None or dtype is None:
+#             data = None
+#         else:
+#             data = np.asarray(value, dtype=dtype)
+#         nodes[path] = [names[path], data, [], cgns_type]
+
+#     # Link children
+#     for parent_path, child_paths in children_map.items():
+#         parent_node = nodes[parent_path]
+#         parent_node[2].extend(nodes[child] for child in child_paths)
+
+#     # Collect roots
+#     roots = [nodes[path] for path, p in parent_map.items() if p is None]
+#     if len(roots) == 1:
+#         return roots[0]
+#     else:
+#         return ["CGNSTree", None, roots, "CGNSTree_t"]
+
+
+def compare_cgns_trees(
+    tree1: CGNSTree,
+    tree2: CGNSTree,
+    path: str = "CGNSTree",
+) -> bool:
+    """Recursively compare two CGNS trees, ignoring the order of children.
+
+    Checks:
+      - Node name
+      - Data (numpy arrays or scalars) with exact dtype and value
+      - Number and names of children
+      - CGNS type (extra field)
+
+    Args:
+        tree1 (CGNSTree): The first CGNS tree node.
+        tree2 (CGNSTree): The second CGNS tree node.
+        path (str, optional): Path for error reporting. Defaults to "CGNSTree".
+
+    Returns:
+        bool: True if trees are identical, False otherwise.
+
+    Example:
+        >>> identical = compare_cgns_trees(tree1, tree2)
+    """
+    # Compare node name
+    if tree1[0] != tree2[0]:
+        print(f"Name mismatch at {path}: {tree1[0]} != {tree2[0]}")
+        return False
+
+    # Compare data
+    data1, data2 = tree1[1], tree2[1]
+
+    if data1 is None and data2 is None:
+        pass
+    elif isinstance(data1, np.ndarray) and isinstance(data2, np.ndarray):
+        if data1.dtype != data2.dtype:
+            print(
+                f"Dtype mismatch at {path}/{tree1[0]}: {data1.dtype} != {data2.dtype}"
+            )
+            return False
+        if not np.array_equal(data1, data2):
+            print(f"Data mismatch at {path}/{tree1[0]}")
+            return False
+    else:
+        if isinstance(data1, np.ndarray) or isinstance(data2, np.ndarray):
+            print(f"Data type mismatch at {path}/{tree1[0]}")
+            return False
+        if data1 != data2:
+            print(f"Data mismatch at {path}/{tree1[0]}: {data1} != {data2}")
+            return False
+
+    # Compare extra (CGNS type)
+    extra1, extra2 = tree1[3], tree2[3]
+    if extra1 != extra2:
+        print(f"Type mismatch at {path}/{tree1[0]}: {extra1} != {extra2}")
+        return False
+
+    # Compare children ignoring order
+    children1_dict = {c[0]: c for c in tree1[2] or []}
+    children2_dict = {c[0]: c for c in tree2[2] or []}
+
+    if set(children1_dict.keys()) != set(children2_dict.keys()):
+        print(
+            f"Children name mismatch at {path}/{tree1[0]}: {set(children1_dict.keys())} != {set(children2_dict.keys())}"
+        )
+        return False
+
+    # Recursively compare children
+    for name in children1_dict:
+        if not compare_cgns_trees(
+            children1_dict[name], children2_dict[name], path=f"{path}/{tree1[0]}"
+        ):
+            return False
+
+    return True
+
+
+def summarize_cgns_tree(pyTree: CGNSTree, verbose=True) -> str:
     """Provide a summary of a CGNS tree's contents.
 
     Args:
-        pyTree (list): The CGNS tree to summarize.
+        pyTree (CGNSTree): The CGNS tree to summarize.
         verbose (bool, optional): If True, include detailed field information. Defaults to True.
 
     Example:

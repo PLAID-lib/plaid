@@ -38,6 +38,7 @@ dependencies = [
     "numpy",
     "matplotlib",
     "pydantic",
+    "optree",
 ]
 
 dynamic = ["version"]

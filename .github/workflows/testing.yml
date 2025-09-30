@@ -7,9 +7,23 @@ on:
   push:
     branches:
       - '**'
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'examples/**'
+      - '.github/workflows/testing.yml'
+      - 'environment.yml'
+      - 'pyproject.toml'
   pull_request:
     branches:
       - '**'
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'examples/**'
+      - '.github/workflows/testing.yml'
+      - 'environment.yml'
+      - 'pyproject.toml'
   schedule:
     - cron: '0 0 * * *'  # Every day at 00:00 UTC
 

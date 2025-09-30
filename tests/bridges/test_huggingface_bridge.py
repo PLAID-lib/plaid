@@ -8,6 +8,8 @@
 # %% Imports
 
 import pickle
+import shutil
+from pathlib import Path
 from typing import Callable
 
 import pytest
@@ -17,6 +19,11 @@ from plaid.bridges.huggingface_bridge import to_plaid_sample
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
+
+
+@pytest.fixture()
+def current_directory():
+    return Path(__file__).absolute().parent
 
 
 # %% Fixtures
@@ -39,35 +46,46 @@ def problem_definition() -> ProblemDefinition:
 
 @pytest.fixture()
 def generator(dataset) -> Callable:
-    def generator():
-        for id in range(len(dataset)):
+    def generator_():
+        for sample in dataset:
             yield {
-                "sample": pickle.dumps(dataset[id]),
+                "sample": pickle.dumps(sample),
             }
 
-    return generator
+    return generator_
 
 
 @pytest.fixture()
-def hf_dataset(generator, infos, problem_definition) -> Dataset:
-    hf_dataset = huggingface_bridge.plaid_generator_to_huggingface(
-        generator, infos, problem_definition
-    )
+def generator_split(dataset, problem_definition) -> Callable:
+    generators = {}
+    for split_name, ids in problem_definition.get_split().items():
+
+        def generator_(ids=ids):
+            for id in ids:
+                yield {"sample": pickle.dumps(dataset[id])}
+
+        generators[split_name] = generator_
+    return generators
+
+
+@pytest.fixture()
+def hf_dataset(generator) -> Dataset:
+    hf_dataset = huggingface_bridge.plaid_generator_to_huggingface(generator)
     return hf_dataset
 
 
 class Test_Huggingface_Bridge:
     def assert_hf_dataset(self, hfds):
-        assert hfds.description["legal"] == {"owner": "PLAID2", "license": "BSD-3"}
-        assert hfds.description["task"] == "regression"
-        assert hfds.description["in_scalars_names"][0] == "feature_name_1"
-        assert hfds.description["in_scalars_names"][1] == "feature_name_2"
+        # assert hfds.description["legal"] == {"owner": "PLAID2", "license": "BSD-3"}
+        # assert hfds.description["task"] == "regression"
+        # assert hfds.description["in_scalars_names"][0] == "feature_name_1"
+        # assert hfds.description["in_scalars_names"][1] == "feature_name_2"
         self.assert_sample(to_plaid_sample(hfds[0]))
 
-    def assert_plaid_dataset(self, ds, pbdef):
-        assert ds.get_infos()["legal"] == {"owner": "PLAID2", "license": "BSD-3"}
-        assert pbdef.get_input_scalars_names()[0] == "feature_name_1"
-        assert pbdef.get_input_scalars_names()[1] == "feature_name_2"
+    def assert_plaid_dataset(self, ds):
+        # assert ds.get_infos()["legal"] == {"owner": "PLAID2", "license": "BSD-3"}
+        # assert pbdef.get_input_scalars_names()[0] == "feature_name_1"
+        # assert pbdef.get_input_scalars_names()[1] == "feature_name_2"
         self.assert_sample(ds[0])
 
     def assert_sample(self, sample):
@@ -76,10 +94,8 @@ class Test_Huggingface_Bridge:
         assert "test_field_same_size" in sample.get_field_names()
         assert sample.get_field("test_field_same_size").shape[0] == 17
 
-    def test_to_plaid_sample(self, generator, infos, problem_definition):
-        hfds = huggingface_bridge.plaid_generator_to_huggingface(
-            generator, infos, problem_definition
-        )
+    def test_to_plaid_sample(self, generator):
+        hfds = huggingface_bridge.plaid_generator_to_huggingface(generator)
         to_plaid_sample(hfds[0])
 
     def test_to_plaid_sample_fallback_build_succeeds(self, dataset):
@@ -88,63 +104,36 @@ class Test_Huggingface_Bridge:
             "path": getattr(sample, "path", None),
             "scalars": {sn: sample.get_scalar(sn) for sn in sample.get_scalar_names()},
             "meshes": sample.features.data,
-            "mesh_base_name": sample.features._mesh_base_name,
-            "mesh_zone_name": sample.features._mesh_zone_name,
-            "links": sample.features._links,
-            "paths": sample.features._paths,
         }
         old_hf_sample = {"sample": pickle.dumps(old_hf_sample)}
         plaid_sample = to_plaid_sample(old_hf_sample)
         assert isinstance(plaid_sample, Sample)
 
-    def test_to_plaid_sample_missing_key_raises_keyerror(self, dataset):
-        sample = dataset[0]
-        bad_sample = {
-            "path": getattr(sample, "path", None),
-            "mesh_base_name": sample.features._mesh_base_name,
-            "mesh_zone_name": sample.features._mesh_zone_name,
-            "links": sample.features._links,
-            "paths": sample.features._paths,
-        }
-        bad_hf_sample = {"sample": pickle.dumps(bad_sample)}
-        with pytest.raises(KeyError):
-            to_plaid_sample(bad_hf_sample)
-
-    def test_plaid_dataset_to_huggingface(self, dataset, problem_definition):
-        hfds = huggingface_bridge.plaid_dataset_to_huggingface(
-            dataset, problem_definition, split="train"
-        )
-        hfds = huggingface_bridge.plaid_dataset_to_huggingface(
-            dataset, problem_definition
-        )
+    def test_plaid_dataset_to_huggingface(self, dataset):
+        hfds = huggingface_bridge.plaid_dataset_to_huggingface(dataset)
+        hfds = huggingface_bridge.plaid_dataset_to_huggingface(dataset, ids=[0, 1])
         self.assert_hf_dataset(hfds)
 
     def test_plaid_dataset_to_huggingface_datasetdict(
         self, dataset, problem_definition
     ):
         huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
-            dataset, problem_definition, main_splits=["train", "test"]
+            dataset, main_splits=problem_definition.get_split()
         )
 
-    def test_plaid_generator_to_huggingface(self, generator, infos, problem_definition):
+    def test_plaid_generator_to_huggingface(self, generator):
+        hfds = huggingface_bridge.plaid_generator_to_huggingface(generator)
         hfds = huggingface_bridge.plaid_generator_to_huggingface(
-            generator, infos, problem_definition, split="train"
-        )
-        hfds = huggingface_bridge.plaid_generator_to_huggingface(
-            generator, infos, problem_definition
+            generator, processes_number=2
         )
         self.assert_hf_dataset(hfds)
 
-    def test_plaid_generator_to_huggingface_datasetdict(
-        self, generator, infos, problem_definition
-    ):
-        huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-            generator, infos, problem_definition, main_splits=["train", "test"]
-        )
+    def test_plaid_generator_to_huggingface_datasetdict(self, generator_split):
+        huggingface_bridge.plaid_generator_to_huggingface_datasetdict(generator_split)
 
     def test_huggingface_dataset_to_plaid(self, hf_dataset):
-        ds, pbdef = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
-        self.assert_plaid_dataset(ds, pbdef)
+        ds = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
+        self.assert_plaid_dataset(ds)
 
     def test_huggingface_dataset_to_plaid_with_ids(self, hf_dataset):
         huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset, ids=[0, 1])
@@ -171,6 +160,37 @@ class Test_Huggingface_Bridge:
             huggingface_bridge.huggingface_dataset_to_plaid(
                 hf_dataset, ids=[0], processes_number=2
             )
+
+    # ----------------------------------------------------------------
+    def test_save_load_to_disk(
+        self, current_directory, generator_split, infos, problem_definition
+    ):
+        hf_dataset_dict = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+            generator_split
+        )
+        test_dir = Path(current_directory) / Path("test")
+        huggingface_bridge.save_dataset_dict_to_disk(test_dir, hf_dataset_dict)
+        huggingface_bridge.save_dataset_infos_to_disk(test_dir, infos)
+        huggingface_bridge.save_problem_definition_to_disk(
+            test_dir, "task_1", problem_definition
+        )
+        huggingface_bridge.load_dataset_dict_from_to_disk(test_dir)
+        huggingface_bridge.load_dataset_infos_from_disk(test_dir)
+        huggingface_bridge.load_problem_definition_from_disk(test_dir, "task_1")
+        shutil.rmtree(test_dir)
+
+    # ----------------------------------------------------------------
+    # deprecated functions
+
+    def test_huggingface_description_to_problem_definition(self, hf_dataset):
+        huggingface_bridge.huggingface_description_to_problem_definition(
+            hf_dataset.description
+        )
+
+    def test_huggingface_description_to_infos(self, infos):
+        hf_description = {}
+        hf_description.update(infos)
+        huggingface_bridge.huggingface_description_to_infos(hf_description)
 
     def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
         huggingface_bridge.create_string_for_huggingface_dataset_card(
