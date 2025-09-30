@@ -15,6 +15,7 @@ from plaid.utils.cgns_helper import (
     unflatten_cgns_tree_optree,
 )
 
+from datasets import load_from_disk
 
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
@@ -52,17 +53,17 @@ if __name__ == "__main__":
     print()
 
     start = time()
-    hf_dataset_new = huggingface_bridge.load_hf_dataset_from_hub(
-        repo_id, split="train_500"
-    )
+    hf_dataset_new = load_from_disk("Tensile2d_hf_dataset_new/train_500")
     end = time()
     print("Time to instanciate cached HF dataset =", end - start)
+
 
     print("Initial RAM usage:", get_mem(), "MB")
     start = time()
     all_data = {}
     for i in range(len(hf_dataset_new)):
         for n in fnn:
+            print(n)
             all_data[(i, n)] = hf_dataset_new.data[fn[n]][i].values.to_numpy(
                 zero_copy_only=True
             )

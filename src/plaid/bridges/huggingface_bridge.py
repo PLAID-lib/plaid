@@ -673,7 +673,7 @@ def _process_sample(
     Returns:
         Sample: The reconstructed plaid Sample object.
     """
-    flat_tree = reconstruct_flat_tree_from_hf_sample(ds[idx], dtypes)
+    # flat_tree = reconstruct_flat_tree_from_hf_sample(ds[idx], dtypes)
     unflatten_tree = unflatten_cgns_tree(ds[idx], dtypes, cgns_types)
     return Sample(features=SampleFeatures({0.0: unflatten_tree}))
 
@@ -699,7 +699,7 @@ def huggingface_dataset_to_plaid_new(
     """
     description = "Converting Hugging Face dataset to plaid"
 
-    ds.set_format("numpy")
+    # ds.set_format("numpy")
 
     if processes_number == 1:
         sample_list = [

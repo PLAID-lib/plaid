@@ -89,6 +89,7 @@ def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
         else:
             return f"{node[1]}".replace("\n", "")
 
+
     for child in pyTree[2]:
         try:
             print(
@@ -106,6 +107,77 @@ def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
         if child[2]:
             show_cgns_tree(child, " " * len(pre) + "|_ ")
     np.set_printoptions(edgeitems=3, threshold=1000)
+
+
+# import numpy as np
+# import pyarrow as pa
+
+# def print_arrow_array(arr, threshold=5, edgeitems=1):
+#     """
+#     Return a string representation of a PyArrow array, ChunkedArray, or NumPy array
+#     with truncation like np.set_printoptions(threshold, edgeitems).
+#     """
+#     # PyArrow -> Python / NumPy
+#     if isinstance(arr, pa.ChunkedArray):
+#         arr = arr.combine_chunks().to_numpy()
+#     elif isinstance(arr, pa.Array):
+#         arr = arr.to_numpy()
+#     elif isinstance(arr, pa.Scalar):
+#         arr = arr.as_py()
+
+#     arr = np.asarray(arr)  # Convert any list/tuple/scalar to NumPy array
+
+#     # Handle scalar
+#     if arr.ndim == 0:
+#         return str(arr.item())
+
+#     n = arr.size
+#     if n <= threshold:
+#         return np.array2string(arr, separator=" ", max_line_width=np.inf)
+#     else:
+#         start = arr.flat[:edgeitems]
+#         end = arr.flat[-edgeitems:]
+#         return np.array2string(np.concatenate([list(start), ["..."], list(end)]),
+#                                separator=" ", max_line_width=np.inf)
+
+
+# def show_cgns_tree(pyTree: "CGNSTree", pre: str = "", threshold=5, edgeitems=1):
+#     """Pretty print for CGNS Tree with robust handling of NumPy and PyArrow arrays.
+
+#     Args:
+#         pyTree (CGNSTree): CGNS tree to print
+#         pre (str, optional): indentation of print. Defaults to ''.
+#         threshold (int): max number of elements before truncating
+#         edgeitems (int): number of elements to show at start/end when truncating
+#     """
+#     if not isinstance(pyTree, list):
+#         if pyTree is None:
+#             return True
+#         else:
+#             raise TypeError(f"{type(pyTree)=}, but should be a list or None")
+
+#     def printValue(node):
+#         value = node[1]
+#         # bytes array
+#         if isinstance(value, np.ndarray) and value.dtype.kind == "S":
+#             value = value.astype(str)
+#         # Use arrow/numpy helper
+#         if isinstance(value, (np.ndarray, pa.Array, pa.ChunkedArray, pa.Scalar)):
+#             return print_arrow_array(value, threshold=threshold, edgeitems=edgeitems)
+#         # Fallback for scalars/lists
+#         return str(value).replace("\n", "")
+
+#     for child in pyTree[2] or []:
+#         try:
+#             shape = getattr(child[1], "shape", None)
+#             dtype = getattr(child[1], "dtype", None)
+#             print(pre, child[0], ":", shape, printValue(child), dtype, child[3])
+#         except AttributeError:
+#             print(pre, child[0], ":", child[1], child[3])
+
+#         if child[2]:
+#             show_cgns_tree(child,  " " * len(pre) + "|_ ", threshold=threshold, edgeitems=edgeitems)
+
 
 
 def flatten_cgns_tree_optree_dict(pyTree):
@@ -245,11 +317,11 @@ def flatten_cgns_tree(
     """
     flat = {}
     dtypes = {}
-    extras = {}
+    cgns_types = {}
 
     def visit(tree, path=""):
         for node in tree[2]:
-            name, data, children, extra = node
+            name, data, children, cgns_type = node
             new_path = f"{path}/{name}" if path else name
 
             # Flatten values for HF: always primitive types
@@ -266,13 +338,13 @@ def flatten_cgns_tree(
                 flat[new_path] = data
                 dtypes[new_path] = str(np.array(data).dtype)
 
-            extras[new_path] = extra
+            cgns_types[new_path] = cgns_type
 
             if children:
                 visit(node, new_path)
 
     visit(pyTree)
-    return flat, dtypes, extras
+    return flat, dtypes, cgns_types
 
 
 def unflatten_cgns_tree(
@@ -297,20 +369,7 @@ def unflatten_cgns_tree(
     nodes = {}
 
     for path, value in flat.items():
-        dtype = np.dtype(dtypes.get(path))
-        cgns_type = cgns_types.get(path)
-
-        # reconstruct data as numpy array or None
-        if value is None:
-            data = None
-        else:
-            if dtype is None:
-                data = None
-            else:
-                data = np.array(value, dtype=dtype)
-
-        # empty children for now
-        nodes[path] = [path.split("/")[-1], data, [], cgns_type]
+        nodes[path] = [path.split("/")[-1], value, [], cgns_types[path]]
 
     # Re-link nodes into tree structure
     root = None
@@ -328,6 +387,7 @@ def unflatten_cgns_tree(
             parent[2].append(node)
 
     return root
+
 
 
 # def unflatten_cgns_tree(flat: Dict[str, Any],
@@ -449,6 +509,104 @@ def compare_cgns_trees(
             return False
 
     return True
+
+
+import numpy as np
+import pyarrow as pa
+
+def compare_leaves(d1, d2):
+    import numpy as np
+    import pyarrow as pa
+
+    # Convert Arrow to NumPy
+    if isinstance(d1, pa.ChunkedArray):
+        d1 = d1.combine_chunks().to_numpy()
+    if isinstance(d2, pa.ChunkedArray):
+        d2 = d2.combine_chunks().to_numpy()
+    if isinstance(d1, pa.Array):
+        d1 = d1.to_numpy()
+    if isinstance(d2, pa.Array):
+        d2 = d2.to_numpy()
+
+    # Convert bytes arrays to str
+    if isinstance(d1, np.ndarray) and d1.dtype.kind == 'S':
+        d1 = d1.astype(str)
+    if isinstance(d2, np.ndarray) and d2.dtype.kind == 'S':
+        d2 = d2.astype(str)
+
+    # Handle NumPy arrays vs lists/tuples
+    if isinstance(d1, np.ndarray) and isinstance(d2, (list, tuple)):
+        d2 = np.array(d2, dtype=d1.dtype)
+    if isinstance(d2, np.ndarray) and isinstance(d1, (list, tuple)):
+        d1 = np.array(d1, dtype=d2.dtype)
+
+    # Both arrays
+    if isinstance(d1, np.ndarray) and isinstance(d2, np.ndarray):
+        if np.issubdtype(d1.dtype, np.floating) or np.issubdtype(d2.dtype, np.floating):
+            return np.allclose(d1, d2, rtol=1e-7, atol=0)
+        else:
+            return np.array_equal(d1, d2)
+
+    # Both lists/tuples
+    if isinstance(d1, (list, tuple)) and isinstance(d2, (list, tuple)):
+        if len(d1) != len(d2):
+            return False
+        return all(compare_leaves(a, b) for a, b in zip(d1, d2))
+
+    # Both dicts
+    if isinstance(d1, dict) and isinstance(d2, dict):
+        if set(d1.keys()) != set(d2.keys()):
+            return False
+        return all(compare_leaves(d1[k], d2[k]) for k in d1)
+
+    # Scalars (int/float/str/None)
+    if isinstance(d1, float) or isinstance(d2, float):
+        return np.isclose(d1, d2, rtol=1e-7, atol=0)
+    return d1 == d2
+
+
+def compare_cgns_trees_no_types(tree1: "CGNSTree", tree2: "CGNSTree", path: str = "CGNSTree") -> bool:
+    """
+    Recursively compare two CGNS trees ignoring order of children.
+    Works robustly with Hugging Face Arrow datasets and heterogeneous, nested samples.
+    """
+
+    # Compare node name
+    if tree1[0] != tree2[0]:
+        print(f"Name mismatch at {path}: {tree1[0]} != {tree2[0]}")
+        return False
+
+    # Compare data using recursive helper
+    data1, data2 = tree1[1], tree2[1]
+    if not compare_leaves(data1, data2):
+        print(f"Data mismatch at {path}/{tree1[0]}")
+        return False
+
+    # Compare extra (CGNS type)
+    if tree1[3] != tree2[3]:
+        print(f"Type mismatch at {path}/{tree1[0]}: {tree1[3]} != {tree2[3]}")
+        return False
+
+    # Compare children ignoring order
+    children1_dict = {c[0]: c for c in tree1[2] or []}
+    children2_dict = {c[0]: c for c in tree2[2] or []}
+
+    if set(children1_dict.keys()) != set(children2_dict.keys()):
+        print(
+            f"Children name mismatch at {path}/{tree1[0]}: {set(children1_dict.keys())} != {set(children2_dict.keys())}"
+        )
+        return False
+
+    # Recursively compare children
+    for name in children1_dict:
+        if not compare_cgns_trees_no_types(
+            children1_dict[name], children2_dict[name], path=f"{path}/{tree1[0]}"
+        ):
+            return False
+
+    return True
+
+
 
 
 def summarize_cgns_tree(pyTree: CGNSTree, verbose=True) -> str:
