@@ -988,26 +988,28 @@ class SampleMeshes:
 
         field_names = []
         times = [time] if time is not None else self.get_all_mesh_times()
-        for time in times:
+        for _time in times:
             base_names = (
-                [base_name] if base_name is not None else self.get_base_names(time=time)
+                [base_name]
+                if base_name is not None
+                else self.get_base_names(time=_time)
             )
-            for base_name in base_names:
+            for _base_name in base_names:
                 zone_names = (
                     [zone_name]
                     if zone_name is not None
-                    else self.get_zone_names(base_name=base_name, time=time)
+                    else self.get_zone_names(base_name=_base_name, time=_time)
                 )
-                for zone_name in zone_names:
+                for _zone_name in zone_names:
                     locations = (
                         [location] if location is not None else CGNS_FIELD_LOCATIONS
                     )
-                    for location in locations:
+                    for _location in locations:
                         field_names += get_field_names_one_time_base_zone_location(
-                            location=location,
-                            zone_name=zone_name,
-                            base_name=base_name,
-                            time=time,
+                            location=_location,
+                            zone_name=_zone_name,
+                            base_name=_base_name,
+                            time=_time,
                         )
 
         field_names = sorted(set(field_names))
