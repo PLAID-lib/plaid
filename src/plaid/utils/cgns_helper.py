@@ -11,6 +11,8 @@ import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 import optree
 
+import pyarrow as pa
+
 from plaid.types import CGNSTree
 
 
@@ -108,78 +110,9 @@ def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
     np.set_printoptions(edgeitems=3, threshold=1000)
 
 
-# import numpy as np
-# import pyarrow as pa
-
-# def print_arrow_array(arr, threshold=5, edgeitems=1):
-#     """
-#     Return a string representation of a PyArrow array, ChunkedArray, or NumPy array
-#     with truncation like np.set_printoptions(threshold, edgeitems).
-#     """
-#     # PyArrow -> Python / NumPy
-#     if isinstance(arr, pa.ChunkedArray):
-#         arr = arr.combine_chunks().to_numpy()
-#     elif isinstance(arr, pa.Array):
-#         arr = arr.to_numpy()
-#     elif isinstance(arr, pa.Scalar):
-#         arr = arr.as_py()
-
-#     arr = np.asarray(arr)  # Convert any list/tuple/scalar to NumPy array
-
-#     # Handle scalar
-#     if arr.ndim == 0:
-#         return str(arr.item())
-
-#     n = arr.size
-#     if n <= threshold:
-#         return np.array2string(arr, separator=" ", max_line_width=np.inf)
-#     else:
-#         start = arr.flat[:edgeitems]
-#         end = arr.flat[-edgeitems:]
-#         return np.array2string(np.concatenate([list(start), ["..."], list(end)]),
-#                                separator=" ", max_line_width=np.inf)
-
-
-# def show_cgns_tree(pyTree: "CGNSTree", pre: str = "", threshold=5, edgeitems=1):
-#     """Pretty print for CGNS Tree with robust handling of NumPy and PyArrow arrays.
-
-#     Args:
-#         pyTree (CGNSTree): CGNS tree to print
-#         pre (str, optional): indentation of print. Defaults to ''.
-#         threshold (int): max number of elements before truncating
-#         edgeitems (int): number of elements to show at start/end when truncating
-#     """
-#     if not isinstance(pyTree, list):
-#         if pyTree is None:
-#             return True
-#         else:
-#             raise TypeError(f"{type(pyTree)=}, but should be a list or None")
-
-#     def printValue(node):
-#         value = node[1]
-#         # bytes array
-#         if isinstance(value, np.ndarray) and value.dtype.kind == "S":
-#             value = value.astype(str)
-#         # Use arrow/numpy helper
-#         if isinstance(value, (np.ndarray, pa.Array, pa.ChunkedArray, pa.Scalar)):
-#             return print_arrow_array(value, threshold=threshold, edgeitems=edgeitems)
-#         # Fallback for scalars/lists
-#         return str(value).replace("\n", "")
-
-#     for child in pyTree[2] or []:
-#         try:
-#             shape = getattr(child[1], "shape", None)
-#             dtype = getattr(child[1], "dtype", None)
-#             print(pre, child[0], ":", shape, printValue(child), dtype, child[3])
-#         except AttributeError:
-#             print(pre, child[0], ":", child[1], child[3])
-
-#         if child[2]:
-#             show_cgns_tree(child,  " " * len(pre) + "|_ ", threshold=threshold, edgeitems=edgeitems)
-
-
 def flatten_cgns_tree_optree_dict(pyTree):
-    """Flatten CGNS tree:
+    """
+    Flatten CGNS tree:
     - treedef: for unflatten
     - data_dict: path -> data
     - cgns_types: path -> CGNS type
@@ -203,11 +136,13 @@ def flatten_cgns_tree_optree_dict(pyTree):
 
 
 def unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types):
-    """Reconstruct CGNS tree from:
+    """
+    Reconstruct CGNS tree from:
     - treedef: tree structure
     - data_dict: path -> data
     - cgns_types: path -> CGNS type
     """
+
     # Rebuild leaves as (path, data) using the path stored in leaves
     leaves = [(path, data_dict[path]) for path in data_dict]
 
@@ -226,6 +161,7 @@ def unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types):
 
 def flatten_cgns_tree_optree(pyTree):
     """Flatten CGNS tree."""
+
     cgns_types = {}
 
     def visit(node):
@@ -315,15 +251,12 @@ def flatten_cgns_tree(
 
     def visit(tree, path=""):
         for node in tree[2]:
-            name, data, children, cgns_type = node
+            name, data, children, extra = node
             new_path = f"{path}/{name}" if path else name
 
             # Flatten values for HF: always primitive types
             if isinstance(data, np.ndarray):
-                if data.dtype.kind == "S":  # string arrays
-                    flat[new_path] = [x.decode("utf-8") for x in data.tolist()]
-                else:
-                    flat[new_path] = data.tolist()
+                flat[new_path] = data.tolist()
                 dtypes[new_path] = str(data.dtype)
             elif data is None:
                 flat[new_path] = None
@@ -332,7 +265,7 @@ def flatten_cgns_tree(
                 flat[new_path] = data
                 dtypes[new_path] = str(np.array(data).dtype)
 
-            cgns_types[new_path] = cgns_type
+            cgns_types[new_path] = extra
 
             if children:
                 visit(node, new_path)
@@ -363,7 +296,22 @@ def unflatten_cgns_tree(
     nodes = {}
 
     for path, value in flat.items():
-        nodes[path] = [path.split("/")[-1], value, [], cgns_types[path]]
+        dtype = dtypes.get(path)
+        cgns_type = cgns_types.get(path)
+
+        # # TO REACTIVATE TO HAVE CORRECT CGNS !!!!!!!!!!!!!!
+        # if value is None:
+        #     data = None
+        # elif dtype == value.dtype:
+        #     data = value
+        # else:
+        #     data = value.astype(dtype)
+
+        # # empty children for now
+        # nodes[path] = [path.split("/")[-1], data, [], cgns_type]
+        # #------------------------
+
+        nodes[path] = [path.split("/")[-1], value, [], cgns_type]
 
     # Re-link nodes into tree structure
     root = None
@@ -381,6 +329,37 @@ def unflatten_cgns_tree(
             parent[2].append(node)
 
     return root
+
+
+def fix_cgns_tree_types(node):
+    name, data, children, cgns_type = node
+
+    # # Fix data types according to CGNS type
+    # if cgns_type is not None:
+    #     if cgns_type == "IndexArray_t":
+    #         if data is not None:
+    #             data = CGU.setIntegerAsArray(*data)
+    #     if data is not None and len(data)==1:
+    #         data = np.stack(data)
+
+    # Fix data types according to CGNS type
+    if data is not None:
+        if cgns_type == "IndexArray_t":
+            data = CGU.setIntegerAsArray(*data)
+            data = np.stack(data)
+        elif cgns_type == "Zone_t":
+            data = np.stack(data)
+        elif cgns_type in ["Elements_t", "CGNSBase_t", "BaseIterativeData_t"]:
+            data = CGU.setIntegerAsArray(*data)
+
+    # Recursively fix children
+    new_children = []
+    if children:
+        for child in children:
+            new_children.append(fix_cgns_tree_types(child))
+
+    return [name, data, new_children, cgns_type]
+
 
 
 # def unflatten_cgns_tree(flat: Dict[str, Any],
@@ -504,8 +483,6 @@ def compare_cgns_trees(
     return True
 
 
-import numpy as np
-import pyarrow as pa
 
 
 def compare_leaves(d1, d2):
@@ -556,7 +533,6 @@ def compare_leaves(d1, d2):
     if isinstance(d1, float) or isinstance(d2, float):
         return np.isclose(d1, d2, rtol=1e-7, atol=0)
     return d1 == d2
-
 
 def compare_cgns_trees_no_types(
     tree1: "CGNSTree", tree2: "CGNSTree", path: str = "CGNSTree"

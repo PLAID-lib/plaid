@@ -13,49 +13,63 @@ from plaid.utils.cgns_helper import (
     compare_cgns_trees_no_types,
     show_cgns_tree,
     unflatten_cgns_tree,
+    compare_cgns_trees,
+    fix_cgns_tree_types
 )
 
 import numpy as np
+import pickle
 
 if __name__ == "__main__":
     print("Initializations:")
+
+
+    with open("global_cgns_types.json", "r", encoding="utf-8") as f:
+        cgns_types = json.load(f)
+
+    with open("global_dtypes.json", "r", encoding="utf-8") as f:
+        dtypes = json.load(f)
+    dtypes = {k:np.dtype(v) for k,v in dtypes.items()}
+
+    with open("flat_cst.pkl", "rb") as f:
+        flat_cst = pickle.load(f)
+
+    # for k, v in flat_cst.items():
+    #     if isinstance(v, list) and len(v)>0:
+    #         if type(v[0]) == str:
+    #             flat_cst[k] = np.array(v, dtype="|S1")
+    #         else:
+    #             flat_cst[k] = np.array(v)
 
     hf_dataset_old = huggingface_bridge.load_hf_dataset_from_hub(
         "PLAID-datasets/Tensile2d", split="all_samples"
     )
 
-    repo_id = "fabiencasenave/Tensile2d_test2"
-    infos = huggingface_bridge.load_hf_infos_from_hub(repo_id)
-    pb_def = huggingface_bridge.load_hf_problem_definition_from_hub(repo_id, "task_1")
-
     train_id = range(500)
 
     yaml_path = hf_hub_download(
-        repo_id=repo_id, filename="key_mappings.yaml", repo_type="dataset"
+        repo_id="fabiencasenave/Tensile2d_test2", filename="key_mappings.yaml", repo_type="dataset"
     )
     with open(yaml_path, "r", encoding="utf-8") as f:
         key_mappings = yaml.safe_load(f)
 
     fn = key_mappings["features_names"]
     fn["P"] = "Global/P"
-    dtypes = key_mappings["dtypes"]
-    cgns_types = key_mappings["cgns_types"]
-
     fnn = list(fn.keys())
+
+    print("fn =", fn)
 
     print()
     print("Experience 1: zero copy columnar retrieval")
     print()
 
     start = time()
-    hf_dataset_new = load_from_disk("Tensile2d_hf_dataset_new/train_500")
+    hf_dataset_new = huggingface_bridge.load_hf_dataset_from_hub(
+        "fabiencasenave/Tensile2d_test4", split="train_500"
+    )
     end = time()
     print("Time to instanciate cached HF dataset =", end - start)
 
-    with open("global_cgns_types.json", "r", encoding="utf-8") as f:
-        cgns_types = json.load(f)
-
-    flat_cst = np.load("flat_cst.npy", allow_pickle=True)
 
 
     print("Initial RAM usage:", get_mem(), "MB")
@@ -82,7 +96,7 @@ if __name__ == "__main__":
 
     start = time()
     plaid_dataset = huggingface_bridge.huggingface_dataset_to_plaid(
-        hf_dataset_old, ids=train_id, processes_number=1, verbose=True
+        hf_dataset_old, ids=train_id, processes_number=4, verbose=True
     )
     end = time()
     print("binary blob conversion plaid dataset generation =", end - start)
@@ -167,6 +181,50 @@ if __name__ == "__main__":
     import numpy as np
     import pyarrow as pa
 
+    # def iter_rows_fast(dataset):
+    #     """
+    #     Yield rows from a Hugging Face dataset as dicts.
+    #     Tries to convert to NumPy if possible (zero-copy for arrays),
+    #     robust to scalars, None, lists, strings, etc.
+    #     """
+    #     table = dataset.data
+    #     for i in range(len(dataset)):
+    #         row = {}
+    #         for name in table.column_names:
+    #             val = table[name][
+    #                 i
+    #             ]  # could be Scalar, ListScalar, StructScalar, Array, ChunkedArray
+
+    #             # None
+    #             if val is None or isinstance(val, pa.NullScalar):
+    #                 row[name] = None
+    #                 continue
+
+    #             # Array or ChunkedArray -> NumPy
+    #             if isinstance(val, (pa.Array, pa.ChunkedArray)):
+    #                 try:
+    #                     arr = val.to_numpy(zero_copy_only=True)
+    #                 except pa.ArrowInvalid:
+    #                     arr = val.to_numpy()
+    #                 row[name] = arr
+    #                 continue
+
+    #             # Scalar (number, string, list, struct)
+    #             if isinstance(val, pa.Scalar):
+    #                 py_val = val.as_py()
+    #                 # convert single-element list to np.array if you want
+    #                 if isinstance(py_val, list):
+    #                     row[name] = np.asarray(py_val)
+    #                 else:
+    #                     row[name] = py_val
+    #                 continue
+
+    #             # Fallback: anything else
+    #             row[name] = val
+
+    #         yield row
+
+
     def iter_rows_fast(dataset):
         """
         Yield rows from a Hugging Face dataset as dicts.
@@ -175,53 +233,30 @@ if __name__ == "__main__":
         """
         table = dataset.data
         for i in range(len(dataset)):
+            # row = {name:table[name][i].values.to_numpy(zero_copy_only=False) for name in table.column_names}
+
             row = {}
             for name in table.column_names:
-                val = table[name][
-                    i
-                ]  # could be Scalar, ListScalar, StructScalar, Array, ChunkedArray
+                # TO REACTIVATE TO HAVE CORRECT CGNS !!!!!!!!!!!!!!
+                # if isinstance(table[name][i].values, pa.ListArray):
+                #     row[name] = np.stack(table[name][i].values.to_numpy(zero_copy_only=False))
+                # else:
+                #     row[name] = table[name][i].values.to_numpy(zero_copy_only=True)
 
-                # None
-                if val is None or isinstance(val, pa.NullScalar):
-                    row[name] = None
-                    continue
-
-                # Array or ChunkedArray -> NumPy
-                if isinstance(val, (pa.Array, pa.ChunkedArray)):
-                    try:
-                        arr = val.to_numpy(zero_copy_only=True)
-                    except pa.ArrowInvalid:
-                        arr = val.to_numpy()
-                    row[name] = arr
-                    continue
-
-                # Scalar (number, string, list, struct)
-                if isinstance(val, pa.Scalar):
-                    py_val = val.as_py()
-                    # convert single-element list to np.array if you want
-                    if isinstance(py_val, list):
-                        row[name] = np.asarray(py_val)
-                    else:
-                        row[name] = py_val
-                    continue
-
-                # Fallback: anything else
-                row[name] = val
+                row[name] = table[name][i].values.to_numpy(zero_copy_only=False)
 
             yield row
 
+    tic = time()
     sample_list = []
     for row in tqdm(
         iter_rows_fast(hf_dataset_new), total=len(hf_dataset_new), desc=description
     ):
-        print(row)
-        print("---")
-        print(flat_cst)
-        1./0.
         row.update(flat_cst)  # add the constant values
-        unflat = unflatten_cgns_tree(row, 1.0, cgns_types)
+        unflat = unflatten_cgns_tree(row, dtypes, cgns_types)
         sample_list.append(Sample(features=SampleFeatures({0.0: unflat})))
     plaid_dataset_new = Dataset(samples=sample_list)
+    print("duration init dataset unflatten tree =", time() - tic)
 
     # for idx in tqdm(range(len(hf_dataset_new)), desc=description):
     # # for idx in tqdm(range(10), desc=description):
@@ -246,6 +281,24 @@ if __name__ == "__main__":
     # print(plaid_dataset_new[0].get_field("sig11"))
     # print(type(plaid_dataset_new[0].get_field("sig11")))
 
+
+    show_cgns_tree(plaid_dataset[0].features.data[0])
+
+
+    print("get(P): ", plaid_dataset_new[0].get_scalar("P"))
+    print("get(U1): ", plaid_dataset_new[0].get_field("U1"))
+    print("get(nodes): ", plaid_dataset_new[0].get_nodes())
+    print("get(elements): ", plaid_dataset_new[0].get_elements())
+
+    plaid_dataset[0].save("sample", overwrite=True)
+
+    plaid_dataset_new[0].features.data[0] = fix_cgns_tree_types(plaid_dataset_new[0].features.data[0])
+    plaid_dataset_new[0].save("sample_new", overwrite=True)
+
+    print("--------------")
+    show_cgns_tree(plaid_dataset_new[0].features.data[0])
+    print("--------------")
+
     print(
         "first sample CGNS trees identical (no types)?:",
         compare_cgns_trees_no_types(
@@ -254,10 +307,14 @@ if __name__ == "__main__":
     )
 
 
+    1./0.
 
-    # show_cgns_tree(plaid_dataset[0].features.data[0])
-    # print("--------------")
-    # show_cgns_tree(plaid_dataset_new[0].features.data[0])
+
+    # from Muscat.Bridges.CGNSBridge import CGNSToMesh, MeshToCGNS
+    # tree = MeshToCGNS(CGNSToMesh(plaid_dataset_new[0].features.data[0]), exportOriginalIDs=False)
+    # show_cgns_tree(tree)
+    # plaid_dataset_new[0].features.data[0] = tree
+    # plaid_dataset_new[0].save("sample_new2", overwrite=True)
 
     1.0 / 0.0
 

@@ -75,10 +75,11 @@ if __name__ == "__main__":
         - hf_features: HuggingFace Features inferred from actual data
         """
         global_cgns_types = {}
-        global_types = {}
+        global_feature_types = {}
+        global_dtypes = {}
 
         for tree in all_trees:
-            flat, dtype, cgns_types = flatten_cgns_tree(tree)
+            flat, dtypes, cgns_types = flatten_cgns_tree(tree)
             for path, value in flat.items():
                 # Update CGNS types
                 if path not in global_cgns_types:
@@ -90,13 +91,23 @@ if __name__ == "__main__":
                             f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
                         )
 
+                # Update dtypes
+                if path not in global_dtypes:
+                    global_dtypes[path] = dtypes[path]
+                else:
+                    # Optional: sanity check for conflicts
+                    if global_dtypes[path] != dtypes[path]:
+                        raise ValueError(
+                            f"Conflict for path '{path}': {global_dtypes[path]} vs {dtypes[path]}"
+                        )
+
                 # Infer HF feature from value
-                if path not in global_types:
-                    global_types[path] = infer_hf_features_from_value(value)
+                if path not in global_feature_types:
+                    global_feature_types[path] = infer_hf_features_from_value(value)
                 # else: already inferred from previous tree
 
-        hf_features = Features(global_types)
-        return global_cgns_types, hf_features
+        hf_features = Features(global_feature_types)
+        return global_cgns_types, global_dtypes, hf_features
 
 
     def collect_cst_from_trees_data(all_trees, cst_path):
@@ -108,7 +119,7 @@ if __name__ == "__main__":
         flat_cst = {}
 
         for tree in all_trees:
-            flat, dtype, cgns_types = flatten_cgns_tree(tree)
+            flat, dtypes, cgns_types = flatten_cgns_tree(tree)
             for path in cst_path:
                 value = flat[path]
                 # Update CGNS types
@@ -133,7 +144,7 @@ if __name__ == "__main__":
         ]
         all_trees.extend(trees_list)
 
-    global_cgns_types, hf_features = collect_schema_from_trees_data(all_trees)
+    global_cgns_types, global_dtypes, hf_features = collect_schema_from_trees_data(all_trees)
 
     var_path = [
         k
@@ -145,13 +156,31 @@ if __name__ == "__main__":
     ]
 
     cst_path = [k for k in global_cgns_types.keys() if k not in var_path]
-    # hf_features = {k:v for k,v in hf_features.items() if k in var_path}
+    hf_features = Features({k: v for k, v in hf_features.items() if k in var_path})
 
     print("var_path =", var_path)
     print()
     print("cst_path =", cst_path)
 
     flat_cst = collect_cst_from_trees_data(all_trees, cst_path)
+    for k, v in flat_cst.items():
+        if isinstance(v, list) and len(v)>0:
+            if type(v[0]) == str:
+                flat_cst[k] = np.array(v, dtype="|S1")
+            else:
+                flat_cst[k] = np.array(v)
+
+    import pickle
+    with open("flat_cst.pkl", "wb") as f:  # wb = write binary
+        pickle.dump(flat_cst, f)
+
+
+    import json
+    with open("global_cgns_types.json", "w", encoding="utf-8") as f:
+        json.dump(global_cgns_types, f)
+    with open("global_dtypes.json", "w", encoding="utf-8") as f:
+        json.dump(global_dtypes, f)
+
 
 
     def sample_generator(trees, var_path):
@@ -172,15 +201,13 @@ if __name__ == "__main__":
             features=hf_features,
         )
 
-
     dataset_hf_new = DatasetDict(dict_of_hf_datasets)
-    dataset_hf_new.save_to_disk("Tensile2d_hf_dataset_new")
 
-    import json
-    with open("global_cgns_types.json", "w", encoding="utf-8") as f:
-        json.dump(global_cgns_types, f)
 
-    np.save("flat_cst.npy", flat_cst)
+    # huggingface_bridge.push_dataset_dict_to_hub("fabiencasenave/Tensile2d_test4", dataset_hf_new)
+    dataset_hf_new.save_to_disk("Tensile2d_test4")
+
+
 
     1.0 / 0.0
 
