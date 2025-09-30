@@ -89,7 +89,6 @@ def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
         else:
             return f"{node[1]}".replace("\n", "")
 
-
     for child in pyTree[2]:
         try:
             print(
@@ -179,10 +178,8 @@ def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
 #             show_cgns_tree(child,  " " * len(pre) + "|_ ", threshold=threshold, edgeitems=edgeitems)
 
 
-
 def flatten_cgns_tree_optree_dict(pyTree):
-    """
-    Flatten CGNS tree:
+    """Flatten CGNS tree:
     - treedef: for unflatten
     - data_dict: path -> data
     - cgns_types: path -> CGNS type
@@ -206,13 +203,11 @@ def flatten_cgns_tree_optree_dict(pyTree):
 
 
 def unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types):
-    """
-    Reconstruct CGNS tree from:
+    """Reconstruct CGNS tree from:
     - treedef: tree structure
     - data_dict: path -> data
     - cgns_types: path -> CGNS type
     """
-
     # Rebuild leaves as (path, data) using the path stored in leaves
     leaves = [(path, data_dict[path]) for path in data_dict]
 
@@ -231,7 +226,6 @@ def unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types):
 
 def flatten_cgns_tree_optree(pyTree):
     """Flatten CGNS tree."""
-
     cgns_types = {}
 
     def visit(node):
@@ -389,7 +383,6 @@ def unflatten_cgns_tree(
     return root
 
 
-
 # def unflatten_cgns_tree(flat: Dict[str, Any],
 #                              dtypes: Dict[str, str],
 #                              cgns_types: Dict[str, str]):
@@ -514,9 +507,9 @@ def compare_cgns_trees(
 import numpy as np
 import pyarrow as pa
 
+
 def compare_leaves(d1, d2):
     import numpy as np
-    import pyarrow as pa
 
     # Convert Arrow to NumPy
     if isinstance(d1, pa.ChunkedArray):
@@ -529,9 +522,9 @@ def compare_leaves(d1, d2):
         d2 = d2.to_numpy()
 
     # Convert bytes arrays to str
-    if isinstance(d1, np.ndarray) and d1.dtype.kind == 'S':
+    if isinstance(d1, np.ndarray) and d1.dtype.kind == "S":
         d1 = d1.astype(str)
-    if isinstance(d2, np.ndarray) and d2.dtype.kind == 'S':
+    if isinstance(d2, np.ndarray) and d2.dtype.kind == "S":
         d2 = d2.astype(str)
 
     # Handle NumPy arrays vs lists/tuples
@@ -565,12 +558,12 @@ def compare_leaves(d1, d2):
     return d1 == d2
 
 
-def compare_cgns_trees_no_types(tree1: "CGNSTree", tree2: "CGNSTree", path: str = "CGNSTree") -> bool:
-    """
-    Recursively compare two CGNS trees ignoring order of children.
+def compare_cgns_trees_no_types(
+    tree1: "CGNSTree", tree2: "CGNSTree", path: str = "CGNSTree"
+) -> bool:
+    """Recursively compare two CGNS trees ignoring order of children.
     Works robustly with Hugging Face Arrow datasets and heterogeneous, nested samples.
     """
-
     # Compare node name
     if tree1[0] != tree2[0]:
         print(f"Name mismatch at {path}: {tree1[0]} != {tree2[0]}")
@@ -605,8 +598,6 @@ def compare_cgns_trees_no_types(tree1: "CGNSTree", tree2: "CGNSTree", path: str 
             return False
 
     return True
-
-
 
 
 def summarize_cgns_tree(pyTree: CGNSTree, verbose=True) -> str:

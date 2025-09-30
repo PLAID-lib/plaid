@@ -1,24 +1,15 @@
-import io
 import os
 
-import yaml
 from datasets import Dataset, DatasetDict, Features
-from huggingface_hub import HfApi
 
 os.environ["HF_HUB_DISABLE_XET"] = "1"
 
-from tqdm import tqdm
+
+import numpy as np
+from datasets import Sequence, Value
 
 from plaid.bridges import huggingface_bridge
-from plaid.utils.base import update_dict_only_new_keys
-from plaid.utils.cgns_helper import (
-    flatten_cgns_tree, flatten_cgns_tree_optree
-)
-
-from datasets import Dataset, DatasetDict, Features, Value, Sequence
-import numpy as np
-
-
+from plaid.utils.cgns_helper import flatten_cgns_tree
 
 if __name__ == "__main__":
     print("Loading hf dataset old")
@@ -42,7 +33,6 @@ if __name__ == "__main__":
         hf_dataset, processes_number=1, verbose=True
     )
 
-
     # --------------------------
     # Infer HF feature type from actual value
     # --------------------------
@@ -65,7 +55,9 @@ if __name__ == "__main__":
         # Arrays / lists
         elif isinstance(value, (list, tuple, np.ndarray)):
             arr = np.array(value)
-            base_type = infer_hf_features_from_value(arr.flat[0] if arr.size > 0 else None)
+            base_type = infer_hf_features_from_value(
+                arr.flat[0] if arr.size > 0 else None
+            )
             if arr.ndim == 1:
                 return Sequence(base_type)
             elif arr.ndim == 2:
@@ -116,41 +108,47 @@ if __name__ == "__main__":
                 sample[path] = val
             yield sample
 
-
     print("flattening trees and infering hf features")
     split_names = ["train_500", "test", "OOD"]
 
     all_trees = []
     for split_name in split_names:
-        trees_list = [plaid_dataset[id].features.data[0.] for id in pb_def.get_split(split_name)]
+        trees_list = [
+            plaid_dataset[id].features.data[0.0] for id in pb_def.get_split(split_name)
+        ]
         all_trees.extend(trees_list)
 
     global_cgns_types, hf_features = collect_schema_from_trees_data(all_trees)
 
-    var_path = [k for k,v in global_cgns_types.items() if (v in ["DataArray_t", "IndexArray_t", "Zone_t", "Element_t"] and "Time" not in k)]
+    var_path = [
+        k
+        for k, v in global_cgns_types.items()
+        if (
+            v in ["DataArray_t", "IndexArray_t", "Zone_t", "Element_t"]
+            and "Time" not in k
+        )
+    ]
     cst_path = [k for k in global_cgns_types.keys() if k not in var_path]
-
 
     print("var_path =", var_path)
     print()
     print("cst_path =", cst_path)
 
-
     # Build each split
     dict_of_hf_datasets = {}
     for split_name in split_names:
-        trees_list = [plaid_dataset[id].features.data[0.] for id in pb_def.get_split(split_name)]
+        trees_list = [
+            plaid_dataset[id].features.data[0.0] for id in pb_def.get_split(split_name)
+        ]
         dict_of_hf_datasets[split_name] = Dataset.from_generator(
             lambda trees=trees_list: sample_generator(trees, global_cgns_types),
-            features=hf_features
+            features=hf_features,
         )
 
     dataset_hf_new = DatasetDict(dict_of_hf_datasets)
     dataset_hf_new.save_to_disk("Tensile2d_hf_dataset_new")
 
-    1./0.
-
-
+    1.0 / 0.0
 
     # features_names = {}
     # for fn in all_feat_names:
@@ -194,7 +192,7 @@ if __name__ == "__main__":
 
     dset_dict = DatasetDict(dict_of_hf_datasets)
 
-    1./0.
+    1.0 / 0.0
 
     # huggingface_bridge.push_dataset_dict_to_hub(repo_id, dset_dict)
 

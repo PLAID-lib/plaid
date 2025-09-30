@@ -723,8 +723,6 @@ def huggingface_dataset_to_plaid_new(
     return Dataset(samples=sample_list)
 
 
-
-
 # ------
 
 
@@ -766,8 +764,7 @@ def reconstruct_flat_tree_from_hf_sample(
 
 
 def reconstruct_flat_tree_from_hf_sample2(
-    ds: dict[str, object],
-    idx
+    ds: dict[str, object], idx
 ) -> dict[str, object]:
     """Reconstruct a flat tree (dict) from a Hugging Face sample using provided dtypes.
 
@@ -778,8 +775,9 @@ def reconstruct_flat_tree_from_hf_sample2(
     Returns:
         dict[str, object]: Flat tree with numpy arrays or scalars for each feature.
     """
-    import pyarrow as pa
     import numpy as np
+    import pyarrow as pa
+
     data_dict = {}
 
     for key in ds.column_names:

@@ -10,10 +10,7 @@ os.environ["HF_HUB_DISABLE_XET"] = "1"
 from tqdm import tqdm
 
 from plaid.bridges import huggingface_bridge
-from plaid.utils.base import update_dict_only_new_keys
-from plaid.utils.cgns_helper import (
-    flatten_cgns_tree, flatten_cgns_tree_optree
-)
+from plaid.utils.cgns_helper import flatten_cgns_tree_optree
 
 if __name__ == "__main__":
     print("Loading hf dataset old")
@@ -101,7 +98,7 @@ if __name__ == "__main__":
                 features_names[fn] = large_name
                 continue
 
-    1./0.
+    1.0 / 0.0
 
     print("Pushing key_mappings, pb_def and infos to the hub")
 

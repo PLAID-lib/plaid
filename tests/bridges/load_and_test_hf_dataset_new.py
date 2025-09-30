@@ -2,24 +2,17 @@ from time import time
 
 import yaml
 from huggingface_hub import hf_hub_download
+from tqdm import tqdm
 
+from plaid import Dataset, Sample
 from plaid.bridges import huggingface_bridge
+from plaid.containers.features import SampleFeatures
 from plaid.utils.base import get_mem
 from plaid.utils.cgns_helper import (
-    compare_cgns_trees,
     compare_cgns_trees_no_types,
     show_cgns_tree,
-    flatten_cgns_tree,
-    flatten_cgns_tree_optree,
     unflatten_cgns_tree,
-    unflatten_cgns_tree_optree,
 )
-
-
-from plaid import Dataset, ProblemDefinition, Sample
-from plaid.containers.features import SampleFeatures
-
-from tqdm import tqdm
 
 if __name__ == "__main__":
     print("Initializations:")
@@ -87,7 +80,6 @@ if __name__ == "__main__":
     end = time()
     print("binary blob conversion plaid dataset generation =", end - start)
 
-
     # tree = plaid_dataset[0].features.data[0]
 
     # flat, dtypes, cgns_types = flatten_cgns_tree(tree)
@@ -106,7 +98,6 @@ if __name__ == "__main__":
 
     # 1./.0
 
-
     # keep:
     # DataArray_t
     # IndexArray_t
@@ -118,8 +109,6 @@ if __name__ == "__main__":
     # Family_t
     # ZoneType_t
     # GridCoordinates_t
-
-
 
     # leaves, treedef, data_dict, cgns_types_dict = flatten_cgns_tree_optree(tree)
     # # print(leaves[0], leaves[1], leaves[2], leaves[3], leaves[4])
@@ -148,7 +137,6 @@ if __name__ == "__main__":
     # # print("--------------")
     # # show_cgns_tree(unflat)
 
-
     # 1.0 / 0.0
 
     # start = time()
@@ -160,19 +148,17 @@ if __name__ == "__main__":
 
     # print("tree deflatenning plaid dataset generation =", end - start)
 
-
-
     description = "Converting Hugging Face dataset to plaid"
 
     sample_list = []
-    t1=t2=0
+    t1 = t2 = 0
     start = time()
     tic = time()
     # hf_dataset_new.set_format("numpy")
-    t0 = time()-tic
+    t0 = time() - tic
 
-    import pyarrow as pa
     import numpy as np
+    import pyarrow as pa
 
     def iter_rows_fast(dataset):
         """
@@ -184,7 +170,9 @@ if __name__ == "__main__":
         for i in range(len(dataset)):
             row = {}
             for name in table.column_names:
-                val = table[name][i]  # could be Scalar, ListScalar, StructScalar, Array, ChunkedArray
+                val = table[name][
+                    i
+                ]  # could be Scalar, ListScalar, StructScalar, Array, ChunkedArray
 
                 # None
                 if val is None or isinstance(val, pa.NullScalar):
@@ -215,9 +203,10 @@ if __name__ == "__main__":
 
             yield row
 
-
     sample_list = []
-    for row in tqdm(iter_rows_fast(hf_dataset_new), total = len(hf_dataset_new), desc=description):
+    for row in tqdm(
+        iter_rows_fast(hf_dataset_new), total=len(hf_dataset_new), desc=description
+    ):
         unflat = unflatten_cgns_tree(row, 1.0, cgns_types)
         sample_list.append(Sample(features=SampleFeatures({0.0: unflat})))
     plaid_dataset_new = Dataset(samples=sample_list)
@@ -236,8 +225,6 @@ if __name__ == "__main__":
     # print("indiv times =", t0, t1, t2)
     print("tree deflatenning plaid dataset generation =", end - start)
 
-
-
     # for row in iter_rows_fast(hf_dataset_new):
     #     # print(row["Base_2_2/Zone/PointData/U1"][:5])
     #     unflat = unflatten_cgns_tree(row, 1.0, cgns_types)
@@ -247,7 +234,6 @@ if __name__ == "__main__":
     # # print(plaid_dataset_new[0].get_field("sig11"))
     # # print(type(plaid_dataset_new[0].get_field("sig11")))
 
-
     print(
         "first sample CGNS trees identical (no types)?:",
         compare_cgns_trees_no_types(
@@ -255,12 +241,9 @@ if __name__ == "__main__":
         ),
     )
 
-
     show_cgns_tree(plaid_dataset[0].features.data[0])
     print("--------------")
     show_cgns_tree(plaid_dataset_new[0].features.data[0])
-
-
 
     1.0 / 0.0
 

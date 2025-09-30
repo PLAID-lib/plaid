@@ -1,30 +1,22 @@
+import base64
+import pickle
 from time import time
 
 import yaml
 from huggingface_hub import hf_hub_download
+from tqdm import tqdm
 
+from plaid import Dataset, Sample
 from plaid.bridges import huggingface_bridge
+from plaid.containers.features import SampleFeatures
 from plaid.utils.base import get_mem
 from plaid.utils.cgns_helper import (
     compare_cgns_trees,
     flatten_cgns_tree,
-    flatten_cgns_tree_optree,
-    show_cgns_tree,
-    unflatten_cgns_tree,
-    unflatten_cgns_tree_optree,
     flatten_cgns_tree_optree_dict,
-    unflatten_cgns_tree_optree_dict
+    unflatten_cgns_tree,
+    unflatten_cgns_tree_optree_dict,
 )
-
-from tqdm import tqdm
-
-from plaid import Dataset, ProblemDefinition, Sample
-from plaid.containers.features import SampleFeatures
-
-import pickle
-import base64
-
-
 
 if __name__ == "__main__":
 
@@ -41,16 +33,16 @@ if __name__ == "__main__":
 
     repo_id = "fabiencasenave/Tensile2d_test3"
 
-
     train_id = range(500)
-
 
     print()
     print("Experience 1: zero copy columnar retrieval")
     print()
 
     yaml_path = hf_hub_download(
-        repo_id="fabiencasenave/Tensile2d_test2", filename="key_mappings.yaml", repo_type="dataset"
+        repo_id="fabiencasenave/Tensile2d_test2",
+        filename="key_mappings.yaml",
+        repo_type="dataset",
     )
     with open(yaml_path, "r", encoding="utf-8") as f:
         key_mappings = yaml.safe_load(f)
@@ -58,7 +50,7 @@ if __name__ == "__main__":
     fn = key_mappings["features_names"]
     fn["P"] = "Global/P"
 
-    fn = {k:"CGNSTree/"+v for k,v in fn.items()}
+    fn = {k: "CGNSTree/" + v for k, v in fn.items()}
     fnn = list(fn.keys())
 
     start = time()
@@ -96,7 +88,6 @@ if __name__ == "__main__":
 
     tree = plaid_dataset[0].features.data[0]
 
-
     # print(treedef)
     # print(type(treedef))
     # start = time()
@@ -105,10 +96,8 @@ if __name__ == "__main__":
     # end = time()
     # print("1000 unflatten_cgns_tree_optree duration =", end - start)
 
-
     # leaves, treedef, cgns_types_dict = flatten_cgns_tree_optree(tree)
     # unflat = unflatten_cgns_tree_optree(leaves, treedef, cgns_types_dict)
-
 
     treedef, data_dict, cgns_types = flatten_cgns_tree_optree_dict(tree)
     unflat = unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types)
@@ -123,7 +112,10 @@ if __name__ == "__main__":
     # print("--------------")
     # show_cgns_tree(unflat)
 
-    print("first sample CGNS trees identical?:", compare_cgns_trees(tree, unflat),)
+    print(
+        "first sample CGNS trees identical?:",
+        compare_cgns_trees(tree, unflat),
+    )
 
     flat, dtypes, cgns_types_ = flatten_cgns_tree(tree)
     start = time()
@@ -132,10 +124,7 @@ if __name__ == "__main__":
     end = time()
     print("1000 unflatten_cgns_tree duration =", end - start)
 
-
-
     hf_dataset_new.set_format("numpy")
-
 
     # from concurrent.futures import ProcessPoolExecutor
     # from time import time
@@ -162,18 +151,17 @@ if __name__ == "__main__":
 
     # print("Parallel time:", end - start)
 
-
     description = "Converting Hugging Face dataset to plaid"
 
     sample_list = []
-    t1=t2=t3=0
+    t1 = t2 = t3 = 0
 
     start = time()
     # convert once for all samples
     # all_columns = {col: hf_dataset_new[col].to_numpy(zero_copy_only=False) for col in hf_dataset_new.column_names}
     tic = time()
     # hf_dataset_new.set_format("numpy")
-    t0 = time()-tic
+    t0 = time() - tic
     for idx in tqdm(range(len(hf_dataset_new)), desc=description):
         tic = time()
         # data_dict = huggingface_bridge.reconstruct_flat_tree_from_hf_sample2(hf_dataset_new, idx)
@@ -182,13 +170,13 @@ if __name__ == "__main__":
         # data_dict = {key: hf_dataset_new.data[key][idx] for key in hf_dataset_new.column_names}
         # data_dict = {col: hf_dataset_new[idx][col] for col in hf_dataset_new.column_names}
         data_dict = hf_dataset_new[idx]
-        t1 += time()-tic
+        t1 += time() - tic
         tic = time()
         treedef = deserialize_treedef(str(data_dict.pop("treedef")))
-        t2 += time()-tic
+        t2 += time() - tic
         tic = time()
         unflat = unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types)
-        t3 += time()-tic
+        t3 += time() - tic
         sample_list.append(Sample(features=SampleFeatures({0.0: unflat})))
     plaid_dataset_new = Dataset(samples=sample_list)
     end = time()
@@ -196,7 +184,6 @@ if __name__ == "__main__":
     print("tree deflatenning plaid dataset generation =", end - start)
 
     # show_cgns_tree(unflat)
-
 
     # print("tree deflatenning plaid dataset generation =", end - start)
     # data_dict = huggingface_bridge.reconstruct_flat_tree_from_hf_sample2(hf_dataset_new[0])
@@ -209,10 +196,9 @@ if __name__ == "__main__":
 
     # print("first sample CGNS trees identical?:", compare_cgns_trees(tree, unflat),)
 
-
     # unflat = unflatten_cgns_tree_optree(leaves, treedef, data_dict, cgns_types_dict)
     # print(flat_tree)
-    1./0.
+    1.0 / 0.0
 
     start = time()
     plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid_new2(

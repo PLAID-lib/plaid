@@ -10,10 +10,9 @@ os.environ["HF_HUB_DISABLE_XET"] = "1"
 from tqdm import tqdm
 
 from plaid.bridges import huggingface_bridge
-from plaid.utils.base import update_dict_only_new_keys
 from plaid.utils.cgns_helper import (
-    flatten_cgns_tree, flatten_cgns_tree_optree,
-    flatten_cgns_tree_optree_dict, unflatten_cgns_tree_optree_dict
+    flatten_cgns_tree_optree,
+    flatten_cgns_tree_optree_dict,
 )
 
 print("Loading hf dataset old")
@@ -38,9 +37,9 @@ plaid_dataset = huggingface_bridge.huggingface_dataset_to_plaid(
 )
 
 
-
-from datasets import Dataset, DatasetDict, Features, Value, Sequence
 import numpy as np
+from datasets import Sequence, Value
+
 
 # --------------------------
 # Infer HF feature type from actual value
@@ -77,8 +76,6 @@ def infer_hf_features_from_value(value):
         return Value("string")
 
 
-
-
 # --------------------------
 # Collect schema from all trees (union of paths)
 # --------------------------
@@ -95,17 +92,15 @@ def infer_hf_features_from_value(value):
 #     return global_types, Features(global_types)
 
 
-import pickle
 import base64
+import pickle
+
 
 def serialize_treedef(treedef):
     # Convert to bytes
     data_bytes = pickle.dumps(treedef)
     # Encode as base64 string so it can be stored as HF Value("string")
     return base64.b64encode(data_bytes).decode("utf-8")
-
-
-
 
 
 def collect_schema_from_trees_data(all_trees):
@@ -139,6 +134,7 @@ def collect_schema_from_trees_data(all_trees):
     hf_features = Features(global_types)
     return global_cgns_types, hf_features
 
+
 # --------------------------
 # Sample generator
 # --------------------------
@@ -151,6 +147,7 @@ def sample_generator(trees, global_cgns_types):
         sample["treedef"] = serialize_treedef(treedef)
         yield sample
 
+
 # --------------------------
 # Build DatasetDict
 # --------------------------
@@ -158,7 +155,9 @@ def build_hf_dataset_dict(split_names, plaid_dataset, pb_def):
     # First pass: collect schema across all splits
     all_trees = []
     for split_name in split_names:
-        trees_list = [plaid_dataset[id].features.data[0.] for id in pb_def.get_split(split_name)]
+        trees_list = [
+            plaid_dataset[id].features.data[0.0] for id in pb_def.get_split(split_name)
+        ]
         all_trees.extend(trees_list)
 
     global_cgns_types, features = collect_schema_from_trees_data(all_trees)
@@ -166,13 +165,16 @@ def build_hf_dataset_dict(split_names, plaid_dataset, pb_def):
     # Build each split
     dict_of_hf_datasets = {}
     for split_name in split_names:
-        trees_list = [plaid_dataset[id].features.data[0.] for id in pb_def.get_split(split_name)]
+        trees_list = [
+            plaid_dataset[id].features.data[0.0] for id in pb_def.get_split(split_name)
+        ]
         dict_of_hf_datasets[split_name] = Dataset.from_generator(
             lambda trees=trees_list: sample_generator(trees, global_cgns_types),
-            features=features
+            features=features,
         )
 
     return DatasetDict(dict_of_hf_datasets)
+
 
 # --------------------------
 # Usage example
@@ -184,11 +186,7 @@ dset_dict = build_hf_dataset_dict(split_names, plaid_dataset, pb_def)
 repo_id = "fabiencasenave/Tensile2d_test3"
 huggingface_bridge.push_dataset_dict_to_hub(repo_id, dset_dict)
 
-1./0.
-
-
-
-
+1.0 / 0.0
 
 
 # tree = plaid_dataset[0].features.data[0.]
@@ -204,8 +202,6 @@ huggingface_bridge.push_dataset_dict_to_hub(repo_id, dset_dict)
 # print(f"{cgns_types_dict = }")
 
 
-
-
 # trees = [plaid_dataset[id].features.data[0.] for id in pb_def.get_split("train_500")]
 
 # global_types, features = collect_schema_from_trees(trees)
@@ -215,14 +211,6 @@ huggingface_bridge.push_dataset_dict_to_hub(repo_id, dset_dict)
 # print(f"{features = }")
 
 
-
-
-
-
-
-
-
-
 def flat_tree_generator(flat_trees):
     """
     Generator yielding samples from a list of flat_trees.
@@ -230,6 +218,7 @@ def flat_tree_generator(flat_trees):
     """
     for ft in flat_trees:
         yield ft
+
 
 def make_hf_dataset(flat_tree_list, hf_features):
     """
@@ -241,6 +230,7 @@ def make_hf_dataset(flat_tree_list, hf_features):
         features=Features(hf_features),
     )
     return dataset
+
 
 print("flattening trees and infering hf features")
 
@@ -287,7 +277,7 @@ for fn in all_feat_names:
             features_names[fn] = large_name
             continue
 
-1./0.
+1.0 / 0.0
 
 print("Pushing key_mappings, pb_def and infos to the hub")
 
