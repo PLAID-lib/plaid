@@ -714,7 +714,12 @@ class Test_Sample:
             feature=[3.1415],
         )
 
-    def test_del_feature(self, sample_with_scalar: Sample, sample_with_tree3d: Sample):
+    def test_del_feature(
+        self,
+        sample_with_scalar: Sample,
+        sample_with_tree3d: Sample,
+        sample_with_time_series: Sample,
+    ):
         sample_with_scalar.del_feature(
             feature_identifier=FeatureIdentifier(
                 {"type": "scalar", "name": "test_scalar_1"}
@@ -752,6 +757,19 @@ class Test_Sample:
             ),
         )
         assert sample_with_tree3d.get_all_features_identifiers_by_type("field") == []
+        sample_with_time_series.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "time_series", "name": "test_time_series_1"}
+            ),
+        )
+        assert (
+            sample_with_time_series.get_all_features_identifiers_by_type("time_series")
+            == []
+        )
+        with pytest.raises(NotImplementedError):
+            sample_with_tree3d.del_feature(
+                feature_identifier=FeatureIdentifier({"type": "nodes"}),
+            )
 
     # -------------------------------------------------------------------------#
     def test_get_time_series_names_empty(self, sample: Sample):
