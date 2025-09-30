@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (meshes) fix `get_field_name`, could overwrite arguments during iteration over times, bases, zones and locations
 
 ### Removed
 
