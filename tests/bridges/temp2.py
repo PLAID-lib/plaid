@@ -130,6 +130,35 @@ print("1000 unflatten_cgns_tree duration =", end - start)
 
 
 
+hf_dataset_new.set_format("numpy")
+
+
+from concurrent.futures import ProcessPoolExecutor
+from time import time
+
+def treat(idx):
+    sample = hf_dataset_new[idx]  # pull row inside worker
+    treedef = deserialize_treedef(str(sample.pop("treedef")))
+    unflat = unflatten_cgns_tree_optree_dict(treedef, sample, cgns_types)
+    return Sample(features=SampleFeatures({0.0: unflat}))
+
+description = "Building Samples"
+
+start = time()
+with ProcessPoolExecutor(max_workers=12) as executor:
+    # submit tasks for all indices
+    futures = [executor.submit(treat, i) for i in range(len(hf_dataset_new))]
+
+    # iterate results with progress bar
+    list_of_samples = []
+    for f in tqdm(futures, desc=description):
+        list_of_samples.append(f.result())
+plaid_dataset_new = Dataset(samples=list_of_samples)
+end = time()
+
+print("Parallel time:", end - start)
+
+
 description = "Converting Hugging Face dataset to plaid"
 
 sample_list = []
@@ -139,7 +168,7 @@ start = time()
 # convert once for all samples
 # all_columns = {col: hf_dataset_new[col].to_numpy(zero_copy_only=False) for col in hf_dataset_new.column_names}
 tic = time()
-hf_dataset_new.set_format("numpy")
+# hf_dataset_new.set_format("numpy")
 t0 = time()-tic
 for idx in tqdm(range(len(hf_dataset_new)), desc=description):
     tic = time()
