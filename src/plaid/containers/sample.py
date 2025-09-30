@@ -987,7 +987,7 @@ class Sample(BaseModel):
                 features.append(self.get_nodes(**feature_details).flatten())
         return features
 
-    def _add_feature(
+    def add_feature(
         self,
         feature_identifier: FeatureIdentifier,
         feature: Feature,
@@ -1030,6 +1030,38 @@ class Sample(BaseModel):
 
         return self
 
+    def del_feature(
+        self,
+        feature_identifier: FeatureIdentifier,
+    ) -> Self:
+        """Remove a feature from current sample.
+
+        This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
+
+        Args:
+            feature_identifier (dict): A feature identifier.
+
+        Returns:
+            Self: The updated sample
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        feature_type, feature_details = get_feature_type_and_details_from(
+            feature_identifier
+        )
+
+        if feature_type == "scalar":
+            self.del_scalar(**feature_details)
+        elif feature_type == "time_series":
+            self.del_time_series(**feature_details)
+        elif feature_type == "field":
+            self.del_field(**feature_details)
+        elif feature_type == "nodes":
+            raise NotImplementedError("Deleting node features is not implemented.")
+
+        return self
+
     def update_features_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
@@ -1065,7 +1097,7 @@ class Sample(BaseModel):
         sample = self if in_place else self.copy()
 
         for feat_id, feat in zip(feature_identifiers, features):
-            sample._add_feature(feat_id, feat)
+            sample.add_feature(feat_id, feat)
 
         return sample
 
@@ -1115,7 +1147,7 @@ class Sample(BaseModel):
                     if not sample.meshes.get_mesh(time):
                         sample.meshes.add_tree(source_sample.meshes.get_mesh(time))
 
-                sample._add_feature(feat_id, feature)
+                sample.add_feature(feat_id, feature)
 
         sample._extra_data = copy.deepcopy(self._extra_data)
 
