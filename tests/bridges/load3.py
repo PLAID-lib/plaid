@@ -1,6 +1,6 @@
 from time import time
 
-import yaml
+import yaml, json
 from datasets import load_from_disk
 from huggingface_hub import hf_hub_download
 from tqdm import tqdm
@@ -14,6 +14,8 @@ from plaid.utils.cgns_helper import (
     show_cgns_tree,
     unflatten_cgns_tree,
 )
+
+import numpy as np
 
 if __name__ == "__main__":
     print("Initializations:")
@@ -50,12 +52,17 @@ if __name__ == "__main__":
     end = time()
     print("Time to instanciate cached HF dataset =", end - start)
 
+    with open("global_cgns_types.json", "r", encoding="utf-8") as f:
+        cgns_types = json.load(f)
+
+    flat_cst = np.load("flat_cst.npy", allow_pickle=True)
+
+
     print("Initial RAM usage:", get_mem(), "MB")
     start = time()
     all_data = {}
     for i in range(len(hf_dataset_new)):
         for n in fnn:
-            print(n)
             all_data[(i, n)] = hf_dataset_new.data[fn[n]][i].values.to_numpy(
                 zero_copy_only=True
             )
@@ -67,8 +74,8 @@ if __name__ == "__main__":
 
     print()
 
-    # arrow_table = hf_dataset_new.data  # this is a pyarrow.Table
-    # arrow_table = arrow_table.select([fn["P"], fn["sig11"]])
+    arrow_table = hf_dataset_new.data  # this is a pyarrow.Table
+    arrow_table = arrow_table.select([fn["P"], fn["sig11"]])
 
     print("Experience 2: plaid dataset generation from HF dataset: old vs new")
     print()
@@ -207,6 +214,11 @@ if __name__ == "__main__":
     for row in tqdm(
         iter_rows_fast(hf_dataset_new), total=len(hf_dataset_new), desc=description
     ):
+        print(row)
+        print("---")
+        print(flat_cst)
+        1./0.
+        row.update(flat_cst)  # add the constant values
         unflat = unflatten_cgns_tree(row, 1.0, cgns_types)
         sample_list.append(Sample(features=SampleFeatures({0.0: unflat})))
     plaid_dataset_new = Dataset(samples=sample_list)
@@ -231,8 +243,8 @@ if __name__ == "__main__":
 
     #     #print(list(row.keys()))
 
-    # # print(plaid_dataset_new[0].get_field("sig11"))
-    # # print(type(plaid_dataset_new[0].get_field("sig11")))
+    # print(plaid_dataset_new[0].get_field("sig11"))
+    # print(type(plaid_dataset_new[0].get_field("sig11")))
 
     print(
         "first sample CGNS trees identical (no types)?:",
@@ -241,9 +253,11 @@ if __name__ == "__main__":
         ),
     )
 
-    show_cgns_tree(plaid_dataset[0].features.data[0])
-    print("--------------")
-    show_cgns_tree(plaid_dataset_new[0].features.data[0])
+
+
+    # show_cgns_tree(plaid_dataset[0].features.data[0])
+    # print("--------------")
+    # show_cgns_tree(plaid_dataset_new[0].features.data[0])
 
     1.0 / 0.0
 

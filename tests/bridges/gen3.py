@@ -66,8 +66,7 @@ if __name__ == "__main__":
                 return Sequence(Sequence(Sequence(base_type)))
             else:
                 raise TypeError(f"Unsupported ndim: {arr.ndim}")
-        else:
-            return Value("string")
+        raise TypeError(f"Unsupported type: {type(value)}")
 
     def collect_schema_from_trees_data(all_trees):
         """
@@ -79,8 +78,8 @@ if __name__ == "__main__":
         global_types = {}
 
         for tree in all_trees:
-            _, data_dict, cgns_types = flatten_cgns_tree(tree)
-            for path, value in data_dict.items():
+            flat, dtype, cgns_types = flatten_cgns_tree(tree)
+            for path, value in flat.items():
                 # Update CGNS types
                 if path not in global_cgns_types:
                     global_cgns_types[path] = cgns_types[path]
@@ -96,17 +95,33 @@ if __name__ == "__main__":
                     global_types[path] = infer_hf_features_from_value(value)
                 # else: already inferred from previous tree
 
-        global_types["treedef"] = Value("string")
         hf_features = Features(global_types)
         return global_cgns_types, hf_features
 
-    def sample_generator(trees, global_cgns_types):
-        for tree in trees:
-            flat, dtypes, cgns_types = flatten_cgns_tree(tree)
-            sample = {path: None for path in global_cgns_types.keys()}
-            for path, val in flat.items():
-                sample[path] = val
-            yield sample
+
+    def collect_cst_from_trees_data(all_trees, cst_path):
+        """
+        Collect union of all paths across all trees and produce:
+        - global_cgns_types: path → CGNS type
+        - hf_features: HuggingFace Features inferred from actual data
+        """
+        flat_cst = {}
+
+        for tree in all_trees:
+            flat, dtype, cgns_types = flatten_cgns_tree(tree)
+            for path in cst_path:
+                value = flat[path]
+                # Update CGNS types
+                if path not in flat_cst:
+                    flat_cst[path] = value
+                else:
+                    # Optional: sanity check for conflicts
+                    if flat_cst[path] != value:
+                        raise ValueError(
+                            f"Conflict for path '{path}': {flat_cst[path]} vs {value}"
+                        )
+        return flat_cst
+
 
     print("flattening trees and infering hf features")
     split_names = ["train_500", "test", "OOD"]
@@ -124,15 +139,27 @@ if __name__ == "__main__":
         k
         for k, v in global_cgns_types.items()
         if (
-            v in ["DataArray_t", "IndexArray_t", "Zone_t", "Element_t"]
+            v in ["DataArray_t", "IndexArray_t", "Zone_t", "Element_t", "IndexRange_t"]
             and "Time" not in k
         )
     ]
+
     cst_path = [k for k in global_cgns_types.keys() if k not in var_path]
+    # hf_features = {k:v for k,v in hf_features.items() if k in var_path}
 
     print("var_path =", var_path)
     print()
     print("cst_path =", cst_path)
+
+    flat_cst = collect_cst_from_trees_data(all_trees, cst_path)
+
+
+    def sample_generator(trees, var_path):
+        for tree in trees:
+            flat, dtypes, cgns_types = flatten_cgns_tree(tree)
+            yield {path:flat.get(path, None) for path in var_path}
+
+
 
     # Build each split
     dict_of_hf_datasets = {}
@@ -141,12 +168,19 @@ if __name__ == "__main__":
             plaid_dataset[id].features.data[0.0] for id in pb_def.get_split(split_name)
         ]
         dict_of_hf_datasets[split_name] = Dataset.from_generator(
-            lambda trees=trees_list: sample_generator(trees, global_cgns_types),
+            lambda trees=trees_list: sample_generator(trees, var_path),
             features=hf_features,
         )
 
+
     dataset_hf_new = DatasetDict(dict_of_hf_datasets)
     dataset_hf_new.save_to_disk("Tensile2d_hf_dataset_new")
+
+    import json
+    with open("global_cgns_types.json", "w", encoding="utf-8") as f:
+        json.dump(global_cgns_types, f)
+
+    np.save("flat_cst.npy", flat_cst)
 
     1.0 / 0.0
 
