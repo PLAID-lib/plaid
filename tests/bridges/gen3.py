@@ -68,7 +68,7 @@ if __name__ == "__main__":
                 raise TypeError(f"Unsupported ndim: {arr.ndim}")
         raise TypeError(f"Unsupported type: {type(value)}")
 
-    def collect_schema_from_trees_data(all_trees):
+    def collect_types_from_trees_data(all_trees):
         """
         Collect union of all paths across all trees and produce:
         - global_cgns_types: path → CGNS type
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         ]
         all_trees.extend(trees_list)
 
-    global_cgns_types, global_dtypes, hf_features = collect_schema_from_trees_data(all_trees)
+    global_cgns_types, global_dtypes, hf_features = collect_types_from_trees_data(all_trees)
 
     var_path = [
         k

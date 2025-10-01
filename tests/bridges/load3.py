@@ -14,7 +14,8 @@ from plaid.utils.cgns_helper import (
     show_cgns_tree,
     unflatten_cgns_tree,
     compare_cgns_trees,
-    fix_cgns_tree_types
+    fix_cgns_tree_types,
+    unflatten_cgns_tree_not_enforcing_dtypes
 )
 
 import numpy as np
@@ -233,27 +234,36 @@ if __name__ == "__main__":
         """
         table = dataset.data
         for i in range(len(dataset)):
-            # row = {name:table[name][i].values.to_numpy(zero_copy_only=False) for name in table.column_names}
-
             row = {}
             for name in table.column_names:
-                # TO REACTIVATE TO HAVE CORRECT CGNS !!!!!!!!!!!!!!
-                # if isinstance(table[name][i].values, pa.ListArray):
-                #     row[name] = np.stack(table[name][i].values.to_numpy(zero_copy_only=False))
-                # else:
-                #     row[name] = table[name][i].values.to_numpy(zero_copy_only=True)
-
-                row[name] = table[name][i].values.to_numpy(zero_copy_only=False)
+                if isinstance(table[name][i].values, pa.ListArray):
+                    row[name] = np.stack(table[name][i].values.to_numpy(zero_copy_only=False))
+                else:
+                    row[name] = table[name][i].values.to_numpy(zero_copy_only=True)
 
             yield row
+
+
+    def iter_rows_fast_not_enforcing_shapes(dataset):
+        """
+        Yield rows from a Hugging Face dataset as dicts.
+        Tries to convert to NumPy if possible (zero-copy for arrays),
+        robust to scalars, None, lists, strings, etc.
+        """
+        table = dataset.data
+        for i in range(len(dataset)):
+            yield {name:table[name][i].values.to_numpy(zero_copy_only=False) for name in table.column_names}
+
 
     tic = time()
     sample_list = []
     for row in tqdm(
+        # iter_rows_fast_not_enforcing_shapes(hf_dataset_new), total=len(hf_dataset_new), desc=description
         iter_rows_fast(hf_dataset_new), total=len(hf_dataset_new), desc=description
     ):
         row.update(flat_cst)  # add the constant values
         unflat = unflatten_cgns_tree(row, dtypes, cgns_types)
+        # unflat = unflatten_cgns_tree_not_enforcing_dtypes(row, cgns_types)
         sample_list.append(Sample(features=SampleFeatures({0.0: unflat})))
     plaid_dataset_new = Dataset(samples=sample_list)
     print("duration init dataset unflatten tree =", time() - tic)
@@ -292,7 +302,7 @@ if __name__ == "__main__":
 
     plaid_dataset[0].save("sample", overwrite=True)
 
-    plaid_dataset_new[0].features.data[0] = fix_cgns_tree_types(plaid_dataset_new[0].features.data[0])
+    # plaid_dataset_new[0].features.data[0] = fix_cgns_tree_types(plaid_dataset_new[0].features.data[0])
     plaid_dataset_new[0].save("sample_new", overwrite=True)
 
     print("--------------")

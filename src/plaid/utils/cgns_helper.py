@@ -274,10 +274,27 @@ def flatten_cgns_tree(
     return flat, dtypes, cgns_types
 
 
+def nodes_to_tree(nodes):
+    root = None
+    for path, node in nodes.items():
+        parts = path.split("/")
+        if len(parts) == 1:
+            # root-level node
+            if root is None:
+                root = ["CGNSTree", None, [node], "CGNSTree_t"]
+            else:
+                root[2].append(node)
+        else:
+            parent_path = "/".join(parts[:-1])
+            parent = nodes[parent_path]
+            parent[2].append(node)
+    return root
+
+
 def unflatten_cgns_tree(
     flat: dict[str, object],
     dtypes: dict[str, str],
-    cgns_types: dict[str, str],
+    cgns_types: dict[str, str]
 ) -> CGNSTree:
     """Reconstruct a CGNS tree from flattened primitives, dtypes, and CGNS type information.
 
@@ -299,36 +316,32 @@ def unflatten_cgns_tree(
         dtype = dtypes.get(path)
         cgns_type = cgns_types.get(path)
 
-        # # TO REACTIVATE TO HAVE CORRECT CGNS !!!!!!!!!!!!!!
-        # if value is None:
-        #     data = None
-        # elif dtype == value.dtype:
-        #     data = value
-        # else:
-        #     data = value.astype(dtype)
+        if value is None:
+            data = None
+        elif dtype == value.dtype:
+            data = value
+        else:
+            data = value.astype(dtype)
 
-        # # empty children for now
-        # nodes[path] = [path.split("/")[-1], data, [], cgns_type]
-        # #------------------------
+        nodes[path] = [path.split("/")[-1], data, [], cgns_type]
 
+    # Re-link nodes into tree structure
+    return nodes_to_tree(nodes)
+
+
+def unflatten_cgns_tree_not_enforcing_dtypes(
+    flat: dict[str, object],
+    cgns_types: dict[str, str],
+) -> CGNSTree:
+    # Build all nodes from paths
+    nodes = {}
+
+    for path, value in flat.items():
+        cgns_type = cgns_types.get(path)
         nodes[path] = [path.split("/")[-1], value, [], cgns_type]
 
     # Re-link nodes into tree structure
-    root = None
-    for path, node in nodes.items():
-        parts = path.split("/")
-        if len(parts) == 1:
-            # root-level node
-            if root is None:
-                root = ["CGNSTree", None, [node], "CGNSTree_t"]
-            else:
-                root[2].append(node)
-        else:
-            parent_path = "/".join(parts[:-1])
-            parent = nodes[parent_path]
-            parent[2].append(node)
-
-    return root
+    return nodes_to_tree(nodes)
 
 
 def fix_cgns_tree_types(node):
