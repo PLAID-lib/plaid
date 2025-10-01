@@ -820,7 +820,9 @@ class Test_Dataset:
             )
 
     def test_get_infos(self, dataset):
-        assert dataset.get_infos()["plaid"]["version"] == Version(plaid.__version__)
+        assert dataset.get_infos()["plaid"]["version"] == str(
+            Version(plaid.__version__)
+        )
 
     def test_print_infos(self, dataset, infos):
         dataset.set_infos(infos)

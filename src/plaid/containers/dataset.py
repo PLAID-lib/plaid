@@ -27,8 +27,8 @@ from typing import Iterator, Literal, Optional, Union
 
 import numpy as np
 import yaml
-from packaging.version import Version
 from packaging.specifiers import SpecifierSet
+from packaging.version import Version
 from tqdm import tqdm
 
 import plaid
@@ -932,7 +932,9 @@ class Dataset(object):
                 print(dataset.get_infos())
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}}
         """
-        return self._infos
+        return {
+            k: {kk: str(vv) for kk, vv in v.items()} for k, v in self._infos.items()
+        }
 
     def print_infos(self) -> None:
         """Prints information in a readable format (pretty print)."""
@@ -1471,7 +1473,10 @@ class Dataset(object):
             f"{self._infos['plaid'].keys()=} should contain 'version'"
         )
         plaid_version = Version(plaid.__version__)
-        if isinstance(self._infos["plaid"]["version"], SpecifierSet) or self._infos["plaid"]["version"] != plaid_version:
+        if (
+            isinstance(self._infos["plaid"]["version"], SpecifierSet)
+            or self._infos["plaid"]["version"] != plaid_version
+        ):
             logger.warning(
                 f"Version mismatch: Dataset was loaded from version: {self._infos['plaid']['version']}, and will be saved with version: {plaid_version}"
             )
