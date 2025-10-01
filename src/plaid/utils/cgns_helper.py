@@ -9,7 +9,6 @@
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-import optree
 
 import pyarrow as pa
 
@@ -329,7 +328,7 @@ def unflatten_cgns_tree(
     return nodes_to_tree(nodes)
 
 
-def unflatten_cgns_tree_not_enforcing_dtypes(
+def unflatten_cgns_tree_no_dtypes(
     flat: dict[str, object],
     cgns_types: dict[str, str],
 ) -> CGNSTree:
