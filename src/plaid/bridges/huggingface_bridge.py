@@ -317,7 +317,7 @@ def push_tree_struct_to_hub(
     )
 
     # key mappings
-    yaml_str = yaml.dump(key_mappings)
+    yaml_str = yaml.dump(key_mappings, sort_keys=False)
     yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
 
     api.upload_file(
@@ -446,7 +446,7 @@ def save_tree_struct_to_disk(
         pickle.dump(flat_cst, f)
 
     with open(Path(path) / "key_mappings.yaml", "w", encoding="utf-8") as f:
-        yaml.dump(key_mappings, f)
+        yaml.dump(key_mappings, f, sort_keys=False)
 
 # ----------------------------------------------------------------
 # ----------------------------------------------------------------
@@ -815,9 +815,11 @@ def infer_hf_features_from_value(value):
     # Scalars
     if np.isscalar(value):
         dtype = np.array(value).dtype
-        if np.issubdtype(dtype, np.floating):
+        if np.issubdtype(dtype, np.floating): # enforcing float32 for all floats
             return Value("float32")
-        elif np.issubdtype(dtype, np.integer):
+        elif np.issubdtype(dtype, np.int32):
+            return Value("int32")
+        elif np.issubdtype(dtype, np.int64):
             return Value("int64")
         elif np.issubdtype(dtype, np.bool_):
             return Value("bool")
@@ -836,6 +838,8 @@ def infer_hf_features_from_value(value):
             return Sequence(Sequence(base_type))
         elif arr.ndim == 3:
             return Sequence(Sequence(Sequence(base_type)))
+        elif arr.ndim == 4:
+            return Sequence(Sequence(Sequence(Sequence(base_type))))
         else:
             raise TypeError(f"Unsupported ndim: {arr.ndim}")
     raise TypeError(f"Unsupported type: {type(value)}")
@@ -934,10 +938,10 @@ def _generator_prepare_for_huggingface(generators, verbose: bool = True):
     hf_features = Features({k: v for k, v in global_feature_types.items() if k in var_features})
 
     key_mappings = {}
-    key_mappings["constant_features"] = cst_features
     key_mappings["variable_features"] = var_features
-    key_mappings["dtypes"] = global_dtypes
+    key_mappings["constant_features"] = cst_features
     key_mappings["cgns_types"] = global_cgns_types
+    key_mappings["dtypes"] = global_dtypes
 
     return flat_cst, key_mappings, hf_features
 

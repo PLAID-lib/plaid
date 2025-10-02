@@ -21,8 +21,11 @@ from plaid.utils.cgns_helper import (
 # DATASET_NAME = "Tensile2d"
 # SPLIT_NAMES = ["train_500", "test", "OOD"]
 
-DATASET_NAME = "Rotor37"
-SPLIT_NAMES = ["train_1000", "test"]
+# DATASET_NAME = "Rotor37"
+# SPLIT_NAMES = ["train_1000", "test"]
+
+DATASET_NAME = "VKI-LS59"
+SPLIT_NAMES = ["train", "test"]
 
 
 if __name__ == "__main__":
@@ -39,22 +42,22 @@ if __name__ == "__main__":
     print("Experience 1: fast columnar retrieval (only 1DArray are instantiated in np-copy mode)")
     print()
 
+    # start = time()
+    # dir_test = f"{DATASET_NAME}_test"
+    # hf_dataset_new = huggingface_bridge.load_dataset_from_disk(Path(dir_test) / Path(SPLIT_NAMES[0]))
+    # flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_disk(dir_test)
+    # pb_def = huggingface_bridge.load_problem_definition_from_disk(dir_test, "task_1")
+    # infos = huggingface_bridge.load_infos_from_disk(dir_test)
+
+    # features_names = key_mappings["variable_features"]
+    # dtypes = key_mappings["dtypes"]
+    # cgns_types = key_mappings["cgns_types"]
+    # end = time()
+    # print("Time to instantiate new HF dataset from disk =", end - start)
+
+
     start = time()
-    dir_test = f"{DATASET_NAME}_test"
-    hf_dataset_new = huggingface_bridge.load_dataset_from_disk(Path(dir_test) / Path(SPLIT_NAMES[0]))
-    flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_disk(dir_test)
-    pb_def = huggingface_bridge.load_problem_definition_from_disk(dir_test, "task_1")
-    infos = huggingface_bridge.load_infos_from_disk(dir_test)
-
-    features_names = key_mappings["variable_features"]
-    dtypes = key_mappings["dtypes"]
-    cgns_types = key_mappings["cgns_types"]
-    end = time()
-    print("Time to instantiate new HF dataset from disk =", end - start)
-
-
-    start = time()
-    repo_id = f"fabiencasenave/{DATASET_NAME}_test"
+    repo_id = f"fabiencasenave/{DATASET_NAME}"
     hf_dataset_new = huggingface_bridge.load_dataset_from_hub(repo_id, split = SPLIT_NAMES[0])
     flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_hub(repo_id)
     pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id, "task_1")
@@ -96,17 +99,17 @@ if __name__ == "__main__":
     plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_new, flat_cst, cgns_types, dtypes, enforce_type_shapes = False, verbose = False)
     print("Time to convert new HF dataset to plaid (fast) =", time() - tic)
 
-    fix_cgns_tree_types(plaid_dataset[2].features.data[0])
+    # fix_cgns_tree_types(plaid_dataset[2].features.data[0])
     plaid_dataset[2].save("sample", overwrite=True)
 
-    print(f"get({pb_def.get_output_scalars_names()[0]}): ", plaid_dataset_new[0].get_scalar(pb_def.get_output_scalars_names()[0]))
-    print(f"get({pb_def.get_output_fields_names()[0]}): ", plaid_dataset_new[0].get_field(pb_def.get_output_fields_names()[0]))
-    print("get(nodes): ", plaid_dataset_new[0].get_nodes())
-    print("get(elements): ", plaid_dataset_new[0].get_elements())
+    # print(f"get({pb_def.get_output_scalars_names()[0]}): ", plaid_dataset_new[0].get_scalar(pb_def.get_output_scalars_names()[0]))
+    # print(f"get({pb_def.get_output_fields_names()[0]}): ", plaid_dataset_new[0].get_field(pb_def.get_output_fields_names()[0]))
+    # print("get(nodes): ", plaid_dataset_new[0].get_nodes())
+    # print("get(elements): ", plaid_dataset_new[0].get_elements())
 
-    tic = time()
-    plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_new, flat_cst, cgns_types, dtypes, enforce_type_shapes = True, verbose = False)
-    print("Time to convert new HF dataset to plaid (safe) =", time() - tic)
+    # tic = time()
+    # plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_new, flat_cst, cgns_types, dtypes, enforce_type_shapes = True, verbose = False)
+    # print("Time to convert new HF dataset to plaid (safe) =", time() - tic)
 
 
     show_cgns_tree(plaid_dataset[2].features.data[0])
