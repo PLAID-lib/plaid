@@ -109,117 +109,6 @@ def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
     np.set_printoptions(edgeitems=3, threshold=1000)
 
 
-def flatten_cgns_tree_optree_dict(pyTree):
-    """
-    Flatten CGNS tree:
-    - treedef: for unflatten
-    - data_dict: path -> data
-    - cgns_types: path -> CGNS type
-    """
-    data_dict = {}
-    cgns_types = {}
-
-    def visit(node, prefix=""):
-        name, data, children, cgns_type = node
-        path = f"{prefix}/{name}" if prefix else name
-        data_dict[path] = data
-        cgns_types[path] = cgns_type
-
-        children_struct = tuple(visit(child, prefix=path) for child in (children or []))
-        leaf = path  # only the path is stored in leaves
-        return (leaf, children_struct)
-
-    struct_tree = visit(pyTree)
-    _, treedef = optree.tree_flatten(struct_tree)
-    return treedef, data_dict, cgns_types
-
-
-def unflatten_cgns_tree_optree_dict(treedef, data_dict, cgns_types):
-    """
-    Reconstruct CGNS tree from:
-    - treedef: tree structure
-    - data_dict: path -> data
-    - cgns_types: path -> CGNS type
-    """
-
-    # Rebuild leaves as (path, data) using the path stored in leaves
-    leaves = [(path, data_dict[path]) for path in data_dict]
-
-    struct_tree = optree.tree_unflatten(treedef, leaves)
-
-    def build_node(struct_node):
-        leaf, children_tuple = struct_node
-        path, data = leaf
-        name = path.split("/")[-1]
-        cgns_type = cgns_types[path]
-        children = [build_node(child) for child in children_tuple]
-        return [name, data, children, cgns_type]
-
-    return build_node(struct_tree)
-
-
-def flatten_cgns_tree_optree(pyTree):
-    """Flatten CGNS tree."""
-
-    cgns_types = {}
-
-    def visit(node):
-        name, data, children, cgns_type = node
-        cgns_types[name] = cgns_type
-        children_struct = tuple(visit(child) for child in (children or []))
-        leaf = (name, data)
-        return (leaf, children_struct)
-
-    struct_tree = visit(pyTree)
-    leaves, treedef = optree.tree_flatten(struct_tree)
-    return leaves, treedef, cgns_types
-
-
-def unflatten_cgns_tree_optree(leaves, treedef, cgns_types):
-    """Reconstruct CGNS tree from leaves + treedef."""
-    struct_tree = optree.tree_unflatten(treedef, leaves)
-
-    def build_node(struct_node):
-        leaf, children_tuple = struct_node
-        name, data = leaf
-        cgns_type = cgns_types[name]
-        children = [build_node(child) for child in children_tuple]
-        return [name, data, children, cgns_type]
-
-    return build_node(struct_tree)
-
-
-# def flatten_cgns_tree_optree(pyTree) -> tuple[list, optree.PyTreeDef]:
-#     """Flatten CGNS tree."""
-
-#     def visit(node):
-#         name, data, children, cgns_type = node
-#         children_struct = tuple(visit(child) for child in (children or []))
-#         # leaf will contain everything except children
-#         leaf = (name, data, cgns_type)
-#         return (leaf, children_struct)
-
-#     struct_tree = visit(pyTree)
-#     leaves, treedef = optree.tree_flatten(struct_tree)
-#     return leaves, treedef
-
-
-# def unflatten_cgns_tree_optree(leaves, treedef):
-#     """Reconstruct CGNS tree from leaves + treedef."""
-#     struct_tree = optree.tree_unflatten(treedef, leaves)
-
-#     def build_node(struct_node):
-#         leaf, children_tuple = struct_node
-#         name, data, cgns_type = leaf
-#         children = [build_node(child) for child in children_tuple]
-#         return [name, data, children, cgns_type]
-
-#     return build_node(struct_tree)
-
-
-# ------------- ORIGINAL ---------------------------
-
-
 def flatten_cgns_tree(
     pyTree: CGNSTree,
 ) -> tuple[dict[str, object], dict[str, str]]:
@@ -316,56 +205,11 @@ def fix_cgns_tree_types(node):
     return [name, data, new_children, cgns_type]
 
 
-
-# def unflatten_cgns_tree(flat: Dict[str, Any],
-#                              dtypes: Dict[str, str],
-#                              cgns_types: Dict[str, str]):
-
-#     nodes = {}
-#     children_map = defaultdict(list)
-
-#     # Precompute parent paths and node names
-#     parent_map = {}
-#     names = {}
-#     for path in flat:
-#         last_slash = path.rfind("/")
-#         if last_slash == -1:
-#             parent_map[path] = None
-#             names[path] = path
-#         else:
-#             parent_map[path] = path[:last_slash]
-#             names[path] = path[last_slash+1:]
-#             children_map[path[:last_slash]].append(path)
-
-#     # Build all nodes: [name, data, empty children list, cgns_type]
-#     for path, value in flat.items():
-#         dtype_str = dtypes.get(path)
-#         dtype = np.dtype(dtype_str) if dtype_str else None
-#         cgns_type = cgns_types.get(path)
-#         if value is None or dtype is None:
-#             data = None
-#         else:
-#             data = np.asarray(value, dtype=dtype)
-#         nodes[path] = [names[path], data, [], cgns_type]
-
-#     # Link children
-#     for parent_path, child_paths in children_map.items():
-#         parent_node = nodes[parent_path]
-#         parent_node[2].extend(nodes[child] for child in child_paths)
-
-#     # Collect roots
-#     roots = [nodes[path] for path, p in parent_map.items() if p is None]
-#     if len(roots) == 1:
-#         return roots[0]
-#     else:
-#         return ["CGNSTree", None, roots, "CGNSTree_t"]
-
-
 def compare_cgns_trees(
     tree1: CGNSTree,
     tree2: CGNSTree,
     path: str = "CGNSTree",
-) -> bool:
+) -> bool: # pragma: no cover
     """Recursively compare two CGNS trees, ignoring the order of children.
 
     Checks:
@@ -438,9 +282,7 @@ def compare_cgns_trees(
     return True
 
 
-
-
-def compare_leaves(d1, d2):
+def compare_leaves(d1, d2):  # pragma: no cover
     import numpy as np
 
     # Convert Arrow to NumPy
@@ -489,9 +331,10 @@ def compare_leaves(d1, d2):
         return np.isclose(d1, d2, rtol=1e-7, atol=0)
     return d1 == d2
 
+
 def compare_cgns_trees_no_types(
     tree1: "CGNSTree", tree2: "CGNSTree", path: str = "CGNSTree"
-) -> bool:
+) -> bool: # pragma: no cover
     """Recursively compare two CGNS trees ignoring order of children.
     Works robustly with Hugging Face Arrow datasets and heterogeneous, nested samples.
     """
