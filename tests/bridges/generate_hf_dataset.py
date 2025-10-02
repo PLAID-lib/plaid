@@ -4,7 +4,6 @@ os.environ["HF_HUB_DISABLE_XET"] = "1"
 
 from plaid.bridges import huggingface_bridge
 
-
 # DATASET_NAME = "Tensile2d"
 # SPLIT_NAMES = ["train_500", "test", "OOD"]
 
@@ -24,7 +23,7 @@ SPLIT_NAMES = ["train", "test"]
 if __name__ == "__main__":
     print("Loading hf dataset old")
     hf_dataset = huggingface_bridge.load_dataset_from_hub(
-        f"PLAID-datasets/{DATASET_NAME}", split="all_samples", num_proc = 12
+        f"PLAID-datasets/{DATASET_NAME}", split="all_samples", num_proc=12
     )
     pb_def = huggingface_bridge.huggingface_description_to_problem_definition(
         hf_dataset.description
@@ -36,10 +35,15 @@ if __name__ == "__main__":
     )
 
     # print("flattening trees and infering hf features")
-    main_splits = {split_name:pb_def.get_split(split_name) for split_name in SPLIT_NAMES}
+    main_splits = {
+        split_name: pb_def.get_split(split_name) for split_name in SPLIT_NAMES
+    }
 
-    dataset_hf_new, flat_cst, key_mappings = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
-        plaid_dataset, main_splits, processes_number=12)
+    dataset_hf_new, flat_cst, key_mappings = (
+        huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
+            plaid_dataset, main_splits, processes_number=12
+        )
+    )
 
     # dir_test = f"{DATASET_NAME}"
     # huggingface_bridge.save_dataset_dict_to_disk(dir_test, dataset_hf_new)

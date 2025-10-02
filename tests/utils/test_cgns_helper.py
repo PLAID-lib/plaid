@@ -7,6 +7,9 @@
 
 # %% Imports
 
+import copy
+
+import numpy as np
 import pytest
 
 from plaid.utils import cgns_helper
@@ -26,7 +29,9 @@ class Test_cgns_helper:
         assert base_names_full == ["/Base_2_2"]
 
         # Test with full_path=False and unique=True
-        base_names_unique = cgns_helper.get_base_names(tree, full_path=False, unique=True)
+        base_names_unique = cgns_helper.get_base_names(
+            tree, full_path=False, unique=True
+        )
         print(base_names_unique)
         assert base_names_unique == ["Base_2_2"]
 
@@ -53,9 +58,44 @@ class Test_cgns_helper:
         cgns_helper.compare_cgns_trees(tree, tree)
         cgns_helper.compare_cgns_trees(tree, samples[0].get_mesh())
 
+        tree2 = copy.deepcopy(tree)
+        tree2[0] = "A"
+        cgns_helper.compare_cgns_trees(tree, tree2)
+
+        tree2[0] = tree[0]
+        tree2[1] = np.array([0], dtype=np.float32)
+        tree[1] = np.array([0], dtype=np.float64)
+        cgns_helper.compare_cgns_trees(tree, tree2)
+
+        tree[1] = np.array([1], dtype=np.float32)
+        cgns_helper.compare_cgns_trees(tree, tree2)
+
+        tree[1] = "A"
+        cgns_helper.compare_cgns_trees(tree, tree2)
+
+        tree[1] = tree2[1]
+        tree[3] = "A_t"
+        cgns_helper.compare_cgns_trees(tree, tree2)
+
+        tree[3] = tree2[3]
+        tree[2][0][3] = "A_t"
+        cgns_helper.compare_cgns_trees(tree, tree2)
+
     def test_compare_cgns_trees_no_types(self, tree, samples):
         cgns_helper.compare_cgns_trees_no_types(tree, tree)
         cgns_helper.compare_cgns_trees_no_types(tree, samples[0].get_mesh())
+
+        tree2 = copy.deepcopy(tree)
+        tree2[0] = "A"
+        cgns_helper.compare_cgns_trees_no_types(tree, tree2)
+
+        tree2[0] = tree[0]
+        tree[2][0][1] = 1.0
+        cgns_helper.compare_cgns_trees_no_types(tree, tree2)
+
+        tree[2][0][1] = tree2[2][0][1]
+        tree[3] = "A_t"
+        cgns_helper.compare_cgns_trees_no_types(tree, tree2)
 
     def test_summarize_cgns_tree(self, tree):
         cgns_helper.summarize_cgns_tree(tree, verbose=False)

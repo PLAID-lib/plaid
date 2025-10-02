@@ -7,7 +7,6 @@
 
 # %% Imports
 
-import pytest
 
 from plaid.utils import base
 
@@ -18,7 +17,7 @@ class Test_base:
         base.generate_random_ASCII()
 
     def test_safe_len(self):
-        assert base.safe_len([0,1]) == 2
+        assert base.safe_len([0, 1]) == 2
         assert base.safe_len(0) == 0
 
     def test_get_mem(self):

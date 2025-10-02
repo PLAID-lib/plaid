@@ -57,7 +57,6 @@ def safe_len(obj):
 def get_mem():
     """Get the current memory usage of the process in MB."""
     process = psutil.Process(os.getpid())
-    # rss = resident set size = actual RAM usage
     return process.memory_info().rss / (1024**2)  # in MB
 
 

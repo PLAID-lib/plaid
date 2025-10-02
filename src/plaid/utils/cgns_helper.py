@@ -10,8 +10,6 @@
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 
-import pyarrow as pa
-
 from plaid.types import CGNSTree
 
 
@@ -209,7 +207,7 @@ def compare_cgns_trees(
     tree1: CGNSTree,
     tree2: CGNSTree,
     path: str = "CGNSTree",
-) -> bool: # pragma: no cover
+) -> bool:
     """Recursively compare two CGNS trees, ignoring the order of children.
 
     Checks:
@@ -245,15 +243,14 @@ def compare_cgns_trees(
                 f"Dtype mismatch at {path}/{tree1[0]}: {data1.dtype} != {data2.dtype}"
             )
             return False
-        if not np.array_equal(data1, data2):
+        if len(data1) == 0 and len(data2) == 0:
+            pass
+        elif not np.array_equal(data1, data2):
             print(f"Data mismatch at {path}/{tree1[0]}")
             return False
     else:
         if isinstance(data1, np.ndarray) or isinstance(data2, np.ndarray):
             print(f"Data type mismatch at {path}/{tree1[0]}")
-            return False
-        if data1 != data2:
-            print(f"Data mismatch at {path}/{tree1[0]}: {data1} != {data2}")
             return False
 
     # Compare extra (CGNS type)
@@ -282,30 +279,12 @@ def compare_cgns_trees(
     return True
 
 
-def compare_leaves(d1, d2):  # pragma: no cover
-    import numpy as np
-
-    # Convert Arrow to NumPy
-    if isinstance(d1, pa.ChunkedArray):
-        d1 = d1.combine_chunks().to_numpy()
-    if isinstance(d2, pa.ChunkedArray):
-        d2 = d2.combine_chunks().to_numpy()
-    if isinstance(d1, pa.Array):
-        d1 = d1.to_numpy()
-    if isinstance(d2, pa.Array):
-        d2 = d2.to_numpy()
-
+def compare_leaves(d1, d2):
     # Convert bytes arrays to str
     if isinstance(d1, np.ndarray) and d1.dtype.kind == "S":
         d1 = d1.astype(str)
     if isinstance(d2, np.ndarray) and d2.dtype.kind == "S":
         d2 = d2.astype(str)
-
-    # Handle NumPy arrays vs lists/tuples
-    if isinstance(d1, np.ndarray) and isinstance(d2, (list, tuple)):
-        d2 = np.array(d2, dtype=d1.dtype)
-    if isinstance(d2, np.ndarray) and isinstance(d1, (list, tuple)):
-        d1 = np.array(d1, dtype=d2.dtype)
 
     # Both arrays
     if isinstance(d1, np.ndarray) and isinstance(d2, np.ndarray):
@@ -314,31 +293,16 @@ def compare_leaves(d1, d2):  # pragma: no cover
         else:
             return np.array_equal(d1, d2)
 
-    # Both lists/tuples
-    if isinstance(d1, (list, tuple)) and isinstance(d2, (list, tuple)):
-        if len(d1) != len(d2):
-            return False
-        return all(compare_leaves(a, b) for a, b in zip(d1, d2))
-
-    # Both dicts
-    if isinstance(d1, dict) and isinstance(d2, dict):
-        if set(d1.keys()) != set(d2.keys()):
-            return False
-        return all(compare_leaves(d1[k], d2[k]) for k in d1)
-
     # Scalars (int/float/str/None)
     if isinstance(d1, float) or isinstance(d2, float):
         return np.isclose(d1, d2, rtol=1e-7, atol=0)
     return d1 == d2
 
 
-def compare_cgns_trees_no_types(
-    tree1: "CGNSTree", tree2: "CGNSTree", path: str = "CGNSTree"
-) -> bool: # pragma: no cover
+def compare_cgns_trees_no_types(tree1, tree2, path: str = "CGNSTree") -> bool:
     """Recursively compare two CGNS trees ignoring order of children.
     Works robustly with Hugging Face Arrow datasets and heterogeneous, nested samples.
     """
-    # Compare node name
     if tree1[0] != tree2[0]:
         print(f"Name mismatch at {path}: {tree1[0]} != {tree2[0]}")
         return False

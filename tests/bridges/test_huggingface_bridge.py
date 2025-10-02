@@ -18,7 +18,7 @@ from plaid.bridges import huggingface_bridge
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
-from plaid.utils.cgns_helper import flatten_cgns_tree, unflatten_cgns_tree
+from plaid.utils import cgns_helper
 
 
 @pytest.fixture()
@@ -29,7 +29,7 @@ def current_directory():
 # %% Fixtures
 @pytest.fixture()
 def dataset(samples, infos) -> Dataset:
-    dataset = Dataset(samples = samples)
+    dataset = Dataset(samples=samples)
     dataset.set_infos(infos)
     return dataset
 
@@ -48,13 +48,15 @@ def generator(dataset) -> Callable:
     def generator_():
         for sample in dataset:
             yield sample
+
     return generator_
 
 
 @pytest.fixture()
-def generator_split(dataset, problem_definition) -> dict[str,Callable]:
+def generator_split(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
     for split_name, ids in problem_definition.get_split().items():
+
         def generator_(ids=ids):
             for id in ids:
                 yield dataset[id]
@@ -70,11 +72,12 @@ def generator_binary(dataset) -> Callable:
             yield {
                 "sample": pickle.dumps(sample),
             }
+
     return generator_
 
 
 @pytest.fixture()
-def generator_split_binary(dataset, problem_definition) -> dict[str,Callable]:
+def generator_split_binary(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
     for split_name, ids in problem_definition.get_split().items():
 
@@ -88,12 +91,13 @@ def generator_split_binary(dataset, problem_definition) -> dict[str,Callable]:
 
 @pytest.fixture()
 def hf_dataset(generator_binary) -> Dataset:
-    hf_dataset = huggingface_bridge.plaid_generator_to_huggingface_binary(generator_binary)
+    hf_dataset = huggingface_bridge.plaid_generator_to_huggingface_binary(
+        generator_binary
+    )
     return hf_dataset
 
 
 class Test_Huggingface_Bridge:
-
     def assert_sample(self, sample):
         assert isinstance(sample, Sample)
         assert sample.get_scalar_names()[0] == "test_scalar"
@@ -112,18 +116,51 @@ class Test_Huggingface_Bridge:
 
     def test_with_datasetdict(self, dataset, problem_definition):
         main_splits = problem_definition.get_split()
-        hf_dataset_dict, flat_cst, key_mappings = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, main_splits)
-        huggingface_bridge.to_plaid_sample(hf_dataset_dict['train'], 0, flat_cst, key_mappings["cgns_types"])
-        huggingface_bridge.to_plaid_sample(hf_dataset_dict['test'], 0, flat_cst, key_mappings["cgns_types"], enforce_shapes = True)
-        huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_dict['train'], flat_cst, key_mappings["cgns_types"])
-        huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_dict['test'], flat_cst, key_mappings["cgns_types"], enforce_shapes = True)
-
+        hf_dataset_dict, flat_cst, key_mappings = (
+            huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
+                dataset, main_splits
+            )
+        )
+        huggingface_bridge.to_plaid_sample(
+            hf_dataset_dict["train"], 0, flat_cst, key_mappings["cgns_types"]
+        )
+        huggingface_bridge.to_plaid_sample(
+            hf_dataset_dict["test"],
+            0,
+            flat_cst,
+            key_mappings["cgns_types"],
+            enforce_shapes=True,
+        )
+        huggingface_bridge.huggingface_dataset_to_plaid(
+            hf_dataset_dict["train"], flat_cst, key_mappings["cgns_types"]
+        )
+        huggingface_bridge.huggingface_dataset_to_plaid(
+            hf_dataset_dict["test"],
+            flat_cst,
+            key_mappings["cgns_types"],
+            enforce_shapes=True,
+        )
+        cgns_helper.compare_cgns_trees(dataset[0].get_mesh(), dataset[0].get_mesh())
+        cgns_helper.compare_cgns_trees_no_types(
+            dataset[0].get_mesh(), dataset[0].get_mesh()
+        )
 
     def test_with_generator(self, generator_split):
-        hf_dataset_dict, flat_cst, key_mappings = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(generator_split)
-        huggingface_bridge.to_plaid_sample(hf_dataset_dict['train'], 0, flat_cst, key_mappings["cgns_types"])
-        huggingface_bridge.to_plaid_sample(hf_dataset_dict['test'], 0, flat_cst, key_mappings["cgns_types"], enforce_shapes = True)
-
+        hf_dataset_dict, flat_cst, key_mappings = (
+            huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+                generator_split
+            )
+        )
+        huggingface_bridge.to_plaid_sample(
+            hf_dataset_dict["train"], 0, flat_cst, key_mappings["cgns_types"]
+        )
+        huggingface_bridge.to_plaid_sample(
+            hf_dataset_dict["test"],
+            0,
+            flat_cst,
+            key_mappings["cgns_types"],
+            enforce_shapes=True,
+        )
 
     # ------------------------------------------------------------------------------
     #     HUGGING FACE INTERACTIONS ON DISK
@@ -132,7 +169,11 @@ class Test_Huggingface_Bridge:
     def test_save_load_to_disk(
         self, current_directory, generator_split, infos, problem_definition
     ):
-        hf_dataset_dict, flat_cst, key_mappings = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(generator_split)
+        hf_dataset_dict, flat_cst, key_mappings = (
+            huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+                generator_split
+            )
+        )
 
         test_dir = Path(current_directory) / Path("test")
         huggingface_bridge.save_dataset_dict_to_disk(test_dir, hf_dataset_dict)
@@ -155,8 +196,10 @@ class Test_Huggingface_Bridge:
     def test_save_load_to_disk_binary(
         self, current_directory, generator_split_binary, infos, problem_definition
     ):
-        hf_dataset_dict = huggingface_bridge.plaid_generator_to_huggingface_datasetdict_binary(
-            generator_split_binary
+        hf_dataset_dict = (
+            huggingface_bridge.plaid_generator_to_huggingface_datasetdict_binary(
+                generator_split_binary
+            )
         )
         test_dir = Path(current_directory) / Path("test")
         huggingface_bridge.save_dataset_dict_to_disk(test_dir, hf_dataset_dict)
@@ -170,7 +213,9 @@ class Test_Huggingface_Bridge:
         shutil.rmtree(test_dir)
 
     def test_to_plaid_sample_binary(self, generator_binary):
-        hfds = huggingface_bridge.plaid_generator_to_huggingface_binary(generator_binary)
+        hfds = huggingface_bridge.plaid_generator_to_huggingface_binary(
+            generator_binary
+        )
         huggingface_bridge.to_plaid_sample_binary(hfds[0])
 
     def test_to_plaid_sample_binary_fallback_build_succeeds(self, dataset):
@@ -186,7 +231,9 @@ class Test_Huggingface_Bridge:
 
     def test_plaid_dataset_to_huggingface_binary(self, dataset):
         hfds = huggingface_bridge.plaid_dataset_to_huggingface_binary(dataset)
-        hfds = huggingface_bridge.plaid_dataset_to_huggingface_binary(dataset, ids=[0, 1])
+        hfds = huggingface_bridge.plaid_dataset_to_huggingface_binary(
+            dataset, ids=[0, 1]
+        )
         self.assert_hf_dataset_binary(hfds)
 
     def test_plaid_dataset_to_huggingface_datasetdict_binary(
@@ -197,14 +244,20 @@ class Test_Huggingface_Bridge:
         )
 
     def test_plaid_generator_to_huggingface_binary(self, generator_binary):
-        hfds = huggingface_bridge.plaid_generator_to_huggingface_binary(generator_binary)
+        hfds = huggingface_bridge.plaid_generator_to_huggingface_binary(
+            generator_binary
+        )
         hfds = huggingface_bridge.plaid_generator_to_huggingface_binary(
             generator_binary, processes_number=2
         )
         self.assert_hf_dataset_binary(hfds)
 
-    def test_plaid_generator_to_huggingface_datasetdict_binary(self, generator_split_binary):
-        huggingface_bridge.plaid_generator_to_huggingface_datasetdict_binary(generator_split_binary)
+    def test_plaid_generator_to_huggingface_datasetdict_binary(
+        self, generator_split_binary
+    ):
+        huggingface_bridge.plaid_generator_to_huggingface_datasetdict_binary(
+            generator_split_binary
+        )
 
     def test_huggingface_dataset_to_plaid_binary(self, hf_dataset):
         ds = huggingface_bridge.huggingface_dataset_to_plaid_binary(hf_dataset)
@@ -229,13 +282,17 @@ class Test_Huggingface_Bridge:
                 hf_dataset, ids=[0, 1], processes_number=2, large_dataset=True
             )
 
-    def test_huggingface_dataset_to_plaid_error_processes_number_binary(self, hf_dataset):
+    def test_huggingface_dataset_to_plaid_error_processes_number_binary(
+        self, hf_dataset
+    ):
         with pytest.raises(AssertionError):
             huggingface_bridge.huggingface_dataset_to_plaid_binary(
                 hf_dataset, processes_number=128
             )
 
-    def test_huggingface_dataset_to_plaid_error_processes_number_binary_2(self, hf_dataset):
+    def test_huggingface_dataset_to_plaid_error_processes_number_binary_2(
+        self, hf_dataset
+    ):
         with pytest.raises(AssertionError):
             huggingface_bridge.huggingface_dataset_to_plaid_binary(
                 hf_dataset, ids=[0], processes_number=2
