@@ -24,7 +24,13 @@ from plaid.utils.cgns_helper import (
 # DATASET_NAME = "Rotor37"
 # SPLIT_NAMES = ["train_1000", "test"]
 
-DATASET_NAME = "VKI-LS59"
+# DATASET_NAME = "VKI-LS59"
+# SPLIT_NAMES = ["train", "test"]
+
+# DATASET_NAME = "2D_Multiscale_Hyperelasticity"
+# SPLIT_NAMES = ["DOE_train", "DOE_test"]
+
+DATASET_NAME = "2D_profile"
 SPLIT_NAMES = ["train", "test"]
 
 
@@ -39,7 +45,7 @@ if __name__ == "__main__":
     print("Time to instantiate old HF dataset from hub =", end - start)
 
     print()
-    print("Experience 1: fast columnar retrieval (only 1DArray are instantiated in np-copy mode)")
+    print("Experience 1: fast columnar retrieval (only 1DArray are instantiated in no-copy mode)")
     print()
 
     # start = time()
@@ -50,7 +56,6 @@ if __name__ == "__main__":
     # infos = huggingface_bridge.load_infos_from_disk(dir_test)
 
     # features_names = key_mappings["variable_features"]
-    # dtypes = key_mappings["dtypes"]
     # cgns_types = key_mappings["cgns_types"]
     # end = time()
     # print("Time to instantiate new HF dataset from disk =", end - start)
@@ -64,7 +69,6 @@ if __name__ == "__main__":
     infos = huggingface_bridge.load_infos_from_hub(repo_id)
 
     features_names = key_mappings["variable_features"]
-    dtypes = key_mappings["dtypes"]
     cgns_types = key_mappings["cgns_types"]
     end = time()
     print("Time to instantiate new HF dataset from hub =", end - start)
@@ -88,53 +92,55 @@ if __name__ == "__main__":
     print("Experience 2: plaid dataset generation from HF dataset: old vs new")
     print()
 
+    ids_split = pb_def.get_split(SPLIT_NAMES[0])
+
     start = time()
     plaid_dataset = huggingface_bridge.huggingface_dataset_to_plaid_binary(
-        hf_dataset_old, ids=pb_def.get_split(SPLIT_NAMES[0]), processes_number=12, verbose=True
+        hf_dataset_old, ids=ids_split, processes_number=12, verbose=True
     )
     end = time()
     print("Time to convert old HF dataset to plaid (binary blobs) =", end - start)
 
     tic = time()
-    plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_new, flat_cst, cgns_types, dtypes, enforce_type_shapes = False, verbose = False)
+    plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_new, flat_cst, cgns_types, enforce_shapes = False, verbose = False)
     print("Time to convert new HF dataset to plaid (fast) =", time() - tic)
 
     # fix_cgns_tree_types(plaid_dataset[2].features.data[0])
-    plaid_dataset[2].save("sample", overwrite=True)
+    # plaid_dataset[2].save("sample", overwrite=True)
 
     # print(f"get({pb_def.get_output_scalars_names()[0]}): ", plaid_dataset_new[0].get_scalar(pb_def.get_output_scalars_names()[0]))
     # print(f"get({pb_def.get_output_fields_names()[0]}): ", plaid_dataset_new[0].get_field(pb_def.get_output_fields_names()[0]))
     # print("get(nodes): ", plaid_dataset_new[0].get_nodes())
     # print("get(elements): ", plaid_dataset_new[0].get_elements())
 
-    # tic = time()
-    # plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_new, flat_cst, cgns_types, dtypes, enforce_type_shapes = True, verbose = False)
-    # print("Time to convert new HF dataset to plaid (safe) =", time() - tic)
+    tic = time()
+    plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_new, flat_cst, cgns_types, enforce_shapes = True, verbose = False)
+    print("Time to convert new HF dataset to plaid (safe) =", time() - tic)
 
 
-    show_cgns_tree(plaid_dataset[2].features.data[0])
+    show_cgns_tree(plaid_dataset[ids_split[2]].features.data[0])
     print("--------------")
-    show_cgns_tree(plaid_dataset_new[2].features.data[0])
+    show_cgns_tree(plaid_dataset_new[ids_split[2]].features.data[0])
     print("--------------")
 
 
     print(
         "first sample CGNS trees identical (no types)?:",
         compare_cgns_trees_no_types(
-            plaid_dataset[2].features.data[0], plaid_dataset_new[2].features.data[0]
+            plaid_dataset[ids_split[2]].features.data[0], plaid_dataset_new[ids_split[2]].features.data[0]
         ),
     )
 
 
-    print()
-    print("Experience 3: new HF dataset streaming retrieval time")
-    print()
+    # print()
+    # print("Experience 3: new HF dataset streaming retrieval time")
+    # print()
 
-    hf_dataset_test = datasets.load_dataset(
-        repo_id, split=SPLIT_NAMES[0], streaming=True
-    )
-    for sample in tqdm(hf_dataset_test, desc="Streaming hf dataset new"):
-        for n in features_names:
-            sample[n]
-    end = time()
-    print("Duration streaming retrieval =", end - start)
+    # hf_dataset_test = datasets.load_dataset(
+    #     repo_id, split=SPLIT_NAMES[0], streaming=True
+    # )
+    # for sample in tqdm(hf_dataset_test, desc="Streaming hf dataset new"):
+    #     for n in features_names:
+    #         sample[n]
+    # end = time()
+    # print("Duration streaming retrieval =", end - start)

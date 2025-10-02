@@ -5,14 +5,20 @@ os.environ["HF_HUB_DISABLE_XET"] = "1"
 from plaid.bridges import huggingface_bridge
 
 
-DATASET_NAME = "Tensile2d"
-SPLIT_NAMES = ["train_500", "test", "OOD"]
+# DATASET_NAME = "Tensile2d"
+# SPLIT_NAMES = ["train_500", "test", "OOD"]
 
 # DATASET_NAME = "Rotor37"
 # SPLIT_NAMES = ["train_1000", "test"]
 
 # DATASET_NAME = "VKI-LS59"
 # SPLIT_NAMES = ["train", "test"]
+
+# DATASET_NAME = "2D_Multiscale_Hyperelasticity"
+# SPLIT_NAMES = ["DOE_train", "DOE_test"]
+
+DATASET_NAME = "2D_profile"
+SPLIT_NAMES = ["train", "test"]
 
 
 if __name__ == "__main__":
@@ -32,7 +38,6 @@ if __name__ == "__main__":
     # print("flattening trees and infering hf features")
     main_splits = {split_name:pb_def.get_split(split_name) for split_name in SPLIT_NAMES}
 
-
     dataset_hf_new, flat_cst, key_mappings = huggingface_bridge.plaid_dataset_to_huggingface(
         plaid_dataset, main_splits, processes_number=12)
 
@@ -42,8 +47,8 @@ if __name__ == "__main__":
     # huggingface_bridge.save_infos_to_disk(dir_test, infos)
     # huggingface_bridge.save_problem_definition_to_disk(dir_test, "task_1", pb_def)
 
-    repo_id_test = f"fabiencasenave/{DATASET_NAME}"
-    huggingface_bridge.push_dataset_dict_to_hub(repo_id_test, dataset_hf_new)
-    huggingface_bridge.push_tree_struct_to_hub(repo_id_test, flat_cst, key_mappings)
-    huggingface_bridge.push_infos_to_hub(repo_id_test, infos)
-    huggingface_bridge.push_problem_definition_to_hub(repo_id_test, "task_1", pb_def)
+    repo_id = f"fabiencasenave/{DATASET_NAME}"
+    huggingface_bridge.push_dataset_dict_to_hub(repo_id, dataset_hf_new)
+    huggingface_bridge.push_tree_struct_to_hub(repo_id, flat_cst, key_mappings)
+    huggingface_bridge.push_infos_to_hub(repo_id, infos)
+    huggingface_bridge.push_problem_definition_to_hub(repo_id, "task_1", pb_def)

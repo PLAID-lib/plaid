@@ -222,7 +222,7 @@ def unflatten_cgns_tree_optree(leaves, treedef, cgns_types):
 
 def flatten_cgns_tree(
     pyTree: CGNSTree,
-) -> tuple[dict[str, object], dict[str, str], dict[str, object]]:
+) -> tuple[dict[str, object], dict[str, str]]:
     """Flatten a CGNS tree into dictionaries of primitives for Hugging Face serialization.
 
     Traverses the CGNS tree and produces:
@@ -245,21 +245,12 @@ def flatten_cgns_tree(
         >>> dtypes["Base1/Zone1/Solution1/Field1"]  # 'float64'
     """
     flat = {}
-    dtypes = {}
     cgns_types = {}
 
     def visit(tree, path=""):
         for node in tree[2]:
             name, data, children, cgns_type = node
             new_path = f"{path}/{name}" if path else name
-
-            if isinstance(data, np.ndarray):
-                dtypes[new_path] = str(data.dtype)
-            elif data is None:
-                dtypes[new_path] = None
-            # else:
-            #     1./0.
-            #     dtypes[new_path] = str(np.array(data).dtype)
 
             flat[new_path] = data
             cgns_types[new_path] = cgns_type
@@ -268,7 +259,7 @@ def flatten_cgns_tree(
                 visit(node, new_path)
 
     visit(pyTree)
-    return flat, dtypes, cgns_types
+    return flat, cgns_types
 
 
 def nodes_to_tree(nodes):
@@ -289,44 +280,6 @@ def nodes_to_tree(nodes):
 
 
 def unflatten_cgns_tree(
-    flat: dict[str, object],
-    dtypes: dict[str, str],
-    cgns_types: dict[str, str]
-) -> CGNSTree:
-    """Reconstruct a CGNS tree from flattened primitives, dtypes, and CGNS type information.
-
-    Args:
-        flat (dict[str, object]): Dictionary mapping paths to primitive values (lists, scalars, or None).
-        dtypes (dict[str, str]): Dictionary mapping paths to dtype strings.
-        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS type names (ending in '_t').
-
-    Returns:
-        CGNSTree: The reconstructed CGNSTree node.
-
-    Example:
-        >>> tree = unflatten_cgns_tree(flat, dtypes, cgns_types)
-    """
-    # Build all nodes from paths
-    nodes = {}
-
-    for path, value in flat.items():
-        dtype = dtypes.get(path)
-        cgns_type = cgns_types.get(path)
-
-        if value is None:
-            data = None
-        elif dtype == value.dtype:
-            data = value
-        else:
-            data = value.astype(dtype)
-
-        nodes[path] = [path.split("/")[-1], data, [], cgns_type]
-
-    # Re-link nodes into tree structure
-    return nodes_to_tree(nodes)
-
-
-def unflatten_cgns_tree_no_dtypes(
     flat: dict[str, object],
     cgns_types: dict[str, str],
 ) -> CGNSTree:

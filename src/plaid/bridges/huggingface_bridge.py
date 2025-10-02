@@ -43,7 +43,7 @@ from pydantic import ValidationError
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
 from plaid.types import IndexType
-from plaid.utils.cgns_helper import flatten_cgns_tree, unflatten_cgns_tree, unflatten_cgns_tree_no_dtypes
+from plaid.utils.cgns_helper import flatten_cgns_tree, unflatten_cgns_tree
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
@@ -679,7 +679,7 @@ def huggingface_dataset_to_plaid_binary(
             "Trying to parallelize with more processes than selected samples in dataset"
         )
 
-    description = "Converting Hugging Face dataset to plaid"
+    description = "Converting Hugging Face binary dataset to plaid"
 
     dataset = Dataset()
 
@@ -753,13 +753,16 @@ def to_plaid_sample(
     i:int,
     flat_cst: dict,
     cgns_types: dict,
-    dtypes: Optional[dict[str, str]] = None,
-    enforce_type_shapes: bool = True
+    enforce_shapes: bool = False
 ) -> Sample:
 
     table = ds.data
 
-    if enforce_type_shapes:
+    if not enforce_shapes:
+        row = {name:table[name][i].values.to_numpy(zero_copy_only=False) for name in table.column_names}
+        row.update(flat_cst)
+        unflat = unflatten_cgns_tree(row, cgns_types)
+    else:
         row = {}
         for name in table.column_names:
             if isinstance(table[name][i].values, pa.ListArray):
@@ -767,22 +770,18 @@ def to_plaid_sample(
             else:
                 row[name] = table[name][i].values.to_numpy(zero_copy_only=True)
         row.update(flat_cst)
-        unflat = unflatten_cgns_tree(row, dtypes, cgns_types)
-    else:
-        row = {name:table[name][i].values.to_numpy(zero_copy_only=False) for name in table.column_names}
-        row.update(flat_cst)
-        unflat = unflatten_cgns_tree_no_dtypes(row, cgns_types)
+        unflat = unflatten_cgns_tree(row, cgns_types)
 
     sample = Sample(path = None, features=SampleFeatures({0.0: unflat}))
     return Sample.model_validate(sample)
 
+from joblib import Parallel, delayed
 
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
     flat_cst: dict,
     cgns_types: dict,
-    dtypes: Optional[dict[str, str]] = None,
-    enforce_type_shapes: bool = True,
+    enforce_shapes: bool = True,
     verbose: bool = True,
 ) -> Dataset:
     """Convert a Hugging Face dataset to a plaid Dataset using explicit dtypes and CGNS type information.
@@ -800,9 +799,8 @@ def huggingface_dataset_to_plaid(
     description = "Converting Hugging Face dataset to plaid"
 
     sample_list = []
-
     for i in tqdm(range(len(ds)), disable=not verbose, desc=description):
-        sample_list.append(to_plaid_sample(ds, i, flat_cst, cgns_types, dtypes, enforce_type_shapes))
+        sample_list.append(to_plaid_sample(ds, i, flat_cst, cgns_types, enforce_shapes))
 
     return Dataset(samples=sample_list)
 
@@ -815,11 +813,11 @@ def infer_hf_features_from_value(value):
     # Scalars
     if np.isscalar(value):
         dtype = np.array(value).dtype
-        if np.issubdtype(dtype, np.floating): # enforcing float32 for all floats
+        if np.issubdtype(dtype, np.floating): # enforcing float32 for all floats, to be updated in case we want to keep float64
             return Value("float32")
         elif np.issubdtype(dtype, np.int32):
             return Value("int32")
-        elif np.issubdtype(dtype, np.int64):
+        elif np.issubdtype(dtype, np.int64): # very important to satisfy the CGNS standard
             return Value("int64")
         elif np.issubdtype(dtype, np.bool_):
             return Value("bool")
@@ -880,13 +878,12 @@ def _generator_prepare_for_huggingface(generators, verbose: bool = True):
 
     global_cgns_types = {}
     global_feature_types = {}
-    global_dtypes = {}
     global_constant_leaves = {}
 
     for split_name, generator in generators.items():
         for sample in tqdm(generator(), disable=not verbose, desc=f"Prepare for HF on split {split_name}"):
             tree = sample.features.data[0.0]
-            flat, dtypes, cgns_types = flatten_cgns_tree(tree)
+            flat, cgns_types = flatten_cgns_tree(tree)
 
             for path, value in flat.items():
                 # --- CGNS types ---
@@ -895,14 +892,6 @@ def _generator_prepare_for_huggingface(generators, verbose: bool = True):
                 elif global_cgns_types[path] != cgns_types[path]:
                     raise ValueError(
                         f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
-                    )
-
-                # --- dtypes ---
-                if path not in global_dtypes:
-                    global_dtypes[path] = dtypes[path]
-                elif global_dtypes[path] != dtypes[path]:
-                    raise ValueError(
-                        f"Conflict for path '{path}': {global_dtypes[path]} vs {dtypes[path]}"
                     )
 
                 # --- feature types ---
@@ -927,7 +916,6 @@ def _generator_prepare_for_huggingface(generators, verbose: bool = True):
     # Sort dicts by keys
     global_cgns_types = {p: global_cgns_types[p] for p in sorted(global_cgns_types)}
     global_feature_types = {p: global_feature_types[p] for p in sorted(global_feature_types)}
-    global_dtypes = {p: global_dtypes[p] for p in sorted(global_dtypes)}
     global_constant_leaves = {p: global_constant_leaves[p] for p in sorted(global_constant_leaves)}
 
     flat_cst = {p: e["value"] for p, e in global_constant_leaves.items() if e["constant"]}
@@ -941,7 +929,6 @@ def _generator_prepare_for_huggingface(generators, verbose: bool = True):
     key_mappings["variable_features"] = var_features
     key_mappings["constant_features"] = cst_features
     key_mappings["cgns_types"] = global_cgns_types
-    key_mappings["dtypes"] = global_dtypes
 
     return flat_cst, key_mappings, hf_features
 
@@ -957,7 +944,7 @@ def plaid_generator_to_huggingface_datasetdict(
     def generator_fn(gen_func, hf_features):
         for sample in gen_func():
             tree = sample.features.data[0.0]
-            flat, _, _ = flatten_cgns_tree(tree)
+            flat, _= flatten_cgns_tree(tree)
             yield {path: flat.get(path, None) for path in hf_features.keys()}
 
     _dict = {}
@@ -975,92 +962,92 @@ def plaid_generator_to_huggingface_datasetdict(
 
 # ------
 
-def reconstruct_flat_tree_from_hf_sample(
-    sample: dict[str, object],
-    dtypes: dict[str, str],
-) -> dict[str, object]:
-    """Reconstruct a flat tree (dict) from a Hugging Face sample using provided dtypes.
+# def reconstruct_flat_tree_from_hf_sample(
+#     sample: dict[str, object],
+#     dtypes: dict[str, str],
+# ) -> dict[str, object]:
+#     """Reconstruct a flat tree (dict) from a Hugging Face sample using provided dtypes.
 
-    Args:
-        sample (dict[str, object]): The Hugging Face sample dictionary.
-        dtypes (dict[str, str]): Dictionary mapping feature names to numpy dtype strings.
+#     Args:
+#         sample (dict[str, object]): The Hugging Face sample dictionary.
+#         dtypes (dict[str, str]): Dictionary mapping feature names to numpy dtype strings.
 
-    Returns:
-        dict[str, object]: Flat tree with numpy arrays or scalars for each feature.
-    """
-    flat_tree = {}
+#     Returns:
+#         dict[str, object]: Flat tree with numpy arrays or scalars for each feature.
+#     """
+#     flat_tree = {}
 
-    for key, value in sample.items():
-        dtype = np.dtype(dtypes[key])
+#     for key, value in sample.items():
+#         dtype = np.dtype(dtypes[key])
 
-        # Handle None
-        if value is None:
-            flat_tree[key] = None
-            continue
+#         # Handle None
+#         if value is None:
+#             flat_tree[key] = None
+#             continue
 
-        # Convert list to np.array with correct dtype
-        if isinstance(value, (list, tuple)):
-            arr = np.array(value, dtype=dtype)
-            flat_tree[key] = arr
-        # Scalars
-        elif np.isscalar(value):
-            flat_tree[key] = dtype(type(value))(value)  # ensure dtype matches
-        else:
-            # Already np.array
-            flat_tree[key] = np.array(value, dtype=dtype)
+#         # Convert list to np.array with correct dtype
+#         if isinstance(value, (list, tuple)):
+#             arr = np.array(value, dtype=dtype)
+#             flat_tree[key] = arr
+#         # Scalars
+#         elif np.isscalar(value):
+#             flat_tree[key] = dtype(type(value))(value)  # ensure dtype matches
+#         else:
+#             # Already np.array
+#             flat_tree[key] = np.array(value, dtype=dtype)
 
-    return flat_tree
+#     return flat_tree
 
 
-def infer_hf_features(
-    flat_tree: dict[str, object],
-    dtypes: dict[str, str],
-) -> dict[str, object]:
-    """Infer Hugging Face dataset features from a flat tree and dtypes.
+# def infer_hf_features(
+#     flat_tree: dict[str, object],
+#     dtypes: dict[str, str],
+# ) -> dict[str, object]:
+#     """Infer Hugging Face dataset features from a flat tree and dtypes.
 
-    Args:
-        flat_tree (dict[str, object]): Flat tree with numpy arrays or scalars for each feature.
-        dtypes (dict[str, str]): Dictionary mapping feature names to numpy dtype strings.
+#     Args:
+#         flat_tree (dict[str, object]): Flat tree with numpy arrays or scalars for each feature.
+#         dtypes (dict[str, str]): Dictionary mapping feature names to numpy dtype strings.
 
-    Returns:
-        dict[str, object]: Dictionary mapping feature names to Hugging Face feature types.
-    """
-    features = {}
+#     Returns:
+#         dict[str, object]: Dictionary mapping feature names to Hugging Face feature types.
+#     """
+#     features = {}
 
-    for key, value in flat_tree.items():
-        dtype = np.dtype(dtypes.get(key))  # get original dtype
-        hf_dtype = str(np.dtype(dtype))
+#     for key, value in flat_tree.items():
+#         dtype = np.dtype(dtypes.get(key))  # get original dtype
+#         hf_dtype = str(np.dtype(dtype))
 
-        # Strings
-        if hf_dtype.startswith("|S") or hf_dtype == "object":
-            features[key] = Sequence(Value("string"))
+#         # Strings
+#         if hf_dtype.startswith("|S") or hf_dtype == "object":
+#             features[key] = Sequence(Value("string"))
 
-        # None values
-        elif value is None:
-            features[key] = Value("null")
+#         # None values
+#         elif value is None:
+#             features[key] = Value("null")
 
-        # Scalars
-        elif np.isscalar(value):
-            features[key] = Value(hf_dtype)
+#         # Scalars
+#         elif np.isscalar(value):
+#             features[key] = Value(hf_dtype)
 
-        # Lists or 1D/ND arrays
-        elif isinstance(value, (list, tuple, np.ndarray)):
-            arr = np.array(value, dtype=dtype)
-            if arr.ndim == 1:
-                features[key] = Sequence(Value(hf_dtype))  # variable-length 1D
-            elif arr.ndim == 2:
-                # 2D arrays: variable-length first dimension
-                features[key] = Sequence(Sequence(Value(hf_dtype)))
-            elif arr.ndim == 3:
-                # 3D arrays: variable-length first dimension
-                features[key] = Sequence(Sequence(Sequence(Value(hf_dtype))))
-            else:
-                raise TypeError(f"Unsupported ndim for key={key}: {arr.ndim}")
+#         # Lists or 1D/ND arrays
+#         elif isinstance(value, (list, tuple, np.ndarray)):
+#             arr = np.array(value, dtype=dtype)
+#             if arr.ndim == 1:
+#                 features[key] = Sequence(Value(hf_dtype))  # variable-length 1D
+#             elif arr.ndim == 2:
+#                 # 2D arrays: variable-length first dimension
+#                 features[key] = Sequence(Sequence(Value(hf_dtype)))
+#             elif arr.ndim == 3:
+#                 # 3D arrays: variable-length first dimension
+#                 features[key] = Sequence(Sequence(Sequence(Value(hf_dtype))))
+#             else:
+#                 raise TypeError(f"Unsupported ndim for key={key}: {arr.ndim}")
 
-        else:
-            raise TypeError(f"Unsupported type for key={key}: {type(value)}")
+#         else:
+#             raise TypeError(f"Unsupported type for key={key}: {type(value)}")
 
-    return features
+#     return features
 
 
 # ----------------------------------------------------------------
