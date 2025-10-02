@@ -250,21 +250,19 @@ def flatten_cgns_tree(
 
     def visit(tree, path=""):
         for node in tree[2]:
-            name, data, children, extra = node
+            name, data, children, cgns_type = node
             new_path = f"{path}/{name}" if path else name
 
-            # Flatten values for HF: always primitive types
             if isinstance(data, np.ndarray):
-                flat[new_path] = data.tolist()
                 dtypes[new_path] = str(data.dtype)
             elif data is None:
-                flat[new_path] = None
                 dtypes[new_path] = None
-            else:
-                flat[new_path] = data
-                dtypes[new_path] = str(np.array(data).dtype)
+            # else:
+            #     1./0.
+            #     dtypes[new_path] = str(np.array(data).dtype)
 
-            cgns_types[new_path] = extra
+            flat[new_path] = data
+            cgns_types[new_path] = cgns_type
 
             if children:
                 visit(node, new_path)
@@ -345,14 +343,6 @@ def unflatten_cgns_tree_no_dtypes(
 
 def fix_cgns_tree_types(node):
     name, data, children, cgns_type = node
-
-    # # Fix data types according to CGNS type
-    # if cgns_type is not None:
-    #     if cgns_type == "IndexArray_t":
-    #         if data is not None:
-    #             data = CGU.setIntegerAsArray(*data)
-    #     if data is not None and len(data)==1:
-    #         data = np.stack(data)
 
     # Fix data types according to CGNS type
     if data is not None:

@@ -7,7 +7,7 @@
 #
 #
 from plaid import Dataset
-from plaid.bridges.huggingface_bridge import load_hf_dataset_from_hub, to_plaid_sample
+from plaid.bridges.huggingface_bridge import load_dataset_from_hub, to_plaid_sample_binary
 from plaid.examples.config import _HF_REPOS
 
 
@@ -40,11 +40,11 @@ class _LazyDatasets:
             return self._cache[ex_name]
 
         try:
-            ds_stream = load_hf_dataset_from_hub(hf_repo, split="all_samples", streaming=True)
+            ds_stream = load_dataset_from_hub(hf_repo, split="all_samples", streaming=True)
             samples = []
             for _ in range(2):
                 hf_sample = next(iter(ds_stream))
-                samples.append(to_plaid_sample(hf_sample))
+                samples.append(to_plaid_sample_binary(hf_sample))
             dataset = Dataset(samples=samples)
             self._cache[ex_name] = dataset
             return dataset

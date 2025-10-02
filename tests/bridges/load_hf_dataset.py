@@ -14,6 +14,7 @@ from plaid.utils.base import get_mem
 from plaid.utils.cgns_helper import (
     compare_cgns_trees_no_types,
     show_cgns_tree,
+    fix_cgns_tree_types
 )
 
 
@@ -35,7 +36,7 @@ if __name__ == "__main__":
     print("Time to instantiate old HF dataset from hub =", end - start)
 
     print()
-    print("Experience 1: zero copy columnar retrieval")
+    print("Experience 1: fast columnar retrieval (only 1DArray are instantiated in np-copy mode)")
     print()
 
     start = time()
@@ -45,8 +46,7 @@ if __name__ == "__main__":
     pb_def = huggingface_bridge.load_problem_definition_from_disk(dir_test, "task_1")
     infos = huggingface_bridge.load_infos_from_disk(dir_test)
 
-    fn = key_mappings["features_names"]
-    fnn = list(fn.keys())
+    features_names = key_mappings["variable_features"]
     dtypes = key_mappings["dtypes"]
     cgns_types = key_mappings["cgns_types"]
     end = time()
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id, "task_1")
     infos = huggingface_bridge.load_infos_from_hub(repo_id)
 
-    fn = key_mappings["features_names"]
+    features_names = key_mappings["variable_features"]
     dtypes = key_mappings["dtypes"]
     cgns_types = key_mappings["cgns_types"]
     end = time()
@@ -71,15 +71,13 @@ if __name__ == "__main__":
     start = time()
     all_data = {}
     for i in range(len(hf_dataset_new)):
-        for n in fnn:
-            all_data[(i, n)] = hf_dataset_new.data[fn[n]][i].values.to_numpy(
-                zero_copy_only=True
-            )
+        for n in features_names:
+            all_data[(i, n)] = hf_dataset_new.data[n][i].values.to_numpy(zero_copy_only=False)
     end = time()
     print("Time to initiate numpy objects for all the data =", end - start)
     print("RAM usage after loop:", get_mem(), "MB")
 
-    print(f"check retrieval: {list(fn.keys())[0]} =", all_data[(0, list(fn.keys())[0])])
+    print(f"check retrieval: {features_names[0]} =", all_data[(0, list(features_names)[0])])
 
     print()
 
@@ -98,8 +96,11 @@ if __name__ == "__main__":
     plaid_dataset_new = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset_new, flat_cst, cgns_types, dtypes, enforce_type_shapes = False, verbose = False)
     print("Time to convert new HF dataset to plaid (fast) =", time() - tic)
 
-    print("get(P): ", plaid_dataset_new[0].get_scalar(list(fn.keys())[0]))
-    print("get(U1): ", plaid_dataset_new[0].get_field(list(fn.keys())[1]))
+    fix_cgns_tree_types(plaid_dataset[2].features.data[0])
+    plaid_dataset[2].save("sample", overwrite=True)
+
+    print(f"get({pb_def.get_output_scalars_names()[0]}): ", plaid_dataset_new[0].get_scalar(pb_def.get_output_scalars_names()[0]))
+    print(f"get({pb_def.get_output_fields_names()[0]}): ", plaid_dataset_new[0].get_field(pb_def.get_output_fields_names()[0]))
     print("get(nodes): ", plaid_dataset_new[0].get_nodes())
     print("get(elements): ", plaid_dataset_new[0].get_elements())
 
@@ -108,15 +109,16 @@ if __name__ == "__main__":
     print("Time to convert new HF dataset to plaid (safe) =", time() - tic)
 
 
-    show_cgns_tree(plaid_dataset[0].features.data[0])
+    show_cgns_tree(plaid_dataset[2].features.data[0])
     print("--------------")
-    show_cgns_tree(plaid_dataset_new[0].features.data[0])
+    show_cgns_tree(plaid_dataset_new[2].features.data[0])
     print("--------------")
+
 
     print(
         "first sample CGNS trees identical (no types)?:",
         compare_cgns_trees_no_types(
-            plaid_dataset[0].features.data[0], plaid_dataset_new[0].features.data[0]
+            plaid_dataset[2].features.data[0], plaid_dataset_new[2].features.data[0]
         ),
     )
 
@@ -129,7 +131,7 @@ if __name__ == "__main__":
         repo_id, split=SPLIT_NAMES[0], streaming=True
     )
     for sample in tqdm(hf_dataset_test, desc="Streaming hf dataset new"):
-        for n in fnn:
-            sample[fn[n]]
+        for n in features_names:
+            sample[n]
     end = time()
     print("Duration streaming retrieval =", end - start)

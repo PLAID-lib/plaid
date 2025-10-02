@@ -118,7 +118,7 @@ print(f" {pb_def = }")
 # ## Section 1: Convert plaid dataset to Hugging Face Dataset
 
 # %%
-hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset)
+hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface_binary(dataset)
 print()
 print(f"{hf_dataset = }")
 
@@ -126,14 +126,14 @@ print(f"{hf_dataset = }")
 # By default, all the indices from all splits are taken into account. One can generate a Hugging Face dataset for a given split by providing the problem_definition:
 
 # %%
-hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset, pb_def.get_split("train"), split_name="train")
+hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface_binary(dataset, pb_def.get_split("train"), split_name="train")
 print(hf_dataset)
 
 # %% [markdown]
 # The previous code generates a Hugging Face dataset containing all the samples from the plaid dataset, the splits being defined in the hf_dataset descriptions. For splits, Hugging Face proposes `DatasetDict`, which are dictionaries of hf datasets, with keys being the name of the corresponding splits. It is possible to generate a hf datasetdict directly from plaid:
 
 # %%
-hf_datasetdict = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, main_splits = pb_def.get_split())
+hf_datasetdict = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict_binary(dataset, main_splits = pb_def.get_split())
 print()
 print(f"{hf_datasetdict = }")
 
@@ -149,7 +149,7 @@ def generator():
         }
 
 
-hf_dataset_gen = huggingface_bridge.plaid_generator_to_huggingface(
+hf_dataset_gen = huggingface_bridge.plaid_generator_to_huggingface_binary(
     generator
 )
 print(f"{hf_dataset_gen = }")
@@ -165,7 +165,7 @@ for split_name, ids in pb_def.get_split().items():
             yield {"sample": pickle.dumps(dataset[id])}
     generators[split_name] = generator_
 
-hf_datasetdict = huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+hf_datasetdict = huggingface_bridge.plaid_generator_to_huggingface_datasetdict_binary(
     generators
 )
 print(f"{hf_datasetdict = }")
@@ -174,7 +174,7 @@ print(f"{hf_datasetdict = }")
 # ## Section 3: Convert a Hugging Face dataset to plaid
 
 # %%
-dataset_2 = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
+dataset_2 = huggingface_bridge.huggingface_dataset_to_plaid_binary(hf_dataset)
 print()
 print(f"{dataset_2 = }")
 
@@ -187,15 +187,15 @@ print(f"{dataset_2 = }")
 
 # %%
 huggingface_bridge.save_dataset_dict_to_disk("/tmp/test_dir", hf_datasetdict)
-huggingface_bridge.save_dataset_infos_to_disk("/tmp/test_dir", infos)
+huggingface_bridge.save_infos_to_disk("/tmp/test_dir", infos)
 huggingface_bridge.save_problem_definition_to_disk("/tmp/test_dir", "task_1", pb_def)
 
 # %% [markdown]
 # Loading datasetdict, infos and problem definition from disk:
 
 # %%
-loaded_hf_datasetdict = huggingface_bridge.load_dataset_dict_from_to_disk("/tmp/test_dir")
-loaded_infos = huggingface_bridge.load_dataset_infos_from_disk("/tmp/test_dir")
+loaded_hf_datasetdict = huggingface_bridge.load_dataset_from_disk("/tmp/test_dir")
+loaded_infos = huggingface_bridge.load_infos_from_disk("/tmp/test_dir")
 loaded_pb_def = huggingface_bridge.load_problem_definition_from_disk("/tmp/test_dir", "task_1")
 
 print(f"{loaded_hf_datasetdict = }")
@@ -274,7 +274,7 @@ print(f"{hf_sample = }")
 # We notice that ``hf_sample`` contains a binary object efficiently handled by huggingface datasets. It can be converted into a plaid sample using a specific constructor relying on a pydantic validator.
 
 # %%
-plaid_sample = huggingface_bridge.to_plaid_sample(hf_sample)
+plaid_sample = huggingface_bridge.to_plaid_sample_binary(hf_sample)
 
 show_sample(plaid_sample)
 
