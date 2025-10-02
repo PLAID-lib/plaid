@@ -38,7 +38,7 @@ if __name__ == "__main__":
     # print("flattening trees and infering hf features")
     main_splits = {split_name:pb_def.get_split(split_name) for split_name in SPLIT_NAMES}
 
-    dataset_hf_new, flat_cst, key_mappings = huggingface_bridge.plaid_dataset_to_huggingface(
+    dataset_hf_new, flat_cst, key_mappings = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
         plaid_dataset, main_splits, processes_number=12)
 
     # dir_test = f"{DATASET_NAME}"
