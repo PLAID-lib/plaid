@@ -6,11 +6,12 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
+import os
+import sys
 import io
 import json
 import pickle
 import shutil
-import sys
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
@@ -19,7 +20,6 @@ from typing import Callable, Optional
 import numpy as np
 import pyarrow as pa
 import yaml
-from datasets import Features
 from tqdm import tqdm
 
 if sys.version_info >= (3, 11):
@@ -30,13 +30,13 @@ else:  # pragma: no cover
     Self = TypeVar("Self")
 
 import logging
-import os
 from typing import Union, Any
 
-import datasets
-from datasets import Sequence, Value, load_dataset, load_from_disk
-from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from pydantic import ValidationError
+
+import datasets
+from datasets import Sequence, Value, Features, load_dataset, load_from_disk
+from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
@@ -46,18 +46,10 @@ from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 
-"""
-Convention with hf (Hugging Face) datasets:
-- samples contains a single Hugging Face feature, named called "sample".
-- Samples are instances of :ref:`Sample`.
-- Mesh objects included in samples follow the CGNS standard, and can be converted in Muscat.Containers.Mesh.Mesh.
-- problem_definition info is stored in hf-datasets "description" parameter
-"""
 
 # ------------------------------------------------------------------------------
 #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
 # ------------------------------------------------------------------------------
-
 
 def to_plaid_sample(
     ds: datasets.Dataset,
