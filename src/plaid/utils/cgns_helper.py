@@ -7,11 +7,12 @@
 #
 #
 
+from typing import Any, Optional
+
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 
 from plaid.types import CGNSTree
-from typing import Optional, Any
 
 
 def get_base_names(
@@ -233,9 +234,7 @@ def unflatten_cgns_tree(
 
 
 def fix_cgns_tree_types(tree: CGNSTree) -> CGNSTree:
-    """
-    Recursively fix the data types of a CGNS tree node and its children
-    according to the node's CGNS type.
+    """Recursively fix the data types of a CGNS tree node and its children.
 
     This function ensures that data arrays match the expected CGNS types:
       - "IndexArray_t": converted to integer arrays and stacked
@@ -243,7 +242,7 @@ def fix_cgns_tree_types(tree: CGNSTree) -> CGNSTree:
       - "Elements_t", "CGNSBase_t", "BaseIterativeData_t": converted to integer arrays
 
     Args:
-        node (CGNSTree): A CGNS tree node of the form
+        tree (CGNSTree): A CGNS tree of the form
             [name: str, data: Any, children: List[CGNSTree], cgns_type: str].
 
     Returns:
@@ -410,12 +409,9 @@ def compare_leaves(d1: Any, d2: Any) -> bool:
 
 
 def compare_cgns_trees_no_types(
-    tree1: CGNSTree,
-    tree2: CGNSTree,
-    path: str = "CGNSTree"
+    tree1: CGNSTree, tree2: CGNSTree, path: str = "CGNSTree"
 ) -> bool:
-    """Recursively compare two CGNS trees ignoring the order of children and
-    relaxing strict type checks.
+    """Recursively compare two CGNS trees ignoring the order of children and relaxing strict type checks.
 
     This function is useful for heterogeneous or nested CGNS samples,
     such as those encountered in Hugging Face Arrow datasets. It compares:

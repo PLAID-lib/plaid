@@ -6,12 +6,12 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-import os
-import sys
 import io
 import json
+import os
 import pickle
 import shutil
+import sys
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
@@ -30,13 +30,12 @@ else:  # pragma: no cover
     Self = TypeVar("Self")
 
 import logging
-from typing import Union, Any
-
-from pydantic import ValidationError
+from typing import Any, Union
 
 import datasets
-from datasets import Sequence, Value, Features, load_dataset, load_from_disk
+from datasets import Features, Sequence, Value, load_dataset, load_from_disk
 from huggingface_hub import HfApi, hf_hub_download, snapshot_download
+from pydantic import ValidationError
 
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
@@ -50,6 +49,7 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
 # ------------------------------------------------------------------------------
+
 
 def to_plaid_sample(
     ds: datasets.Dataset,
@@ -255,6 +255,7 @@ def plaid_dataset_to_huggingface_datasetdict(
             })
         })
     """
+
     def generator(dataset):
         for sample in dataset:
             yield sample
@@ -317,6 +318,7 @@ def _generator_prepare_for_huggingface(
         >>> print(hf_features)
         {'Zone1/FlowSolution/VelocityX': Value(dtype='float32', id=None), ...}
     """
+
     def values_equal(v1, v2):
         if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
             return np.array_equal(v1, v2)
@@ -821,8 +823,7 @@ def push_tree_struct_to_hub(
 def load_dataset_from_disk(
     path: Union[str, Path], *args, **kwargs
 ) -> Union[datasets.Dataset, datasets.DatasetDict]:
-    """
-    Load a Hugging Face dataset or dataset dictionary from disk.
+    """Load a Hugging Face dataset or dataset dictionary from disk.
 
     This function wraps `datasets.load_from_disk` to accept either a string path or a
     `Path` object and returns the loaded dataset object.
@@ -845,8 +846,7 @@ def load_dataset_from_disk(
 
 
 def load_infos_from_disk(path: Union[str, Path]) -> dict[str, dict[str, str]]:
-    """
-    Load dataset information from a YAML file stored on disk.
+    """Load dataset information from a YAML file stored on disk.
 
     Args:
         path (Union[str, Path]): Directory path containing the `infos.yaml` file.
@@ -907,8 +907,7 @@ def load_tree_struct_from_disk(
 def save_dataset_dict_to_disk(
     path: Union[str, Path], hf_dataset_dict: datasets.DatasetDict, *args, **kwargs
 ) -> None:
-    """
-    Save a Hugging Face DatasetDict to disk.
+    """Save a Hugging Face DatasetDict to disk.
 
     This function serializes the provided DatasetDict and writes it to the specified
     directory, preserving its features, splits, and data for later loading.
