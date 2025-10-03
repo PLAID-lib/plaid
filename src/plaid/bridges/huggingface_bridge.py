@@ -31,7 +31,7 @@ else:  # pragma: no cover
 
 import logging
 import os
-from typing import Union
+from typing import Union, Any
 
 import datasets
 from datasets import Sequence, Value, load_dataset, load_from_disk
@@ -62,10 +62,33 @@ Convention with hf (Hugging Face) datasets:
 def to_plaid_sample(
     ds: datasets.Dataset,
     i: int,
-    flat_cst: dict,
-    cgns_types: dict,
+    flat_cst: dict[str, Any],
+    cgns_types: dict[str, str],
     enforce_shapes: bool = False,
 ) -> Sample:
+    """Convert a Hugging Face dataset row to a PLAID Sample object.
+
+    This function extracts a single row from a Hugging Face dataset and converts it
+    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
+    are added from the flat_cst dictionary.
+
+    Args:
+        ds (datasets.Dataset): The Hugging Face dataset containing the sample data.
+        i (int): The index of the row to convert.
+        flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
+        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
+            Defaults to False.
+
+    Returns:
+        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
+
+    Notes:
+        - The function uses the dataset's pyarrow table data for efficient access
+        - When enforce_shapes is False, it uses zero_copy_only=False for numpy conversion
+        - When enforce_shapes is True, it handles ListArray types specially by stacking them
+        - Constant features from flat_cst are merged with the variable features from the row
+    """
     table = ds.data
 
     if not enforce_shapes:
@@ -93,22 +116,33 @@ def to_plaid_sample(
 
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
-    flat_cst: dict,
-    cgns_types: dict,
+    flat_cst: dict[str, Any],
+    cgns_types: dict[str, str],
     enforce_shapes: bool = False,
     verbose: bool = True,
 ) -> Dataset:
-    """Convert a Hugging Face dataset to a plaid Dataset using explicit dtypes and CGNS type information.
+    """Convert a Hugging Face dataset to a PLAID Dataset using CGNS tree reconstruction.
+
+    This function processes all samples in a Hugging Face dataset and converts them
+    to PLAID Sample objects by reconstructing the CGNS tree structure. Constant features
+    from flat_cst are added to each sample during conversion.
 
     Args:
         ds (datasets.Dataset): The Hugging Face dataset to convert.
-        dtypes (dict[str, str]): Dictionary mapping feature names to numpy dtype strings.
-        cgns_types (dict): Dictionary describing CGNS types for reconstruction.
-        processes_number (int, optional): Number of processes for parallel conversion. Defaults to 1.
-        verbose (bool, optional): If True, prints progress using tqdm. Defaults to True.
+        flat_cst (dict[str, Any]): Dictionary of constant features to add to each sample.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
+        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
+            Defaults to False.
+        verbose (bool, optional): If True, displays progress bar using tqdm.
+            Defaults to True.
 
     Returns:
-        Dataset: The converted plaid Dataset.
+        Dataset: The converted PLAID Dataset containing all samples from the Hugging Face dataset.
+
+    Notes:
+        - Uses the to_plaid_sample function for individual sample conversion
+        - Processes samples sequentially in a loop
+        - Progress tracking is enabled by default
     """
     description = "Converting Hugging Face dataset to plaid"
 
@@ -119,7 +153,34 @@ def huggingface_dataset_to_plaid(
     return Dataset(samples=sample_list)
 
 
-def infer_hf_features_from_value(value):
+def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
+    """Infer Hugging Face dataset feature type from a given value.
+
+    This function analyzes the input value and determines the appropriate Hugging Face
+    feature type representation. It handles None values, scalars, and arrays/lists
+    of various dimensions, mapping them to corresponding Hugging Face Value or Sequence types.
+
+    Args:
+        value (Any): The value to infer the feature type from. Can be None, scalar,
+            list, tuple, or numpy array.
+
+    Returns:
+        datasets.Feature: A Hugging Face feature type (Value or Sequence) that corresponds
+            to the input value's structure and data type.
+
+    Raises:
+        TypeError: If the value type is not supported.
+        TypeError: If the array dimensionality exceeds 3D for arrays/lists.
+
+    Notes:
+        - For scalar values, maps numpy dtypes to appropriate Hugging Face Value types:
+          float types to "float32", int32 to "int32", int64 to "int64", others to "string"
+        - For arrays/lists, creates nested Sequence structures based on dimensionality:
+          1D → Sequence(base_type), 2D → Sequence(Sequence(base_type)),
+          3D → Sequence(Sequence(Sequence(base_type)))
+        - All float values are enforced to "float32" to limit data size
+        - All int64 values are preserved as "int64" to satisfy CGNS standards
+    """
     if value is None:
         return Value("null")
 
@@ -160,7 +221,48 @@ def plaid_dataset_to_huggingface_datasetdict(
     processes_number: int = 1,
     writer_batch_size: int = 1,
     verbose: bool = False,
-):
+) -> tuple[datasets.DatasetDict, dict[str, Any], dict[str, Any]]:
+    """Convert a PLAID dataset into a Hugging Face `datasets.DatasetDict`.
+
+    This is a thin wrapper that creates per-split generators from a PLAID dataset
+    and delegates the actual dataset construction to
+    `plaid_generator_to_huggingface_datasetdict`.
+
+    Args:
+        dataset (plaid.Dataset):
+            The PLAID dataset to be converted. Must support indexing with
+            a list of IDs (from `main_splits`).
+        main_splits (dict[str, IndexType]):
+            Mapping from split names (e.g. "train", "test") to the subset of
+            sample indices belonging to that split.
+        processes_number (int, optional, default=1):
+            Number of parallel processes to use when writing the Hugging Face dataset.
+        writer_batch_size (int, optional, default=1):
+            Batch size used when writing samples to disk in Hugging Face format.
+        verbose (bool, optional, default=False):
+            If True, print progress and debug information.
+
+    Returns:
+        datasets.DatasetDict:
+            A Hugging Face `DatasetDict` containing one dataset per split.
+
+    Example:
+        >>> ds_dict = plaid_dataset_to_huggingface_datasetdict(
+        ...     dataset=my_plaid_dataset,
+        ...     main_splits={"train": [0, 1, 2], "test": [3]},
+        ...     processes_number=4,
+        ...     writer_batch_size=3
+        ... )
+        >>> print(ds_dict)
+        DatasetDict({
+            train: Dataset({
+                features: ...
+            }),
+            test: Dataset({
+                features: ...
+            })
+        })
+    """
     def generator(dataset):
         for sample in dataset:
             yield sample
@@ -175,12 +277,54 @@ def plaid_dataset_to_huggingface_datasetdict(
     )
 
 
-def _generator_prepare_for_huggingface(generators, verbose: bool = True):
-    """Collect union of all paths across all trees and produce:
-    - global_cgns_types: path → CGNS type
-    - hf_features: HuggingFace Features inferred from actual data
-    """
+def _generator_prepare_for_huggingface(
+    generators: dict[str, Callable],
+    verbose: bool = True,
+) -> tuple[dict[str, Any], dict[str, Any], Features]:
+    """Inspect PLAID dataset generators and infer Hugging Face feature schema.
 
+    This function scans all provided split generators to:
+      1. Flatten each CGNS tree into a dictionary of paths → values.
+      2. Infer Hugging Face `Features` types for all variable leaves.
+      3. Detect constant leaves (values that never change across all samples).
+      4. Collect global CGNS type metadata.
+
+    Args:
+        generators (dict[str, Callable]):
+            A dictionary mapping split names to callables returning sample generators.
+            Each sample is expected to have the structure `sample.features.data[0.0]`
+            compatible with `flatten_cgns_tree`.
+        verbose (bool, optional, default=True):
+            If True, displays progress bars while processing splits.
+
+    Returns:
+        tuple:
+            - **flat_cst (dict[str, Any])**:
+              Mapping from feature path to constant values detected across all splits.
+            - **key_mappings (dict[str, Any])**:
+              Metadata dictionary with:
+                - `"variable_features"` (list[str]): paths of non-constant features.
+                - `"constant_features"` (list[str]): paths of constant features.
+                - `"cgns_types"` (dict[str, Any]): CGNS type information for all paths.
+            - **hf_features (datasets.Features)**:
+              Hugging Face feature specification for variable features.
+
+    Raises:
+        ValueError:
+            If inconsistent CGNS types or feature types are found for the same path.
+
+    Example:
+        >>> flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
+        ...     {"train": lambda: iter(train_samples),
+        ...      "test": lambda: iter(test_samples)}
+        ... )
+        >>> print(key_mappings["variable_features"][:5])
+        ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
+        >>> print(flat_cst)
+        {'Zone1/GridCoordinates': array([0., 0.1, 0.2])}
+        >>> print(hf_features)
+        {'Zone1/FlowSolution/VelocityX': Value(dtype='float32', id=None), ...}
+    """
     def values_equal(v1, v2):
         if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
             return np.array_equal(v1, v2)
@@ -262,7 +406,61 @@ def plaid_generator_to_huggingface_datasetdict(
     processes_number: int = 1,
     writer_batch_size: int = 1,
     verbose: bool = False,
-):
+) -> tuple[datasets.DatasetDict, dict[str, Any], dict[str, Any]]:
+    """Convert PLAID dataset generators into a Hugging Face `datasets.DatasetDict`.
+
+    This function inspects samples produced by the given generators, flattens their
+    CGNS tree structure, infers Hugging Face feature types, and builds one
+    `datasets.Dataset` per split. Constant features (identical across all samples)
+    are separated out from variable features.
+
+    Args:
+        generators (dict[str, Callable]):
+            Mapping from split names (e.g., "train", "test") to generator functions.
+            Each generator function must return an iterable of PLAID samples, where
+            each sample provides `sample.features.data[0.0]` for flattening.
+        processes_number (int, optional, default=1):
+            Number of processes used internally by Hugging Face when materializing
+            the dataset from the generators.
+        writer_batch_size (int, optional, default=1):
+            Batch size used when writing samples to disk in Hugging Face format.
+        verbose (bool, optional, default=False):
+            If True, displays progress bars and diagnostic messages.
+
+    Returns:
+        tuple:
+            - **DatasetDict** (`datasets.DatasetDict`):
+              A Hugging Face dataset dictionary with one dataset per split.
+            - **flat_cst** (`dict[str, Any]`):
+              Dictionary of constant features detected across all splits.
+            - **key_mappings** (`dict[str, Any]`):
+              Metadata dictionary containing:
+                - `"variable_features"`: list of paths for non-constant features.
+                - `"constant_features"`: list of paths for constant features.
+                - `"cgns_types"`: inferred CGNS types for all features.
+
+    Example:
+        >>> ds_dict, flat_cst, key_mappings = plaid_generator_to_huggingface_datasetdict(
+        ...     {"train": lambda: iter(train_samples),
+        ...      "test": lambda: iter(test_samples)},
+        ...     processes_number=4,
+        ...     writer_batch_size=2,
+        ...     verbose=True
+        ... )
+        >>> print(ds_dict)
+        DatasetDict({
+            train: Dataset({
+                features: ...
+            }),
+            test: Dataset({
+                features: ...
+            })
+        })
+        >>> print(flat_cst)
+        {'Zone1/GridCoordinates': array([0., 0.1, 0.2])}
+        >>> print(key_mappings["variable_features"][:3])
+        ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
+    """
     flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
         generators, verbose
     )
@@ -316,8 +514,12 @@ def load_dataset_from_hub(
     Args:
         repo_id (str): The Hugging Face dataset repository ID (e.g., 'username/dataset').
         streaming (bool, optional): If True, attempts to stream the dataset (only supported on the public hub).
-        *args: Additional positional arguments passed to `datasets.load_dataset` or `datasets.load_from_disk`.
-        **kwargs: Additional keyword arguments passed to `datasets.load_dataset` or `datasets.load_from_disk`.
+        *args:
+            Positional arguments forwarded to
+            [`datasets.load_dataset`](https://huggingface.co/docs/datasets/main/en/package_reference/loading_methods#datasets.load_dataset).
+        **kwargs:
+            Keyword arguments forwarded to
+            [`datasets.load_dataset`](https://huggingface.co/docs/datasets/main/en/package_reference/loading_methods#datasets.load_dataset).
 
     Returns:
         Union[datasets.Dataset, datasets.DatasetDict]: The loaded Hugging Face dataset object.
@@ -429,6 +631,27 @@ def load_problem_definition_from_hub(
 def load_tree_struct_from_hub(
     repo_id: str,
 ) -> tuple[dict, dict]:  # pragma: no cover (not tested in unit tests)
+    """Load the tree structure metadata of a PLAID dataset from the Hugging Face Hub.
+
+    This function retrieves two artifacts previously uploaded alongside a dataset:
+      - **tree_constant_part.pkl**: a pickled dictionary of constant feature values
+        (features that are identical across all samples).
+      - **key_mappings.yaml**: a YAML file containing metadata about the dataset
+        feature structure, including variable features, constant features, and CGNS types.
+
+    Args:
+        repo_id (str):
+            The repository ID on the Hugging Face Hub
+            (e.g., `"username/dataset_name"`).
+
+    Returns:
+        tuple[dict, dict]:
+            - **flat_cst (dict)**: constant features dictionary (path → value).
+            - **key_mappings (dict)**: metadata dictionary containing keys such as:
+                - `"variable_features"`: list of paths for non-constant features.
+                - `"constant_features"`: list of paths for constant features.
+                - `"cgns_types"`: mapping from paths to CGNS types.
+    """
     # constant part of the tree
     flat_cst_path = hf_hub_download(
         repo_id=repo_id,
@@ -454,11 +677,27 @@ def load_tree_struct_from_hub(
 def push_dataset_dict_to_hub(
     repo_id: str, hf_dataset_dict: datasets.DatasetDict, *args, **kwargs
 ) -> None:  # pragma: no cover (not tested in unit tests)
-    """Push a Hugging Face dataset to the Hugging Face Hub.
+    """Push a Hugging Face `DatasetDict` to the Hugging Face Hub.
+
+    This is a thin wrapper around `datasets.DatasetDict.push_to_hub`, allowing
+    you to upload a dataset dictionary (with one or more splits such as
+    `"train"`, `"validation"`, `"test"`) to the Hugging Face Hub.
 
     Args:
-        repo_id (str): The repository ID on the Hugging Face Hub.
-        hf_dataset_dict (datasets.Dataset): The Hugging Face dataset to push.
+        repo_id (str):
+            The repository ID on the Hugging Face Hub
+            (e.g. `"username/dataset_name"`).
+        hf_dataset_dict (datasets.DatasetDict):
+            The Hugging Face dataset dictionary to push.
+        *args:
+            Positional arguments forwarded to
+            [`DatasetDict.push_to_hub`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.push_to_hub).
+        **kwargs:
+            Keyword arguments forwarded to
+            [`DatasetDict.push_to_hub`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.push_to_hub).
+
+    Returns:
+        None
     """
     hf_dataset_dict.push_to_hub(repo_id, *args, **kwargs)
 
@@ -531,9 +770,33 @@ def push_problem_definition_to_hub(
 
 def push_tree_struct_to_hub(
     repo_id: str,
-    flat_cst: dict,
-    key_mappings: dict,
+    flat_cst: dict[str, Any],
+    key_mappings: dict[str, Any],
 ) -> None:  # pragma: no cover (not tested in unit tests)
+    """Upload a dataset's tree structure to a Hugging Face dataset repository.
+
+    This function pushes two components of a dataset tree structure to the specified
+    Hugging Face Hub repository:
+
+    1. `flat_cst`: the constant parts of the dataset tree, serialized as a pickle file
+       (`tree_constant_part.pkl`).
+    2. `key_mappings`: the dictionary of key mappings and metadata for the dataset tree,
+       serialized as a YAML file (`key_mappings.yaml`).
+
+    Both files are uploaded using the Hugging Face `HfApi().upload_file` method.
+
+    Args:
+        repo_id (str): The Hugging Face dataset repository ID where files will be uploaded.
+        flat_cst (dict[str, Any]): Dictionary containing constant values in the dataset tree.
+        key_mappings (dict[str, Any]): Dictionary containing key mappings and additional metadata.
+
+    Returns:
+        None
+
+    Notes:
+        - Each upload includes a commit message indicating the filename.
+        - This function is not covered by unit tests (`pragma: no cover`).
+    """
     api = HfApi()
 
     # constant part of the tree
@@ -566,22 +829,35 @@ def push_tree_struct_to_hub(
 def load_dataset_from_disk(
     path: Union[str, Path], *args, **kwargs
 ) -> Union[datasets.Dataset, datasets.DatasetDict]:
-    """Load a Hugging Face DatasetDict from disk.
+    """
+    Load a Hugging Face dataset or dataset dictionary from disk.
+
+    This function wraps `datasets.load_from_disk` to accept either a string path or a
+    `Path` object and returns the loaded dataset object.
 
     Args:
-        path (Union[str, Path]): The directory path from which to load the dataset dict.
+        path (Union[str, Path]): Path to the directory containing the saved dataset.
+        *args:
+            Positional arguments forwarded to
+            [`datasets.load_from_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/loading_methods#datasets.load_from_disk).
+        **kwargs:
+            Keyword arguments forwarded to
+            [`datasets.load_from_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/loading_methods#datasets.load_from_disk).
 
     Returns:
-        datasets.DatasetDict: The loaded Hugging Face DatasetDict.
+        Union[datasets.Dataset, datasets.DatasetDict]: The loaded Hugging Face dataset
+        object, which may be a single `Dataset` or a `DatasetDict` depending on what
+        was saved on disk.
     """
     return load_from_disk(str(path), *args, **kwargs)
 
 
 def load_infos_from_disk(path: Union[str, Path]) -> dict[str, dict[str, str]]:
-    """Load dataset infos from a YAML file on disk.
+    """
+    Load dataset information from a YAML file stored on disk.
 
     Args:
-        path (Union[str, Path]): The directory path containing the infos file.
+        path (Union[str, Path]): Directory path containing the `infos.yaml` file.
 
     Returns:
         dict[str, dict[str, str]]: Dictionary containing dataset infos.
@@ -611,7 +887,22 @@ def load_problem_definition_from_disk(
 
 def load_tree_struct_from_disk(
     path: Union[str, Path],
-) -> tuple[dict, dict]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Load a tree structure for a dataset from disk.
+
+    This function loads two components from the specified directory:
+    1. `tree_constant_part.pkl`: a pickled dictionary containing the constant parts of the tree.
+    2. `key_mappings.yaml`: a YAML file containing key mappings and metadata.
+
+    Args:
+        path (Union[str, Path]): Directory path containing the `tree_constant_part.pkl`
+            and `key_mappings.yaml` files.
+
+    Returns:
+        tuple[dict, dict]: A tuple containing:
+            - `flat_cst` (dict): Dictionary of constant tree values.
+            - `key_mappings` (dict): Dictionary of key mappings and metadata.
+    """
     with open(Path(path) / Path("key_mappings.yaml"), "r", encoding="utf-8") as f:
         key_mappings = yaml.safe_load(f)
 
@@ -624,11 +915,24 @@ def load_tree_struct_from_disk(
 def save_dataset_dict_to_disk(
     path: Union[str, Path], hf_dataset_dict: datasets.DatasetDict, *args, **kwargs
 ) -> None:
-    """Save a Hugging Face DatasetDict to disk.
+    """
+    Save a Hugging Face DatasetDict to disk.
+
+    This function serializes the provided DatasetDict and writes it to the specified
+    directory, preserving its features, splits, and data for later loading.
 
     Args:
-        path (Union[str, Path]): The directory path where the dataset dict will be saved.
+        path (Union[str, Path]): Directory path where the DatasetDict will be saved.
         hf_dataset_dict (datasets.DatasetDict): The Hugging Face DatasetDict to save.
+        *args:
+            Positional arguments forwarded to
+            [`DatasetDict.save_to_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.save_to_disk).
+        **kwargs:
+            Keyword arguments forwarded to
+            [`DatasetDict.save_to_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.save_to_disk).
+
+    Returns:
+        None
     """
     hf_dataset_dict.save_to_disk(str(path), *args, **kwargs)
 
@@ -663,15 +967,22 @@ def save_problem_definition_to_disk(
 
 def save_tree_struct_to_disk(
     path: Union[str, Path],
-    flat_cst: dict,
-    key_mappings: dict,
+    flat_cst: dict[str, Any],
+    key_mappings: dict[str, Any],
 ) -> None:
-    """Save a ProblemDefinition and its split information to disk.
+    """Save the structure of a dataset tree to disk.
+
+    This function writes the constant part of the tree and its key mappings to files
+    in the specified directory. The constant part is serialized as a pickle file,
+    while the key mappings are saved in YAML format.
 
     Args:
-        path (Union[str, Path]): The root directory path for saving.
-        name (str): The name of the problem_definition to store in the disk directory.
-        pb_def (ProblemDefinition): The problem definition to save.
+        path (Union[str, Path]): Directory path where the tree structure files will be saved.
+        flat_cst (dict): Dictionary containing the constant part of the tree.
+        key_mappings (dict): Dictionary containing key mappings for the tree structure.
+
+    Returns:
+        None
     """
     Path(path).mkdir(parents=True, exist_ok=True)
 
@@ -688,10 +999,24 @@ def save_tree_struct_to_disk(
 
 
 def to_plaid_sample_binary(hf_sample: dict[str, bytes]) -> Sample:
-    """Convert a Hugging Face dataset sample to a plaid :class:`Sample <plaid.containers.sample.Sample>`.
+    """Convert a Hugging Face dataset sample in binary format to a Plaid `Sample`.
 
-    If the sample is not valid, it tries to build it from its components.
-    If it still fails because of a missing key, it raises a KeyError.
+    The input `hf_sample` is expected to contain a pickled representation of a sample
+    under the key `"sample"`. This function attempts to validate the unpickled sample
+    as a Plaid `Sample`. If validation fails, it reconstructs the sample from its
+    components (`meshes`, `path`, and optional `scalars`) before validating it.
+
+    Args:
+        hf_sample (dict[str, bytes]): A dictionary representing a Hugging Face sample,
+            with the pickled sample stored under the key `"sample"`.
+
+    Returns:
+        Sample: A validated Plaid `Sample` object.
+
+    Raises:
+        KeyError: If required keys (`"sample"`, `"meshes"`, `"path"`) are missing
+            and the sample cannot be reconstructed.
+        ValidationError: If the reconstructed sample still fails Plaid validation.
     """
     pickled_hf_sample = pickle.loads(hf_sample["sample"])
 
@@ -739,7 +1064,7 @@ def plaid_dataset_to_huggingface_binary(
     Example:
         .. code-block:: python
 
-            dataset = plaid_dataset_to_huggingface(dataset, problem_definition, split)
+            dataset = plaid_dataset_to_huggingface_binary(dataset, problem_definition, split)
             dataset.save_to_disk("path/to/dir)
             dataset.push_to_hub("chanel/dataset")
     """
@@ -780,7 +1105,7 @@ def plaid_generator_to_huggingface_binary(
     Example:
         .. code-block:: python
 
-            dataset = plaid_generator_to_huggingface(generator, infos, split)
+            dataset = plaid_generator_to_huggingface_binary(generator, infos, split)
     """
     ds: datasets.Dataset = datasets.Dataset.from_generator(  # pyright: ignore[reportAssignmentType]
         generator=generator,
@@ -803,8 +1128,7 @@ def plaid_dataset_to_huggingface_datasetdict_binary(
     The dataset can then be saved to disk, or pushed to the Hugging Face hub.
 
     Args:
-        dataset (Dataset): the plaid dataset to be converted in Hugging Face format
-        problem_definition (ProblemDefinition): the problem definition is used to generate the description of the Hugging Face dataset.
+        dataset (Dataset): the plaid dataset to be converted in Hugging Face format.
         main_splits (list[str]): The name of the main splits: defining a partitioning of the sample ids.
         processes_number (int): The number of processes used to generate the Hugging Face dataset. Default: 1.
 
@@ -814,7 +1138,7 @@ def plaid_dataset_to_huggingface_datasetdict_binary(
     Example:
         .. code-block:: python
 
-            dataset = plaid_dataset_to_huggingface(dataset, problem_definition, split)
+            dataset = plaid_dataset_to_huggingface_datasetdict_binary(dataset, problem_definition, split)
             dataset.save_to_disk("path/to/dir)
             dataset.push_to_hub("chanel/dataset")
     """
@@ -900,7 +1224,7 @@ def huggingface_dataset_to_plaid_binary(
 
             dataset = load_dataset("path/to/dir", split = "all_samples")
             dataset = load_from_disk("chanel/dataset")
-            plaid_dataset, plaid_problem = huggingface_dataset_to_plaid(dataset)
+            plaid_dataset, plaid_problem = huggingface_dataset_to_plaid_binary(dataset)
     """
     from plaid.bridges.huggingface_helpers import (
         _HFShardToPlaidSampleConverter,
