@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Callable
 
 import pytest
-import numpy as np
 
 from plaid.bridges import huggingface_bridge
 from plaid.containers.dataset import Dataset
@@ -33,7 +32,7 @@ def dataset(samples, infos) -> Dataset:
     samples_ = []
     for i, sample in enumerate(samples):
         if i == 1:
-            sample.add_scalar("toto", 1.)
+            sample.add_scalar("toto", 1.0)
         samples_.append(sample)
     dataset = Dataset(samples=samples_)
     dataset.set_infos(infos)
@@ -127,8 +126,16 @@ class Test_Huggingface_Bridge:
                 dataset, main_splits
             )
         )
-        huggingface_bridge.to_cgns_tree_columnar(hf_dataset_dict['train'], 0, flat_cst, key_mappings["cgns_types"])
-        huggingface_bridge.to_cgns_tree_columnar(hf_dataset_dict['train'], 0, flat_cst, key_mappings["cgns_types"], enforce_shapes=True)
+        huggingface_bridge.to_cgns_tree_columnar(
+            hf_dataset_dict["train"], 0, flat_cst, key_mappings["cgns_types"]
+        )
+        huggingface_bridge.to_cgns_tree_columnar(
+            hf_dataset_dict["train"],
+            0,
+            flat_cst,
+            key_mappings["cgns_types"],
+            enforce_shapes=True,
+        )
 
     def test_with_datasetdict(self, dataset, problem_definition):
         main_splits = problem_definition.get_split()
