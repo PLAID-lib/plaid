@@ -40,6 +40,7 @@ from pydantic import ValidationError
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
 from plaid.types import IndexType
+from plaid.types.cgns_types import CGNSTree
 from plaid.utils.cgns_helper import flatten_cgns_tree, unflatten_cgns_tree
 from plaid.utils.deprecation import deprecated
 
@@ -51,7 +52,92 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 
 
-def to_plaid_sample(
+def to_cgns_tree_columnar(
+    ds: datasets.Dataset,
+    i: int,
+    flat_cst: dict[str, Any],
+    cgns_types: dict[str, str],
+    enforce_shapes: bool = False,
+) -> CGNSTree:
+    """Convert a Hugging Face dataset row to a PLAID Sample object.
+
+    This function extracts a single row from a Hugging Face dataset and converts it
+    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
+    are added from the flat_cst dictionary.
+
+    Args:
+        ds (datasets.Dataset): The Hugging Face dataset containing the sample data.
+        i (int): The index of the row to convert.
+        flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
+        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
+            Defaults to False.
+
+    Returns:
+        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
+
+    Notes:
+        - The function uses the dataset's pyarrow table data for efficient access
+        - When enforce_shapes is False, it uses zero_copy_only=False for numpy conversion
+        - When enforce_shapes is True, it handles ListArray types specially by stacking them
+        - Constant features from flat_cst are merged with the variable features from the row
+    """
+    table = ds.data
+
+    row = {}
+    if not enforce_shapes:
+        for name in table.column_names:
+            value = table[name][i].values
+            if value is None:
+                row[name] = None
+            else:
+                row[name] = value.to_numpy(zero_copy_only=False)
+    else:
+        for name in table.column_names:
+            value = table[name][i].values
+            if value is None:
+                row[name] = None
+            else:
+                if isinstance(value, pa.ListArray):
+                    row[name] = np.stack(value.to_numpy(zero_copy_only=False))
+                else:
+                    row[name] = value.to_numpy(zero_copy_only=True)
+
+    row.update(flat_cst)
+    return unflatten_cgns_tree(row, cgns_types)
+
+
+def to_cgns_tree(
+    hf_sample: dict[str, Features], flat_cst: dict[str, Any], cgns_types: dict[str, str]
+) -> CGNSTree:
+    """Convert a Hugging Face dataset row to a PLAID Sample object.
+
+    This function extracts a single row from a Hugging Face dataset and converts it
+    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
+    are added from the flat_cst dictionary.
+
+    Args:
+        hf_sample (dict[str, Features]): row of a Hugging Face dataset
+        flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
+        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
+            Defaults to False.
+
+    Returns:
+        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
+
+    Notes:
+        - The function uses the dataset's pyarrow table data for efficient access
+        - When enforce_shapes is False, it uses zero_copy_only=False for numpy conversion
+        - When enforce_shapes is True, it handles ListArray types specially by stacking them
+        - Constant features from flat_cst are merged with the variable features from the row
+    """
+    row = {name: np.array(value) for name, value in hf_sample.items()}
+    row.update(flat_cst)
+    return unflatten_cgns_tree(row, cgns_types)
+
+
+def to_plaid_sample_columnar(
     ds: datasets.Dataset,
     i: int,
     flat_cst: dict[str, Any],
@@ -81,66 +167,79 @@ def to_plaid_sample(
         - When enforce_shapes is True, it handles ListArray types specially by stacking them
         - Constant features from flat_cst are merged with the variable features from the row
     """
-    table = ds.data
+    cgns_tree = to_cgns_tree_columnar(ds, i, flat_cst, cgns_types, enforce_shapes)
 
-    if not enforce_shapes:
-        row = {
-            name: table[name][i].values.to_numpy(zero_copy_only=False)
-            for name in table.column_names
-        }
-        row.update(flat_cst)
-        unflat = unflatten_cgns_tree(row, cgns_types)
-    else:
-        row = {}
-        for name in table.column_names:
-            if isinstance(table[name][i].values, pa.ListArray):
-                row[name] = np.stack(
-                    table[name][i].values.to_numpy(zero_copy_only=False)
-                )
-            else:
-                row[name] = table[name][i].values.to_numpy(zero_copy_only=True)
-        row.update(flat_cst)
-        unflat = unflatten_cgns_tree(row, cgns_types)
-
-    sample = Sample(path=None, features=SampleFeatures({0.0: unflat}))
+    sample = Sample(path=None, features=SampleFeatures({0.0: cgns_tree}))
     return Sample.model_validate(sample)
 
 
-def huggingface_dataset_to_plaid(
-    ds: datasets.Dataset,
+def to_plaid_sample(
+    hf_sample: dict[str, Features],
+    flat_cst: dict[str, Any],
+    cgns_types: dict[str, str],
+) -> Sample:
+    """Convert a Hugging Face dataset row to a PLAID Sample object.
+
+    This function extracts a single row from a Hugging Face dataset and converts it
+    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
+    are added from the flat_cst dictionary.
+
+    Args:
+        hf_sample (dict[str, Features]): row of a Hugging Face dataset
+        flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
+
+    Returns:
+        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
+
+    Notes:
+        - The function uses the dataset's pyarrow table data for efficient access
+        - When enforce_shapes is False, it uses zero_copy_only=False for numpy conversion
+        - When enforce_shapes is True, it handles ListArray types specially by stacking them
+        - Constant features from flat_cst are merged with the variable features from the row
+    """
+    cgns_tree = to_cgns_tree(hf_sample, flat_cst, cgns_types)
+
+    sample = Sample(path=None, features=SampleFeatures({0.0: cgns_tree}))
+    return Sample.model_validate(sample)
+
+
+def to_plaid_dataset(
+    hf_dataset: datasets.Dataset,
     flat_cst: dict[str, Any],
     cgns_types: dict[str, str],
     enforce_shapes: bool = False,
-    verbose: bool = True,
 ) -> Dataset:
-    """Convert a Hugging Face dataset to a PLAID Dataset using CGNS tree reconstruction.
+    """Convert a Hugging Face dataset into a PLAID dataset.
 
-    This function processes all samples in a Hugging Face dataset and converts them
-    to PLAID Sample objects by reconstructing the CGNS tree structure. Constant features
-    from flat_cst are added to each sample during conversion.
+    Iterates over all samples in a Hugging Face `Dataset` and converts each one
+    into a PLAID-compatible sample using `to_plaid_sample_columnar`. The resulting
+    samples are then collected into a single PLAID `Dataset`.
 
     Args:
-        ds (datasets.Dataset): The Hugging Face dataset to convert.
-        flat_cst (dict[str, Any]): Dictionary of constant features to add to each sample.
-        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
-        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
+        hf_dataset (datasets.Dataset):
+            The Hugging Face dataset split to convert.
+        flat_cst:
+            Flattened representation of the CGNS tree structure constants,
+            used to map data fields.
+        cgns_types:
+            Mapping of CGNS paths to their expected types.
+        enforce_shapes (bool, optional):
+            If True, ensures all arrays strictly follow the reference shapes.
             Defaults to False.
-        verbose (bool, optional): If True, displays progress bar using tqdm.
-            Defaults to True.
 
     Returns:
-        Dataset: The converted PLAID Dataset containing all samples from the Hugging Face dataset.
+        Dataset:
+            A PLAID `Dataset` object containing the converted samples.
 
-    Notes:
-        - Uses the to_plaid_sample function for individual sample conversion
-        - Processes samples sequentially in a loop
-        - Progress tracking is enabled by default
     """
-    description = "Converting Hugging Face dataset to plaid"
-
     sample_list = []
-    for i in tqdm(range(len(ds)), disable=not verbose, desc=description):
-        sample_list.append(to_plaid_sample(ds, i, flat_cst, cgns_types, enforce_shapes))
+    for i in range(len(hf_dataset)):
+        sample_list.append(
+            to_plaid_sample_columnar(
+                hf_dataset, i, flat_cst, cgns_types, enforce_shapes
+            )
+        )
 
     return Dataset(samples=sample_list)
 
@@ -327,6 +426,7 @@ def _generator_prepare_for_huggingface(
     global_cgns_types = {}
     global_feature_types = {}
     global_constant_leaves = {}
+    total_samples = 0
 
     for split_name, generator in generators.items():
         for sample in tqdm(
@@ -334,6 +434,7 @@ def _generator_prepare_for_huggingface(
             disable=not verbose,
             desc=f"Prepare for HF on split {split_name}",
         ):
+            total_samples += 1
             tree = sample.features.data[0.0]
             flat, cgns_types = flatten_cgns_tree(tree)
 
@@ -361,11 +462,21 @@ def _generator_prepare_for_huggingface(
                         )
 
                 if path not in global_constant_leaves:
-                    global_constant_leaves[path] = {"value": value, "constant": True}
+                    global_constant_leaves[path] = {
+                        "value": value,
+                        "constant": True,
+                        "count": 1,
+                    }
                 else:
                     entry = global_constant_leaves[path]
+                    entry["count"] += 1
                     if entry["constant"] and not values_equal(entry["value"], value):
                         entry["constant"] = False
+
+    # After loop: only keep constants that appeared in all samples
+    for path, entry in global_constant_leaves.items():
+        if entry["count"] != total_samples:
+            entry["constant"] = False
 
     # Sort dicts by keys
     global_cgns_types = {p: global_cgns_types[p] for p in sorted(global_cgns_types)}
@@ -459,16 +570,19 @@ def plaid_generator_to_huggingface_datasetdict(
         generators, verbose
     )
 
-    def generator_fn(gen_func, hf_features):
+    all_features_keys = list(hf_features.keys())
+
+    def generator_fn(gen_func, all_features_keys):
         for sample in gen_func():
             tree = sample.features.data[0.0]
             flat, _ = flatten_cgns_tree(tree)
-            yield {path: flat.get(path, None) for path in hf_features.keys()}
+            yield {path: flat.get(path, None) for path in all_features_keys}
 
     _dict = {}
     for split_name, gen_func in generators.items():
+        gen = partial(generator_fn, gen_func, all_features_keys)
         _dict[split_name] = datasets.Dataset.from_generator(
-            generator=lambda gen_func=gen_func: generator_fn(gen_func, hf_features),
+            generator=gen,
             features=hf_features,
             num_proc=processes_number,
             writer_batch_size=writer_batch_size,
@@ -481,6 +595,43 @@ def plaid_generator_to_huggingface_datasetdict(
 # ------------------------------------------------------------------------------
 #     HUGGING FACE HUB INTERACTIONS
 # ------------------------------------------------------------------------------
+
+
+def instantiate_plaid_datasetdict_from_hub(
+    repo_id: str,
+    enforce_shapes: bool = False,
+) -> dict[str, Dataset]:  # pragma: no cover (not tested in unit tests)
+    """Load a Hugging Face dataset from the Hub and instantiate it as a dictionary of PLAID datasets.
+
+    This function retrieves a dataset dictionary from the Hugging Face Hub,
+    along with its associated CGNS tree structure and type information. Each
+    split of the Hugging Face dataset is then converted into a PLAID dataset.
+
+    Args:
+        repo_id (str):
+            The Hugging Face repository identifier (e.g. `"user/dataset"`).
+        enforce_shapes (bool, optional):
+            If True, enforce strict array shapes when converting to PLAID
+            datasets. Defaults to False.
+
+    Returns:
+        dict[str, Dataset]:
+            A dictionary mapping split names (e.g. `"train"`, `"test"`) to
+            PLAID `Dataset` objects.
+
+    """
+    hf_dataset_dict = load_dataset_from_hub(repo_id)
+
+    flat_cst, key_mappings = load_tree_struct_from_hub(repo_id)
+    cgns_types = key_mappings["cgns_types"]
+
+    datasetdict = {}
+    for split_name, hf_dataset in hf_dataset_dict.items():
+        datasetdict[split_name] = to_plaid_dataset(
+            hf_dataset, flat_cst, cgns_types, enforce_shapes
+        )
+
+    return datasetdict
 
 
 def load_dataset_from_hub(
@@ -985,11 +1136,15 @@ def save_tree_struct_to_disk(
 
 
 # ------------------------------------------------------------------------------
-#     OLD HUGGING FACE BRIDGE (binary blobs)
+#     DEPRECATED  HUGGING FACE BRIDGE (binary blobs)
 # ------------------------------------------------------------------------------
 
-
-def to_plaid_sample_binary(hf_sample: dict[str, bytes]) -> Sample:
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.10",
+    removal="1.0.0",
+)
+def binary_to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
     """Convert a Hugging Face dataset sample in binary format to a Plaid `Sample`.
 
     The input `hf_sample` is expected to contain a pickled representation of a sample
@@ -1033,6 +1188,11 @@ def to_plaid_sample_binary(hf_sample: dict[str, bytes]) -> Sample:
         return Sample.model_validate(sample)
 
 
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.10",
+    removal="1.0.0",
+)
 def plaid_dataset_to_huggingface_binary(
     dataset: Dataset,
     ids: Optional[list[IndexType]] = None,
@@ -1075,6 +1235,11 @@ def plaid_dataset_to_huggingface_binary(
     )
 
 
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.10",
+    removal="1.0.0",
+)
 def plaid_generator_to_huggingface_binary(
     generator: Callable,
     split_name: str = "all_samples",
@@ -1109,6 +1274,11 @@ def plaid_generator_to_huggingface_binary(
     return ds
 
 
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.10",
+    removal="1.0.0",
+)
 def plaid_dataset_to_huggingface_datasetdict_binary(
     dataset: Dataset,
     main_splits: dict[str, IndexType],
@@ -1145,6 +1315,11 @@ def plaid_dataset_to_huggingface_datasetdict_binary(
     return datasets.DatasetDict(_dict)
 
 
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.10",
+    removal="1.0.0",
+)
 def plaid_generator_to_huggingface_datasetdict_binary(
     generators: dict[str, Callable],
     processes_number: int = 1,
@@ -1184,13 +1359,18 @@ def plaid_generator_to_huggingface_datasetdict_binary(
     return datasets.DatasetDict(_dict)
 
 
-def huggingface_dataset_to_plaid_binary(
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.10",
+    removal="1.0.0",
+)
+def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
     ids: Optional[list[int]] = None,
     processes_number: int = 1,
     large_dataset: bool = False,
     verbose: bool = True,
-) -> Dataset:
+) -> Union[Dataset, ProblemDefinition]:
     """Use this function for converting a plaid dataset from a Hugging Face dataset.
 
     A Hugging Face dataset can be read from disk or the hub. From the hub, the
@@ -1215,7 +1395,7 @@ def huggingface_dataset_to_plaid_binary(
 
             dataset = load_dataset("path/to/dir", split = "all_samples")
             dataset = load_from_disk("chanel/dataset")
-            plaid_dataset, plaid_problem = huggingface_dataset_to_plaid_binary(dataset)
+            plaid_dataset, plaid_problem = huggingface_dataset_to_plaid(dataset)
     """
     from plaid.bridges.huggingface_helpers import (
         _HFShardToPlaidSampleConverter,
@@ -1293,15 +1473,20 @@ def huggingface_dataset_to_plaid_binary(
                 ):
                     dataset.add_sample(sample, id=indices[idx])
 
-    return dataset
+    infos = huggingface_description_to_infos(ds.description)
+
+    dataset.set_infos(infos)
+
+    problem_definition = huggingface_description_to_problem_definition(ds.description)
+
+    return dataset, problem_definition
 
 
-# ------------------------------------------------------------------------------
-#     DEPRECATED FUNCTIONS
-# ------------------------------------------------------------------------------
-
-
-@deprecated("will be removed (no alternative)", version="0.1.9", removal="0.2.0")
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.10",
+    removal="1.0.0",
+)
 def huggingface_description_to_problem_definition(
     description: dict,
 ) -> ProblemDefinition:
@@ -1328,12 +1513,17 @@ def huggingface_description_to_problem_definition(
         try:
             func(description[key])
         except KeyError:
+            logger.info(f"Could not retrieve key:'{key}' from description")
             pass
 
     return problem_definition
 
 
-@deprecated("will be removed (no alternative)", version="0.1.9", removal="0.2.0")
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.10",
+    removal="1.0.0",
+)
 def huggingface_description_to_infos(
     description: dict,
 ) -> dict[str, dict[str, str]]:
@@ -1356,7 +1546,11 @@ def huggingface_description_to_infos(
     return infos
 
 
-@deprecated("will be removed (no alternative)", version="0.1.9", removal="0.2.0")
+@deprecated(
+    "will be removed (this hf format will not be not maintained)",
+    version="0.1.9",
+    removal="0.2.0",
+)
 def create_string_for_huggingface_dataset_card(
     description: dict,
     download_size_bytes: int,

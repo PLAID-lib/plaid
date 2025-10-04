@@ -59,7 +59,7 @@ from sklearn.multioutput import MultiOutputRegressor
 
 from sklearn.model_selection import KFold, GridSearchCV
 
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid_binary, load_dataset_from_hub
+from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, load_dataset_from_hub
 from plaid.pipelines.sklearn_block_wrappers import WrappedSklearnTransformer, WrappedSklearnRegressor
 from plaid.pipelines.plaid_blocks import TransformedTargetRegressor, ColumnTransformer
 
@@ -74,7 +74,7 @@ n_processes = min(max(1, os.cpu_count()), 6)
 
 # %%
 hf_dataset = load_dataset_from_hub("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
-dataset_train = huggingface_dataset_to_plaid_binary(hf_dataset, processes_number = n_processes, verbose = False)
+dataset_train, pb_def = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
 
 
 # %% [markdown]

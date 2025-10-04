@@ -55,47 +55,47 @@ class Test_cgns_helper:
         cgns_helper.fix_cgns_tree_types(tree)
 
     def test_compare_cgns_trees(self, tree, samples):
-        assert cgns_helper.compare_cgns_trees(tree, tree) == True
-        assert cgns_helper.compare_cgns_trees(tree, samples[0].get_mesh()) == False
+        assert cgns_helper.compare_cgns_trees(tree, tree)
+        assert not cgns_helper.compare_cgns_trees(tree, samples[0].get_mesh())
 
         tree2 = copy.deepcopy(tree)
         tree2[0] = "A"
-        assert cgns_helper.compare_cgns_trees(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees(tree, tree2)
 
         tree2[0] = tree[0]
         tree2[1] = np.array([0], dtype=np.float32)
         tree[1] = np.array([0], dtype=np.float64)
-        assert cgns_helper.compare_cgns_trees(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees(tree, tree2)
 
         tree[1] = np.array([1], dtype=np.float32)
-        assert cgns_helper.compare_cgns_trees(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees(tree, tree2)
 
         tree[1] = "A"
-        assert cgns_helper.compare_cgns_trees(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees(tree, tree2)
 
         tree[1] = tree2[1]
         tree[3] = "A_t"
-        assert cgns_helper.compare_cgns_trees(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees(tree, tree2)
 
         tree[3] = tree2[3]
         tree[2][0][3] = "A_t"
-        assert cgns_helper.compare_cgns_trees(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees(tree, tree2)
 
     def test_compare_cgns_trees_no_types(self, tree, samples):
-        assert cgns_helper.compare_cgns_trees_no_types(tree, tree) == True
-        assert cgns_helper.compare_cgns_trees_no_types(tree, samples[0].get_mesh()) == False
+        assert cgns_helper.compare_cgns_trees_no_types(tree, tree)
+        assert not cgns_helper.compare_cgns_trees_no_types(tree, samples[0].get_mesh())
 
         tree2 = copy.deepcopy(tree)
         tree2[0] = "A"
-        assert cgns_helper.compare_cgns_trees_no_types(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees_no_types(tree, tree2)
 
         tree2[0] = tree[0]
         tree[2][0][1] = 1.0
-        assert cgns_helper.compare_cgns_trees_no_types(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees_no_types(tree, tree2)
 
         tree[2][0][1] = tree2[2][0][1]
         tree[3] = "A_t"
-        assert cgns_helper.compare_cgns_trees_no_types(tree, tree2) == False
+        assert not cgns_helper.compare_cgns_trees_no_types(tree, tree2)
 
     def test_summarize_cgns_tree(self, tree):
         cgns_helper.summarize_cgns_tree(tree, verbose=False)

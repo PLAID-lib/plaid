@@ -14,7 +14,7 @@ import datasets
 from datasets import load_from_disk
 
 from plaid import Sample
-from plaid.bridges.huggingface_bridge import to_plaid_sample_binary
+from plaid.bridges.huggingface_bridge import binary_to_plaid_sample
 
 
 class _HFToPlaidSampleConverter:
@@ -24,7 +24,7 @@ class _HFToPlaidSampleConverter:
         self.hf_ds = hf_ds
 
     def __call__(self, sample_id: int) -> Sample:  # pragma: no cover
-        return to_plaid_sample_binary(self.hf_ds[sample_id])
+        return binary_to_plaid_sample(self.hf_ds[sample_id])
 
 
 class _HFShardToPlaidSampleConverter:
@@ -44,4 +44,4 @@ class _HFShardToPlaidSampleConverter:
         self, sample_id: int
     ) -> Sample:  # pragma: no cover (not reported with multiprocessing)
         """Convert a sample shard from the huggingface dataset to a plaid :class:`Sample <plaid.containers.sample.Sample>`."""
-        return to_plaid_sample_binary(self.hf_ds[sample_id])
+        return binary_to_plaid_sample(self.hf_ds[sample_id])
