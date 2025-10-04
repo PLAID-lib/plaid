@@ -18,7 +18,6 @@ from plaid.types.feature_types import (
     Field,
     Scalar,
     TimeSequence,
-    TimeSeries,
 )
 from plaid.types.sklearn_types import SklearnBlock
 
@@ -31,7 +30,6 @@ __all__ = [
     "Scalar",
     "Field",
     "TimeSequence",
-    "TimeSeries",
     "Feature",
     "FeatureIdentifier",
     "SklearnBlock",

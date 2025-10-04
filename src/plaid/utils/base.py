@@ -9,9 +9,11 @@
 
 # %% Imports
 
+import os
 from functools import wraps
 
 import numpy as np
+import psutil
 
 # %% Functions
 
@@ -50,6 +52,12 @@ def safe_len(obj):
         The length of the object if it defines `__len__`, otherwise 0.
     """
     return len(obj) if hasattr(obj, "__len__") else 0
+
+
+def get_mem():
+    """Get the current memory usage of the process in MB."""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024**2)  # in MB
 
 
 def delegate_methods(to: str, methods: list[str]):
