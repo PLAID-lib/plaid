@@ -15,13 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (meshes) fix `get_field_name`, could overwrite arguments during iteration over times, bases, zones and locations
 - (docs) explain release process in Contributing page
-
-### Changed
-
 
 ### Removed
 
+- (sample/features) cgns links and paths, as well as args `mesh_base_name` and `mesh_zone_name`
 - (sample) time_series support, now handle directly globals at time steps.
 
 
