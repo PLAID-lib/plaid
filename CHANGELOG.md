@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (sample) add `memory_safe` to save to run pyCGNS save in a subprocess and prevent memory leaks
 - (docs) explain release process in Contributing page
 
 ### Changed

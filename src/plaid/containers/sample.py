@@ -1184,7 +1184,7 @@ class Sample(BaseModel):
 
     # -------------------------------------------------------------------------#
     def save(
-        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = True
+        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
     ) -> None:
         """Save the Sample in directory `path`.
 
