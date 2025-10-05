@@ -11,4 +11,6 @@
 # %% Tests
 class Test_cgns_worker:
     def test_import(self):
-        pass
+        from plaid.utils import cgns_worker
+
+        cgns_worker.logger
