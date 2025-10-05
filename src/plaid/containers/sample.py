@@ -61,6 +61,7 @@ FEATURES_METHODS = [
     "get_base_names",
     "get_zone_names",
     "get_nodal_tags",
+    "has_globals",
     "get_global",
     "add_global",
     "del_global",
@@ -75,6 +76,7 @@ FEATURES_METHODS = [
     "add_field",
     "init_base",
     "init_zone",
+    "init_tree",
     "add_tree",
     "del_tree",
 ]
