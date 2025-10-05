@@ -646,7 +646,7 @@ class Sample(BaseModel):
                 time = self.features.get_time_assignment(time=feat_id.get("time"))
 
                 # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                if len(sample.features.get_base_names(time=time, globals=False)) == 0:
+                if len(sample.features.get_base_names(time=time)) == 0:
                     sample.features.add_tree(source_sample.features.get_mesh(time))
                     for name in sample.features.get_global_names(time=time):
                         sample.features.del_global(name, time)
