@@ -110,7 +110,7 @@ def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
 
 
 def flatten_cgns_tree(
-    pyTree: CGNSTree,
+    pyTree: CGNSTree, time_rank: int = 0
 ) -> tuple[dict[str, object], dict[str, str]]:
     """Flatten a CGNS tree into dictionaries of primitives for Hugging Face serialization.
 
@@ -121,6 +121,7 @@ def flatten_cgns_tree(
 
     Args:
         pyTree (CGNSTree): The CGNS tree to flatten.
+        time_rank (int, optional): Rank of the time step, to prepend to paths
 
     Returns:
         tuple[dict[str, object], dict[str, str], dict[str, object]]:
@@ -130,13 +131,13 @@ def flatten_cgns_tree(
 
     Example:
         >>> flat, dtypes, extras = flatten_cgns_tree(pyTree)
-        >>> flat["Base1/Zone1/Solution1/Field1"]  # [1.0, 2.0, ...]
-        >>> dtypes["Base1/Zone1/Solution1/Field1"]  # 'float64'
+        >>> flat["0/Base1/Zone1/Solution1/Field1"]  # [1.0, 2.0, ...]
+        >>> dtypes["0/Base1/Zone1/Solution1/Field1"]  # 'float64'
     """
     flat = {}
     cgns_types = {}
 
-    def visit(tree, path=""):
+    def visit(tree, path=f"{time_rank}"):
         for node in tree[2]:
             name, data, children, cgns_type = node
             new_path = f"{path}/{name}" if path else name
@@ -188,8 +189,7 @@ def nodes_to_tree(nodes: dict[str, CGNSTree]) -> Optional[CGNSTree]:
 
 
 def unflatten_cgns_tree(
-    flat: dict[str, object],
-    cgns_types: dict[str, str],
+    flat: dict[str, object], cgns_types: dict[str, str], time=False
 ) -> CGNSTree:
     """Reconstruct a CGNS tree from flattened dictionaries of data and types.
 
@@ -227,7 +227,10 @@ def unflatten_cgns_tree(
 
     for path, value in flat.items():
         cgns_type = cgns_types.get(path)
-        nodes[path] = [path.split("/")[-1], value, [], cgns_type]
+        split_path = path.split("/")
+        if time:
+            path = "/".join(split_path[1:])
+        nodes[path] = [split_path[-1], value, [], cgns_type]
 
     # Re-link nodes into tree structure
     return nodes_to_tree(nodes)

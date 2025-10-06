@@ -426,8 +426,10 @@ def _generator_prepare_for_huggingface(
     global_cgns_types = {}
     global_feature_types = {}
     global_constant_leaves = {}
+    global_time_steps_ranks = {}
     total_samples = 0
 
+    time_rank = 0
     for split_name, generator in generators.items():
         for sample in tqdm(
             generator(),
@@ -435,43 +437,53 @@ def _generator_prepare_for_huggingface(
             desc=f"Prepare for HF on split {split_name}",
         ):
             total_samples += 1
-            tree = sample.features.data[0.0]
-            flat, cgns_types = flatten_cgns_tree(tree)
+            for time in sample.features.data.keys():
+                if time not in global_time_steps_ranks:
+                    global_time_steps_ranks[time] = time_rank
+                    time_rank += 1
+                tree = sample.features.data[time]
+                flat, cgns_types = flatten_cgns_tree(
+                    tree, global_time_steps_ranks[time]
+                )
 
-            for path, value in flat.items():
-                # --- CGNS types ---
-                if path not in global_cgns_types:
-                    global_cgns_types[path] = cgns_types[path]
-                elif global_cgns_types[path] != cgns_types[path]:  # pragma: no cover
-                    raise ValueError(
-                        f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
-                    )
-
-                # --- feature types ---
-                inferred_feature = infer_hf_features_from_value(value)
-                if path not in global_feature_types:
-                    global_feature_types[path] = inferred_feature
-                else:
-                    # sanity check: convert to dict before comparing
-                    if repr(global_feature_types[path]) != repr(
-                        inferred_feature
+                for path, value in flat.items():
+                    # --- CGNS types ---
+                    if path not in global_cgns_types:
+                        global_cgns_types[path] = cgns_types[path]
+                    elif (
+                        global_cgns_types[path] != cgns_types[path]
                     ):  # pragma: no cover
                         raise ValueError(
-                            f"Feature type mismatch for {path}: "
-                            f"{global_feature_types[path]} vs {inferred_feature}"
+                            f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
                         )
 
-                if path not in global_constant_leaves:
-                    global_constant_leaves[path] = {
-                        "value": value,
-                        "constant": True,
-                        "count": 1,
-                    }
-                else:
-                    entry = global_constant_leaves[path]
-                    entry["count"] += 1
-                    if entry["constant"] and not values_equal(entry["value"], value):
-                        entry["constant"] = False
+                    # --- feature types ---
+                    inferred_feature = infer_hf_features_from_value(value)
+                    if path not in global_feature_types:
+                        global_feature_types[path] = inferred_feature
+                    else:
+                        # sanity check: convert to dict before comparing
+                        if repr(global_feature_types[path]) != repr(
+                            inferred_feature
+                        ):  # pragma: no cover
+                            raise ValueError(
+                                f"Feature type mismatch for {path}: "
+                                f"{global_feature_types[path]} vs {inferred_feature}"
+                            )
+
+                    if path not in global_constant_leaves:
+                        global_constant_leaves[path] = {
+                            "value": value,
+                            "constant": True,
+                            "count": 1,
+                        }
+                    else:
+                        entry = global_constant_leaves[path]
+                        entry["count"] += 1
+                        if entry["constant"] and not values_equal(
+                            entry["value"], value
+                        ):
+                            entry["constant"] = False
 
     # After loop: only keep constants that appeared in all samples
     for path, entry in global_constant_leaves.items():
@@ -503,7 +515,7 @@ def _generator_prepare_for_huggingface(
     key_mappings["constant_features"] = cst_features
     key_mappings["cgns_types"] = global_cgns_types
 
-    return flat_cst, key_mappings, hf_features
+    return flat_cst, key_mappings, global_time_steps_ranks, hf_features
 
 
 def plaid_generator_to_huggingface_datasetdict(
@@ -566,17 +578,20 @@ def plaid_generator_to_huggingface_datasetdict(
         >>> print(key_mappings["variable_features"][:3])
         ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
     """
-    flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
-        generators, verbose
+    flat_cst, key_mappings, global_time_steps_ranks, hf_features = (
+        _generator_prepare_for_huggingface(generators, verbose)
     )
 
     all_features_keys = list(hf_features.keys())
 
     def generator_fn(gen_func, all_features_keys):
         for sample in gen_func():
-            tree = sample.features.data[0.0]
-            flat, _ = flatten_cgns_tree(tree)
-            yield {path: flat.get(path, None) for path in all_features_keys}
+            flat_all_times = {}
+            for time in sample.features.data.keys():
+                tree = sample.features.data[time]
+                flat, _ = flatten_cgns_tree(tree, global_time_steps_ranks[time])
+                flat_all_times.update(flat)
+            yield {path: flat_all_times.get(path, None) for path in all_features_keys}
 
     _dict = {}
     for split_name, gen_func in generators.items():
