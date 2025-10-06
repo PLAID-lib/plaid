@@ -208,7 +208,7 @@ def to_plaid_dataset(
     hf_dataset: datasets.Dataset,
     flat_cst: dict[str, Any],
     cgns_types: dict[str, str],
-    enforce_shapes: bool = False,
+    enforce_shapes: bool = True,
 ) -> Dataset:
     """Convert a Hugging Face dataset into a PLAID dataset.
 
