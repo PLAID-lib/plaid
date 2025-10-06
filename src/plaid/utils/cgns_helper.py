@@ -203,6 +203,7 @@ def unflatten_cgns_tree(
             The data can be a scalar, list, numpy array, or None.
         cgns_types (dict[str, str]): Dictionary mapping node paths to CGNS type strings
             (e.g., "Zone_t", "FlowSolution_t").
+        time (bool, optional): if Tree, time mode activated
 
     Returns:
         CGNSTree: The reconstructed CGNS tree with nodes properly nested according
