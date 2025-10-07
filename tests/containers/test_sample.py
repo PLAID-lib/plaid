@@ -706,11 +706,70 @@ class Test_Sample:
         assert scalar is not None
         assert isinstance(scalar, np.ndarray)
 
-    def test__add_feature(self, sample_with_scalar):
-        sample_with_scalar._add_feature(
-            feature_identifier={"type": "scalar", "name": "test_scalar_2"},
+    def test_add_feature(self, sample_with_scalar):
+        sample_with_scalar.add_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "scalar", "name": "test_scalar_2"}
+            ),
             feature=[3.1415],
         )
+
+    def test_del_feature(
+        self,
+        sample_with_scalar: Sample,
+        sample_with_tree3d: Sample,
+        sample_with_time_series: Sample,
+    ):
+        sample_with_scalar.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "scalar", "name": "test_scalar_1"}
+            ),
+        )
+        assert sample_with_scalar.get_all_features_identifiers_by_type("scalar") == []
+        sample_with_tree3d.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "field", "name": "test_node_field_1"}
+            ),
+        )
+        sample_with_tree3d.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "field", "name": "big_node_field"}
+            ),
+        )
+        sample_with_tree3d.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "field", "name": "test_elem_field_1", "location": "CellCenter"}
+            ),
+        )
+        sample_with_tree3d.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "field", "name": "OriginalIds"}
+            ),
+        )
+        sample_with_tree3d.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "field", "name": "OriginalIds", "location": "CellCenter"}
+            ),
+        )
+        sample_with_tree3d.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "field", "name": "OriginalIds", "location": "FaceCenter"}
+            ),
+        )
+        assert sample_with_tree3d.get_all_features_identifiers_by_type("field") == []
+        sample_with_time_series.del_feature(
+            feature_identifier=FeatureIdentifier(
+                {"type": "time_series", "name": "test_time_series_1"}
+            ),
+        )
+        assert (
+            sample_with_time_series.get_all_features_identifiers_by_type("time_series")
+            == []
+        )
+        with pytest.raises(NotImplementedError):
+            sample_with_tree3d.del_feature(
+                feature_identifier=FeatureIdentifier({"type": "nodes"}),
+            )
 
     # -------------------------------------------------------------------------#
     def test_get_time_series_names_empty(self, sample: Sample):
