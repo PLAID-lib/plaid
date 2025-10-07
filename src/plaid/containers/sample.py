@@ -19,7 +19,9 @@ else:  # pragma: no cover
 
 import copy
 import logging
+import pickle
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -53,6 +55,8 @@ from plaid.utils.base import safe_len
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
+
+CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
 
 
 class Sample(BaseModel):
@@ -1211,12 +1215,15 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    def save(self, path: Union[str, Path], overwrite: bool = False) -> None:
+    def save(
+        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
+    ) -> None:
         """Save the Sample in directory `path`.
 
         Args:
             path (Union[str,Path]): relative or absolute directory path.
             overwrite (bool): target directory overwritten if True.
+            memory_safe (bool): use pyCGNS save in a subprocess (requires an additional pickle of the sample) if True.
         """
         path = Path(path)
 
@@ -1237,12 +1244,23 @@ class Sample(BaseModel):
             mesh_dir.mkdir()
             for i, time in enumerate(self.meshes.data.keys()):
                 outfname = mesh_dir / f"mesh_{i:09d}.cgns"
-                status = CGM.save(
-                    str(outfname),
-                    self.meshes.data[time],
-                    links=self.meshes._links.get(time),
-                )
-                logger.debug(f"save -> {status=}")
+
+                if memory_safe:
+                    tmpfile = mesh_dir / f"mesh_{i:09d}.pkl"
+                    with open(tmpfile, "wb") as f:
+                        pickle.dump(self.meshes.data[time], f)
+
+                    cmd = [sys.executable, str(CGNS_WORKER), tmpfile, str(outfname)]
+                    subprocess.run(cmd)
+                    logging.debug(f"save -> {outfname}")
+
+                else:
+                    status = CGM.save(
+                        str(outfname),
+                        self.meshes.data[time],
+                        links=self.meshes._links.get(time),
+                    )
+                    logger.debug(f"save -> {status=}")
 
         scalars_names = self.get_scalar_names()
         if len(scalars_names) > 0:
