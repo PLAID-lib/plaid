@@ -124,11 +124,15 @@ def deprecated_argument(
             f"Argument `{old_arg}` has been removed in v{removal}, use `{new_arg}` instead."
         ]
 
-        def decorator(_func):
-            def wrapper(*_args, **_kwargs):
-                raise DeprecatedError(full_message)
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                if old_arg in kwargs:
+                    raise DeprecatedError(full_message)
+                return func(*args, **kwargs)
 
             return wrapper
+
     else:
         if isinstance(version, str):
             version = Version(version)
