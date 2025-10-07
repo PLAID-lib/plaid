@@ -658,10 +658,7 @@ class Sample(BaseModel):
                     logging.debug(f"save -> {outfname}")
 
                 else:
-                    status = CGM.save(
-                        str(outfname),
-                        self.features.data[time]
-                    )
+                    status = CGM.save(str(outfname), self.features.data[time])
                     logger.debug(f"save -> {status=}")
 
     @classmethod
