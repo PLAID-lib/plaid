@@ -506,6 +506,103 @@ def _generator_prepare_for_huggingface(
     return flat_cst, key_mappings, hf_features
 
 
+def _generator_prepare_for_huggingface_time(
+    generators: dict[str, Callable],
+    verbose: bool = True,
+) -> tuple[dict[str, Any], dict[str, Any], Features]:
+
+    global_cgns_types = {}
+    global_feature_types = {}
+
+    for split_name, generator in generators.items():
+        for sample in tqdm(
+            generator(),
+            disable=not verbose,
+            desc=f"Prepare for HF on split {split_name}",
+        ):
+
+            for tree in sample.features.data.values():
+                flat, cgns_types = flatten_cgns_tree(tree)
+
+                for path, value in flat.items():
+                    # --- CGNS types ---
+                    if path not in global_cgns_types:
+                        global_cgns_types[path] = cgns_types[path]
+                    elif global_cgns_types[path] != cgns_types[path]:  # pragma: no cover
+                        raise ValueError(
+                            f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
+                        )
+                    # --- feature types ---
+                    inferred_feature = infer_hf_features_from_value(value)
+                    if path not in global_feature_types:
+                        global_feature_types[path] = inferred_feature
+                    else:
+                        # sanity check: convert to dict before comparing
+                        if repr(global_feature_types[path]) != repr(
+                            inferred_feature
+                        ):  # pragma: no cover
+                            raise ValueError(
+                                f"Feature type mismatch for {path}: "
+                                f"{global_feature_types[path]} vs {inferred_feature}"
+                            )
+
+    hf_features = {k+"_value": v for k, v in global_feature_types.items()}
+
+    hf_features.update({k+"_times": Sequence(Value("float32")) for k in global_feature_types.keys()})
+
+    hf_features = Features({k:v for k, v in hf_features.items()})
+
+
+    def generator_fn(gen_func):
+        for sample in gen_func():
+
+            sample_flat_trees = {}
+            all_paths = []
+
+            for time, tree in sample.features.data.items():
+                flat, _ = flatten_cgns_tree(tree)
+                sample_flat_trees[time] = flat
+                all_paths.extend(list(flat.keys()))
+
+            all_paths = list(set(all_paths))
+
+            hf_sample = {}
+            for path in all_paths:
+                hf_sample[path+"_value"] = None
+                hf_sample[path+"_times"] = None
+                for time, flat in sample_flat_trees.items():
+                    if path in flat.keys():
+                        value = flat[path]
+                        if value is not None:
+                            l = len(hf_sample[path+"_value"]) if hf_sample[path+"_value"] is not None else 0
+                            if l>0:
+                                hf_sample[path+"_value"] = np.hstack((hf_sample[path+"_value"], value))
+                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+len(value)]))
+                            else:
+                                hf_sample[path+"_value"] = value
+                                hf_sample[path+"_times"] = [time, l, l+len(value)]
+
+            yield hf_sample
+
+
+
+    _dict = {}
+    for split_name, generator in generators.items():
+        gen = partial(generator_fn, generator)
+        data = list(gen())
+        _dict[split_name] = datasets.Dataset.from_list(data, features=hf_features)
+        # _dict[split_name] = datasets.Dataset.from_generator(
+        #     generator=gen,
+        #     features=hf_features,
+        #     num_proc=1,
+        #     writer_batch_size=1,
+        #     split=datasets.splits.NamedSplit(split_name),
+        #     cache_dir=f"C:/Users/d582428/tmp/hf_cache_{split_name}_{uuid.uuid4()}",
+        # )
+
+    return datasets.DatasetDict(_dict)
+
+
 def plaid_generator_to_huggingface_datasetdict(
     generators: dict[str, Callable],
     processes_number: int = 1,
