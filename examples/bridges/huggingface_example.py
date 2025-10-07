@@ -18,7 +18,7 @@
 #
 # This Jupyter Notebook demonstrates various operations involving the Hugging Face bridge:
 #
-# 1. Converting a plaid dataset to Hugging Face 
+# 1. Converting a plaid dataset to Hugging Face
 # 2. Generating a Hugging Face dataset with a generator
 # 3. Converting a Hugging Face dataset to plaid
 # 4. Saving and Loading Hugging Face datasets
@@ -82,11 +82,11 @@ for _ in range(3):
 
     sample = Sample()
 
-    sample.add_tree(MeshToCGNS(mesh))
+    sample.meshes.add_tree(MeshToCGNS(mesh))
     sample.add_scalar("scalar", np.random.randn())
-    sample.add_field("node_field", np.random.rand(1, len(points)), location="Vertex")
+    sample.add_field("node_field", np.random.rand(len(points)), location="Vertex")
     sample.add_field(
-        "cell_field", np.random.rand(1, len(points)), location="CellCenter"
+        "cell_field", np.random.rand(len(triangles)), location="CellCenter"
     )
 
     dataset.add_sample(sample)
@@ -113,7 +113,7 @@ print(f" {problem = }")
 # %% [markdown]
 # ## Section 1: Convert plaid dataset to Hugging Face
 #
-# The description field of Hugging Face dataset is automatically configured to include data from the plaid dataset info and problem_definition to prevent loss of information and equivalence of format. 
+# The description field of Hugging Face dataset is automatically configured to include data from the plaid dataset info and problem_definition to prevent loss of information and equivalence of format.
 
 # %%
 hf_dataset = huggingface_bridge.plaid_dataset_to_huggingface(dataset, problem)
@@ -122,7 +122,7 @@ print(f"{hf_dataset = }")
 print(f"{hf_dataset.description = }")
 
 # %% [markdown]
-# The previous code generates a Hugging Face dataset containing all the samples from the plaid dataset, the splits being defined in the hf_dataset descriptions. For splits, Hugging Face proposes `DatasetDict`, which are dictionaries of hf datasets, with keys being the name of the corresponding splits. It is possible de generate a hf datasetdict directly from plaid: 
+# The previous code generates a Hugging Face dataset containing all the samples from the plaid dataset, the splits being defined in the hf_dataset descriptions. For splits, Hugging Face proposes `DatasetDict`, which are dictionaries of hf datasets, with keys being the name of the corresponding splits. It is possible de generate a hf datasetdict directly from plaid:
 
 # %%
 hf_datasetdict = huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, problem, main_splits = ['train', 'test'])
@@ -183,7 +183,7 @@ hf_dataset.save_to_disk("/tmp/path/to/dir")
 
 # %%
 # Load from disk
-from datasets import load_from_disk, load_dataset
+from datasets import load_from_disk
 
 loaded_hf_dataset = load_from_disk("/tmp/path/to/dir")
 
@@ -203,31 +203,27 @@ print(f"{loaded_hf_dataset.description = }")
 #
 # First login the huggingface cli:
 # ```bash
-#     
-#     huggingface-cli login
-#
+# huggingface-cli login
 # ```
 # and enter you access token.
 #
 # Then, the following python instruction enable pushing a dataset to the hub:
 # ```python
-#     
-#     hf_dataset.push_to_hub("chanel/dataset")
+# hf_dataset.push_to_hub("chanel/dataset")
 #
-#     from datasets import load_dataset_builder
+# from datasets import load_dataset_builder
 #
-#     datasetInfo = load_dataset_builder("chanel/dataset").__getstate__()['info']
+# datasetInfo = load_dataset_builder("chanel/dataset").__getstate__()['info']
 #
-#     from huggingface_hub import DatasetCard
+# from huggingface_hub import DatasetCard
 #
-#     card_text = create_string_for_huggingface_dataset_card(
-#         description = description,
-#         download_size_bytes = datasetInfo.download_size,
-#         dataset_size_bytes = datasetInfo.dataset_size,
-#         ...)
-#     dataset_card = DatasetCard(card_text)
-#     dataset_card.push_to_hub("chanel/dataset")
-#
+# card_text = create_string_for_huggingface_dataset_card(
+#     description = description,
+#     download_size_bytes = datasetInfo.download_size,
+#     dataset_size_bytes = datasetInfo.dataset_size,
+#     ...)
+# dataset_card = DatasetCard(card_text)
+# dataset_card.push_to_hub("chanel/dataset")
 # ```
 #
 # The second upload of the dataset_card is required to ensure that load_dataset from the hub will populate
@@ -236,21 +232,36 @@ print(f"{loaded_hf_dataset.description = }")
 #
 # ### Load from hub
 #
-# ```python
-#
-#     dataset = load_dataset("chanel/dataset", split="all_samples")
-#
-# ```
-#
-# More efficient retrieval are made possible by partial loads and  split laods (in the case of a datasetdict):
+# #### General case
 #
 # ```python
-#
-#     dataset_train = load_dataset("chanel/dataset", split="train")
-#     dataset_train_extract = load_dataset("chanel/dataset", split="train[:10]")
-#
+# dataset = load_dataset("chanel/dataset", split="all_samples")
 # ```
 #
+# More efficient retrieval are made possible by partial loads and  split loads (in the case of a datasetdict):
+#
+# ```python
+# dataset_train = load_dataset("chanel/dataset", split="train")
+# dataset_train_extract = load_dataset("chanel/dataset", split="train[:10]")
+# ```
+#
+# #### Proxy
+#
+# A retrieval function robust to cases where you are behind a proxy and relying on a private mirror is avalable;
+#
+# ```python
+# from plaid.bridges.huggingface_bridge import load_hf_dataset_from_hub
+# hf_dataset = load_hf_dataset_from_hub("chanel/dataset", *args, **kwargs)
+# ```
+#
+# - Streaming mode is not supported when using a private mirror.
+# - Falls back to local download if streaming or public loading fails.
+# - To use behind a proxy, you may need to set:
+#   - `HF_ENDPOINT` to your private mirror address
+#   - `CURL_CA_BUNDLE` to your trusted CA certificates
+#   - `HF_HOME` to a shared cache directory if needed
+
+
 
 # %% [markdown]
 # ## Section 5: Handle plaid samples from Hugging Face datasets without converting the complete dataset to plaid
@@ -288,3 +299,14 @@ show_sample(plaid_sample)
 #
 # show_sample(plaid_sample)
 # ```
+#
+# Or initialize a plaid dataset and problem definition for any number of samples relying on this streaming mechanisme:
+#
+# ```python
+# from plaid.bridges.huggingface_bridge import streamed_huggingface_dataset_to_plaid
+#
+# dataset, pb_def = streamed_huggingface_dataset_to_plaid('PLAID-datasets/VKI-LS59', 2)
+# ```
+
+
+

@@ -72,7 +72,7 @@ if __name__ == "__main__":
                 sample_path = Path(
                     "../../tests/containers/dataset/samples/sample_000000000"
                 )
-            tmpsmp = Sample(sample_path)
+            tmpsmp = Sample(path=sample_path)
             smp = tmpsmp
 
             # ---# Add some random data

@@ -37,10 +37,6 @@ from plaid.utils.deprecation import deprecated
 # %% Globals
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(
-    format="[%(asctime)s:%(levelname)s:%(filename)s:%(funcName)s(%(lineno)d)]:%(message)s",
-    level=logging.INFO,
-)
 
 # %% Functions
 
@@ -1298,6 +1294,34 @@ class ProblemDefinition(object):
                 f"file with path `{split_fname_csv}` or `{split_fname_json}` does not exist. Splits will not be set"
             )
         self._split = split
+
+    def extract_problem_definition_from_identifiers(
+        self, identifiers: list[FeatureIdentifier]
+    ) -> Self:
+        """Create a new ProblemDefinition restricted to a subset of feature identifiers.
+
+        Args:
+            identifiers (list[FeatureIdentifier]): List of identifiers to keep.
+
+        Returns:
+            ProblemDefinition: A new :class:`ProblemDefinition` instance.
+        """
+        new_problem_definition = ProblemDefinition()
+        if self._task is not None:
+            new_problem_definition.set_task(self.get_task())
+
+        in_features = self.filter_in_features_identifiers(identifiers)
+        if len(in_features) > 0:
+            new_problem_definition.add_in_features_identifiers(in_features)
+
+        out_features = self.filter_out_features_identifiers(identifiers)
+        if len(out_features) > 0:
+            new_problem_definition.add_out_features_identifiers(out_features)
+
+        if self.get_split() is not None:
+            new_problem_definition.set_split(self.get_split())
+
+        return new_problem_definition
 
     # -------------------------------------------------------------------------#
     def __repr__(self) -> str:

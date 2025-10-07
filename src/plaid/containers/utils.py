@@ -12,14 +12,110 @@
 from pathlib import Path
 from typing import Union
 
+import CGNS.PAT.cgnsutils as CGU
+import numpy as np
+
 from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
 )
-from plaid.types import Feature, FeatureIdentifier
+from plaid.types import (
+    Feature,
+    FeatureIdentifier,
+)
 from plaid.utils.base import safe_len
 
-# %% Functions
+
+def _check_names(names: Union[str, list[str]]):
+    """Check that names do not contain invalid character ``/``.
+
+    Args:
+        names (Union[str, list[str]]): The names to check.
+
+    Raises:
+        ValueError: If any name contains the invalid character ``/``.
+    """
+    if isinstance(names, str):
+        names = [names]
+    for name in names:
+        if (name is not None) and ("/" in name):
+            raise ValueError(
+                f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurence of `/` with something else, for example: `name.replace('/','__')`"
+            )
+
+
+def _read_index(pyTree: list, dim: list[int]):
+    """Read Index Array or Index Range from CGNS.
+
+    Args:
+        pyTree (list): CGNS node which has a child Index to read
+        dim (list): dimensions of the coordinates
+
+    Returns:
+        indices
+    """
+    a = _read_index_array(pyTree)
+    b = _read_index_range(pyTree, dim)
+    return np.hstack((a, b))
+
+
+def _read_index_array(pyTree: list):
+    """Read Index Array from CGNS.
+
+    Args:
+        pyTree (list): CGNS node which has a child of type IndexArray_t to read
+
+    Returns:
+        indices
+    """
+    indexArrayPaths = CGU.getPathsByTypeSet(pyTree, ["IndexArray_t"])
+    res = []
+    for indexArrayPath in indexArrayPaths:
+        data = CGU.getNodeByPath(pyTree, indexArrayPath)
+        if data[1] is None:  # pragma: no cover
+            continue
+        else:
+            res.extend(data[1].ravel())
+    return np.array(res, dtype=int).ravel()
+
+
+def _read_index_range(pyTree: list, dim: list[int]):
+    """Read Index Range from CGNS.
+
+    Args:
+        pyTree (list): CGNS node which has a child of type IndexRange_t to read
+        dim (list[str]): dimensions of the coordinates
+
+    Returns:
+        indices
+    """
+    indexRangePaths = CGU.getPathsByTypeSet(pyTree, ["IndexRange_t"])
+    res = []
+
+    for indexRangePath in indexRangePaths:  # Is it possible there are several ?
+        indexRange = CGU.getValueByPath(pyTree, indexRangePath)
+
+        if indexRange.shape == (3, 2):  # 3D  # pragma: no cover
+            for k in range(indexRange[:, 0][2], indexRange[:, 1][2] + 1):
+                for j in range(indexRange[:, 0][1], indexRange[:, 1][1] + 1):
+                    global_id = (
+                        np.arange(indexRange[:, 0][0], indexRange[:, 1][0] + 1)
+                        + dim[0] * (j - 1)
+                        + dim[0] * dim[1] * (k - 1)
+                    )
+                    res.extend(global_id)
+
+        elif indexRange.shape == (2, 2):  # 2D  # pragma: no cover
+            for j in range(indexRange[:, 0][1], indexRange[:, 1][1]):
+                for i in range(indexRange[:, 0][0], indexRange[:, 1][0]):
+                    global_id = i + dim[0] * (j - 1)
+                    res.append(global_id)
+        else:
+            begin = indexRange[0]
+            end = indexRange[1]
+            res.extend(np.arange(begin, end + 1).ravel())
+
+    return np.array(res, dtype=int).ravel()
 
 
 def get_sample_ids(savedir: Union[str, Path]) -> list[int]:
@@ -95,7 +191,9 @@ def get_feature_type_and_details_from(
 
     assert all(
         key in AUTHORIZED_FEATURE_INFOS[feature_type] for key in feature_details
-    ), "Unexpected key(s) in feature_identifier"
+    ), (
+        f"Unexpected key(s) in feature_identifier {feature_details=} | {feature_type=} -> {AUTHORIZED_FEATURE_INFOS[feature_type]}"
+    )
 
     return feature_type, feature_details
 

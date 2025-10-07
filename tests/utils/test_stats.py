@@ -10,6 +10,7 @@
 import numpy as np
 import pytest
 
+from plaid.constants import CGNS_FIELD_LOCATIONS
 from plaid.containers.sample import Sample
 from plaid.utils.stats import OnlineStatistics, Stats
 
@@ -67,7 +68,7 @@ def sample_with_scalar(np_samples_3):
 def sample_with_field(np_samples_6):
     s = Sample()
     # 1. Initialize the CGNS tree
-    s.init_tree()
+    s.meshes.init_tree()
     # 2. Create a base and a zone
     s.init_base(topological_dim=3, physical_dim=3)
     s.init_zone(zone_shape=np.array([np_samples_6.shape[0], 0, 0]))
@@ -244,19 +245,22 @@ class Test_Stats:
         stats.add_samples(samples)
         stats_dict = stats.get_stats()
 
-        sample = samples[0]
+        sample: Sample = samples[0]
         feature_names = sample.get_scalar_names()
         feature_names.extend(
             item
             for ts_name in sample.get_time_series_names()
             for item in (f"time_series/{ts_name}", f"timestamps/{ts_name}")
         )
-        for base_name in sample.get_base_names():
-            for zone_name in sample.get_zone_names(base_name=base_name):
-                for field_name in sample.get_field_names(
-                    zone_name=zone_name, base_name=base_name
-                ):
-                    feature_names.append(f"{base_name}/{zone_name}/{field_name}")
+        for base_name in sample.meshes.get_base_names():
+            for zone_name in sample.meshes.get_zone_names(base_name=base_name):
+                for location in CGNS_FIELD_LOCATIONS:
+                    for field_name in sample.get_field_names(
+                        location=location, zone_name=zone_name, base_name=base_name
+                    ):
+                        feature_names.append(
+                            f"{base_name}/{zone_name}/{location}/{field_name}"
+                        )
 
         for feat_name in feature_names:
             assert feat_name in stats_dict, (
@@ -293,15 +297,15 @@ class Test_Stats:
         stats.clear_statistics()
         assert len(stats.get_available_statistics()) == 0
 
-    def test_add_samples_time_series_case_1(self, sample_with_time_series):
+    def test_add_samples_time_series_case_1(self, sample_with_time_series: Sample):
         # 1st case: adding time series with same sizes with 2 calls to add_samples
         stats1 = Stats()
         stats1.add_samples([sample_with_time_series])
         stats1.add_samples([sample_with_time_series])
         keys = stats1.get_available_statistics()
 
-        assert "Base_1_1/Zone/field1" in keys
-        stat_field = stats1._stats["Base_1_1/Zone/field1"]
+        assert "Base_1_1/Zone/Vertex/field1" in keys
+        stat_field = stats1._stats["Base_1_1/Zone/Vertex/field1"]
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 202
         stats_dict = stat_field.get_stats()
@@ -326,8 +330,8 @@ class Test_Stats:
         stats2.add_samples([sample_with_time_series_of_different_size])
         keys = stats2.get_available_statistics()
 
-        assert "Base_1_1/Zone/field1" in keys
-        stat_field = stats2._stats["Base_1_1/Zone/field1"]
+        assert "Base_1_1/Zone/Vertex/field1" in keys
+        stat_field = stats2._stats["Base_1_1/Zone/Vertex/field1"]
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 152
         stats_dict = stat_field.get_stats()
@@ -349,8 +353,8 @@ class Test_Stats:
         stats3.add_samples([sample_with_time_series, sample_with_time_series])
         keys = stats3.get_available_statistics()
 
-        assert "Base_1_1/Zone/field1" in keys
-        stat_field = stats3._stats["Base_1_1/Zone/field1"]
+        assert "Base_1_1/Zone/Vertex/field1" in keys
+        stat_field = stats3._stats["Base_1_1/Zone/Vertex/field1"]
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 202
         stats_dict = stat_field.get_stats()
@@ -376,8 +380,8 @@ class Test_Stats:
         )
         keys = stats4.get_available_statistics()
 
-        assert "Base_1_1/Zone/field1" in keys
-        stat_field = stats4._stats["Base_1_1/Zone/field1"]
+        assert "Base_1_1/Zone/Vertex/field1" in keys
+        stat_field = stats4._stats["Base_1_1/Zone/Vertex/field1"]
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 152
         stats_dict = stat_field.get_stats()
@@ -404,8 +408,8 @@ class Test_Stats:
         )
         keys = stats5.get_available_statistics()
 
-        assert "Base_1_1/Zone/field1" in keys
-        stat_field = stats5._stats["Base_1_1/Zone/field1"]
+        assert "Base_1_1/Zone/Vertex/field1" in keys
+        stat_field = stats5._stats["Base_1_1/Zone/Vertex/field1"]
         assert stat_field.n_samples == 3
         assert stat_field.n_points == 253
         stats_dict = stat_field.get_stats()
@@ -428,9 +432,9 @@ class Test_Stats:
         stats2.add_samples([sample_with_time_series])
         stats1.merge_stats(stats2)
         keys = stats1.get_available_statistics()
-        assert "Base_1_1/Zone/field1" in keys
+        assert "Base_1_1/Zone/Vertex/field1" in keys
 
-        stat_field = stats1._stats["Base_1_1/Zone/field1"]
+        stat_field = stats1._stats["Base_1_1/Zone/Vertex/field1"]
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 202
         assert stat_field.n_features == 101
@@ -457,9 +461,9 @@ class Test_Stats:
         stats2.add_samples([sample_with_time_series_of_different_size])
         stats1.merge_stats(stats2)
         keys = stats1.get_available_statistics()
-        assert "Base_1_1/Zone/field1" in keys
+        assert "Base_1_1/Zone/Vertex/field1" in keys
 
-        stat_field = stats1._stats["Base_1_1/Zone/field1"]
+        stat_field = stats1._stats["Base_1_1/Zone/Vertex/field1"]
         assert stat_field.n_samples == 2
         assert stat_field.n_points == 152
         stats_dict = stat_field.get_stats()

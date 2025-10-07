@@ -105,7 +105,7 @@ print(f"{sample_01 = }")
 
 # %%
 # Add a CGNS tree structure to the Sample
-sample_01.add_tree(cgns_mesh)
+sample_01.meshes.add_tree(cgns_mesh)
 print(f"{sample_01 = }")
 
 # %%
@@ -136,14 +136,14 @@ print("#---# Empty Sample")
 sample_03 = Sample()
 sample_03.add_scalar("speed", np.random.randn())
 sample_03.add_scalar("rotation", sample_01.get_scalar("rotation"))
-sample_03.add_tree(cgns_mesh)
+sample_03.meshes.add_tree(cgns_mesh)
 
 # Show Sample CGNS content
 sample_03.show_tree()
 
 # %%
 # Add a field to the third empty Sample
-sample_03.add_field("temperature", np.random.rand(5), "Zone", "Base_2_2")
+sample_03.add_field("temperature", np.random.rand(5), zone_name="Zone", base_name="Base_2_2")
 sample_03.show_tree()
 
 # %% [markdown]
@@ -234,6 +234,13 @@ print("get_sample_ids =", dataset.get_sample_ids())
 # Print the Dataset
 print(f"{dataset = }")
 print("length of dataset =", len(dataset))
+
+# %%
+# Create a new dataset with the sample list and ids
+# (ids can be provided optionally)
+new_dataset = Dataset(samples=[sample_01, sample_02, sample_03], sample_ids=[3, 5, 7])
+print(f"{new_dataset = }")
+print("new dataset sample ids =", new_dataset.get_sample_ids())
 
 # %% [markdown]
 # ### Add a list of Sample to a Dataset
