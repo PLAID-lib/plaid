@@ -19,7 +19,9 @@ else:  # pragma: no cover
 
 import copy
 import logging
+import pickle
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -45,6 +47,8 @@ from plaid.utils.base import delegate_methods, safe_len
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
+
+CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
 
 
 FEATURES_METHODS = [
@@ -396,7 +400,7 @@ class Sample(BaseModel):
                 features.append(self.get_nodes(**feature_details).flatten())
         return features
 
-    def _add_feature(
+    def add_feature(
         self,
         feature_identifier: FeatureIdentifier,
         feature: Feature,
@@ -435,6 +439,38 @@ class Sample(BaseModel):
 
         return self
 
+    def del_feature(
+        self,
+        feature_identifier: FeatureIdentifier,
+    ) -> Self:
+        """Remove a feature from current sample.
+
+        This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
+
+        Args:
+            feature_identifier (dict): A feature identifier.
+
+        Returns:
+            Self: The updated sample
+
+        Raises:
+            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        """
+        feature_type, feature_details = get_feature_type_and_details_from(
+            feature_identifier
+        )
+
+        if feature_type == "scalar":
+            self.del_scalar(**feature_details)
+        elif feature_type == "time_series":
+            self.del_time_series(**feature_details)
+        elif feature_type == "field":
+            self.del_field(**feature_details)
+        elif feature_type == "nodes":
+            raise NotImplementedError("Deleting node features is not implemented.")
+
+        return self
+
     def update_features_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
@@ -470,7 +506,7 @@ class Sample(BaseModel):
         sample = self if in_place else self.copy()
 
         for feat_id, feat in zip(feature_identifiers, features):
-            sample._add_feature(feat_id, feat)
+            sample.add_feature(feat_id, feat)
 
         return sample
 
@@ -516,7 +552,7 @@ class Sample(BaseModel):
                     for name in sample.features.get_global_names(time=time):
                         sample.features.del_global(name, time)
 
-                sample._add_feature(feat_id, feature)
+                sample.add_feature(feat_id, feature)
 
         sample._extra_data = copy.deepcopy(self._extra_data)
 
@@ -581,12 +617,15 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    def save(self, path: Union[str, Path], overwrite: bool = False) -> None:
+    def save(
+        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
+    ) -> None:
         """Save the Sample in directory `path`.
 
         Args:
             path (Union[str,Path]): relative or absolute directory path.
             overwrite (bool): target directory overwritten if True.
+            memory_safe (bool): use pyCGNS save in a subprocess (requires an additional pickle of the sample) if True.
         """
         path = Path(path)
 
@@ -607,11 +646,18 @@ class Sample(BaseModel):
             mesh_dir.mkdir()
             for i, time in enumerate(self.features.data.keys()):
                 outfname = mesh_dir / f"mesh_{i:09d}.cgns"
-                status = CGM.save(
-                    str(outfname),
-                    self.features.data[time],
-                )
-                logger.debug(f"save -> {status=}")
+                if memory_safe:
+                    tmpfile = mesh_dir / f"mesh_{i:09d}.pkl"
+                    with open(tmpfile, "wb") as f:
+                        pickle.dump(self.features.data[time], f)
+
+                    cmd = [sys.executable, str(CGNS_WORKER), tmpfile, str(outfname)]
+                    subprocess.run(cmd)
+                    logging.debug(f"save -> {outfname}")
+
+                else:
+                    status = CGM.save(str(outfname), self.features.data[time])
+                    logger.debug(f"save -> {status=}")
 
     @classmethod
     def load_from_dir(cls, path: Union[str, Path]) -> Self:
