@@ -787,7 +787,7 @@ class Sample(BaseModel):
                 if memory_safe:
                     tmpfile = mesh_dir / f"mesh_{i:09d}.pkl"
                     with open(tmpfile, "wb") as f:
-                        pickle.dump(self.meshes.data[time], f)
+                        pickle.dump(self.features.data[time], f)
 
                     cmd = [sys.executable, str(CGNS_WORKER), tmpfile, str(outfname)]
                     subprocess.run(cmd)
