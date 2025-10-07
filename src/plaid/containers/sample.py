@@ -660,8 +660,7 @@ class Sample(BaseModel):
                 else:
                     status = CGM.save(
                         str(outfname),
-                        self.features.data[time],
-                        links=self.features._links.get(time),
+                        self.features.data[time]
                     )
                     logger.debug(f"save -> {status=}")
 
