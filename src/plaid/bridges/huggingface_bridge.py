@@ -518,6 +518,146 @@ def _generator_prepare_for_huggingface(
     return flat_cst, key_mappings, global_time_steps_ranks, hf_features
 
 
+
+def _generator_prepare_for_huggingface_time(
+    generators: dict[str, Callable],
+    verbose: bool = True,
+) -> tuple[dict[str, Any], dict[str, Any], Features]:
+    """Inspect PLAID dataset generators and infer Hugging Face feature schema.
+
+    This function scans all provided split generators to:
+      1. Flatten each CGNS tree into a dictionary of paths → values.
+      2. Infer Hugging Face `Features` types for all variable leaves.
+      3. Detect constant leaves (values that never change across all samples).
+      4. Collect global CGNS type metadata.
+
+    Args:
+        generators (dict[str, Callable]):
+            A dictionary mapping split names to callables returning sample generators.
+            Each sample is expected to have the structure `sample.features.data[0.0]`
+            compatible with `flatten_cgns_tree`.
+        verbose (bool, optional, default=True):
+            If True, displays progress bars while processing splits.
+
+    Returns:
+        tuple:
+            - **flat_cst (dict[str, Any])**:
+              Mapping from feature path to constant values detected across all splits.
+            - **key_mappings (dict[str, Any])**:
+              Metadata dictionary with:
+                - `"variable_features"` (list[str]): paths of non-constant features.
+                - `"constant_features"` (list[str]): paths of constant features.
+                - `"cgns_types"` (dict[str, Any]): CGNS type information for all paths.
+            - **hf_features (datasets.Features)**:
+              Hugging Face feature specification for variable features.
+
+    Raises:
+        ValueError:
+            If inconsistent CGNS types or feature types are found for the same path.
+
+    Example:
+        >>> flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
+        ...     {"train": lambda: iter(train_samples),
+        ...      "test": lambda: iter(test_samples)}
+        ... )
+        >>> print(key_mappings["variable_features"][:5])
+        ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
+        >>> print(flat_cst)
+        {'Zone1/GridCoordinates': array([0., 0.1, 0.2])}
+        >>> print(hf_features)
+        {'Zone1/FlowSolution/VelocityX': Value(dtype='float32', id=None), ...}
+    """
+
+    def values_equal(v1, v2):
+        if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
+            return np.array_equal(v1, v2)
+        return v1 == v2
+
+    global_cgns_types = {}
+    global_feature_types = {}
+    global_constant_leaves = {}
+    total_samples = 0
+
+    for split_name, generator in generators.items():
+        for sample in tqdm(
+            generator(),
+            disable=not verbose,
+            desc=f"Prepare for HF on split {split_name}",
+        ):
+            total_samples += 1
+            for time in sample.features.data.keys():
+                tree = sample.features.data[time]
+                flat, cgns_types = flatten_cgns_tree(tree)
+
+                for path, value in flat.items():
+                    # --- CGNS types ---
+                    if path not in global_cgns_types:
+                        global_cgns_types[path] = cgns_types[path]
+                    elif global_cgns_types[path] != cgns_types[path]:  # pragma: no cover
+                        raise ValueError(
+                            f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
+                        )
+
+                    # --- feature types ---
+                    inferred_feature = infer_hf_features_from_value(value)
+                    if path not in global_feature_types:
+                        global_feature_types[path] = inferred_feature
+                    else:
+                        # sanity check: convert to dict before comparing
+                        if repr(global_feature_types[path]) != repr(
+                            inferred_feature
+                        ):  # pragma: no cover
+                            raise ValueError(
+                                f"Feature type mismatch for {path}: "
+                                f"{global_feature_types[path]} vs {inferred_feature}"
+                            )
+
+                    if path not in global_constant_leaves:
+                        global_constant_leaves[path] = {
+                            "value": value,
+                            "constant": True,
+                            "count": 1,
+                        }
+                    else:
+                        entry = global_constant_leaves[path]
+                        entry["count"] += 1
+                        if entry["constant"] and not values_equal(entry["value"], value):
+                            entry["constant"] = False
+
+    # After loop: only keep constants that appeared in all samples
+    for path, entry in global_constant_leaves.items():
+        if entry["count"] != total_samples:
+            entry["constant"] = False
+
+    # Sort dicts by keys
+    global_cgns_types = {p: global_cgns_types[p] for p in sorted(global_cgns_types)}
+    global_feature_types = {
+        p: global_feature_types[p] for p in sorted(global_feature_types)
+    }
+    global_constant_leaves = {
+        p: global_constant_leaves[p] for p in sorted(global_constant_leaves)
+    }
+
+    flat_cst = {
+        p: e["value"] for p, e in global_constant_leaves.items() if e["constant"]
+    }
+
+    cst_features = list(flat_cst.keys())
+    var_features = [k for k in global_cgns_types.keys() if k not in cst_features]
+
+    hf_features = Features(
+        {k: v for k, v in global_feature_types.items() if k in var_features}
+    )
+
+    key_mappings = {}
+    key_mappings["variable_features"] = var_features
+    key_mappings["constant_features"] = cst_features
+    key_mappings["cgns_types"] = global_cgns_types
+
+    return flat_cst, key_mappings, hf_features
+
+
+
 def plaid_generator_to_huggingface_datasetdict(
     generators: dict[str, Callable],
     processes_number: int = 1,
@@ -582,9 +722,9 @@ def plaid_generator_to_huggingface_datasetdict(
         _generator_prepare_for_huggingface(generators, verbose)
     )
 
-    all_features_keys = list(hf_features.keys())
+    var_features_keys = list(hf_features.keys())
 
-    def generator_fn(gen_func, all_features_keys):
+    def generator_fn(gen_func, var_features_keys):
         for sample in gen_func():
             flat_all_times = {}
             for time in sample.features.data.keys():
@@ -595,7 +735,7 @@ def plaid_generator_to_huggingface_datasetdict(
 
     _dict = {}
     for split_name, gen_func in generators.items():
-        gen = partial(generator_fn, gen_func, all_features_keys)
+        gen = partial(generator_fn, gen_func, var_features_keys)
         _dict[split_name] = datasets.Dataset.from_generator(
             generator=gen,
             features=hf_features,
