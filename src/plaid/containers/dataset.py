@@ -27,7 +27,6 @@ from typing import Iterator, Literal, Optional, Union
 
 import numpy as np
 import yaml
-from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 from tqdm import tqdm
 
@@ -129,7 +128,7 @@ class Dataset(object):
         """
         self._samples: dict[int, Sample] = {}  # sample_id -> sample
         # info_name -> description
-        self._infos: dict[str, dict[str, Union[str, Version, SpecifierSet]]] = {
+        self._infos: dict[str, dict[str, Union[str, Version]]] = {
             "plaid": {"version": Version(plaid.__version__)}
         }
 
@@ -1618,14 +1617,10 @@ class Dataset(object):
             f"{self._infos['plaid'].keys()=} should contain 'version'"
         )
         plaid_version = Version(plaid.__version__)
-        if (
-            isinstance(self._infos["plaid"]["version"], SpecifierSet)
-            or self._infos["plaid"]["version"] != plaid_version
-        ):
+        if self._infos["plaid"]["version"] != plaid_version:
             logger.warning(
-                f"Version mismatch: Dataset was loaded from version: {self._infos['plaid']['version']}, and will be saved with version: {plaid_version}"
+                f"Version mismatch: Dataset was loaded from version {self._infos['plaid']['version'] if self._infos['plaid']['version'] is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
             )
-            self._infos["plaid"]["old_version"] = str(self._infos["plaid"]["version"])
         self._infos["plaid"]["version"] = str(plaid_version)
         infos_fname = path / "infos.yaml"
         with open(infos_fname, "w") as file:
@@ -1680,14 +1675,12 @@ class Dataset(object):
             with open(infos_fname, "r") as file:
                 self._infos = yaml.safe_load(file)
         if "plaid" not in self._infos or "version" not in self._infos["plaid"]:
-            self._infos.setdefault("plaid", {"version": Version(plaid.__version__)})
-            self._infos["plaid"].setdefault("old_version", SpecifierSet("<=0.1.9"))
+            self._infos.setdefault("plaid", {}).setdefault("version", None)
         else:
-            if not isinstance(self._infos["plaid"]["version"], (Version, SpecifierSet)):
+            if not isinstance(self._infos["plaid"]["version"], Version):
                 self._infos["plaid"]["version"] = Version(
                     self._infos["plaid"]["version"]
                 )
-        print(f"=== Loaded dataset version: {self._infos['plaid']['version']}")
 
         # Load samples
         sample_paths = sorted(

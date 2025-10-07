@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Optional, Union
 
 import yaml
-from packaging.specifiers import SpecifierSet
 from packaging.version import Version
 
 import plaid
@@ -74,7 +73,7 @@ class ProblemDefinition(object):
                 print(problem_definition)
                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
-        self._version: Union[Version, SpecifierSet] = Version(plaid.__version__)
+        self._version: Union[Version] = Version(plaid.__version__)
         self._task: str = None
         self.in_features_identifiers: list[FeatureIdentifier] = []
         self.out_features_identifiers: list[FeatureIdentifier] = []
@@ -1149,7 +1148,6 @@ class ProblemDefinition(object):
             path.mkdir()
 
         data = {
-            "version": str(self._version),
             "task": self._task,
             "input_features": [dict(**d) for d in self.in_features_identifiers],
             "output_features": [dict(**d) for d in self.out_features_identifiers],
@@ -1168,14 +1166,17 @@ class ProblemDefinition(object):
                 }
             )
 
-        # Save infos
-        if self._version != Version(plaid.__version__):
+        # Handle version
+        plaid_version = Version(plaid.__version__)
+        if self._version != plaid_version:
             logger.warning(
-                f"Version mismatch: ProblemDefinition was loaded from version: {self._version}, and will be saved with version: {Version(plaid.__version__)}"
+                f"Version mismatch: ProblemDefinition was loaded from version {self._version if self._version is not None else 'antirior to 0.1.10'}, and will be saved with version: {plaid_version}"
             )
-            data["old_version"] = str(self._version)
-            data["version"] = str(Version(plaid.__version__))
+            data["version"] = str(plaid_version)
+        else:
+            data["version"] = str(self._version)
 
+        # Save infos
         pbdef_fname = path / "problem_infos.yaml"
         with pbdef_fname.open("w") as file:
             yaml.dump(data, file, default_flow_style=False, sort_keys=False)
@@ -1236,7 +1237,7 @@ class ProblemDefinition(object):
             )
 
         if "version" not in data:
-            self._version = SpecifierSet("<=0.1.7")
+            self._version = None
         else:
             self._version = Version(data["version"])
 
@@ -1274,21 +1275,25 @@ class ProblemDefinition(object):
             for k in old_keys:
                 if k in data:
                     logger.warning(
-                        f"Key '{k}' is deprecated and will be ignored. You should convert your ProblemDefinition using FeatureIdentifiers."
+                        f"Key '{k}' is deprecated and will be ignored. You should convert your ProblemDefinition using FeatureIdentifiers to identify features instead of names."
                     )
 
         # if it was saved with version <=0.1.7 it is a .csv else it is .json
         split = {}
         split_fname_csv = path / "split.csv"
         split_fname_json = path / "split.json"
-        if split_fname_csv.is_file():
+        if split_fname_json.is_file():
+            with split_fname_json.open("r") as file:
+                split = json.load(file)
+            if split_fname_csv.is_file():
+                logger.warning(
+                    f"Both files with path `{split_fname_csv}` and `{split_fname_json}` exist. JSON file is the standard from 0.1.7 -> CSV file will be ignored"
+                )
+        elif split_fname_csv.is_file():
             with split_fname_csv.open("r") as file:
                 reader = csv.reader(file, delimiter=",")
                 for row in reader:
                     split[row[0]] = [int(i) for i in row[1:]]
-        elif split_fname_json.is_file():
-            with split_fname_json.open("r") as file:
-                split = json.load(file)
         else:
             logger.warning(
                 f"file with path `{split_fname_csv}` or `{split_fname_json}` does not exist. Splits will not be set"
