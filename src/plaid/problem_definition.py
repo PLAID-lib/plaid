@@ -103,6 +103,15 @@ class ProblemDefinition(object):
             self._load_from_dir_(path)
 
     # -------------------------------------------------------------------------#
+    def get_version(self) -> Version:
+        """Get the version. None if not defined.
+
+        Returns:
+            Version: The version, such as "0.1.0".
+        """
+        return self._version
+
+    # -------------------------------------------------------------------------#
     def get_task(self) -> str:
         """Get the authorized task. None if not defined.
 
@@ -1285,7 +1294,7 @@ class ProblemDefinition(object):
         if split_fname_json.is_file():
             with split_fname_json.open("r") as file:
                 split = json.load(file)
-            if split_fname_csv.is_file():
+            if split_fname_csv.is_file():  # pragma: no cover
                 logger.warning(
                     f"Both files with path `{split_fname_csv}` and `{split_fname_json}` exist. JSON file is the standard from 0.1.7 -> CSV file will be ignored"
                 )

@@ -12,7 +12,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
+import plaid
 from plaid.problem_definition import ProblemDefinition
 from plaid.types.feature_types import FeatureIdentifier
 
@@ -108,6 +110,11 @@ class Test_ProblemDefinition:
         d_path = current_directory / "problem_definition"
         with pytest.raises(ValueError):
             ProblemDefinition(path=d_path, directory_path=d_path)
+
+    # -------------------------------------------------------------------------#
+    def test_version(self, problem_definition):
+        # Unauthorized version
+        assert problem_definition.get_version() == Version(plaid.__version__)
 
     # -------------------------------------------------------------------------#
     def test_task(self, problem_definition):
@@ -562,6 +569,24 @@ class Test_ProblemDefinition:
         all_split = problem.get_split()
         assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
 
+    def test__load_from_dir__old_version(
+        self, problem_definition_full: ProblemDefinition, tmp_path: Path
+    ):
+        d_path = tmp_path / "problem_definition"
+        problem_definition_full._save_to_dir_(d_path)
+        # Modify the plaid version in saved file
+        infos_path = d_path / "problem_infos.yaml"
+        with infos_path.open("r") as f:
+            text = f.read().splitlines()
+        text.pop()
+        text.append("version: 0.1.7")
+        text.append("")
+        infos_path.write_text("\n".join(text))
+
+        # Load the problem definition from the directory
+        problem = ProblemDefinition.load(d_path)
+        assert problem.get_version() == Version("0.1.7")
+
     def test__load_from_dir__empty_dir(self, tmp_path):
         problem = ProblemDefinition()
         with pytest.raises(FileNotFoundError):
@@ -599,6 +624,7 @@ class Test_ProblemDefinition:
 
         assert sub_problem_definition.get_in_features_identifiers() == [in_id_1]
         assert sub_problem_definition.get_out_features_identifiers() == [out_id_1]
+        assert sub_problem_definition.get_version() == problem_definition.get_version()
         assert sub_problem_definition.get_task() == "regression"
         assert sub_problem_definition.get_split() == {"train": [0, 1], "test": [2, 3]}
 
