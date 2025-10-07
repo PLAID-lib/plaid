@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- (docs) explain release process in Contributing page.
 - (sample) add `del_feature` method and rename `_add_feature` without leading underscore.
+- (docs) explain release process in Contributing page.
 
 ### Changed
 
