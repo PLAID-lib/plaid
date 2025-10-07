@@ -10,10 +10,13 @@ from time import time
 import numpy as np
 import copy
 
+from plaid.utils.cgns_helper import compare_cgns_trees, compare_cgns_trees_no_types, show_cgns_tree
 
-repo_id = "fabiencasenave/Tensile2d_DO_NOT_DELETE"
+
+repo_id = "fabiencasenave/Tensile2d"
 split_names = ["train_500", "test", "OOD"]
 field = "U1"
+repo_id_out = "fabiencasenave/Tensile2d_time"
 
 # repo_id = "fabiencasenave/VKI-LS59"
 # split_names = ["train", "test"]
@@ -37,11 +40,11 @@ dataset = huggingface_bridge.to_plaid_dataset(hf_dataset, flat_cst, cgns_types)
 elapsed = time() - start
 print(f"Time to build dataset on split {split_names[0]}: {elapsed:.6g} s, RAM usage increase: {get_mem()-init_ram} MB")
 
-# sample_0 = dataset[0]
+sample_0 = dataset[0]
 
-# sample_0.features.data[1.] = copy.deepcopy(sample_0.features.data[0.])
+sample_0.features.data[1.1] = copy.deepcopy(sample_0.features.data[0.])
 
-# print(sample_0)
+print(sample_0)
 
 generators = {}
 for split_name in split_names[:1]:
@@ -52,10 +55,38 @@ for split_name in split_names[:1]:
     generators[split_name] = generator_
 
 
-hf_dataset_dict = huggingface_bridge._generator_prepare_for_huggingface_time(generators, verbose=True)
+
+hf_dataset_dict, cgns_types = huggingface_bridge.generate_huggingface_time(generators, verbose=True)
+
+
+start = time()
+dataset_2 = huggingface_bridge.to_plaid_dataset_time(hf_dataset_dict[split_names[0]], cgns_types, enforce_shapes=True)
+print(f"Duration initialization dataset = {time() - start}")
+
+times = list(dataset_2[0].features.data.keys())
+
+tree_in = dataset[0].features.data[times[0]]
+tree_out = dataset_2[0].features.data[times[0]]
+
+show_cgns_tree(tree_in)
+print("------------")
+show_cgns_tree(tree_out)
+
+print("tree equal? =", compare_cgns_trees_no_types(tree_in, tree_out))
+
+# print(dataset_2[0].features.data[times[0]])
+# print(dataset_2[0].features.data[times[1]])
+
+
+
+1./0.
 
 print(hf_dataset_dict)
 
+print(">>", hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/PointData_times"])
+
+# 1./0.
+huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
 
 # # sample_0.add_tree(copy.deepcopy(sample_0.get_mesh()), time=1.)
 

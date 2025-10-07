@@ -41,7 +41,7 @@ from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
 from plaid.types import IndexType
 from plaid.types.cgns_types import CGNSTree
-from plaid.utils.cgns_helper import flatten_cgns_tree, unflatten_cgns_tree
+from plaid.utils.cgns_helper import flatten_cgns_tree, unflatten_cgns_tree, show_cgns_tree
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ def to_cgns_tree_columnar(
     i: int,
     flat_cst: dict[str, Any],
     cgns_types: dict[str, str],
-    enforce_shapes: bool = False,
+    enforce_shapes: bool = True,
 ) -> CGNSTree:
     """Convert a Hugging Face dataset row to a PLAID Sample object.
 
@@ -71,7 +71,7 @@ def to_cgns_tree_columnar(
         flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
         cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
         enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
-            Defaults to False.
+            Defaults to True.
 
     Returns:
         Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
@@ -142,7 +142,7 @@ def to_plaid_sample_columnar(
     i: int,
     flat_cst: dict[str, Any],
     cgns_types: dict[str, str],
-    enforce_shapes: bool = False,
+    enforce_shapes: bool = True,
 ) -> Sample:
     """Convert a Hugging Face dataset row to a PLAID Sample object.
 
@@ -156,7 +156,7 @@ def to_plaid_sample_columnar(
         flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
         cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
         enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
-            Defaults to False.
+            Defaults to True.
 
     Returns:
         Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
@@ -226,7 +226,7 @@ def to_plaid_dataset(
             Mapping of CGNS paths to their expected types.
         enforce_shapes (bool, optional):
             If True, ensures all arrays strictly follow the reference shapes.
-            Defaults to False.
+            Defaults to True.
 
     Returns:
         Dataset:
@@ -506,7 +506,7 @@ def _generator_prepare_for_huggingface(
     return flat_cst, key_mappings, hf_features
 
 
-def _generator_prepare_for_huggingface_time(
+def generate_huggingface_time(
     generators: dict[str, Callable],
     verbose: bool = True,
 ) -> tuple[dict[str, Any], dict[str, Any], Features]:
@@ -546,11 +546,11 @@ def _generator_prepare_for_huggingface_time(
                                 f"{global_feature_types[path]} vs {inferred_feature}"
                             )
 
-    hf_features = {k+"_value": v for k, v in global_feature_types.items()}
+    hf_features_ = {k+"_value": v for k, v in global_feature_types.items()}
 
-    hf_features.update({k+"_times": Sequence(Value("float32")) for k in global_feature_types.keys()})
+    hf_features_.update({k+"_times": Sequence(Value("float32")) for k in global_feature_types.keys()})
 
-    hf_features = Features({k:v for k, v in hf_features.items()})
+    hf_features = Features({k:v for k, v in hf_features_.items()})
 
 
     def generator_fn(gen_func):
@@ -573,15 +573,21 @@ def _generator_prepare_for_huggingface_time(
                 for time, flat in sample_flat_trees.items():
                     if path in flat.keys():
                         value = flat[path]
+                        # print(path, value)
                         if value is not None:
-                            l = len(hf_sample[path+"_value"]) if hf_sample[path+"_value"] is not None else 0
+                            # if path=="Base_2_2/Zone/PointData":
+                            #     print(">>>>", value)
+                            l = hf_sample[path+"_value"].shape[-1] if hf_sample[path+"_value"] is not None else 0
                             if l>0:
                                 hf_sample[path+"_value"] = np.hstack((hf_sample[path+"_value"], value))
-                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+len(value)]))
+                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+value.shape[-1]]))
+                                # print(path)
+                                # print(hf_sample[path+"_value"].shape)
+                                # print(hf_sample[path+"_times"].shape)
                             else:
                                 hf_sample[path+"_value"] = value
-                                hf_sample[path+"_times"] = [time, l, l+len(value)]
-
+                                hf_sample[path+"_times"] = [time, l, l+value.shape[-1]]
+            # 1./0.
             yield hf_sample
 
 
@@ -600,7 +606,87 @@ def _generator_prepare_for_huggingface_time(
         #     cache_dir=f"C:/Users/d582428/tmp/hf_cache_{split_name}_{uuid.uuid4()}",
         # )
 
-    return datasets.DatasetDict(_dict)
+    return datasets.DatasetDict(_dict), global_cgns_types
+
+
+def to_plaid_dataset_time(
+    hf_dataset: datasets.Dataset,
+    cgns_types: dict[str, str],
+    enforce_shapes: bool = True,
+) -> Dataset:
+    sample_list = []
+    for i in range(len(hf_dataset)):
+        sample_list.append(
+            to_plaid_sample_columnar_time(
+                hf_dataset, i, cgns_types, enforce_shapes
+            )
+        )
+
+    return Dataset(samples=sample_list)
+
+
+def to_plaid_sample_columnar_time(
+    ds: datasets.Dataset,
+    i: int,
+    cgns_types: dict[str, str],
+    enforce_shapes: bool = False,
+) -> Sample:
+    table = ds.data
+
+    row = {}
+    if not enforce_shapes:
+        for name in table.column_names:
+            value = table[name][i].values
+            if value is None:
+                row[name] = None
+            else:
+                row[name] = value.to_numpy(zero_copy_only=False)
+    else:
+        for name in table.column_names:
+            if isinstance(table[name][i], pa.NullScalar):
+                row[name] = None
+            else:
+                value = table[name][i].values
+                if value is None:
+                    row[name] = None
+                else:
+                    if isinstance(value, pa.ListArray):
+                        row[name] = np.stack(value.to_numpy(zero_copy_only=False))
+                    else:
+                        row[name] = value.to_numpy(zero_copy_only=False)
+
+    row_val = {k[:-6]:v for k,v in row.items() if k.endswith("_value")}
+    row_tim = {k[:-6]:v for k,v in row.items() if k.endswith("_times")}
+
+    sample_flat_trees = {}
+    paths_none = {}
+    for (path_t, times_struc), (path_v, val) in zip(row_tim.items(), row_val.items()):
+        assert path_t == path_v
+        if val is None:
+            assert times_struc is None
+            if path_v not in paths_none:
+                paths_none[path_v] = None
+        if times_struc is not None:
+            times_struc = times_struc.reshape((-1,3))
+            for i, time in enumerate(times_struc[:,0]):
+                start = int(times_struc[i,1])
+                end = int(times_struc[i,2])
+                if val.ndim>1:
+                    values = val[:,start:end]
+                else:
+                    values = val[start:end]
+                if time in sample_flat_trees:
+                    sample_flat_trees[time][path_v] = values
+                else:
+                    sample_flat_trees[time] = {path_v:values}
+
+
+    sample_data = {}
+    for time, flat_tree in sample_flat_trees.items():
+        flat_tree.update(paths_none)
+        sample_data[time] = unflatten_cgns_tree(flat_tree, cgns_types)
+
+    return Sample(path=None, features=SampleFeatures(sample_data))
 
 
 def plaid_generator_to_huggingface_datasetdict(
@@ -696,7 +782,7 @@ def plaid_generator_to_huggingface_datasetdict(
 
 def instantiate_plaid_datasetdict_from_hub(
     repo_id: str,
-    enforce_shapes: bool = False,
+    enforce_shapes: bool = True,
 ) -> dict[str, Dataset]:  # pragma: no cover (not tested in unit tests)
     """Load a Hugging Face dataset from the Hub and instantiate it as a dictionary of PLAID datasets.
 
