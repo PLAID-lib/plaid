@@ -1588,13 +1588,9 @@ class Test_Sample:
         sample_with_tree_and_scalar.save(save_dir)
         assert save_dir.is_dir()
         with pytest.raises(ValueError):
-            sample_with_tree_and_scalar.save(
-                save_dir, memory_safe=False
-            )
+            sample_with_tree_and_scalar.save(save_dir, memory_safe=False)
         sample_with_tree_and_scalar.save(save_dir, overwrite=True)
-        sample_with_tree_and_scalar.save(
-            save_dir, overwrite=True, memory_safe=True
-        )
+        sample_with_tree_and_scalar.save(save_dir, overwrite=True, memory_safe=True)
 
     def test_load_from_saved_file(self, sample_with_tree_and_scalar, tmp_path):
         save_dir = tmp_path / "test_dir"
