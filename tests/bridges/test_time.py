@@ -16,7 +16,7 @@ from plaid.utils.cgns_helper import compare_cgns_trees, compare_cgns_trees_no_ty
 repo_id = "fabiencasenave/Tensile2d"
 split_names = ["train_500", "test", "OOD"]
 field = "U1"
-repo_id_out = "fabiencasenave/Tensile2d_time"
+repo_id_out = "fabiencasenave/Tensile2d_new"
 
 # repo_id = "fabiencasenave/VKI-LS59"
 # split_names = ["train", "test"]
@@ -40,16 +40,16 @@ dataset = huggingface_bridge.to_plaid_dataset(hf_dataset, flat_cst, cgns_types)
 elapsed = time() - start
 print(f"Time to build dataset on split {split_names[0]}: {elapsed:.6g} s, RAM usage increase: {get_mem()-init_ram} MB")
 
-for id in range(len(dataset)):
-    sample = dataset[id]
-    sample.features.data[1.1] = copy.deepcopy(sample.features.data[0.])
+# for id in range(len(dataset)):
+#     sample = dataset[id]
+#     sample.features.data[1.1] = copy.deepcopy(sample.features.data[0.])
 
-sample.features.data[1.1].set_field("sig11", 2.*copy.deepcopy(sample.features.data[1.1].add_field("sig11")))
 
-sample = dataset[0]
-sample.features.data[2.1] = copy.deepcopy(sample.features.data[0.])
+# sample = dataset[0]
+# sample.add_field("sig11", 2.*copy.deepcopy(sample.get_field("sig11", time=1.1)), time=1.1)
+# sample.features.data[2.1] = copy.deepcopy(sample.features.data[0.])
 
-print(sample)
+# print(sample)
 
 generators = {}
 for split_name in split_names[:1]:
@@ -61,12 +61,24 @@ for split_name in split_names[:1]:
 
 
 
-hf_dataset_dict, cgns_types, flat_cst = huggingface_bridge.generate_huggingface_time(generators, verbose=True)
+hf_dataset_dict, key_mappings, flat_cst = huggingface_bridge.generate_huggingface_time(generators, verbose=True)
+cgns_types = key_mappings["cgns_types"]
 
-# huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
+# val = hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/PointData/sig11_value"]
+# first = np.array(val[0:6143])
+# second = np.array(val[6143:2*6143])
 
-# print(">>>", hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/ZoneBC/Top/GridLocation_value"])
-# print(">>>", hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/ZoneBC/Top/GridLocation_times"])
+# print("len =", len(val))
+# print("diff =", np.linalg.norm(first-second))
+# print("times =", hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/PointData/sig11_times"])
+
+huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
+huggingface_bridge.push_infos_to_hub(repo_id_out, infos)
+huggingface_bridge.push_tree_struct_to_hub(repo_id_out, flat_cst, key_mappings)
+huggingface_bridge.push_problem_definition_to_hub(repo_id_out, "task_1", pb_def)
+# 1./0.
+
+
 
 start = time()
 dataset_2 = huggingface_bridge.to_plaid_dataset_time(hf_dataset_dict[split_names[0]], cgns_types, flat_cst, enforce_shapes=True)
@@ -77,16 +89,16 @@ print(f"Duration initialization dataset = {time() - start}")
 # print("1", dataset_2[0].get_field("sig11", time=0.))
 # print("2", dataset_2[0].get_field("sig11", time=1.1))
 
-tree_in = dataset[0].features.data[1.1]
-tree_out = dataset_2[0].features.data[1.1]
+tree_in = dataset[0].features.data[0.]
+tree_out = dataset_2[0].features.data[0.]
 
 show_cgns_tree(tree_in)
 print("------------")
 show_cgns_tree(tree_out)
 
 print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[0.], dataset_2[0].features.data[0.]))
-print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[1.1], dataset_2[0].features.data[1.1]))
-print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[2.1], dataset_2[0].features.data[2.1]))
+# print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[1.1], dataset_2[0].features.data[1.1]))
+# print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[2.1], dataset_2[0].features.data[2.1]))
 
 dataset_2[0].save("sample_out", overwrite=True)
 
@@ -95,9 +107,9 @@ dataset_2[0].save("sample_out", overwrite=True)
 
 1./0.
 
-print(hf_dataset_dict)
+# print(hf_dataset_dict)
 
-print(">>", hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/PointData_times"])
+# print(">>", hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/PointData_times"])
 
 # 1./0.
 

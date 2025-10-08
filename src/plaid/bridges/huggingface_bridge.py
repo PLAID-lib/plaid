@@ -530,6 +530,7 @@ def generate_huggingface_time(
                 flat, cgns_types = flatten_cgns_tree(tree)
 
                 for path, value in flat.items():
+
                     # --- CGNS types ---
                     if path not in global_cgns_types:
                         global_cgns_types[path] = cgns_types[path]
@@ -537,23 +538,25 @@ def generate_huggingface_time(
                         raise ValueError(
                             f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
                         )
-                    # --- feature types ---
-                    # if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
-                    #     inferred_feature = Value("string")
-                    # else:
-                    #     inferred_feature = infer_hf_features_from_value(value)
-                    inferred_feature = infer_hf_features_from_value(value)
-                    if path not in global_feature_types:
-                        global_feature_types[path] = inferred_feature
-                    else:
-                        # sanity check: convert to dict before comparing
-                        if repr(global_feature_types[path]) != repr(
-                            inferred_feature
-                        ):  # pragma: no cover
-                            raise ValueError(
-                                f"Feature type mismatch for {path}: "
-                                f"{global_feature_types[path]} vs {inferred_feature}"
-                            )
+
+                    if "/Time" not in path and "CGNSLibraryVersion" not in path:
+                        # --- feature types ---
+                        # if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+                        #     inferred_feature = Value("string")
+                        # else:
+                        #     inferred_feature = infer_hf_features_from_value(value)
+                        inferred_feature = infer_hf_features_from_value(value)
+                        if path not in global_feature_types:
+                            global_feature_types[path] = inferred_feature
+                        else:
+                            # sanity check: convert to dict before comparing
+                            if repr(global_feature_types[path]) != repr(
+                                inferred_feature
+                            ):  # pragma: no cover
+                                raise ValueError(
+                                    f"Feature type mismatch for {path}: "
+                                    f"{global_feature_types[path]} vs {inferred_feature}"
+                                )
 
 
     def values_equal(v1, v2):
@@ -578,44 +581,9 @@ def generate_huggingface_time(
             for time, tree in sample.features.data.items():
                 flat, _ = flatten_cgns_tree(tree)
                 sample_flat_trees[time] = flat
-                all_paths.extend(list(flat.keys()))
+                all_paths.extend([k for k in flat.keys() if "/Time" not in k and "CGNSLibraryVersion" not in k])
 
             all_paths = list(set(all_paths))
-
-            # hf_sample = {}
-
-            # for path in all_paths:
-            #     hf_sample[path + "_value"] = None
-            #     hf_sample[path + "_times"] = None
-
-            #     for time, flat in sample_flat_trees.items():
-            #         if path not in flat:
-            #             continue
-
-            #         value = flat[path]
-
-            #         # decode byte arrays of strings
-            #         if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
-            #             value = b"".join(value).decode("ascii")
-            #             value = np.array([value])  # wrap as array for consistent handling
-
-            #         if value is None:
-            #             continue
-
-            #         # ensure value is numpy array
-            #         if not isinstance(value, np.ndarray):
-            #             value = np.array(value)
-
-            #         # append or initialize
-            #         if hf_sample[path + "_value"] is None:
-            #             hf_sample[path + "_value"] = value
-            #             hf_sample[path + "_times"] = np.array([time, 0, value.shape[-1]])
-            #         else:
-            #             l = hf_sample[path + "_value"].shape[-1]
-            #             hf_sample[path + "_value"] = np.hstack((hf_sample[path + "_value"], value))
-            #             hf_sample[path + "_times"] = np.hstack((hf_sample[path + "_times"], [time, l, l + value.shape[-1]]))
-
-            #             # ICI DETECTION DES EGALITES EN TEMPS POUR COMPRESSION VALUES ET TIMES
 
             #-------------- time-wise equality detection ------------------------
 
@@ -667,6 +635,11 @@ def generate_huggingface_time(
                 # finalize
                 if values_acc:
                     hf_sample[path + "_value"] = np.hstack(values_acc)
+
+                    # if len(known_values) == 1:
+                    #     for i in range(len(times_acc)):
+                    #         times_acc[i][-1] = None
+
                     hf_sample[path + "_times"] = np.array(times_acc)
                 else:
                     hf_sample[path + "_value"] = None
@@ -729,39 +702,9 @@ def generate_huggingface_time(
             for time, tree in sample.features.data.items():
                 flat, _ = flatten_cgns_tree(tree)
                 sample_flat_trees[time] = flat
-                all_paths.extend(list(flat.keys()))
+                all_paths.extend([k for k in flat.keys() if "/Time" not in k and "CGNSLibraryVersion" not in k])
 
             all_paths = list(set(all_paths))
-
-            # hf_sample = {}
-            # for path in all_paths:
-            #     hf_sample[path+"_value"] = None
-            #     hf_sample[path+"_times"] = None
-            #     for time, flat in sample_flat_trees.items():
-            #         if path in flat.keys():
-            #             value = flat[path]
-            #             # print(path, value)
-            #             if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
-            #                 value = b"".join(value).decode("ascii")
-            #                 l = len(hf_sample[path+"_value"]) if hf_sample[path+"_value"] is not None else 0
-            #                 if l>0:
-            #                     hf_sample[path+"_value"].append(value)
-            #                     hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+1]))
-            #                 else:
-            #                     hf_sample[path+"_value"] = [value]
-            #                     hf_sample[path+"_times"] = [time, l, l+1]
-            #             elif value is not None:
-            #                 l = hf_sample[path+"_value"].shape[-1] if hf_sample[path+"_value"] is not None else 0
-            #                 if l>0:
-            #                     hf_sample[path+"_value"] = np.hstack((hf_sample[path+"_value"], value))
-            #                     hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+value.shape[-1]]))
-            #                 else:
-            #                     hf_sample[path+"_value"] = value
-            #                     hf_sample[path+"_times"] = [time, l, l+value.shape[-1]]
-
-            # print(hf_sample["Base_2_2/Zone/CellData/GridLocation_value"])
-            # print(hf_sample["Base_2_2/Zone/CellData/GridLocation_times"])
-            # yield {path: hf_sample.get(path, None) for path in all_features_keys}
 
             # --------------------------------------------------------------------------------------------------
             hf_sample = {}
@@ -822,7 +765,17 @@ def generate_huggingface_time(
 
                 # finalize: convert times_acc to 1D numpy array
                 if times_acc:
+
+                    # if len(known_values) == 1:
+                    #     # times_acc = [time0, start0, end0, time1, start1, end1, ...]
+                    #     # replace every 3rd element (end) by None
+                    #     times_acc = [
+                    #     None if (i % 3 == 2) else val
+                    #         for i, val in enumerate(times_acc)
+                    #     ]
+
                     hf_sample[path + "_times"] = np.array(times_acc)
+
                 else:
                     hf_sample[path + "_times"] = None
 
@@ -845,7 +798,13 @@ def generate_huggingface_time(
         #     cache_dir=f"C:/Users/d582428/tmp/hf_cache_{split_name}_{uuid.uuid4()}",
         # )
 
-    return datasets.DatasetDict(_dict), global_cgns_types, flat_cst
+
+    key_mappings = {}
+    key_mappings["variable_features"] = var_features
+    key_mappings["constant_features"] = cst_features
+    key_mappings["cgns_types"] = global_cgns_types
+
+    return datasets.DatasetDict(_dict), key_mappings, flat_cst
 
 
 def to_plaid_dataset_time(
@@ -931,6 +890,15 @@ def to_plaid_sample_columnar_time(
                     sample_flat_trees[time][path_v] = values
                 else:
                     sample_flat_trees[time] = {path_v:values}
+
+    for time, tree in sample_flat_trees.items():
+
+        bases = list(set([k.split('/')[0] for k in tree.keys()]))
+        for base in bases:
+            tree[f"{base}/Time"] = np.array([1], dtype=np.int32)
+            tree[f"{base}/Time/IterationValues"] = np.array([1], dtype=np.int32)
+            tree[f"{base}/Time/TimeValues"] = np.array([time], dtype=np.float64)
+        tree["CGNSLibraryVersion"] = np.array([4.], dtype=np.float32)
 
     sample_data = {}
     for time, flat_tree in sample_flat_trees.items():

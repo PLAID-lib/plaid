@@ -269,9 +269,9 @@ print(f"{loaded_pb_def = }")
 # Then, the following python instruction enable pushing datasetdict, infos and problem_definitions to the hub:
 # ```python
 # huggingface_bridge.push_dataset_dict_to_hub("chanel/dataset", hf_dataset_dict)
-# huggingface_bridge.push_dataset_infos_to_hub("chanel/dataset", infos)
+# huggingface_bridge.push_infos_to_hub("chanel/dataset", infos)
 # huggingface_bridge.push_tree_struct_to_hub("chanel/dataset", flat_cst, key_mappings)
-# huggingface_bridge.push_problem_definition_to_hub("chanel/dataset", pb_def, "location")
+# huggingface_bridge.push_problem_definition_to_hub("chanel/dataset", "location", pb_def)
 # ```
 #
 # The dataset card can then be customized online, on the dataset repo page directly.
