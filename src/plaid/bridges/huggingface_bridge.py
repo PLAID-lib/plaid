@@ -12,6 +12,7 @@ import os
 import pickle
 import shutil
 import sys
+import hashlib
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
@@ -581,42 +582,97 @@ def generate_huggingface_time(
 
             all_paths = list(set(all_paths))
 
+            # hf_sample = {}
+
+            # for path in all_paths:
+            #     hf_sample[path + "_value"] = None
+            #     hf_sample[path + "_times"] = None
+
+            #     for time, flat in sample_flat_trees.items():
+            #         if path not in flat:
+            #             continue
+
+            #         value = flat[path]
+
+            #         # decode byte arrays of strings
+            #         if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+            #             value = b"".join(value).decode("ascii")
+            #             value = np.array([value])  # wrap as array for consistent handling
+
+            #         if value is None:
+            #             continue
+
+            #         # ensure value is numpy array
+            #         if not isinstance(value, np.ndarray):
+            #             value = np.array(value)
+
+            #         # append or initialize
+            #         if hf_sample[path + "_value"] is None:
+            #             hf_sample[path + "_value"] = value
+            #             hf_sample[path + "_times"] = np.array([time, 0, value.shape[-1]])
+            #         else:
+            #             l = hf_sample[path + "_value"].shape[-1]
+            #             hf_sample[path + "_value"] = np.hstack((hf_sample[path + "_value"], value))
+            #             hf_sample[path + "_times"] = np.hstack((hf_sample[path + "_times"], [time, l, l + value.shape[-1]]))
+
+            #             # ICI DETECTION DES EGALITES EN TEMPS POUR COMPRESSION VALUES ET TIMES
+
+            #-------------- time-wise equality detection ------------------------
+
             hf_sample = {}
+
             for path in all_paths:
-                hf_sample[path+"_value"] = None
-                hf_sample[path+"_times"] = None
+                hf_sample[path + "_value"] = None
+                hf_sample[path + "_times"] = None
+
+                known_values = {}  # hash -> (start, end)
+                values_acc = []
+                times_acc = []
+                current_length = 0
+
                 for time, flat in sample_flat_trees.items():
-                    if path in flat.keys():
-                        value = flat[path]
-                        # print(path, value)
-                        if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
-                            value = b"".join(value).decode("ascii")
-                            # if time>0:
-                            #     print(value)
-                            #     1./0.
-                            l = len(hf_sample[path+"_value"]) if hf_sample[path+"_value"] is not None else 0
-                            if l>0:
-                                hf_sample[path+"_value"].append(value)
-                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+1]))
-                            else:
-                                hf_sample[path+"_value"] = [value]
-                                hf_sample[path+"_times"] = [time, l, l+1]
-                        elif value is not None:
-                            # if path=="Base_2_2/Zone/PointData":
-                            #     print(">>>>", value)
-                            l = hf_sample[path+"_value"].shape[-1] if hf_sample[path+"_value"] is not None else 0
-                            if l>0:
-                                hf_sample[path+"_value"] = np.hstack((hf_sample[path+"_value"], value))
-                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+value.shape[-1]]))
-                                # print(path)
-                                # print(hf_sample[path+"_value"].shape)
-                                # print(hf_sample[path+"_times"].shape)
-                            else:
-                                hf_sample[path+"_value"] = value
-                                hf_sample[path+"_times"] = [time, l, l+value.shape[-1]]
+                    if path not in flat:
+                        continue
 
+                    value = flat[path]
 
-                        # ICI DETECTION DES EGALITES EN TEMPS POUR COMPRESSION VALUES ET TIMES
+                    # decode byte array strings
+                    if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+                        value_str = b"".join(value).decode("ascii")
+                        value_np = np.array([value_str])
+                        key = hashlib.sha256(value_str.encode("ascii")).hexdigest()
+                        size = 1
+                    elif value is not None:
+                        value_np = value
+                        key = hashlib.sha256(value.tobytes()).hexdigest()
+                        size = value.shape[-1]
+                    else:
+                        continue
+
+                    # deduplicate
+                    if key in known_values:
+                        start, end = known_values[key]  # reuse previous indices
+                    else:
+                        start = current_length
+                        end = current_length + size
+                        known_values[key] = (start, end)
+
+                        # append value only if new
+                        values_acc.append(value_np)
+                        current_length = end
+
+                    # record time step
+                    times_acc.append([time, start, end])
+
+                # finalize
+                if values_acc:
+                    hf_sample[path + "_value"] = np.hstack(values_acc)
+                    hf_sample[path + "_times"] = np.array(times_acc)
+                else:
+                    hf_sample[path + "_value"] = None
+                    hf_sample[path + "_times"] = None
+
+            #-------------------------------------------------------------------------------
 
             for k, v in hf_sample.items():
                 if isinstance(v, list):
@@ -677,43 +733,101 @@ def generate_huggingface_time(
 
             all_paths = list(set(all_paths))
 
+            # hf_sample = {}
+            # for path in all_paths:
+            #     hf_sample[path+"_value"] = None
+            #     hf_sample[path+"_times"] = None
+            #     for time, flat in sample_flat_trees.items():
+            #         if path in flat.keys():
+            #             value = flat[path]
+            #             # print(path, value)
+            #             if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+            #                 value = b"".join(value).decode("ascii")
+            #                 l = len(hf_sample[path+"_value"]) if hf_sample[path+"_value"] is not None else 0
+            #                 if l>0:
+            #                     hf_sample[path+"_value"].append(value)
+            #                     hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+1]))
+            #                 else:
+            #                     hf_sample[path+"_value"] = [value]
+            #                     hf_sample[path+"_times"] = [time, l, l+1]
+            #             elif value is not None:
+            #                 l = hf_sample[path+"_value"].shape[-1] if hf_sample[path+"_value"] is not None else 0
+            #                 if l>0:
+            #                     hf_sample[path+"_value"] = np.hstack((hf_sample[path+"_value"], value))
+            #                     hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+value.shape[-1]]))
+            #                 else:
+            #                     hf_sample[path+"_value"] = value
+            #                     hf_sample[path+"_times"] = [time, l, l+value.shape[-1]]
+
+            # print(hf_sample["Base_2_2/Zone/CellData/GridLocation_value"])
+            # print(hf_sample["Base_2_2/Zone/CellData/GridLocation_times"])
+            # yield {path: hf_sample.get(path, None) for path in all_features_keys}
+
+            # --------------------------------------------------------------------------------------------------
             hf_sample = {}
             for path in all_paths:
-                hf_sample[path+"_value"] = None
-                hf_sample[path+"_times"] = None
+                hf_sample[path + "_value"] = None
+                hf_sample[path + "_times"] = None
+
+                known_values = {}  # key -> (start, end)
+                current_length = 0
+                times_acc = []
+
                 for time, flat in sample_flat_trees.items():
-                    if path in flat.keys():
-                        value = flat[path]
-                        # print(path, value)
-                        if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
-                            value = b"".join(value).decode("ascii")
-                            # if time>0:
-                            #     print(value)
-                            #     1./0.
-                            l = len(hf_sample[path+"_value"]) if hf_sample[path+"_value"] is not None else 0
-                            if l>0:
-                                hf_sample[path+"_value"].append(value)
-                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+1]))
+                    if path not in flat:
+                        continue
+
+                    value = flat[path]
+
+                    # case: |S1 string array
+                    if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+                        value_str = b"".join(value).decode("ascii")
+                        key = ("str", value_str)
+
+                        if key in known_values:
+                            start, end = known_values[key]
+                        else:
+                            start = current_length
+                            end = current_length + 1
+                            known_values[key] = (start, end)
+                            current_length = end
+
+                            # store string as Python list
+                            if hf_sample[path + "_value"] is None:
+                                hf_sample[path + "_value"] = [value_str]
                             else:
-                                hf_sample[path+"_value"] = [value]
-                                hf_sample[path+"_times"] = [time, l, l+1]
-                        elif value is not None:
-                            # if path=="Base_2_2/Zone/PointData":
-                            #     print(">>>>", value)
-                            l = hf_sample[path+"_value"].shape[-1] if hf_sample[path+"_value"] is not None else 0
-                            if l>0:
-                                hf_sample[path+"_value"] = np.hstack((hf_sample[path+"_value"], value))
-                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+value.shape[-1]]))
-                                # print(path)
-                                # print(hf_sample[path+"_value"].shape)
-                                # print(hf_sample[path+"_times"].shape)
+                                hf_sample[path + "_value"].append(value_str)
+
+                        times_acc.extend([time, start, end])
+
+                    # case: numeric array
+                    elif value is not None:
+                        key = ("arr", hashlib.sha256(value.tobytes()).hexdigest())
+                        size = value.shape[-1]
+
+                        if key in known_values:
+                            start, end = known_values[key]
+                        else:
+                            start = current_length
+                            end = current_length + size
+                            known_values[key] = (start, end)
+                            current_length = end
+
+                            if hf_sample[path + "_value"] is None:
+                                hf_sample[path + "_value"] = value
                             else:
-                                hf_sample[path+"_value"] = value
-                                hf_sample[path+"_times"] = [time, l, l+value.shape[-1]]
+                                hf_sample[path + "_value"] = np.hstack((hf_sample[path + "_value"], value))
+
+                        times_acc.extend([time, start, end])
+
+                # finalize: convert times_acc to 1D numpy array
+                if times_acc:
+                    hf_sample[path + "_times"] = np.array(times_acc)
+                else:
+                    hf_sample[path + "_times"] = None
 
             yield {path: hf_sample.get(path, None) for path in all_features_keys}
-            # yield hf_sample
-
+            # --------------------------------------------------------------------------------------------------
 
     all_features_keys = list(hf_features.keys())
 
@@ -803,7 +917,6 @@ def to_plaid_sample_columnar_time(
             if path_v not in paths_none:
                 paths_none[path_v] = None
         else:
-            print(times_struc, val)
             times_struc = times_struc.reshape((-1,3))
             for i, time in enumerate(times_struc[:,0]):
                 start = int(times_struc[i,1])

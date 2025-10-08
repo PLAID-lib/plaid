@@ -41,10 +41,13 @@ elapsed = time() - start
 print(f"Time to build dataset on split {split_names[0]}: {elapsed:.6g} s, RAM usage increase: {get_mem()-init_ram} MB")
 
 for id in range(len(dataset)):
-    sample_0 = dataset[id]
-    sample_0.features.data[1.1] = copy.deepcopy(sample_0.features.data[0.])
+    sample = dataset[id]
+    sample.features.data[1.1] = copy.deepcopy(sample.features.data[0.])
 
-print(sample_0)
+sample = dataset[0]
+sample.features.data[2.1] = copy.deepcopy(sample.features.data[0.])
+
+print(sample)
 
 generators = {}
 for split_name in split_names[:1]:
@@ -59,6 +62,7 @@ for split_name in split_names[:1]:
 hf_dataset_dict, cgns_types, flat_cst = huggingface_bridge.generate_huggingface_time(generators, verbose=True)
 
 # huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
+
 # print(">>>", hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/ZoneBC/Top/GridLocation_value"])
 # print(">>>", hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/ZoneBC/Top/GridLocation_times"])
 
@@ -78,7 +82,9 @@ show_cgns_tree(tree_in)
 print("------------")
 show_cgns_tree(tree_out)
 
-print("tree equal? =", compare_cgns_trees_no_types(tree_in, tree_out))
+print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[0.], dataset_2[0].features.data[0.]))
+print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[1.1], dataset_2[0].features.data[1.1]))
+print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[2.1], dataset_2[0].features.data[2.1]))
 
 dataset_2[0].save("sample_out", overwrite=True)
 
