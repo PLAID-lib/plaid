@@ -1617,7 +1617,7 @@ class Dataset(object):
             f"{self._infos['plaid'].keys()=} should contain 'version'"
         )
         plaid_version = Version(plaid.__version__)
-        if self._infos["plaid"]["version"] != plaid_version:
+        if self._infos["plaid"]["version"] != plaid_version:  # pragma: no cover
             logger.warning(
                 f"Version mismatch: Dataset was loaded from version {self._infos['plaid']['version'] if self._infos['plaid']['version'] is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
             )

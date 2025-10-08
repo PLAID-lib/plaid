@@ -52,7 +52,7 @@ def deprecated(
         message_parts.append(f"(will be removed in v{removal})")
     full_message = " ".join(message_parts)
 
-    if removal and Version(plaid.__version__) >= removal:
+    if removal and Version(plaid.__version__) >= removal:  # pragma: no cover
         full_message = [f"Removed in v{removal}, {reason}"]
 
         def decorator(_func):
@@ -119,7 +119,7 @@ def deprecated_argument(
     if isinstance(removal, str):
         removal = Version(removal)
 
-    if removal and Version(plaid.__version__) >= removal:
+    if removal and Version(plaid.__version__) >= removal:  # pragma: no cover
         full_message = [
             f"Argument `{old_arg}` has been removed in v{removal}, use `{new_arg}` instead."
         ]

@@ -1177,9 +1177,9 @@ class ProblemDefinition(object):
 
         # Handle version
         plaid_version = Version(plaid.__version__)
-        if self._version != plaid_version:
+        if self._version != plaid_version:  # pragma: no cover
             logger.warning(
-                f"Version mismatch: ProblemDefinition was loaded from version {self._version if self._version is not None else 'antirior to 0.1.10'}, and will be saved with version: {plaid_version}"
+                f"Version mismatch: ProblemDefinition was loaded from version {self._version if self._version is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
             )
             data["version"] = str(plaid_version)
         else:
@@ -1270,7 +1270,7 @@ class ProblemDefinition(object):
             self.out_timeseries_names = data["output_timeseries"]
             self.in_meshes_names = data["input_meshes"]
             self.out_meshes_names = data["output_meshes"]
-        else:
+        else:  # pragma: no cover
             old_keys = [
                 "input_scalars",
                 "input_fields",
@@ -1303,7 +1303,7 @@ class ProblemDefinition(object):
                 reader = csv.reader(file, delimiter=",")
                 for row in reader:
                     split[row[0]] = [int(i) for i in row[1:]]
-        else:
+        else:  # pragma: no cover
             logger.warning(
                 f"file with path `{split_fname_csv}` or `{split_fname_json}` does not exist. Splits will not be set"
             )
