@@ -44,6 +44,8 @@ for id in range(len(dataset)):
     sample = dataset[id]
     sample.features.data[1.1] = copy.deepcopy(sample.features.data[0.])
 
+sample.features.data[1.1].set_field("sig11", 2.*copy.deepcopy(sample.features.data[1.1].add_field("sig11")))
+
 sample = dataset[0]
 sample.features.data[2.1] = copy.deepcopy(sample.features.data[0.])
 
