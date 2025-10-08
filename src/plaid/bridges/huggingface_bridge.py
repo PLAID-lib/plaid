@@ -288,8 +288,12 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
             dtype, np.int64
         ):  # very important to satisfy the CGNS standard
             return Value("int64")
-        else:
+        elif np.issubdtype(
+            dtype, np.dtype("|S1")
+        ):
             return Value("string")
+        else:
+            raise ValueError("Type not recognize")
 
     # Arrays / lists
     elif isinstance(value, (list, tuple, np.ndarray)):
@@ -461,6 +465,7 @@ def _generator_prepare_for_huggingface(
                             f"{global_feature_types[path]} vs {inferred_feature}"
                         )
 
+                # --- constant leaves detection ---
                 if path not in global_constant_leaves:
                     global_constant_leaves[path] = {
                         "value": value,
@@ -520,7 +525,6 @@ def generate_huggingface_time(
             disable=not verbose,
             desc=f"Prepare for HF on split {split_name}",
         ):
-
             for tree in sample.features.data.values():
                 flat, cgns_types = flatten_cgns_tree(tree)
 
@@ -533,6 +537,10 @@ def generate_huggingface_time(
                             f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
                         )
                     # --- feature types ---
+                    # if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+                    #     inferred_feature = Value("string")
+                    # else:
+                    #     inferred_feature = infer_hf_features_from_value(value)
                     inferred_feature = infer_hf_features_from_value(value)
                     if path not in global_feature_types:
                         global_feature_types[path] = inferred_feature
@@ -546,14 +554,117 @@ def generate_huggingface_time(
                                 f"{global_feature_types[path]} vs {inferred_feature}"
                             )
 
+
+    def values_equal(v1, v2):
+        if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
+            return np.array_equal(v1, v2)
+        return v1 == v2
+
+
+    global_constant_leaves = {}
+    total_samples = 0
+    for split_name, generator in generators.items():
+        for sample in tqdm(
+            generator(),
+            disable=not verbose,
+            desc=f"Prepare for HF on split {split_name}",
+        ):
+            total_samples += 1
+
+            sample_flat_trees = {}
+            all_paths = []
+
+            for time, tree in sample.features.data.items():
+                flat, _ = flatten_cgns_tree(tree)
+                sample_flat_trees[time] = flat
+                all_paths.extend(list(flat.keys()))
+
+            all_paths = list(set(all_paths))
+
+            hf_sample = {}
+            for path in all_paths:
+                hf_sample[path+"_value"] = None
+                hf_sample[path+"_times"] = None
+                for time, flat in sample_flat_trees.items():
+                    if path in flat.keys():
+                        value = flat[path]
+                        # print(path, value)
+                        if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+                            value = b"".join(value).decode("ascii")
+                            # if time>0:
+                            #     print(value)
+                            #     1./0.
+                            l = len(hf_sample[path+"_value"]) if hf_sample[path+"_value"] is not None else 0
+                            if l>0:
+                                hf_sample[path+"_value"].append(value)
+                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+1]))
+                            else:
+                                hf_sample[path+"_value"] = [value]
+                                hf_sample[path+"_times"] = [time, l, l+1]
+                        elif value is not None:
+                            # if path=="Base_2_2/Zone/PointData":
+                            #     print(">>>>", value)
+                            l = hf_sample[path+"_value"].shape[-1] if hf_sample[path+"_value"] is not None else 0
+                            if l>0:
+                                hf_sample[path+"_value"] = np.hstack((hf_sample[path+"_value"], value))
+                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+value.shape[-1]]))
+                                # print(path)
+                                # print(hf_sample[path+"_value"].shape)
+                                # print(hf_sample[path+"_times"].shape)
+                            else:
+                                hf_sample[path+"_value"] = value
+                                hf_sample[path+"_times"] = [time, l, l+value.shape[-1]]
+
+
+                        # ICI DETECTION DES EGALITES EN TEMPS POUR COMPRESSION VALUES ET TIMES
+
+            for k, v in hf_sample.items():
+                if isinstance(v, list):
+                    hf_sample[k] = np.array(v)
+
+            for path, value in hf_sample.items():
+                # --- constant leaves detection ---
+                if path not in global_constant_leaves:
+                    global_constant_leaves[path] = {
+                        "value": value,
+                        "constant": True,
+                        "count": 1,
+                    }
+                else:
+                    entry = global_constant_leaves[path]
+                    entry["count"] += 1
+                    if entry["constant"] and not values_equal(entry["value"], value):
+                        entry["constant"] = False
+
+    # After loop: only keep constants that appeared in all samples
+    for path, entry in global_constant_leaves.items():
+        if entry["count"] != total_samples:
+            entry["constant"] = False
+
+    # Sort dicts by keys
+    global_cgns_types = {p: global_cgns_types[p] for p in sorted(global_cgns_types)}
+    global_feature_types = {
+        p: global_feature_types[p] for p in sorted(global_feature_types)
+    }
+    global_constant_leaves = {
+        p: global_constant_leaves[p] for p in sorted(global_constant_leaves)
+    }
+
+    all_paths = [k+"_value" for k in global_feature_types.keys()]+[k+"_times" for k in global_feature_types.keys()]
+
+    flat_cst = {
+        p: e["value"] for p, e in global_constant_leaves.items() if e["constant"]
+    }
+    cst_features = list(flat_cst.keys())
+    var_features = [k for k in all_paths if k not in cst_features]
+
     hf_features_ = {k+"_value": v for k, v in global_feature_types.items()}
+    hf_features_.update({k+"_times": Sequence(Value("float64")) for k in global_feature_types.keys()})
 
-    hf_features_.update({k+"_times": Sequence(Value("float32")) for k in global_feature_types.keys()})
-
-    hf_features = Features({k:v for k, v in hf_features_.items()})
+    hf_features = Features({k:v for k, v in hf_features_.items() if k in var_features})
 
 
-    def generator_fn(gen_func):
+    def generator_fn(gen_func, all_features_keys):
         for sample in gen_func():
 
             sample_flat_trees = {}
@@ -574,7 +685,19 @@ def generate_huggingface_time(
                     if path in flat.keys():
                         value = flat[path]
                         # print(path, value)
-                        if value is not None:
+                        if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+                            value = b"".join(value).decode("ascii")
+                            # if time>0:
+                            #     print(value)
+                            #     1./0.
+                            l = len(hf_sample[path+"_value"]) if hf_sample[path+"_value"] is not None else 0
+                            if l>0:
+                                hf_sample[path+"_value"].append(value)
+                                hf_sample[path+"_times"] = np.hstack((hf_sample[path+"_times"], [time, l, l+1]))
+                            else:
+                                hf_sample[path+"_value"] = [value]
+                                hf_sample[path+"_times"] = [time, l, l+1]
+                        elif value is not None:
                             # if path=="Base_2_2/Zone/PointData":
                             #     print(">>>>", value)
                             l = hf_sample[path+"_value"].shape[-1] if hf_sample[path+"_value"] is not None else 0
@@ -587,14 +710,16 @@ def generate_huggingface_time(
                             else:
                                 hf_sample[path+"_value"] = value
                                 hf_sample[path+"_times"] = [time, l, l+value.shape[-1]]
-            # 1./0.
-            yield hf_sample
+
+            yield {path: hf_sample.get(path, None) for path in all_features_keys}
+            # yield hf_sample
 
 
+    all_features_keys = list(hf_features.keys())
 
     _dict = {}
     for split_name, generator in generators.items():
-        gen = partial(generator_fn, generator)
+        gen = partial(generator_fn, generator, all_features_keys)
         data = list(gen())
         _dict[split_name] = datasets.Dataset.from_list(data, features=hf_features)
         # _dict[split_name] = datasets.Dataset.from_generator(
@@ -606,19 +731,20 @@ def generate_huggingface_time(
         #     cache_dir=f"C:/Users/d582428/tmp/hf_cache_{split_name}_{uuid.uuid4()}",
         # )
 
-    return datasets.DatasetDict(_dict), global_cgns_types
+    return datasets.DatasetDict(_dict), global_cgns_types, flat_cst
 
 
 def to_plaid_dataset_time(
     hf_dataset: datasets.Dataset,
     cgns_types: dict[str, str],
+    flat_cst: dict[str, Any],
     enforce_shapes: bool = True,
 ) -> Dataset:
     sample_list = []
     for i in range(len(hf_dataset)):
         sample_list.append(
             to_plaid_sample_columnar_time(
-                hf_dataset, i, cgns_types, enforce_shapes
+                hf_dataset, i, cgns_types, flat_cst, enforce_shapes
             )
         )
 
@@ -629,6 +755,7 @@ def to_plaid_sample_columnar_time(
     ds: datasets.Dataset,
     i: int,
     cgns_types: dict[str, str],
+    flat_cst: dict[str, Any],
     enforce_shapes: bool = False,
 ) -> Sample:
     table = ds.data
@@ -655,8 +782,17 @@ def to_plaid_sample_columnar_time(
                     else:
                         row[name] = value.to_numpy(zero_copy_only=False)
 
+    flat_cst_val = {k[:-6]:v for k,v in flat_cst.items() if k.endswith("_value")}
+    flat_cst_times = {k[:-6]:v for k,v in flat_cst.items() if k.endswith("_times")}
+
     row_val = {k[:-6]:v for k,v in row.items() if k.endswith("_value")}
     row_tim = {k[:-6]:v for k,v in row.items() if k.endswith("_times")}
+
+    row_val.update(flat_cst_val)
+    row_tim.update(flat_cst_times)
+
+    row_val = {p: row_val[p] for p in sorted(row_val)}
+    row_tim = {p: row_tim[p] for p in sorted(row_tim)}
 
     sample_flat_trees = {}
     paths_none = {}
@@ -666,7 +802,8 @@ def to_plaid_sample_columnar_time(
             assert times_struc is None
             if path_v not in paths_none:
                 paths_none[path_v] = None
-        if times_struc is not None:
+        else:
+            print(times_struc, val)
             times_struc = times_struc.reshape((-1,3))
             for i, time in enumerate(times_struc[:,0]):
                 start = int(times_struc[i,1])
@@ -675,11 +812,12 @@ def to_plaid_sample_columnar_time(
                     values = val[:,start:end]
                 else:
                     values = val[start:end]
+                    if isinstance(values[0], str):
+                        values = np.frombuffer(values[0].encode("ascii", "strict"), dtype="|S1")
                 if time in sample_flat_trees:
                     sample_flat_trees[time][path_v] = values
                 else:
                     sample_flat_trees[time] = {path_v:values}
-
 
     sample_data = {}
     for time, flat_tree in sample_flat_trees.items():
