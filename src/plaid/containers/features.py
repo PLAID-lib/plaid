@@ -17,7 +17,7 @@ from plaid.containers.utils import (
     _check_names,
     _read_index,
 )
-from plaid.types import CGNSNode, CGNSTree, Field
+from plaid.types import Array, CGNSNode, CGNSTree, Field
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -617,7 +617,7 @@ class SampleFeatures:
     # -------------------------------------------------------------------------#
     def init_zone(
         self,
-        zone_shape: np.ndarray,
+        zone_shape: Array,
         zone_type: str = CGK.Unstructured_s,
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
@@ -626,7 +626,7 @@ class SampleFeatures:
         """Initialize a new zone within a CGNS base.
 
         Args:
-            zone_shape (np.ndarray): An array specifying the shape or dimensions of the zone.
+            zone_shape (Array): An array specifying the shape or dimensions of the zone.
             zone_type (str, optional): The type of the zone. Defaults to CGK.Unstructured_s.
             zone_name (str, optional): The name of the zone to initialize. If not provided, uses `mesh_zone_name` specified in Sample initialization. Defaults to None.
             base_name (str, optional): The name of the base to which the zone will be added. If not provided, the zone will be added to the currently active base. Defaults to None.
@@ -807,7 +807,7 @@ class SampleFeatures:
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
         time: Optional[float] = None,
-    ) -> dict[str, np.ndarray]:
+    ) -> dict[str, Array]:
         """Get the nodal tags for a specified base and zone at a given time.
 
         Args:
@@ -816,7 +816,7 @@ class SampleFeatures:
             time (float, optional): The time at which element connectivity data is requested. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-            dict[str,np.ndarray]: A dictionary where keys are nodal tags names and values are NumPy arrays containing the corresponding tag indices.
+            dict[str, Array]: A dictionary where keys are nodal tags names and values are NumPy arrays containing the corresponding tag indices.
             The NumPy arrays have shape (num_nodal_tags).
         """
         # get_zone will look for default base_name, zone_name and time
@@ -874,7 +874,7 @@ class SampleFeatures:
         self,
         name: str,
         time: Optional[float] = None,
-    ) -> Optional[np.ndarray]:
+    ) -> Optional[Array]:
         """Retrieve a global array by name at a specified time.
 
         Args:
@@ -882,7 +882,7 @@ class SampleFeatures:
             time (float, optional): The time step for which to retrieve the global array. If not provided, uses the default time.
 
         Returns:
-            Optional[np.ndarray]: The global array if found, otherwise None. Returns a scalar if the array has size 1.
+            Optional[Array]: The global array if found, otherwise None. Returns a scalar if the array has size 1.
         """
         time = self.get_time_assignment(time)
         if self.has_globals(time):
@@ -894,14 +894,14 @@ class SampleFeatures:
     def add_global(
         self,
         name: str,
-        global_array: np.ndarray,
+        global_array: Array,
         time: Optional[float] = None,
     ) -> None:
         """Add or update a global array at a specified time.
 
         Args:
             name (str): The name of the global array to add or update.
-            global_array (np.ndarray): The array to store.
+            global_array (Array): The array to store.
             time (float, optional): The time step for which to add the global array. If not provided, uses the default time.
 
         Note:
@@ -925,7 +925,7 @@ class SampleFeatures:
         self,
         name: str,
         time: Optional[float] = None,
-    ) -> np.ndarray:
+    ) -> Array:
         """Delete a global array by name at a specified time.
 
         Args:
@@ -936,7 +936,7 @@ class SampleFeatures:
             KeyError: If the global array does not exist at the specified time.
 
         Returns:
-            np.ndarray: The value of the deleted global array.
+            Array: The value of the deleted global array.
         """
         val = self.get_global(name, time)
         if val is None:
@@ -980,7 +980,7 @@ class SampleFeatures:
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
         time: Optional[float] = None,
-    ) -> Optional[np.ndarray]:
+    ) -> Optional[Array]:
         """Get grid node coordinates from a specified base, zone, and time.
 
         Args:
@@ -992,7 +992,7 @@ class SampleFeatures:
             TypeError: Raised if multiple <GridCoordinates> nodes are found. Only one is expected.
 
         Returns:
-            Optional[np.ndarray]: A NumPy array containing the grid node coordinates.
+            Optional[Array]: A NumPy array containing the grid node coordinates.
             If no matching zone or grid coordinates are found, None is returned.
 
         Seealso:
@@ -1034,7 +1034,7 @@ class SampleFeatures:
 
     def set_nodes(
         self,
-        nodes: np.ndarray,
+        nodes: Array,
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
         time: Optional[float] = None,
@@ -1042,7 +1042,7 @@ class SampleFeatures:
         """Set the coordinates of nodes for a specified base and zone at a given time.
 
         Args:
-            nodes (np.ndarray): A numpy array containing the new node coordinates.
+            nodes (Array): A numpy array containing the new node coordinates.
             zone_name (str, optional): The name of the zone where the nodes should be updated. Defaults to None.
             base_name (str, optional): The name of the base where the nodes should be updated. Defaults to None.
             time (float, optional): The time at which the node coordinates should be updated. If a specific time is not provided, the method will display the tree structure for the default time step.
@@ -1091,7 +1091,7 @@ class SampleFeatures:
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
         time: Optional[float] = None,
-    ) -> dict[str, np.ndarray]:
+    ) -> dict[str, Array]:
         """Retrieve element connectivity data for a specified zone, base, and time.
 
         Args:
@@ -1100,7 +1100,7 @@ class SampleFeatures:
             time (float, optional): The time at which element connectivity data is requested. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-            dict[str,np.ndarray]: A dictionary where keys are element type names and values are NumPy arrays representing the element connectivity data.
+            dict[str, Array]: A dictionary where keys are element type names and values are NumPy arrays representing the element connectivity data.
             The NumPy arrays have shape (num_elements, num_nodes_per_element), and element indices are 0-based.
         """
         # get_zone will look for default base_name, zone_name and time
