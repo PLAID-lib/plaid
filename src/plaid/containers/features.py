@@ -144,6 +144,8 @@ class SampleFeatures:
 
         self._default_active_zone = zone_name
 
+    # -------------------------------------------------------------------------#
+
     def set_default_time(self, time: float) -> None:
         """Set the default time for the system.
 
@@ -588,7 +590,6 @@ class SampleFeatures:
         Returns:
             bool: `True` if the CGNS tree has a Base called `Globals`, else return `False`.
         """
-        # print(">>>>>>>>>>>", self.get_base_names(time=time))
         return "Global" in self.get_base_names(time=time)
 
     def get_base(
