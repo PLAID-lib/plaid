@@ -17,7 +17,7 @@ from plaid.containers.utils import (
     _check_names,
     _read_index,
 )
-from plaid.types import Array, CGNSLink, CGNSNode, CGNSPath, CGNSTree, Field
+from plaid.types import Array, CGNSNode, CGNSTree, Field
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -33,10 +33,6 @@ class SampleFeatures:
     def __init__(
         self,
         data: Optional[dict[float, CGNSTree]],
-        mesh_base_name: str = "Base",
-        mesh_zone_name: str = "Zone",
-        links: Optional[dict[float, list[CGNSLink]]] = None,
-        paths: Optional[dict[float, list[CGNSPath]]] = None,
     ):
         self.data: dict[float, CGNSTree] = data if data is not None else {}
 
