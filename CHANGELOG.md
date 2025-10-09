@@ -10,13 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - (sample) add `memory_safe` to save to run pyCGNS save in a subprocess and prevent memory leaks.
-- (sample) add `memory_safe` to save to run pyCGNS save in a subprocess and prevent memory leaks.
 - (sample) add `del_feature` method and rename `_add_feature` without leading underscore.
 - (docs) explain release process in Contributing page.
 
 ### Changed
 
-- (sample) Restructuring of the Sample class to store a global (tensor of arbitrary order) at a given time step: replaces scalar and time_series. All Sample data are now stored in CGNS trees.
 - (sample) Restructuring of the Sample class to store a global (tensor of arbitrary order) at a given time step: replaces scalar and time_series. All Sample data are now stored in CGNS trees.
 
 ### Fixes
