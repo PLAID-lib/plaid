@@ -1,6 +1,7 @@
 name: plaid-dev
 channels:
   - conda-forge
+  - nodefaults
 channel_priority: strict
 dependencies:
   - python=3.11
@@ -13,7 +14,7 @@ dependencies:
   - pycgns-core
 #---# SciML
   - scikit-learn
-  - datasets >=3.0
+  - datasets
   - numpy
   - matplotlib-base
 #---# data validation
@@ -41,3 +42,4 @@ dependencies:
   - myst-parser
   - furo
   - jupytext
+  - astroid <4

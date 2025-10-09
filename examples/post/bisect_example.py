@@ -84,8 +84,8 @@ ref_path = dataset_directory / "dataset_ref"
 pred_path = dataset_directory / "dataset_pred"
 problem_path = dataset_directory / "problem_definition"
 
-# Using file paths to generate bisect plot on scalar_2
-plot_bisect(ref_path, pred_path, problem_path, "scalar_2", "differ_bisect_plot")
+# Using file paths to generate bisect plot on feature_2
+plot_bisect(ref_path, pred_path, problem_path, "feature_2", "differ_bisect_plot")
 
 # %% [markdown]
 # ## Plotting with PLAID
@@ -100,8 +100,8 @@ ref_path = Dataset(dataset_directory / "dataset_ref")
 pred_path = Dataset(dataset_directory / "dataset_pred")
 problem_path = ProblemDefinition(dataset_directory / "problem_definition")
 
-# Using PLAID objects to generate bisect plot on scalar_2
-plot_bisect(ref_path, pred_path, problem_path, "scalar_2", "equal_bisect_plot")
+# Using PLAID objects to generate bisect plot on feature_2
+plot_bisect(ref_path, pred_path, problem_path, "feature_2", "equal_bisect_plot")
 
 # %% [markdown]
 # ## Mixing with Scalar Index and Verbose

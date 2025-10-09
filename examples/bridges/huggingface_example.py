@@ -82,7 +82,7 @@ for _ in range(3):
 
     sample = Sample()
 
-    sample.meshes.add_tree(MeshToCGNS(mesh))
+    sample.features.add_tree(MeshToCGNS(mesh))
     sample.add_scalar("scalar", np.random.randn())
     sample.add_field("node_field", np.random.rand(len(points)), location="Vertex")
     sample.add_field(
