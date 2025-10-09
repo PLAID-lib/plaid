@@ -32,7 +32,7 @@ class SampleFeatures:
 
     def __init__(
         self,
-        data: Optional[dict[float, CGNSTree]],
+        data: Optional[dict[float, CGNSTree]] = None,
     ):
         self.data: dict[float, CGNSTree] = data if data is not None else {}
 

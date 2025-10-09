@@ -146,17 +146,7 @@ meshes_dict = {0.0: tree, 0.5: tree, 1.0: tree}
 # Set meshes in the Sample
 new_sample_mult_mesh.features.set_meshes(meshes_dict)
 
-print(f"{new_sample_mult_mesh.meshes.get_all_mesh_times() = }")
-
-# %% [markdown]
-# ### Link tree from another sample
-
-# %%
-path_linked_sample = Path.cwd() / "dataset/samples/sample_000000000/meshes/mesh_000000000.cgns"
-new_sample_mult_mesh.link_tree(
-    path_linked_sample, linked_sample=sample, linked_time=0.0, time=1.5
-)
-print(f"{new_sample_mult_mesh.meshes.get_all_mesh_times() = }")
+print(f"{new_sample_mult_mesh.get_all_mesh_times() = }")
 
 # %% [markdown]
 # ## Section 2: Accessing and Modifying Sample Data
