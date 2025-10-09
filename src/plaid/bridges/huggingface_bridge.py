@@ -590,7 +590,7 @@ def generate_huggingface_time(
             hf_sample = {}
 
             for path in all_paths:
-                hf_sample[path + "_value"] = None
+                hf_sample[path] = None
                 hf_sample[path + "_times"] = None
 
                 known_values = {}  # hash -> (start, end)
@@ -634,15 +634,15 @@ def generate_huggingface_time(
 
                 # finalize
                 if values_acc:
-                    hf_sample[path + "_value"] = np.hstack(values_acc)
+                    hf_sample[path] = np.hstack(values_acc)
 
-                    # if len(known_values) == 1:
-                    #     for i in range(len(times_acc)):
-                    #         times_acc[i][-1] = None
+                    if len(known_values) == 1:
+                        for i in range(len(times_acc)):
+                            times_acc[i][-1] = -1
 
                     hf_sample[path + "_times"] = np.array(times_acc)
                 else:
-                    hf_sample[path + "_value"] = None
+                    hf_sample[path] = None
                     hf_sample[path + "_times"] = None
 
             #-------------------------------------------------------------------------------
@@ -679,7 +679,7 @@ def generate_huggingface_time(
         p: global_constant_leaves[p] for p in sorted(global_constant_leaves)
     }
 
-    all_paths = [k+"_value" for k in global_feature_types.keys()]+[k+"_times" for k in global_feature_types.keys()]
+    all_paths = [k for k in global_feature_types.keys()]+[k+"_times" for k in global_feature_types.keys()]
 
     flat_cst = {
         p: e["value"] for p, e in global_constant_leaves.items() if e["constant"]
@@ -687,7 +687,7 @@ def generate_huggingface_time(
     cst_features = list(flat_cst.keys())
     var_features = [k for k in all_paths if k not in cst_features]
 
-    hf_features_ = {k+"_value": v for k, v in global_feature_types.items()}
+    hf_features_ = {k: v for k, v in global_feature_types.items()}
     hf_features_.update({k+"_times": Sequence(Value("float64")) for k in global_feature_types.keys()})
 
     hf_features = Features({k:v for k, v in hf_features_.items() if k in var_features})
@@ -709,7 +709,7 @@ def generate_huggingface_time(
             # --------------------------------------------------------------------------------------------------
             hf_sample = {}
             for path in all_paths:
-                hf_sample[path + "_value"] = None
+                hf_sample[path] = None
                 hf_sample[path + "_times"] = None
 
                 known_values = {}  # key -> (start, end)
@@ -736,10 +736,10 @@ def generate_huggingface_time(
                             current_length = end
 
                             # store string as Python list
-                            if hf_sample[path + "_value"] is None:
-                                hf_sample[path + "_value"] = [value_str]
+                            if hf_sample[path] is None:
+                                hf_sample[path] = [value_str]
                             else:
-                                hf_sample[path + "_value"].append(value_str)
+                                hf_sample[path].append(value_str)
 
                         times_acc.extend([time, start, end])
 
@@ -756,23 +756,23 @@ def generate_huggingface_time(
                             known_values[key] = (start, end)
                             current_length = end
 
-                            if hf_sample[path + "_value"] is None:
-                                hf_sample[path + "_value"] = value
+                            if hf_sample[path] is None:
+                                hf_sample[path] = value
                             else:
-                                hf_sample[path + "_value"] = np.hstack((hf_sample[path + "_value"], value))
+                                hf_sample[path] = np.hstack((hf_sample[path], value))
 
                         times_acc.extend([time, start, end])
 
                 # finalize: convert times_acc to 1D numpy array
                 if times_acc:
 
-                    # if len(known_values) == 1:
-                    #     # times_acc = [time0, start0, end0, time1, start1, end1, ...]
-                    #     # replace every 3rd element (end) by None
-                    #     times_acc = [
-                    #     None if (i % 3 == 2) else val
-                    #         for i, val in enumerate(times_acc)
-                    #     ]
+                    if len(known_values) == 1:
+                        # times_acc = [time0, start0, end0, time1, start1, end1, ...]
+                        # replace every 3rd element (end) by -1
+                        times_acc = [
+                        -1 if (i % 3 == 2) else val
+                            for i, val in enumerate(times_acc)
+                        ]
 
                     hf_sample[path + "_times"] = np.array(times_acc)
 
@@ -855,10 +855,10 @@ def to_plaid_sample_columnar_time(
                     else:
                         row[name] = value.to_numpy(zero_copy_only=False)
 
-    flat_cst_val = {k[:-6]:v for k,v in flat_cst.items() if k.endswith("_value")}
+    flat_cst_val = {k:v for k,v in flat_cst.items() if not k.endswith("_times")}
     flat_cst_times = {k[:-6]:v for k,v in flat_cst.items() if k.endswith("_times")}
 
-    row_val = {k[:-6]:v for k,v in row.items() if k.endswith("_value")}
+    row_val = {k:v for k,v in row.items() if not k.endswith("_times")}
     row_tim = {k[:-6]:v for k,v in row.items() if k.endswith("_times")}
 
     row_val.update(flat_cst_val)
@@ -880,6 +880,8 @@ def to_plaid_sample_columnar_time(
             for i, time in enumerate(times_struc[:,0]):
                 start = int(times_struc[i,1])
                 end = int(times_struc[i,2])
+                if end == -1:
+                    end = None
                 if val.ndim>1:
                     values = val[:,start:end]
                 else:
