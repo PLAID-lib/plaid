@@ -32,7 +32,7 @@ class SampleFeatures:
 
     def __init__(
         self,
-        data: Optional[dict[float, CGNSTree]],
+        data: Optional[dict[float, CGNSTree]] = None,
     ):
         self.data: dict[float, CGNSTree] = data if data is not None else {}
 
@@ -588,7 +588,6 @@ class SampleFeatures:
         Returns:
             bool: `True` if the CGNS tree has a Base called `Globals`, else return `False`.
         """
-        # print(">>>>>>>>>>>", self.get_base_names(time=time))
         return "Global" in self.get_base_names(time=time)
 
     def get_base(
