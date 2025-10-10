@@ -1,11 +1,8 @@
 """Module for implementing collections of features within a Sample."""
 
-import copy
 import logging
-from pathlib import Path
 from typing import Optional
 
-import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
@@ -20,7 +17,7 @@ from plaid.containers.utils import (
     _check_names,
     _read_index,
 )
-from plaid.types import Array, CGNSLink, CGNSNode, CGNSPath, CGNSTree, Field
+from plaid.types import Array, CGNSNode, CGNSTree, Field
 from plaid.utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -31,30 +28,17 @@ class SampleFeatures:
 
     Args:
         data (dict[float, CGNSTree], optional): A dictionary mapping time steps to CGNSTrees. Defaults to None.
-        mesh_base_name (str, optional): The base name for the mesh. Defaults to 'Base'.
-        mesh_zone_name (str, optional): The zone name for the mesh. Defaults to 'Zone'.
-        links (dict[float, list[CGNSLink]], optional): A dictionary mapping time steps to lists of links. Defaults to None.
-        paths (dict[float, list[CGNSPath]], optional): A dictionary mapping time steps to lists of paths. Defaults to None.
     """
 
     def __init__(
         self,
         data: Optional[dict[float, CGNSTree]] = None,
-        mesh_base_name: str = "Base",
-        mesh_zone_name: str = "Zone",
-        links: Optional[dict[float, list[CGNSLink]]] = None,
-        paths: Optional[dict[float, list[CGNSPath]]] = None,
     ):
         self.data: dict[float, CGNSTree] = data if data is not None else {}
-        self._links = links if links is not None else {}
-        self._paths = paths if paths is not None else {}
 
         self._default_active_base: Optional[str] = None
         self._default_active_zone: Optional[str] = None
         self._default_active_time: Optional[float] = None
-
-        self._mesh_base_name: str = mesh_base_name
-        self._mesh_zone_name: str = mesh_zone_name
 
     # -------------------------------------------------------------------------#
 
@@ -159,6 +143,8 @@ class SampleFeatures:
             )
 
         self._default_active_zone = zone_name
+
+    # -------------------------------------------------------------------------#
 
     def set_default_time(self, time: float) -> None:
         """Set the default time for the system.
@@ -327,36 +313,16 @@ class SampleFeatures:
 
         if not self.data:
             self.data = {time: CGL.newCGNSTree()}
-            self._links = {time: None}
-            self._paths = {time: None}
         elif time not in self.data:
             self.data[time] = CGL.newCGNSTree()
-            self._links[time] = None
-            self._paths[time] = None
 
         return self.data[time]
 
-    def get_links(self, time: Optional[float] = None) -> list[CGNSLink]:
-        """Retrieve the CGNS links for a specified time step, if available.
-
-        Args:
-            time (float, optional): The time step for which to retrieve the CGNS links. If a specific time is not provided, the method will display the links for the default time step.
-
-        Returns:
-            list: The CGNS links for the specified time step if available; otherwise, returns None.
-        """
-        time = self.get_time_assignment(time)
-        return self._links[time] if (self._links) else None
-
-    def get_mesh(
-        self, time: Optional[float] = None, apply_links: bool = False, in_memory=False
-    ) -> Optional[CGNSTree]:
+    def get_mesh(self, time: Optional[float] = None) -> Optional[CGNSTree]:
         """Retrieve the CGNS tree structure for a specified time step, if available.
 
         Args:
             time (float, optional): The time step for which to retrieve the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
-            apply_links (bool, optional): Activates the following of the CGNS links to reconstruct the complete CGNS tree - in this case, a deepcopy of the tree is made to prevent from modifying the existing tree.
-            in_memory (bool, optional): Active if apply_links == True, ONLY WORKING if linked mesh is in the current sample. This option follows the link in memory from current sample.
 
         Returns:
             CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
@@ -365,28 +331,7 @@ class SampleFeatures:
             return None
 
         time = self.get_time_assignment(time)
-        tree = self.data[time]
-
-        links = self.get_links(time)
-        if not apply_links or links is None:
-            return tree
-
-        tree = copy.deepcopy(tree)
-        for link in links:
-            if not in_memory:
-                subtree, _, _ = CGM.load(str(Path(link[0]) / link[1]), subtree=link[2])
-            else:
-                linked_timestep = int(link[1].split(".cgns")[0].split("_")[1])
-                linked_timestamp = list(self.data.keys())[linked_timestep]
-                subtree = self.get_mesh(linked_timestamp)
-            node_path = "/".join(link[2].split("/")[:-1])
-            node_to_append = CGU.getNodeByPath(tree, node_path)
-            assert node_to_append is not None, (
-                f"nodepath {node_path} not present in tree, cannot apply link"
-            )
-            node_to_append[2].append(CGU.getNodeByPath(subtree, link[2]))
-
-        return tree
+        return self.data[time]
 
     def set_meshes(self, meshes: dict[float, CGNSTree]) -> None:
         """Set all meshes with their corresponding time step.
@@ -399,11 +344,6 @@ class SampleFeatures:
         """
         if not self.data:
             self.data = meshes
-            self._links = {}
-            self._paths = {}
-            for time in self.data.keys():
-                self._links[time] = None
-                self._paths[time] = None
         else:
             raise KeyError(
                 "meshes is already set, you cannot overwrite it, delete it first or extend it with `Sample.add_tree`"
@@ -432,12 +372,8 @@ class SampleFeatures:
 
         if not self.data:
             self.data = {time: tree}
-            self._links = {time: None}
-            self._paths = {time: None}
         elif time not in self.data:
             self.data[time] = tree
-            self._links[time] = None
-            self._paths[time] = None
         else:
             # TODO: gérer le cas où il y a des bases de mêmes noms... + merge
             # récursif des nœuds
@@ -481,8 +417,6 @@ class SampleFeatures:
         if time not in self.data:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
-        self._links.pop(time, None)
-        self._paths.pop(time, None)
         return self.data.pop(time)
 
     # -------------------------------------------------------------------------#
@@ -557,13 +491,7 @@ class SampleFeatures:
         time = self.get_time_assignment(time)
 
         if base_name is None:
-            base_name = (
-                self._mesh_base_name
-                + "_"
-                + str(topological_dim)
-                + "_"
-                + str(physical_dim)
-            )
+            base_name = "Base_" + str(topological_dim) + "_" + str(physical_dim)
 
         self.init_tree(time)
         if not (self.has_base(base_name, time)):
@@ -662,7 +590,6 @@ class SampleFeatures:
         Returns:
             bool: `True` if the CGNS tree has a Base called `Globals`, else return `False`.
         """
-        # print(">>>>>>>>>>>", self.get_base_names(time=time))
         return "Global" in self.get_base_names(time=time)
 
     def get_base(
@@ -725,8 +652,7 @@ class SampleFeatures:
 
         zone_name = self.get_zone_assignment(zone_name, base_name, time)
         if zone_name is None:
-            zone_name = self._mesh_zone_name
-
+            zone_name = "Zone"
         zone_node = CGL.newZone(base_node, zone_name, zone_shape, zone_type)
         return zone_node
 

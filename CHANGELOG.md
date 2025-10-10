@@ -23,8 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- (sample/features) cgns links and paths, as well as args `mesh_base_name` and `mesh_zone_name`
 - (sample) time_series support, now handle directly globals at time steps.
-
 
 ## [0.1.9] - 2025-09-24
 
