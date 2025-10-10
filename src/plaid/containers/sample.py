@@ -473,7 +473,9 @@ class Sample(BaseModel):
 
     def update_features_from_identifier(
         self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        feature_identifiers: dict[
+            int, Union[FeatureIdentifier, list[FeatureIdentifier]]
+        ],
         features: Union[Feature, list[Feature]],
         in_place: bool = False,
     ) -> Self:

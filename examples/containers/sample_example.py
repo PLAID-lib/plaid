@@ -146,8 +146,7 @@ meshes_dict = {0.0: tree, 0.5: tree, 1.0: tree}
 # Set meshes in the Sample
 new_sample_mult_mesh.features.set_meshes(meshes_dict)
 
-print(f"{new_sample_mult_mesh.features.get_all_mesh_times() = }")
-
+print(f"{new_sample_mult_mesh.get_all_mesh_times() = }")
 
 # %% [markdown]
 # ## Section 2: Accessing and Modifying Sample Data
