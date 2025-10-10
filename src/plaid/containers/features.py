@@ -144,8 +144,6 @@ class SampleFeatures:
 
         self._default_active_zone = zone_name
 
-    # -------------------------------------------------------------------------#
-
     def set_default_time(self, time: float) -> None:
         """Set the default time for the system.
 

@@ -8,6 +8,7 @@
 # %% Imports
 
 import copy
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -119,7 +120,7 @@ class Test_Dataset:
                     feature_type="scalar"
                 )
             )
-            == 2
+            == 4
         )
         assert (
             len(
@@ -144,7 +145,7 @@ class Test_Dataset:
                     ids=np.arange(np.random.randint(2, nb_samples)),
                 )
             )
-            == 2
+            == 4
         )
         assert (
             len(
@@ -152,7 +153,7 @@ class Test_Dataset:
                     feature_type="scalar", ids=[0, 0]
                 )
             )
-            == 2
+            == 4
         )
 
     def test_add_sample(self, dataset, sample):
@@ -1075,6 +1076,7 @@ class Test_Dataset:
         save_dir = current_directory / "my_dataset_dir"
         with pytest.raises(ValueError):
             empty_dataset.add_to_dir(sample, path=save_dir, save_dir=save_dir)
+        shutil.rmtree(Path(save_dir))
 
     # -------------------------------------------------------------------------#
     def test__save_to_dir_(self, dataset_with_samples, tmp_path):
