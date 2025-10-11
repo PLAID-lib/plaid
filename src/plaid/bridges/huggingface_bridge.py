@@ -6,13 +6,13 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
+import hashlib
 import io
 import json
 import os
 import pickle
 import shutil
 import sys
-import hashlib
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
@@ -42,7 +42,10 @@ from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
 from plaid.types import IndexType
 from plaid.types.cgns_types import CGNSTree
-from plaid.utils.cgns_helper import flatten_cgns_tree, unflatten_cgns_tree, show_cgns_tree
+from plaid.utils.cgns_helper import (
+    flatten_cgns_tree,
+    unflatten_cgns_tree,
+)
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
@@ -289,9 +292,7 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
             dtype, np.int64
         ):  # very important to satisfy the CGNS standard
             return Value("int64")
-        elif np.issubdtype(
-            dtype, np.dtype("|S1")
-        ):
+        elif np.issubdtype(dtype, np.dtype("|S1")):
             return Value("string")
         else:
             raise ValueError("Type not recognize")
@@ -512,11 +513,10 @@ def _generator_prepare_for_huggingface(
     return flat_cst, key_mappings, hf_features
 
 
-def generate_huggingface_time(
+def _generator_prepare_for_huggingface_time(
     generators: dict[str, Callable],
     verbose: bool = True,
-) -> tuple[dict[str, Any], dict[str, Any], Features]:
-
+) -> tuple[dict[str, Any], dict[str, Any], list[Any]]:
     global_cgns_types = {}
     global_feature_types = {}
 
@@ -530,11 +530,12 @@ def generate_huggingface_time(
                 flat, cgns_types = flatten_cgns_tree(tree)
 
                 for path, value in flat.items():
-
                     # --- CGNS types ---
                     if path not in global_cgns_types:
                         global_cgns_types[path] = cgns_types[path]
-                    elif global_cgns_types[path] != cgns_types[path]:  # pragma: no cover
+                    elif (
+                        global_cgns_types[path] != cgns_types[path]
+                    ):  # pragma: no cover
                         raise ValueError(
                             f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
                         )
@@ -558,12 +559,10 @@ def generate_huggingface_time(
                                     f"{global_feature_types[path]} vs {inferred_feature}"
                                 )
 
-
     def values_equal(v1, v2):
         if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
             return np.array_equal(v1, v2)
         return v1 == v2
-
 
     global_constant_leaves = {}
     total_samples = 0
@@ -581,11 +580,17 @@ def generate_huggingface_time(
             for time, tree in sample.features.data.items():
                 flat, _ = flatten_cgns_tree(tree)
                 sample_flat_trees[time] = flat
-                all_paths.extend([k for k in flat.keys() if "/Time" not in k and "CGNSLibraryVersion" not in k])
+                all_paths.extend(
+                    [
+                        k
+                        for k in flat.keys()
+                        if "/Time" not in k and "CGNSLibraryVersion" not in k
+                    ]
+                )
 
             all_paths = list(set(all_paths))
 
-            #-------------- time-wise equality detection ------------------------
+            # -------------- time-wise equality detection ------------------------
 
             hf_sample = {}
 
@@ -605,7 +610,11 @@ def generate_huggingface_time(
                     value = flat[path]
 
                     # decode byte array strings
-                    if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+                    if (
+                        isinstance(value, np.ndarray)
+                        and value.dtype == np.dtype("|S1")
+                        and value.ndim == 1
+                    ):
                         value_str = b"".join(value).decode("ascii")
                         value_np = np.array([value_str])
                         key = hashlib.sha256(value_str.encode("ascii")).hexdigest()
@@ -645,7 +654,7 @@ def generate_huggingface_time(
                     hf_sample[path] = None
                     hf_sample[path + "_times"] = None
 
-            #-------------------------------------------------------------------------------
+            # -------------------------------------------------------------------------------
 
             for k, v in hf_sample.items():
                 if isinstance(v, list):
@@ -679,7 +688,9 @@ def generate_huggingface_time(
         p: global_constant_leaves[p] for p in sorted(global_constant_leaves)
     }
 
-    all_paths = [k for k in global_feature_types.keys()]+[k+"_times" for k in global_feature_types.keys()]
+    all_paths = [k for k in global_feature_types.keys()] + [
+        k + "_times" for k in global_feature_types.keys()
+    ]
 
     flat_cst = {
         p: e["value"] for p, e in global_constant_leaves.items() if e["constant"]
@@ -688,21 +699,45 @@ def generate_huggingface_time(
     var_features = [k for k in all_paths if k not in cst_features]
 
     hf_features_ = {k: v for k, v in global_feature_types.items()}
-    hf_features_.update({k+"_times": Sequence(Value("float64")) for k in global_feature_types.keys()})
+    hf_features_.update(
+        {k + "_times": Sequence(Value("float64")) for k in global_feature_types.keys()}
+    )
 
-    hf_features = Features({k:v for k, v in hf_features_.items() if k in var_features})
+    hf_features = Features({k: v for k, v in hf_features_.items() if k in var_features})
 
+    key_mappings = {}
+    key_mappings["variable_features"] = var_features
+    key_mappings["constant_features"] = cst_features
+    key_mappings["cgns_types"] = global_cgns_types
+
+    return flat_cst, key_mappings, hf_features
+
+
+def generate_huggingface_time(
+    generators: dict[str, Callable],
+    verbose: bool = True,
+) -> tuple[dict[str, Any], dict[str, Any], Features]:
+    flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface_time(
+        generators, verbose
+    )
+
+    all_features_keys = list(hf_features.keys())
 
     def generator_fn(gen_func, all_features_keys):
         for sample in gen_func():
-
             sample_flat_trees = {}
             all_paths = []
 
             for time, tree in sample.features.data.items():
                 flat, _ = flatten_cgns_tree(tree)
                 sample_flat_trees[time] = flat
-                all_paths.extend([k for k in flat.keys() if "/Time" not in k and "CGNSLibraryVersion" not in k])
+                all_paths.extend(
+                    [
+                        k
+                        for k in flat.keys()
+                        if "/Time" not in k and "CGNSLibraryVersion" not in k
+                    ]
+                )
 
             all_paths = list(set(all_paths))
 
@@ -723,7 +758,11 @@ def generate_huggingface_time(
                     value = flat[path]
 
                     # case: |S1 string array
-                    if isinstance(value, np.ndarray) and value.dtype == np.dtype("|S1") and value.ndim == 1:
+                    if (
+                        isinstance(value, np.ndarray)
+                        and value.dtype == np.dtype("|S1")
+                        and value.ndim == 1
+                    ):
                         value_str = b"".join(value).decode("ascii")
                         key = ("str", value_str)
 
@@ -765,12 +804,11 @@ def generate_huggingface_time(
 
                 # finalize: convert times_acc to 1D numpy array
                 if times_acc:
-
                     if len(known_values) == 1:
                         # times_acc = [time0, start0, end0, time1, start1, end1, ...]
                         # replace every 3rd element (end) by -1
                         times_acc = [
-                        -1 if (i % 3 == 2) else val
+                            -1 if (i % 3 == 2) else val
                             for i, val in enumerate(times_acc)
                         ]
 
@@ -782,27 +820,18 @@ def generate_huggingface_time(
             yield {path: hf_sample.get(path, None) for path in all_features_keys}
             # --------------------------------------------------------------------------------------------------
 
-    all_features_keys = list(hf_features.keys())
-
     _dict = {}
     for split_name, generator in generators.items():
         gen = partial(generator_fn, generator, all_features_keys)
-        data = list(gen())
-        _dict[split_name] = datasets.Dataset.from_list(data, features=hf_features)
-        # _dict[split_name] = datasets.Dataset.from_generator(
-        #     generator=gen,
-        #     features=hf_features,
-        #     num_proc=1,
-        #     writer_batch_size=1,
-        #     split=datasets.splits.NamedSplit(split_name),
-        #     cache_dir=f"C:/Users/d582428/tmp/hf_cache_{split_name}_{uuid.uuid4()}",
-        # )
-
-
-    key_mappings = {}
-    key_mappings["variable_features"] = var_features
-    key_mappings["constant_features"] = cst_features
-    key_mappings["cgns_types"] = global_cgns_types
+        # data = list(gen())
+        # _dict[split_name] = datasets.Dataset.from_list(data, features=hf_features)
+        _dict[split_name] = datasets.Dataset.from_generator(
+            generator=gen,
+            features=hf_features,
+            num_proc=1,
+            writer_batch_size=1,
+            split=datasets.splits.NamedSplit(split_name),
+        )
 
     return datasets.DatasetDict(_dict), key_mappings, flat_cst
 
@@ -855,11 +884,11 @@ def to_plaid_sample_columnar_time(
                     else:
                         row[name] = value.to_numpy(zero_copy_only=False)
 
-    flat_cst_val = {k:v for k,v in flat_cst.items() if not k.endswith("_times")}
-    flat_cst_times = {k[:-6]:v for k,v in flat_cst.items() if k.endswith("_times")}
+    flat_cst_val = {k: v for k, v in flat_cst.items() if not k.endswith("_times")}
+    flat_cst_times = {k[:-6]: v for k, v in flat_cst.items() if k.endswith("_times")}
 
-    row_val = {k:v for k,v in row.items() if not k.endswith("_times")}
-    row_tim = {k[:-6]:v for k,v in row.items() if k.endswith("_times")}
+    row_val = {k: v for k, v in row.items() if not k.endswith("_times")}
+    row_tim = {k[:-6]: v for k, v in row.items() if k.endswith("_times")}
 
     row_val.update(flat_cst_val)
     row_tim.update(flat_cst_times)
@@ -876,31 +905,32 @@ def to_plaid_sample_columnar_time(
             if path_v not in paths_none:
                 paths_none[path_v] = None
         else:
-            times_struc = times_struc.reshape((-1,3))
-            for i, time in enumerate(times_struc[:,0]):
-                start = int(times_struc[i,1])
-                end = int(times_struc[i,2])
+            times_struc = times_struc.reshape((-1, 3))
+            for i, time in enumerate(times_struc[:, 0]):
+                start = int(times_struc[i, 1])
+                end = int(times_struc[i, 2])
                 if end == -1:
                     end = None
-                if val.ndim>1:
-                    values = val[:,start:end]
+                if val.ndim > 1:
+                    values = val[:, start:end]
                 else:
                     values = val[start:end]
                     if isinstance(values[0], str):
-                        values = np.frombuffer(values[0].encode("ascii", "strict"), dtype="|S1")
+                        values = np.frombuffer(
+                            values[0].encode("ascii", "strict"), dtype="|S1"
+                        )
                 if time in sample_flat_trees:
                     sample_flat_trees[time][path_v] = values
                 else:
-                    sample_flat_trees[time] = {path_v:values}
+                    sample_flat_trees[time] = {path_v: values}
 
     for time, tree in sample_flat_trees.items():
-
-        bases = list(set([k.split('/')[0] for k in tree.keys()]))
+        bases = list(set([k.split("/")[0] for k in tree.keys()]))
         for base in bases:
             tree[f"{base}/Time"] = np.array([1], dtype=np.int32)
             tree[f"{base}/Time/IterationValues"] = np.array([1], dtype=np.int32)
             tree[f"{base}/Time/TimeValues"] = np.array([time], dtype=np.float64)
-        tree["CGNSLibraryVersion"] = np.array([4.], dtype=np.float32)
+        tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
 
     sample_data = {}
     for time, flat_tree in sample_flat_trees.items():

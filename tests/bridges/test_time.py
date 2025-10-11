@@ -1,17 +1,11 @@
+from time import time
 
 from plaid.bridges import huggingface_bridge
-from plaid import Dataset, Sample, ProblemDefinition
-from plaid.types import FeatureIdentifier
 from plaid.utils.base import get_mem
-
-from Muscat.Bridges.CGNSBridge import CGNSToMesh, MeshToCGNS
-
-from time import time
-import numpy as np
-import copy
-
-from plaid.utils.cgns_helper import compare_cgns_trees, compare_cgns_trees_no_types, show_cgns_tree
-
+from plaid.utils.cgns_helper import (
+    compare_cgns_trees_no_types,
+    show_cgns_tree,
+)
 
 repo_id = "fabiencasenave/Tensile2d"
 split_names = ["train_500", "test", "OOD"]
@@ -26,7 +20,6 @@ repo_id_out = "fabiencasenave/Tensile2d_new"
 hf_dataset_dict = huggingface_bridge.load_dataset_from_hub(repo_id)
 
 
-
 flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_hub(repo_id)
 pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id, "task_1")
 infos = huggingface_bridge.load_infos_from_hub(repo_id)
@@ -38,7 +31,9 @@ init_ram = get_mem()
 start = time()
 dataset = huggingface_bridge.to_plaid_dataset(hf_dataset, flat_cst, cgns_types)
 elapsed = time() - start
-print(f"Time to build dataset on split {split_names[0]}: {elapsed:.6g} s, RAM usage increase: {get_mem()-init_ram} MB")
+print(
+    f"Time to build dataset on split {split_names[0]}: {elapsed:.6g} s, RAM usage increase: {get_mem() - init_ram} MB"
+)
 
 # for id in range(len(dataset)):
 #     sample = dataset[id]
@@ -54,14 +49,17 @@ print(f"Time to build dataset on split {split_names[0]}: {elapsed:.6g} s, RAM us
 generators = {}
 for split_name in split_names[:1]:
     ids = pb_def.get_split(split_name)
+
     def generator_(ids=ids):
         for id in ids:
             yield dataset[id]
+
     generators[split_name] = generator_
 
 
-
-hf_dataset_dict, key_mappings, flat_cst = huggingface_bridge.generate_huggingface_time(generators, verbose=True)
+hf_dataset_dict, key_mappings, flat_cst = huggingface_bridge.generate_huggingface_time(
+    generators, verbose=True
+)
 cgns_types = key_mappings["cgns_types"]
 
 # val = hf_dataset_dict[split_names[0]][0]["Base_2_2/Zone/PointData/sig11_value"]
@@ -79,9 +77,10 @@ huggingface_bridge.push_problem_definition_to_hub(repo_id_out, "task_1", pb_def)
 # 1./0.
 
 
-
 start = time()
-dataset_2 = huggingface_bridge.to_plaid_dataset_time(hf_dataset_dict[split_names[0]], cgns_types, flat_cst, enforce_shapes=True)
+dataset_2 = huggingface_bridge.to_plaid_dataset_time(
+    hf_dataset_dict[split_names[0]], cgns_types, flat_cst, enforce_shapes=True
+)
 print(f"Duration initialization dataset = {time() - start}")
 
 # times = list(dataset_2[0].features.data.keys())
@@ -89,14 +88,19 @@ print(f"Duration initialization dataset = {time() - start}")
 # print("1", dataset_2[0].get_field("sig11", time=0.))
 # print("2", dataset_2[0].get_field("sig11", time=1.1))
 
-tree_in = dataset[0].features.data[0.]
-tree_out = dataset_2[0].features.data[0.]
+tree_in = dataset[0].features.data[0.0]
+tree_out = dataset_2[0].features.data[0.0]
 
 show_cgns_tree(tree_in)
 print("------------")
 show_cgns_tree(tree_out)
 
-print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[0.], dataset_2[0].features.data[0.]))
+print(
+    "tree equal? =",
+    compare_cgns_trees_no_types(
+        dataset[0].features.data[0.0], dataset_2[0].features.data[0.0]
+    ),
+)
 # print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[1.1], dataset_2[0].features.data[1.1]))
 # print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[2.1], dataset_2[0].features.data[2.1]))
 
@@ -105,7 +109,7 @@ dataset_2[0].save("sample_out", overwrite=True)
 # print(dataset_2[0].features.data[times[0]])
 # print(dataset_2[0].features.data[times[1]])
 
-1./0.
+1.0 / 0.0
 
 # print(hf_dataset_dict)
 
@@ -150,6 +154,3 @@ dataset_2[0].save("sample_out", overwrite=True)
 # sample_0.show_tree(0.)
 # print("-----------------")
 # sample_0.show_tree(1.)
-
-
-
