@@ -15,11 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (huggingface bridge) restructuration: do not rely on binary blobs anymore, but exploit native arrow types by flattening cgns trees into constant and variable parts.
 - (sample) Restructuring of the Sample class to store a global (tensor of arbitrary order) at a given time step: replaces scalar and time_series. All Sample data are now stored in CGNS trees.
 
 ### Fixes
 
 - (meshes) fix `get_field_name`, could overwrite arguments during iteration over times, bases, zones and locations.
+- (docs) explain release process in Contributing page.
 
 ### Removed
 

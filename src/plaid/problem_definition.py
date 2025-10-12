@@ -1126,6 +1126,26 @@ class ProblemDefinition(object):
         return list(set(all_indices))
 
     # -------------------------------------------------------------------------#
+    def _generate_problem_infos_dict(self) -> dict[str, Union[str, list]]:
+        """Generate a dictionary containing all relevant problem definition data.
+
+        Returns:
+            dict[str, Union[str, list]]: A dictionary with keys for task, input/output features, scalars, fields, timeseries, and meshes.
+        """
+        return {
+            "task": self._task,
+            "input_features": [dict(**d) for d in self.in_features_identifiers],
+            "output_features": [dict(**d) for d in self.out_features_identifiers],
+            "input_scalars": self.in_scalars_names,  # list[input scalar name]
+            "output_scalars": self.out_scalars_names,  # list[output scalar name]
+            "input_fields": self.in_fields_names,  # list[input field name]
+            "output_fields": self.out_fields_names,  # list[output field name]
+            "input_timeseries": self.in_timeseries_names,  # list[input timeseries name]
+            "output_timeseries": self.out_timeseries_names,  # list[output timeseries name]
+            "input_meshes": self.in_meshes_names,  # list[input mesh name]
+            "output_meshes": self.out_meshes_names,  # list[output mesh name]
+        }
+
     def _save_to_dir_(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
 
@@ -1142,30 +1162,20 @@ class ProblemDefinition(object):
         path = Path(path)
 
         if not (path.is_dir()):
-            path.mkdir()
+            path.mkdir(parents=True)
 
-        data = {
-            "task": self._task,
-            "input_features": [dict(**d) for d in self.in_features_identifiers],
-            "output_features": [dict(**d) for d in self.out_features_identifiers],
-            "input_scalars": self.in_scalars_names,  # list[input scalar name]
-            "output_scalars": self.out_scalars_names,  # list[output scalar name]
-            "input_fields": self.in_fields_names,  # list[input field name]
-            "output_fields": self.out_fields_names,  # list[output field name]
-            "input_timeseries": self.in_timeseries_names,  # list[input timeseries name]
-            "output_timeseries": self.out_timeseries_names,  # list[output timeseries name]
-            "input_meshes": self.in_meshes_names,  # list[input mesh name]
-            "output_meshes": self.out_meshes_names,  # list[output mesh name]
-        }
+        problem_infos_dict = self._generate_problem_infos_dict()
 
         pbdef_fname = path / "problem_infos.yaml"
         with pbdef_fname.open("w") as file:
-            yaml.dump(data, file, default_flow_style=False, sort_keys=False)
+            yaml.dump(
+                problem_infos_dict, file, default_flow_style=False, sort_keys=False
+            )
 
         split_fname = path / "split.json"
-        if self._split is not None:
+        if self.get_split() is not None:
             with split_fname.open("w") as file:
-                json.dump(self._split, file)
+                json.dump(self.get_split(), file)
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> Self:  # pragma: no cover
@@ -1180,6 +1190,25 @@ class ProblemDefinition(object):
         instance = cls()
         instance._load_from_dir_(path)
         return instance
+
+    def _initialize_from_problem_infos_dict(
+        self, data: dict[str, Union[str, list]]
+    ) -> None:
+        self._task = data["task"]
+        self.in_features_identifiers = [
+            FeatureIdentifier(**tup) for tup in data["input_features"]
+        ]
+        self.out_features_identifiers = [
+            FeatureIdentifier(**tup) for tup in data["output_features"]
+        ]
+        self.in_scalars_names = data["input_scalars"]
+        self.out_scalars_names = data["output_scalars"]
+        self.in_fields_names = data["input_fields"]
+        self.out_fields_names = data["output_fields"]
+        self.in_timeseries_names = data["input_timeseries"]
+        self.out_timeseries_names = data["output_timeseries"]
+        self.in_meshes_names = data["input_meshes"]
+        self.out_meshes_names = data["output_meshes"]
 
     def _load_from_dir_(self, path: Union[str, Path]) -> None:
         """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
@@ -1216,21 +1245,7 @@ class ProblemDefinition(object):
                 f"file with path `{pbdef_fname}` does not exist. Abort"
             )
 
-        self._task = data["task"]
-        self.in_features_identifiers = [
-            FeatureIdentifier(**tup) for tup in data["input_features"]
-        ]
-        self.out_features_identifiers = [
-            FeatureIdentifier(**tup) for tup in data["output_features"]
-        ]
-        self.in_scalars_names = data["input_scalars"]
-        self.out_scalars_names = data["output_scalars"]
-        self.in_fields_names = data["input_fields"]
-        self.out_fields_names = data["output_fields"]
-        self.in_timeseries_names = data["input_timeseries"]
-        self.out_timeseries_names = data["output_timeseries"]
-        self.in_meshes_names = data["input_meshes"]
-        self.out_meshes_names = data["output_meshes"]
+        self._initialize_from_problem_infos_dict(data)
 
         # if it was saved with version <=0.1.7 it is a .csv else it is .json
         split = {}
@@ -1248,7 +1263,7 @@ class ProblemDefinition(object):
             logger.warning(
                 f"file with path `{split_fname_csv}` or `{split_fname_json}` does not exist. Splits will not be set"
             )
-        self._split = split
+        self.set_split(split)
 
     def extract_problem_definition_from_identifiers(
         self, identifiers: list[FeatureIdentifier]

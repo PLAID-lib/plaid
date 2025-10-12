@@ -31,6 +31,8 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
         sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
         sample.add_scalar("test_scalar", float(i))
         sample.add_scalar("test_scalar_2", float(i**2))
+        sample.add_global("global_0", 0.5 + np.ones((2, 3)))
+        sample.add_global("global_1", 1.5 + i + np.ones((2, 3, 2)))
         sample.add_field(
             name="test_field_same_size",
             field=float(i**4) * np.ones(17),
@@ -39,7 +41,7 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
         )
         sample.add_field(
             name="test_field_2785",
-            field=float(i**5) * np.ones(3 * i),
+            field=float(i**5) * np.ones(3 * (i + 1)),
             zone_name=zone_name,
             base_name=base_name,
         )
