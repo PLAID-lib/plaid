@@ -1046,7 +1046,7 @@ def instantiate_plaid_datasetdict_from_hub(
             The Hugging Face repository identifier (e.g. `"user/dataset"`).
         enforce_shapes (bool, optional):
             If True, enforce strict array shapes when converting to PLAID
-            datasets. Defaults to False.
+            datasets. Defaults to True.
 
     Returns:
         dict[str, Dataset]:
