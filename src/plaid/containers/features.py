@@ -1235,30 +1235,25 @@ class SampleFeatures:
         if search_node is None:
             return None
 
-        is_empty = True
         full_field = []
-
         solution_paths = CGU.getPathsByTypeSet(search_node, [CGK.FlowSolution_t])
 
         for f_path in solution_paths:
-            if (
-                CGU.getValueByPath(search_node, f_path + "/GridLocation")
-                .tobytes()
-                .decode()
-                == location
-            ):
-                field = CGU.getValueByPath(search_node, f_path + "/" + name)
+            grid_loc = CGU.getValueByPath(search_node, f_path + "/GridLocation")
+            if grid_loc is None:
+                continue
+            if grid_loc.tobytes().decode() != location:
+                continue
 
-                if field is None:
-                    field = np.empty((0,))
-                else:
-                    is_empty = False
+            field = CGU.getValueByPath(search_node, f_path + "/" + name)
+            if field is not None and field.size > 0:
                 full_field.append(field)
 
-        if is_empty:
+        if not full_field:
             return None
-        else:
-            return np.concatenate(full_field)
+        if len(full_field) == 1:
+            return full_field[0]
+        return np.concatenate(full_field)
 
     def add_field(
         self,
