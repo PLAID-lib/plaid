@@ -1251,7 +1251,9 @@ class SampleFeatures:
             return None
         if len(full_field) == 1:
             return full_field[0]
-        raise ValueError(f"Multiple fields found with name {name} at location {location}.")  # pragma: no cover
+        raise ValueError(
+            f"Multiple fields found with name {name} at location {location}."
+        )  # pragma: no cover
 
     def add_field(
         self,

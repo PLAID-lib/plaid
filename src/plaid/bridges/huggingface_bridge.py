@@ -275,7 +275,7 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
         - All float values are enforced to "float32" to limit data size
         - All int64 values are preserved as "int64" to satisfy CGNS standards
     """
-    if value is None: # pragma: no cover
+    if value is None:  # pragma: no cover
         return Value("null")
 
     # Scalars
@@ -291,10 +291,10 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
             dtype, np.int64
         ):  # very important to satisfy the CGNS standard
             return Value("int64")
-        elif np.issubdtype(dtype, np.dtype("|S1")): # pragma: no cover
+        elif np.issubdtype(dtype, np.dtype("|S1")):  # pragma: no cover
             return Value("string")
         else:
-            raise ValueError("Type not recognize") # pragma: no cover
+            raise ValueError("Type not recognize")  # pragma: no cover
 
     # Arrays / lists
     elif isinstance(value, (list, tuple, np.ndarray)):
@@ -624,7 +624,7 @@ def _generator_prepare_for_huggingface(
 
                     # Deduplicate identical arrays
                     if key in known_values:
-                        start, end = known_values[key] # pragma: no cover
+                        start, end = known_values[key]  # pragma: no cover
                     else:
                         start, end = current_length, current_length + size
                         known_values[key] = (start, end)
@@ -637,7 +637,7 @@ def _generator_prepare_for_huggingface(
                 if values_acc:
                     try:
                         hf_sample[path] = np.hstack(values_acc)
-                    except Exception: # pragma: no cover
+                    except Exception:  # pragma: no cover
                         hf_sample[path] = np.concatenate(
                             [np.atleast_1d(x) for x in values_acc]
                         )
@@ -652,7 +652,7 @@ def _generator_prepare_for_huggingface(
             # --- Convert lists to np.arrays ---
             for k, v in hf_sample.items():
                 if isinstance(v, list):
-                    hf_sample[k] = np.array(v) # pragma: no cover
+                    hf_sample[k] = np.array(v)  # pragma: no cover
 
             # --- Infer global HF feature types ---
             for path in all_paths:
@@ -668,7 +668,7 @@ def _generator_prepare_for_huggingface(
                 if path not in global_feature_types:
                     global_feature_types[path] = inferred
                 elif repr(global_feature_types[path]) != repr(inferred):
-                    raise ValueError( # pragma: no cover
+                    raise ValueError(  # pragma: no cover
                         f"Feature type mismatch for {path} in split {split_name}"
                     )
 
@@ -694,7 +694,7 @@ def _generator_prepare_for_huggingface(
                         "constant": True,
                         "count": 1,
                     }
-                else: # pragma: no cover
+                else:  # pragma: no cover
                     entry = global_constant_leaves[path]
                     entry["count"] += 1
                     if entry["constant"] and not values_equal(entry["value"], value):
@@ -819,7 +819,7 @@ def to_plaid_sample(
     else:
         for name in table.column_names:
             if isinstance(table[name][i], pa.NullScalar):
-                row[name] = None # pragma: no cover
+                row[name] = None  # pragma: no cover
             else:
                 value = table[name][i].values
                 if value is None:
