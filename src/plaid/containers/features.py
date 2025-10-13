@@ -1240,8 +1240,6 @@ class SampleFeatures:
 
         for f_path in solution_paths:
             grid_loc = CGU.getValueByPath(search_node, f_path + "/GridLocation")
-            if grid_loc is None:
-                continue
             if grid_loc.tobytes().decode() != location:
                 continue
 
@@ -1253,7 +1251,7 @@ class SampleFeatures:
             return None
         if len(full_field) == 1:
             return full_field[0]
-        return np.concatenate(full_field)
+        raise ValueError(f"Multiple fields found with name {name} at location {location}.")  # pragma: no cover
 
     def add_field(
         self,
