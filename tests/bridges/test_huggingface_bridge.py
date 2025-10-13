@@ -34,6 +34,7 @@ def dataset(samples, infos) -> Dataset:
         if i == 1:
             sample.add_scalar("toto", 1.0)
         samples_.append(sample)
+        samples_.append(sample)
     dataset = Dataset(samples=samples_)
     dataset.set_infos(infos)
     return dataset
@@ -44,7 +45,7 @@ def problem_definition() -> ProblemDefinition:
     problem_definition = ProblemDefinition()
     problem_definition.set_task("regression")
     problem_definition.add_input_scalars_names(["feature_name_1", "feature_name_2"])
-    problem_definition.set_split({"train": [0], "test": [1]})
+    problem_definition.set_split({"train": [0, 2], "test": [1, 3]})
     return problem_definition
 
 
@@ -139,6 +140,9 @@ class Test_Huggingface_Bridge:
 
     def test_with_datasetdict(self, dataset, problem_definition):
         main_splits = problem_definition.get_split()
+
+        print(dataset)
+
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
                 dataset, main_splits

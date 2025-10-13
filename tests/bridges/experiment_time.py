@@ -24,7 +24,7 @@ infos = huggingface_bridge.huggingface_description_to_infos(hf_dataset.descripti
 init_ram = get_mem()
 start = time()
 dataset, pb_def = huggingface_bridge.huggingface_dataset_to_plaid(
-    hf_dataset, processes_number=1
+    hf_dataset, processes_number=4
 )
 elapsed = time() - start
 print(
@@ -87,10 +87,10 @@ cgns_types = key_mappings["cgns_types"]
 
 # huggingface_bridge.save_tree_struct_to_disk("./", flat_cst, key_mappings)
 
-# huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
-# huggingface_bridge.push_infos_to_hub(repo_id_out, infos)
-# huggingface_bridge.push_tree_struct_to_hub(repo_id_out, flat_cst, key_mappings)
-# huggingface_bridge.push_problem_definition_to_hub(repo_id_out, "task_1", pb_def)
+huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
+huggingface_bridge.push_infos_to_hub(repo_id_out, infos)
+huggingface_bridge.push_tree_struct_to_hub(repo_id_out, flat_cst, key_mappings)
+huggingface_bridge.push_problem_definition_to_hub(repo_id_out, "task_1", pb_def)
 
 
 for split_name in split_names:

@@ -275,8 +275,8 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
         - All float values are enforced to "float32" to limit data size
         - All int64 values are preserved as "int64" to satisfy CGNS standards
     """
-    if value is None:  # pragma: no cover
-        return Value("null")
+    if value is None:
+        return Value("null")  # pragma: no cover
 
     # Scalars
     if np.isscalar(value):
@@ -512,6 +512,93 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
 #     return flat_cst, key_mappings, hf_features
 
 
+def build_hf_sample(sample):
+    """Flatten a sample’s features and build Hugging Face–compatible arrays."""
+    sample_flat_trees = {}
+    sample_cgns_types = {}
+    all_paths = set()
+
+    # --- Flatten CGNS trees ---
+    for time, tree in sample.features.data.items():
+        flat, cgns_types = flatten_cgns_tree(tree)
+        sample_flat_trees[time] = flat
+
+        all_paths.update(
+            k for k in flat.keys() if "/Time" not in k and "CGNSLibraryVersion" not in k
+        )
+
+        sample_cgns_types.update(cgns_types)
+
+    hf_sample = {}
+
+    for path in all_paths:
+        hf_sample[path] = None
+        hf_sample[path + "_times"] = None
+
+        known_values = {}
+        values_acc, times_acc = [], []
+        current_length = 0
+
+        for time, flat in sample_flat_trees.items():
+            if path not in flat:
+                continue  # pragma: no cover
+            value = flat[path]
+
+            # Handle byte-array encoded strings
+            if (
+                isinstance(value, np.ndarray)
+                and value.dtype == np.dtype("|S1")
+                and value.ndim == 1
+            ):
+                value_str = b"".join(value).decode("ascii")
+                value_np = np.array([value_str])
+                key = hashlib.sha256(value_str.encode("ascii")).hexdigest()
+                size = 1
+            elif value is not None:
+                value_np = value
+                key = hashlib.sha256(value.tobytes()).hexdigest()
+                size = (
+                    value.shape[-1]
+                    if isinstance(value, np.ndarray) and value.ndim >= 1
+                    else 1
+                )
+            else:
+                continue
+
+            # Deduplicate identical arrays
+            if key in known_values:
+                start, end = known_values[key]  # pragma: no cover
+            else:
+                start, end = current_length, current_length + size
+                known_values[key] = (start, end)
+                values_acc.append(value_np)
+                current_length = end
+
+            times_acc.append([time, start, end])
+
+        # Build arrays
+        if values_acc:
+            try:
+                hf_sample[path] = np.hstack(values_acc)
+            except Exception:  # pragma: no cover
+                hf_sample[path] = np.concatenate([np.atleast_1d(x) for x in values_acc])
+
+            if len(known_values) == 1:
+                for t in times_acc:
+                    t[-1] = -1
+            hf_sample[path + "_times"] = np.array(times_acc)
+        else:
+            hf_sample[path] = None
+            hf_sample[path + "_times"] = None
+
+    # Convert lists to numpy arrays
+    for k, v in hf_sample.items():
+        if isinstance(v, list):
+            hf_sample[k] = np.array(v)  # pragma: no cover
+
+    return hf_sample, all_paths, sample_cgns_types
+
+
 def _generator_prepare_for_huggingface(
     generators: dict[str, Callable],
     verbose: bool = True,
@@ -550,109 +637,25 @@ def _generator_prepare_for_huggingface(
 
     global_cgns_types = {}
     global_feature_types = {}
-    global_constant_leaves = {}
 
     split_flat_cst = {}
+    split_var_path = {}
+    split_all_paths = {}
 
     # ---- Single pass over all splits and samples ----
     for split_name, generator in generators.items():
-        total_samples = 0
-        split_constant_leaves = {}  # <---- per-split tracking
+        split_constant_leaves = {}
+
+        split_all_paths[split_name] = set()
 
         for sample in tqdm(
             generator(), disable=not verbose, desc=f"Process split {split_name}"
         ):
-            total_samples += 1
-            sample_flat_trees = {}
-            all_paths = set()
+            # --- Build Hugging Face–compatible sample ---
+            hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
 
-            # --- Flatten CGNS trees and record types ---
-            for time, tree in sample.features.data.items():
-                flat, cgns_types = flatten_cgns_tree(tree)
-                sample_flat_trees[time] = flat
-
-                for path, ctype in cgns_types.items():
-                    if path not in global_cgns_types:
-                        global_cgns_types[path] = ctype
-                    elif global_cgns_types[path] != ctype:
-                        raise ValueError(  # pragma: no cover
-                            f"Conflict for path '{path}': {global_cgns_types[path]} vs {ctype}"
-                        )
-
-                all_paths.update(
-                    k
-                    for k in flat.keys()
-                    if "/Time" not in k and "CGNSLibraryVersion" not in k
-                )
-
-            hf_sample = {}
-
-            # --- Deduplication and _times arrays ---
-            for path in all_paths:
-                hf_sample[path] = None
-                hf_sample[path + "_times"] = None
-
-                known_values = {}
-                values_acc, times_acc = [], []
-                current_length = 0
-
-                for time, flat in sample_flat_trees.items():
-                    if path not in flat:
-                        continue  # pragma: no cover
-                    value = flat[path]
-
-                    # --- Handle byte-array encoded strings ---
-                    if (
-                        isinstance(value, np.ndarray)
-                        and value.dtype == np.dtype("|S1")
-                        and value.ndim == 1
-                    ):
-                        value_str = b"".join(value).decode("ascii")
-                        value_np = np.array([value_str])
-                        key = hashlib.sha256(value_str.encode("ascii")).hexdigest()
-                        size = 1
-                    elif value is not None:
-                        value_np = value
-                        key = hashlib.sha256(value.tobytes()).hexdigest()
-                        size = (
-                            value.shape[-1]
-                            if isinstance(value, np.ndarray) and value.ndim >= 1
-                            else 1
-                        )
-                    else:
-                        continue
-
-                    # Deduplicate identical arrays
-                    if key in known_values:
-                        start, end = known_values[key]  # pragma: no cover
-                    else:
-                        start, end = current_length, current_length + size
-                        known_values[key] = (start, end)
-                        values_acc.append(value_np)
-                        current_length = end
-
-                    times_acc.append([time, start, end])
-
-                # --- Build arrays ---
-                if values_acc:
-                    try:
-                        hf_sample[path] = np.hstack(values_acc)
-                    except Exception:  # pragma: no cover
-                        hf_sample[path] = np.concatenate(
-                            [np.atleast_1d(x) for x in values_acc]
-                        )
-                    if len(known_values) == 1:
-                        for t in times_acc:
-                            t[-1] = -1
-                    hf_sample[path + "_times"] = np.array(times_acc)
-                else:
-                    hf_sample[path] = None
-                    hf_sample[path + "_times"] = None
-
-            # --- Convert lists to np.arrays ---
-            for k, v in hf_sample.items():
-                if isinstance(v, list):
-                    hf_sample[k] = np.array(v)  # pragma: no cover
+            split_all_paths[split_name].update(all_paths)
+            global_cgns_types.update(sample_cgns_types)
 
             # --- Infer global HF feature types ---
             for path in all_paths:
@@ -674,70 +677,71 @@ def _generator_prepare_for_huggingface(
 
             # --- Update per-split and global constant detection ---
             for path, value in hf_sample.items():
-                # Per-split constants
                 if path not in split_constant_leaves:
                     split_constant_leaves[path] = {
                         "value": value,
                         "constant": True,
                         "count": 1,
                     }
-                else:  # pragma: no cover
+                else:
                     entry = split_constant_leaves[path]
                     entry["count"] += 1
                     if entry["constant"] and not values_equal(entry["value"], value):
                         entry["constant"] = False
 
-                # Global constants
-                if path not in global_constant_leaves:
-                    global_constant_leaves[path] = {
-                        "value": value,
-                        "constant": True,
-                        "count": 1,
-                    }
-                else:  # pragma: no cover
-                    entry = global_constant_leaves[path]
-                    entry["count"] += 1
-                    if entry["constant"] and not values_equal(entry["value"], value):
-                        entry["constant"] = False
-
         # --- Record per-split constants ---
-        split_flat_cst[split_name] = {
-            p: e["value"] for p, e in split_constant_leaves.items() if e["constant"]
+        split_flat_cst[split_name] = dict(
+            sorted(
+                (
+                    (p, e["value"])
+                    for p, e in split_constant_leaves.items()
+                    if e["constant"]
+                ),
+                key=lambda x: x[0],
+            )
+        )
+
+        split_var_path[split_name] = {
+            p
+            for p in split_all_paths[split_name]
+            if p not in split_flat_cst[split_name]
         }
 
-    # ---- Finalize global constant/variable features ----
-    for path, entry in global_constant_leaves.items():
-        if entry["count"] == 0 or entry["value"] is None:
-            entry["constant"] = True  # treat all-None as constant
-
-    global_cgns_types = {p: global_cgns_types[p] for p in sorted(global_cgns_types)}
     global_feature_types = {
         p: global_feature_types[p] for p in sorted(global_feature_types)
     }
-    global_constant_leaves = {
-        p: global_constant_leaves[p] for p in sorted(global_constant_leaves)
-    }
+    var_features = sorted(list(set().union(*split_var_path.values())))
 
-    all_paths = sorted(
-        [k for k in global_feature_types.keys()]
-        + [k + "_times" for k in global_feature_types.keys()]
-    )
-    global_cst_features = sorted(
-        [p for p, e in global_constant_leaves.items() if e["constant"]]
-    )
-    var_features = [k for k in all_paths if k not in global_cst_features]
+    if len(var_features) == 0:
+        raise ValueError(  # pragma: no cover
+            "no variable feature found, is your dataset variable through samples?"
+        )
+
+    # ---------------------------------------------------
+    # for test-like splits, some var_features are all None (e.g.: outputs): need to add '_times' counterparts to corresponding constant trees
+    for split_name in split_flat_cst.keys():
+        for path in var_features:
+            if not path.endswith("_times") and path not in split_all_paths[split_name]:
+                split_flat_cst[split_name][path + "_times"] = None  # pragma: no cover
+            if (
+                path in split_flat_cst[split_name]
+            ):  # remove for flat_cst the path that will be forcely included in the arrow tables
+                split_flat_cst[split_name].pop(path)  # pragma: no cover
+    # ---------------------------------------------------
+
     cst_features = {
         split_name: sorted(list(cst.keys()))
         for split_name, cst in split_flat_cst.items()
     }
 
     # ---- Build global HF Features (only variable) ----
-    hf_features_map = {
-        k: v for k, v in global_feature_types.items() if k in var_features
-    }
-    hf_features_map.update(
-        {k + "_times": Sequence(Value("float64")) for k in hf_features_map.keys()}
-    )
+    hf_features_map = {}
+    for k in var_features:
+        if k.endswith("_times"):
+            hf_features_map[k] = Sequence(Value("float64"))  # pragma: no cover
+        else:
+            hf_features_map[k] = global_feature_types[k]
+
     hf_features = Features(hf_features_map)
 
     key_mappings = {
@@ -813,7 +817,7 @@ def to_plaid_sample(
         for name in table.column_names:
             value = table[name][i].values
             if value is None:
-                row[name] = None
+                row[name] = None  # pragma: no cover
             else:
                 row[name] = value.to_numpy(zero_copy_only=False)
     else:
@@ -823,7 +827,7 @@ def to_plaid_sample(
             else:
                 value = table[name][i].values
                 if value is None:
-                    row[name] = None
+                    row[name] = None  # pragma: no cover
                 else:
                     if isinstance(value, pa.ListArray):
                         row[name] = np.stack(value.to_numpy(zero_copy_only=False))
@@ -1020,9 +1024,9 @@ def plaid_generator_to_huggingface_datasetdict(
 
     def generator_fn(gen_func, all_features_keys):
         for sample in gen_func():
-            tree = sample.features.data[0.0]
-            flat, _ = flatten_cgns_tree(tree)
-            yield {path: flat.get(path, None) for path in all_features_keys}
+            hf_sample, _, _ = build_hf_sample(sample)
+
+            yield {path: hf_sample.get(path, None) for path in all_features_keys}
 
     _dict = {}
     for split_name, gen_func in generators.items():
@@ -2185,3 +2189,404 @@ print(mesh)
 """
 
     return str__
+
+
+# def _generator_prepare_for_huggingface(
+#     generators: dict[str, Callable],
+#     verbose: bool = True,
+# ) -> tuple[dict[str, dict[str, Any]], dict[str, Any], Features]:
+#     """Inspect PLAID dataset generators and infer Hugging Face feature schema.
+
+#     Iterates over all samples in all provided split generators to:
+#       1. Flatten each CGNS tree into a dictionary of paths → values.
+#       2. Infer Hugging Face `Features` types for all variable leaves.
+#       3. Detect constant leaves (values that never change across all samples).
+#       4. Collect global CGNS type metadata.
+
+#     Args:
+#         generators (dict[str, Callable]):
+#             Mapping from split names to callables returning sample generators.
+#             Each sample must have `sample.features.data[0.0]` compatible with `flatten_cgns_tree`.
+#         verbose (bool, optional): If True, displays progress bars while processing splits.
+
+#     Returns:
+#         tuple:
+#             - flat_cst (dict[str, Any]): Mapping from feature path to constant values detected across all splits.
+#             - key_mappings (dict[str, Any]): Metadata dictionary with:
+#                 - "variable_features" (list[str]): paths of non-constant features.
+#                 - "constant_features" (list[str]): paths of constant features.
+#                 - "cgns_types" (dict[str, Any]): CGNS type information for all paths.
+#             - hf_features (datasets.Features): Hugging Face feature specification for variable features.
+
+#     Raises:
+#         ValueError: If inconsistent CGNS types or feature types are found for the same path.
+#     """
+
+#     def values_equal(v1, v2):
+#         if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
+#             return np.array_equal(v1, v2)
+#         return v1 == v2
+
+#     global_cgns_types = {}
+#     global_feature_types = {}
+
+#     split_flat_cst = {}
+#     split_var_path = {}
+#     split_all_paths = {}
+
+#     # ---- Single pass over all splits and samples ----
+#     for split_name, generator in generators.items():
+#         total_samples = 0
+#         split_constant_leaves = {}
+
+#         split_all_paths[split_name] = set()
+
+#         for sample in tqdm(
+#             generator(), disable=not verbose, desc=f"Process split {split_name}"
+#         ):
+
+#             total_samples += 1
+#             sample_flat_trees = {}
+#             all_paths = set()
+
+#             # --- Flatten CGNS trees and record types ---
+#             for time, tree in sample.features.data.items():
+#                 flat, cgns_types = flatten_cgns_tree(tree)
+#                 sample_flat_trees[time] = flat
+
+#                 for path, ctype in cgns_types.items():
+#                     if path not in global_cgns_types:
+#                         global_cgns_types[path] = ctype
+#                     elif global_cgns_types[path] != ctype:
+#                         raise ValueError(  # pragma: no cover
+#                             f"Conflict for path '{path}': {global_cgns_types[path]} vs {ctype}"
+#                         )
+
+#                 all_paths.update(
+#                     k
+#                     for k in flat.keys()
+#                     if "/Time" not in k and "CGNSLibraryVersion" not in k
+#                 )
+
+#             split_all_paths[split_name].update(all_paths)
+
+#             hf_sample = {}
+
+#             # --- Deduplication and _times arrays ---
+#             for path in all_paths:
+#                 hf_sample[path] = None
+#                 hf_sample[path + "_times"] = None
+
+#                 known_values = {}
+#                 values_acc, times_acc = [], []
+#                 current_length = 0
+
+#                 for time, flat in sample_flat_trees.items():
+#                     if path not in flat:
+#                         continue  # pragma: no cover
+#                     value = flat[path]
+
+#                     # --- Handle byte-array encoded strings ---
+#                     if (
+#                         isinstance(value, np.ndarray)
+#                         and value.dtype == np.dtype("|S1")
+#                         and value.ndim == 1
+#                     ):
+#                         value_str = b"".join(value).decode("ascii")
+#                         value_np = np.array([value_str])
+#                         key = hashlib.sha256(value_str.encode("ascii")).hexdigest()
+#                         size = 1
+#                     elif value is not None:
+#                         value_np = value
+#                         key = hashlib.sha256(value.tobytes()).hexdigest()
+#                         size = (
+#                             value.shape[-1]
+#                             if isinstance(value, np.ndarray) and value.ndim >= 1
+#                             else 1
+#                         )
+#                     else:
+#                         continue
+
+#                     # Deduplicate identical arrays
+#                     if key in known_values:
+#                         start, end = known_values[key]  # pragma: no cover
+#                     else:
+#                         start, end = current_length, current_length + size
+#                         known_values[key] = (start, end)
+#                         values_acc.append(value_np)
+#                         current_length = end
+
+#                     times_acc.append([time, start, end])
+
+#                 # --- Build arrays ---
+#                 if values_acc:
+#                     try:
+#                         hf_sample[path] = np.hstack(values_acc)
+#                     except Exception:  # pragma: no cover
+#                         hf_sample[path] = np.concatenate(
+#                             [np.atleast_1d(x) for x in values_acc]
+#                         )
+#                     if len(known_values) == 1:
+#                         for t in times_acc:
+#                             t[-1] = -1
+#                     hf_sample[path + "_times"] = np.array(times_acc)
+#                 else:
+#                     hf_sample[path] = None
+#                     hf_sample[path + "_times"] = None
+
+#             # --- Convert lists to np.arrays ---
+#             for k, v in hf_sample.items():
+#                 if isinstance(v, list):
+#                     hf_sample[k] = np.array(v)  # pragma: no cover
+
+#             # --- Infer global HF feature types ---
+#             for path in all_paths:
+#                 value = hf_sample[path]
+#                 if value is None:
+#                     continue
+
+#                 if isinstance(value, np.ndarray) and value.dtype.type is np.str_:
+#                     inferred = Value("string")
+#                 else:
+#                     inferred = infer_hf_features_from_value(value)
+
+#                 if path not in global_feature_types:
+#                     global_feature_types[path] = inferred
+#                 elif repr(global_feature_types[path]) != repr(inferred):
+#                     raise ValueError(  # pragma: no cover
+#                         f"Feature type mismatch for {path} in split {split_name}"
+#                     )
+
+#             # --- Update per-split and global constant detection ---
+#             for path, value in hf_sample.items():
+#                 # Per-split constants
+#                 if path not in split_constant_leaves:
+#                     split_constant_leaves[path] = {
+#                         "value": value,
+#                         "constant": True,
+#                         "count": 1,
+#                     }
+#                 else:  # pragma: no cover
+#                     entry = split_constant_leaves[path]
+#                     entry["count"] += 1
+#                     if entry["constant"] and not values_equal(entry["value"], value):
+#                         entry["constant"] = False
+
+#         # --- Record per-split constants ---
+#         split_flat_cst[split_name] = {
+#             p: e["value"] for p, e in split_constant_leaves.items() if e["constant"]
+#         }
+
+#         split_var_path[split_name] = {p for p in split_all_paths[split_name] if p not in split_flat_cst[split_name].keys()}
+
+
+#     global_feature_types = {
+#         p: global_feature_types[p] for p in sorted(global_feature_types)
+#     }
+#     var_features = sorted(list(set().union(*split_var_path.values())))
+
+#     if len(var_features) == 0:
+#         raise ValueError("no variable feature found, is your dataset variable through samples?")
+
+#     #---------------------------------------------------
+#     # for test-like splits, some var_features are all None (e.g.: outputs): need to add '_times' counterparts to corresponding constant trees
+#     for split_name in split_flat_cst.keys():
+#         for path in var_features:
+#             if not path.endswith("_times") and path not in split_all_paths[split_name]:
+#                 split_flat_cst[split_name][path+"_times"] = None
+#             if path in split_flat_cst[split_name]: # remove for flat_cst the path that will be forcely included in the arrow tables
+#                 split_flat_cst[split_name].pop(path)
+#     #---------------------------------------------------
+
+#     cst_features = {
+#         split_name: sorted(list(cst.keys()))
+#         for split_name, cst in split_flat_cst.items()
+#     }
+
+#     # ---- Build global HF Features (only variable) ----
+#     hf_features_map = {}
+#     for k in var_features:
+#         if k.endswith("_times"):
+#             hf_features_map[k] = Sequence(Value("float64"))
+#         else:
+#             hf_features_map[k] = global_feature_types[k]
+
+#     hf_features = Features(hf_features_map)
+
+#     key_mappings = {
+#         "variable_features": var_features,
+#         "constant_features": cst_features,
+#         "cgns_types": global_cgns_types,
+#     }
+
+#     return split_flat_cst, key_mappings, hf_features
+
+
+# def plaid_generator_to_huggingface_datasetdict(
+#     generators: dict[str, Callable],
+#     processes_number: int = 1,
+#     writer_batch_size: int = 1,
+#     verbose: bool = False,
+# ) -> tuple[datasets.DatasetDict, dict[str, Any], dict[str, Any]]:
+#     """Convert PLAID dataset generators into a Hugging Face `datasets.DatasetDict`.
+
+#     This function inspects samples produced by the given generators, flattens their
+#     CGNS tree structure, infers Hugging Face feature types, and builds one
+#     `datasets.Dataset` per split. Constant features (identical across all samples)
+#     are separated out from variable features.
+
+#     Args:
+#         generators (dict[str, Callable]):
+#             Mapping from split names (e.g., "train", "test") to generator functions.
+#             Each generator function must return an iterable of PLAID samples, where
+#             each sample provides `sample.features.data[0.0]` for flattening.
+#         processes_number (int, optional, default=1):
+#             Number of processes used internally by Hugging Face when materializing
+#             the dataset from the generators.
+#         writer_batch_size (int, optional, default=1):
+#             Batch size used when writing samples to disk in Hugging Face format.
+#         verbose (bool, optional, default=False):
+#             If True, displays progress bars and diagnostic messages.
+
+#     Returns:
+#         tuple:
+#             - **DatasetDict** (`datasets.DatasetDict`):
+#               A Hugging Face dataset dictionary with one dataset per split.
+#             - **flat_cst** (`dict[str, Any]`):
+#               Dictionary of constant features detected across all splits.
+#             - **key_mappings** (`dict[str, Any]`):
+#               Metadata dictionary containing:
+#                 - `"variable_features"`: list of paths for non-constant features.
+#                 - `"constant_features"`: list of paths for constant features.
+#                 - `"cgns_types"`: inferred CGNS types for all features.
+
+#     Example:
+#         >>> ds_dict, flat_cst, key_mappings = plaid_generator_to_huggingface_datasetdict(
+#         ...     {"train": lambda: iter(train_samples),
+#         ...      "test": lambda: iter(test_samples)},
+#         ...     processes_number=4,
+#         ...     writer_batch_size=2,
+#         ...     verbose=True
+#         ... )
+#         >>> print(ds_dict)
+#         DatasetDict({
+#             train: Dataset({
+#                 features: ...
+#             }),
+#             test: Dataset({
+#                 features: ...
+#             })
+#         })
+#         >>> print(flat_cst)
+#         {'Zone1/GridCoordinates': array([0., 0.1, 0.2])}
+#         >>> print(key_mappings["variable_features"][:3])
+#         ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
+#     """
+#     flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
+#         generators, verbose
+#     )
+
+#     all_features_keys = list(hf_features.keys())
+
+#     def generator_fn(gen_func, all_features_keys):
+
+#         for sample in gen_func():
+
+#             sample_flat_trees = {}
+#             all_paths = set()
+
+#             # --- Flatten CGNS trees ---
+#             for time, tree in sample.features.data.items():
+#                 flat, _ = flatten_cgns_tree(tree)
+#                 sample_flat_trees[time] = flat
+
+
+#                 all_paths.update(
+#                     k
+#                     for k in flat.keys()
+#                     if "/Time" not in k and "CGNSLibraryVersion" not in k
+#                 )
+
+#             hf_sample = {}
+
+#             # --- Deduplication and _times arrays ---
+#             for path in all_paths:
+#                 hf_sample[path] = None
+#                 hf_sample[path + "_times"] = None
+
+#                 known_values = {}
+#                 values_acc, times_acc = [], []
+#                 current_length = 0
+
+#                 for time, flat in sample_flat_trees.items():
+#                     if path not in flat:
+#                         continue  # pragma: no cover
+#                     value = flat[path]
+
+#                     # --- Handle byte-array encoded strings ---
+#                     if (
+#                         isinstance(value, np.ndarray)
+#                         and value.dtype == np.dtype("|S1")
+#                         and value.ndim == 1
+#                     ):
+#                         value_str = b"".join(value).decode("ascii")
+#                         value_np = np.array([value_str])
+#                         key = hashlib.sha256(value_str.encode("ascii")).hexdigest()
+#                         size = 1
+#                     elif value is not None:
+#                         value_np = value
+#                         key = hashlib.sha256(value.tobytes()).hexdigest()
+#                         size = (
+#                             value.shape[-1]
+#                             if isinstance(value, np.ndarray) and value.ndim >= 1
+#                             else 1
+#                         )
+#                     else:
+#                         continue
+
+#                     # Deduplicate identical arrays
+#                     if key in known_values:
+#                         start, end = known_values[key]  # pragma: no cover
+#                     else:
+#                         start, end = current_length, current_length + size
+#                         known_values[key] = (start, end)
+#                         values_acc.append(value_np)
+#                         current_length = end
+
+#                     times_acc.append([time, start, end])
+
+#                 # --- Build arrays ---
+#                 if values_acc:
+#                     try:
+#                         hf_sample[path] = np.hstack(values_acc)
+#                     except Exception:  # pragma: no cover
+#                         hf_sample[path] = np.concatenate(
+#                             [np.atleast_1d(x) for x in values_acc]
+#                         )
+#                     if len(known_values) == 1:
+#                         for t in times_acc:
+#                             t[-1] = -1
+#                     hf_sample[path + "_times"] = np.array(times_acc)
+#                 else:
+#                     hf_sample[path] = None
+#                     hf_sample[path + "_times"] = None
+
+#             # --- Convert lists to np.arrays ---
+#             for k, v in hf_sample.items():
+#                 if isinstance(v, list):
+#                     hf_sample[k] = np.array(v)  # pragma: no cover
+
+#             yield {path: hf_sample.get(path, None) for path in all_features_keys}
+
+#     _dict = {}
+#     for split_name, gen_func in generators.items():
+#         gen = partial(generator_fn, gen_func, all_features_keys)
+#         _dict[split_name] = datasets.Dataset.from_generator(
+#             generator=gen,
+#             features=hf_features,
+#             num_proc=processes_number,
+#             writer_batch_size=writer_batch_size,
+#             split=datasets.splits.NamedSplit(split_name),
+#         )
+
+#     return datasets.DatasetDict(_dict), flat_cst, key_mappings

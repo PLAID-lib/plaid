@@ -462,8 +462,6 @@ class Sample(BaseModel):
 
         if feature_type == "scalar":
             self.del_scalar(**feature_details)
-        elif feature_type == "time_series":
-            self.del_time_series(**feature_details)
         elif feature_type == "field":
             self.del_field(**feature_details)
         elif feature_type == "nodes":
