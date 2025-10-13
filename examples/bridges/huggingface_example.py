@@ -25,6 +25,7 @@
 # 3. Converting a Hugging Face dataset to plaid
 # 4. Saving and Loading Hugging Face datasets
 # 5. Handling plaid samples from Hugging Face datasets without converting the complete dataset to plaid
+# 6. Advanced concepts (read speed, memory usage, streaming)
 #
 #
 # **Each section is documented and explained.**
@@ -183,7 +184,7 @@ print(f"{key_mappings = }")
 # %%
 cgns_types = key_mappings["cgns_types"]
 
-dataset_2 = huggingface_bridge.to_plaid_dataset(hf_datasetdict['train'], flat_cst, cgns_types)
+dataset_2 = huggingface_bridge.to_plaid_dataset(hf_datasetdict['train'], flat_cst['train'], cgns_types)
 print()
 print(f"{dataset_2 = }")
 
@@ -294,7 +295,7 @@ print(f"{hf_sample = }")
 # We notice that ``hf_sample`` is not a plaid sample, but a dict containing the variable features of the datasets, with keys being the flattened path of the CGNS tree. contains a binary object efficiently handled by huggingface datasets. It can be converted into a plaid sample using a specific constructor relying on a pydantic validator, and the required `flat_cst` and `cgns_types`.
 
 # %%
-plaid_sample = huggingface_bridge.to_plaid_sample(hf_sample, flat_cst, cgns_types)
+plaid_sample = huggingface_bridge.to_plaid_sample(hf_datasetdict['train'], 0, flat_cst['train'], cgns_types)
 
 show_sample(plaid_sample)
 

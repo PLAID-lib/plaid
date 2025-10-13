@@ -7,8 +7,6 @@ from plaid.utils.cgns_helper import (
     show_cgns_tree,
 )
 
-from datasets import load_dataset
-
 repo_id = "PLAID-datasets/Tensile2d"
 split_names = ["train_500", "test", "OOD"]
 field = "U1"
@@ -18,12 +16,16 @@ repo_id_out = "fabiencasenave/Tensile2d_new"
 # split_names = ["train", "test"]
 # field = "mach"
 
-hf_dataset = huggingface_bridge.load_dataset_from_hub("PLAID-datasets/Tensile2d", split="all_samples")
+hf_dataset = huggingface_bridge.load_dataset_from_hub(
+    "PLAID-datasets/Tensile2d", split="all_samples"
+)
 infos = huggingface_bridge.huggingface_description_to_infos(hf_dataset.description)
 
 init_ram = get_mem()
 start = time()
-dataset, pb_def = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset, processes_number = 1)
+dataset, pb_def = huggingface_bridge.huggingface_dataset_to_plaid(
+    hf_dataset, processes_number=1
+)
 elapsed = time() - start
 print(
     f"Time to build dataset: {elapsed:.6g} s, RAM usage increase: {get_mem() - init_ram} MB"
@@ -67,8 +69,10 @@ for split_name in split_names:
     generators[split_name] = generator_
 
 
-hf_dataset_dict, flat_cst, key_mappings = huggingface_bridge.plaid_generator_to_huggingface_datasetdict_time(
-    generators, verbose=True
+hf_dataset_dict, flat_cst, key_mappings = (
+    huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+        generators, verbose=True
+    )
 )
 cgns_types = key_mappings["cgns_types"]
 
@@ -89,12 +93,13 @@ cgns_types = key_mappings["cgns_types"]
 # huggingface_bridge.push_problem_definition_to_hub(repo_id_out, "task_1", pb_def)
 
 
-
 for split_name in split_names:
-
     start = time()
-    dataset_2 = huggingface_bridge.to_plaid_dataset_time(
-        hf_dataset_dict[split_name], cgns_types, flat_cst[split_name], enforce_shapes=True
+    dataset_2 = huggingface_bridge.to_plaid_dataset(
+        hf_dataset_dict[split_name],
+        flat_cst[split_name],
+        cgns_types,
+        enforce_shapes=True,
     )
     print(f"Duration initialization dataset = {time() - start}")
 
@@ -120,10 +125,11 @@ for split_name in split_names:
         ),
     )
     print("==========================")
+
+    dataset_2[ii].save(f"sample_out_{split_name}", overwrite=True)
 # print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[1.1], dataset_2[0].features.data[1.1]))
 # print("tree equal? =", compare_cgns_trees_no_types(dataset[0].features.data[2.1], dataset_2[0].features.data[2.1]))
 
-dataset_2[0].save("sample_out", overwrite=True)
 
 # print(dataset_2[0].features.data[times[0]])
 # print(dataset_2[0].features.data[times[1]])
