@@ -681,7 +681,7 @@ def _generator_prepare_for_huggingface(
                         "constant": True,
                         "count": 1,
                     }
-                else: # pragma: no cover
+                else:  # pragma: no cover
                     entry = split_constant_leaves[path]
                     entry["count"] += 1
                     if entry["constant"] and not values_equal(entry["value"], value):
