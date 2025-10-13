@@ -518,10 +518,12 @@ def _generator_prepare_for_huggingface_time(
     verbose: bool = True,
 ) -> tuple[dict[str, Any], dict[str, Any], list[Any]]:
 
+
     def values_equal(v1, v2):
         if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
             return np.array_equal(v1, v2)
         return v1 == v2
+
 
     global_cgns_types = {}
     global_feature_types = {}
@@ -532,12 +534,14 @@ def _generator_prepare_for_huggingface_time(
     # ---- Single pass over all splits and samples ----
     for split_name, generator in generators.items():
         total_samples = 0
+        split_constant_leaves = {}  # <---- per-split tracking
+
         for sample in tqdm(generator(), disable=not verbose, desc=f"Process split {split_name}"):
             total_samples += 1
             sample_flat_trees = {}
             all_paths = set()
 
-            # Flatten CGNS trees and record types
+            # --- Flatten CGNS trees and record types ---
             for time, tree in sample.features.data.items():
                 flat, cgns_types = flatten_cgns_tree(tree)
                 sample_flat_trees[time] = flat
@@ -552,7 +556,7 @@ def _generator_prepare_for_huggingface_time(
 
             hf_sample = {}
 
-            # Deduplication and _times arrays
+            # --- Deduplication and _times arrays ---
             for path in all_paths:
                 hf_sample[path] = None
                 hf_sample[path + "_times"] = None
@@ -590,7 +594,7 @@ def _generator_prepare_for_huggingface_time(
 
                     times_acc.append([time, start, end])
 
-                # Build arrays
+                # --- Build arrays ---
                 if values_acc:
                     try:
                         hf_sample[path] = np.hstack(values_acc)
@@ -625,8 +629,18 @@ def _generator_prepare_for_huggingface_time(
                 elif repr(global_feature_types[path]) != repr(inferred):
                     raise ValueError(f"Feature type mismatch for {path} in split {split_name}")
 
-            # --- Update global constant detection ---
+            # --- Update per-split and global constant detection ---
             for path, value in hf_sample.items():
+                # Per-split constants
+                if path not in split_constant_leaves:
+                    split_constant_leaves[path] = {"value": value, "constant": True, "count": 1}
+                else:
+                    entry = split_constant_leaves[path]
+                    entry["count"] += 1
+                    if entry["constant"] and not values_equal(entry["value"], value):
+                        entry["constant"] = False
+
+                # Global constants
                 if path not in global_constant_leaves:
                     global_constant_leaves[path] = {"value": value, "constant": True, "count": 1}
                 else:
@@ -635,11 +649,10 @@ def _generator_prepare_for_huggingface_time(
                     if entry["constant"] and not values_equal(entry["value"], value):
                         entry["constant"] = False
 
-        # Optional: record constants seen in this split
-        flat_cst = {
-            p: e["value"] for p, e in global_constant_leaves.items() if e["constant"]
+        # --- Record per-split constants ---
+        split_flat_cst[split_name] = {
+            p: e["value"] for p, e in split_constant_leaves.items() if e["constant"]
         }
-        split_flat_cst[split_name] = flat_cst
 
     # ---- Finalize global constant/variable features ----
     for path, entry in global_constant_leaves.items():
@@ -650,14 +663,10 @@ def _generator_prepare_for_huggingface_time(
     global_feature_types = {p: global_feature_types[p] for p in sorted(global_feature_types)}
     global_constant_leaves = {p: global_constant_leaves[p] for p in sorted(global_constant_leaves)}
 
-    all_paths = [k for k in global_feature_types.keys()] + [
-        k + "_times" for k in global_feature_types.keys()
-    ]
-    flat_cst = {
-        p: e["value"] for p, e in global_constant_leaves.items() if e["constant"]
-    }
-    cst_features = list(flat_cst.keys())
-    var_features = [k for k in all_paths if k not in cst_features]
+    all_paths = sorted([k for k in global_feature_types.keys()] + [k + "_times" for k in global_feature_types.keys()])
+    global_cst_features = sorted([p for p, e in global_constant_leaves.items() if e["constant"]])
+    var_features = [k for k in all_paths if k not in global_cst_features]
+    cst_features = {split_name: sorted(list(cst.keys())) for split_name, cst in split_flat_cst.items()}
 
     # ---- Build global HF Features (only variable) ----
     hf_features_map = {
@@ -674,7 +683,7 @@ def _generator_prepare_for_huggingface_time(
         "cgns_types": global_cgns_types,
     }
 
-    return flat_cst, key_mappings, hf_features
+    return split_flat_cst, key_mappings, hf_features
 
 
 def plaid_generator_to_huggingface_datasetdict_time(
@@ -856,7 +865,7 @@ def to_plaid_sample_columnar_time(
         assert path_t == path_v
         if val is None:
             assert times_struc is None
-            if path_v not in paths_none:
+            if path_v not in paths_none and cgns_types[path_v] not in ["DataArray_t", "IndexArray_t"]:
                 paths_none[path_v] = None
         else:
             times_struc = times_struc.reshape((-1, 3))
