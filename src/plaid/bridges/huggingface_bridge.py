@@ -586,7 +586,7 @@ def build_hf_sample(sample):
             if len(known_values) == 1:
                 for t in times_acc:
                     t[-1] = -1
-            hf_sample[path + "_times"] = np.array(times_acc)
+            hf_sample[path + "_times"] = np.array(times_acc).flatten()
         else:
             hf_sample[path] = None
             hf_sample[path + "_times"] = None
@@ -654,7 +654,8 @@ def _generator_prepare_for_huggingface(
             # --- Build Hugging Face–compatible sample ---
             hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
 
-            split_all_paths[split_name].update(all_paths)
+            split_all_paths[split_name].update(hf_sample.keys())
+            # split_all_paths[split_name].update(all_paths)
             global_cgns_types.update(sample_cgns_types)
 
             # --- Infer global HF feature types ---
@@ -675,7 +676,7 @@ def _generator_prepare_for_huggingface(
                         f"Feature type mismatch for {path} in split {split_name}"
                     )
 
-            # --- Update per-split and global constant detection ---
+            # --- Update per-split constant detection ---
             for path, value in hf_sample.items():
                 if path not in split_constant_leaves:
                     split_constant_leaves[path] = {
@@ -1025,7 +1026,6 @@ def plaid_generator_to_huggingface_datasetdict(
     def generator_fn(gen_func, all_features_keys):
         for sample in gen_func():
             hf_sample, _, _ = build_hf_sample(sample)
-
             yield {path: hf_sample.get(path, None) for path in all_features_keys}
 
     _dict = {}
