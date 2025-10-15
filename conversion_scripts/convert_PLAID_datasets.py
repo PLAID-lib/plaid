@@ -9,7 +9,9 @@
 
 from time import time
 
-from plaid import Sample
+from numpy import rint
+
+from plaid import Sample, Dataset
 from plaid.bridges import huggingface_bridge
 from plaid.utils.base import get_mem
 from plaid.utils.cgns_helper import (
@@ -161,6 +163,10 @@ hf_dataset_dict, flat_cst, key_mappings = (
 )
 cgns_types = key_mappings["cgns_types"]
 
+# update infos
+dataset = Dataset()
+dataset.set_infos(infos)
+infos = dataset.get_infos()
 
 # push to HF hub
 huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)

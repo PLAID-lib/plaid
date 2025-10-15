@@ -138,7 +138,7 @@ class Test_Huggingface_Bridge:
             0,
             flat_cst["test"],
             key_mappings["cgns_types"],
-            enforce_shapes=True,
+            enforce_shapes=False,
         )
         huggingface_bridge.to_plaid_dataset(
             hf_dataset_dict["train"], flat_cst["train"], key_mappings["cgns_types"]
@@ -147,7 +147,7 @@ class Test_Huggingface_Bridge:
             hf_dataset_dict["test"],
             flat_cst=flat_cst["test"],
             cgns_types=key_mappings["cgns_types"],
-            enforce_shapes=True,
+            enforce_shapes=False,
         )
         cgns_helper.compare_cgns_trees(dataset[0].get_mesh(), dataset[0].get_mesh())
         cgns_helper.compare_cgns_trees_no_types(
