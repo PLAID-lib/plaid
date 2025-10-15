@@ -277,11 +277,11 @@ class Stats:
     def add_samples(self, samples: Union[list[Sample], Dataset]) -> None:
         """Add samples or a dataset to compute statistics for.
 
-        Compute stats for each features present in the samples among scalars, fields and time_series.
-        For fields and time_series, as long as the added samples have the same shape as the existing ones,
+        Compute stats for each features present in the samples among scalars and fields.
+        For fields, as long as the added samples have the same shape as the existing ones,
         the stats will be computed per-coordinates (n_features=x.shape[-1]).
-        But as soon as the shapes differ, the stats and added fields/time_series will be flattened (n_features=1),
-        then stats will be computed over all values of the field/time_series.
+        But as soon as the shapes differ, the stats and added fields will be flattened (n_features=1),
+        then stats will be computed over all values of the field.
 
         Args:
             samples (Union[list[Sample], Dataset]): List of samples or dataset to process
@@ -303,9 +303,6 @@ class Stats:
 
             # Process fields
             self._process_field_data(sample, new_data)
-
-            # ---# Time-Series
-            self._process_time_series_data(sample, new_data)
 
             # ---# SpatialSupport (Meshes)
             # TODO
@@ -384,50 +381,6 @@ class Stats:
             if value is not None:
                 data_dict[name].append(np.array(value).reshape((1, -1)))
 
-    def _process_time_series_data(
-        self, sample: Sample, data_dict: dict[str, list]
-    ) -> None:
-        """Process time series data from a sample.
-
-        Args:
-            sample (Sample): Sample containing time series data
-            data_dict (dict[str, list]): Dictionary to store processed data
-        """
-        for name in sample.get_time_series_names():
-            timestamps, time_series = sample.get_time_series(name)
-            timestamps = timestamps.reshape((1, -1))
-            time_series = time_series.reshape((1, -1))
-
-            timestamps_name = f"timestamps/{name}"
-            time_series_name = f"time_series/{name}"
-            if timestamps_name not in data_dict:
-                assert time_series_name not in data_dict
-                data_dict[timestamps_name] = []
-                data_dict[time_series_name] = []
-            if timestamps is not None and time_series is not None:
-                # check if all previous arrays are the same shape as the new one that will be added to data_dict[stat_key]
-                if len(
-                    data_dict[time_series_name]
-                ) > 0 and not self._feature_is_flattened.get(time_series_name, False):
-                    prev_shape = data_dict[time_series_name][0].shape
-                    if time_series.shape != prev_shape:
-                        # set this stat as flattened
-                        self._feature_is_flattened[timestamps_name] = True
-                        self._feature_is_flattened[time_series_name] = True
-                        # flatten corresponding stat
-                        if time_series_name in self._stats:
-                            self._stats[time_series_name].flatten_array()
-
-                if self._feature_is_flattened.get(time_series_name, False):
-                    timestamps = timestamps.reshape((-1, 1))
-                    time_series = time_series.reshape((-1, 1))
-                else:
-                    timestamps = timestamps.reshape((1, -1))
-                    time_series = time_series.reshape((1, -1))
-
-                data_dict[timestamps_name].append(timestamps)
-                data_dict[time_series_name].append(time_series)
-
     def _process_field_data(self, sample: Sample, data_dict: dict[str, list]) -> None:
         """Process field data from a sample.
 
@@ -435,9 +388,9 @@ class Stats:
             sample (Sample): Sample containing field data
             data_dict (dict[str, list]): Dictionary to store processed data
         """
-        for time in sample.meshes.get_all_mesh_times():
-            for base_name in sample.meshes.get_base_names(time=time):
-                for zone_name in sample.meshes.get_zone_names(
+        for time in sample.features.get_all_mesh_times():
+            for base_name in sample.features.get_base_names(time=time):
+                for zone_name in sample.features.get_zone_names(
                     base_name=base_name, time=time
                 ):
                     for location in CGNS_FIELD_LOCATIONS:

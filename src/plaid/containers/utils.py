@@ -155,14 +155,13 @@ def get_feature_type_and_details_from(
     """Extract and validate the feature type and its associated metadata from a feature identifier.
 
     This utility function ensures that the `feature_identifier` dictionary contains a valid
-    "type" key (e.g., "scalar", "time_series", "field", "node") and returns the type along
+    "type" key (e.g., "scalar", "field", "node") and returns the type along
     with the remaining identifier keys, which are specific to the feature type.
 
     Args:
         feature_identifier (dict): A dictionary with a "type" key, and
             other keys (some optional) depending on the feature type. For example:
             - {"type": "scalar", "name": "Mach"}
-            - {"type": "time_series", "name": "AOA"}
             - {"type": "field", "name": "pressure"}
             - {"type": "field", "name": "pressure", "time":0.}
             - {"type": "nodes", "base_name": "Base_2_2"}
@@ -207,7 +206,6 @@ def check_features_type_homogeneity(
         feature_identifiers (list[dict]): dict with a "type" key, and
             other keys (some optional) depending on the feature type. For example:
             - {"type": "scalar", "name": "Mach"}
-            - {"type": "time_series", "name": "AOA"}
             - {"type": "field", "name": "pressure"}
 
     Raises:
@@ -238,7 +236,6 @@ def check_features_size_homogeneity(
         feature_identifiers (list[dict]): dict with a "type" key, and
             other keys (some optional) depending on the feature type. For example:
             - {"type": "scalar", "name": "Mach"}
-            - {"type": "time_series", "name": "AOA"}
             - {"type": "field", "name": "pressure"}
         features (dict): dict with sample index as keys and one or more features as values.
 

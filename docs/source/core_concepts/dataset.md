@@ -63,7 +63,6 @@ ids = dataset.get_sample_ids()
 
 ```python
 dataset.get_scalar_names(ids=None)
-dataset.get_time_series_names(ids=None)
 dataset.get_field_names(ids=None, zone_name=None, base_name=None)
 
 # Structured, hashable descriptors of features (recommended)

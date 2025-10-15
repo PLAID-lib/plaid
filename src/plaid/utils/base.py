@@ -9,7 +9,11 @@
 
 # %% Imports
 
+import os
+from functools import wraps
+
 import numpy as np
+import psutil
 
 # %% Functions
 
@@ -48,6 +52,31 @@ def safe_len(obj):
         The length of the object if it defines `__len__`, otherwise 0.
     """
     return len(obj) if hasattr(obj, "__len__") else 0
+
+
+def get_mem():
+    """Get the current memory usage of the process in MB."""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024**2)  # in MB
+
+
+def delegate_methods(to: str, methods: list[str]):
+    """Class decorator to forward specific methods from a delegate attribute."""
+
+    def wrapper(cls):
+        for name in methods:
+
+            def make_delegate(name):
+                @wraps(getattr(getattr(cls, to, None), name, lambda *_, **__: None))
+                def method(self, *args, **kwargs):
+                    return getattr(getattr(self, to), name)(*args, **kwargs)
+
+                return method
+
+            setattr(cls, name, make_delegate(name))
+        return cls
+
+    return wrapper
 
 
 class NotAllowedError(Exception):

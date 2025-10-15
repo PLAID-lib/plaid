@@ -1138,24 +1138,12 @@ class ProblemDefinition(object):
         return list(set(all_indices))
 
     # -------------------------------------------------------------------------#
-    def _save_to_dir_(self, path: Union[str, Path]) -> None:
-        """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
+    def _generate_problem_infos_dict(self) -> dict[str, Union[str, list]]:
+        """Generate a dictionary containing all relevant problem definition data.
 
-        Args:
-            path (Union[str,Path]): The directory where the problem information will be saved.
-
-        Example:
-            .. code-block:: python
-
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                problem._save_to_dir_("/path/to/save_directory")
+        Returns:
+            dict[str, Union[str, list]]: A dictionary with keys for task, input/output features, scalars, fields, timeseries, and meshes.
         """
-        path = Path(path)
-
-        if not (path.is_dir()):
-            path.mkdir()
-
         data = {
             "task": self._task,
             "input_features": [dict(**d) for d in self.in_features_identifiers],
@@ -1185,16 +1173,52 @@ class ProblemDefinition(object):
         else:
             data["version"] = str(self._version)
 
+        return data
+
+        # Handle version
+        plaid_version = Version(plaid.__version__)
+        if self._version != plaid_version:  # pragma: no cover
+            logger.warning(
+                f"Version mismatch: ProblemDefinition was loaded from version {self._version if self._version is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
+            )
+            data["version"] = str(plaid_version)
+        else:
+            data["version"] = str(self._version)
+
+        # Save infos
+
+    def _save_to_dir_(self, path: Union[str, Path]) -> None:
+        """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
+
+        Args:
+            path (Union[str,Path]): The directory where the problem information will be saved.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import ProblemDefinition
+                problem = ProblemDefinition()
+                problem._save_to_dir_("/path/to/save_directory")
+        """
+        path = Path(path)
+
+        if not (path.is_dir()):
+            path.mkdir(parents=True)
+
+        problem_infos_dict = self._generate_problem_infos_dict()
+
         # Save infos
         pbdef_fname = path / "problem_infos.yaml"
         with pbdef_fname.open("w") as file:
-            yaml.dump(data, file, default_flow_style=False, sort_keys=False)
+            yaml.dump(
+                problem_infos_dict, file, default_flow_style=False, sort_keys=False
+            )
 
         # Save split
         split_fname = path / "split.json"
-        if self._split is not None:
+        if self.get_split() is not None:
             with split_fname.open("w") as file:
-                json.dump(self._split, file)
+                json.dump(self.get_split(), file)
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> Self:  # pragma: no cover
@@ -1210,41 +1234,9 @@ class ProblemDefinition(object):
         instance._load_from_dir_(path)
         return instance
 
-    def _load_from_dir_(self, path: Union[str, Path]) -> None:
-        """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
-
-        Args:
-            path (Union[str,Path]): The directory from which to load the problem information.
-
-        Raises:
-            FileNotFoundError: Triggered if the provided directory or file problem_infos.yaml does not exist
-            FileExistsError: Triggered if the provided path is a file instead of a directory.
-
-        Example:
-            .. code-block:: python
-
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                problem._load_from_dir_("/path/to/load_directory")
-        """
-        path = Path(path)
-
-        if not path.exists():
-            raise FileNotFoundError(f'Directory "{path}" does not exist. Abort')
-
-        if not path.is_dir():
-            raise FileExistsError(f'"{path}" is not a directory. Abort')
-
-        pbdef_fname = path / "problem_infos.yaml"
-        data = {}  # To avoid crash if pbdef_fname does not exist
-        if pbdef_fname.is_file():
-            with pbdef_fname.open("r") as file:
-                data = yaml.safe_load(file)
-        else:
-            raise FileNotFoundError(
-                f"file with path `{pbdef_fname}` does not exist. Abort"
-            )
-
+    def _initialize_from_problem_infos_dict(
+        self, data: dict[str, Union[str, list]]
+    ) -> None:
         if "version" not in data:
             self._version = None
         else:
@@ -1287,6 +1279,43 @@ class ProblemDefinition(object):
                         f"Key '{k}' is deprecated and will be ignored. You should convert your ProblemDefinition using FeatureIdentifiers to identify features instead of names."
                     )
 
+    def _load_from_dir_(self, path: Union[str, Path]) -> None:
+        """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
+
+        Args:
+            path (Union[str,Path]): The directory from which to load the problem information.
+
+        Raises:
+            FileNotFoundError: Triggered if the provided directory or file problem_infos.yaml does not exist
+            FileExistsError: Triggered if the provided path is a file instead of a directory.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import ProblemDefinition
+                problem = ProblemDefinition()
+                problem._load_from_dir_("/path/to/load_directory")
+        """
+        path = Path(path)
+
+        if not path.exists():
+            raise FileNotFoundError(f'Directory "{path}" does not exist. Abort')
+
+        if not path.is_dir():
+            raise FileExistsError(f'"{path}" is not a directory. Abort')
+
+        pbdef_fname = path / "problem_infos.yaml"
+        data = {}  # To avoid crash if pbdef_fname does not exist
+        if pbdef_fname.is_file():
+            with pbdef_fname.open("r") as file:
+                data = yaml.safe_load(file)
+        else:
+            raise FileNotFoundError(
+                f"file with path `{pbdef_fname}` does not exist. Abort"
+            )
+
+        self._initialize_from_problem_infos_dict(data)
+
         # if it was saved with version <=0.1.7 it is a .csv else it is .json
         split = {}
         split_fname_csv = path / "split.csv"
@@ -1307,7 +1336,7 @@ class ProblemDefinition(object):
             logger.warning(
                 f"file with path `{split_fname_csv}` or `{split_fname_json}` does not exist. Splits will not be set"
             )
-        self._split = split
+        self.set_split(split)
 
     def extract_problem_definition_from_identifiers(
         self, identifiers: list[FeatureIdentifier]

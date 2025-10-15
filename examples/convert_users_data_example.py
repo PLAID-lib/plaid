@@ -158,7 +158,7 @@ for cgns_tree in CGNS_meshes:
     # Add CGNS Meshe to samples with specific time steps
     sample = Sample()
 
-    sample.meshes.add_tree(cgns_tree)
+    sample.features.add_tree(cgns_tree)
 
     # Add random scalar values to the sample
     for sname in in_scalars_names:

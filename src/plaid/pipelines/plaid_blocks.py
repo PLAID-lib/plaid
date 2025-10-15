@@ -178,9 +178,7 @@ class ColumnTransformer(SklearnColumnTransformer):
                 if isinstance(transformer_, Pipeline)
                 else transformer_.out_features_identifiers_
             )
-            sub_dataset = dataset.extract_dataset_from_identifier(
-                in_feat_id, keep_cgns=True
-            )
+            sub_dataset = dataset.extract_dataset_from_identifier(in_feat_id)
             transformed = transformer_.inverse_transform(sub_dataset)
             transformed_datasets.append(transformed)
         return Dataset.merge_dataset_by_features(transformed_datasets)

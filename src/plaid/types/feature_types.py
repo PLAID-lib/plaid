@@ -22,10 +22,9 @@ from plaid.types.common import Array
 Scalar: TypeAlias = Union[float, int]
 Field: TypeAlias = Array
 TimeSequence: TypeAlias = Array
-TimeSeries: TypeAlias = tuple[TimeSequence, Field]
 
 # Feature data types
-Feature: TypeAlias = Union[Scalar, Field, TimeSeries, Array]
+Feature: TypeAlias = Union[Scalar, Field, Array]
 
 
 # Identifiers

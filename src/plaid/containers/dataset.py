@@ -108,9 +108,9 @@ class Dataset(object):
                 >>> 3
                 for sample in dataset:
                     print(sample)
-                >>> Sample(1 scalar, 0 time series, 1 timestamp, 2 fields)
-                    Sample(1 scalar, 0 time series, 0 timestamps, 0 fields)
-                    Sample(2 scalars, 0 time series, 1 timestamp, 2 fields)
+                >>> Sample(1 scalar, 1 timestamp, 2 fields)
+                    Sample(1 scalar, 0 timestamps, 0 fields)
+                    Sample(2 scalars, 1 timestamp, 2 fields)
 
                 # 3. Create Dataset instance from a list of Samples
                 dataset = Dataset(samples=[sample1, sample2, sample3])
@@ -409,28 +409,6 @@ class Dataset(object):
         return scalars_names
 
     # -------------------------------------------------------------------------#
-    def get_time_series_names(self, ids: Optional[list[int]] = None) -> list[str]:
-        """Return union of time series names in all samples with id in ids.
-
-        Args:
-            ids (list[int], optional): Select time series depending on sample id. If None, take all samples. Defaults to None.
-
-        Returns:
-            list[str]: List of all time series names
-        """
-        if ids is not None and len(set(ids)) != len(ids):
-            logger.warning("Provided ids are not unique")
-
-        time_series_names = []
-        for sample in self.get_samples(ids, as_list=True):
-            ts_names = sample.get_time_series_names()
-            for ts_name in ts_names:
-                if ts_name not in time_series_names:
-                    time_series_names.append(ts_name)
-        time_series_names.sort()
-        return time_series_names
-
-    # -------------------------------------------------------------------------#
     def get_field_names(
         self,
         ids: Optional[list[int]] = None,
@@ -456,18 +434,18 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = [time] if time else sample.meshes.get_all_mesh_times()
+            times = [time] if time else sample.features.get_all_mesh_times()
             for time in times:
                 base_names = (
                     [base_name]
                     if base_name
-                    else sample.meshes.get_base_names(time=time)
+                    else sample.features.get_base_names(time=time)
                 )
                 for base_name in base_names:
                     zone_names = (
                         [zone_name]
                         if zone_name
-                        else sample.meshes.get_zone_names(
+                        else sample.features.get_zone_names(
                             time=time, base_name=base_name
                         )
                     )
@@ -510,7 +488,7 @@ class Dataset(object):
 
     def get_all_features_identifiers_by_type(
         self,
-        feature_type: Literal["scalar", "nodes", "field", "time_series"],
+        feature_type: Literal["scalar", "nodes", "field"],
         ids: list[int] = None,
     ) -> list[FeatureIdentifier]:
         """Get all features identifiers from the dataset.
@@ -679,7 +657,7 @@ class Dataset(object):
     ) -> Self:
         """Update one or several features of the dataset by their identifier(s).
 
-        This method applies updates to scalars, time series, fields, or nodes
+        This method applies updates to scalars, fields, or nodes
         using feature identifiers, and corresponding feature data. When `in_place=False`, a deep copy of the dataset is created
         before applying updates, ensuring full isolation from the original.
 
@@ -710,16 +688,14 @@ class Dataset(object):
     def extract_dataset_from_identifier(
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-        keep_cgns: bool = False,
     ) -> Self:
         """Extract features of the dataset by their identifier(s) and return a new dataset containing these features.
 
-        This method applies updates to scalars, time series, fields, or nodes
+        This method applies updates to scalars, fields, or nodes
         using feature identifiers
 
         Args:
             feature_identifiers (dict or list of dict): One or more feature identifiers.
-            keep_cgns (bool): If True, keeps the CGNS tree structure in the extracted dataset.
 
         Returns:
             Self: New dataset containing the provided feature identifiers
@@ -734,37 +710,6 @@ class Dataset(object):
             extracted_sample = self[id].extract_sample_from_identifier(
                 feature_identifiers
             )
-
-            if keep_cgns and not extracted_sample.meshes.data and self[id].meshes.data:
-                for time in self[id].meshes.get_all_mesh_times():
-                    extracted_sample.meshes.init_tree(time=time)
-                    for base_name in self[id].meshes.get_base_names(time=time):
-                        original_base = self[id].meshes.get_base(
-                            base_name=base_name, time=time
-                        )
-                        extracted_sample.meshes.init_base(
-                            topological_dim=original_base[1][0],
-                            physical_dim=original_base[1][1],
-                            base_name=base_name,
-                            time=time,
-                        )
-                        for zone_name in self[id].meshes.get_zone_names(
-                            time=time, base_name=base_name
-                        ):
-                            original_zone = self[id].meshes.get_zone(
-                                zone_name=zone_name, base_name=base_name, time=time
-                            )
-                            original_zone_type = self[id].meshes.get_zone_type(
-                                zone_name=zone_name, base_name=base_name, time=time
-                            )
-                            extracted_sample.meshes.init_zone(
-                                zone_shape=original_zone[1],
-                                zone_type=original_zone_type,
-                                zone_name=zone_name,
-                                base_name=base_name,
-                                time=time,
-                            )
-
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
 
@@ -789,16 +734,13 @@ class Dataset(object):
         """Extract features of the dataset by their identifier(s) and return an array containing these features.
 
         Features must have identic sizes to be casted in an array. The first dimension of the array is the number of samples in the dataset.
-        This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
+        This method applies updates to scalars, fields, or nodes using feature identifiers.
 
         Args:
             feature_identifiers (list of dict): Feature identifiers.
 
         Returns:
             Array: An containing the provided feature identifiers, size (nb_sample, nb_features, dim_features)
-
-        Notes:
-            Not working with time_series for the moment (time series have 2 elements: time_sequence and values)
 
         Raises:
             AssertionError: If feature sizes are inconsistent.
@@ -846,7 +788,7 @@ class Dataset(object):
     def add_features_from_tabular(
         self,
         tabular: Array,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        feature_identifiers: list[FeatureIdentifier],
         restrict_to_features: bool = True,
     ) -> Self:
         """Add or update features in the dataset from tabular data using feature identifiers.
@@ -858,7 +800,7 @@ class Dataset(object):
 
         Parameters:
             tabular (Array): of size (nb_sample, nb_features) or (nb_sample, nb_features, dim_feature) if dim_feature>1
-            feature_identifiers (dict or list of dict): One or more feature identifiers specifying which features to update/add.
+            feature_identifiers (list of dict): One or more feature identifiers specifying which features to update/add.
             restrict_to_features (bool, optional): If True, only returns the features from feature identifiers, otherwise keep the other features as well. Defaults to True.
 
         Returns:
@@ -871,8 +813,6 @@ class Dataset(object):
                 If the number of rows in `tabular` does not match the number of samples in the dataset,
                 or if the number of feature identifiers does not match the number of columns in `tabular`.
         """
-        if not isinstance(feature_identifiers, list):
-            feature_identifiers = [feature_identifiers]
         for i_id, feat_id in enumerate(feature_identifiers):
             feature_identifiers[i_id] = FeatureIdentifier(feat_id)
 
@@ -1203,9 +1143,6 @@ class Dataset(object):
                 - mach_out: 32/32 samples (100.0%)
                 - power: 30/32 samples (93.8%)
 
-                Time Series (0 unique):
-                None
-
                 Fields (8 unique):
                 - M_iso: 30/32 samples (93.8%)
                 - mach: 30/32 samples (93.8%)
@@ -1224,12 +1161,10 @@ class Dataset(object):
 
         # Collect all feature names across all samples
         all_scalar_names = set()
-        all_ts_names = set()
         all_field_names = set()
 
         # Count occurrences of each feature
         scalar_counts = {}
-        ts_counts = {}
         field_counts = {}
 
         for _, sample in self._samples.items():
@@ -1239,18 +1174,12 @@ class Dataset(object):
             for name in scalar_names:
                 scalar_counts[name] = scalar_counts.get(name, 0) + 1
 
-            # Time series
-            ts_names = sample.get_time_series_names()
-            all_ts_names.update(ts_names)
-            for name in ts_names:
-                ts_counts[name] = ts_counts.get(name, 0) + 1
-
             # Fields
-            times = sample.meshes.get_all_mesh_times()
+            times = sample.features.get_all_mesh_times()
             for time in times:
-                base_names = sample.meshes.get_base_names(time=time)
+                base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.meshes.get_zone_names(
+                    zone_names = sample.features.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
@@ -1268,16 +1197,6 @@ class Dataset(object):
         if all_scalar_names:
             for name in sorted(all_scalar_names):
                 count = scalar_counts.get(name, 0)
-                summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
-        else:
-            summary += "  None\n"
-        summary += "\n"
-
-        # Time series summary
-        summary += f"Time Series ({len(all_ts_names)} unique):\n"
-        if all_ts_names:
-            for name in sorted(all_ts_names):
-                count = ts_counts.get(name, 0)
                 summary += f"  - {name}: {count}/{total_samples} samples ({count / total_samples * 100:.1f}%)\n"
         else:
             summary += "  None\n"
@@ -1332,18 +1251,16 @@ class Dataset(object):
 
         # Collect all possible features across all samples
         all_scalar_names = set()
-        all_ts_names = set()
         all_field_names = set()
 
         for sample in self._samples.values():
             all_scalar_names.update(sample.get_scalar_names())
-            all_ts_names.update(sample.get_time_series_names())
 
-            times = sample.meshes.get_all_mesh_times()
+            times = sample.features.get_all_mesh_times()
             for time in times:
-                base_names = sample.meshes.get_base_names(time=time)
+                base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.meshes.get_zone_names(
+                    zone_names = sample.features.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
@@ -1366,19 +1283,13 @@ class Dataset(object):
             if missing_scalars:
                 missing_features.extend([f"scalar:{name}" for name in missing_scalars])
 
-            # Check time series
-            sample_ts = set(sample.get_time_series_names())
-            missing_ts = all_ts_names - sample_ts
-            if missing_ts:
-                missing_features.extend([f"time_series:{name}" for name in missing_ts])
-
             # Check fields
             sample_fields = set()
-            times = sample.meshes.get_all_mesh_times()
+            times = sample.features.get_all_mesh_times()
             for time in times:
-                base_names = sample.meshes.get_base_names(time=time)
+                base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = sample.meshes.get_zone_names(
+                    zone_names = sample.features.get_zone_names(
                         base_name=base_name, time=time
                     )
                     for zone_name in zone_names:
@@ -1915,7 +1826,7 @@ class Dataset(object):
 
     __call__ = __getitem__
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         """Return a string representation of the dataset.
 
         Returns:
@@ -1939,10 +1850,6 @@ class Dataset(object):
         nb_scalars = len(self.get_scalar_names())
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
 
-        # time series
-        nb_time_series = len(self.get_time_series_names())
-        str_repr += f"{nb_time_series} time_series, "
-
         # fields
         nb_fields = len(self.get_field_names())
         str_repr += f"{nb_fields} field{'' if nb_fields == 1 else 's'}, "
@@ -1951,3 +1858,5 @@ class Dataset(object):
             str_repr = str_repr[:-2]
         str_repr = str_repr + ")"
         return str_repr
+
+    __repr__ = __str__
