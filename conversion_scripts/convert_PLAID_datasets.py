@@ -9,9 +9,7 @@
 
 from time import time
 
-from numpy import rint
-
-from plaid import Sample, Dataset
+from plaid import Dataset, Sample
 from plaid.bridges import huggingface_bridge
 from plaid.utils.base import get_mem
 from plaid.utils.cgns_helper import (
