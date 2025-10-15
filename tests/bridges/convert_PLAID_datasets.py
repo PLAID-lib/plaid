@@ -9,9 +9,9 @@ from plaid.utils.cgns_helper import (
     unflatten_cgns_tree,
 )
 
-# repo_id = "PLAID-datasets/Tensile2d"
-# split_names = ["train_500", "test", "OOD"]
-# repo_id_out = "fabiencasenave/Tensile2d"
+repo_id = "PLAID-datasets/Tensile2d"
+split_names = ["train_500", "test", "OOD"]
+repo_id_out = "fabiencasenave/Tensile2d"
 
 # repo_id = "PLAID-datasets/VKI-LS59"
 # split_names = ["train", "test"]
@@ -29,12 +29,11 @@ from plaid.utils.cgns_helper import (
 # split_names = ["DOE_train", "DOE_test"]
 # repo_id_out = "fabiencasenave/2D_Multiscale_Hyperelasticity"
 
-repo_id = "PLAID-datasets/2D_ElastoPlastoDynamics"
-split_names = ["train", "test"]
-repo_id_out = "fabiencasenave/2D_ElastoPlastoDynamics"
+# repo_id = "PLAID-datasets/2D_ElastoPlastoDynamics"
+# split_names = ["train", "test"]
+# repo_id_out = "fabiencasenave/2D_ElastoPlastoDynamics"
 
 # ---------------------------------------------------------------------------------------
-
 
 hf_dataset = huggingface_bridge.load_dataset_from_hub(repo_id, split="all_samples")
 infos = huggingface_bridge.huggingface_description_to_infos(hf_dataset.description)
@@ -141,6 +140,7 @@ def update_sample(sample, split_name):
 # sample.save("sample", overwrite=True)
 # 1./0.
 
+
 generators = {}
 for split_name in split_names:
     ids = pb_def.get_split(split_name)  # [:2]
@@ -237,6 +237,18 @@ pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id_out, "task_
 infos = huggingface_bridge.load_infos_from_hub(repo_id_out)
 cgns_types = key_mappings["cgns_types"]
 
+
+init_ram = get_mem()
+start = time()
+sample = huggingface_bridge.to_plaid_sample(
+    hf_dataset_new[split_names[0]], 0, flat_cst[split_names[0]], cgns_types
+)
+elapsed = time() - start
+print(
+    f"Time to build first sample of split {split_names[0]}: {elapsed:.6g} s, RAM usage increase: {get_mem() - init_ram} MB"
+)
+
+print("starting conversion")
 init_ram = get_mem()
 start = time()
 dataset = huggingface_bridge.to_plaid_dataset(

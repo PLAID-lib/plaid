@@ -120,24 +120,6 @@ class Test_Huggingface_Bridge:
     #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
     # ------------------------------------------------------------------------------
 
-    # def test_to_cgns_tree_columnar(self, dataset, problem_definition):
-    #     main_splits = problem_definition.get_split()
-    #     hf_dataset_dict, flat_cst, key_mappings = (
-    #         huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
-    #             dataset, main_splits
-    #         )
-    #     )
-    #     huggingface_bridge.to_cgns_tree_columnar(
-    #         hf_dataset_dict["train"], 0, flat_cst, key_mappings["cgns_types"]
-    #     )
-    #     huggingface_bridge.to_cgns_tree_columnar(
-    #         hf_dataset_dict["train"],
-    #         0,
-    #         flat_cst,
-    #         key_mappings["cgns_types"],
-    #         enforce_shapes=True,
-    #     )
-
     def test_with_datasetdict(self, dataset, problem_definition):
         main_splits = problem_definition.get_split()
 
@@ -217,7 +199,7 @@ class Test_Huggingface_Bridge:
         shutil.rmtree(test_dir)
 
     # ------------------------------------------------------------------------------
-    #     DEPRECATED HUGGING FACE BRIDGE (binary blobs)
+    #     HUGGING FACE BINARY BRIDGE
     # ------------------------------------------------------------------------------
 
     def test_save_load_to_disk_binary(
@@ -333,6 +315,7 @@ class Test_Huggingface_Bridge:
         hf_description.update(infos)
         huggingface_bridge.huggingface_description_to_infos(hf_description)
 
+    # ---- Deprecated ----
     def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
         huggingface_bridge.create_string_for_huggingface_dataset_card(
             description=hf_dataset.description,
