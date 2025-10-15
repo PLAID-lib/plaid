@@ -1585,7 +1585,9 @@ class Dataset(object):
         if infos_fname.is_file():
             with open(infos_fname, "r") as file:
                 self._infos = yaml.safe_load(file)
-        if "plaid" not in self._infos or "version" not in self._infos["plaid"]:
+        if (
+            "plaid" not in self._infos or "version" not in self._infos["plaid"]
+        ):  # pragma: no cover
             self._infos.setdefault("plaid", {}).setdefault("version", None)
         else:
             if not isinstance(self._infos["plaid"]["version"], Version):

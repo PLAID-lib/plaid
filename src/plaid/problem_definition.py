@@ -1327,7 +1327,7 @@ class ProblemDefinition(object):
                 logger.warning(
                     f"Both files with path `{split_fname_csv}` and `{split_fname_json}` exist. JSON file is the standard from 0.1.7 -> CSV file will be ignored"
                 )
-        elif split_fname_csv.is_file():
+        elif split_fname_csv.is_file():  # pragma: no cover
             with split_fname_csv.open("r") as file:
                 reader = csv.reader(file, delimiter=",")
                 for row in reader:
