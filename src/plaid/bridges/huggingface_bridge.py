@@ -404,7 +404,7 @@ def to_plaid_sample(
     i: int,
     flat_cst: dict[str, Any],
     cgns_types: dict[str, str],
-    enforce_shapes: bool = False,
+    enforce_shapes: bool = True,
 ) -> Sample:
     """Convert a Hugging Face dataset row to a PLAID Sample object.
 
@@ -417,7 +417,7 @@ def to_plaid_sample(
         i (int): The index of the row to convert.
         flat_cst (dict[str, Any]): Dictionary of constant features to add to each sample.
         cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
-        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion. Defaults to False.
+        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion. Defaults to True.
 
     Returns:
         Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
