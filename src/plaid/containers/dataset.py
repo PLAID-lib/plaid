@@ -27,8 +27,10 @@ from typing import Iterator, Literal, Optional, Union
 
 import numpy as np
 import yaml
+from packaging.version import Version
 from tqdm import tqdm
 
+import plaid
 from plaid.constants import AUTHORIZED_INFO_KEYS, CGNS_FIELD_LOCATIONS
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
@@ -126,7 +128,9 @@ class Dataset(object):
         """
         self._samples: dict[int, Sample] = {}  # sample_id -> sample
         # info_name -> description
-        self._infos: dict[str, dict[str, str]] = {}
+        self._infos: dict[str, dict[str, Union[str, Version]]] = {
+            "plaid": {"version": Version(plaid.__version__)}
+        }
 
         if samples is not None and (directory_path is not None or path is not None):
             raise ValueError("'samples' and 'path' are mutually exclusive")
@@ -960,19 +964,25 @@ class Dataset(object):
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}}
         """
         for cat_key in infos.keys():  # Format checking on "infos"
-            if cat_key not in AUTHORIZED_INFO_KEYS:
-                raise KeyError(
-                    f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
-                )
-            for info_key in infos[cat_key].keys():
-                if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
+            if cat_key != "plaid":
+                if cat_key not in AUTHORIZED_INFO_KEYS:
                     raise KeyError(
-                        f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
+                        f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
                     )
+                for info_key in infos[cat_key].keys():
+                    if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
+                        raise KeyError(
+                            f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
+                        )
 
         if len(self._infos) > 0:
             logger.warning("infos not empty, replacing it anyway")
-        self._infos = infos
+        self._infos = copy.deepcopy(infos)
+
+        if "plaid" not in self._infos:
+            self._infos["plaid"] = {}
+        if "version" not in self._infos["plaid"]:
+            self._infos["plaid"]["version"] = Version(plaid.__version__)
 
     def get_infos(self) -> dict[str, dict[str, str]]:
         """Get information from an instance of :class:`Dataset <plaid.containers.dataset.Dataset>`.
@@ -990,7 +1000,9 @@ class Dataset(object):
                 print(dataset.get_infos())
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}}
         """
-        return self._infos
+        return {
+            k: {kk: str(vv) for kk, vv in v.items()} for k, v in self._infos.items()
+        }
 
     def print_infos(self) -> None:
         """Prints information in a readable format (pretty print)."""
@@ -1510,28 +1522,29 @@ class Dataset(object):
         if verbose:  # pragma: no cover
             print(f"Saving database to: {path}")
 
+        # Save infos
+        assert "plaid" in self._infos, f"{self._infos.keys()=} should contain 'plaid'"
+        assert "version" in self._infos["plaid"], (
+            f"{self._infos['plaid'].keys()=} should contain 'version'"
+        )
+        plaid_version = Version(plaid.__version__)
+        if self._infos["plaid"]["version"] != plaid_version:  # pragma: no cover
+            logger.warning(
+                f"Version mismatch: Dataset was loaded from version {self._infos['plaid']['version'] if self._infos['plaid']['version'] is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
+            )
+        self._infos["plaid"]["version"] = str(plaid_version)
+        infos_fname = path / "infos.yaml"
+        with open(infos_fname, "w") as file:
+            yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
+
+        # Save samples
         samples_dir = path / "samples"
         if not (samples_dir.is_dir()):
             samples_dir.mkdir(parents=True)
 
-        # ---# save samples
         for i_sample, sample in tqdm(self._samples.items(), disable=not (verbose)):
             sample_fname = samples_dir / f"sample_{i_sample:09d}"
             sample.save(sample_fname)
-
-        # ---# save infos
-        if len(self._infos) > 0:
-            infos_fname = path / "infos.yaml"
-            with open(infos_fname, "w") as file:
-                yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
-
-        # #---# save stats
-        # stats_fname = path / 'stats.yaml'
-        # self._stats.save(stats_fname)
-
-        # #---# save flags
-        # flags_fname = path / 'flags.yaml'
-        # self._flags.save(flags_fname)
 
     def _load_from_dir_(
         self,
@@ -1567,6 +1580,22 @@ class Dataset(object):
         if verbose:  # pragma: no cover
             print(f"Reading database located at: {path}")
 
+        # Load infos
+        infos_fname = path / "infos.yaml"
+        if infos_fname.is_file():
+            with open(infos_fname, "r") as file:
+                self._infos = yaml.safe_load(file)
+        if (
+            "plaid" not in self._infos or "version" not in self._infos["plaid"]
+        ):  # pragma: no cover
+            self._infos.setdefault("plaid", {}).setdefault("version", None)
+        else:
+            if not isinstance(self._infos["plaid"]["version"], Version):
+                self._infos["plaid"]["version"] = Version(
+                    self._infos["plaid"]["version"]
+                )
+
+        # Load samples
         sample_paths = sorted(
             [path for path in (path / "samples").glob("sample_*") if path.is_dir()]
         )
@@ -1629,11 +1658,6 @@ class Dataset(object):
                 id, sample = s.get()
                 self.set_sample(id, sample)
             """
-
-        infos_fname = path / "infos.yaml"
-        if infos_fname.is_file():
-            with open(infos_fname, "r") as file:
-                self._infos = yaml.safe_load(file)
 
         if len(self) == 0:  # pragma: no cover
             print("Warning: dataset contains no sample")

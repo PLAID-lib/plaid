@@ -27,6 +27,8 @@ AUTHORIZED_FEATURE_INFOS = {
     "nodes": ["zone_name", "base_name", "time"],
 }
 
+# Information keys for dataset metadata
+# key ["plaid"]["version"] is not included as it is managed internally
 AUTHORIZED_INFO_KEYS = {
     "legal": ["owner", "license"],
     "data_production": [

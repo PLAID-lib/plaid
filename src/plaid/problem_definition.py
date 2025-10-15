@@ -25,7 +25,9 @@ from pathlib import Path
 from typing import Optional, Union
 
 import yaml
+from packaging.version import Version
 
+import plaid
 from plaid.constants import AUTHORIZED_TASKS
 from plaid.types import IndexType
 from plaid.types.feature_types import FeatureIdentifier
@@ -71,7 +73,8 @@ class ProblemDefinition(object):
                 print(problem_definition)
                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
-        self._task: str = None  # list[task name]
+        self._version: Union[Version] = Version(plaid.__version__)
+        self._task: str = None
         self.in_features_identifiers: list[FeatureIdentifier] = []
         self.out_features_identifiers: list[FeatureIdentifier] = []
         self.in_scalars_names: list[str] = []
@@ -98,6 +101,15 @@ class ProblemDefinition(object):
         if path is not None:
             path = Path(path)
             self._load_from_dir_(path)
+
+    # -------------------------------------------------------------------------#
+    def get_version(self) -> Version:
+        """Get the version. None if not defined.
+
+        Returns:
+            Version: The version, such as "0.1.0".
+        """
+        return self._version
 
     # -------------------------------------------------------------------------#
     def get_task(self) -> str:
@@ -1132,19 +1144,48 @@ class ProblemDefinition(object):
         Returns:
             dict[str, Union[str, list]]: A dictionary with keys for task, input/output features, scalars, fields, timeseries, and meshes.
         """
-        return {
+        data = {
             "task": self._task,
             "input_features": [dict(**d) for d in self.in_features_identifiers],
             "output_features": [dict(**d) for d in self.out_features_identifiers],
-            "input_scalars": self.in_scalars_names,  # list[input scalar name]
-            "output_scalars": self.out_scalars_names,  # list[output scalar name]
-            "input_fields": self.in_fields_names,  # list[input field name]
-            "output_fields": self.out_fields_names,  # list[output field name]
-            "input_timeseries": self.in_timeseries_names,  # list[input timeseries name]
-            "output_timeseries": self.out_timeseries_names,  # list[output timeseries name]
-            "input_meshes": self.in_meshes_names,  # list[input mesh name]
-            "output_meshes": self.out_meshes_names,  # list[output mesh name]
         }
+        if Version(plaid.__version__) < Version("0.2.0"):
+            data.update(
+                {
+                    "input_scalars": self.in_scalars_names,
+                    "output_scalars": self.out_scalars_names,
+                    "input_fields": self.in_fields_names,
+                    "output_fields": self.out_fields_names,
+                    "input_timeseries": self.in_timeseries_names,
+                    "output_timeseries": self.out_timeseries_names,
+                    "input_meshes": self.in_meshes_names,
+                    "output_meshes": self.out_meshes_names,
+                }
+            )
+
+        # Handle version
+        plaid_version = Version(plaid.__version__)
+        if self._version != plaid_version:  # pragma: no cover
+            logger.warning(
+                f"Version mismatch: ProblemDefinition was loaded from version {self._version if self._version is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
+            )
+            data["version"] = str(plaid_version)
+        else:
+            data["version"] = str(self._version)
+
+        return data
+
+        # Handle version
+        plaid_version = Version(plaid.__version__)
+        if self._version != plaid_version:  # pragma: no cover
+            logger.warning(
+                f"Version mismatch: ProblemDefinition was loaded from version {self._version if self._version is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
+            )
+            data["version"] = str(plaid_version)
+        else:
+            data["version"] = str(self._version)
+
+        # Save infos
 
     def _save_to_dir_(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
@@ -1166,12 +1207,14 @@ class ProblemDefinition(object):
 
         problem_infos_dict = self._generate_problem_infos_dict()
 
+        # Save infos
         pbdef_fname = path / "problem_infos.yaml"
         with pbdef_fname.open("w") as file:
             yaml.dump(
                 problem_infos_dict, file, default_flow_style=False, sort_keys=False
             )
 
+        # Save split
         split_fname = path / "split.json"
         if self.get_split() is not None:
             with split_fname.open("w") as file:
@@ -1194,21 +1237,47 @@ class ProblemDefinition(object):
     def _initialize_from_problem_infos_dict(
         self, data: dict[str, Union[str, list]]
     ) -> None:
+        if "version" not in data:
+            self._version = None
+        else:
+            self._version = Version(data["version"])
+
         self._task = data["task"]
-        self.in_features_identifiers = [
-            FeatureIdentifier(**tup) for tup in data["input_features"]
-        ]
-        self.out_features_identifiers = [
-            FeatureIdentifier(**tup) for tup in data["output_features"]
-        ]
-        self.in_scalars_names = data["input_scalars"]
-        self.out_scalars_names = data["output_scalars"]
-        self.in_fields_names = data["input_fields"]
-        self.out_fields_names = data["output_fields"]
-        self.in_timeseries_names = data["input_timeseries"]
-        self.out_timeseries_names = data["output_timeseries"]
-        self.in_meshes_names = data["input_meshes"]
-        self.out_meshes_names = data["output_meshes"]
+        self.in_features_identifiers = (
+            [FeatureIdentifier(**tup) for tup in data["input_features"]]
+            if "input_features" in data
+            else []
+        )
+        self.out_features_identifiers = (
+            [FeatureIdentifier(**tup) for tup in data["output_features"]]
+            if "output_features" in data
+            else []
+        )
+        if "version" not in data or Version(data["version"]) < Version("0.2.0"):
+            self.in_scalars_names = data["input_scalars"]
+            self.out_scalars_names = data["output_scalars"]
+            self.in_fields_names = data["input_fields"]
+            self.out_fields_names = data["output_fields"]
+            self.in_timeseries_names = data["input_timeseries"]
+            self.out_timeseries_names = data["output_timeseries"]
+            self.in_meshes_names = data["input_meshes"]
+            self.out_meshes_names = data["output_meshes"]
+        else:  # pragma: no cover
+            old_keys = [
+                "input_scalars",
+                "input_fields",
+                "input_timeseries",
+                "input_meshes",
+                "output_scalars",
+                "output_fields",
+                "output_timeseries",
+                "output_meshes",
+            ]
+            for k in old_keys:
+                if k in data:
+                    logger.warning(
+                        f"Key '{k}' is deprecated and will be ignored. You should convert your ProblemDefinition using FeatureIdentifiers to identify features instead of names."
+                    )
 
     def _load_from_dir_(self, path: Union[str, Path]) -> None:
         """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
@@ -1251,14 +1320,18 @@ class ProblemDefinition(object):
         split = {}
         split_fname_csv = path / "split.csv"
         split_fname_json = path / "split.json"
-        if split_fname_csv.is_file():
+        if split_fname_json.is_file():
+            with split_fname_json.open("r") as file:
+                split = json.load(file)
+            if split_fname_csv.is_file():  # pragma: no cover
+                logger.warning(
+                    f"Both files with path `{split_fname_csv}` and `{split_fname_json}` exist. JSON file is the standard from 0.1.7 -> CSV file will be ignored"
+                )
+        elif split_fname_csv.is_file():  # pragma: no cover
             with split_fname_csv.open("r") as file:
                 reader = csv.reader(file, delimiter=",")
                 for row in reader:
                     split[row[0]] = [int(i) for i in row[1:]]
-        elif split_fname_json.is_file():
-            with split_fname_json.open("r") as file:
-                split = json.load(file)
         else:  # pragma: no cover
             logger.warning(
                 f"file with path `{split_fname_csv}` or `{split_fname_json}` does not exist. Splits will not be set"

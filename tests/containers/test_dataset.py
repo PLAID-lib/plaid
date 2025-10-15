@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from packaging.version import Version
 
 import plaid
 from plaid.containers.dataset import Dataset
@@ -858,7 +859,9 @@ class Test_Dataset:
             )
 
     def test_get_infos(self, dataset):
-        assert dataset.get_infos() == {}
+        assert dataset.get_infos()["plaid"]["version"] == str(
+            Version(plaid.__version__)
+        )
 
     def test_print_infos(self, dataset, infos):
         dataset.set_infos(infos)
@@ -1092,7 +1095,9 @@ class Test_Dataset:
         new_dataset = Dataset()
         new_dataset._load_from_dir_(savedir)
         assert len(new_dataset) == len(dataset_with_samples)
-        assert new_dataset.get_infos() == infos
+        new_infos = new_dataset.get_infos()
+        del new_infos["plaid"]
+        assert new_infos == infos
         for sample_1, sample_2 in zip(dataset_with_samples, new_dataset):
             compare_two_samples(sample_1, sample_2)
 
