@@ -262,9 +262,7 @@ class Sample(BaseModel):
             if feat_id["type"] == feature_type
         ]
 
-    def get_feature_by_path(
-        self, path: str, time:Optional[int] = None
-    ) -> Feature:
+    def get_feature_by_path(self, path: str, time: Optional[int] = None) -> Feature:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style path.
 
         Args:

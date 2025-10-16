@@ -297,6 +297,12 @@ print(f"{hf_sample = }")
 # %%
 plaid_sample = huggingface_bridge.to_plaid_sample(hf_datasetdict['train'], 0, flat_cst['train'], cgns_types)
 
+print("Variable features:")
+for t in plaid_sample.get_all_mesh_times():
+    for path in key_mappings["variable_features"]:
+        print(path, plaid_sample.get_feature_by_path(path=path, time=t))
+print("-------")
+print("Sample and CGNS tree:")
 show_sample(plaid_sample)
 
 
@@ -374,4 +380,11 @@ show_sample(plaid_sample)
 # ```
 # ```bash
 # >> Time to read 1D fields of variable size on the complete split train_500: 0.0021801 s, RAM usage increase: 0.375 MB
+# ```
+
+# %% [markdown]
+# A robust way to retrieve variable features from the pyarrow table is:
+# ```python
+# for path in key_mappings["variable_features"]:
+#     feature = hf_dataset_new["train"].data[path][i].values.to_numpy(zero_copy_only=False)
 # ```

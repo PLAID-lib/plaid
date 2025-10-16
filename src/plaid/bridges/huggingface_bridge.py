@@ -119,8 +119,39 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
     raise TypeError(f"Unsupported type: {type(value)}")  # pragma: no cover
 
 
-def build_hf_sample(sample):
-    """Flatten a sample’s features and build Hugging Face–compatible arrays."""
+def build_hf_sample(sample: Sample) -> tuple[dict[str, Any], list[str], dict[str, str]]:
+    """Flatten a PLAID Sample's CGNS trees into Hugging Face–compatible arrays and metadata.
+
+    The function traverses every CGNS tree stored in sample.features.data (keyed by time),
+    produces a flattened mapping path -> primitive value for each time, and then builds
+    compact numpy arrays suitable for storage in a Hugging Face Dataset. Repeated value
+    blocks that are identical across times are deduplicated and referenced by start/end
+    indices; companion "<path>_times" arrays describe, per time, the slice indices into
+    the concatenated arrays.
+
+    Args:
+        sample (Sample): A PLAID Sample whose features contain one or more CGNS trees
+            (sample.features.data maps time -> CGNSTree).
+
+    Returns:
+        tuple:
+            - hf_sample (dict[str, Any]): Mapping of flattened CGNS paths to either a
+              numpy array (concatenation of per-time blocks) or None. For each path
+              there is also an entry "<path>_times" containing a flattened numpy array
+              of triplets [time, start, end] (end == -1 indicates the block extends to
+              the end of the array).
+            - all_paths (list[str]): Sorted list of all considered variable feature paths
+              (excluding Time-related nodes and CGNSLibraryVersion).
+            - sample_cgns_types (dict[str, str]): Mapping from path to CGNS node type
+              (metadata produced by flatten_cgns_tree).
+
+    Notes:
+        - Byte-array encoded strings (dtype "|S1") are handled by reassembling and
+          storing the string as a single-element numpy array; a sha256 hash is used
+          for deduplication.
+        - Deduplication reduces storage when identical blocks recur across times.
+        - Paths containing "/Time" or "CGNSLibraryVersion" are ignored for variable features.
+    """
     sample_flat_trees = {}
     sample_cgns_types = {}
     all_paths = set()
