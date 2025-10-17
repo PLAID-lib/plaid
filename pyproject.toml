@@ -85,7 +85,6 @@ dev = [
     "myst-parser",
     "furo",
     "jupytext",
-    "astroid<4",
 ]
 
 [tool.coverage.run]
