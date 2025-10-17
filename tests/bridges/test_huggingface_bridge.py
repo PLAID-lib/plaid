@@ -34,6 +34,7 @@ def dataset(samples, infos) -> Dataset:
         if i == 1:
             sample.add_scalar("toto", 1.0)
         samples_.append(sample)
+        samples_.append(sample)
     dataset = Dataset(samples=samples_)
     dataset.set_infos(infos)
     return dataset
@@ -44,7 +45,7 @@ def problem_definition() -> ProblemDefinition:
     problem_definition = ProblemDefinition()
     problem_definition.set_task("regression")
     problem_definition.add_input_scalars_names(["feature_name_1", "feature_name_2"])
-    problem_definition.set_split({"train": [0], "test": [1]})
+    problem_definition.set_split({"train": [0, 2], "test": [1, 3]})
     return problem_definition
 
 
@@ -119,52 +120,34 @@ class Test_Huggingface_Bridge:
     #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
     # ------------------------------------------------------------------------------
 
-    def test_to_cgns_tree_columnar(self, dataset, problem_definition):
-        main_splits = problem_definition.get_split()
-        hf_dataset_dict, flat_cst, key_mappings = (
-            huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
-                dataset, main_splits
-            )
-        )
-        huggingface_bridge.to_cgns_tree_columnar(
-            hf_dataset_dict["train"], 0, flat_cst, key_mappings["cgns_types"]
-        )
-        huggingface_bridge.to_cgns_tree_columnar(
-            hf_dataset_dict["train"],
-            0,
-            flat_cst,
-            key_mappings["cgns_types"],
-            enforce_shapes=True,
-        )
-
     def test_with_datasetdict(self, dataset, problem_definition):
         main_splits = problem_definition.get_split()
+
+        print(dataset)
+
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
                 dataset, main_splits
             )
         )
-        huggingface_bridge.to_plaid_sample_columnar(
-            hf_dataset_dict["train"], 0, flat_cst, key_mappings["cgns_types"]
-        )
-        huggingface_bridge.to_plaid_sample_columnar(
-            hf_dataset_dict["test"],
-            0,
-            flat_cst,
-            key_mappings["cgns_types"],
-            enforce_shapes=True,
-        )
-        huggingface_bridge.to_plaid_dataset(
-            hf_dataset_dict["train"], flat_cst, key_mappings["cgns_types"]
-        )
-        huggingface_bridge.to_plaid_dataset(
-            hf_dataset_dict["test"],
-            flat_cst=flat_cst,
-            cgns_types=key_mappings["cgns_types"],
-            enforce_shapes=True,
+        huggingface_bridge.to_plaid_sample(
+            hf_dataset_dict["train"], 0, flat_cst["train"], key_mappings["cgns_types"]
         )
         huggingface_bridge.to_plaid_sample(
-            hf_dataset_dict["train"][0], flat_cst, key_mappings["cgns_types"]
+            hf_dataset_dict["test"],
+            0,
+            flat_cst["test"],
+            key_mappings["cgns_types"],
+            enforce_shapes=False,
+        )
+        huggingface_bridge.to_plaid_dataset(
+            hf_dataset_dict["train"], flat_cst["train"], key_mappings["cgns_types"]
+        )
+        huggingface_bridge.to_plaid_dataset(
+            hf_dataset_dict["test"],
+            flat_cst=flat_cst["test"],
+            cgns_types=key_mappings["cgns_types"],
+            enforce_shapes=False,
         )
         cgns_helper.compare_cgns_trees(dataset[0].get_mesh(), dataset[0].get_mesh())
         cgns_helper.compare_cgns_trees_no_types(
@@ -177,13 +160,13 @@ class Test_Huggingface_Bridge:
                 generator_split
             )
         )
-        huggingface_bridge.to_plaid_sample_columnar(
-            hf_dataset_dict["train"], 0, flat_cst, key_mappings["cgns_types"]
+        huggingface_bridge.to_plaid_sample(
+            hf_dataset_dict["train"], 0, flat_cst["train"], key_mappings["cgns_types"]
         )
-        huggingface_bridge.to_plaid_sample_columnar(
+        huggingface_bridge.to_plaid_sample(
             hf_dataset_dict["test"],
             0,
-            flat_cst,
+            flat_cst["test"],
             key_mappings["cgns_types"],
             enforce_shapes=True,
         )
@@ -216,7 +199,7 @@ class Test_Huggingface_Bridge:
         shutil.rmtree(test_dir)
 
     # ------------------------------------------------------------------------------
-    #     DEPRECATED HUGGING FACE BRIDGE (binary blobs)
+    #     HUGGING FACE BINARY BRIDGE
     # ------------------------------------------------------------------------------
 
     def test_save_load_to_disk_binary(
@@ -332,6 +315,7 @@ class Test_Huggingface_Bridge:
         hf_description.update(infos)
         huggingface_bridge.huggingface_description_to_infos(hf_description)
 
+    # ---- Deprecated ----
     def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
         huggingface_bridge.create_string_for_huggingface_dataset_card(
             description=hf_dataset.description,

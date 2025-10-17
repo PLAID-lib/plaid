@@ -25,13 +25,14 @@
 # 3. Converting a Hugging Face dataset to plaid
 # 4. Saving and Loading Hugging Face datasets
 # 5. Handling plaid samples from Hugging Face datasets without converting the complete dataset to plaid
+# 6. Advanced concepts (read speed, memory usage, streaming)
 #
 #
 # **Each section is documented and explained.**
 
 # %%
 # Import necessary libraries and functions
-import pickle
+import os, psutil
 import tempfile
 import shutil
 from time import time
@@ -43,8 +44,6 @@ from Muscat.MeshTools import MeshCreationTools as MCT
 from plaid.bridges import huggingface_bridge
 from plaid import Dataset, Sample, ProblemDefinition
 from plaid.types import FeatureIdentifier
-from plaid.utils.base import get_mem
-
 
 # %%
 # Print Sample util
@@ -53,6 +52,12 @@ def show_sample(sample: Sample):
     sample.show_tree()
     print(f"{sample.get_scalar_names() = }")
     print(f"{sample.get_field_names() = }")
+
+# Get_mem util
+def get_mem():
+    """Get the current memory usage of the process in MB."""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024**2)  # in MB
 
 
 # %% [markdown]
@@ -183,7 +188,7 @@ print(f"{key_mappings = }")
 # %%
 cgns_types = key_mappings["cgns_types"]
 
-dataset_2 = huggingface_bridge.to_plaid_dataset(hf_datasetdict['train'], flat_cst, cgns_types)
+dataset_2 = huggingface_bridge.to_plaid_dataset(hf_datasetdict['train'], flat_cst['train'], cgns_types)
 print()
 print(f"{dataset_2 = }")
 
@@ -269,9 +274,9 @@ print(f"{loaded_pb_def = }")
 # Then, the following python instruction enable pushing datasetdict, infos and problem_definitions to the hub:
 # ```python
 # huggingface_bridge.push_dataset_dict_to_hub("chanel/dataset", hf_dataset_dict)
-# huggingface_bridge.push_dataset_infos_to_hub("chanel/dataset", infos)
+# huggingface_bridge.push_infos_to_hub("chanel/dataset", infos)
 # huggingface_bridge.push_tree_struct_to_hub("chanel/dataset", flat_cst, key_mappings)
-# huggingface_bridge.push_problem_definition_to_hub("chanel/dataset", pb_def, "location")
+# huggingface_bridge.push_problem_definition_to_hub("chanel/dataset", "location", pb_def)
 # ```
 #
 # The dataset card can then be customized online, on the dataset repo page directly.
@@ -294,8 +299,14 @@ print(f"{hf_sample = }")
 # We notice that ``hf_sample`` is not a plaid sample, but a dict containing the variable features of the datasets, with keys being the flattened path of the CGNS tree. contains a binary object efficiently handled by huggingface datasets. It can be converted into a plaid sample using a specific constructor relying on a pydantic validator, and the required `flat_cst` and `cgns_types`.
 
 # %%
-plaid_sample = huggingface_bridge.to_plaid_sample(hf_sample, flat_cst, cgns_types)
+plaid_sample = huggingface_bridge.to_plaid_sample(hf_datasetdict['train'], 0, flat_cst['train'], cgns_types)
 
+print("Variable features:")
+for t in plaid_sample.get_all_mesh_times():
+    for path in key_mappings["variable_features"]:
+        print(path, plaid_sample.get_feature_by_path(path=path, time=t))
+print("-------")
+print("Sample and CGNS tree:")
 show_sample(plaid_sample)
 
 
@@ -373,4 +384,11 @@ show_sample(plaid_sample)
 # ```
 # ```bash
 # >> Time to read 1D fields of variable size on the complete split train_500: 0.0021801 s, RAM usage increase: 0.375 MB
+# ```
+
+# %% [markdown]
+# A robust way to retrieve variable features from the pyarrow table is:
+# ```python
+# for path in key_mappings["variable_features"]:
+#     feature = hf_dataset_new["train"].data[path][i].values.to_numpy(zero_copy_only=False)
 # ```

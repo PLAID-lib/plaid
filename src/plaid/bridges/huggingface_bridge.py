@@ -6,6 +6,7 @@
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
+import hashlib
 import io
 import json
 import os
@@ -40,8 +41,10 @@ from pydantic import ValidationError
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
 from plaid.types import IndexType
-from plaid.types.cgns_types import CGNSTree
-from plaid.utils.cgns_helper import flatten_cgns_tree, unflatten_cgns_tree
+from plaid.utils.cgns_helper import (
+    flatten_cgns_tree,
+    unflatten_cgns_tree,
+)
 from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
@@ -50,198 +53,6 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
 # ------------------------------------------------------------------------------
-
-
-def to_cgns_tree_columnar(
-    ds: datasets.Dataset,
-    i: int,
-    flat_cst: dict[str, Any],
-    cgns_types: dict[str, str],
-    enforce_shapes: bool = False,
-) -> CGNSTree:
-    """Convert a Hugging Face dataset row to a PLAID Sample object.
-
-    This function extracts a single row from a Hugging Face dataset and converts it
-    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
-    are added from the flat_cst dictionary.
-
-    Args:
-        ds (datasets.Dataset): The Hugging Face dataset containing the sample data.
-        i (int): The index of the row to convert.
-        flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
-        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
-        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
-            Defaults to False.
-
-    Returns:
-        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
-
-    Notes:
-        - The function uses the dataset's pyarrow table data for efficient access
-        - When enforce_shapes is False, it uses zero_copy_only=False for numpy conversion
-        - When enforce_shapes is True, it handles ListArray types specially by stacking them
-        - Constant features from flat_cst are merged with the variable features from the row
-    """
-    table = ds.data
-
-    row = {}
-    if not enforce_shapes:
-        for name in table.column_names:
-            value = table[name][i].values
-            if value is None:
-                row[name] = None
-            else:
-                row[name] = value.to_numpy(zero_copy_only=False)
-    else:
-        for name in table.column_names:
-            value = table[name][i].values
-            if value is None:
-                row[name] = None
-            else:
-                if isinstance(value, pa.ListArray):
-                    row[name] = np.stack(value.to_numpy(zero_copy_only=False))
-                else:
-                    row[name] = value.to_numpy(zero_copy_only=True)
-
-    row.update(flat_cst)
-    return unflatten_cgns_tree(row, cgns_types)
-
-
-def to_cgns_tree(
-    hf_sample: dict[str, Features], flat_cst: dict[str, Any], cgns_types: dict[str, str]
-) -> CGNSTree:
-    """Convert a Hugging Face dataset row to a PLAID Sample object.
-
-    This function extracts a single row from a Hugging Face dataset and converts it
-    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
-    are added from the flat_cst dictionary.
-
-    Args:
-        hf_sample (dict[str, Features]): row of a Hugging Face dataset
-        flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
-        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
-        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
-            Defaults to False.
-
-    Returns:
-        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
-
-    Notes:
-        - The function uses the dataset's pyarrow table data for efficient access
-        - When enforce_shapes is False, it uses zero_copy_only=False for numpy conversion
-        - When enforce_shapes is True, it handles ListArray types specially by stacking them
-        - Constant features from flat_cst are merged with the variable features from the row
-    """
-    row = {name: np.array(value) for name, value in hf_sample.items()}
-    row.update(flat_cst)
-    return unflatten_cgns_tree(row, cgns_types)
-
-
-def to_plaid_sample_columnar(
-    ds: datasets.Dataset,
-    i: int,
-    flat_cst: dict[str, Any],
-    cgns_types: dict[str, str],
-    enforce_shapes: bool = False,
-) -> Sample:
-    """Convert a Hugging Face dataset row to a PLAID Sample object.
-
-    This function extracts a single row from a Hugging Face dataset and converts it
-    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
-    are added from the flat_cst dictionary.
-
-    Args:
-        ds (datasets.Dataset): The Hugging Face dataset containing the sample data.
-        i (int): The index of the row to convert.
-        flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
-        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
-        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion.
-            Defaults to False.
-
-    Returns:
-        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
-
-    Notes:
-        - The function uses the dataset's pyarrow table data for efficient access
-        - When enforce_shapes is False, it uses zero_copy_only=False for numpy conversion
-        - When enforce_shapes is True, it handles ListArray types specially by stacking them
-        - Constant features from flat_cst are merged with the variable features from the row
-    """
-    cgns_tree = to_cgns_tree_columnar(ds, i, flat_cst, cgns_types, enforce_shapes)
-
-    sample = Sample(path=None, features=SampleFeatures({0.0: cgns_tree}))
-    return Sample.model_validate(sample)
-
-
-def to_plaid_sample(
-    hf_sample: dict[str, Features],
-    flat_cst: dict[str, Any],
-    cgns_types: dict[str, str],
-) -> Sample:
-    """Convert a Hugging Face dataset row to a PLAID Sample object.
-
-    This function extracts a single row from a Hugging Face dataset and converts it
-    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
-    are added from the flat_cst dictionary.
-
-    Args:
-        hf_sample (dict[str, Features]): row of a Hugging Face dataset
-        flat_cst (dict[str, any]): Dictionary of constant features to add to each sample.
-        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
-
-    Returns:
-        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
-
-    Notes:
-        - The function uses the dataset's pyarrow table data for efficient access
-        - When enforce_shapes is False, it uses zero_copy_only=False for numpy conversion
-        - When enforce_shapes is True, it handles ListArray types specially by stacking them
-        - Constant features from flat_cst are merged with the variable features from the row
-    """
-    cgns_tree = to_cgns_tree(hf_sample, flat_cst, cgns_types)
-
-    sample = Sample(path=None, features=SampleFeatures({0.0: cgns_tree}))
-    return Sample.model_validate(sample)
-
-
-def to_plaid_dataset(
-    hf_dataset: datasets.Dataset,
-    flat_cst: dict[str, Any],
-    cgns_types: dict[str, str],
-    enforce_shapes: bool = True,
-) -> Dataset:
-    """Convert a Hugging Face dataset into a PLAID dataset.
-
-    Iterates over all samples in a Hugging Face `Dataset` and converts each one
-    into a PLAID-compatible sample using `to_plaid_sample_columnar`. The resulting
-    samples are then collected into a single PLAID `Dataset`.
-
-    Args:
-        hf_dataset (datasets.Dataset):
-            The Hugging Face dataset split to convert.
-        flat_cst:
-            Flattened representation of the CGNS tree structure constants,
-            used to map data fields.
-        cgns_types:
-            Mapping of CGNS paths to their expected types.
-        enforce_shapes (bool, optional):
-            If True, ensures all arrays strictly follow the reference shapes.
-            Defaults to False.
-
-    Returns:
-        Dataset:
-            A PLAID `Dataset` object containing the converted samples.
-
-    """
-    sample_list = []
-    for i in range(len(hf_dataset)):
-        sample_list.append(
-            to_plaid_sample_columnar(
-                hf_dataset, i, flat_cst, cgns_types, enforce_shapes
-            )
-        )
-
-    return Dataset(samples=sample_list)
 
 
 def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
@@ -273,7 +84,7 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
         - All int64 values are preserved as "int64" to satisfy CGNS standards
     """
     if value is None:
-        return Value("null")
+        return Value("null")  # pragma: no cover
 
     # Scalars
     if np.isscalar(value):
@@ -288,8 +99,10 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
             dtype, np.int64
         ):  # very important to satisfy the CGNS standard
             return Value("int64")
-        else:
+        elif np.issubdtype(dtype, np.dtype("|S1")):  # pragma: no cover
             return Value("string")
+        else:
+            raise ValueError("Type not recognize")  # pragma: no cover
 
     # Arrays / lists
     elif isinstance(value, (list, tuple, np.ndarray)):
@@ -304,6 +117,431 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
         else:
             raise TypeError(f"Unsupported ndim: {arr.ndim}")  # pragma: no cover
     raise TypeError(f"Unsupported type: {type(value)}")  # pragma: no cover
+
+
+def build_hf_sample(sample: Sample) -> tuple[dict[str, Any], list[str], dict[str, str]]:
+    """Flatten a PLAID Sample's CGNS trees into Hugging Face–compatible arrays and metadata.
+
+    The function traverses every CGNS tree stored in sample.features.data (keyed by time),
+    produces a flattened mapping path -> primitive value for each time, and then builds
+    compact numpy arrays suitable for storage in a Hugging Face Dataset. Repeated value
+    blocks that are identical across times are deduplicated and referenced by start/end
+    indices; companion "<path>_times" arrays describe, per time, the slice indices into
+    the concatenated arrays.
+
+    Args:
+        sample (Sample): A PLAID Sample whose features contain one or more CGNS trees
+            (sample.features.data maps time -> CGNSTree).
+
+    Returns:
+        tuple:
+            - hf_sample (dict[str, Any]): Mapping of flattened CGNS paths to either a
+              numpy array (concatenation of per-time blocks) or None. For each path
+              there is also an entry "<path>_times" containing a flattened numpy array
+              of triplets [time, start, end] (end == -1 indicates the block extends to
+              the end of the array).
+            - all_paths (list[str]): Sorted list of all considered variable feature paths
+              (excluding Time-related nodes and CGNSLibraryVersion).
+            - sample_cgns_types (dict[str, str]): Mapping from path to CGNS node type
+              (metadata produced by flatten_cgns_tree).
+
+    Notes:
+        - Byte-array encoded strings (dtype "|S1") are handled by reassembling and
+          storing the string as a single-element numpy array; a sha256 hash is used
+          for deduplication.
+        - Deduplication reduces storage when identical blocks recur across times.
+        - Paths containing "/Time" or "CGNSLibraryVersion" are ignored for variable features.
+    """
+    sample_flat_trees = {}
+    sample_cgns_types = {}
+    all_paths = set()
+
+    # --- Flatten CGNS trees ---
+    for time, tree in sample.features.data.items():
+        flat, cgns_types = flatten_cgns_tree(tree)
+        sample_flat_trees[time] = flat
+
+        all_paths.update(
+            k for k in flat.keys() if "/Time" not in k and "CGNSLibraryVersion" not in k
+        )
+
+        sample_cgns_types.update(cgns_types)
+
+    hf_sample = {}
+
+    for path in all_paths:
+        hf_sample[path] = None
+        hf_sample[path + "_times"] = None
+
+        known_values = {}
+        values_acc, times_acc = [], []
+        current_length = 0
+
+        for time, flat in sample_flat_trees.items():
+            if path not in flat:
+                continue  # pragma: no cover
+            value = flat[path]
+
+            # Handle byte-array encoded strings
+            if (
+                isinstance(value, np.ndarray)
+                and value.dtype == np.dtype("|S1")
+                and value.ndim == 1
+            ):
+                value_str = b"".join(value).decode("ascii")
+                value_np = np.array([value_str])
+                key = hashlib.sha256(value_str.encode("ascii")).hexdigest()
+                size = 1
+            elif value is not None:
+                value_np = value
+                key = hashlib.sha256(value.tobytes()).hexdigest()
+                size = (
+                    value.shape[-1]
+                    if isinstance(value, np.ndarray) and value.ndim >= 1
+                    else 1
+                )
+            else:
+                continue
+
+            # Deduplicate identical arrays
+            if key in known_values:
+                start, end = known_values[key]  # pragma: no cover
+            else:
+                start, end = current_length, current_length + size
+                known_values[key] = (start, end)
+                values_acc.append(value_np)
+                current_length = end
+
+            times_acc.append([time, start, end])
+
+        # Build arrays
+        if values_acc:
+            try:
+                hf_sample[path] = np.hstack(values_acc)
+            except Exception:  # pragma: no cover
+                hf_sample[path] = np.concatenate([np.atleast_1d(x) for x in values_acc])
+
+            if len(known_values) == 1:
+                for t in times_acc:
+                    t[-1] = -1
+            hf_sample[path + "_times"] = np.array(times_acc).flatten()
+        else:
+            hf_sample[path] = None
+            hf_sample[path + "_times"] = None
+
+    # Convert lists to numpy arrays
+    for k, v in hf_sample.items():
+        if isinstance(v, list):
+            hf_sample[k] = np.array(v)  # pragma: no cover
+
+    return hf_sample, all_paths, sample_cgns_types
+
+
+def _generator_prepare_for_huggingface(
+    generators: dict[str, Callable],
+    verbose: bool = True,
+) -> tuple[dict[str, dict[str, Any]], dict[str, Any], Features]:
+    """Inspect PLAID dataset generators and infer Hugging Face feature schema.
+
+    Iterates over all samples in all provided split generators to:
+      1. Flatten each CGNS tree into a dictionary of paths → values.
+      2. Infer Hugging Face `Features` types for all variable leaves.
+      3. Detect constant leaves (values that never change across all samples).
+      4. Collect global CGNS type metadata.
+
+    Args:
+        generators (dict[str, Callable]):
+            Mapping from split names to callables returning sample generators.
+            Each sample must have `sample.features.data[0.0]` compatible with `flatten_cgns_tree`.
+        verbose (bool, optional): If True, displays progress bars while processing splits.
+
+    Returns:
+        tuple:
+            - flat_cst (dict[str, Any]): Mapping from feature path to constant values detected across all splits.
+            - key_mappings (dict[str, Any]): Metadata dictionary with:
+                - "variable_features" (list[str]): paths of non-constant features.
+                - "constant_features" (list[str]): paths of constant features.
+                - "cgns_types" (dict[str, Any]): CGNS type information for all paths.
+            - hf_features (datasets.Features): Hugging Face feature specification for variable features.
+
+    Raises:
+        ValueError: If inconsistent CGNS types or feature types are found for the same path.
+    """
+
+    def values_equal(v1, v2):
+        if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
+            return np.array_equal(v1, v2)
+        return v1 == v2
+
+    global_cgns_types = {}
+    global_feature_types = {}
+
+    split_flat_cst = {}
+    split_var_path = {}
+    split_all_paths = {}
+
+    # ---- Single pass over all splits and samples ----
+    for split_name, generator in generators.items():
+        split_constant_leaves = {}
+
+        split_all_paths[split_name] = set()
+
+        for sample in tqdm(
+            generator(), disable=not verbose, desc=f"Process split {split_name}"
+        ):
+            # --- Build Hugging Face–compatible sample ---
+            hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
+
+            split_all_paths[split_name].update(hf_sample.keys())
+            # split_all_paths[split_name].update(all_paths)
+            global_cgns_types.update(sample_cgns_types)
+
+            # --- Infer global HF feature types ---
+            for path in all_paths:
+                value = hf_sample[path]
+                if value is None:
+                    continue
+
+                if isinstance(value, np.ndarray) and value.dtype.type is np.str_:
+                    inferred = Value("string")
+                else:
+                    inferred = infer_hf_features_from_value(value)
+
+                if path not in global_feature_types:
+                    global_feature_types[path] = inferred
+                elif repr(global_feature_types[path]) != repr(inferred):
+                    raise ValueError(  # pragma: no cover
+                        f"Feature type mismatch for {path} in split {split_name}"
+                    )
+
+            # --- Update per-split constant detection ---
+            for path, value in hf_sample.items():
+                if path not in split_constant_leaves:
+                    split_constant_leaves[path] = {
+                        "value": value,
+                        "constant": True,
+                        "count": 1,
+                    }
+                else:
+                    entry = split_constant_leaves[path]
+                    entry["count"] += 1
+                    if entry["constant"] and not values_equal(entry["value"], value):
+                        entry["constant"] = False
+
+        # --- Record per-split constants ---
+        split_flat_cst[split_name] = dict(
+            sorted(
+                (
+                    (p, e["value"])
+                    for p, e in split_constant_leaves.items()
+                    if e["constant"]
+                ),
+                key=lambda x: x[0],
+            )
+        )
+
+        split_var_path[split_name] = {
+            p
+            for p in split_all_paths[split_name]
+            if p not in split_flat_cst[split_name]
+        }
+
+    global_feature_types = {
+        p: global_feature_types[p] for p in sorted(global_feature_types)
+    }
+    var_features = sorted(list(set().union(*split_var_path.values())))
+
+    if len(var_features) == 0:
+        raise ValueError(  # pragma: no cover
+            "no variable feature found, is your dataset variable through samples?"
+        )
+
+    # ---------------------------------------------------
+    # for test-like splits, some var_features are all None (e.g.: outputs): need to add '_times' counterparts to corresponding constant trees
+    for split_name in split_flat_cst.keys():
+        for path in var_features:
+            if not path.endswith("_times") and path not in split_all_paths[split_name]:
+                split_flat_cst[split_name][path + "_times"] = None  # pragma: no cover
+            if (
+                path in split_flat_cst[split_name]
+            ):  # remove for flat_cst the path that will be forcely included in the arrow tables
+                split_flat_cst[split_name].pop(path)  # pragma: no cover
+
+    # ---- Constant features sanity check
+    cst_features = {
+        split_name: sorted(list(cst.keys()))
+        for split_name, cst in split_flat_cst.items()
+    }
+
+    first_split, first_value = next(iter(cst_features.items()), (None, None))
+    for split, value in cst_features.items():
+        assert value == first_value, (
+            f"cst_features differ for split '{split}' (vs '{first_split}'): something went wrong in _generator_prepare_for_huggingface."
+        )
+
+    cst_features = first_value
+
+    # ---- Build global HF Features (only variable) ----
+    hf_features_map = {}
+    for k in var_features:
+        if k.endswith("_times"):
+            hf_features_map[k] = Sequence(Value("float64"))  # pragma: no cover
+        else:
+            hf_features_map[k] = global_feature_types[k]
+
+    hf_features = Features(hf_features_map)
+
+    key_mappings = {
+        "variable_features": var_features,
+        "constant_features": cst_features,
+        "cgns_types": global_cgns_types,
+    }
+
+    return split_flat_cst, key_mappings, hf_features
+
+
+def to_plaid_dataset(
+    hf_dataset: datasets.Dataset,
+    flat_cst: dict[str, Any],
+    cgns_types: dict[str, str],
+    enforce_shapes: bool = True,
+) -> Dataset:
+    """Convert a Hugging Face dataset into a PLAID dataset.
+
+    Iterates over all samples in a Hugging Face `Dataset` and converts each one
+    into a PLAID-compatible sample using `to_plaid_sample`. The resulting
+    samples are then collected into a single PLAID `Dataset`.
+
+    Args:
+        hf_dataset (datasets.Dataset): The Hugging Face dataset split to convert.
+        flat_cst (dict[str, Any]): Flattened representation of the CGNS tree structure constants.
+        cgns_types (dict[str, str]): Mapping of CGNS paths to their expected types.
+        enforce_shapes (bool, optional): If True, ensures all arrays strictly follow the reference shapes. Defaults to True.
+
+    Returns:
+        Dataset: A PLAID `Dataset` object containing the converted samples.
+    """
+    sample_list = []
+    for i in range(len(hf_dataset)):
+        sample_list.append(
+            to_plaid_sample(hf_dataset, i, flat_cst, cgns_types, enforce_shapes)
+        )
+
+    return Dataset(samples=sample_list)
+
+
+def to_plaid_sample(
+    ds: datasets.Dataset,
+    i: int,
+    flat_cst: dict[str, Any],
+    cgns_types: dict[str, str],
+    enforce_shapes: bool = True,
+) -> Sample:
+    """Convert a Hugging Face dataset row to a PLAID Sample object.
+
+    Extracts a single row from a Hugging Face dataset and converts it
+    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
+    from flat_cst are merged with the variable features from the row.
+
+    Args:
+        ds (datasets.Dataset): The Hugging Face dataset containing the sample data.
+        i (int): The index of the row to convert.
+        flat_cst (dict[str, Any]): Dictionary of constant features to add to each sample.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
+        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion. Defaults to True.
+
+    Returns:
+        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
+
+    Notes:
+        - Uses the dataset's pyarrow table data for efficient access.
+        - Handles array shapes and types according to enforce_shapes.
+        - Constant features from flat_cst are merged with the variable features from the row.
+    """
+    assert not isinstance(flat_cst[next(iter(flat_cst))], dict), (
+        "did you provide the complete `flat_cst` instead of the one for the considered split?"
+    )
+
+    table = ds.data
+    row = {}
+    if not enforce_shapes:
+        for name in table.column_names:
+            value = table[name][i].values
+            if value is None:
+                row[name] = None  # pragma: no cover
+            else:
+                row[name] = value.to_numpy(zero_copy_only=False)
+    else:
+        for name in table.column_names:
+            if isinstance(table[name][i], pa.NullScalar):
+                row[name] = None  # pragma: no cover
+            else:
+                value = table[name][i].values
+                if value is None:
+                    row[name] = None  # pragma: no cover
+                else:
+                    if isinstance(value, pa.ListArray):
+                        row[name] = np.stack(value.to_numpy(zero_copy_only=False))
+                    else:
+                        row[name] = value.to_numpy(zero_copy_only=True)
+
+    flat_cst_val = {k: v for k, v in flat_cst.items() if not k.endswith("_times")}
+    flat_cst_times = {k[:-6]: v for k, v in flat_cst.items() if k.endswith("_times")}
+
+    row_val = {k: v for k, v in row.items() if not k.endswith("_times")}
+    row_tim = {k[:-6]: v for k, v in row.items() if k.endswith("_times")}
+
+    row_val.update(flat_cst_val)
+    row_tim.update(flat_cst_times)
+
+    row_val = {p: row_val[p] for p in sorted(row_val)}
+    row_tim = {p: row_tim[p] for p in sorted(row_tim)}
+
+    sample_flat_trees = {}
+    paths_none = {}
+    for (path_t, times_struc), (path_v, val) in zip(row_tim.items(), row_val.items()):
+        assert path_t == path_v
+        if val is None:
+            assert times_struc is None
+            if path_v not in paths_none and cgns_types[path_v] not in [
+                "DataArray_t",
+                "IndexArray_t",
+            ]:
+                paths_none[path_v] = None
+        else:
+            times_struc = times_struc.reshape((-1, 3))
+            for i, time in enumerate(times_struc[:, 0]):
+                start = int(times_struc[i, 1])
+                end = int(times_struc[i, 2])
+                if end == -1:
+                    end = None
+                if val.ndim > 1:
+                    values = val[:, start:end]
+                else:
+                    values = val[start:end]
+                    if isinstance(values[0], str):
+                        values = np.frombuffer(
+                            values[0].encode("ascii", "strict"), dtype="|S1"
+                        )
+                if time in sample_flat_trees:
+                    sample_flat_trees[time][path_v] = values
+                else:
+                    sample_flat_trees[time] = {path_v: values}
+
+    for time, tree in sample_flat_trees.items():
+        bases = list(set([k.split("/")[0] for k in tree.keys()]))
+        for base in bases:
+            tree[f"{base}/Time"] = np.array([1], dtype=np.int32)
+            tree[f"{base}/Time/IterationValues"] = np.array([1], dtype=np.int32)
+            tree[f"{base}/Time/TimeValues"] = np.array([time], dtype=np.float64)
+        tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
+
+    sample_data = {}
+    for time, flat_tree in sample_flat_trees.items():
+        flat_tree.update(paths_none)
+        sample_data[time] = unflatten_cgns_tree(flat_tree, cgns_types)
+
+    return Sample(path=None, features=SampleFeatures(sample_data))
 
 
 def plaid_dataset_to_huggingface_datasetdict(
@@ -367,143 +605,6 @@ def plaid_dataset_to_huggingface_datasetdict(
     return plaid_generator_to_huggingface_datasetdict(
         generators, processes_number, writer_batch_size, verbose
     )
-
-
-def _generator_prepare_for_huggingface(
-    generators: dict[str, Callable],
-    verbose: bool = True,
-) -> tuple[dict[str, Any], dict[str, Any], Features]:
-    """Inspect PLAID dataset generators and infer Hugging Face feature schema.
-
-    This function scans all provided split generators to:
-      1. Flatten each CGNS tree into a dictionary of paths → values.
-      2. Infer Hugging Face `Features` types for all variable leaves.
-      3. Detect constant leaves (values that never change across all samples).
-      4. Collect global CGNS type metadata.
-
-    Args:
-        generators (dict[str, Callable]):
-            A dictionary mapping split names to callables returning sample generators.
-            Each sample is expected to have the structure `sample.features.data[0.0]`
-            compatible with `flatten_cgns_tree`.
-        verbose (bool, optional, default=True):
-            If True, displays progress bars while processing splits.
-
-    Returns:
-        tuple:
-            - **flat_cst (dict[str, Any])**:
-              Mapping from feature path to constant values detected across all splits.
-            - **key_mappings (dict[str, Any])**:
-              Metadata dictionary with:
-                - `"variable_features"` (list[str]): paths of non-constant features.
-                - `"constant_features"` (list[str]): paths of constant features.
-                - `"cgns_types"` (dict[str, Any]): CGNS type information for all paths.
-            - **hf_features (datasets.Features)**:
-              Hugging Face feature specification for variable features.
-
-    Raises:
-        ValueError:
-            If inconsistent CGNS types or feature types are found for the same path.
-
-    Example:
-        >>> flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
-        ...     {"train": lambda: iter(train_samples),
-        ...      "test": lambda: iter(test_samples)}
-        ... )
-        >>> print(key_mappings["variable_features"][:5])
-        ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
-        >>> print(flat_cst)
-        {'Zone1/GridCoordinates': array([0., 0.1, 0.2])}
-        >>> print(hf_features)
-        {'Zone1/FlowSolution/VelocityX': Value(dtype='float32', id=None), ...}
-    """
-
-    def values_equal(v1, v2):
-        if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
-            return np.array_equal(v1, v2)
-        return v1 == v2
-
-    global_cgns_types = {}
-    global_feature_types = {}
-    global_constant_leaves = {}
-    total_samples = 0
-
-    for split_name, generator in generators.items():
-        for sample in tqdm(
-            generator(),
-            disable=not verbose,
-            desc=f"Prepare for HF on split {split_name}",
-        ):
-            total_samples += 1
-            tree = sample.features.data[0.0]
-            flat, cgns_types = flatten_cgns_tree(tree)
-
-            for path, value in flat.items():
-                # --- CGNS types ---
-                if path not in global_cgns_types:
-                    global_cgns_types[path] = cgns_types[path]
-                elif global_cgns_types[path] != cgns_types[path]:  # pragma: no cover
-                    raise ValueError(
-                        f"Conflict for path '{path}': {global_cgns_types[path]} vs {cgns_types[path]}"
-                    )
-
-                # --- feature types ---
-                inferred_feature = infer_hf_features_from_value(value)
-                if path not in global_feature_types:
-                    global_feature_types[path] = inferred_feature
-                else:
-                    # sanity check: convert to dict before comparing
-                    if repr(global_feature_types[path]) != repr(
-                        inferred_feature
-                    ):  # pragma: no cover
-                        raise ValueError(
-                            f"Feature type mismatch for {path}: "
-                            f"{global_feature_types[path]} vs {inferred_feature}"
-                        )
-
-                if path not in global_constant_leaves:
-                    global_constant_leaves[path] = {
-                        "value": value,
-                        "constant": True,
-                        "count": 1,
-                    }
-                else:
-                    entry = global_constant_leaves[path]
-                    entry["count"] += 1
-                    if entry["constant"] and not values_equal(entry["value"], value):
-                        entry["constant"] = False
-
-    # After loop: only keep constants that appeared in all samples
-    for path, entry in global_constant_leaves.items():
-        if entry["count"] != total_samples:
-            entry["constant"] = False
-
-    # Sort dicts by keys
-    global_cgns_types = {p: global_cgns_types[p] for p in sorted(global_cgns_types)}
-    global_feature_types = {
-        p: global_feature_types[p] for p in sorted(global_feature_types)
-    }
-    global_constant_leaves = {
-        p: global_constant_leaves[p] for p in sorted(global_constant_leaves)
-    }
-
-    flat_cst = {
-        p: e["value"] for p, e in global_constant_leaves.items() if e["constant"]
-    }
-
-    cst_features = list(flat_cst.keys())
-    var_features = [k for k in global_cgns_types.keys() if k not in cst_features]
-
-    hf_features = Features(
-        {k: v for k, v in global_feature_types.items() if k in var_features}
-    )
-
-    key_mappings = {}
-    key_mappings["variable_features"] = var_features
-    key_mappings["constant_features"] = cst_features
-    key_mappings["cgns_types"] = global_cgns_types
-
-    return flat_cst, key_mappings, hf_features
 
 
 def plaid_generator_to_huggingface_datasetdict(
@@ -574,9 +675,8 @@ def plaid_generator_to_huggingface_datasetdict(
 
     def generator_fn(gen_func, all_features_keys):
         for sample in gen_func():
-            tree = sample.features.data[0.0]
-            flat, _ = flatten_cgns_tree(tree)
-            yield {path: flat.get(path, None) for path in all_features_keys}
+            hf_sample, _, _ = build_hf_sample(sample)
+            yield {path: hf_sample.get(path, None) for path in all_features_keys}
 
     _dict = {}
     for split_name, gen_func in generators.items():
@@ -599,7 +699,7 @@ def plaid_generator_to_huggingface_datasetdict(
 
 def instantiate_plaid_datasetdict_from_hub(
     repo_id: str,
-    enforce_shapes: bool = False,
+    enforce_shapes: bool = True,
 ) -> dict[str, Dataset]:  # pragma: no cover (not tested in unit tests)
     """Load a Hugging Face dataset from the Hub and instantiate it as a dictionary of PLAID datasets.
 
@@ -612,7 +712,7 @@ def instantiate_plaid_datasetdict_from_hub(
             The Hugging Face repository identifier (e.g. `"user/dataset"`).
         enforce_shapes (bool, optional):
             If True, enforce strict array shapes when converting to PLAID
-            datasets. Defaults to False.
+            datasets. Defaults to True.
 
     Returns:
         dict[str, Dataset]:
@@ -1136,15 +1236,10 @@ def save_tree_struct_to_disk(
 
 
 # ------------------------------------------------------------------------------
-#     DEPRECATED  HUGGING FACE BRIDGE (binary blobs)
+#     HUGGING FACE BINARY BRIDGE
 # ------------------------------------------------------------------------------
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.10",
-    removal="1.0.0",
-)
 def binary_to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
     """Convert a Hugging Face dataset sample in binary format to a Plaid `Sample`.
 
@@ -1189,11 +1284,6 @@ def binary_to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
         return Sample.model_validate(sample)
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.10",
-    removal="1.0.0",
-)
 def plaid_dataset_to_huggingface_binary(
     dataset: Dataset,
     ids: Optional[list[IndexType]] = None,
@@ -1236,11 +1326,6 @@ def plaid_dataset_to_huggingface_binary(
     )
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.10",
-    removal="1.0.0",
-)
 def plaid_generator_to_huggingface_binary(
     generator: Callable,
     split_name: str = "all_samples",
@@ -1275,11 +1360,6 @@ def plaid_generator_to_huggingface_binary(
     return ds
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.10",
-    removal="1.0.0",
-)
 def plaid_dataset_to_huggingface_datasetdict_binary(
     dataset: Dataset,
     main_splits: dict[str, IndexType],
@@ -1316,11 +1396,6 @@ def plaid_dataset_to_huggingface_datasetdict_binary(
     return datasets.DatasetDict(_dict)
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.10",
-    removal="1.0.0",
-)
 def plaid_generator_to_huggingface_datasetdict_binary(
     generators: dict[str, Callable],
     processes_number: int = 1,
@@ -1360,11 +1435,6 @@ def plaid_generator_to_huggingface_datasetdict_binary(
     return datasets.DatasetDict(_dict)
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.10",
-    removal="1.0.0",
-)
 def huggingface_dataset_to_plaid(
     ds: datasets.Dataset,
     ids: Optional[list[int]] = None,
@@ -1483,11 +1553,6 @@ def huggingface_dataset_to_plaid(
     return dataset, problem_definition
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.10",
-    removal="1.0.0",
-)
 def huggingface_description_to_problem_definition(
     description: dict,
 ) -> ProblemDefinition:
@@ -1520,11 +1585,6 @@ def huggingface_description_to_problem_definition(
     return problem_definition
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.10",
-    removal="1.0.0",
-)
 def huggingface_description_to_infos(
     description: dict,
 ) -> dict[str, dict[str, str]]:

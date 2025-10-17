@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 import CGNS.MAP as CGM
+import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic import Field as PydanticField
@@ -261,6 +262,32 @@ class Sample(BaseModel):
             if feat_id["type"] == feature_type
         ]
 
+    def get_feature_by_path(self, path: str, time: Optional[int] = None) -> Feature:
+        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style path.
+
+        Args:
+            path (str): CGNS node path relative to the mesh root (for example
+                "BaseName/ZoneName/GridCoordinates/CoordinateX" or
+                "BaseName/ZoneName/Solution/FieldName").
+            time (Optional[int], optional): Time selection for the mesh. If an integer,
+                it is interpreted via the SampleFeatures time-assignment logic
+                (see SampleFeatures.get_time_assignment). If None, the default time
+                assignment is used. Defaults to None.
+
+        Returns:
+            Feature: The value stored at the given CGNS path. This may be a numpy
+                array, a scalar, or None if the node has no value.
+
+        Notes:
+            - This is a thin wrapper around CGNS.PAT.cgnsutils.getValueByPath and
+              Sample.get_mesh(time). Callers should handle a returned None when the
+              path or value does not exist.
+            - For field-like features, prefer using Sample.get_field which applies
+              additional validation and selection logic.
+        """
+        time = self.features.get_time_assignment(time)
+        return CGU.getValueByPath(self.get_mesh(time), path)
+
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
     ) -> Feature:
@@ -462,8 +489,6 @@ class Sample(BaseModel):
 
         if feature_type == "scalar":
             self.del_scalar(**feature_details)
-        elif feature_type == "time_series":
-            self.del_time_series(**feature_details)
         elif feature_type == "field":
             self.del_field(**feature_details)
         elif feature_type == "nodes":

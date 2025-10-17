@@ -1145,6 +1145,11 @@ class Test_Sample:
         sample_with_tree.del_all_fields()
 
     # -------------------------------------------------------------------------#
+    def test_get_feature_by_path(self, sample_with_tree_and_scalar):
+        sample_with_tree_and_scalar.get_feature_by_path(
+            "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity", 0.0
+        )
+
     def test_get_feature_from_string_identifier(self, sample_with_tree_and_scalar):
         sample_with_tree_and_scalar.get_feature_from_string_identifier(
             "scalar::test_scalar_1"
