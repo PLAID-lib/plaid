@@ -7,17 +7,26 @@
 #
 #
 
+import os
 from time import time
+
+import psutil
 
 from plaid import Dataset, Sample
 from plaid.bridges import huggingface_bridge
-from plaid.utils.base import get_mem
 from plaid.utils.cgns_helper import (
     compare_cgns_trees_no_types,
     flatten_cgns_tree,
     show_cgns_tree,
     unflatten_cgns_tree,
 )
+
+
+def get_mem():
+    """Get the current memory usage of the process in MB."""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024**2)  # in MB
+
 
 # choose repo to convert
 repo_id = "PLAID-datasets/Tensile2d"

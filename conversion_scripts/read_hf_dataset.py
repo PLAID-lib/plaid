@@ -7,18 +7,25 @@
 #
 #
 
+import os
 from time import time
 
+import psutil
 from tqdm import tqdm
 
 from plaid.bridges import huggingface_bridge
-from plaid.utils.base import get_mem
 
 repo_id = "fabiencasenave/Tensile2d"
 split_names = ["train_500", "test", "OOD"]
 
 repo_id = "fabiencasenave/2D_ElastoPlastoDynamics"
 split_names = ["train", "test"]
+
+
+def get_mem():
+    """Get the current memory usage of the process in MB."""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024**2)  # in MB
 
 
 # init_ram = get_mem()
@@ -30,7 +37,6 @@ split_names = ["train", "test"]
 # print(
 #     f"Time to build first sample of split {split_names[0]}: {elapsed:.6g} s, RAM usage increase: {get_mem() - init_ram} MB"
 # )
-
 
 hf_dataset_new = huggingface_bridge.load_dataset_from_hub(repo_id)
 flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_hub(repo_id)

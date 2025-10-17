@@ -19,6 +19,3 @@ class Test_base:
     def test_safe_len(self):
         assert base.safe_len([0, 1]) == 2
         assert base.safe_len(0) == 0
-
-    def test_get_mem(self):
-        base.get_mem()

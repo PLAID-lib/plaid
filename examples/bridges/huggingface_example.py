@@ -32,7 +32,7 @@
 
 # %%
 # Import necessary libraries and functions
-import pickle
+import os, psutil
 import tempfile
 import shutil
 from time import time
@@ -44,8 +44,6 @@ from Muscat.MeshTools import MeshCreationTools as MCT
 from plaid.bridges import huggingface_bridge
 from plaid import Dataset, Sample, ProblemDefinition
 from plaid.types import FeatureIdentifier
-from plaid.utils.base import get_mem
-
 
 # %%
 # Print Sample util
@@ -54,6 +52,12 @@ def show_sample(sample: Sample):
     sample.show_tree()
     print(f"{sample.get_scalar_names() = }")
     print(f"{sample.get_field_names() = }")
+
+# Get_mem util
+def get_mem():
+    """Get the current memory usage of the process in MB."""
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024**2)  # in MB
 
 
 # %% [markdown]
