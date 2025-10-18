@@ -7,12 +7,13 @@
 #
 #
 
+import copy
 import os
 from time import time
 
 import psutil
 
-from plaid import Dataset, Sample
+from plaid import Dataset, ProblemDefinition, Sample
 from plaid.bridges import huggingface_bridge
 from plaid.utils.cgns_helper import (
     compare_cgns_trees_no_types,
@@ -28,10 +29,85 @@ def get_mem():
     return process.memory_info().rss / (1024**2)  # in MB
 
 
-# choose repo to convert
+# ------------------------------------------
+# Choose repo to convert
+# ------------------------------------------
+
 repo_id = "PLAID-datasets/Tensile2d"
 split_names = ["train_500", "test", "OOD"]
+pb_def_names = [
+    "regression_8",
+    "regression_16",
+    "regression_32",
+    "regression_64",
+    "regression_125",
+    "regression_250",
+    "regression_500",
+]
+train_split_names = [
+    "train_8",
+    "train_16",
+    "train_32",
+    "train_64",
+    "train_125",
+    "train_250",
+    "train_500",
+]
+test_split_names = ["test"]
 repo_id_out = "fabiencasenave/Tensile2d"
+input_features = sorted(
+    [
+        "Base_2_2/Zone",
+        "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity",
+        "Base_2_2/Zone/Elements_TRI_3/ElementRange",
+        "Base_2_2/Zone/GridCoordinates/CoordinateX",
+        "Base_2_2/Zone/GridCoordinates/CoordinateY",
+        "Base_2_2/Zone/ZoneBC/Bottom/PointList",
+        "Base_2_2/Zone/ZoneBC/BottomLeft/PointList",
+        "Base_2_2/Zone/ZoneBC/Top/PointList",
+        "Global/P",
+        "Base_2_2",
+        "Base_2_2/Tensile2d",
+        "Base_2_2/Zone/CellData",
+        "Base_2_2/Zone/CellData/GridLocation",
+        "Base_2_2/Zone/Elements_TRI_3",
+        "Base_2_2/Zone/FamilyName",
+        "Base_2_2/Zone/GridCoordinates",
+        "Base_2_2/Zone/PointData",
+        "Base_2_2/Zone/PointData/GridLocation",
+        "Base_2_2/Zone/SurfaceData",
+        "Base_2_2/Zone/SurfaceData/GridLocation",
+        "Base_2_2/Zone/ZoneBC",
+        "Base_2_2/Zone/ZoneBC/Bottom",
+        "Base_2_2/Zone/ZoneBC/Bottom/GridLocation",
+        "Base_2_2/Zone/ZoneBC/BottomLeft",
+        "Base_2_2/Zone/ZoneBC/BottomLeft/GridLocation",
+        "Base_2_2/Zone/ZoneBC/Top",
+        "Base_2_2/Zone/ZoneBC/Top/GridLocation",
+        "Base_2_2/Zone/ZoneType",
+        "Global",
+    ]
+)
+output_features = sorted(
+    [
+        "Base_2_2/Zone/PointData/U1",
+        "Base_2_2/Zone/PointData/U2",
+        "Base_2_2/Zone/PointData/q",
+        "Base_2_2/Zone/PointData/sig11",
+        "Base_2_2/Zone/PointData/sig12",
+        "Base_2_2/Zone/PointData/sig22",
+        "Global/max_U2_top",
+        "Global/max_q",
+        "Global/max_sig22_top",
+        "Global/max_von_mises",
+        "Global/p1",
+        "Global/p2",
+        "Global/p3",
+        "Global/p4",
+        "Global/p5",
+    ]
+)
+
 
 # repo_id = "PLAID-datasets/VKI-LS59"
 # split_names = ["train", "test"]
@@ -57,10 +133,39 @@ repo_id_out = "fabiencasenave/Tensile2d"
 
 # load existing binary dataset
 hf_dataset = huggingface_bridge.load_dataset_from_hub(repo_id, split="all_samples")
-infos = huggingface_bridge.huggingface_description_to_infos(hf_dataset.description)
-pb_def = huggingface_bridge.huggingface_description_to_problem_definition(
+pb_def_ = huggingface_bridge.huggingface_description_to_problem_definition(
     hf_dataset.description
 )
+infos = huggingface_bridge.huggingface_description_to_infos(hf_dataset.description)
+
+pb_def = ProblemDefinition()
+pb_def.add_in_features_identifiers(input_features)
+pb_def.add_out_features_identifiers(output_features)
+# pb_def.set_split(pb_def_.get_split())
+pb_def.set_task(pb_def_.get_task())
+pb_def.set_score_function("RRMSE")
+
+n_samples = len(hf_dataset)
+
+
+all_pb_def = []
+for train_split_name in train_split_names:
+    pb_def_iter = copy.deepcopy(pb_def)
+
+    train_ids = [
+        pb_def_.get_split(split_names[0]).index(i)
+        for i in pb_def_.get_split(train_split_name)
+    ]
+
+    pb_def_iter.set_train_split({train_split_name: train_ids})
+    _test_split = {}
+    for sn in test_split_names:
+        test_ids = [
+            pb_def_.get_split(split_names[1]).index(i) for i in pb_def_.get_split(sn)
+        ]
+        _test_split[sn] = test_ids
+    pb_def_iter.set_test_split(_test_split)
+    all_pb_def.append(pb_def_iter)
 
 
 # modification for 2D_ElastoPlastoDynamics (suppression of cgns_links)
@@ -151,7 +256,7 @@ def update_sample(sample: Sample, split_name: str):
 # out-of-code solution with generator
 generators = {}
 for split_name in split_names:
-    ids = pb_def.get_split(split_name)  # [:2]
+    ids = pb_def_.get_split(split_name)  # [:2]
 
     def _generator(ids=ids, split_name=split_name):
         for id in ids:
@@ -180,8 +285,8 @@ infos = dataset.get_infos()
 huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
 huggingface_bridge.push_infos_to_hub(repo_id_out, infos)
 huggingface_bridge.push_tree_struct_to_hub(repo_id_out, flat_cst, key_mappings)
-huggingface_bridge.push_problem_definition_to_hub(repo_id_out, "task_1", pb_def)
-
+for pb_name, pb_def_iter in zip(pb_def_names, all_pb_def):
+    huggingface_bridge.push_problem_definition_to_hub(repo_id_out, pb_name, pb_def_iter)
 
 # sanity check (not working with 2D_ElastoPlastoDynamics)
 
@@ -196,7 +301,7 @@ for split_name in split_names:
     print(f"Duration initialization dataset = {time() - start}")
 
     ii = 1
-    ind = pb_def.get_split(split_name)[ii]
+    ind = pb_def_.get_split(split_name)[ii]
 
     sample_ind = huggingface_bridge.binary_to_plaid_sample(hf_dataset[ind])
     if repo_id == "PLAID-datasets/2D_ElastoPlastoDynamics":
@@ -227,7 +332,9 @@ for split_name in split_names:
 # Check reading the pushed dataset
 hf_dataset_new = huggingface_bridge.load_dataset_from_hub(repo_id_out)
 flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_hub(repo_id_out)
-pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id_out, "task_1")
+pb_def = huggingface_bridge.load_problem_definition_from_hub(
+    repo_id_out, pb_def_names[0]
+)
 infos = huggingface_bridge.load_infos_from_hub(repo_id_out)
 cgns_types = key_mappings["cgns_types"]
 
