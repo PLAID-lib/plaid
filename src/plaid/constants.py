@@ -19,6 +19,8 @@ These constants help standardize metadata, task types, and mesh element referenc
 
 AUTHORIZED_TASKS = ["regression", "classification"]
 
+AUTHORIZED_SCORE_FUNCTIONS = ["RRMSE"]
+
 AUTHORIZED_FEATURE_TYPES = ["scalar", "field", "nodes"]
 
 AUTHORIZED_FEATURE_INFOS = {

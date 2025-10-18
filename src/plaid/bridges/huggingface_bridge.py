@@ -391,6 +391,9 @@ def _generator_prepare_for_huggingface(
 
     hf_features = Features(hf_features_map)
 
+    var_features = [path for path in var_features if not path.endswith("_times")]
+    cst_features = [path for path in cst_features if not path.endswith("_times")]
+
     key_mappings = {
         "variable_features": var_features,
         "constant_features": cst_features,
@@ -848,14 +851,22 @@ def load_problem_definition_from_hub(
     Returns:
         ProblemDefinition: The loaded problem definition.
     """
-    # Download split.json
+    # Download splits
     json_path = hf_hub_download(
         repo_id=repo_id,
-        filename=f"problem_definitions/{name}/split.json",
+        filename=f"problem_definitions/{name}/train_split.json",
         repo_type="dataset",
     )
     with open(json_path, "r", encoding="utf-8") as f:
-        json_data = json.load(f)
+        json_data_train = json.load(f)
+
+    json_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=f"problem_definitions/{name}/test_split.json",
+        repo_type="dataset",
+    )
+    with open(json_path, "r", encoding="utf-8") as f:
+        json_data_test = json.load(f)
 
     # Download problem_infos.yaml
     yaml_path = hf_hub_download(
@@ -868,7 +879,8 @@ def load_problem_definition_from_hub(
 
     prob_def = ProblemDefinition()
     prob_def._initialize_from_problem_infos_dict(yaml_data)
-    prob_def.set_split(json_data)
+    prob_def.set_train_split(json_data_train)
+    prob_def.set_test_split(json_data_test)
 
     return prob_def
 
@@ -988,6 +1000,9 @@ def push_problem_definition_to_hub(
     """
     api = HfApi()
     data = pb_def._generate_problem_infos_dict()
+    for k, v in list(data.items()):
+        if not v:
+            data.pop(k)
     if data is not None:
         yaml_str = yaml.dump(data)
         yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
@@ -1000,16 +1015,40 @@ def push_problem_definition_to_hub(
         commit_message=f"Upload problem_definitions/{name}/problem_infos.yaml",
     )
 
-    data = pb_def.get_split()
+    # data = pb_def.get_split()
+    # json_str = json.dumps(data)
+    # json_buffer = io.BytesIO(json_str.encode("utf-8"))
+
+    # api.upload_file(
+    #     path_or_fileobj=json_buffer,
+    #     path_in_repo=f"problem_definitions/{name}/split.json",
+    #     repo_id=repo_id,
+    #     repo_type="dataset",
+    #     commit_message=f"Upload problem_definitions/{name}/split.json",
+    # )
+
+    data = pb_def.get_train_split()
     json_str = json.dumps(data)
     json_buffer = io.BytesIO(json_str.encode("utf-8"))
 
     api.upload_file(
         path_or_fileobj=json_buffer,
-        path_in_repo=f"problem_definitions/{name}/split.json",
+        path_in_repo=f"problem_definitions/{name}/train_split.json",
         repo_id=repo_id,
         repo_type="dataset",
-        commit_message=f"Upload problem_definitions/{name}/split.json",
+        commit_message=f"Upload problem_definitions/{name}/train_split.json",
+    )
+
+    data = pb_def.get_test_split()
+    json_str = json.dumps(data)
+    json_buffer = io.BytesIO(json_str.encode("utf-8"))
+
+    api.upload_file(
+        path_or_fileobj=json_buffer,
+        path_in_repo=f"problem_definitions/{name}/test_split.json",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message=f"Upload problem_definitions/{name}/test_split.json",
     )
 
 
