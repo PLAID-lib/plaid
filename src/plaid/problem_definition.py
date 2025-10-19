@@ -308,6 +308,16 @@ class ProblemDefinition(object):
         self._test_split = split
 
     # -------------------------------------------------------------------------#
+    @staticmethod
+    def _feature_sort_key(feat: Union[str, FeatureIdentifier]) -> tuple[str, str]:
+        if isinstance(feat, str):
+            # Strings first, sorted lexicographically
+            return ("a_string", feat)
+        else:
+            assert isinstance(feat, FeatureIdentifier)
+            # Then FeatureIdentifiers, sorted by their "type" field
+            return ("b_feature", feat["type"])
+
     def get_in_features_identifiers(self) -> Sequence[Union[str, FeatureIdentifier]]:
         """Get the input features identifiers of the problem.
 
@@ -350,7 +360,7 @@ class ProblemDefinition(object):
         for input in inputs:
             self.add_in_feature_identifier(input)
 
-    def add_in_feature_identifier(self, input: FeatureIdentifier) -> None:
+    def add_in_feature_identifier(self, input: Union[str, FeatureIdentifier]) -> None:
         """Add an input feature identifier or identifier to the problem.
 
         Args:
@@ -370,10 +380,7 @@ class ProblemDefinition(object):
         if input in self.in_features_identifiers:
             raise ValueError(f"{input} is already in self.in_features_identifiers")
         self.in_features_identifiers.append(input)
-        if isinstance(input, FeatureIdentifier):
-            self.in_features_identifiers.sort(key=lambda x: x["type"])
-        else:
-            self.in_features_identifiers.sort()
+        self.in_features_identifiers.sort(key=self._feature_sort_key)
 
     def filter_in_features_identifiers(
         self, identifiers: Sequence[Union[str, FeatureIdentifier]]
@@ -397,9 +404,6 @@ class ProblemDefinition(object):
                 print(input_features)
                 >>> ['omega', 'pressure']
         """
-        print(identifiers)
-        print(set(identifiers))
-        print(set(self.get_in_features_identifiers()))
         return sorted(set(identifiers).intersection(self.get_in_features_identifiers()))
 
     # -------------------------------------------------------------------------#
@@ -445,7 +449,7 @@ class ProblemDefinition(object):
         for output in outputs:
             self.add_out_feature_identifier(output)
 
-    def add_out_feature_identifier(self, output: FeatureIdentifier) -> None:
+    def add_out_feature_identifier(self, output: Union[str, FeatureIdentifier]) -> None:
         """Add an output feature identifier or identifier to the problem.
 
         Args:
@@ -465,10 +469,7 @@ class ProblemDefinition(object):
         if output in self.out_features_identifiers:
             raise ValueError(f"{output} is already in self.out_features_identifiers")
         self.out_features_identifiers.append(output)
-        if isinstance(output, FeatureIdentifier):
-            self.out_features_identifiers.sort(key=lambda x: x["type"])
-        else:
-            self.out_features_identifiers.sort()
+        self.out_features_identifiers.sort(key=self._feature_sort_key)
 
     def filter_out_features_identifiers(
         self, identifiers: Sequence[Union[str, FeatureIdentifier]]

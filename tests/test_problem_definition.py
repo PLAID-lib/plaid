@@ -30,6 +30,7 @@ def problem_definition() -> ProblemDefinition:
 def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDefinition:
     problem_definition.set_task("regression")
 
+    # ----
     feature_identifier = FeatureIdentifier({"type": "scalar", "name": "feature"})
     predict_feature_identifier = FeatureIdentifier(
         {"type": "scalar", "name": "predict_feature"}
@@ -45,7 +46,20 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
         [predict_feature_identifier, test_feature_identifier]
     )
     problem_definition.add_out_feature_identifier(feature_identifier)
+    # ----
+    feature_identifier = "Base_2_2/Zone/PointData/U1"
+    predict_feature_identifier = "Base_2_2/Zone/PointData/U2"
+    test_feature_identifier = "Base_2_2/Zone/PointData/sig12"
+    problem_definition.add_in_features_identifiers(
+        [predict_feature_identifier, test_feature_identifier]
+    )
+    problem_definition.add_in_feature_identifier(feature_identifier)
+    problem_definition.add_out_features_identifiers(
+        [predict_feature_identifier, test_feature_identifier]
+    )
+    problem_definition.add_out_feature_identifier(feature_identifier)
 
+    # ----
     problem_definition.add_input_scalars_names(["scalar", "test_scalar"])
     problem_definition.add_input_scalar_name("predict_scalar")
     problem_definition.add_output_scalars_names(["scalar", "test_scalar"])
@@ -125,6 +139,17 @@ class Test_ProblemDefinition:
         with pytest.raises(ValueError):
             problem_definition.set_task("regression")
         assert problem_definition.get_task() == "classification"
+        print(problem_definition)
+
+    # -------------------------------------------------------------------------#
+    def test_score_function(self, problem_definition):
+        # Unauthorized task
+        with pytest.raises(TypeError):
+            problem_definition.set_score_function("ighyurgv")
+        problem_definition.set_score_function("RRMSE")
+        with pytest.raises(ValueError):
+            problem_definition.set_score_function("RRMSE")
+        assert problem_definition.get_score_function() == "RRMSE"
         print(problem_definition)
 
     # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
@@ -498,7 +523,7 @@ class Test_ProblemDefinition:
         assert fail_filter_out == []
 
     # -------------------------------------------------------------------------#
-    def test_set_split(self, problem_definition):
+    def test_split(self, problem_definition):
         new_split = {"train": [0, 1, 2], "test": [3, 4]}
         problem_definition.set_split(new_split)
         assert problem_definition.get_split("train") == [0, 1, 2]
@@ -507,7 +532,20 @@ class Test_ProblemDefinition:
         all_split = problem_definition.get_split()
         assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
         assert problem_definition.get_all_indices() == [0, 1, 2, 3, 4]
-        print(problem_definition)
+
+    def test_train_split(self, problem_definition):
+        train_split = {"train1": [0, 1, 2], "train2": [3, 4]}
+        problem_definition.set_train_split(train_split)
+        problem_definition.get_train_split()
+        assert problem_definition.get_train_split("train1") == [0, 1, 2]
+        assert problem_definition.get_train_split("train2") == [3, 4]
+
+    def test_test_split(self, problem_definition):
+        test_split = {"test1": [0, 1, 2], "test2": [3, 4]}
+        problem_definition.set_test_split(test_split)
+        problem_definition.get_test_split()
+        assert problem_definition.get_test_split("test1") == [0, 1, 2]
+        assert problem_definition.get_test_split("test2") == [3, 4]
 
     # -------------------------------------------------------------------------#
     def test__save_to_dir_(
