@@ -16,7 +16,7 @@ from tqdm import tqdm
 from plaid.bridges import huggingface_bridge
 
 repo_id = "fabiencasenave/Tensile2d"
-split_names = ["train_500", "test", "OOD"]
+split_names = ["train", "test", "OOD"]
 pb_def_names = [
     "regression_8",
     "regression_16",
@@ -25,6 +25,7 @@ pb_def_names = [
     "regression_125",
     "regression_250",
     "regression_500",
+    "PLAID_benchmark",
 ]
 
 # repo_id = "fabiencasenave/VKI-LS59"
