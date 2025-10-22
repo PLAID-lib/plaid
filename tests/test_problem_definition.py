@@ -57,7 +57,11 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
     problem_definition.add_out_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_out_feature_identifier(feature_identifier)
+    problem_definition.add_cte_feature_identifier(feature_identifier)
+    problem_definition.add_cte_features_identifiers(
+        [predict_feature_identifier, test_feature_identifier]
+    )
+    problem_definition.add_cte_feature_identifier(feature_identifier)
 
     # ----
     problem_definition.add_input_scalars_names(["scalar", "test_scalar"])
@@ -227,6 +231,10 @@ class Test_ProblemDefinition:
         filter_out = problem.filter_out_features_identifiers(
             [predict_feature_identifier, test_feature_identifier]
         )
+        filter_cte = problem.filter_cte_features_identifiers(
+            [predict_feature_identifier, test_feature_identifier]
+        )
+        filter_cte
         assert len(filter_in) == 2 and filter_in == [
             predict_feature_identifier,
             test_feature_identifier,
@@ -252,9 +260,13 @@ class Test_ProblemDefinition:
         fail_filter_out = problem.filter_out_features_identifiers(
             [inexisting_feature_identifier]
         )
+        fail_filter_cte = problem.filter_cte_features_identifiers(
+            ["Base_2_2/Zone/PointData/inexisting_feature"]
+        )
 
         assert fail_filter_in == []
         assert fail_filter_out == []
+        assert fail_filter_cte == []
 
     # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
     # -------------------------------------------------------------------------#
