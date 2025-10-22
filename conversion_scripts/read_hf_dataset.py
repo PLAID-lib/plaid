@@ -60,12 +60,24 @@ def get_mem():
 #     f"Time to build first sample of split {split_names[0]}: {elapsed:.6g} s, RAM usage increase: {get_mem() - init_ram} MB"
 # )
 
-hf_dataset_new = huggingface_bridge.load_dataset_from_hub(repo_id)
-flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_hub(repo_id)
-pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id, pb_def_names[0])
-infos = huggingface_bridge.load_infos_from_hub(repo_id)
+# hf_dataset_new = huggingface_bridge.load_dataset_from_hub(repo_id)
+# flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_hub(repo_id)
+# pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id, pb_def_names[0])
+# infos = huggingface_bridge.load_infos_from_hub(repo_id)
+# cgns_types = key_mappings["cgns_types"]
+
+local_repo = "Tensile2d"
+hf_dataset_new = huggingface_bridge.load_dataset_from_disk(local_repo)
+flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_disk(local_repo)
+pb_def = huggingface_bridge.load_problem_definition_from_disk(
+    local_repo, pb_def_names[0]
+)
+infos = huggingface_bridge.load_infos_from_disk(local_repo)
 cgns_types = key_mappings["cgns_types"]
 
+print("pb_def =", pb_def)
+print("cte_features =", pb_def.cte_features_identifiers)
+1.0 / 0.0
 
 init_ram = get_mem()
 start = time()

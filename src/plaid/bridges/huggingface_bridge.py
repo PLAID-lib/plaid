@@ -1027,29 +1027,29 @@ def push_problem_definition_to_hub(
     #     commit_message=f"Upload problem_definitions/{name}/split.json",
     # )
 
-    data = pb_def.get_train_split()
-    json_str = json.dumps(data)
-    json_buffer = io.BytesIO(json_str.encode("utf-8"))
+    # data = pb_def.get_train_split()
+    # json_str = json.dumps(data)
+    # json_buffer = io.BytesIO(json_str.encode("utf-8"))
 
-    api.upload_file(
-        path_or_fileobj=json_buffer,
-        path_in_repo=f"problem_definitions/{name}/train_split.json",
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message=f"Upload problem_definitions/{name}/train_split.json",
-    )
+    # api.upload_file(
+    #     path_or_fileobj=json_buffer,
+    #     path_in_repo=f"problem_definitions/{name}/train_split.json",
+    #     repo_id=repo_id,
+    #     repo_type="dataset",
+    #     commit_message=f"Upload problem_definitions/{name}/train_split.json",
+    # )
 
-    data = pb_def.get_test_split()
-    json_str = json.dumps(data)
-    json_buffer = io.BytesIO(json_str.encode("utf-8"))
+    # data = pb_def.get_test_split()
+    # json_str = json.dumps(data)
+    # json_buffer = io.BytesIO(json_str.encode("utf-8"))
 
-    api.upload_file(
-        path_or_fileobj=json_buffer,
-        path_in_repo=f"problem_definitions/{name}/test_split.json",
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message=f"Upload problem_definitions/{name}/test_split.json",
-    )
+    # api.upload_file(
+    #     path_or_fileobj=json_buffer,
+    #     path_in_repo=f"problem_definitions/{name}/test_split.json",
+    #     repo_id=repo_id,
+    #     repo_type="dataset",
+    #     commit_message=f"Upload problem_definitions/{name}/test_split.json",
+    # )
 
 
 def push_tree_struct_to_hub(
@@ -1163,7 +1163,7 @@ def load_problem_definition_from_disk(
         ProblemDefinition: The loaded problem definition.
     """
     pb_def = ProblemDefinition()
-    pb_def._load_from_dir_(Path(path) / Path("problem_definitions") / Path(name))
+    pb_def._load_from_file_(Path(path) / Path("problem_definitions") / Path(name))
     return pb_def
 
 
@@ -1243,7 +1243,42 @@ def save_problem_definition_to_disk(
         name (str): The name of the problem_definition to store in the disk directory.
         pb_def (ProblemDefinition): The problem definition to save.
     """
-    pb_def._save_to_dir_(Path(path) / Path("problem_definitions") / Path(name))
+    pb_def._save_to_file_(Path(path) / Path("problem_definitions") / Path(name))
+
+
+#         pbdef_fname = path / "problem_infos.yaml"
+#         with pbdef_fname.open("w") as file:
+#             yaml.dump(
+#                 problem_infos_dict, file, default_flow_style=False, sort_keys=False
+#             )
+
+
+# def push_problem_definition_to_hub(
+#     repo_id: str, name: str, pb_def: ProblemDefinition
+# ) -> None:  # pragma: no cover (not tested in unit tests)
+#     """Upload a ProblemDefinition and its split information to the Hugging Face Hub.
+
+#     Args:
+#         repo_id (str): The repository ID on the Hugging Face Hub.
+#         name (str): The name of the problem_definition to store in the repo.
+#         pb_def (ProblemDefinition): The problem definition to upload.
+#     """
+#     api = HfApi()
+#     data = pb_def._generate_problem_infos_dict()
+#     for k, v in list(data.items()):
+#         if not v:
+#             data.pop(k)
+#     if data is not None:
+#         yaml_str = yaml.dump(data)
+#         yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+
+#     api.upload_file(
+#         path_or_fileobj=yaml_buffer,
+#         path_in_repo=f"problem_definitions/{name}/problem_infos.yaml",
+#         repo_id=repo_id,
+#         repo_type="dataset",
+#         commit_message=f"Upload problem_definitions/{name}/problem_infos.yaml",
+#     )
 
 
 def save_tree_struct_to_disk(

@@ -24,4 +24,4 @@ ArrayDType = Union[np.int32, np.int64, np.float32, np.float64]
 Array: TypeAlias = NDArray[ArrayDType]
 
 # Types used in indexing operations
-IndexType = Union[list[int], NDArray[Union[np.int32, np.int64]]]
+IndexType = Union[list[int], NDArray[Union[np.int32, np.int64]], str]

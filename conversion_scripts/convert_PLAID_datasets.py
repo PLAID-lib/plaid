@@ -57,17 +57,10 @@ train_split_names = [
 ]
 test_split_names = ["test"]
 repo_id_out = "fabiencasenave/Tensile2d"
-input_features = sorted(
+
+
+constant_features = sorted(
     [
-        "Base_2_2/Zone",
-        "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity",
-        "Base_2_2/Zone/Elements_TRI_3/ElementRange",
-        "Base_2_2/Zone/GridCoordinates/CoordinateX",
-        "Base_2_2/Zone/GridCoordinates/CoordinateY",
-        "Base_2_2/Zone/ZoneBC/Bottom/PointList",
-        "Base_2_2/Zone/ZoneBC/BottomLeft/PointList",
-        "Base_2_2/Zone/ZoneBC/Top/PointList",
-        "Global/P",
         "Base_2_2",
         "Base_2_2/Tensile2d",
         "Base_2_2/Zone/CellData",
@@ -88,6 +81,20 @@ input_features = sorted(
         "Base_2_2/Zone/ZoneBC/Top/GridLocation",
         "Base_2_2/Zone/ZoneType",
         "Global",
+    ]
+)
+
+input_features = sorted(
+    [
+        "Base_2_2/Zone",
+        "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity",
+        "Base_2_2/Zone/Elements_TRI_3/ElementRange",
+        "Base_2_2/Zone/GridCoordinates/CoordinateX",
+        "Base_2_2/Zone/GridCoordinates/CoordinateY",
+        "Base_2_2/Zone/ZoneBC/Bottom/PointList",
+        "Base_2_2/Zone/ZoneBC/BottomLeft/PointList",
+        "Base_2_2/Zone/ZoneBC/Top/PointList",
+        "Global/P",
         "Global/p1",
         "Global/p2",
         "Global/p3",
@@ -95,6 +102,7 @@ input_features = sorted(
         "Global/p5",
     ]
 )
+
 output_features = sorted(
     [
         "Base_2_2/Zone/PointData/U1",
@@ -110,17 +118,8 @@ output_features = sorted(
     ]
 )
 
-input_features_benchmark = sorted(
+constant_features_benchmark = sorted(
     [
-        "Base_2_2/Zone",
-        "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity",
-        "Base_2_2/Zone/Elements_TRI_3/ElementRange",
-        "Base_2_2/Zone/GridCoordinates/CoordinateX",
-        "Base_2_2/Zone/GridCoordinates/CoordinateY",
-        "Base_2_2/Zone/ZoneBC/Bottom/PointList",
-        "Base_2_2/Zone/ZoneBC/BottomLeft/PointList",
-        "Base_2_2/Zone/ZoneBC/Top/PointList",
-        "Global/P",
         "Base_2_2",
         "Base_2_2/Tensile2d",
         "Base_2_2/Zone/CellData",
@@ -141,6 +140,20 @@ input_features_benchmark = sorted(
         "Base_2_2/Zone/ZoneBC/Top/GridLocation",
         "Base_2_2/Zone/ZoneType",
         "Global",
+    ]
+)
+
+input_features_benchmark = sorted(
+    [
+        "Base_2_2/Zone",
+        "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity",
+        "Base_2_2/Zone/Elements_TRI_3/ElementRange",
+        "Base_2_2/Zone/GridCoordinates/CoordinateX",
+        "Base_2_2/Zone/GridCoordinates/CoordinateY",
+        "Base_2_2/Zone/ZoneBC/Bottom/PointList",
+        "Base_2_2/Zone/ZoneBC/BottomLeft/PointList",
+        "Base_2_2/Zone/ZoneBC/Top/PointList",
+        "Global/P",
         "Global/p1",
         "Global/p2",
         "Global/p3",
@@ -148,6 +161,7 @@ input_features_benchmark = sorted(
         "Global/p5",
     ]
 )
+
 output_features_benchmark = sorted(
     [
         "Base_2_2/Zone/PointData/U1",
@@ -201,9 +215,11 @@ for train_split_name, pb_def_name in zip(train_split_names, pb_def_names):
     if "benchmark" not in pb_def_name:
         pb_def.add_in_features_identifiers(input_features)
         pb_def.add_out_features_identifiers(output_features)
+        pb_def.add_cte_features_identifiers(constant_features)
     else:
         pb_def.add_in_features_identifiers(input_features_benchmark)
         pb_def.add_out_features_identifiers(output_features_benchmark)
+        pb_def.add_cte_features_identifiers(constant_features_benchmark)
     # pb_def.set_split(pb_def_.get_split())
     pb_def.set_task(pb_def_.get_task())
     pb_def.set_score_function("RRMSE")
@@ -216,10 +232,7 @@ for train_split_name, pb_def_name in zip(train_split_names, pb_def_names):
     pb_def.set_train_split({split_names_out[0]: train_ids})
     _test_split = {}
     for sn in test_split_names:
-        test_ids = [
-            pb_def_.get_split(split_names[1]).index(i) for i in pb_def_.get_split(sn)
-        ]
-        _test_split[sn] = test_ids
+        _test_split[sn] = "all"
     pb_def.set_test_split(_test_split)
     all_pb_def.append(pb_def)
 
@@ -337,15 +350,25 @@ dataset = Dataset()
 dataset.set_infos(infos)
 infos = dataset.get_infos()
 
-# push to HF hub
-huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
-huggingface_bridge.push_infos_to_hub(repo_id_out, infos)
-huggingface_bridge.push_tree_struct_to_hub(repo_id_out, flat_cst, key_mappings)
+
+# # push to HF hub
+# huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
+# huggingface_bridge.push_infos_to_hub(repo_id_out, infos)
+# huggingface_bridge.push_tree_struct_to_hub(repo_id_out, flat_cst, key_mappings)
+# for pb_name, pb_def_iter in zip(pb_def_names, all_pb_def):
+#     huggingface_bridge.push_problem_definition_to_hub(repo_id_out, pb_name, pb_def_iter)
+
+
+# push to disk
+local_repo = "Tensile2d"
+huggingface_bridge.save_dataset_dict_to_disk(local_repo, hf_dataset_dict)
+huggingface_bridge.save_infos_to_disk(local_repo, infos)
+huggingface_bridge.save_tree_struct_to_disk(local_repo, flat_cst, key_mappings)
 for pb_name, pb_def_iter in zip(pb_def_names, all_pb_def):
-    huggingface_bridge.push_problem_definition_to_hub(repo_id_out, pb_name, pb_def_iter)
+    huggingface_bridge.save_problem_definition_to_disk(local_repo, pb_name, pb_def_iter)
+
 
 # sanity check (not working with 2D_ElastoPlastoDynamics)
-
 for split_name, split_name_out in zip(split_names, split_names_out):
     start = time()
     dataset_2 = huggingface_bridge.to_plaid_dataset(

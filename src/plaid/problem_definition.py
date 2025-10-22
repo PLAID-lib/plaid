@@ -78,6 +78,7 @@ class ProblemDefinition(object):
         self._score_function: str = None
         self.in_features_identifiers: Sequence[Union[str, FeatureIdentifier]] = []
         self.out_features_identifiers: Sequence[Union[str, FeatureIdentifier]] = []
+        self.cte_features_identifiers: list[str] = []
         self.in_scalars_names: list[str] = []
         self.out_scalars_names: list[str] = []
         self.in_timeseries_names: list[str] = []
@@ -86,9 +87,9 @@ class ProblemDefinition(object):
         self.out_fields_names: list[str] = []
         self.in_meshes_names: list[str] = []
         self.out_meshes_names: list[str] = []
-        self._split: dict[str, IndexType] = None
-        self._train_split: dict[str, dict[str, IndexType]] = None
-        self._test_split: dict[str, dict[str, IndexType]] = None
+        self._split: Optional[dict[str, IndexType]] = None
+        self._train_split: Optional[dict[str, dict[str, IndexType]]] = None
+        self._test_split: Optional[dict[str, dict[str, IndexType]]] = None
 
         if directory_path is not None:
             if path is not None:
@@ -250,7 +251,7 @@ class ProblemDefinition(object):
             )
             return self._train_split[indices_name]
 
-    def set_train_split(self, split: dict[str, dict[str, IndexType]]) -> None:
+    def set_train_split(self, split: dict[str, dict[str, Optional[IndexType]]]) -> None:
         """Set the train split dictionary containing subsets and their indices.
 
         Args:
@@ -292,7 +293,7 @@ class ProblemDefinition(object):
             )
             return self._test_split[indices_name]
 
-    def set_test_split(self, split: dict[str, dict[str, IndexType]]) -> None:
+    def set_test_split(self, split: dict[str, dict[str, Optional[IndexType]]]) -> None:
         """Set the test split dictionary containing subsets and their indices.
 
         Args:
@@ -495,6 +496,93 @@ class ProblemDefinition(object):
         """
         return sorted(
             set(identifiers).intersection(self.get_out_features_identifiers())
+        )
+
+    # -------------------------------------------------------------------------#
+    def get_cte_features_identifiers(self) -> list[str]:
+        """Get the constant features identifiers of the problem.
+
+        Returns:
+            list[str]: A list of constant feature identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                cte_features_identifiers = problem.get_cte_features_identifiers()
+                print(cte_features_identifiers)
+                >>> ['Global/P', 'Base_2_2/Zone/GridCoordinates']
+        """
+        return self.cte_features_identifiers
+
+    def add_cte_features_identifiers(self, inputs: list[str]) -> None:
+        """Add input features identifiers to the problem.
+
+        Args:
+            inputs (list[str]): A list of constant feature identifiers to add.
+
+        Raises:
+            ValueError: If some :code:`inputs` are redondant.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                cte_features_identifiers = ['Global/P', 'Base_2_2/Zone/GridCoordinates']
+                problem.add_cte_features_identifiers(cte_features_identifiers)
+        """
+        if not (len(set(inputs)) == len(inputs)):
+            raise ValueError("Some inputs have same identifiers")
+        for input in inputs:
+            self.add_cte_feature_identifier(input)
+
+    def add_cte_feature_identifier(self, input: str) -> None:
+        """Add an constant feature identifier to the problem.
+
+        Args:
+            input (str):  The identifier of the constant feature to add.
+
+        Raises:
+            ValueError: If the specified input feature is already in the list of constant features.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                cte_identifier = 'Global/P'
+                problem.add_cte_feature_identifier(input_identifier)
+        """
+        if input in self.cte_features_identifiers:
+            raise ValueError(f"{input} is already in self.in_features_identifiers")
+        self.cte_features_identifiers.append(input)
+        self.cte_features_identifiers.sort(key=self._feature_sort_key)
+
+    def filter_cte_features_identifiers(self, identifiers: list[str]) -> list[str]:
+        """Filter and get input features features corresponding to a sorted list of identifiers.
+
+        Args:
+            identifiers (list[str]): A list of identifiers for which to retrieve corresponding constant features.
+
+        Returns:
+            list[str]: A sorted list of constant feature identifiers corresponding to the provided identifiers.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                features_identifiers = ['Global/P', 'Base_2_2/Zone/GridCoordinates']
+                cte_features = problem.filter_cte_features_identifiers(features_identifiers)
+                print(cte_features)
+                >>> ['Global/P']
+        """
+        return sorted(
+            set(identifiers).intersection(self.get_cte_features_identifiers())
         )
 
     # -------------------------------------------------------------------------#
@@ -1274,6 +1362,7 @@ class ProblemDefinition(object):
         data = {
             "task": self._task,
             "score_function": self._score_function,
+            "constant_features": [],
             "input_features": [],
             "output_features": [],
         }
@@ -1287,17 +1376,27 @@ class ProblemDefinition(object):
                 data["output_features"].append(dict(**tup))
             else:
                 data["output_features"].append(tup)
+        for tup in self.cte_features_identifiers:
+            data["constant_features"].append(tup)
+        if self._train_split is not None:
+            data["train_split"] = self._train_split
+        if self._test_split is not None:
+            data["test_split"] = self._test_split
         if Version(plaid.__version__) < Version("0.2.0"):
             data.update(
                 {
-                    "input_scalars": self.in_scalars_names,
-                    "output_scalars": self.out_scalars_names,
-                    "input_fields": self.in_fields_names,
-                    "output_fields": self.out_fields_names,
-                    "input_timeseries": self.in_timeseries_names,
-                    "output_timeseries": self.out_timeseries_names,
-                    "input_meshes": self.in_meshes_names,
-                    "output_meshes": self.out_meshes_names,
+                    k: v
+                    for k, v in {
+                        "input_scalars": self.in_scalars_names,
+                        "output_scalars": self.out_scalars_names,
+                        "input_fields": self.in_fields_names,
+                        "output_fields": self.out_fields_names,
+                        "input_timeseries": self.in_timeseries_names,
+                        "output_timeseries": self.out_timeseries_names,
+                        "input_meshes": self.in_meshes_names,
+                        "output_meshes": self.out_meshes_names,
+                    }.items()
+                    if v  # keeps only truthy (non-empty, non-None) lists
                 }
             )
 
@@ -1325,6 +1424,33 @@ class ProblemDefinition(object):
 
         # Save infos
 
+    def _save_to_file_(self, path: Union[str, Path]) -> None:
+        """Save problem information, inputs, outputs, and split to the specified file in YAML format.
+
+        Args:
+            path (Union[str,Path]): The filepath where the problem information will be saved.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import ProblemDefinition
+                problem = ProblemDefinition()
+                problem._save_to_file_("/path/to/save_file")
+        """
+        problem_infos_dict = self._generate_problem_infos_dict()
+
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        if path.suffix != ".yaml":
+            path = path.with_suffix(".yaml")
+
+        # Save infos
+        with path.open("w") as file:
+            yaml.dump(
+                problem_infos_dict, file, default_flow_style=False, sort_keys=True
+            )
+
     def _save_to_dir_(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
 
@@ -1349,7 +1475,7 @@ class ProblemDefinition(object):
         pbdef_fname = path / "problem_infos.yaml"
         with pbdef_fname.open("w") as file:
             yaml.dump(
-                problem_infos_dict, file, default_flow_style=False, sort_keys=False
+                problem_infos_dict, file, default_flow_style=False, sort_keys=True
             )
 
         # Save split
@@ -1358,16 +1484,16 @@ class ProblemDefinition(object):
             with split_fname.open("w") as file:
                 json.dump(self.get_split(), file)
 
-        # Save split
-        split_fname = path / "train_split.json"
-        if self.get_split() is not None:
-            with split_fname.open("w") as file:
-                json.dump(self.get_train_split(), file)
+        # # Save split
+        # split_fname = path / "train_split.json"
+        # if self.get_train_split() is not None:
+        #     with split_fname.open("w") as file:
+        #         json.dump(self.get_train_split(), file)
 
-        split_fname = path / "test_split.json"
-        if self.get_split() is not None:
-            with split_fname.open("w") as file:
-                json.dump(self.get_test_split(), file)
+        # split_fname = path / "test_split.json"
+        # if self.get_test_split() is not None:
+        #     with split_fname.open("w") as file:
+        #         json.dump(self.get_test_split(), file)
 
     @classmethod
     def load(cls, path: Union[str, Path]) -> Self:  # pragma: no cover
@@ -1406,6 +1532,10 @@ class ProblemDefinition(object):
                     self.out_features_identifiers.append(FeatureIdentifier(**tup))
                 else:
                     self.out_features_identifiers.append(tup)
+        self.cte_features_identifiers = []
+        if "constant_features" in data:
+            for tup in data["constant_features"]:
+                self.in_features_identifiers.append(tup)
         if "version" not in data or Version(data["version"]) < Version("0.2.0"):
             self.in_scalars_names = data.get("input_scalars", [])
             self.out_scalars_names = data.get("output_scalars", [])
@@ -1431,6 +1561,41 @@ class ProblemDefinition(object):
                     logger.warning(
                         f"Key '{k}' is deprecated and will be ignored. You should convert your ProblemDefinition using FeatureIdentifiers to identify features instead of names."
                     )
+        if "score_function" in data:
+            self._score_function = data["score_function"]
+        if "train_split" in data:
+            self._train_split = data["train_split"]
+        if "test_split" in data:
+            self._test_split = data["test_split"]
+
+    def _load_from_file_(self, path: Union[str, Path]) -> None:
+        """Load problem information, inputs, outputs, and split from the specified file in YAML format.
+
+        Args:
+            path (Union[str,Path]): The filepath from which to load the problem information.
+
+        Raises:
+            FileNotFoundError: Triggered if the provided file does not exist.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import ProblemDefinition
+                problem = ProblemDefinition()
+                problem._load_from_file_("/path/to/load_file")
+        """
+        path = Path(path)
+
+        if path.suffix != ".yaml":
+            path = path.with_suffix(".yaml")
+
+        if not path.exists():
+            raise FileNotFoundError(f'File "{path}" does not exist. Abort')
+
+        with path.open("r") as file:
+            data = yaml.safe_load(file)
+
+        self._initialize_from_problem_infos_dict(data)
 
     def _load_from_dir_(self, path: Union[str, Path]) -> None:
         """Load problem information, inputs, outputs, and split from the specified directory in YAML and CSV formats.
