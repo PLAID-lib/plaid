@@ -1535,7 +1535,7 @@ class ProblemDefinition(object):
         self.cte_features_identifiers = []
         if "constant_features" in data:
             for tup in data["constant_features"]:
-                self.in_features_identifiers.append(tup)
+                self.cte_features_identifiers.append(tup)
         if "version" not in data or Version(data["version"]) < Version("0.2.0"):
             self.in_scalars_names = data.get("input_scalars", [])
             self.out_scalars_names = data.get("output_scalars", [])

@@ -8,7 +8,6 @@
 #
 import hashlib
 import io
-import json
 import os
 import pickle
 import shutil
@@ -851,27 +850,30 @@ def load_problem_definition_from_hub(
     Returns:
         ProblemDefinition: The loaded problem definition.
     """
-    # Download splits
-    json_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=f"problem_definitions/{name}/train_split.json",
-        repo_type="dataset",
-    )
-    with open(json_path, "r", encoding="utf-8") as f:
-        json_data_train = json.load(f)
+    if not name.endswith(".yaml"):
+        name = f"{name}.yaml"
 
-    json_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=f"problem_definitions/{name}/test_split.json",
-        repo_type="dataset",
-    )
-    with open(json_path, "r", encoding="utf-8") as f:
-        json_data_test = json.load(f)
+    # # Download splits
+    # json_path = hf_hub_download(
+    #     repo_id=repo_id,
+    #     filename=f"problem_definitions/{name}/train_split.json",
+    #     repo_type="dataset",
+    # )
+    # with open(json_path, "r", encoding="utf-8") as f:
+    #     json_data_train = json.load(f)
+
+    # json_path = hf_hub_download(
+    #     repo_id=repo_id,
+    #     filename=f"problem_definitions/{name}/test_split.json",
+    #     repo_type="dataset",
+    # )
+    # with open(json_path, "r", encoding="utf-8") as f:
+    #     json_data_test = json.load(f)
 
     # Download problem_infos.yaml
     yaml_path = hf_hub_download(
         repo_id=repo_id,
-        filename=f"problem_definitions/{name}/problem_infos.yaml",
+        filename=f"problem_definitions/{name}",
         repo_type="dataset",
     )
     with open(yaml_path, "r", encoding="utf-8") as f:
@@ -879,8 +881,8 @@ def load_problem_definition_from_hub(
 
     prob_def = ProblemDefinition()
     prob_def._initialize_from_problem_infos_dict(yaml_data)
-    prob_def.set_train_split(json_data_train)
-    prob_def.set_test_split(json_data_test)
+    # prob_def.set_train_split(json_data_train)
+    # prob_def.set_test_split(json_data_test)
 
     return prob_def
 
@@ -1007,12 +1009,15 @@ def push_problem_definition_to_hub(
         yaml_str = yaml.dump(data)
         yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
 
+    if not name.endswith(".yaml"):
+        name = f"{name}.yaml"
+
     api.upload_file(
         path_or_fileobj=yaml_buffer,
-        path_in_repo=f"problem_definitions/{name}/problem_infos.yaml",
+        path_in_repo=f"problem_definitions/{name}",
         repo_id=repo_id,
         repo_type="dataset",
-        commit_message=f"Upload problem_definitions/{name}/problem_infos.yaml",
+        commit_message=f"Upload problem_definitions/{name}",
     )
 
     # data = pb_def.get_split()

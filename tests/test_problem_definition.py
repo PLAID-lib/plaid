@@ -61,7 +61,6 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
     problem_definition.add_cte_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_cte_feature_identifier(feature_identifier)
 
     # ----
     problem_definition.add_input_scalars_names(["scalar", "test_scalar"])

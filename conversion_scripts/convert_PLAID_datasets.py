@@ -8,9 +8,11 @@
 #
 
 import os
+from pathlib import Path
 from time import time
 
 import psutil
+import yaml
 
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.bridges import huggingface_bridge
@@ -31,150 +33,8 @@ def get_mem():
 # ------------------------------------------
 # Choose repo to convert
 # ------------------------------------------
-
-repo_id = "PLAID-datasets/Tensile2d"
-split_names = ["train_500", "test", "OOD"]
-split_names_out = ["train", "test", "OOD"]
-pb_def_names = [
-    "regression_8",
-    "regression_16",
-    "regression_32",
-    "regression_64",
-    "regression_125",
-    "regression_250",
-    "regression_500",
-    "PLAID_benchmark",
-]
-train_split_names = [
-    "train_8",
-    "train_16",
-    "train_32",
-    "train_64",
-    "train_125",
-    "train_250",
-    "train_500",
-    "train_500",
-]
-test_split_names = ["test"]
-repo_id_out = "fabiencasenave/Tensile2d"
-
-
-constant_features = sorted(
-    [
-        "Base_2_2",
-        "Base_2_2/Tensile2d",
-        "Base_2_2/Zone/CellData",
-        "Base_2_2/Zone/CellData/GridLocation",
-        "Base_2_2/Zone/Elements_TRI_3",
-        "Base_2_2/Zone/FamilyName",
-        "Base_2_2/Zone/GridCoordinates",
-        "Base_2_2/Zone/PointData",
-        "Base_2_2/Zone/PointData/GridLocation",
-        "Base_2_2/Zone/SurfaceData",
-        "Base_2_2/Zone/SurfaceData/GridLocation",
-        "Base_2_2/Zone/ZoneBC",
-        "Base_2_2/Zone/ZoneBC/Bottom",
-        "Base_2_2/Zone/ZoneBC/Bottom/GridLocation",
-        "Base_2_2/Zone/ZoneBC/BottomLeft",
-        "Base_2_2/Zone/ZoneBC/BottomLeft/GridLocation",
-        "Base_2_2/Zone/ZoneBC/Top",
-        "Base_2_2/Zone/ZoneBC/Top/GridLocation",
-        "Base_2_2/Zone/ZoneType",
-        "Global",
-    ]
-)
-
-input_features = sorted(
-    [
-        "Base_2_2/Zone",
-        "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity",
-        "Base_2_2/Zone/Elements_TRI_3/ElementRange",
-        "Base_2_2/Zone/GridCoordinates/CoordinateX",
-        "Base_2_2/Zone/GridCoordinates/CoordinateY",
-        "Base_2_2/Zone/ZoneBC/Bottom/PointList",
-        "Base_2_2/Zone/ZoneBC/BottomLeft/PointList",
-        "Base_2_2/Zone/ZoneBC/Top/PointList",
-        "Global/P",
-        "Global/p1",
-        "Global/p2",
-        "Global/p3",
-        "Global/p4",
-        "Global/p5",
-    ]
-)
-
-output_features = sorted(
-    [
-        "Base_2_2/Zone/PointData/U1",
-        "Base_2_2/Zone/PointData/U2",
-        "Base_2_2/Zone/PointData/q",
-        "Base_2_2/Zone/PointData/sig11",
-        "Base_2_2/Zone/PointData/sig12",
-        "Base_2_2/Zone/PointData/sig22",
-        "Global/max_U2_top",
-        "Global/max_q",
-        "Global/max_sig22_top",
-        "Global/max_von_mises",
-    ]
-)
-
-constant_features_benchmark = sorted(
-    [
-        "Base_2_2",
-        "Base_2_2/Tensile2d",
-        "Base_2_2/Zone/CellData",
-        "Base_2_2/Zone/CellData/GridLocation",
-        "Base_2_2/Zone/Elements_TRI_3",
-        "Base_2_2/Zone/FamilyName",
-        "Base_2_2/Zone/GridCoordinates",
-        "Base_2_2/Zone/PointData",
-        "Base_2_2/Zone/PointData/GridLocation",
-        "Base_2_2/Zone/SurfaceData",
-        "Base_2_2/Zone/SurfaceData/GridLocation",
-        "Base_2_2/Zone/ZoneBC",
-        "Base_2_2/Zone/ZoneBC/Bottom",
-        "Base_2_2/Zone/ZoneBC/Bottom/GridLocation",
-        "Base_2_2/Zone/ZoneBC/BottomLeft",
-        "Base_2_2/Zone/ZoneBC/BottomLeft/GridLocation",
-        "Base_2_2/Zone/ZoneBC/Top",
-        "Base_2_2/Zone/ZoneBC/Top/GridLocation",
-        "Base_2_2/Zone/ZoneType",
-        "Global",
-    ]
-)
-
-input_features_benchmark = sorted(
-    [
-        "Base_2_2/Zone",
-        "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity",
-        "Base_2_2/Zone/Elements_TRI_3/ElementRange",
-        "Base_2_2/Zone/GridCoordinates/CoordinateX",
-        "Base_2_2/Zone/GridCoordinates/CoordinateY",
-        "Base_2_2/Zone/ZoneBC/Bottom/PointList",
-        "Base_2_2/Zone/ZoneBC/BottomLeft/PointList",
-        "Base_2_2/Zone/ZoneBC/Top/PointList",
-        "Global/P",
-        "Global/p1",
-        "Global/p2",
-        "Global/p3",
-        "Global/p4",
-        "Global/p5",
-    ]
-)
-
-output_features_benchmark = sorted(
-    [
-        "Base_2_2/Zone/PointData/U1",
-        "Base_2_2/Zone/PointData/U2",
-        "Base_2_2/Zone/PointData/sig11",
-        "Base_2_2/Zone/PointData/sig12",
-        "Base_2_2/Zone/PointData/sig22",
-        "Global/max_U2_top",
-        "Global/max_sig22_top",
-        "Global/max_von_mises",
-    ]
-)
-
+# dataset_name = "Tensile2d"
+dataset_name = "VKI-LS59"
 
 # repo_id = "PLAID-datasets/VKI-LS59"
 # split_names = ["train", "test"]
@@ -195,6 +55,24 @@ output_features_benchmark = sorted(
 # repo_id = "PLAID-datasets/2D_ElastoPlastoDynamics"
 # split_names = ["train", "test"]
 # repo_id_out = "fabiencasenave/2D_ElastoPlastoDynamics"
+
+with Path(f"./config_{dataset_name}.yaml").open("r") as file:
+    data_config = yaml.safe_load(file)
+
+split_names = data_config["split_names"]
+split_names_out = data_config["split_names_out"]
+pb_def_names = data_config["pb_def_names"]
+train_split_names = data_config["train_split_names"]
+test_split_names = data_config["test_split_names"]
+repo_id = data_config["repo_id"]
+repo_id_out = data_config["repo_id_out"]
+constant_features = data_config["constant_features"]
+input_features = data_config["input_features"]
+output_features = data_config["output_features"]
+constant_features_benchmark = data_config["constant_features_benchmark"]
+input_features_benchmark = data_config["input_features_benchmark"]
+output_features_benchmark = data_config["output_features_benchmark"]
+
 
 # ---------------------------------------------------------------------------------------
 
@@ -351,21 +229,21 @@ dataset.set_infos(infos)
 infos = dataset.get_infos()
 
 
-# # push to HF hub
-# huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
-# huggingface_bridge.push_infos_to_hub(repo_id_out, infos)
-# huggingface_bridge.push_tree_struct_to_hub(repo_id_out, flat_cst, key_mappings)
-# for pb_name, pb_def_iter in zip(pb_def_names, all_pb_def):
-#     huggingface_bridge.push_problem_definition_to_hub(repo_id_out, pb_name, pb_def_iter)
-
-
-# push to disk
-local_repo = "Tensile2d"
-huggingface_bridge.save_dataset_dict_to_disk(local_repo, hf_dataset_dict)
-huggingface_bridge.save_infos_to_disk(local_repo, infos)
-huggingface_bridge.save_tree_struct_to_disk(local_repo, flat_cst, key_mappings)
+# push to HF hub
+huggingface_bridge.push_dataset_dict_to_hub(repo_id_out, hf_dataset_dict)
+huggingface_bridge.push_infos_to_hub(repo_id_out, infos)
+huggingface_bridge.push_tree_struct_to_hub(repo_id_out, flat_cst, key_mappings)
 for pb_name, pb_def_iter in zip(pb_def_names, all_pb_def):
-    huggingface_bridge.save_problem_definition_to_disk(local_repo, pb_name, pb_def_iter)
+    huggingface_bridge.push_problem_definition_to_hub(repo_id_out, pb_name, pb_def_iter)
+
+
+# # push to disk
+# local_repo = "Tensile2d"
+# huggingface_bridge.save_dataset_dict_to_disk(local_repo, hf_dataset_dict)
+# huggingface_bridge.save_infos_to_disk(local_repo, infos)
+# huggingface_bridge.save_tree_struct_to_disk(local_repo, flat_cst, key_mappings)
+# for pb_name, pb_def_iter in zip(pb_def_names, all_pb_def):
+#     huggingface_bridge.save_problem_definition_to_disk(local_repo, pb_name, pb_def_iter)
 
 
 # sanity check (not working with 2D_ElastoPlastoDynamics)
