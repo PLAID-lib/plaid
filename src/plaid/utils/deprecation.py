@@ -150,6 +150,10 @@ def deprecated_argument(
             @functools.wraps(func)
             def wrapper(*args, **kwargs):
                 if old_arg in kwargs:
+                    if new_arg in kwargs:
+                        raise ValueError(
+                            f"Arguments `{old_arg}` and `{new_arg}` cannot be both set."
+                        )
                     # Emit deprecation warning
                     if deprecated_builtin is not None:  # pragma: no cover
                         # In Python 3.13+, link warning to the function itself

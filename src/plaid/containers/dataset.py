@@ -68,7 +68,6 @@ class Dataset(object):
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
-        directory_path: Optional[Union[str, Path]] = None,
         verbose: bool = False,
         processes_number: int = 0,
         samples: Optional[list[Sample]] = None,
@@ -82,7 +81,6 @@ class Dataset(object):
 
         Args:
             path (Union[str,Path], optional): The path from which to load PLAID dataset files.
-            directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
             samples (list[Sample], optional): A list of :class:`Samples <plaid.containers.sample.Sample>` to initialize the :class:`Dataset <plaid.containers.dataset.Dataset>`. Defaults to None.
@@ -133,16 +131,8 @@ class Dataset(object):
             "plaid": {"version": Version(plaid.__version__)}
         }
 
-        if samples is not None and (directory_path is not None or path is not None):
+        if samples is not None and (path is not None):
             raise ValueError("'samples' and 'path' are mutually exclusive")
-
-        if directory_path is not None:
-            if path is not None:
-                raise ValueError(
-                    "Arguments `path` and `directory_path` cannot be both set. Use only `path` as `directory_path` is deprecated."
-                )
-            else:
-                path = directory_path
 
         if path is not None:
             path = Path(path)
@@ -1408,8 +1398,8 @@ class Dataset(object):
         """
         return cls(samples=list_of_samples, sample_ids=ids)
 
-    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     @classmethod
+    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load_from_file(
         cls, path: Union[str, Path], verbose: bool = False, processes_number: int = 0
     ) -> Self:
@@ -1428,8 +1418,8 @@ class Dataset(object):
         instance.load(path, verbose, processes_number)
         return instance
 
-    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     @classmethod
+    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load_from_dir(
         cls,
         path: Union[str, Path],
@@ -1505,7 +1495,6 @@ class Dataset(object):
         self,
         sample: Sample,
         path: Optional[Union[str, Path]] = None,
-        save_dir: Optional[Union[str, Path]] = None,
         verbose: bool = False,
     ) -> None:
         """Add a sample to the dataset and save it to the specified directory.
@@ -1517,23 +1506,11 @@ class Dataset(object):
         Args:
             sample (Sample): The sample to add.
             path (Union[str,Path], optional): The directory in which to save the sample. Defaults to None.
-            save_dir (Union[str,Path], optional): Deprecated, use `path` instead.
             verbose (bool, optional): If True, will print additional information. Defaults to False.
 
         Raises:
             ValueError: If both self.path and path are None.
         """
-        if save_dir is not None:
-            if path is not None:
-                raise ValueError(
-                    "Arguments `path` and `save_dir` cannot be both set. Use only `path` as `save_dir` is deprecated."
-                )
-            else:
-                path = save_dir
-                logger.warning(
-                    "DeprecationWarning: 'save_dir' is deprecated, use 'path' instead."
-                )
-
         if path is not None:
             path = Path(path)
             self.path = path
