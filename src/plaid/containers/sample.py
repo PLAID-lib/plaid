@@ -586,7 +586,7 @@ class Sample(BaseModel):
         return sample
 
     @deprecated(
-        "Use extract_sample_from_identifier() instead",
+        "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_sample_from_identifier(...)`",
         version="0.1.8",
         removal="0.2",
     )
@@ -594,7 +594,7 @@ class Sample(BaseModel):
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
     ) -> Self:
-        """DEPRECATED: Use extract_sample_from_identifier() instead."""
+        """DEPRECATED: Use :meth:`Dataset.extract_sample_from_identifier` instead."""
         return self.extract_sample_from_identifier(
             feature_identifiers
         )  # pragma: no cover
@@ -644,7 +644,19 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
+    @deprecated(
+        "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_dir(...)`",
+        version="0.1.8",
+        removal="0.2",
+    )
     def save(
+        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
+    ) -> None:
+        """DEPRECATED: use :meth:`Dataset.save_to_dir` instead."""
+        self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
+
+    # -------------------------------------------------------------------------#
+    def save_to_dir(
         self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
     ) -> None:
         """Save the Sample in directory `path`.
@@ -680,7 +692,7 @@ class Sample(BaseModel):
 
                     cmd = [sys.executable, str(CGNS_WORKER), tmpfile, str(outfname)]
                     subprocess.run(cmd)
-                    logging.debug(f"save -> {outfname}")
+                    logger.debug(f"save -> {outfname}")
 
                 else:
                     status = CGM.save(str(outfname), self.features.data[time])

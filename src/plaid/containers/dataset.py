@@ -36,7 +36,7 @@ from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
 from plaid.types import Array, Feature, FeatureIdentifier
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
-from plaid.utils.deprecation import deprecated
+from plaid.utils.deprecation import deprecated, deprecated_argument
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +64,7 @@ def process_sample(path: Union[str, Path]) -> tuple:  # pragma: no cover
 class Dataset(object):
     """A set of samples, and optionnaly some other informations about the Dataset."""
 
+    @deprecated_argument("directory_path", "path", version="0.1.8", removal="0.2.0")
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
@@ -142,9 +143,6 @@ class Dataset(object):
                 )
             else:
                 path = directory_path
-                logger.warning(
-                    "DeprecationWarning: 'directory_path' is deprecated, use 'path' instead."
-                )
 
         if path is not None:
             path = Path(path)
@@ -714,7 +712,7 @@ class Dataset(object):
         return dataset
 
     @deprecated(
-        "Use extract_dataset_from_identifier() instead",
+        "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_dataset_from_identifier(...)`",
         version="0.1.8",
         removal="0.2",
     )
@@ -722,7 +720,7 @@ class Dataset(object):
         self,
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
     ) -> Self:
-        """DEPRECATED: Use extract_dataset_from_identifier() instead."""
+        """DEPRECATED: Use :meth:`Dataset.extract_dataset_from_identifier` instead."""
         return self.extract_dataset_from_identifier(
             feature_identifiers
         )  # pragma: no cover
@@ -838,7 +836,7 @@ class Dataset(object):
         return dataset
 
     @deprecated(
-        "Use add_features_from_tabular() instead",
+        "`Dataset.from_tabular(...)` is deprecated, use instead `Dataset.add_features_from_tabular(...)`",
         version="0.1.8",
         removal="0.2",
     )
@@ -848,7 +846,7 @@ class Dataset(object):
         feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
         restrict_to_features: bool = True,
     ) -> Self:
-        """DEPRECATED: Use add_features_from_tabular() instead."""
+        """DEPRECATED: Use :meth:`Dataset.add_features_from_tabular` instead."""
         return self.add_features_from_tabular(
             tabular, feature_identifiers, restrict_to_features
         )  # pragma: no cover
@@ -1090,7 +1088,26 @@ class Dataset(object):
             merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
         return merged_dataset
 
+    @deprecated_argument("directory_path", "path", version="0.1.8", removal="0.2.0")
+    @deprecated(
+        "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_file(...)`",
+        version="0.1.10",
+        removal="0.2.0",
+    )
     def save(self, path: Union[str, Path]) -> None:
+        """Saves the data set to a TAR (Tape Archive) file.
+
+        It creates a temporary intermediate directory to store temporary files during the loading process.
+
+        Args:
+            path (Union[str,Path]): The path to which the data set will be saved.
+
+        Raises:
+            ValueError: If the randomly generated temporary dir name is already used (extremely unlikely!).
+        """
+        self.save_to_file(path)
+
+    def save_to_file(self, path: Union[str, Path]) -> None:
         """Saves the data set to a TAR (Tape Archive) file.
 
         It creates a temporary intermediate directory to store temporary files during the loading process.
@@ -1112,7 +1129,7 @@ class Dataset(object):
             )
         tmp_dir.mkdir(parents=True)
 
-        self._save_to_dir_(tmp_dir)
+        self.save_to_dir(tmp_dir)
 
         # Then : tar dir in file <path>
         # TODO: avoid using subprocess by using lib tarfile
@@ -1121,6 +1138,46 @@ class Dataset(object):
 
         # Finally : removes directory <tmp_dir>
         shutil.rmtree(tmp_dir)
+
+    def save_to_dir(self, path: Union[str, Path], verbose: bool = False) -> None:
+        """Saves the dataset into a sub-directory `samples` and creates an 'infos.yaml' file to store additional information about the dataset.
+
+        Args:
+            path (Union[str,Path]): The path in which to save the files.
+            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
+        """
+        path = Path(path)
+        if not (path.is_dir()):
+            path.mkdir(parents=True)
+
+        self.path = path
+
+        if verbose:  # pragma: no cover
+            print(f"Saving database to: {path}")
+
+        # Save infos
+        assert "plaid" in self._infos, f"{self._infos.keys()=} should contain 'plaid'"
+        assert "version" in self._infos["plaid"], (
+            f"{self._infos['plaid'].keys()=} should contain 'version'"
+        )
+        plaid_version = Version(plaid.__version__)
+        if self._infos["plaid"]["version"] != plaid_version:  # pragma: no cover
+            logger.warning(
+                f"Version mismatch: Dataset was loaded from version {self._infos['plaid']['version'] if self._infos['plaid']['version'] is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
+            )
+        self._infos["plaid"]["version"] = str(plaid_version)
+        infos_fname = path / "infos.yaml"
+        with open(infos_fname, "w") as file:
+            yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
+
+        # Save samples
+        samples_dir = path / "samples"
+        if not (samples_dir.is_dir()):
+            samples_dir.mkdir(parents=True)
+
+        for i_sample, sample in tqdm(self._samples.items(), disable=not (verbose)):
+            sample_dname = samples_dir / f"sample_{i_sample:09d}"
+            sample.save_to_dir(sample_dname)
 
     def summarize_features(self) -> str:
         """Show the name of each feature and the number of samples containing it.
@@ -1351,6 +1408,7 @@ class Dataset(object):
         """
         return cls(samples=list_of_samples, sample_ids=ids)
 
+    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     @classmethod
     def load_from_file(
         cls, path: Union[str, Path], verbose: bool = False, processes_number: int = 0
@@ -1370,6 +1428,7 @@ class Dataset(object):
         instance.load(path, verbose, processes_number)
         return instance
 
+    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     @classmethod
     def load_from_dir(
         cls,
@@ -1396,12 +1455,13 @@ class Dataset(object):
         )
         return instance
 
+    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load(
         self, path: Union[str, Path], verbose: bool = False, processes_number: int = 0
     ) -> None:
-        """Load data from a specified TAR (Tape Archive) file.
+        """Load data from a specified file or directory.
 
-        It creates a temporary intermediate directory to store temporary files during the loading process.
+        If path is a file, it creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
             path (Union[str,Path]): The path to the data file to be loaded.
@@ -1414,27 +1474,33 @@ class Dataset(object):
         """
         path = Path(path)
 
-        inputdir = path.parent / f"tmploaddir_{generate_random_ASCII()}"
-        if inputdir.is_dir():  # pragma: no cover
-            raise ValueError(
-                f"temporary intermediate directory <{inputdir}> already exits"
+        if path.is_file():
+            inputdir = path.parent / f"tmploaddir_{generate_random_ASCII()}"
+            if inputdir.is_dir():  # pragma: no cover
+                raise ValueError(
+                    f"temporary intermediate directory <{inputdir}> already exits"
+                )
+            inputdir.mkdir(parents=True)
+
+            # First : untar file <path> to a directory <inputdir>
+            # TODO: avoid using subprocess by using a lib tarfile
+            arguments = ["tar", "-xf", path, "-C", inputdir]
+            subprocess.call(arguments)
+
+            # Then : load data from directory <inputdir>
+            self._load_from_dir_(
+                inputdir, verbose=verbose, processes_number=processes_number
             )
-        inputdir.mkdir(parents=True)
 
-        # First : untar file <path> to a directory <inputdir>
-        # TODO: avoid using subprocess by using a lib tarfile
-        arguments = ["tar", "-xf", path, "-C", inputdir]
-        subprocess.call(arguments)
-
-        # Then : load data from directory <inputdir>
-        self._load_from_dir_(
-            inputdir, verbose=verbose, processes_number=processes_number
-        )
-
-        # Finally : removes directory <inputdir>
-        shutil.rmtree(inputdir)
+            # Finally : removes directory <inputdir>
+            shutil.rmtree(inputdir)
+        else:
+            self._load_from_dir_(
+                path, verbose=verbose, processes_number=processes_number
+            )
 
     # -------------------------------------------------------------------------#
+    @deprecated_argument("save_dir", "path", version="0.1.8", removal="0.2.0")
     def add_to_dir(
         self,
         sample: Sample,
@@ -1503,49 +1569,28 @@ class Dataset(object):
         i_sample = max(sample_ids_in_path) + 1 if len(sample_ids_in_path) > 0 else 0
         i_sample = max(len(self), i_sample)
 
-        sample_fname = samples_dir / f"sample_{i_sample:09d}"
-        sample.save(sample_fname)
+        sample_dname = samples_dir / f"sample_{i_sample:09d}"
+        sample.save_to_dir(sample_dname)
 
+    @deprecated(
+        "`Dataset._save_to_dir_(path)` is deprecated, use instead `Dataset.save_to_dir(path)`",
+        version="0.1.10",
+        removal="0.2.0",
+    )
     def _save_to_dir_(self, path: Union[str, Path], verbose: bool = False) -> None:
-        """Saves the dataset into a sub-directory `samples` and creates an 'infos.yaml' file to store additional information about the dataset.
+        """DEPRECATED: use :meth:`Dataset.save_to_dir` instead.
 
         Args:
             path (Union[str,Path]): The path in which to save the files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
         """
-        path = Path(path)
-        if not (path.is_dir()):
-            path.mkdir(parents=True)
+        self.save_to_dir(path, verbose=verbose)
 
-        self.path = path
-
-        if verbose:  # pragma: no cover
-            print(f"Saving database to: {path}")
-
-        # Save infos
-        assert "plaid" in self._infos, f"{self._infos.keys()=} should contain 'plaid'"
-        assert "version" in self._infos["plaid"], (
-            f"{self._infos['plaid'].keys()=} should contain 'version'"
-        )
-        plaid_version = Version(plaid.__version__)
-        if self._infos["plaid"]["version"] != plaid_version:  # pragma: no cover
-            logger.warning(
-                f"Version mismatch: Dataset was loaded from version {self._infos['plaid']['version'] if self._infos['plaid']['version'] is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
-            )
-        self._infos["plaid"]["version"] = str(plaid_version)
-        infos_fname = path / "infos.yaml"
-        with open(infos_fname, "w") as file:
-            yaml.dump(self._infos, file, default_flow_style=False, sort_keys=False)
-
-        # Save samples
-        samples_dir = path / "samples"
-        if not (samples_dir.is_dir()):
-            samples_dir.mkdir(parents=True)
-
-        for i_sample, sample in tqdm(self._samples.items(), disable=not (verbose)):
-            sample_fname = samples_dir / f"sample_{i_sample:09d}"
-            sample.save(sample_fname)
-
+    @deprecated(
+        "`Dataset._load_from_dir_(...)` is deprecated, use instead `Dataset.load()`",
+        version="0.1.10",
+        removal="0.2.0",
+    )
     def _load_from_dir_(
         self,
         path: Union[str, Path],
