@@ -85,6 +85,13 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
 
     new_split = {"train": [0, 1, 2], "test": [3, 4]}
     problem_definition.set_split(new_split)
+
+    new_split = {"train_1": [0, 1, 2], "train_2": "all"}
+    problem_definition.set_train_split(new_split)
+
+    new_split = {"test_1": "all", "test_2": [0, 2]}
+    problem_definition.set_test_split(new_split)
+
     return problem_definition
 
 
@@ -210,6 +217,35 @@ class Test_ProblemDefinition:
         outputs = problem_definition.get_out_features_identifiers()
         assert len(outputs) == 3
         assert set(outputs) == set(
+            [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
+        )
+        print(problem_definition)
+
+    # -------------------------------------------------------------------------#
+    def test_get_cte_features_identifiers(self, problem_definition):
+        assert problem_definition.get_cte_features_identifiers() == []
+
+    def test_add_cte_features_identifiers_fail(self, problem_definition):
+        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
+        with pytest.raises(ValueError):
+            problem_definition.add_cte_features_identifiers(
+                [dummy_identifier, dummy_identifier]
+            )
+        problem_definition.add_cte_feature_identifier(dummy_identifier)
+        with pytest.raises(ValueError):
+            problem_definition.add_cte_feature_identifier(dummy_identifier)
+
+    def test_add_cte_features_identifiers(self, problem_definition):
+        dummy_identifier_1 = FeatureIdentifier({"type": "scalar", "name": "dummy_1"})
+        dummy_identifier_2 = FeatureIdentifier({"type": "scalar", "name": "dummy_2"})
+        dummy_identifier_3 = FeatureIdentifier({"type": "scalar", "name": "dummy_3"})
+        problem_definition.add_cte_features_identifiers(
+            [dummy_identifier_1, dummy_identifier_2]
+        )
+        problem_definition.add_cte_feature_identifier(dummy_identifier_3)
+        constants = problem_definition.get_cte_features_identifiers()
+        assert len(constants) == 3
+        assert set(constants) == set(
             [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
         )
         print(problem_definition)
@@ -564,6 +600,11 @@ class Test_ProblemDefinition:
     ):
         problem_definition_full._save_to_dir_(tmp_path / "problem_definition")
 
+    def test__save_to_file_(
+        self, problem_definition_full: ProblemDefinition, tmp_path: Path
+    ):
+        problem_definition_full._save_to_file_(tmp_path / "pb_def")
+
     def test_load_path_object(self, current_directory):
         my_dir = Path(current_directory)
         ProblemDefinition(my_dir / "problem_definition")
@@ -602,6 +643,22 @@ class Test_ProblemDefinition:
         )
         all_split = problem.get_split()
         assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
+
+    def test__load_from_file_(
+        self, problem_definition_full: ProblemDefinition, tmp_path: Path
+    ):
+        path = tmp_path / "pb_def"
+        problem_definition_full._save_to_file_(path)
+        #
+        problem = ProblemDefinition()
+        problem._load_from_file_(path)
+        assert problem.get_task() == "regression"
+        assert set(problem.get_input_scalars_names()) == set(
+            ["predict_scalar", "scalar", "test_scalar"]
+        )
+        assert set(problem.get_output_scalars_names()) == set(
+            ["predict_scalar", "scalar", "test_scalar"]
+        )
 
     def test_load(self, problem_definition_full: ProblemDefinition, tmp_path: Path):
         d_path = tmp_path / "problem_definition"
@@ -646,6 +703,12 @@ class Test_ProblemDefinition:
         non_existing_dir = Path("non_existing_path")
         with pytest.raises(FileNotFoundError):
             problem._load_from_dir_(non_existing_dir)
+
+    def test__load_from_file__non_existing_file(self):
+        problem = ProblemDefinition()
+        non_existing_path = Path("non_existing_path")
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_file_(non_existing_path)
 
     def test__load_from_dir__path_is_file(self, tmp_path):
         problem = ProblemDefinition()
