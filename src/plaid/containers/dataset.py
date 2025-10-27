@@ -1085,16 +1085,7 @@ class Dataset(object):
         removal="0.2.0",
     )
     def save(self, path: Union[str, Path]) -> None:
-        """Saves the data set to a TAR (Tape Archive) file.
-
-        It creates a temporary intermediate directory to store temporary files during the loading process.
-
-        Args:
-            path (Union[str,Path]): The path to which the data set will be saved.
-
-        Raises:
-            ValueError: If the randomly generated temporary dir name is already used (extremely unlikely!).
-        """
+        """DEPRECATED: use :meth:`Dataset.save_to_file(...)` instead."""
         self.save_to_file(path)
 
     def save_to_file(self, path: Union[str, Path]) -> None:
@@ -1382,20 +1373,7 @@ class Dataset(object):
     def from_list_of_samples(
         cls, list_of_samples: list[Sample], ids: Optional[list[int]] = None
     ) -> Self:
-        """Initialise a dataset from a list of samples.
-
-        DEPRECATED: use `Dataset(samples=..., sample_ids=...)` instead. This classmethod will be
-        removed in a future release. It currently returns an instance
-        equivalent to calling `Dataset(samples=list_of_samples, sample_ids=ids)` and emits a
-        `DeprecationWarning`.
-
-        Args:
-            list_of_samples (list[Sample]): The list of samples.
-            ids (list[int], optional): An optional list of IDs for the new samples. If not provided, the IDs will be automatically generated based on the current number of samples in the dataset.
-
-        Returns:
-            Self: The initialized dataset (Dataset).
-        """
+        """DEPRECATED: use `Dataset(samples=..., sample_ids=...)` instead."""
         return cls(samples=list_of_samples, sample_ids=ids)
 
     @classmethod
@@ -1555,12 +1533,7 @@ class Dataset(object):
         removal="0.2.0",
     )
     def _save_to_dir_(self, path: Union[str, Path], verbose: bool = False) -> None:
-        """DEPRECATED: use :meth:`Dataset.save_to_dir` instead.
-
-        Args:
-            path (Union[str,Path]): The path in which to save the files.
-            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
-        """
+        """DEPRECATED: use :meth:`Dataset.save_to_dir` instead."""
         self.save_to_dir(path, verbose=verbose)
 
     @deprecated(
@@ -1575,19 +1548,7 @@ class Dataset(object):
         verbose: bool = False,
         processes_number: int = 0,
     ) -> None:
-        """Loads a dataset from a sample directory and retrieves additional information about the dataset from an 'infos.yaml' file, if available.
-
-        Args:
-            path (Union[str,Path]): The path from which to load files.
-            ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
-            verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
-            processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
-
-        Raises:
-            FileNotFoundError: Triggered if the provided directory does not exist.
-            FileExistsError: Triggered if the provided path is a file instead of a directory.
-            ValueError: Triggered if the number of processes is < -1.
-        """
+        """DEPRECATED: use :meth:`Dataset.load` instead."""
         path = Path(path)
         if not path.is_dir():
             raise FileNotFoundError(
