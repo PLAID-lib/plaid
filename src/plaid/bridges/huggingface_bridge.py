@@ -1272,7 +1272,7 @@ def save_tree_struct_to_disk(
     """
     Path(path).mkdir(parents=True, exist_ok=True)
 
-    with open(Path(path) / "tree_constant_part.pkl", "wb") as f:  # wb = write binary
+    with open(Path(path) / "tree_constant_part.pkl", "wb") as f:
         pickle.dump(flat_cst, f)
 
     with open(Path(path) / "key_mappings.yaml", "w", encoding="utf-8") as f:

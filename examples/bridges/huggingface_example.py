@@ -387,8 +387,54 @@ show_sample(plaid_sample)
 # ```
 
 # %% [markdown]
-# A robust way to retrieve variable features from the pyarrow table is:
+# An efficient way to retrieve the output feature directly from the pyarrow table is:
 # ```python
-# for path in key_mappings["variable_features"]:
-#     feature = hf_dataset_new["train"].data[path][i].values.to_numpy(zero_copy_only=False)
+# init_ram = get_mem()
+# start = time()
+# for i in tqdm(
+#     range(len(hf_dataset_new["train"])), desc="Retrieving features"
+# ):
+#     for path in pb_def.get_out_features_identifiers():
+#         hf_dataset_new["train"].data[path][i].values.to_numpy(
+#             zero_copy_only=False
+#         )
+# elapsed = time() - start
+# print(
+#     f"Time to retrieve out features on train: {elapsed:.6g} s, RAM usage increase: {get_mem() - init_ram} MB"
+# )
 # ```
+# ```bash
+# >> Time to retrieve out features on train: 0.0400107 s, RAM usage increase: 0.27734375 MB
+# ```
+# Notice that doing this for time-dependent datasets would require manual handling of the time dimension.
+
+# %% [markdown]
+# A robust way to retrieve input and output features from a HF dataset relying on the `to_plaid_sample` constructor is:
+# ```python
+# init_ram = get_mem()
+# start = time()
+# for i in tqdm(
+#     range(len(hf_dataset_new[split_names[0]])), desc="Retrieving all variable features"
+# ):
+#     sample = huggingface_bridge.to_plaid_sample(
+#         hf_dataset_new[split_names[0]],
+#         i,
+#         flat_cst[split_names[0]],
+#         cgns_types,
+#         enforce_shapes=False,
+#     )
+#     for t in sample.get_all_mesh_times():
+#         for path in pb_def.get_in_features_identifiers():
+#             sample.get_feature_by_path(path=path, time=t)
+#         for path in pb_def.get_out_features_identifiers():
+#             sample.get_feature_by_path(path=path, time=t)
+# elapsed = time() - start
+# print(
+#     f"Time to retrieve in and out features on train: {elapsed:.6g} s, RAM usage increase: {get_mem() - init_ram} MB"
+# )
+# ```
+# ```bash
+# >> Time to retrieve in and out features on train: 0.401273 s, RAM usage increase: 17.72265625 MB
+# ```
+# Notice that converting first to plaid samples incurs some overhead, but this method is robust and works for time-dependent datasets as well.
+
