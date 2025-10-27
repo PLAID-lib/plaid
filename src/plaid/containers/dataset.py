@@ -48,7 +48,7 @@ def process_sample(path: Union[str, Path]) -> tuple:  # pragma: no cover
     """Load Sample from path.
 
     Args:
-        path (Union[str,Path]): The path to the Sample.
+        path (Union[str, Path]): The path to the Sample.
 
     Returns:
         tuple: The loaded Sample and its ID.
@@ -80,7 +80,7 @@ class Dataset(object):
         Use :meth:`add_sample <plaid.containers.dataset.Dataset.add_sample>` or :meth:`add_samples <plaid.containers.dataset.Dataset.add_samples>` to feed the :class:`Dataset`
 
         Args:
-            path (Union[str,Path], optional): The path from which to load PLAID dataset files.
+            path (Union[str, Path], optional): The path from which to load PLAID dataset files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
             samples (list[Sample], optional): A list of :class:`Samples <plaid.containers.sample.Sample>` to initialize the :class:`Dataset <plaid.containers.dataset.Dataset>`. Defaults to None.
@@ -156,7 +156,7 @@ class Dataset(object):
             A new `Dataset` instance with all internal data (samples, infos)
             deeply copied to ensure full isolation from the original.
 
-        Notes:
+        Note:
             This operation may be memory-intensive for large datasets.
         """
         return copy.deepcopy(self)
@@ -510,7 +510,7 @@ class Dataset(object):
             ShapeError: Raised if the input tabular array does not have the correct shape (2D).
             ShapeError: Raised if the number of columns in the tabular data does not match the number of names provided.
 
-        Notes:
+        Note:
             If no names are provided, it will automatically create names based on the pattern 'X{number}'
         """
         nb_samples = len(tabular)
@@ -1085,7 +1085,7 @@ class Dataset(object):
         removal="0.2.0",
     )
     def save(self, path: Union[str, Path]) -> None:
-        """DEPRECATED: use :meth:`Dataset.save_to_file(...)` instead."""
+        """DEPRECATED: use :meth:`Dataset.save_to_file` instead."""
         self.save_to_file(path)
 
     def save_to_file(self, path: Union[str, Path]) -> None:
@@ -1094,7 +1094,7 @@ class Dataset(object):
         It creates a temporary intermediate directory to store temporary files during the loading process.
 
         Args:
-            path (Union[str,Path]): The path to which the data set will be saved.
+            path (Union[str, Path]): The path to which the data set will be saved.
 
         Raises:
             ValueError: If the randomly generated temporary dir name is already used (extremely unlikely!).
@@ -1124,7 +1124,7 @@ class Dataset(object):
         """Saves the dataset into a sub-directory `samples` and creates an 'infos.yaml' file to store additional information about the dataset.
 
         Args:
-            path (Union[str,Path]): The path in which to save the files.
+            path (Union[str, Path]): The path in which to save the files.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
         """
         path = Path(path)
@@ -1384,7 +1384,7 @@ class Dataset(object):
         """Load data from a specified TAR (Tape Archive) file.
 
         Args:
-            path (Union[str,Path]): The path to the data file to be loaded.
+            path (Union[str, Path]): The path to the data file to be loaded.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
@@ -1408,7 +1408,7 @@ class Dataset(object):
         """Load data from a specified directory.
 
         Args:
-            path (Union[str,Path]): The path from which to load files.
+            path (Union[str, Path]): The path from which to load files.
             ids (list, optional): The specific sample IDs to load from the dataset. Defaults to None.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
@@ -1429,10 +1429,14 @@ class Dataset(object):
     ) -> None:
         """Load data from a specified file or directory.
 
-        If path is a file, it creates a temporary intermediate directory to store temporary files during the loading process.
+        Note:
+            If path is a file, it creates a temporary intermediate directory to extract the files from the archive during the loading process.
+
+        Note:
+            This method overwrites the content of the calling instance.
 
         Args:
-            path (Union[str,Path]): The path to the data file to be loaded.
+            path (Union[str, Path]): The path to the data file to be loaded.
             verbose (bool, optional): Explicitly displays the operations performed. Defaults to False.
             processes_number (int, optional): Number of processes used to load files (-1 to use all available ressources, 0 to disable multiprocessing). Defaults to 0.
 
@@ -1477,13 +1481,13 @@ class Dataset(object):
     ) -> None:
         """Add a sample to the dataset and save it to the specified directory.
 
-        Notes:
+        Note:
             If `path` is None, will look for `self.path` which will be retrieved from last previous call to load or save.
             `path` given in argument will take precedence over `self.path` and overwrite it.
 
         Args:
             sample (Sample): The sample to add.
-            path (Union[str,Path], optional): The directory in which to save the sample. Defaults to None.
+            path (Union[str, Path], optional): The directory in which to save the sample. Defaults to None.
             verbose (bool, optional): If True, will print additional information. Defaults to False.
 
         Raises:
@@ -1536,11 +1540,6 @@ class Dataset(object):
         """DEPRECATED: use :meth:`Dataset.save_to_dir` instead."""
         self.save_to_dir(path, verbose=verbose)
 
-    @deprecated(
-        "`Dataset._load_from_dir_(...)` is deprecated, use instead `Dataset.load()`",
-        version="0.1.10",
-        removal="0.2.0",
-    )
     def _load_from_dir_(
         self,
         path: Union[str, Path],
@@ -1647,17 +1646,7 @@ class Dataset(object):
 
     @staticmethod
     def _load_number_of_samples_(_path: Union[str, Path]) -> int:
-        """Warning: This method is deprecated, use instead :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>`.
-
-        This function counts the number of sample files in a specified directory, which is
-        useful for determining the total number of samples in a dataset.
-
-        Args:
-            path (Union[str,Path]): The path to the directory where sample files are stored.
-
-        Returns:
-            int: The number of sample files found in the specified directory.
-        """
+        """DEPRECATED: use :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>` instead."""
         raise DeprecatedError(
             'use instead: plaid.get_number_of_samples("path-to-my-dataset")'
         )
@@ -1763,7 +1752,7 @@ class Dataset(object):
             >>> for sample in dataset:
             ...     process(sample)
 
-        Notes:
+        Note:
             The samples are yielded in ascending order of their IDs.
             Only samples that have been explicitly added to the dataset are returned.
         """
