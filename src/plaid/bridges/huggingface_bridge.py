@@ -853,23 +853,6 @@ def load_problem_definition_from_hub(
     if not name.endswith(".yaml"):
         name = f"{name}.yaml"
 
-    # # Download splits
-    # json_path = hf_hub_download(
-    #     repo_id=repo_id,
-    #     filename=f"problem_definitions/{name}/train_split.json",
-    #     repo_type="dataset",
-    # )
-    # with open(json_path, "r", encoding="utf-8") as f:
-    #     json_data_train = json.load(f)
-
-    # json_path = hf_hub_download(
-    #     repo_id=repo_id,
-    #     filename=f"problem_definitions/{name}/test_split.json",
-    #     repo_type="dataset",
-    # )
-    # with open(json_path, "r", encoding="utf-8") as f:
-    #     json_data_test = json.load(f)
-
     # Download problem_infos.yaml
     yaml_path = hf_hub_download(
         repo_id=repo_id,
@@ -881,8 +864,6 @@ def load_problem_definition_from_hub(
 
     prob_def = ProblemDefinition()
     prob_def._initialize_from_problem_infos_dict(yaml_data)
-    # prob_def.set_train_split(json_data_train)
-    # prob_def.set_test_split(json_data_test)
 
     return prob_def
 
@@ -1019,42 +1000,6 @@ def push_problem_definition_to_hub(
         repo_type="dataset",
         commit_message=f"Upload problem_definitions/{name}",
     )
-
-    # data = pb_def.get_split()
-    # json_str = json.dumps(data)
-    # json_buffer = io.BytesIO(json_str.encode("utf-8"))
-
-    # api.upload_file(
-    #     path_or_fileobj=json_buffer,
-    #     path_in_repo=f"problem_definitions/{name}/split.json",
-    #     repo_id=repo_id,
-    #     repo_type="dataset",
-    #     commit_message=f"Upload problem_definitions/{name}/split.json",
-    # )
-
-    # data = pb_def.get_train_split()
-    # json_str = json.dumps(data)
-    # json_buffer = io.BytesIO(json_str.encode("utf-8"))
-
-    # api.upload_file(
-    #     path_or_fileobj=json_buffer,
-    #     path_in_repo=f"problem_definitions/{name}/train_split.json",
-    #     repo_id=repo_id,
-    #     repo_type="dataset",
-    #     commit_message=f"Upload problem_definitions/{name}/train_split.json",
-    # )
-
-    # data = pb_def.get_test_split()
-    # json_str = json.dumps(data)
-    # json_buffer = io.BytesIO(json_str.encode("utf-8"))
-
-    # api.upload_file(
-    #     path_or_fileobj=json_buffer,
-    #     path_in_repo=f"problem_definitions/{name}/test_split.json",
-    #     repo_id=repo_id,
-    #     repo_type="dataset",
-    #     commit_message=f"Upload problem_definitions/{name}/test_split.json",
-    # )
 
 
 def push_tree_struct_to_hub(
