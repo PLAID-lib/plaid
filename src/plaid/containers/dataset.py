@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 # %% Functions
 
 
-def process_sample(path: Union[str, Path]) -> tuple:  # pragma: no cover
+def _process_sample(path: Union[str, Path]) -> tuple:  # pragma: no cover
     """Load Sample from path.
 
     Args:
@@ -1610,7 +1610,7 @@ class Dataset(object):
             with Pool(processes_number) as p:
                 for id, sample in list(
                     tqdm(
-                        p.imap(process_sample, sample_paths),
+                        p.imap(_process_sample, sample_paths),
                         total=len(sample_paths),
                         disable=not (verbose),
                     )
@@ -1626,7 +1626,7 @@ class Dataset(object):
 
             samples = [
                 samples_pool.apply_async(
-                    process_sample,
+                    _process_sample,
                     args=(
                         sample_paths[i],
                         i),
