@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (dataset/sample/problem_definition) save and load methods starting with `_` are deprecated.
 - (huggingface bridge) restructuration: do not rely on binary blobs anymore, but exploit native arrow types by flattening cgns trees into constant and variable parts (for stationnary and temporal datasets).
 - (sample) Restructuring of the Sample class to store a global (tensor of arbitrary order) at a given time step: replaces scalar and time_series. All Sample data are now stored in CGNS trees.
 

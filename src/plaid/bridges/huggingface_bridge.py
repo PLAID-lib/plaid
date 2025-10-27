@@ -74,7 +74,7 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
         TypeError: If the value type is not supported.
         TypeError: If the array dimensionality exceeds 3D for arrays/lists.
 
-    Notes:
+    Note:
         - For scalar values, maps numpy dtypes to appropriate Hugging Face Value types:
           float types to "float32", int32 to "int32", int64 to "int64", others to "string"
         - For arrays/lists, creates nested Sequence structures based on dimensionality:
@@ -145,7 +145,7 @@ def build_hf_sample(sample: Sample) -> tuple[dict[str, Any], list[str], dict[str
             - sample_cgns_types (dict[str, str]): Mapping from path to CGNS node type
               (metadata produced by flatten_cgns_tree).
 
-    Notes:
+    Note:
         - Byte-array encoded strings (dtype "|S1") are handled by reassembling and
           storing the string as a single-element numpy array; a sha256 hash is used
           for deduplication.
@@ -453,7 +453,7 @@ def to_plaid_sample(
     Returns:
         Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
 
-    Notes:
+    Note:
         - Uses the dataset's pyarrow table data for efficient access.
         - Handles array shapes and types according to enforce_shapes.
         - Constant features from flat_cst are merged with the variable features from the row.
@@ -772,7 +772,7 @@ def load_dataset_from_hub(
     Raises:
         Exception: Propagates any exceptions raised by `datasets.load_dataset`, `datasets.load_from_disk`, or `huggingface_hub.snapshot_download` if loading fails.
 
-    Notes:
+    Note:
         - Streaming mode is not supported when using a private mirror.
         - If the dataset is found in the local cache, loads from disk instead of streaming.
         - To use behind a proxy or with a private mirror, you may need to set:
@@ -1038,7 +1038,7 @@ def push_tree_struct_to_hub(
     Returns:
         None
 
-    Notes:
+    Note:
         - Each upload includes a commit message indicating the filename.
         - This function is not covered by unit tests (`pragma: no cover`).
     """
@@ -1406,7 +1406,7 @@ def plaid_generator_to_huggingface_datasetdict_binary(
     The generator enables loading samples one by one.
     The dataset dict can then be saved to disk, or pushed to the Hugging Face hub.
 
-    Notes:
+    Note:
         Only the first split will contain the decription.
 
     Args:

@@ -969,16 +969,30 @@ class Test_Dataset:
         dataset_with_samples.save(fname)
         assert fname.is_file()
 
-    def test_load(self, dataset_with_samples, tmp_path):
+    def test_load_file(self, dataset_with_samples, tmp_path):
         fname = tmp_path / "test.plaid"
-        dataset_with_samples.save(fname)
+        dataset_with_samples.save_to_file(fname)
         new_dataset = Dataset()
         new_dataset.load(fname)
         assert len(new_dataset) == len(dataset_with_samples)
         for sample_1, sample_2 in zip(dataset_with_samples, new_dataset):
             compare_two_samples(sample_1, sample_2)
 
-        n_dataset = Dataset(str(fname))
+        n_dataset = Dataset(fname)
+        assert len(n_dataset) == len(dataset_with_samples)
+        for sample_1, sample_2 in zip(dataset_with_samples, n_dataset):
+            compare_two_samples(sample_1, sample_2)
+
+    def test_load_dir(self, dataset_with_samples, tmp_path):
+        dname = tmp_path / "test_dir"
+        dataset_with_samples.save_to_dir(dname)
+        new_dataset = Dataset()
+        new_dataset.load(dname)
+        assert len(new_dataset) == len(dataset_with_samples)
+        for sample_1, sample_2 in zip(dataset_with_samples, new_dataset):
+            compare_two_samples(sample_1, sample_2)
+
+        n_dataset = Dataset(dname)
         assert len(n_dataset) == len(dataset_with_samples)
         for sample_1, sample_2 in zip(dataset_with_samples, n_dataset):
             compare_two_samples(sample_1, sample_2)

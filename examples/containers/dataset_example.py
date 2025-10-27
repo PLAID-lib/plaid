@@ -368,7 +368,7 @@ dataset.print_infos()
 tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
 print(f"Save dataset in: {tmpdir}")
 
-dataset._save_to_dir_(tmpdir)
+dataset.save_to_dir(tmpdir)
 
 
 # %% [markdown]
@@ -405,13 +405,13 @@ if platform.system() == "Linux":
 
 # %%
 loaded_dataset_from_instance = Dataset()
-loaded_dataset_from_instance._load_from_dir_(tmpdir)
+loaded_dataset_from_instance.load(tmpdir)
 
 print(f"{loaded_dataset_from_instance = }")
 
 if platform.system() == "Linux":
     multi_process_loaded_dataset = Dataset()
-    multi_process_loaded_dataset._load_from_dir_(tmpdir, processes_number=3)
+    multi_process_loaded_dataset.load(tmpdir, processes_number=3)
     print(f"{multi_process_loaded_dataset = }")
 
 # %% [markdown]
