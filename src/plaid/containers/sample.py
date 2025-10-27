@@ -715,7 +715,7 @@ class Sample(BaseModel):
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
 
         Note:
-            It calls 'load' function during execution.
+            It calls :meth:`Sample.load` method during execution.
         """
         path = Path(path)
         instance = cls()

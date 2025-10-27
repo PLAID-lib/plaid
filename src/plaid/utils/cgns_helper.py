@@ -166,7 +166,7 @@ def nodes_to_tree(nodes: dict[str, CGNSTree]) -> Optional[CGNSTree]:
         Optional[CGNSTree]: The root CGNSTree node with all children linked,
         or None if the input dictionary is empty.
 
-    Notes:
+    Note:
         - Nodes with a path of length 1 are treated as root-level nodes.
         - The root node is named "CGNSTree" with type "CGNSTree_t".
         - Parent-child relationships are reconstructed using path prefixes.
@@ -377,7 +377,7 @@ def compare_leaves(d1: Any, d2: Any) -> bool:
     Returns:
         bool: True if the values are considered equal, False otherwise.
 
-    Notes:
+    Note:
         - Floating-point comparisons use `np.allclose` or `np.isclose` with `rtol=1e-7` and `atol=0`.
         - Byte arrays (`dtype.kind == "S"`) are converted to string before comparison.
 
