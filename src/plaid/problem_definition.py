@@ -1474,7 +1474,7 @@ class ProblemDefinition(object):
 
         # Save infos
 
-    def _save_to_file_(self, path: Union[str, Path]) -> None:
+    def save_to_file_(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified file in YAML format.
 
         Args:
@@ -1485,7 +1485,7 @@ class ProblemDefinition(object):
 
                 from plaid import ProblemDefinition
                 problem = ProblemDefinition()
-                problem._save_to_file_("/path/to/save_file")
+                problem.save_to_file_("/path/to/save_file")
         """
         problem_infos_dict = self._generate_problem_infos_dict()
 

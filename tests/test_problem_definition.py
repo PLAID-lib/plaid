@@ -648,7 +648,7 @@ class Test_ProblemDefinition:
         self, problem_definition_full: ProblemDefinition, tmp_path: Path
     ):
         path = tmp_path / "pb_def"
-        problem_definition_full._save_to_file_(path)
+        problem_definition_full.save_to_file_(path)
         #
         problem = ProblemDefinition()
         problem._load_from_file_(path)
