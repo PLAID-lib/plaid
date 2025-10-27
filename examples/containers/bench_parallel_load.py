@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
             dset.add_sample(smp)
 
-        dset._save_to_dir_(out_dir, verbose=True)
+        dset.save_to_dir(out_dir, verbose=True)
         rich.print(f"create and save dataset took: {time.perf_counter() - t0:.3f} s")
         print()
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
             for _ in tqdm(range(args.number_of_tests), desc="   Loop on nb_tests"):
                 new_dset = Dataset()
                 t0 = time.perf_counter()
-                new_dset._load_from_dir_(out_dir, processes_number=nb_cores)
+                new_dset.load(out_dir, processes_number=nb_cores)
                 t1 = time.perf_counter()
                 durations.append(t1 - t0)
 

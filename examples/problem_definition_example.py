@@ -148,7 +148,7 @@ pb_def_save_fname = test_pth / "test"
 test_pth.mkdir(parents=True, exist_ok=True)
 print(f"saving path: {pb_def_save_fname}")
 
-problem._save_to_dir_(pb_def_save_fname)
+problem.save_to_dir(pb_def_save_fname)
 
 # %% [markdown]
 # ### Load a ProblemDefinition from a directory via initialization
@@ -169,5 +169,5 @@ print(problem)
 
 # %%
 problem = ProblemDefinition()
-problem._load_from_dir_(pb_def_save_fname)
+problem.load(pb_def_save_fname)
 print(problem)

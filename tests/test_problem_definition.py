@@ -600,10 +600,10 @@ class Test_ProblemDefinition:
     ):
         problem_definition_full._save_to_dir_(tmp_path / "problem_definition")
 
-    def test__save_to_file_(
+    def test_save_to_dir(
         self, problem_definition_full: ProblemDefinition, tmp_path: Path
     ):
-        problem_definition_full._save_to_file_(tmp_path / "pb_def")
+        problem_definition_full.save_to_dir(tmp_path / "problem_definition")
 
     def test_load_path_object(self, current_directory):
         my_dir = Path(current_directory)

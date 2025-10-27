@@ -48,7 +48,7 @@ class ColumnTransformer(SklearnColumnTransformer):
         plaid_transformers: A list of tuples
             (name, transformer), where each `transformer` is a TransformerMixin.
 
-    Notes:
+    Note:
         At fit, it is checked that `plaid_transformers` share no in_features_identifiers and no out_features_identifiers.
     """
 

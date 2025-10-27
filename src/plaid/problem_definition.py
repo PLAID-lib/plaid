@@ -590,7 +590,9 @@ class ProblemDefinition(object):
         "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def get_input_scalars_names(self) -> list[str]:
-        """Get the input scalars names of the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
+
+        Get the input scalars names of the problem.
 
         Returns:
             list[str]: A list of input feature names.
@@ -611,7 +613,9 @@ class ProblemDefinition(object):
         "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def add_input_scalars_names(self, inputs: list[str]) -> None:
-        """Add input scalars names to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
+
+        Add input scalars names to the problem.
 
         Args:
             inputs (list[str]): A list of input feature names to add.
@@ -636,7 +640,9 @@ class ProblemDefinition(object):
         "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
     )
     def add_input_scalar_name(self, input: str) -> None:
-        """Add an input scalar name to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
+
+        Add an input scalar name to the problem.
 
         Args:
             input (str):  The name of the input feature to add.
@@ -661,7 +667,9 @@ class ProblemDefinition(object):
         "use `filter_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def filter_input_scalars_names(self, names: list[str]) -> list[str]:
-        """Filter and get input scalars features corresponding to a list of names.
+        """DEPRECATED: use :meth:`ProblemDefinition.filter_in_features_identifiers` instead.
+
+        Filter and get input scalars features corresponding to a list of names.
 
         Args:
             names (list[str]): A list of names for which to retrieve corresponding input features.
@@ -687,7 +695,9 @@ class ProblemDefinition(object):
         "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def get_output_scalars_names(self) -> list[str]:
-        """Get the output scalars names of the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
+
+        Get the output scalars names of the problem.
 
         Returns:
             list[str]: A list of output feature names.
@@ -708,7 +718,9 @@ class ProblemDefinition(object):
         "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def add_output_scalars_names(self, outputs: list[str]) -> None:
-        """Add output scalars names to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
+
+        Add output scalars names to the problem.
 
         Args:
             outputs (list[str]): A list of output feature names to add.
@@ -733,7 +745,9 @@ class ProblemDefinition(object):
         "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
     )
     def add_output_scalar_name(self, output: str) -> None:
-        """Add an output scalar name to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
+
+        Add an output scalar name to the problem.
 
         Args:
             output (str):  The name of the output feature to add.
@@ -781,7 +795,9 @@ class ProblemDefinition(object):
         "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def get_input_fields_names(self) -> list[str]:
-        """Get the input fields names of the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
+
+        Get the input fields names of the problem.
 
         Returns:
             list[str]: A list of input feature names.
@@ -802,7 +818,9 @@ class ProblemDefinition(object):
         "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def add_input_fields_names(self, inputs: list[str]) -> None:
-        """Add input fields names to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
+
+        Add input fields names to the problem.
 
         Args:
             inputs (list[str]): A list of input feature names to add.
@@ -827,7 +845,9 @@ class ProblemDefinition(object):
         "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
     )
     def add_input_field_name(self, input: str) -> None:
-        """Add an input field name to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
+
+        Add an input field name to the problem.
 
         Args:
             input (str):  The name of the input feature to add.
@@ -875,7 +895,9 @@ class ProblemDefinition(object):
         "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def get_output_fields_names(self) -> list[str]:
-        """Get the output fields names of the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
+
+        Get the output fields names of the problem.
 
         Returns:
             list[str]: A list of output feature names.
@@ -896,7 +918,9 @@ class ProblemDefinition(object):
         "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def add_output_fields_names(self, outputs: list[str]) -> None:
-        """Add output fields names to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
+
+        Add output fields names to the problem.
 
         Args:
             outputs (list[str]): A list of output feature names to add.
@@ -921,7 +945,9 @@ class ProblemDefinition(object):
         "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
     )
     def add_output_field_name(self, output: str) -> None:
-        """Add an output field name to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
+
+        Add an output field name to the problem.
 
         Args:
             output (str):  The name of the output feature to add.
@@ -969,7 +995,9 @@ class ProblemDefinition(object):
         "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def get_input_timeseries_names(self) -> list[str]:
-        """Get the input timeseries names of the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
+
+        Get the input timeseries names of the problem.
 
         Returns:
             list[str]: A list of input feature names.
@@ -990,7 +1018,9 @@ class ProblemDefinition(object):
         "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def add_input_timeseries_names(self, inputs: list[str]) -> None:
-        """Add input timeseries names to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
+
+        Add input timeseries names to the problem.
 
         Args:
             inputs (list[str]): A list of input feature names to add.
@@ -1015,7 +1045,9 @@ class ProblemDefinition(object):
         "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
     )
     def add_input_timeseries_name(self, input: str) -> None:
-        """Add an input timeseries name to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
+
+        Add an input timeseries name to the problem.
 
         Args:
             input (str):  The name of the input feature to add.
@@ -1063,7 +1095,9 @@ class ProblemDefinition(object):
         "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def get_output_timeseries_names(self) -> list[str]:
-        """Get the output timeseries names of the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
+
+        Get the output timeseries names of the problem.
 
         Returns:
             list[str]: A list of output feature names.
@@ -1084,7 +1118,9 @@ class ProblemDefinition(object):
         "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def add_output_timeseries_names(self, outputs: list[str]) -> None:
-        """Add output timeseries names to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
+
+        Add output timeseries names to the problem.
 
         Args:
             outputs (list[str]): A list of output feature names to add.
@@ -1109,7 +1145,9 @@ class ProblemDefinition(object):
         "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
     )
     def add_output_timeseries_name(self, output: str) -> None:
-        """Add an output timeseries name to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
+
+        Add an output timeseries name to the problem.
 
         Args:
             output (str):  The name of the output feature to add.
@@ -1157,7 +1195,9 @@ class ProblemDefinition(object):
         "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def get_input_meshes_names(self) -> list[str]:
-        """Get the input meshes names of the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
+
+        Get the input meshes names of the problem.
 
         Returns:
             list[str]: A list of input feature names.
@@ -1178,7 +1218,9 @@ class ProblemDefinition(object):
         "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def add_input_meshes_names(self, inputs: list[str]) -> None:
-        """Add input meshes names to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
+
+        Add input meshes names to the problem.
 
         Args:
             inputs (list[str]): A list of input feature names to add.
@@ -1203,7 +1245,9 @@ class ProblemDefinition(object):
         "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
     )
     def add_input_mesh_name(self, input: str) -> None:
-        """Add an input mesh name to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
+
+        Add an input mesh name to the problem.
 
         Args:
             input (str):  The name of the input feature to add.
@@ -1251,7 +1295,9 @@ class ProblemDefinition(object):
         "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def get_output_meshes_names(self) -> list[str]:
-        """Get the output meshes names of the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
+
+        Get the output meshes names of the problem.
 
         Returns:
             list[str]: A list of output feature names.
@@ -1272,7 +1318,9 @@ class ProblemDefinition(object):
         "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
     )
     def add_output_meshes_names(self, outputs: list[str]) -> None:
-        """Add output meshes names to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
+
+        Add output meshes names to the problem.
 
         Args:
             outputs (list[str]): A list of output feature names to add.
@@ -1297,7 +1345,9 @@ class ProblemDefinition(object):
         "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
     )
     def add_output_mesh_name(self, output: str) -> None:
-        """Add an output mesh name to the problem.
+        """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
+
+        Add an output mesh name to the problem.
 
         Args:
             output (str):  The name of the output feature to add.
@@ -1451,7 +1501,16 @@ class ProblemDefinition(object):
                 problem_infos_dict, file, default_flow_style=False, sort_keys=True
             )
 
+    @deprecated(
+        "`ProblemDefinition._save_to_dir_(...)` is deprecated. Use `ProblemDefinition.save_to_dir(...)` instead.",
+        version="0.1.10",
+        removal="0.2.0",
+    )
     def _save_to_dir_(self, path: Union[str, Path]) -> None:
+        """DEPRECATED: use :meth:`ProblemDefinition.save_to_dir` instead."""
+        self.save_to_dir(path)
+
+    def save_to_dir(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
 
         Args:
@@ -1462,7 +1521,7 @@ class ProblemDefinition(object):
 
                 from plaid import ProblemDefinition
                 problem = ProblemDefinition()
-                problem._save_to_dir_("/path/to/save_directory")
+                problem.save_to_dir("/path/to/save_directory")
         """
         path = Path(path)
 
