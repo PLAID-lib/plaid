@@ -1193,7 +1193,7 @@ def save_problem_definition_to_disk(
         name (str): The name of the problem_definition to store in the disk directory.
         pb_def (ProblemDefinition): The problem definition to save.
     """
-    pb_def.save_to_file_(Path(path) / Path("problem_definitions") / Path(name))
+    pb_def.save_to_file(Path(path) / Path("problem_definitions") / Path(name))
 
 
 def save_tree_struct_to_disk(

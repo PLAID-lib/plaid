@@ -57,8 +57,8 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
     problem_definition.add_out_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_cte_feature_identifier(feature_identifier)
-    problem_definition.add_cte_features_identifiers(
+    problem_definition.add_constant_feature_identifier(feature_identifier)
+    problem_definition.add_constant_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
 
@@ -222,28 +222,28 @@ class Test_ProblemDefinition:
         print(problem_definition)
 
     # -------------------------------------------------------------------------#
-    def test_get_cte_features_identifiers(self, problem_definition):
-        assert problem_definition.get_cte_features_identifiers() == []
+    def test_get_constant_features_identifiers(self, problem_definition):
+        assert problem_definition.get_constant_features_identifiers() == []
 
-    def test_add_cte_features_identifiers_fail(self, problem_definition):
+    def test_add_constant_features_identifiers_fail(self, problem_definition):
         dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
         with pytest.raises(ValueError):
-            problem_definition.add_cte_features_identifiers(
+            problem_definition.add_constant_features_identifiers(
                 [dummy_identifier, dummy_identifier]
             )
-        problem_definition.add_cte_feature_identifier(dummy_identifier)
+        problem_definition.add_constant_feature_identifier(dummy_identifier)
         with pytest.raises(ValueError):
-            problem_definition.add_cte_feature_identifier(dummy_identifier)
+            problem_definition.add_constant_feature_identifier(dummy_identifier)
 
-    def test_add_cte_features_identifiers(self, problem_definition):
+    def test_add_constant_features_identifiers(self, problem_definition):
         dummy_identifier_1 = FeatureIdentifier({"type": "scalar", "name": "dummy_1"})
         dummy_identifier_2 = FeatureIdentifier({"type": "scalar", "name": "dummy_2"})
         dummy_identifier_3 = FeatureIdentifier({"type": "scalar", "name": "dummy_3"})
-        problem_definition.add_cte_features_identifiers(
+        problem_definition.add_constant_features_identifiers(
             [dummy_identifier_1, dummy_identifier_2]
         )
-        problem_definition.add_cte_feature_identifier(dummy_identifier_3)
-        constants = problem_definition.get_cte_features_identifiers()
+        problem_definition.add_constant_feature_identifier(dummy_identifier_3)
+        constants = problem_definition.get_constant_features_identifiers()
         assert len(constants) == 3
         assert set(constants) == set(
             [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
@@ -266,7 +266,7 @@ class Test_ProblemDefinition:
         filter_out = problem.filter_out_features_identifiers(
             [predict_feature_identifier, test_feature_identifier]
         )
-        filter_cte = problem.filter_cte_features_identifiers(
+        filter_cte = problem.filter_constant_features_identifiers(
             [predict_feature_identifier, test_feature_identifier]
         )
         filter_cte
@@ -295,7 +295,7 @@ class Test_ProblemDefinition:
         fail_filter_out = problem.filter_out_features_identifiers(
             [inexisting_feature_identifier]
         )
-        fail_filter_cte = problem.filter_cte_features_identifiers(
+        fail_filter_cte = problem.filter_constant_features_identifiers(
             ["Base_2_2/Zone/PointData/inexisting_feature"]
         )
 
@@ -648,7 +648,7 @@ class Test_ProblemDefinition:
         self, problem_definition_full: ProblemDefinition, tmp_path: Path
     ):
         path = tmp_path / "pb_def"
-        problem_definition_full.save_to_file_(path)
+        problem_definition_full.save_to_file(path)
         #
         problem = ProblemDefinition()
         problem._load_from_file_(path)

@@ -78,7 +78,7 @@ class ProblemDefinition(object):
         self._score_function: str = None
         self.in_features_identifiers: Sequence[Union[str, FeatureIdentifier]] = []
         self.out_features_identifiers: Sequence[Union[str, FeatureIdentifier]] = []
-        self.cte_features_identifiers: list[str] = []
+        self.constant_features_identifiers: list[str] = []
         self.in_scalars_names: list[str] = []
         self.out_scalars_names: list[str] = []
         self.in_timeseries_names: list[str] = []
@@ -499,7 +499,7 @@ class ProblemDefinition(object):
         )
 
     # -------------------------------------------------------------------------#
-    def get_cte_features_identifiers(self) -> list[str]:
+    def get_constant_features_identifiers(self) -> list[str]:
         """Get the constant features identifiers of the problem.
 
         Returns:
@@ -511,13 +511,13 @@ class ProblemDefinition(object):
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
                 # [...]
-                cte_features_identifiers = problem.get_cte_features_identifiers()
-                print(cte_features_identifiers)
+                constant_features_identifiers = problem.get_constant_features_identifiers()
+                print(constant_features_identifiers)
                 >>> ['Global/P', 'Base_2_2/Zone/GridCoordinates']
         """
-        return self.cte_features_identifiers
+        return self.constant_features_identifiers
 
-    def add_cte_features_identifiers(self, inputs: list[str]) -> None:
+    def add_constant_features_identifiers(self, inputs: list[str]) -> None:
         """Add input features identifiers to the problem.
 
         Args:
@@ -531,15 +531,15 @@ class ProblemDefinition(object):
 
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
-                cte_features_identifiers = ['Global/P', 'Base_2_2/Zone/GridCoordinates']
-                problem.add_cte_features_identifiers(cte_features_identifiers)
+                constant_features_identifiers = ['Global/P', 'Base_2_2/Zone/GridCoordinates']
+                problem.add_constant_features_identifiers(constant_features_identifiers)
         """
         if not (len(set(inputs)) == len(inputs)):
             raise ValueError("Some inputs have same identifiers")
         for input in inputs:
-            self.add_cte_feature_identifier(input)
+            self.add_constant_feature_identifier(input)
 
-    def add_cte_feature_identifier(self, input: str) -> None:
+    def add_constant_feature_identifier(self, input: str) -> None:
         """Add an constant feature identifier to the problem.
 
         Args:
@@ -553,15 +553,15 @@ class ProblemDefinition(object):
 
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
-                cte_identifier = 'Global/P'
-                problem.add_cte_feature_identifier(input_identifier)
+                constant_identifier = 'Global/P'
+                problem.add_constant_feature_identifier(constant_identifier)
         """
-        if input in self.cte_features_identifiers:
+        if input in self.constant_features_identifiers:
             raise ValueError(f"{input} is already in self.in_features_identifiers")
-        self.cte_features_identifiers.append(input)
-        self.cte_features_identifiers.sort(key=self._feature_sort_key)
+        self.constant_features_identifiers.append(input)
+        self.constant_features_identifiers.sort(key=self._feature_sort_key)
 
-    def filter_cte_features_identifiers(self, identifiers: list[str]) -> list[str]:
+    def filter_constant_features_identifiers(self, identifiers: list[str]) -> list[str]:
         """Filter and get input features features corresponding to a sorted list of identifiers.
 
         Args:
@@ -577,12 +577,12 @@ class ProblemDefinition(object):
                 problem = ProblemDefinition()
                 # [...]
                 features_identifiers = ['Global/P', 'Base_2_2/Zone/GridCoordinates']
-                cte_features = problem.filter_cte_features_identifiers(features_identifiers)
-                print(cte_features)
+                constant_features = problem.filter_constant_features_identifiers(features_identifiers)
+                print(constant_features)
                 >>> ['Global/P']
         """
         return sorted(
-            set(identifiers).intersection(self.get_cte_features_identifiers())
+            set(identifiers).intersection(self.get_constant_features_identifiers())
         )
 
     # -------------------------------------------------------------------------#
@@ -1426,7 +1426,7 @@ class ProblemDefinition(object):
                 data["output_features"].append(dict(**tup))
             else:
                 data["output_features"].append(tup)
-        for tup in self.cte_features_identifiers:
+        for tup in self.constant_features_identifiers:
             data["constant_features"].append(tup)
         if self._train_split is not None:
             data["train_split"] = self._train_split
@@ -1474,7 +1474,7 @@ class ProblemDefinition(object):
 
         # Save infos
 
-    def save_to_file_(self, path: Union[str, Path]) -> None:
+    def save_to_file(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified file in YAML format.
 
         Args:
@@ -1485,7 +1485,7 @@ class ProblemDefinition(object):
 
                 from plaid import ProblemDefinition
                 problem = ProblemDefinition()
-                problem.save_to_file_("/path/to/save_file")
+                problem.save_to_file("/path/to/save_file")
         """
         problem_infos_dict = self._generate_problem_infos_dict()
 
@@ -1591,10 +1591,10 @@ class ProblemDefinition(object):
                     self.out_features_identifiers.append(FeatureIdentifier(**tup))
                 else:
                     self.out_features_identifiers.append(tup)
-        self.cte_features_identifiers = []
+        self.constant_features_identifiers = []
         if "constant_features" in data:
             for tup in data["constant_features"]:
-                self.cte_features_identifiers.append(tup)
+                self.constant_features_identifiers.append(tup)
         if "version" not in data or Version(data["version"]) < Version("0.2.0"):
             self.in_scalars_names = data.get("input_scalars", [])
             self.out_scalars_names = data.get("output_scalars", [])
