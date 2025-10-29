@@ -30,6 +30,7 @@ def problem_definition() -> ProblemDefinition:
 def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDefinition:
     problem_definition.set_task("regression")
 
+    # ----
     feature_identifier = FeatureIdentifier({"type": "scalar", "name": "feature"})
     predict_feature_identifier = FeatureIdentifier(
         {"type": "scalar", "name": "predict_feature"}
@@ -45,7 +46,23 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
         [predict_feature_identifier, test_feature_identifier]
     )
     problem_definition.add_out_feature_identifier(feature_identifier)
+    # ----
+    feature_identifier = "Base_2_2/Zone/PointData/U1"
+    predict_feature_identifier = "Base_2_2/Zone/PointData/U2"
+    test_feature_identifier = "Base_2_2/Zone/PointData/sig12"
+    problem_definition.add_in_features_identifiers(
+        [predict_feature_identifier, test_feature_identifier]
+    )
+    problem_definition.add_in_feature_identifier(feature_identifier)
+    problem_definition.add_out_features_identifiers(
+        [predict_feature_identifier, test_feature_identifier]
+    )
+    problem_definition.add_constant_feature_identifier(feature_identifier)
+    problem_definition.add_constant_features_identifiers(
+        [predict_feature_identifier, test_feature_identifier]
+    )
 
+    # ----
     problem_definition.add_input_scalars_names(["scalar", "test_scalar"])
     problem_definition.add_input_scalar_name("predict_scalar")
     problem_definition.add_output_scalars_names(["scalar", "test_scalar"])
@@ -68,6 +85,13 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
 
     new_split = {"train": [0, 1, 2], "test": [3, 4]}
     problem_definition.set_split(new_split)
+
+    new_split = {"train_1": [0, 1, 2], "train_2": "all"}
+    problem_definition.set_train_split(new_split)
+
+    new_split = {"test_1": "all", "test_2": [0, 2]}
+    problem_definition.set_test_split(new_split)
+
     return problem_definition
 
 
@@ -125,6 +149,17 @@ class Test_ProblemDefinition:
         with pytest.raises(ValueError):
             problem_definition.set_task("regression")
         assert problem_definition.get_task() == "classification"
+        print(problem_definition)
+
+    # -------------------------------------------------------------------------#
+    def test_score_function(self, problem_definition):
+        # Unauthorized task
+        with pytest.raises(TypeError):
+            problem_definition.set_score_function("ighyurgv")
+        problem_definition.set_score_function("RRMSE")
+        with pytest.raises(ValueError):
+            problem_definition.set_score_function("RRMSE")
+        assert problem_definition.get_score_function() == "RRMSE"
         print(problem_definition)
 
     # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
@@ -187,6 +222,35 @@ class Test_ProblemDefinition:
         print(problem_definition)
 
     # -------------------------------------------------------------------------#
+    def test_get_constant_features_identifiers(self, problem_definition):
+        assert problem_definition.get_constant_features_identifiers() == []
+
+    def test_add_constant_features_identifiers_fail(self, problem_definition):
+        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
+        with pytest.raises(ValueError):
+            problem_definition.add_constant_features_identifiers(
+                [dummy_identifier, dummy_identifier]
+            )
+        problem_definition.add_constant_feature_identifier(dummy_identifier)
+        with pytest.raises(ValueError):
+            problem_definition.add_constant_feature_identifier(dummy_identifier)
+
+    def test_add_constant_features_identifiers(self, problem_definition):
+        dummy_identifier_1 = FeatureIdentifier({"type": "scalar", "name": "dummy_1"})
+        dummy_identifier_2 = FeatureIdentifier({"type": "scalar", "name": "dummy_2"})
+        dummy_identifier_3 = FeatureIdentifier({"type": "scalar", "name": "dummy_3"})
+        problem_definition.add_constant_features_identifiers(
+            [dummy_identifier_1, dummy_identifier_2]
+        )
+        problem_definition.add_constant_feature_identifier(dummy_identifier_3)
+        constants = problem_definition.get_constant_features_identifiers()
+        assert len(constants) == 3
+        assert set(constants) == set(
+            [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
+        )
+        print(problem_definition)
+
+    # -------------------------------------------------------------------------#
     def test_filter_features_identifiers(self, current_directory):
         d_path = current_directory / "problem_definition"
         problem = ProblemDefinition(d_path)
@@ -202,6 +266,10 @@ class Test_ProblemDefinition:
         filter_out = problem.filter_out_features_identifiers(
             [predict_feature_identifier, test_feature_identifier]
         )
+        filter_cte = problem.filter_constant_features_identifiers(
+            [predict_feature_identifier, test_feature_identifier]
+        )
+        filter_cte
         assert len(filter_in) == 2 and filter_in == [
             predict_feature_identifier,
             test_feature_identifier,
@@ -227,9 +295,13 @@ class Test_ProblemDefinition:
         fail_filter_out = problem.filter_out_features_identifiers(
             [inexisting_feature_identifier]
         )
+        fail_filter_cte = problem.filter_constant_features_identifiers(
+            ["Base_2_2/Zone/PointData/inexisting_feature"]
+        )
 
         assert fail_filter_in == []
         assert fail_filter_out == []
+        assert fail_filter_cte == []
 
     # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
     # -------------------------------------------------------------------------#
@@ -498,7 +570,7 @@ class Test_ProblemDefinition:
         assert fail_filter_out == []
 
     # -------------------------------------------------------------------------#
-    def test_set_split(self, problem_definition):
+    def test_split(self, problem_definition):
         new_split = {"train": [0, 1, 2], "test": [3, 4]}
         problem_definition.set_split(new_split)
         assert problem_definition.get_split("train") == [0, 1, 2]
@@ -507,7 +579,20 @@ class Test_ProblemDefinition:
         all_split = problem_definition.get_split()
         assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
         assert problem_definition.get_all_indices() == [0, 1, 2, 3, 4]
-        print(problem_definition)
+
+    def test_train_split(self, problem_definition):
+        train_split = {"train1": [0, 1, 2], "train2": [3, 4]}
+        problem_definition.set_train_split(train_split)
+        problem_definition.get_train_split()
+        assert problem_definition.get_train_split("train1") == [0, 1, 2]
+        assert problem_definition.get_train_split("train2") == [3, 4]
+
+    def test_test_split(self, problem_definition):
+        test_split = {"test1": [0, 1, 2], "test2": [3, 4]}
+        problem_definition.set_test_split(test_split)
+        problem_definition.get_test_split()
+        assert problem_definition.get_test_split("test1") == [0, 1, 2]
+        assert problem_definition.get_test_split("test2") == [3, 4]
 
     # -------------------------------------------------------------------------#
     def test__save_to_dir_(
@@ -559,6 +644,22 @@ class Test_ProblemDefinition:
         all_split = problem.get_split()
         assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
 
+    def test__load_from_file_(
+        self, problem_definition_full: ProblemDefinition, tmp_path: Path
+    ):
+        path = tmp_path / "pb_def"
+        problem_definition_full.save_to_file(path)
+        #
+        problem = ProblemDefinition()
+        problem._load_from_file_(path)
+        assert problem.get_task() == "regression"
+        assert set(problem.get_input_scalars_names()) == set(
+            ["predict_scalar", "scalar", "test_scalar"]
+        )
+        assert set(problem.get_output_scalars_names()) == set(
+            ["predict_scalar", "scalar", "test_scalar"]
+        )
+
     def test_load(self, problem_definition_full: ProblemDefinition, tmp_path: Path):
         d_path = tmp_path / "problem_definition"
         problem_definition_full._save_to_dir_(d_path)
@@ -602,6 +703,12 @@ class Test_ProblemDefinition:
         non_existing_dir = Path("non_existing_path")
         with pytest.raises(FileNotFoundError):
             problem._load_from_dir_(non_existing_dir)
+
+    def test__load_from_file__non_existing_file(self):
+        problem = ProblemDefinition()
+        non_existing_path = Path("non_existing_path")
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_file_(non_existing_path)
 
     def test__load_from_dir__path_is_file(self, tmp_path):
         problem = ProblemDefinition()

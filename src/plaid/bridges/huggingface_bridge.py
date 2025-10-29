@@ -8,7 +8,6 @@
 #
 import hashlib
 import io
-import json
 import os
 import pickle
 import shutil
@@ -390,6 +389,9 @@ def _generator_prepare_for_huggingface(
             hf_features_map[k] = global_feature_types[k]
 
     hf_features = Features(hf_features_map)
+
+    var_features = [path for path in var_features if not path.endswith("_times")]
+    cst_features = [path for path in cst_features if not path.endswith("_times")]
 
     key_mappings = {
         "variable_features": var_features,
@@ -848,19 +850,13 @@ def load_problem_definition_from_hub(
     Returns:
         ProblemDefinition: The loaded problem definition.
     """
-    # Download split.json
-    json_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=f"problem_definitions/{name}/split.json",
-        repo_type="dataset",
-    )
-    with open(json_path, "r", encoding="utf-8") as f:
-        json_data = json.load(f)
+    if not name.endswith(".yaml"):
+        name = f"{name}.yaml"
 
     # Download problem_infos.yaml
     yaml_path = hf_hub_download(
         repo_id=repo_id,
-        filename=f"problem_definitions/{name}/problem_infos.yaml",
+        filename=f"problem_definitions/{name}",
         repo_type="dataset",
     )
     with open(yaml_path, "r", encoding="utf-8") as f:
@@ -868,7 +864,6 @@ def load_problem_definition_from_hub(
 
     prob_def = ProblemDefinition()
     prob_def._initialize_from_problem_infos_dict(yaml_data)
-    prob_def.set_split(json_data)
 
     return prob_def
 
@@ -988,28 +983,22 @@ def push_problem_definition_to_hub(
     """
     api = HfApi()
     data = pb_def._generate_problem_infos_dict()
+    for k, v in list(data.items()):
+        if not v:
+            data.pop(k)
     if data is not None:
         yaml_str = yaml.dump(data)
         yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
 
+    if not name.endswith(".yaml"):
+        name = f"{name}.yaml"
+
     api.upload_file(
         path_or_fileobj=yaml_buffer,
-        path_in_repo=f"problem_definitions/{name}/problem_infos.yaml",
+        path_in_repo=f"problem_definitions/{name}",
         repo_id=repo_id,
         repo_type="dataset",
-        commit_message=f"Upload problem_definitions/{name}/problem_infos.yaml",
-    )
-
-    data = pb_def.get_split()
-    json_str = json.dumps(data)
-    json_buffer = io.BytesIO(json_str.encode("utf-8"))
-
-    api.upload_file(
-        path_or_fileobj=json_buffer,
-        path_in_repo=f"problem_definitions/{name}/split.json",
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message=f"Upload problem_definitions/{name}/split.json",
+        commit_message=f"Upload problem_definitions/{name}",
     )
 
 
@@ -1124,7 +1113,7 @@ def load_problem_definition_from_disk(
         ProblemDefinition: The loaded problem definition.
     """
     pb_def = ProblemDefinition()
-    pb_def._load_from_dir_(Path(path) / Path("problem_definitions") / Path(name))
+    pb_def._load_from_file_(Path(path) / Path("problem_definitions") / Path(name))
     return pb_def
 
 
@@ -1204,7 +1193,7 @@ def save_problem_definition_to_disk(
         name (str): The name of the problem_definition to store in the disk directory.
         pb_def (ProblemDefinition): The problem definition to save.
     """
-    pb_def._save_to_dir_(Path(path) / Path("problem_definitions") / Path(name))
+    pb_def.save_to_file(Path(path) / Path("problem_definitions") / Path(name))
 
 
 def save_tree_struct_to_disk(
@@ -1228,7 +1217,7 @@ def save_tree_struct_to_disk(
     """
     Path(path).mkdir(parents=True, exist_ok=True)
 
-    with open(Path(path) / "tree_constant_part.pkl", "wb") as f:  # wb = write binary
+    with open(Path(path) / "tree_constant_part.pkl", "wb") as f:
         pickle.dump(flat_cst, f)
 
     with open(Path(path) / "key_mappings.yaml", "w", encoding="utf-8") as f:
