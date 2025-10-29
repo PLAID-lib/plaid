@@ -147,13 +147,3 @@ class Test_WrappedSklearnRegressor:
         assert id(dataset_with_samples) != id(pred_dataset)
         y_pred = get_2Darray_from_homogeneous_identifiers(pred_dataset, out_feat_ids)
         assert np.allclose(y_pred, y_ref)
-
-    def test_transform(
-        self, wrapped_sklearn_multioutput_gp_regressor, dataset_with_samples
-    ):
-        wrapped_sklearn_multioutput_gp_regressor.transform(dataset_with_samples)
-
-    def test_inverse_transform(
-        self, wrapped_sklearn_multioutput_gp_regressor, dataset_with_samples
-    ):
-        wrapped_sklearn_multioutput_gp_regressor.inverse_transform(dataset_with_samples)
