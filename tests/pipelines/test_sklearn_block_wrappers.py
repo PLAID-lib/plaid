@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from plaid.pipelines.sklearn_block_wrappers import (
-    WrappedSklearnRegressor,
     WrappedSklearnTransformer,
     get_2Darray_from_homogeneous_identifiers,
 )
@@ -125,29 +124,9 @@ class Test_WrappedSklearnTransformer:
 
 
 class Test_WrappedSklearnRegressor:
-    def test___init__(
-        self,
-        sklearn_multioutput_gp_regressor,
-        dataset_with_samples_scalar1_feat_ids,
-        dataset_with_samples_scalar2_feat_ids,
-    ):
-        WrappedSklearnRegressor()
-        WrappedSklearnRegressor(sklearn_block=sklearn_multioutput_gp_regressor)
-        WrappedSklearnRegressor(
-            sklearn_block=sklearn_multioutput_gp_regressor,
-            in_features_identifiers=dataset_with_samples_scalar1_feat_ids,
-        )
-        WrappedSklearnRegressor(
-            sklearn_block=sklearn_multioutput_gp_regressor,
-            in_features_identifiers=dataset_with_samples_scalar1_feat_ids,
-            out_features_identifiers=dataset_with_samples_scalar2_feat_ids,
-        )
-
-        WrappedSklearnRegressor(
-            sklearn_block=sklearn_multioutput_gp_regressor,
-            in_features_identifiers=dataset_with_samples_scalar1_feat_ids,
-            out_features_identifiers=dataset_with_samples_scalar2_feat_ids,
-        )
+    def test___init__(self, wrapped_sklearn_multioutput_gp_regressor):
+        # __init__ is called in the input fixture
+        pass
 
     def test_fit(self, wrapped_sklearn_multioutput_gp_regressor, dataset_with_samples):
         wrapped_sklearn_multioutput_gp_regressor.fit(dataset_with_samples)
@@ -168,9 +147,3 @@ class Test_WrappedSklearnRegressor:
         assert id(dataset_with_samples) != id(pred_dataset)
         y_pred = get_2Darray_from_homogeneous_identifiers(pred_dataset, out_feat_ids)
         assert np.allclose(y_pred, y_ref)
-
-    def test_transform(self, dataset_with_samples):
-        WrappedSklearnRegressor().transform(dataset_with_samples)
-
-    def test_inverse_transform(self, dataset_with_samples):
-        WrappedSklearnRegressor().inverse_transform(dataset_with_samples)

@@ -195,9 +195,9 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
 
     def __init__(
         self,
-        sklearn_block: SklearnBlock = None,
-        in_features_identifiers: list[FeatureIdentifier] = None,
-        out_features_identifiers: list[FeatureIdentifier] = None,
+        sklearn_block: SklearnBlock,
+        in_features_identifiers: list[FeatureIdentifier],
+        out_features_identifiers: list[FeatureIdentifier],
     ):
         self.sklearn_block = sklearn_block
         self.in_features_identifiers = in_features_identifiers
