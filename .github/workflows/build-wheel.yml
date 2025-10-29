@@ -21,10 +21,10 @@ jobs:
         with:
           fetch-depth: 0   # fetch full history and tags
 
-      - name: Install HDF5 dev libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libhdf5-dev
+      # - name: Install HDF5 dev libraries
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y libhdf5-dev
 
       - name: Set up Python
         uses: actions/setup-python@v5
