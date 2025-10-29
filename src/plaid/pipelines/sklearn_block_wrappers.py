@@ -267,11 +267,3 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
         dataset_predicted = dataset.merge_features(dataset_predicted)
 
         return dataset_predicted
-
-    def transform(self, dataset: Dataset) -> Dataset:
-        """Identity transform. Returns input unchanged."""
-        return dataset
-
-    def inverse_transform(self, dataset: Dataset) -> Dataset:
-        """Identity inverse transform. Returns input unchanged."""
-        return dataset
