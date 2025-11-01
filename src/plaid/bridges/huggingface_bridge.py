@@ -98,7 +98,9 @@ def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
             dtype, np.int64
         ):  # very important to satisfy the CGNS standard
             return Value("int64")
-        elif np.issubdtype(dtype, np.dtype("|S1")):  # pragma: no cover
+        elif np.issubdtype(dtype, np.dtype("|S1")) or np.issubdtype(
+            dtype, np.dtype("<U10")
+        ):  # pragma: no cover
             return Value("string")
         else:
             raise ValueError("Type not recognize")  # pragma: no cover
@@ -285,6 +287,7 @@ def _generator_prepare_for_huggingface(
 
         split_all_paths[split_name] = set()
 
+        n_samples = 0
         for sample in tqdm(
             generator(), disable=not verbose, desc=f"Process split {split_name}"
         ):
@@ -301,10 +304,12 @@ def _generator_prepare_for_huggingface(
                 if value is None:
                     continue
 
-                if isinstance(value, np.ndarray) and value.dtype.type is np.str_:
-                    inferred = Value("string")
-                else:
-                    inferred = infer_hf_features_from_value(value)
+                # if isinstance(value, np.ndarray) and value.dtype.type is np.str_:
+                #     inferred = Value("string")
+                # else:
+                #     inferred = infer_hf_features_from_value(value)
+
+                inferred = infer_hf_features_from_value(value)
 
                 if path not in global_feature_types:
                     global_feature_types[path] = inferred
@@ -327,7 +332,13 @@ def _generator_prepare_for_huggingface(
                     if entry["constant"] and not values_equal(entry["value"], value):
                         entry["constant"] = False
 
+            n_samples += 1
+
         # --- Record per-split constants ---
+        for p, e in split_constant_leaves.items():
+            if e["count"] < n_samples:
+                split_constant_leaves[p]["constant"] = False
+
         split_flat_cst[split_name] = dict(
             sorted(
                 (
@@ -484,6 +495,8 @@ def to_plaid_sample(
                 else:
                     if isinstance(value, pa.ListArray):
                         row[name] = np.stack(value.to_numpy(zero_copy_only=False))
+                    elif isinstance(value, pa.StringArray):
+                        row[name] = value.to_numpy(zero_copy_only=False)
                     else:
                         row[name] = value.to_numpy(zero_copy_only=True)
 
@@ -923,6 +936,13 @@ def push_dataset_dict_to_hub(
     you to upload a dataset dictionary (with one or more splits such as
     `"train"`, `"validation"`, `"test"`) to the Hugging Face Hub.
 
+    Note:
+        The function automatically handles sharding of the dataset by setting `num_shards`
+        for each split. For each split, the number of shards is set to the minimum between
+        the number of samples in that split and such that shards are targetted to approx. 500 MB.
+        This ensures efficient chunking while preventing excessive fragmentation. Empty splits
+        will raise an assertion error.
+
     Args:
         repo_id (str):
             The repository ID on the Hugging Face Hub
@@ -939,7 +959,24 @@ def push_dataset_dict_to_hub(
     Returns:
         None
     """
-    hf_dataset_dict.push_to_hub(repo_id, *args, **kwargs)
+    target_shard_size_mb = 500
+
+    num_shards = {}
+    for split_name, ds in hf_dataset_dict.items():
+        n_samples = len(ds)
+        assert n_samples > 0, f"split {split_name} has no sample"
+
+        dataset_size_bytes = ds.data.nbytes
+        target_shard_size_bytes = target_shard_size_mb * 1024 * 1024
+
+        n_shards = max(
+            1,
+            (dataset_size_bytes + target_shard_size_bytes - 1)
+            // target_shard_size_bytes,
+        )
+        num_shards[split_name] = min(n_samples, int(n_shards))
+
+    hf_dataset_dict.push_to_hub(repo_id, num_shards=num_shards, *args, **kwargs)
 
 
 def push_infos_to_hub(
