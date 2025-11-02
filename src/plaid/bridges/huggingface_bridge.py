@@ -44,7 +44,6 @@ from plaid.utils.cgns_helper import (
     flatten_cgns_tree,
     unflatten_cgns_tree,
 )
-from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -495,7 +494,7 @@ def to_plaid_sample(
                 else:
                     if isinstance(value, pa.ListArray):
                         row[name] = np.stack(value.to_numpy(zero_copy_only=False))
-                    elif isinstance(value, pa.StringArray):
+                    elif isinstance(value, pa.StringArray):  # pragma: no cover
                         row[name] = value.to_numpy(zero_copy_only=False)
                     else:
                         row[name] = value.to_numpy(zero_copy_only=True)
@@ -1633,195 +1632,142 @@ def huggingface_description_to_infos(
     return infos
 
 
-@deprecated(
-    "will be removed (this hf format will not be not maintained)",
-    version="0.1.9",
-    removal="0.2.0",
-)
-def create_string_for_huggingface_dataset_card(
-    description: dict,
-    download_size_bytes: int,
-    dataset_size_bytes: int,
-    nb_samples: int,
-    owner: str,
-    license: str,
-    zenodo_url: Optional[str] = None,
-    arxiv_paper_url: Optional[str] = None,
+def update_dataset_card(
+    dataset_card: str,
+    license: str = "cc-by-sa-4.0",
+    infos: Optional[dict[str, dict[str, str]]] = None,
     pretty_name: Optional[str] = None,
-    size_categories: Optional[list[str]] = None,
-    task_categories: Optional[list[str]] = None,
-    tags: Optional[list[str]] = None,
     dataset_long_description: Optional[str] = None,
-    url_illustration: Optional[str] = None,
+    illustration_urls: Optional[list[str]] = None,
+    arxiv_paper_urls: Optional[list[str]] = None,
 ) -> str:
-    """Use this function for creating a dataset card, to upload together with the datase on the Hugging Face hub.
-
-    Doing so ensure that load_dataset from the hub will populate the hf-dataset.description field, and be compatible for conversion to plaid.
-
-    Without a dataset_card, the description field is lost.
-
-    The parameters download_size_bytes and dataset_size_bytes can be determined after a
-    dataset has been uploaded on Hugging Face:
-    - manually by reading their values on the dataset page README.md,
-    - automatically as shown in the example below
-
-    See `the hugginface examples <https://github.com/PLAID-lib/plaid/blob/main/examples/bridges/huggingface_bridge_example.py>`__ for a concrete use.
+    r"""Update a dataset card with PLAID-specific metadata and documentation.
 
     Args:
-        description (dict): Hugging Face dataset description. Obtained from
-        - description = hf_dataset.description
-        - description = generate_huggingface_description(infos, problem_definition)
-        download_size_bytes (int): the size of the dataset when downloaded from the hub
-        dataset_size_bytes (int): the size of the dataset when loaded in RAM
-        nb_samples (int): the number of samples in the dataset
-        owner (str): the owner of the dataset, usually a username or organization name on Hugging Face
-        license (str): the license of the dataset, e.g. "CC-BY-4.0", "CC0-1.0", etc.
-        zenodo_url (str, optional): the Zenodo URL of the dataset, if available
-        arxiv_paper_url (str, optional): the arxiv paper URL of the dataset, if available
-        pretty_name (str, optional): a human-readable name for the dataset, e.g. "PLAID Dataset"
-        size_categories (list[str], optional): size categories of the dataset, e.g. ["small", "medium", "large"]
-        task_categories (list[str], optional): task categories of the dataset, e.g. ["image-classification", "text-generation"]
-        tags (list[str], optional): tags for the dataset, e.g. ["3D", "simulation", "mesh"]
-        dataset_long_description (str, optional): a long description of the dataset, providing more details about its content and purpose
-        url_illustration (str, optional): a URL to an illustration image for the dataset, e.g. a screenshot or a sample mesh
+        dataset_card (str): The original dataset card content to update.
+        license (str, optional): The dataset license identifier. Defaults to "cc-by-sa-4.0".
+        infos (dict[str, dict[str, str]], optional): Dictionary containing dataset information
+            with "legal" and "data_production" sections. Defaults to None.
+        pretty_name (str, optional): A human-readable name for the dataset. Defaults to None.
+        dataset_long_description (str, optional): Detailed description of the dataset's content,
+            purpose, and characteristics. Defaults to None.
+        illustration_urls (list[str], optional): List of URLs to images illustrating the dataset.
+            Defaults to None.
+        arxiv_paper_urls (list[str], optional): List of URLs to related arXiv papers.
+            Defaults to None.
 
     Returns:
-        dataset (Dataset): the converted dataset
-        problem_definition (ProblemDefinition): the problem definition generated from the Hugging Face dataset
+        str: The updated dataset card content as a string.
 
     Example:
-        .. code-block:: python
+        ```python
+        # Create initial dataset card
+        card = "---\ndataset_name: my_dataset\n---"
 
-            hf_dataset.push_to_hub("chanel/dataset")
+        # Update with PLAID-specific content
+        updated_card = update_dataset_card(
+            dataset_card=card,
+            license="mit",
+            pretty_name="My PLAID Dataset",
+            dataset_long_description="This dataset contains...",
+            illustration_urls=["https://example.com/image.png"],
+            arxiv_paper_urls=["https://arxiv.org/abs/..."]
+        )
 
-            from datasets import load_dataset_builder
-
-            datasetInfo = load_dataset_builder("chanel/dataset").__getstate__()['info']
-
-            from huggingface_hub import DatasetCard
-
-            card_text = create_string_for_huggingface_dataset_card(
-                description = description,
-                download_size_bytes = datasetInfo.download_size,
-                dataset_size_bytes = datasetInfo.dataset_size,
-                ...)
-            dataset_card = DatasetCard(card_text)
-            dataset_card.push_to_hub("chanel/dataset")
+        # Push to Hugging Face Hub
+        from huggingface_hub import DatasetCard
+        dataset_card = DatasetCard(updated_card)
+        dataset_card.push_to_hub("username/dataset")
+        ```
     """
-    str__ = f"""---
-license: {license}
-"""
+    lines = dataset_card.splitlines()
 
-    if size_categories:
-        str__ += f"""size_categories:
-  {size_categories}
-"""
+    indices = [i for i, line in enumerate(lines) if line.strip() == "---"]
 
-    if task_categories:
-        str__ += f"""task_categories:
-  {task_categories}
-"""
+    assert len(indices) >= 2, (
+        "Cannot find two instances of '---', you should try to update a correct dataset_card."
+    )
+    lines = lines[: indices[1] + 1]
 
+    count = 1
+    lines.insert(count, f"license: {license}")
+    count += 1
+    lines.insert(count, "task_categories:")
+    count += 1
+    lines.insert(count, "- graph-ml")
+    count += 1
     if pretty_name:
-        str__ += f"""pretty_name: {pretty_name}
-"""
+        lines.insert(count, f"pretty_name: {pretty_name}")
+        count += 1
+    lines.insert(count, "tags:")
+    count += 1
+    lines.insert(count, "- physics learning")
+    count += 1
+    lines.insert(count, "- geometry learning")
+    count += 1
 
-    if tags:
-        str__ += f"""tags:
-  {tags}
-"""
+    str__ = "\n".join(lines) + "\n"
 
-    str__ += f"""configs:
-  - config_name: default
-    data_files:
-      - split: all_samples
-        path: data/all_samples-*
-dataset_info:
-  description: {description}
-  features:
-  - name: sample
-    dtype: binary
-  splits:
-  - name: all_samples
-    num_bytes: {dataset_size_bytes}
-    num_examples: {nb_samples}
-  download_size: {download_size_bytes}
-  dataset_size: {dataset_size_bytes}
----
+    if illustration_urls:
+        str__ += "<p align='center'>\n"
+        for url in illustration_urls:
+            str__ += f"<img src='{url}' alt='{url}' width='1000'/>\n"
+        str__ += "</p>\n\n"
 
-# Dataset Card
-"""
-    if url_illustration:
-        str__ += f"""![image/png]({url_illustration})
+    if infos:
+        str__ += (
+            f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
+        )
 
-This dataset contains a single Hugging Face split, named 'all_samples'.
-
-The samples contains a single Hugging Face feature, named called "sample".
-
-Samples are instances of [plaid.containers.sample.Sample](https://plaid-lib.readthedocs.io/en/latest/autoapi/plaid/containers/sample/index.html#plaid.containers.sample.Sample).
-Mesh objects included in samples follow the [CGNS](https://cgns.github.io/) standard, and can be converted in
-[Muscat.Containers.Mesh.Mesh](https://muscat.readthedocs.io/en/latest/_source/Muscat.Containers.Mesh.html#Muscat.Containers.Mesh.Mesh).
-
-
+    str__ += """
 Example of commands:
 ```python
-import pickle
 from datasets import load_dataset
-from plaid import Sample
+from plaid.bridges import huggingface_bridge
+
+repo_id = "chanel/dataset"
+pb_def_name = "pb_def_name" #`pb_def_name` is to choose from the repo `problem_definitions` folder
 
 # Load the dataset
-dataset = load_dataset("chanel/dataset", split="all_samples")
+hf_datasetdict = load_dataset(repo_id)
 
-# Get the first sample of the first split
-split_names = list(dataset.description["split"].keys())
-ids_split_0 = dataset.description["split"][split_names[0]]
-sample_0_split_0 = dataset[ids_split_0[0]]["sample"]
-plaid_sample = Sample.model_validate(pickle.loads(sample_0_split_0))
-print("type(plaid_sample) =", type(plaid_sample))
+# Load addition required data
+flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_hub(repo_id)
+pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id, pb_def_name)
 
-print("plaid_sample =", plaid_sample)
+# Efficient reconstruction of plaid samples
+for split_name, hf_dataset in hf_datasetdict.items():
+    for i in range(len(hf_dataset)):
+        sample = huggingface_bridge.to_plaid_sample(
+            hf_dataset,
+            i,
+            flat_cst[split_name],
+            key_mappings["cgns_types"],
+        )
 
-# Get a field from the sample
-field_names = plaid_sample.get_field_names()
-field = plaid_sample.get_field(field_names[0])
-print("field_names[0] =", field_names[0])
-
-print("field.shape =", field.shape)
-
-# Get the mesh and convert it to Muscat
-from Muscat.Bridges import CGNSBridge
-CGNS_tree = plaid_sample.get_mesh()
-mesh = CGNSBridge.CGNSToMesh(CGNS_tree)
-print(mesh)
+# Extract input and output features from samples:
+for t in sample.get_all_mesh_times():
+    for path in pb_def.get_in_features_identifiers():
+        sample.get_feature_by_path(path=path, time=t)
+    for path in pb_def.get_out_features_identifiers():
+        sample.get_feature_by_path(path=path, time=t)
 ```
-
-## Dataset Details
-
-### Dataset Description
-
 """
+    str__ += "This dataset was generated in [PLAID](https://plaid-lib.readthedocs.io/), we refer to this documentation for additional details on how to extract data from `sample` objects.\n"
 
     if dataset_long_description:
-        str__ += f"""{dataset_long_description}
+        str__ += f"""
+### Dataset Description
+{dataset_long_description}
 """
 
-    str__ += f"""- **Language:** [PLAID](https://plaid-lib.readthedocs.io/)
-- **License:** {license}
-- **Owner:** {owner}
-"""
-
-    if zenodo_url or arxiv_paper_url:
+    if arxiv_paper_urls:
         str__ += """
 ### Dataset Sources
 
+- **Papers:**
 """
-
-    if zenodo_url:
-        str__ += f"""- **Repository:** [Zenodo]({zenodo_url})
-"""
-
-    if arxiv_paper_url:
-        str__ += f"""- **Paper:** [arxiv]({arxiv_paper_url})
-"""
+        for url in arxiv_paper_urls:
+            str__ += f"   - [arxiv]({url})\n"
 
     return str__

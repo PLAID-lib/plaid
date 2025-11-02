@@ -316,20 +316,15 @@ class Test_Huggingface_Bridge:
         huggingface_bridge.huggingface_description_to_infos(hf_description)
 
     # ---- Deprecated ----
-    def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
-        huggingface_bridge.create_string_for_huggingface_dataset_card(
-            description=hf_dataset.description,
-            download_size_bytes=10,
-            dataset_size_bytes=10,
-            nb_samples=10,
-            owner="Safran",
+    def test_create_string_for_huggingface_dataset_card(self, infos):
+        dataset_card = "---\ndataset_name: my_dataset\n---"
+
+        huggingface_bridge.update_dataset_card(
+            dataset_card=dataset_card,
             license="cc-by-sa-4.0",
-            zenodo_url="https://zenodo.org/records/10124594",
-            arxiv_paper_url="https://arxiv.org/pdf/2305.12871",
+            infos=infos,
             pretty_name="2D quasistatic non-linear structural mechanics solutions",
-            size_categories=["n<1K"],
-            task_categories=["graph-ml"],
-            tags=["physics learning", "geometry learning"],
             dataset_long_description="my long description",
-            url_illustration="url3",
+            illustration_urls=["url0", "url1"],
+            arxiv_paper_urls=["url2"],
         )
