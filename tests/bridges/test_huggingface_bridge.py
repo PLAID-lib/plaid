@@ -321,7 +321,6 @@ class Test_Huggingface_Bridge:
 
         huggingface_bridge.update_dataset_card(
             dataset_card=dataset_card,
-            license="cc-by-sa-4.0",
             infos=infos,
             pretty_name="2D quasistatic non-linear structural mechanics solutions",
             dataset_long_description="my long description",

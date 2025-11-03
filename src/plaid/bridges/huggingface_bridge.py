@@ -1634,8 +1634,7 @@ def huggingface_description_to_infos(
 
 def update_dataset_card(
     dataset_card: str,
-    license: str = "cc-by-sa-4.0",
-    infos: Optional[dict[str, dict[str, str]]] = None,
+    infos: dict[str, dict[str, str]] = None,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,
@@ -1645,8 +1644,7 @@ def update_dataset_card(
 
     Args:
         dataset_card (str): The original dataset card content to update.
-        license (str, optional): The dataset license identifier. Defaults to "cc-by-sa-4.0".
-        infos (dict[str, dict[str, str]], optional): Dictionary containing dataset information
+        infos (dict[str, dict[str, str]]): Dictionary containing dataset information
             with "legal" and "data_production" sections. Defaults to None.
         pretty_name (str, optional): A human-readable name for the dataset. Defaults to None.
         dataset_long_description (str, optional): Detailed description of the dataset's content,
@@ -1681,6 +1679,7 @@ def update_dataset_card(
         ```
     """
     lines = dataset_card.splitlines()
+    lines = [s for s in lines if not s.startswith("license")]
 
     indices = [i for i, line in enumerate(lines) if line.strip() == "---"]
 
@@ -1690,7 +1689,7 @@ def update_dataset_card(
     lines = lines[: indices[1] + 1]
 
     count = 1
-    lines.insert(count, f"license: {license}")
+    lines.insert(count, f"license: {infos['legal']['license']}")
     count += 1
     lines.insert(count, "task_categories:")
     count += 1
