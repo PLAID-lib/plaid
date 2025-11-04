@@ -15,6 +15,9 @@
 - [7. Setting up pre-commit](#7-setting-up-pre-commit)
 - [8. Backward-compatibility guidelines](#8-backward-compatibility-guidelines)
 - [9. Release process](#9-release-process)
+  - [9.1. Github](#91-github)
+  - [9.2. conda-forge](#92-conda-forge)
+  - [9.3. Readthedocs](#93-readthedocs)
 
 ## 1. Contributor License Agreement (CLA)
 
@@ -184,7 +187,9 @@ These guidelines help keep PLAID users' code and datasets working across release
 
 ## 9. Release process
 
-- Create a new release branch from `main`
+### 9.1. Github
+
+- Create a new release branch from `main` called e.g. `release_0.1.10`
 - Update the CHANGELOG
   - Rename the section [Unreleased] to the new version number (e.g., [0.1.10]) followed by the release date (YYYY-MM-DD)
   - Update links at the end of the file
@@ -195,3 +200,17 @@ These guidelines help keep PLAID users' code and datasets working across release
   - Click `Generate release notes`
   - Include a link to the CHANGELOG file at the release tag, e.g.: `https://github.com/PLAID-lib/plaid/blob/0.1.10/CHANGELOG.md`
 - Create a new pull request to add a new `Unreleased` section to the CHANGELOG, with sub-sections `Added`, `Changed`, `Fixes`, `Removed`
+
+### 9.2. conda-forge
+
+- Create a fork of https://github.com/conda-forge/plaid-feedstock or sync with the latest changes if you already have a fork
+- Update the conda-forge recipe `plaid-feedstock/recipe/meta.yaml`
+  - Update the `version` field to the new version number (line 1)
+  - Update the SHA256 checksum for the new version (line 9), you can find it in the GitHub action: https://github.com/PLAID-lib/plaid/actions/workflows/checksum_release.yml, don’t take the one in `Digest` section of `Artifacts`, but take the one in the download button
+  - Update requirements section if they change in the new version
+- Submit a pull request to the conda-forge feedstock repository
+- Follow the instructions provided in the PR message
+
+### 9.3. Readthedocs
+
+Just check a version was created for the release tag, it should have automatically triggered a new build on Read the Docs.
