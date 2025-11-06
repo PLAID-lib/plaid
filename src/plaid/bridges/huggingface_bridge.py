@@ -239,6 +239,7 @@ def build_hf_sample(sample: Sample) -> tuple[dict[str, Any], list[str], dict[str
 
 def _generator_prepare_for_huggingface(
     generators: dict[str, Callable],
+    gen_kwargs: dict,
     verbose: bool = True,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any], Features]:
     """Inspect PLAID dataset generators and infer Hugging Face feature schema.
@@ -267,7 +268,6 @@ def _generator_prepare_for_huggingface(
     Raises:
         ValueError: If inconsistent CGNS types or feature types are found for the same path.
     """
-
     def values_equal(v1, v2):
         if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
             return np.array_equal(v1, v2)
@@ -288,7 +288,7 @@ def _generator_prepare_for_huggingface(
 
         n_samples = 0
         for sample in tqdm(
-            generator(), disable=not verbose, desc=f"Process split {split_name}"
+            generator(**gen_kwargs), disable=not verbose, desc=f"Process split {split_name}"
         ):
             # --- Build Hugging Face–compatible sample ---
             hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
@@ -563,6 +563,7 @@ def plaid_dataset_to_huggingface_datasetdict(
     main_splits: dict[str, IndexType],
     processes_number: int = 1,
     writer_batch_size: int = 1,
+    gen_kwargs: Optional[dict] = None,
     verbose: bool = False,
 ) -> tuple[datasets.DatasetDict, dict[str, Any], dict[str, Any]]:
     """Convert a PLAID dataset into a Hugging Face `datasets.DatasetDict`.
@@ -617,7 +618,7 @@ def plaid_dataset_to_huggingface_datasetdict(
     }
 
     return plaid_generator_to_huggingface_datasetdict(
-        generators, processes_number, writer_batch_size, verbose
+        generators, processes_number, writer_batch_size, gen_kwargs, verbose
     )
 
 
@@ -625,6 +626,7 @@ def plaid_generator_to_huggingface_datasetdict(
     generators: dict[str, Callable],
     processes_number: int = 1,
     writer_batch_size: int = 1,
+    gen_kwargs: Optional[dict] = None,
     verbose: bool = False,
 ) -> tuple[datasets.DatasetDict, dict[str, Any], dict[str, Any]]:
     """Convert PLAID dataset generators into a Hugging Face `datasets.DatasetDict`.
@@ -681,22 +683,25 @@ def plaid_generator_to_huggingface_datasetdict(
         >>> print(key_mappings["variable_features"][:3])
         ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
     """
+    gen_kwargs = gen_kwargs or {}
+
     flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
-        generators, verbose
+        generators, gen_kwargs, verbose
     )
 
     all_features_keys = list(hf_features.keys())
 
-    def generator_fn(gen_func, all_features_keys):
-        for sample in gen_func():
+    def generator_fn(gen_func, all_features_keys, **kwargs):
+        for sample in gen_func(**kwargs):
             hf_sample, _, _ = build_hf_sample(sample)
             yield {path: hf_sample.get(path, None) for path in all_features_keys}
 
     _dict = {}
     for split_name, gen_func in generators.items():
-        gen = partial(generator_fn, gen_func, all_features_keys)
+        gen = partial(generator_fn, all_features_keys=all_features_keys)
         _dict[split_name] = datasets.Dataset.from_generator(
             generator=gen,
+            gen_kwargs={"gen_func": gen_func, **gen_kwargs},
             features=hf_features,
             num_proc=processes_number,
             writer_batch_size=writer_batch_size,
