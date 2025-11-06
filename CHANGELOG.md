@@ -11,10 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (huggingface bridge) from_generator now compatible with `gen_kwargs` for parallel support.
+
 ### Fixes
 
-- (samples/features) add string support to globals
-- (huggingface bridge) correct split_constant tree derivation, add heuristic for number of shards usage in push_to_dict, robustify infer_hf_features_from_value with respect to numpy arrays of strings, modernize update_dataset_card
+- (samples/features) add string support to globals.
+- (huggingface bridge) correct split_constant tree derivation, add heuristic for number of shards usage in push_to_dict, robustify infer_hf_features_from_value with respect to numpy arrays of strings, modernize update_dataset_card.
 
 ### Removed
 
