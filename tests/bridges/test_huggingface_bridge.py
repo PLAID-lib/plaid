@@ -72,6 +72,33 @@ def generator_split(dataset, problem_definition) -> dict[str, Callable]:
 
 
 @pytest.fixture()
+def gen_kwargs(problem_definition) -> dict[str, dict]:
+    gen_kwargs = {}
+    for split_name, ids in problem_definition.get_split().items():
+        mid = len(ids) // 2
+        gen_kwargs[split_name] = {"shards_ids": [ids[:mid], ids[mid:]]}
+    return gen_kwargs
+
+
+@pytest.fixture()
+def generator_split_parallel(dataset, gen_kwargs) -> dict[str, Callable]:
+    generators_ = {}
+
+    for split_name in gen_kwargs.keys():
+
+        def generator_(shards_ids):
+            for ids in shards_ids:
+                if isinstance(ids, int):
+                    ids = [ids]
+                for id in ids:
+                    yield dataset[id]
+
+        generators_[split_name] = generator_
+
+    return generators_
+
+
+@pytest.fixture()
 def generator_binary(dataset) -> Callable:
     def generator_():
         for sample in dataset:
@@ -169,6 +196,11 @@ class Test_Huggingface_Bridge:
             flat_cst["test"],
             key_mappings["cgns_types"],
             enforce_shapes=True,
+        )
+
+    def test_with_generator_parallel(self, gen_kwargs, generator_split_parallel):
+        huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+            generator_split_parallel, processes_number=2, gen_kwargs=gen_kwargs
         )
 
     # ------------------------------------------------------------------------------

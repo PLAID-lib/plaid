@@ -237,9 +237,202 @@ def build_hf_sample(sample: Sample) -> tuple[dict[str, Any], list[str], dict[str
     return hf_sample, all_paths, sample_cgns_types
 
 
+# # -----PARALLEL TENTATIVE---------------------
+# import multiprocessing as mp
+# import dill
+
+# def _values_equal(v1, v2):
+#     if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
+#         return np.array_equal(v1, v2)
+#     return v1 == v2
+
+# def _process_shard(generator_func_serialized, shard_ids):
+#     """Process one shard: iterate over samples and return list of HF tuples."""
+#     try:
+#         generator_func = dill.loads(generator_func_serialized)
+#         results = []
+#         for sample in generator_func(shard_ids):
+#             hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
+#             results.append((hf_sample, all_paths, sample_cgns_types))
+#         return results
+#     except Exception as e:
+#         raise RuntimeError(f"Error processing shard {shard_ids}") from e
+
+# # --------------------------
+# # Shard-safe generator fixture
+# # --------------------------
+# def generator_split_parallel(dataset, gen_kwargs) -> dict[str, callable]:
+#     """
+#     Returns a dictionary of split_name -> generator function.
+#     Each shard is always a list, even if containing only one ID.
+#     """
+#     generators_ = {}
+#     for split_name in gen_kwargs.keys():
+
+#         def generator_(shards_ids):
+#             for ids in shards_ids:
+#                 if isinstance(ids, int):
+#                     ids = [ids]
+#                 for id in ids:
+#                     yield dataset[id]
+
+#         generators_[split_name] = generator_
+#     return generators_
+
+# # --------------------------
+# # Parallel _generator_prepare_for_huggingface
+# # --------------------------
+# def _generator_prepare_for_huggingface(
+#     generators: dict[str, callable],
+#     gen_kwargs: dict = None,
+#     processes_number: int = 1,
+#     verbose: bool = True,
+# ):
+#     """Parallelized version of _generator_prepare_for_huggingface by shard."""
+#     gen_kwargs = gen_kwargs or {split_name: {} for split_name in generators.keys()}
+
+#     split_flat_cst = {}
+#     split_var_path = {}
+#     split_all_paths = {}
+#     global_cgns_types = {}
+#     global_feature_types = {}
+
+#     ctx = mp.get_context("spawn")
+
+#     for split_name, generator_func in generators.items():
+#         kwargs = gen_kwargs.get(split_name, {})
+#         shards = kwargs.get("shards_ids", None)
+
+#         split_constant_leaves = {}
+#         split_all_paths[split_name] = set()
+#         n_samples = 0
+
+#         if shards and processes_number > 1:
+#             serialized_gen = dill.dumps(generator_func)
+#             pool = ctx.Pool(processes=processes_number)
+
+#             try:
+#                 shard_results = pool.starmap(
+#                     _process_shard,
+#                     [(serialized_gen, shard) for shard in shards]
+#                 )
+#             finally:
+#                 pool.close()
+#                 pool.join()
+
+#             # Flatten results
+#             for shard_batch in shard_results:
+#                 for hf_sample, all_paths, sample_cgns_types in shard_batch:
+#                     split_all_paths[split_name].update(hf_sample.keys())
+#                     global_cgns_types.update(sample_cgns_types)
+
+#                     # --- feature type inference ---
+#                     for path in all_paths:
+#                         value = hf_sample[path]
+#                         if value is None:
+#                             continue
+#                         inferred = infer_hf_features_from_value(value)
+#                         if path not in global_feature_types:
+#                             global_feature_types[path] = inferred
+#                         elif repr(global_feature_types[path]) != repr(inferred):
+#                             raise ValueError(f"Feature type mismatch for {path} in split {split_name}")
+
+#                     # --- constant feature detection ---
+#                     for path, value in hf_sample.items():
+#                         if path not in split_constant_leaves:
+#                             split_constant_leaves[path] = {"value": value, "constant": True, "count": 1}
+#                         else:
+#                             entry = split_constant_leaves[path]
+#                             entry["count"] += 1
+#                             if entry["constant"] and not _values_equal(entry["value"], value):
+#                                 entry["constant"] = False
+
+#                     n_samples += 1
+#         else:
+#             # Sequential fallback
+#             print("Sequential fallback")
+#             1./0.
+#             all_samples = generator_func(**kwargs)
+#             for sample in tqdm(all_samples, disable=not verbose, desc=f"Process split {split_name}"):
+#                 hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
+#                 split_all_paths[split_name].update(hf_sample.keys())
+#                 global_cgns_types.update(sample_cgns_types)
+
+#                 for path in all_paths:
+#                     value = hf_sample[path]
+#                     if value is None:
+#                         continue
+#                     inferred = infer_hf_features_from_value(value)
+#                     if path not in global_feature_types:
+#                         global_feature_types[path] = inferred
+#                     elif repr(global_feature_types[path]) != repr(inferred):
+#                         raise ValueError(f"Feature type mismatch for {path} in split {split_name}")
+
+#                 for path, value in hf_sample.items():
+#                     if path not in split_constant_leaves:
+#                         split_constant_leaves[path] = {"value": value, "constant": True, "count": 1}
+#                     else:
+#                         entry = split_constant_leaves[path]
+#                         entry["count"] += 1
+#                         if entry["constant"] and not _values_equal(entry["value"], value):
+#                             entry["constant"] = False
+
+#                 n_samples += 1
+
+#         # --- finalize constants ---
+#         for p, e in split_constant_leaves.items():
+#             if e["count"] < n_samples:
+#                 split_constant_leaves[p]["constant"] = False
+
+#         split_flat_cst[split_name] = dict(
+#             sorted(((p, e["value"]) for p, e in split_constant_leaves.items() if e["constant"]),
+#                    key=lambda x: x[0])
+#         )
+#         split_var_path[split_name] = {p for p in split_all_paths[split_name] if p not in split_flat_cst[split_name]}
+
+#     # --- build HF features ---
+#     var_features = sorted(list(set().union(*split_var_path.values())))
+#     if len(var_features) == 0:
+#         raise ValueError("no variable feature found, is your dataset variable through samples?")
+
+#     for split_name in split_flat_cst.keys():
+#         for path in var_features:
+#             if not path.endswith("_times") and path not in split_all_paths[split_name]:
+#                 split_flat_cst[split_name][path + "_times"] = None
+#             if path in split_flat_cst[split_name]:
+#                 split_flat_cst[split_name].pop(path)
+
+#     cst_features = {split_name: sorted(list(cst.keys())) for split_name, cst in split_flat_cst.items()}
+#     first_split, first_value = next(iter(cst_features.items()), (None, None))
+#     for split, value in cst_features.items():
+#         assert value == first_value, f"cst_features differ for split '{split}' (vs '{first_split}')"
+#     cst_features = first_value
+
+#     hf_features_map = {}
+#     for k in var_features:
+#         if k.endswith("_times"):
+#             hf_features_map[k] = Sequence(Value("float64"))
+#         else:
+#             hf_features_map[k] = global_feature_types[k]
+#     hf_features = Features(hf_features_map)
+
+#     var_features = [path for path in var_features if not path.endswith("_times")]
+#     cst_features = [path for path in cst_features if not path.endswith("_times")]
+
+#     key_mappings = {
+#         "variable_features": var_features,
+#         "constant_features": cst_features,
+#         "cgns_types": global_cgns_types,
+#     }
+
+#     return split_flat_cst, key_mappings, hf_features
+# # -------------------------------------------
+
+
 def _generator_prepare_for_huggingface(
     generators: dict[str, Callable],
     gen_kwargs: dict,
+    processes_number: int = 1,
     verbose: bool = True,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, Any], Features]:
     """Inspect PLAID dataset generators and infer Hugging Face feature schema.
@@ -254,6 +447,10 @@ def _generator_prepare_for_huggingface(
         generators (dict[str, Callable]):
             Mapping from split names to callables returning sample generators.
             Each sample must have `sample.features.data[0.0]` compatible with `flatten_cgns_tree`.
+        gen_kwargs (dict, optional, default=None):
+            Optional mapping from split names to dictionaries of keyword arguments
+            to be passed to each generator function, used for parallelization.
+        processes_number (int, optional): Number of parallel processes to use.
         verbose (bool, optional): If True, displays progress bars while processing splits.
 
     Returns:
@@ -268,6 +465,8 @@ def _generator_prepare_for_huggingface(
     Raises:
         ValueError: If inconsistent CGNS types or feature types are found for the same path.
     """
+    processes_number
+
     def values_equal(v1, v2):
         if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
             return np.array_equal(v1, v2)
@@ -288,7 +487,9 @@ def _generator_prepare_for_huggingface(
 
         n_samples = 0
         for sample in tqdm(
-            generator(**gen_kwargs), disable=not verbose, desc=f"Process split {split_name}"
+            generator(**gen_kwargs[split_name]),
+            disable=not verbose,
+            desc=f"Process split {split_name}",
         ):
             # --- Build Hugging Face–compatible sample ---
             hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
@@ -583,6 +784,9 @@ def plaid_dataset_to_huggingface_datasetdict(
             Number of parallel processes to use when writing the Hugging Face dataset.
         writer_batch_size (int, optional, default=1):
             Batch size used when writing samples to disk in Hugging Face format.
+        gen_kwargs (dict, optional, default=None):
+            Optional mapping from split names to dictionaries of keyword arguments
+            to be passed to each generator function, used for parallelization.
         verbose (bool, optional, default=False):
             If True, print progress and debug information.
 
@@ -646,6 +850,9 @@ def plaid_generator_to_huggingface_datasetdict(
             the dataset from the generators.
         writer_batch_size (int, optional, default=1):
             Batch size used when writing samples to disk in Hugging Face format.
+        gen_kwargs (dict, optional, default=None):
+            Optional mapping from split names to dictionaries of keyword arguments
+            to be passed to each generator function, used for parallelization.
         verbose (bool, optional, default=False):
             If True, displays progress bars and diagnostic messages.
 
@@ -683,10 +890,15 @@ def plaid_generator_to_huggingface_datasetdict(
         >>> print(key_mappings["variable_features"][:3])
         ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
     """
-    gen_kwargs = gen_kwargs or {}
+    if processes_number > 1:
+        assert gen_kwargs is not None, (
+            "When using multiple processes, gen_kwargs must be provided."
+        )
+
+    gen_kwargs = gen_kwargs or {split_name: {} for split_name in generators.keys()}
 
     flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
-        generators, gen_kwargs, verbose
+        generators, gen_kwargs, processes_number, verbose
     )
 
     all_features_keys = list(hf_features.keys())
@@ -701,7 +913,7 @@ def plaid_generator_to_huggingface_datasetdict(
         gen = partial(generator_fn, all_features_keys=all_features_keys)
         _dict[split_name] = datasets.Dataset.from_generator(
             generator=gen,
-            gen_kwargs={"gen_func": gen_func, **gen_kwargs},
+            gen_kwargs={"gen_func": gen_func, **gen_kwargs[split_name]},
             features=hf_features,
             num_proc=processes_number,
             writer_batch_size=writer_batch_size,
