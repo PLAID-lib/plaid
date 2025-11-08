@@ -59,19 +59,6 @@ def generator(dataset) -> Callable:
 
 
 @pytest.fixture()
-def generator_split(dataset, problem_definition) -> dict[str, Callable]:
-    generators_ = {}
-    for split_name, ids in problem_definition.get_split().items():
-
-        def generator_(ids=ids):
-            for id in ids:
-                yield dataset[id]
-
-        generators_[split_name] = generator_
-    return generators_
-
-
-@pytest.fixture()
 def gen_kwargs(problem_definition) -> dict[str, dict]:
     gen_kwargs = {}
     for split_name, ids in problem_definition.get_split().items():
@@ -81,7 +68,7 @@ def gen_kwargs(problem_definition) -> dict[str, dict]:
 
 
 @pytest.fixture()
-def generator_split_parallel(dataset, gen_kwargs) -> dict[str, Callable]:
+def generator_split(dataset, gen_kwargs) -> dict[str, Callable]:
     generators_ = {}
 
     for split_name in gen_kwargs.keys():
@@ -181,10 +168,10 @@ class Test_Huggingface_Bridge:
             dataset[0].get_mesh(), dataset[0].get_mesh()
         )
 
-    def test_with_generator(self, generator_split):
+    def test_with_generator(self, generator_split, gen_kwargs):
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-                generator_split
+                generator_split, gen_kwargs
             )
         )
         huggingface_bridge.to_plaid_sample(
@@ -198,21 +185,16 @@ class Test_Huggingface_Bridge:
             enforce_shapes=True,
         )
 
-    def test_with_generator_parallel(self, gen_kwargs, generator_split_parallel):
-        huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-            generator_split_parallel, processes_number=2, gen_kwargs=gen_kwargs
-        )
-
     # ------------------------------------------------------------------------------
     #     HUGGING FACE INTERACTIONS ON DISK
     # ------------------------------------------------------------------------------
 
     def test_save_load_to_disk(
-        self, current_directory, generator_split, infos, problem_definition
+        self, current_directory, generator_split, infos, problem_definition, gen_kwargs
     ):
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-                generator_split
+                generator_split, gen_kwargs
             )
         )
 

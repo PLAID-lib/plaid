@@ -8,10 +8,12 @@
 #
 import hashlib
 import io
+import multiprocessing as mp
 import os
 import pickle
 import shutil
 import sys
+import traceback
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
@@ -237,181 +239,355 @@ def build_hf_sample(sample: Sample) -> tuple[dict[str, Any], list[str], dict[str
     return hf_sample, all_paths, sample_cgns_types
 
 
-# # -----PARALLEL TENTATIVE---------------------
-# import multiprocessing as mp
-# import dill
+def _hash_value(value):
+    """Compute a hash for a value (np.ndarray or basic types)."""
+    if isinstance(value, np.ndarray):
+        return hashlib.md5(value.view(np.uint8)).hexdigest()
+    return hashlib.md5(str(value).encode("utf-8")).hexdigest()
 
-# def _values_equal(v1, v2):
-#     if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
-#         return np.array_equal(v1, v2)
-#     return v1 == v2
 
-# def _process_shard(generator_func_serialized, shard_ids):
-#     """Process one shard: iterate over samples and return list of HF tuples."""
-#     try:
-#         generator_func = dill.loads(generator_func_serialized)
-#         results = []
-#         for sample in generator_func(shard_ids):
-#             hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
-#             results.append((hf_sample, all_paths, sample_cgns_types))
-#         return results
-#     except Exception as e:
-#         raise RuntimeError(f"Error processing shard {shard_ids}") from e
+def process_shard(
+    shard_ids: list[IndexType],
+    generator_fn: Callable[[list[list[IndexType]]], Any],
+    progress: Any,
+    n_proc: int,
+) -> tuple[
+    set[str],
+    dict[str, str],
+    dict[str, Union[Value, Sequence]],
+    dict[str, dict[str, Union[str, bool, int]]],
+    int,
+]:
+    """Process a single shard of sample ids and collect per-shard metadata.
 
-# # --------------------------
-# # Shard-safe generator fixture
-# # --------------------------
-# def generator_split_parallel(dataset, gen_kwargs) -> dict[str, callable]:
-#     """
-#     Returns a dictionary of split_name -> generator function.
-#     Each shard is always a list, even if containing only one ID.
-#     """
-#     generators_ = {}
-#     for split_name in gen_kwargs.keys():
+    This function drives a shard-level pass over samples produced by `generator_fn`.
+    For each sample it:
+      - flattens the sample into Hugging Face friendly arrays (build_hf_sample),
+      - collects observed flattened paths,
+      - aggregates CGNS type metadata,
+      - infers Hugging Face feature types for each path,
+      - detects per-path constants using a content hash,
+      - updates progress (either a multiprocessing.Queue or a tqdm progress bar).
 
-#         def generator_(shards_ids):
-#             for ids in shards_ids:
-#                 if isinstance(ids, int):
-#                     ids = [ids]
-#                 for id in ids:
-#                     yield dataset[id]
+    Args:
+        shard_ids (list[IndexType]): Sequence of sample ids (a single shard) to process.
+        generator_fn (Callable): Generator function accepting a list of shard id sequences
+            and yielding Sample objects for those ids.
+        progress (Any): Progress reporter; either a multiprocessing.Queue (for parallel
+            execution) or a tqdm progress bar object (for sequential execution).
+        n_proc (int): Number of worker processes used by the caller (used to decide
+            how to report progress).
 
-#         generators_[split_name] = generator_
-#     return generators_
+    Returns:
+        tuple:
+            - split_all_paths (set[str]): Set of all flattened feature paths observed in the shard.
+            - shard_global_cgns_types (dict[str, str]): Mapping path -> CGNS node type observed in the shard.
+            - shard_global_feature_types (dict[str, Union[Value, Sequence]]): Inferred HF feature types per path.
+            - split_constant_leaves (dict[str, dict]): Per-path metadata for constant detection. Each entry
+              is a dict with keys "hash" (str), "constant" (bool) and "count" (int).
+            - n_samples_processed (int): Number of samples processed in this shard.
 
-# # --------------------------
-# # Parallel _generator_prepare_for_huggingface
-# # --------------------------
+    Raises:
+        ValueError: If inconsistent feature types are detected for the same path within the shard.
+    """
+    split_constant_leaves = {}
+    split_all_paths = set()
+    shard_global_cgns_types = {}
+    shard_global_feature_types = {}
+    shards_to_process = [shard_ids]
+
+    for sample in generator_fn(shards_to_process):
+        hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
+
+        split_all_paths.update(hf_sample.keys())
+        shard_global_cgns_types.update(sample_cgns_types)
+
+        # Feature type inference
+        for path in all_paths:
+            value = hf_sample[path]
+            if value is None:
+                continue
+            inferred = infer_hf_features_from_value(value)
+            if path not in shard_global_feature_types:
+                shard_global_feature_types[path] = inferred
+            elif repr(shard_global_feature_types[path]) != repr(
+                inferred
+            ):  # pragma: no cover
+                raise ValueError(f"Feature type mismatch for {path} in shard")
+
+        # Constant detection using hashes
+        for path, value in hf_sample.items():
+            h = _hash_value(value)
+            if path not in split_constant_leaves:
+                split_constant_leaves[path] = {"hash": h, "constant": True, "count": 1}
+            else:
+                entry = split_constant_leaves[path]
+                entry["count"] += 1
+                if entry["constant"] and entry["hash"] != h:
+                    entry["constant"] = False
+
+        # --- Update progress ---
+        if n_proc > 1:
+            progress.put(1)  # pragma: no cover
+        else:
+            progress.update(1)
+
+    return (
+        split_all_paths,
+        shard_global_cgns_types,
+        shard_global_feature_types,
+        split_constant_leaves,
+        len(shard_ids),
+    )
+
+
+def preprocess_splits(
+    generators: dict[str, Callable],
+    gen_kwargs: dict[str, dict[str, list[IndexType]]],
+    processes_number: int = 1,
+    verbose: bool = True,
+) -> tuple[
+    dict[str, set[str]],
+    dict[str, dict[str, Any]],
+    dict[str, set[str]],
+    dict[str, str],
+    dict[str, Union[Value, Sequence]],
+]:
+    """Pre-process dataset splits: inspect samples to infer features, constants and CGNS metadata.
+
+    This function iterates over the provided split generators (optionally in parallel),
+    flattens each PLAID sample into Hugging Face friendly arrays, detects constant
+    CGNS leaves (features identical across all samples in a split), infers global
+    Hugging Face feature types, and aggregates CGNS type metadata.
+
+    The work is sharded per-split and each shard is processed by `process_shard`.
+    In parallel mode, progress is updated via a multiprocessing.Queue; otherwise a
+    tqdm progress bar is used.
+
+    Args:
+        generators (dict[str, Callable]):
+            Mapping from split name to a generator function. Each generator must
+            accept a single argument (a sequence of shard ids) and yield PLAID samples.
+        gen_kwargs (dict[str, dict[str, list[IndexType]]]):
+            Per-split kwargs used to drive generator invocation (e.g. {"train": {"shards_ids": [...]}}).
+        processes_number (int, optional):
+            Number of worker processes to use for shard-level parallelism. Defaults to 1.
+        verbose (bool, optional):
+            If True, displays progress bars. Defaults to True.
+
+    Returns:
+        tuple:
+            - split_all_paths (dict[str, set[str]]):
+                For each split, the set of all observed flattened feature paths (including "_times" keys).
+            - split_flat_cst (dict[str, dict[str, Any]]):
+                For each split, a mapping of constant feature path -> value (constant parts of the tree).
+            - split_var_path (dict[str, set[str]]):
+                For each split, the set of variable feature paths (non-constant).
+            - global_cgns_types (dict[str, str]):
+                Aggregated mapping from flattened path -> CGNS node type.
+            - global_feature_types (dict[str, Union[Value, Sequence]]):
+                Aggregated inferred Hugging Face feature types for each variable path.
+
+    Raises:
+        ValueError: If inconsistent feature types or CGNS types are detected across shards/splits.
+    """
+    global_cgns_types = {}
+    global_feature_types = {}
+    split_flat_cst = {}
+    split_var_path = {}
+    split_all_paths = {}
+
+    for split_name, generator_fn in generators.items():
+        shards_ids_list = gen_kwargs[split_name].get("shards_ids", [None])
+        n_proc = processes_number or len(shards_ids_list)
+        n_proc = max(1, n_proc)
+
+        shards_data = []
+
+        if n_proc == 1:
+            progress_total = sum(len(shard) for shard in shards_ids_list)
+            with tqdm(
+                total=progress_total,
+                disable=not verbose,
+                desc=f"Pre-process split {split_name}",
+            ) as pbar:
+                for shard_ids in shards_ids_list:
+                    shards_data.append(
+                        process_shard(
+                            shard_ids,
+                            generator_fn,
+                            pbar,
+                            n_proc,
+                        )
+                    )
+
+        else:  # pragma: no cover (pytest not working with parallel mode)
+            # --- Parallel execution ---
+            manager = None
+            pool = None
+
+            try:
+                manager = mp.Manager()
+                progress_queue = manager.Queue()
+
+                # --- Run shards in parallel ---
+                with mp.Pool(n_proc) as pool:
+                    results = [
+                        pool.apply_async(
+                            process_shard,
+                            args=(
+                                shard_ids,
+                                generator_fn,
+                                progress_queue,
+                                n_proc,
+                            ),
+                        )
+                        for shard_ids in shards_ids_list
+                    ]
+
+                    total_samples = sum(len(shard) for shard in shards_ids_list)
+                    with tqdm(
+                        total=total_samples,
+                        disable=not verbose,
+                        desc=f"Pre-process split {split_name}",
+                    ) as pbar:
+                        completed = 0
+                        while completed < total_samples:
+                            increment = progress_queue.get()
+                            pbar.update(increment)
+                            completed += increment
+
+                    for r in results:
+                        try:
+                            data = r.get()  # this raises if the worker crashed
+                            shards_data.append(data)
+                        except Exception:
+                            traceback.print_exc()
+                            # Optional: terminate pool early if one shard fails
+                            pool.terminate()
+                            raise
+
+            except Exception:
+                traceback.print_exc()
+                raise
+            finally:
+                # Always clean up multiprocessing objects
+                if pool is not None:
+                    pool.terminate()
+                    pool.join()
+                if manager is not None:
+                    manager.shutdown()
+
+        # --- Merge shard results ---
+        split_all_paths[split_name] = set()
+        split_constant_hashes = {}
+        n_samples_total = 0
+
+        for (
+            all_paths,
+            shard_cgns,
+            shard_features,
+            shard_constants,
+            n_samples,
+        ) in shards_data:
+            split_all_paths[split_name].update(all_paths)
+            global_cgns_types.update(shard_cgns)
+
+            for path, inferred in shard_features.items():
+                if path not in global_feature_types:
+                    global_feature_types[path] = inferred
+                elif repr(global_feature_types[path]) != repr(
+                    inferred
+                ):  # pragma: no cover
+                    raise ValueError(
+                        f"Feature type mismatch for {path} in split {split_name}"
+                    )
+
+            for path, entry in shard_constants.items():
+                if path not in split_constant_hashes:
+                    split_constant_hashes[path] = entry
+                else:
+                    existing = split_constant_hashes[path]
+                    existing["constant"] = existing["constant"] and entry["constant"]
+                    existing["count"] += entry["count"]
+
+            n_samples_total += n_samples
+
+        # --- Finalize constants by inspecting first sample ---
+        # Only paths marked constant across all samples
+        constant_paths = [
+            p
+            for p, e in split_constant_hashes.items()
+            if e["constant"] and e["count"] == n_samples_total
+        ]
+
+        # Inspect first sample to get actual values
+        first_sample = next(generator_fn([shards_ids_list[0]]))
+        hf_sample, _, _ = build_hf_sample(first_sample)
+
+        split_flat_cst[split_name] = {p: hf_sample[p] for p in sorted(constant_paths)}
+        split_var_path[split_name] = {
+            p
+            for p in split_all_paths[split_name]
+            if p not in split_flat_cst[split_name]
+        }
+
+    global_feature_types = {
+        p: global_feature_types[p] for p in sorted(global_feature_types)
+    }
+
+    return (
+        split_all_paths,
+        split_flat_cst,
+        split_var_path,
+        global_cgns_types,
+        global_feature_types,
+    )
+
+
 # def _generator_prepare_for_huggingface(
-#     generators: dict[str, callable],
-#     gen_kwargs: dict = None,
+#     generators: dict[str, Callable],
+#     gen_kwargs: dict,
 #     processes_number: int = 1,
 #     verbose: bool = True,
 # ):
-#     """Parallelized version of _generator_prepare_for_huggingface by shard."""
-#     gen_kwargs = gen_kwargs or {split_name: {} for split_name in generators.keys()}
-
-#     split_flat_cst = {}
-#     split_var_path = {}
-#     split_all_paths = {}
-#     global_cgns_types = {}
-#     global_feature_types = {}
-
-#     ctx = mp.get_context("spawn")
-
-#     for split_name, generator_func in generators.items():
-#         kwargs = gen_kwargs.get(split_name, {})
-#         shards = kwargs.get("shards_ids", None)
-
-#         split_constant_leaves = {}
-#         split_all_paths[split_name] = set()
-#         n_samples = 0
-
-#         if shards and processes_number > 1:
-#             serialized_gen = dill.dumps(generator_func)
-#             pool = ctx.Pool(processes=processes_number)
-
-#             try:
-#                 shard_results = pool.starmap(
-#                     _process_shard,
-#                     [(serialized_gen, shard) for shard in shards]
-#                 )
-#             finally:
-#                 pool.close()
-#                 pool.join()
-
-#             # Flatten results
-#             for shard_batch in shard_results:
-#                 for hf_sample, all_paths, sample_cgns_types in shard_batch:
-#                     split_all_paths[split_name].update(hf_sample.keys())
-#                     global_cgns_types.update(sample_cgns_types)
-
-#                     # --- feature type inference ---
-#                     for path in all_paths:
-#                         value = hf_sample[path]
-#                         if value is None:
-#                             continue
-#                         inferred = infer_hf_features_from_value(value)
-#                         if path not in global_feature_types:
-#                             global_feature_types[path] = inferred
-#                         elif repr(global_feature_types[path]) != repr(inferred):
-#                             raise ValueError(f"Feature type mismatch for {path} in split {split_name}")
-
-#                     # --- constant feature detection ---
-#                     for path, value in hf_sample.items():
-#                         if path not in split_constant_leaves:
-#                             split_constant_leaves[path] = {"value": value, "constant": True, "count": 1}
-#                         else:
-#                             entry = split_constant_leaves[path]
-#                             entry["count"] += 1
-#                             if entry["constant"] and not _values_equal(entry["value"], value):
-#                                 entry["constant"] = False
-
-#                     n_samples += 1
-#         else:
-#             # Sequential fallback
-#             print("Sequential fallback")
-#             1./0.
-#             all_samples = generator_func(**kwargs)
-#             for sample in tqdm(all_samples, disable=not verbose, desc=f"Process split {split_name}"):
-#                 hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
-#                 split_all_paths[split_name].update(hf_sample.keys())
-#                 global_cgns_types.update(sample_cgns_types)
-
-#                 for path in all_paths:
-#                     value = hf_sample[path]
-#                     if value is None:
-#                         continue
-#                     inferred = infer_hf_features_from_value(value)
-#                     if path not in global_feature_types:
-#                         global_feature_types[path] = inferred
-#                     elif repr(global_feature_types[path]) != repr(inferred):
-#                         raise ValueError(f"Feature type mismatch for {path} in split {split_name}")
-
-#                 for path, value in hf_sample.items():
-#                     if path not in split_constant_leaves:
-#                         split_constant_leaves[path] = {"value": value, "constant": True, "count": 1}
-#                     else:
-#                         entry = split_constant_leaves[path]
-#                         entry["count"] += 1
-#                         if entry["constant"] and not _values_equal(entry["value"], value):
-#                             entry["constant"] = False
-
-#                 n_samples += 1
-
-#         # --- finalize constants ---
-#         for p, e in split_constant_leaves.items():
-#             if e["count"] < n_samples:
-#                 split_constant_leaves[p]["constant"] = False
-
-#         split_flat_cst[split_name] = dict(
-#             sorted(((p, e["value"]) for p, e in split_constant_leaves.items() if e["constant"]),
-#                    key=lambda x: x[0])
-#         )
-#         split_var_path[split_name] = {p for p in split_all_paths[split_name] if p not in split_flat_cst[split_name]}
+#     (
+#         split_all_paths,
+#         split_flat_cst,
+#         split_var_path,
+#         global_cgns_types,
+#         global_feature_types,
+#     ) = preprocess_splits(generators, gen_kwargs, processes_number, verbose)
 
 #     # --- build HF features ---
 #     var_features = sorted(list(set().union(*split_var_path.values())))
-#     if len(var_features) == 0:
-#         raise ValueError("no variable feature found, is your dataset variable through samples?")
+#     if len(var_features) == 0:  # pragma: no cover
+#         raise ValueError(
+#             "no variable feature found, is your dataset variable through samples?"
+#         )
 
 #     for split_name in split_flat_cst.keys():
 #         for path in var_features:
 #             if not path.endswith("_times") and path not in split_all_paths[split_name]:
-#                 split_flat_cst[split_name][path + "_times"] = None
+#                 split_flat_cst[split_name][path + "_times"] = None  # pragma: no cover
 #             if path in split_flat_cst[split_name]:
-#                 split_flat_cst[split_name].pop(path)
+#                 split_flat_cst[split_name].pop(path)  # pragma: no cover
 
-#     cst_features = {split_name: sorted(list(cst.keys())) for split_name, cst in split_flat_cst.items()}
+#     cst_features = {
+#         split_name: sorted(list(cst.keys()))
+#         for split_name, cst in split_flat_cst.items()
+#     }
 #     first_split, first_value = next(iter(cst_features.items()), (None, None))
 #     for split, value in cst_features.items():
-#         assert value == first_value, f"cst_features differ for split '{split}' (vs '{first_split}')"
+#         assert value == first_value, (
+#             f"cst_features differ for split '{split}' (vs '{first_split}')"
+#         )
 #     cst_features = first_value
 
 #     hf_features_map = {}
 #     for k in var_features:
 #         if k.endswith("_times"):
-#             hf_features_map[k] = Sequence(Value("float64"))
+#             hf_features_map[k] = Sequence(Value("float64")) # pragma: no cover
 #         else:
 #             hf_features_map[k] = global_feature_types[k]
 #     hf_features = Features(hf_features_map)
@@ -426,9 +602,10 @@ def build_hf_sample(sample: Sample) -> tuple[dict[str, Any], list[str], dict[str
 #     }
 
 #     return split_flat_cst, key_mappings, hf_features
-# # -------------------------------------------
 
 
+# -------------------------------------------
+# --------- Sequential version
 def _generator_prepare_for_huggingface(
     generators: dict[str, Callable],
     gen_kwargs: dict,
@@ -489,7 +666,7 @@ def _generator_prepare_for_huggingface(
         for sample in tqdm(
             generator(**gen_kwargs[split_name]),
             disable=not verbose,
-            desc=f"Process split {split_name}",
+            desc=f"Pre-process split {split_name}",
         ):
             # --- Build Hugging Face–compatible sample ---
             hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
@@ -764,7 +941,6 @@ def plaid_dataset_to_huggingface_datasetdict(
     main_splits: dict[str, IndexType],
     processes_number: int = 1,
     writer_batch_size: int = 1,
-    gen_kwargs: Optional[dict] = None,
     verbose: bool = False,
 ) -> tuple[datasets.DatasetDict, dict[str, Any], dict[str, Any]]:
     """Convert a PLAID dataset into a Hugging Face `datasets.DatasetDict`.
@@ -784,9 +960,6 @@ def plaid_dataset_to_huggingface_datasetdict(
             Number of parallel processes to use when writing the Hugging Face dataset.
         writer_batch_size (int, optional, default=1):
             Batch size used when writing samples to disk in Hugging Face format.
-        gen_kwargs (dict, optional, default=None):
-            Optional mapping from split names to dictionaries of keyword arguments
-            to be passed to each generator function, used for parallelization.
         verbose (bool, optional, default=False):
             If True, print progress and debug information.
 
@@ -812,25 +985,29 @@ def plaid_dataset_to_huggingface_datasetdict(
         })
     """
 
-    def generator(dataset):
-        for sample in dataset:
-            yield sample
+    def generator_(shards_ids):
+        for ids in shards_ids:
+            if isinstance(ids, int):
+                ids = [ids]  # pragma: no cover
+            for id in ids:
+                yield dataset[id]
 
-    generators = {
-        split_name: partial(generator, dataset[ids])
-        for split_name, ids in main_splits.items()
+    generators = {split_name: generator_ for split_name in main_splits.keys()}
+
+    gen_kwargs = {
+        split_name: {"shards_ids": [ids]} for split_name, ids in main_splits.items()
     }
 
     return plaid_generator_to_huggingface_datasetdict(
-        generators, processes_number, writer_batch_size, gen_kwargs, verbose
+        generators, gen_kwargs, processes_number, writer_batch_size, verbose
     )
 
 
 def plaid_generator_to_huggingface_datasetdict(
     generators: dict[str, Callable],
+    gen_kwargs: dict[str, dict[str, list[IndexType]]],
     processes_number: int = 1,
     writer_batch_size: int = 1,
-    gen_kwargs: Optional[dict] = None,
     verbose: bool = False,
 ) -> tuple[datasets.DatasetDict, dict[str, Any], dict[str, Any]]:
     """Convert PLAID dataset generators into a Hugging Face `datasets.DatasetDict`.
@@ -890,13 +1067,6 @@ def plaid_generator_to_huggingface_datasetdict(
         >>> print(key_mappings["variable_features"][:3])
         ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
     """
-    if processes_number > 1:
-        assert gen_kwargs is not None, (
-            "When using multiple processes, gen_kwargs must be provided."
-        )
-
-    gen_kwargs = gen_kwargs or {split_name: {} for split_name in generators.keys()}
-
     flat_cst, key_mappings, hf_features = _generator_prepare_for_huggingface(
         generators, gen_kwargs, processes_number, verbose
     )
@@ -926,6 +1096,26 @@ def plaid_generator_to_huggingface_datasetdict(
 # ------------------------------------------------------------------------------
 #     HUGGING FACE HUB INTERACTIONS
 # ------------------------------------------------------------------------------
+
+
+def _compute_num_shards(hf_dataset_dict: datasets.DatasetDict) -> dict[str, int]:
+    target_shard_size_mb = 500
+
+    num_shards = {}
+    for split_name, ds in hf_dataset_dict.items():
+        n_samples = len(ds)
+        assert n_samples > 0, f"split {split_name} has no sample"
+
+        dataset_size_bytes = ds.data.nbytes
+        target_shard_size_bytes = target_shard_size_mb * 1024 * 1024
+
+        n_shards = max(
+            1,
+            (dataset_size_bytes + target_shard_size_bytes - 1)
+            // target_shard_size_bytes,
+        )
+        num_shards[split_name] = min(n_samples, int(n_shards))
+    return num_shards
 
 
 def instantiate_plaid_datasetdict_from_hub(
@@ -1144,7 +1334,7 @@ def load_tree_struct_from_hub(
 
 
 def push_dataset_dict_to_hub(
-    repo_id: str, hf_dataset_dict: datasets.DatasetDict, *args, **kwargs
+    repo_id: str, hf_dataset_dict: datasets.DatasetDict, **kwargs
 ) -> None:  # pragma: no cover (not tested in unit tests)
     """Push a Hugging Face `DatasetDict` to the Hugging Face Hub.
 
@@ -1165,9 +1355,6 @@ def push_dataset_dict_to_hub(
             (e.g. `"username/dataset_name"`).
         hf_dataset_dict (datasets.DatasetDict):
             The Hugging Face dataset dictionary to push.
-        *args:
-            Positional arguments forwarded to
-            [`DatasetDict.push_to_hub`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.push_to_hub).
         **kwargs:
             Keyword arguments forwarded to
             [`DatasetDict.push_to_hub`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.push_to_hub).
@@ -1175,24 +1362,20 @@ def push_dataset_dict_to_hub(
     Returns:
         None
     """
-    target_shard_size_mb = 500
+    num_shards = _compute_num_shards(hf_dataset_dict)
+    num_proc = kwargs.get("num_proc", None)
+    if num_proc is not None:  # pragma: no cover
+        min_num_shards = min(num_shards.values())
+        if min_num_shards < num_proc:
+            logger.warning(
+                f"num_proc chaged from {num_proc} to 1 to safely adapt for num_shards={num_shards}"
+            )
+            num_proc = 1
+        del kwargs["num_proc"]
 
-    num_shards = {}
-    for split_name, ds in hf_dataset_dict.items():
-        n_samples = len(ds)
-        assert n_samples > 0, f"split {split_name} has no sample"
-
-        dataset_size_bytes = ds.data.nbytes
-        target_shard_size_bytes = target_shard_size_mb * 1024 * 1024
-
-        n_shards = max(
-            1,
-            (dataset_size_bytes + target_shard_size_bytes - 1)
-            // target_shard_size_bytes,
-        )
-        num_shards[split_name] = min(n_samples, int(n_shards))
-
-    hf_dataset_dict.push_to_hub(repo_id, num_shards=num_shards, *args, **kwargs)
+    hf_dataset_dict.push_to_hub(
+        repo_id, num_shards=num_shards, num_proc=num_proc, **kwargs
+    )
 
 
 def push_infos_to_hub(
@@ -1398,7 +1581,7 @@ def load_tree_struct_from_disk(
 
 
 def save_dataset_dict_to_disk(
-    path: Union[str, Path], hf_dataset_dict: datasets.DatasetDict, *args, **kwargs
+    path: Union[str, Path], hf_dataset_dict: datasets.DatasetDict, **kwargs
 ) -> None:
     """Save a Hugging Face DatasetDict to disk.
 
@@ -1408,9 +1591,6 @@ def save_dataset_dict_to_disk(
     Args:
         path (Union[str, Path]): Directory path where the DatasetDict will be saved.
         hf_dataset_dict (datasets.DatasetDict): The Hugging Face DatasetDict to save.
-        *args:
-            Positional arguments forwarded to
-            [`DatasetDict.save_to_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.save_to_disk).
         **kwargs:
             Keyword arguments forwarded to
             [`DatasetDict.save_to_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.save_to_disk).
@@ -1418,7 +1598,20 @@ def save_dataset_dict_to_disk(
     Returns:
         None
     """
-    hf_dataset_dict.save_to_disk(str(path), *args, **kwargs)
+    num_shards = _compute_num_shards(hf_dataset_dict)
+    num_proc = kwargs.get("num_proc", None)
+    if num_proc is not None:  # pragma: no cover
+        min_num_shards = min(num_shards.values())
+        if min_num_shards < num_proc:
+            logger.warning(
+                f"num_proc chaged from {num_proc} to 1 to safely adapt for num_shards={num_shards}"
+            )
+            num_proc = 1
+        del kwargs["num_proc"]
+
+    hf_dataset_dict.save_to_disk(
+        str(path), num_shards=num_shards, num_proc=num_proc, **kwargs
+    )
 
 
 def save_infos_to_disk(
@@ -1821,7 +2014,7 @@ def huggingface_description_to_problem_definition(
         try:
             func(description[key])
         except KeyError:
-            logger.info(f"Could not retrieve key:'{key}' from description")
+            logger.error(f"Could not retrieve key:'{key}' from description")
             pass
 
     return problem_definition
