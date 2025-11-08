@@ -13,7 +13,6 @@ import os
 import pickle
 import shutil
 import sys
-import traceback
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
@@ -294,6 +293,7 @@ def process_shard(
     split_all_paths = set()
     shard_global_cgns_types = {}
     shard_global_feature_types = {}
+
     shards_to_process = [shard_ids]
 
     for sample in generator_fn(shards_to_process):
@@ -310,25 +310,22 @@ def process_shard(
             inferred = infer_hf_features_from_value(value)
             if path not in shard_global_feature_types:
                 shard_global_feature_types[path] = inferred
-            elif repr(shard_global_feature_types[path]) != repr(
-                inferred
-            ):  # pragma: no cover
+            elif repr(shard_global_feature_types[path]) != repr(inferred):
                 raise ValueError(f"Feature type mismatch for {path} in shard")
 
-        # Constant detection using hashes
+        # Constant detection using **hash only**
         for path, value in hf_sample.items():
             h = _hash_value(value)
             if path not in split_constant_leaves:
-                split_constant_leaves[path] = {"hash": h, "constant": True, "count": 1}
+                split_constant_leaves[path] = {"hashes": {h}, "count": 1}
             else:
                 entry = split_constant_leaves[path]
+                entry["hashes"].add(h)
                 entry["count"] += 1
-                if entry["constant"] and entry["hash"] != h:
-                    entry["constant"] = False
 
-        # --- Update progress ---
+        # Progress
         if n_proc > 1:
-            progress.put(1)  # pragma: no cover
+            progress.put(1)
         else:
             progress.update(1)
 
@@ -399,8 +396,7 @@ def preprocess_splits(
 
     for split_name, generator_fn in generators.items():
         shards_ids_list = gen_kwargs[split_name].get("shards_ids", [None])
-        n_proc = processes_number or len(shards_ids_list)
-        n_proc = max(1, n_proc)
+        n_proc = max(1, processes_number or len(shards_ids_list))
 
         shards_data = []
 
@@ -413,34 +409,20 @@ def preprocess_splits(
             ) as pbar:
                 for shard_ids in shards_ids_list:
                     shards_data.append(
-                        process_shard(
-                            shard_ids,
-                            generator_fn,
-                            pbar,
-                            n_proc,
-                        )
+                        process_shard(shard_ids, generator_fn, pbar, n_proc)
                     )
 
-        else:  # pragma: no cover (pytest not working with parallel mode)
-            # --- Parallel execution ---
-            manager = None
-            pool = None
+        else:
+            # Parallel execution
+            manager = mp.Manager()
+            progress_queue = manager.Queue()
 
             try:
-                manager = mp.Manager()
-                progress_queue = manager.Queue()
-
-                # --- Run shards in parallel ---
                 with mp.Pool(n_proc) as pool:
                     results = [
                         pool.apply_async(
                             process_shard,
-                            args=(
-                                shard_ids,
-                                generator_fn,
-                                progress_queue,
-                                n_proc,
-                            ),
+                            args=(shard_ids, generator_fn, progress_queue, n_proc),
                         )
                         for shard_ids in shards_ids_list
                     ]
@@ -458,27 +440,12 @@ def preprocess_splits(
                             completed += increment
 
                     for r in results:
-                        try:
-                            data = r.get()  # this raises if the worker crashed
-                            shards_data.append(data)
-                        except Exception:
-                            traceback.print_exc()
-                            # Optional: terminate pool early if one shard fails
-                            pool.terminate()
-                            raise
+                        shards_data.append(r.get())
 
-            except Exception:
-                traceback.print_exc()
-                raise
             finally:
-                # Always clean up multiprocessing objects
-                if pool is not None:
-                    pool.terminate()
-                    pool.join()
-                if manager is not None:
-                    manager.shutdown()
+                manager.shutdown()
 
-        # --- Merge shard results ---
+        # Merge shard results
         split_all_paths[split_name] = set()
         split_constant_hashes = {}
         n_samples_total = 0
@@ -496,9 +463,7 @@ def preprocess_splits(
             for path, inferred in shard_features.items():
                 if path not in global_feature_types:
                     global_feature_types[path] = inferred
-                elif repr(global_feature_types[path]) != repr(
-                    inferred
-                ):  # pragma: no cover
+                elif repr(global_feature_types[path]) != repr(inferred):
                     raise ValueError(
                         f"Feature type mismatch for {path} in split {split_name}"
                     )
@@ -508,20 +473,19 @@ def preprocess_splits(
                     split_constant_hashes[path] = entry
                 else:
                     existing = split_constant_hashes[path]
-                    existing["constant"] = existing["constant"] and entry["constant"]
+                    existing["hashes"].update(entry["hashes"])
                     existing["count"] += entry["count"]
 
             n_samples_total += n_samples
 
-        # --- Finalize constants by inspecting first sample ---
-        # Only paths marked constant across all samples
+        # Determine truly constant paths (same hash across all samples)
         constant_paths = [
             p
-            for p, e in split_constant_hashes.items()
-            if e["constant"] and e["count"] == n_samples_total
+            for p, entry in split_constant_hashes.items()
+            if len(entry["hashes"]) == 1 and entry["count"] == n_samples_total
         ]
 
-        # Inspect first sample to get actual values
+        # Retrieve **values** only for constant paths from first sample
         first_sample = next(generator_fn([shards_ids_list[0]]))
         hf_sample, _, _ = build_hf_sample(first_sample)
 

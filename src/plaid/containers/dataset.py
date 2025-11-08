@@ -963,8 +963,8 @@ class Dataset(object):
                             f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
                         )
 
-        if len(self._infos) > 0:
-            logger.warning("infos not empty, replacing it anyway")
+        # if len(self._infos) > 0:
+        #     logger.warning("infos not empty, replacing it anyway")
         self._infos = copy.deepcopy(infos)
 
         if "plaid" not in self._infos:

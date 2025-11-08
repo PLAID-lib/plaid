@@ -153,16 +153,25 @@ print(f"{key_mappings = }")
 # Ganarators are used to handle large datasets that do not fit in memory:
 
 # %%
+gen_kwargs = {}
+gen_kwargs["train"] = {"shards_ids": [[0, 1]]}
+gen_kwargs["test"] = {"shards_ids": [[2]]}
+
 generators = {}
-for split_name, ids in main_splits.items():
-    def generator_(ids=ids):
-        for id in ids:
-            yield dataset[id]
+for split_name in gen_kwargs.keys():
+
+    def generator_(shards_ids):
+        for ids in shards_ids:
+            if isinstance(ids, int):
+                ids = [ids]
+            for id in ids:
+                yield dataset[id]
+
     generators[split_name] = generator_
 
 hf_datasetdict, flat_cst, key_mappings = (
     huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-        generators
+        generators, gen_kwargs
     )
 )
 print(f"{hf_datasetdict = }")
