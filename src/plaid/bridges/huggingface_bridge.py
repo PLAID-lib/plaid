@@ -545,237 +545,51 @@ def preprocess_splits(
     )
 
 
-# def _generator_prepare_for_huggingface(
-#     generators: dict[str, Callable],
-#     gen_kwargs: dict,
-#     processes_number: int = 1,
-#     verbose: bool = True,
-# ):
-#     (
-#         split_all_paths,
-#         split_flat_cst,
-#         split_var_path,
-#         global_cgns_types,
-#         global_feature_types,
-#     ) = preprocess_splits(generators, gen_kwargs, processes_number, verbose)
-
-#     # --- build HF features ---
-#     var_features = sorted(list(set().union(*split_var_path.values())))
-#     if len(var_features) == 0:  # pragma: no cover
-#         raise ValueError(
-#             "no variable feature found, is your dataset variable through samples?"
-#         )
-
-#     for split_name in split_flat_cst.keys():
-#         for path in var_features:
-#             if not path.endswith("_times") and path not in split_all_paths[split_name]:
-#                 split_flat_cst[split_name][path + "_times"] = None  # pragma: no cover
-#             if path in split_flat_cst[split_name]:
-#                 split_flat_cst[split_name].pop(path)  # pragma: no cover
-
-#     cst_features = {
-#         split_name: sorted(list(cst.keys()))
-#         for split_name, cst in split_flat_cst.items()
-#     }
-#     first_split, first_value = next(iter(cst_features.items()), (None, None))
-#     for split, value in cst_features.items():
-#         assert value == first_value, (
-#             f"cst_features differ for split '{split}' (vs '{first_split}')"
-#         )
-#     cst_features = first_value
-
-#     hf_features_map = {}
-#     for k in var_features:
-#         if k.endswith("_times"):
-#             hf_features_map[k] = Sequence(Value("float64")) # pragma: no cover
-#         else:
-#             hf_features_map[k] = global_feature_types[k]
-#     hf_features = Features(hf_features_map)
-
-#     var_features = [path for path in var_features if not path.endswith("_times")]
-#     cst_features = [path for path in cst_features if not path.endswith("_times")]
-
-#     key_mappings = {
-#         "variable_features": var_features,
-#         "constant_features": cst_features,
-#         "cgns_types": global_cgns_types,
-#     }
-
-#     return split_flat_cst, key_mappings, hf_features
-
-
-# -------------------------------------------
-# --------- Sequential version
 def _generator_prepare_for_huggingface(
     generators: dict[str, Callable],
     gen_kwargs: dict,
     processes_number: int = 1,
     verbose: bool = True,
-) -> tuple[dict[str, dict[str, Any]], dict[str, Any], Features]:
-    """Inspect PLAID dataset generators and infer Hugging Face feature schema.
+):
+    (
+        split_all_paths,
+        split_flat_cst,
+        split_var_path,
+        global_cgns_types,
+        global_feature_types,
+    ) = preprocess_splits(generators, gen_kwargs, processes_number, verbose)
 
-    Iterates over all samples in all provided split generators to:
-      1. Flatten each CGNS tree into a dictionary of paths → values.
-      2. Infer Hugging Face `Features` types for all variable leaves.
-      3. Detect constant leaves (values that never change across all samples).
-      4. Collect global CGNS type metadata.
-
-    Args:
-        generators (dict[str, Callable]):
-            Mapping from split names to callables returning sample generators.
-            Each sample must have `sample.features.data[0.0]` compatible with `flatten_cgns_tree`.
-        gen_kwargs (dict, optional, default=None):
-            Optional mapping from split names to dictionaries of keyword arguments
-            to be passed to each generator function, used for parallelization.
-        processes_number (int, optional): Number of parallel processes to use.
-        verbose (bool, optional): If True, displays progress bars while processing splits.
-
-    Returns:
-        tuple:
-            - flat_cst (dict[str, Any]): Mapping from feature path to constant values detected across all splits.
-            - key_mappings (dict[str, Any]): Metadata dictionary with:
-                - "variable_features" (list[str]): paths of non-constant features.
-                - "constant_features" (list[str]): paths of constant features.
-                - "cgns_types" (dict[str, Any]): CGNS type information for all paths.
-            - hf_features (datasets.Features): Hugging Face feature specification for variable features.
-
-    Raises:
-        ValueError: If inconsistent CGNS types or feature types are found for the same path.
-    """
-    processes_number
-
-    def values_equal(v1, v2):
-        if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
-            return np.array_equal(v1, v2)
-        return v1 == v2
-
-    global_cgns_types = {}
-    global_feature_types = {}
-
-    split_flat_cst = {}
-    split_var_path = {}
-    split_all_paths = {}
-
-    # ---- Single pass over all splits and samples ----
-    for split_name, generator in generators.items():
-        split_constant_leaves = {}
-
-        split_all_paths[split_name] = set()
-
-        n_samples = 0
-        for sample in tqdm(
-            generator(**gen_kwargs[split_name]),
-            disable=not verbose,
-            desc=f"Pre-process split {split_name}",
-        ):
-            # --- Build Hugging Face–compatible sample ---
-            hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
-
-            split_all_paths[split_name].update(hf_sample.keys())
-            # split_all_paths[split_name].update(all_paths)
-            global_cgns_types.update(sample_cgns_types)
-
-            # --- Infer global HF feature types ---
-            for path in all_paths:
-                value = hf_sample[path]
-                if value is None:
-                    continue
-
-                # if isinstance(value, np.ndarray) and value.dtype.type is np.str_:
-                #     inferred = Value("string")
-                # else:
-                #     inferred = infer_hf_features_from_value(value)
-
-                inferred = infer_hf_features_from_value(value)
-
-                if path not in global_feature_types:
-                    global_feature_types[path] = inferred
-                elif repr(global_feature_types[path]) != repr(inferred):
-                    raise ValueError(  # pragma: no cover
-                        f"Feature type mismatch for {path} in split {split_name}"
-                    )
-
-            # --- Update per-split constant detection ---
-            for path, value in hf_sample.items():
-                if path not in split_constant_leaves:
-                    split_constant_leaves[path] = {
-                        "value": value,
-                        "constant": True,
-                        "count": 1,
-                    }
-                else:
-                    entry = split_constant_leaves[path]
-                    entry["count"] += 1
-                    if entry["constant"] and not values_equal(entry["value"], value):
-                        entry["constant"] = False
-
-            n_samples += 1
-
-        # --- Record per-split constants ---
-        for p, e in split_constant_leaves.items():
-            if e["count"] < n_samples:
-                split_constant_leaves[p]["constant"] = False
-
-        split_flat_cst[split_name] = dict(
-            sorted(
-                (
-                    (p, e["value"])
-                    for p, e in split_constant_leaves.items()
-                    if e["constant"]
-                ),
-                key=lambda x: x[0],
-            )
-        )
-
-        split_var_path[split_name] = {
-            p
-            for p in split_all_paths[split_name]
-            if p not in split_flat_cst[split_name]
-        }
-
-    global_feature_types = {
-        p: global_feature_types[p] for p in sorted(global_feature_types)
-    }
+    # --- build HF features ---
     var_features = sorted(list(set().union(*split_var_path.values())))
-
-    if len(var_features) == 0:
-        raise ValueError(  # pragma: no cover
+    if len(var_features) == 0:  # pragma: no cover
+        raise ValueError(
             "no variable feature found, is your dataset variable through samples?"
         )
 
-    # ---------------------------------------------------
-    # for test-like splits, some var_features are all None (e.g.: outputs): need to add '_times' counterparts to corresponding constant trees
     for split_name in split_flat_cst.keys():
         for path in var_features:
             if not path.endswith("_times") and path not in split_all_paths[split_name]:
                 split_flat_cst[split_name][path + "_times"] = None  # pragma: no cover
-            if (
-                path in split_flat_cst[split_name]
-            ):  # remove for flat_cst the path that will be forcely included in the arrow tables
+            if path in split_flat_cst[split_name]:
                 split_flat_cst[split_name].pop(path)  # pragma: no cover
 
-    # ---- Constant features sanity check
     cst_features = {
         split_name: sorted(list(cst.keys()))
         for split_name, cst in split_flat_cst.items()
     }
-
     first_split, first_value = next(iter(cst_features.items()), (None, None))
     for split, value in cst_features.items():
         assert value == first_value, (
-            f"cst_features differ for split '{split}' (vs '{first_split}'): something went wrong in _generator_prepare_for_huggingface."
+            f"cst_features differ for split '{split}' (vs '{first_split}')"
         )
-
     cst_features = first_value
 
-    # ---- Build global HF Features (only variable) ----
     hf_features_map = {}
     for k in var_features:
         if k.endswith("_times"):
             hf_features_map[k] = Sequence(Value("float64"))  # pragma: no cover
         else:
             hf_features_map[k] = global_feature_types[k]
-
     hf_features = Features(hf_features_map)
 
     var_features = [path for path in var_features if not path.endswith("_times")]
@@ -788,6 +602,192 @@ def _generator_prepare_for_huggingface(
     }
 
     return split_flat_cst, key_mappings, hf_features
+
+
+# # -------------------------------------------
+# # --------- Sequential version
+# def _generator_prepare_for_huggingface(
+#     generators: dict[str, Callable],
+#     gen_kwargs: dict,
+#     processes_number: int = 1,
+#     verbose: bool = True,
+# ) -> tuple[dict[str, dict[str, Any]], dict[str, Any], Features]:
+#     """Inspect PLAID dataset generators and infer Hugging Face feature schema.
+
+#     Iterates over all samples in all provided split generators to:
+#       1. Flatten each CGNS tree into a dictionary of paths → values.
+#       2. Infer Hugging Face `Features` types for all variable leaves.
+#       3. Detect constant leaves (values that never change across all samples).
+#       4. Collect global CGNS type metadata.
+
+#     Args:
+#         generators (dict[str, Callable]):
+#             Mapping from split names to callables returning sample generators.
+#             Each sample must have `sample.features.data[0.0]` compatible with `flatten_cgns_tree`.
+#         gen_kwargs (dict, optional, default=None):
+#             Optional mapping from split names to dictionaries of keyword arguments
+#             to be passed to each generator function, used for parallelization.
+#         processes_number (int, optional): Number of parallel processes to use.
+#         verbose (bool, optional): If True, displays progress bars while processing splits.
+
+#     Returns:
+#         tuple:
+#             - flat_cst (dict[str, Any]): Mapping from feature path to constant values detected across all splits.
+#             - key_mappings (dict[str, Any]): Metadata dictionary with:
+#                 - "variable_features" (list[str]): paths of non-constant features.
+#                 - "constant_features" (list[str]): paths of constant features.
+#                 - "cgns_types" (dict[str, Any]): CGNS type information for all paths.
+#             - hf_features (datasets.Features): Hugging Face feature specification for variable features.
+
+#     Raises:
+#         ValueError: If inconsistent CGNS types or feature types are found for the same path.
+#     """
+#     processes_number
+
+#     def values_equal(v1, v2):
+#         if isinstance(v1, np.ndarray) and isinstance(v2, np.ndarray):
+#             return np.array_equal(v1, v2)
+#         return v1 == v2
+
+#     global_cgns_types = {}
+#     global_feature_types = {}
+
+#     split_flat_cst = {}
+#     split_var_path = {}
+#     split_all_paths = {}
+
+#     # ---- Single pass over all splits and samples ----
+#     for split_name, generator in generators.items():
+#         split_constant_leaves = {}
+
+#         split_all_paths[split_name] = set()
+
+#         n_samples = 0
+#         for sample in tqdm(
+#             generator(**gen_kwargs[split_name]),
+#             disable=not verbose,
+#             desc=f"Pre-process split {split_name}",
+#         ):
+#             # --- Build Hugging Face–compatible sample ---
+#             hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
+
+#             split_all_paths[split_name].update(hf_sample.keys())
+#             # split_all_paths[split_name].update(all_paths)
+#             global_cgns_types.update(sample_cgns_types)
+
+#             # --- Infer global HF feature types ---
+#             for path in all_paths:
+#                 value = hf_sample[path]
+#                 if value is None:
+#                     continue
+
+#                 # if isinstance(value, np.ndarray) and value.dtype.type is np.str_:
+#                 #     inferred = Value("string")
+#                 # else:
+#                 #     inferred = infer_hf_features_from_value(value)
+
+#                 inferred = infer_hf_features_from_value(value)
+
+#                 if path not in global_feature_types:
+#                     global_feature_types[path] = inferred
+#                 elif repr(global_feature_types[path]) != repr(inferred):
+#                     raise ValueError(  # pragma: no cover
+#                         f"Feature type mismatch for {path} in split {split_name}"
+#                     )
+
+#             # --- Update per-split constant detection ---
+#             for path, value in hf_sample.items():
+#                 if path not in split_constant_leaves:
+#                     split_constant_leaves[path] = {
+#                         "value": value,
+#                         "constant": True,
+#                         "count": 1,
+#                     }
+#                 else:
+#                     entry = split_constant_leaves[path]
+#                     entry["count"] += 1
+#                     if entry["constant"] and not values_equal(entry["value"], value):
+#                         entry["constant"] = False
+
+#             n_samples += 1
+
+#         # --- Record per-split constants ---
+#         for p, e in split_constant_leaves.items():
+#             if e["count"] < n_samples:
+#                 split_constant_leaves[p]["constant"] = False
+
+#         split_flat_cst[split_name] = dict(
+#             sorted(
+#                 (
+#                     (p, e["value"])
+#                     for p, e in split_constant_leaves.items()
+#                     if e["constant"]
+#                 ),
+#                 key=lambda x: x[0],
+#             )
+#         )
+
+#         split_var_path[split_name] = {
+#             p
+#             for p in split_all_paths[split_name]
+#             if p not in split_flat_cst[split_name]
+#         }
+
+#     global_feature_types = {
+#         p: global_feature_types[p] for p in sorted(global_feature_types)
+#     }
+#     var_features = sorted(list(set().union(*split_var_path.values())))
+
+#     if len(var_features) == 0:
+#         raise ValueError(  # pragma: no cover
+#             "no variable feature found, is your dataset variable through samples?"
+#         )
+
+#     # ---------------------------------------------------
+#     # for test-like splits, some var_features are all None (e.g.: outputs): need to add '_times' counterparts to corresponding constant trees
+#     for split_name in split_flat_cst.keys():
+#         for path in var_features:
+#             if not path.endswith("_times") and path not in split_all_paths[split_name]:
+#                 split_flat_cst[split_name][path + "_times"] = None  # pragma: no cover
+#             if (
+#                 path in split_flat_cst[split_name]
+#             ):  # remove for flat_cst the path that will be forcely included in the arrow tables
+#                 split_flat_cst[split_name].pop(path)  # pragma: no cover
+
+#     # ---- Constant features sanity check
+#     cst_features = {
+#         split_name: sorted(list(cst.keys()))
+#         for split_name, cst in split_flat_cst.items()
+#     }
+
+#     first_split, first_value = next(iter(cst_features.items()), (None, None))
+#     for split, value in cst_features.items():
+#         assert value == first_value, (
+#             f"cst_features differ for split '{split}' (vs '{first_split}'): something went wrong in _generator_prepare_for_huggingface."
+#         )
+
+#     cst_features = first_value
+
+#     # ---- Build global HF Features (only variable) ----
+#     hf_features_map = {}
+#     for k in var_features:
+#         if k.endswith("_times"):
+#             hf_features_map[k] = Sequence(Value("float64"))  # pragma: no cover
+#         else:
+#             hf_features_map[k] = global_feature_types[k]
+
+#     hf_features = Features(hf_features_map)
+
+#     var_features = [path for path in var_features if not path.endswith("_times")]
+#     cst_features = [path for path in cst_features if not path.endswith("_times")]
+
+#     key_mappings = {
+#         "variable_features": var_features,
+#         "constant_features": cst_features,
+#         "cgns_types": global_cgns_types,
+#     }
+
+#     return split_flat_cst, key_mappings, hf_features
 
 
 def to_plaid_dataset(
