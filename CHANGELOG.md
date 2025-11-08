@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- (huggingface bridge) from_generator now compatible with `gen_kwargs` for parallel support.
+- (huggingface bridge) full parallel support in `from_generator`, with optimization of constant leaf detection (no large data communicated between processes).
 
 ### Fixes
 
