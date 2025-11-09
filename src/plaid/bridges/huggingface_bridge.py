@@ -47,7 +47,7 @@ from plaid.utils.cgns_helper import (
 )
 
 logger = logging.getLogger(__name__)
-
+pa.set_memory_pool(pa.system_memory_pool())
 
 # ------------------------------------------------------------------------------
 #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
