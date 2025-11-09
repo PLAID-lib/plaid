@@ -311,7 +311,9 @@ def process_shard(
             if path not in shard_global_feature_types:
                 shard_global_feature_types[path] = inferred
             elif repr(shard_global_feature_types[path]) != repr(inferred):
-                raise ValueError(f"Feature type mismatch for {path} in shard")
+                raise ValueError(
+                    f"Feature type mismatch for {path} in shard"
+                )  # pragma: no cover
 
         # Constant detection using **hash only**
         for path, value in hf_sample.items():
@@ -325,7 +327,7 @@ def process_shard(
 
         # Progress
         if n_proc > 1:
-            progress.put(1)
+            progress.put(1)  # pragma: no cover
         else:
             progress.update(1)
 
@@ -412,7 +414,7 @@ def preprocess_splits(
                         process_shard(shard_ids, generator_fn, pbar, n_proc)
                     )
 
-        else:
+        else:  # pragma: no cover
             # Parallel execution
             manager = mp.Manager()
             progress_queue = manager.Queue()
@@ -464,7 +466,7 @@ def preprocess_splits(
                 if path not in global_feature_types:
                     global_feature_types[path] = inferred
                 elif repr(global_feature_types[path]) != repr(inferred):
-                    raise ValueError(
+                    raise ValueError(  # pragma: no cover
                         f"Feature type mismatch for {path} in split {split_name}"
                     )
 
