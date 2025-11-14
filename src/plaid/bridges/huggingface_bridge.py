@@ -246,10 +246,10 @@ def _hash_value(value):
 
 
 def process_shard(
-    shard_ids: list[IndexType],
-    generator_fn: Callable[[list[list[IndexType]]], Any],
+    generator_fn: Callable[..., Any],
     progress: Any,
     n_proc: int,
+    shard_ids: Optional[list[IndexType]] = None,
 ) -> tuple[
     set[str],
     dict[str, str],
@@ -294,9 +294,15 @@ def process_shard(
     shard_global_cgns_types = {}
     shard_global_feature_types = {}
 
-    shards_to_process = [shard_ids]
+    if shard_ids:
+        generator = generator_fn([shard_ids])
+    else:
+        generator = generator_fn()
 
-    for sample in generator_fn(shards_to_process):
+    n_samples = 0
+    for sample in generator:
+        print("test_field_2785 =", sample.get_field("test_field_2785"))
+        print("shard_ids =", sample.get_field("test_field_2785"))
         hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
 
         split_all_paths.update(hf_sample.keys())
@@ -331,18 +337,20 @@ def process_shard(
         else:
             progress.update(1)
 
+        n_samples += 1
+
     return (
         split_all_paths,
         shard_global_cgns_types,
         shard_global_feature_types,
         split_constant_leaves,
-        len(shard_ids),
+        n_samples,
     )
 
 
 def preprocess_splits(
     generators: dict[str, Callable],
-    gen_kwargs: dict[str, dict[str, list[IndexType]]],
+    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     processes_number: int = 1,
     verbose: bool = True,
 ) -> tuple[
@@ -396,22 +404,23 @@ def preprocess_splits(
     split_var_path = {}
     split_all_paths = {}
 
+    gen_kwargs_ = gen_kwargs or {split_name: {} for split_name in generators.keys()}
+
     for split_name, generator_fn in generators.items():
-        shards_ids_list = gen_kwargs[split_name].get("shards_ids", [None])
+        shards_ids_list = gen_kwargs_[split_name].get("shards_ids", [None])
         n_proc = max(1, processes_number or len(shards_ids_list))
+        print("shards_ids_list =", shards_ids_list)
 
         shards_data = []
 
         if n_proc == 1:
-            progress_total = sum(len(shard) for shard in shards_ids_list)
             with tqdm(
-                total=progress_total,
                 disable=not verbose,
                 desc=f"Pre-process split {split_name}",
             ) as pbar:
                 for shard_ids in shards_ids_list:
                     shards_data.append(
-                        process_shard(shard_ids, generator_fn, pbar, n_proc)
+                        process_shard(generator_fn, pbar, n_proc=1, shard_ids=shard_ids)
                     )
 
         else:  # pragma: no cover
@@ -424,7 +433,7 @@ def preprocess_splits(
                     results = [
                         pool.apply_async(
                             process_shard,
-                            args=(shard_ids, generator_fn, progress_queue, n_proc),
+                            args=(generator_fn, progress_queue, n_proc, shard_ids),
                         )
                         for shard_ids in shards_ids_list
                     ]
@@ -488,7 +497,10 @@ def preprocess_splits(
         ]
 
         # Retrieve **values** only for constant paths from first sample
-        first_sample = next(generator_fn([shards_ids_list[0]]))
+        if gen_kwargs:
+            first_sample = next(generator_fn([shards_ids_list[0]]))
+        else:
+            first_sample = next(generator_fn())
         hf_sample, _, _ = build_hf_sample(first_sample)
 
         split_flat_cst[split_name] = {p: hf_sample[p] for p in sorted(constant_paths)}
@@ -513,7 +525,7 @@ def preprocess_splits(
 
 def _generator_prepare_for_huggingface(
     generators: dict[str, Callable],
-    gen_kwargs: dict,
+    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     processes_number: int = 1,
     verbose: bool = True,
 ):
@@ -951,27 +963,30 @@ def plaid_dataset_to_huggingface_datasetdict(
         })
     """
 
-    def generator_(shards_ids):
-        for ids in shards_ids:
-            if isinstance(ids, int):
-                ids = [ids]  # pragma: no cover
-            for id in ids:
-                yield dataset[id]
+    def generator(dataset):
+        for sample in dataset:
+            yield sample
 
-    generators = {split_name: generator_ for split_name in main_splits.keys()}
-
-    gen_kwargs = {
-        split_name: {"shards_ids": [ids]} for split_name, ids in main_splits.items()
+    generators = {
+        split_name: partial(generator, dataset[ids])
+        for split_name, ids in main_splits.items()
     }
 
+    # gen_kwargs = {
+    #     split_name: {"shards_ids": [ids]} for split_name, ids in main_splits.items()
+    # }
+
     return plaid_generator_to_huggingface_datasetdict(
-        generators, gen_kwargs, processes_number, writer_batch_size, verbose
+        generators,
+        processes_number=processes_number,
+        writer_batch_size=writer_batch_size,
+        verbose=verbose,
     )
 
 
 def plaid_generator_to_huggingface_datasetdict(
     generators: dict[str, Callable],
-    gen_kwargs: dict[str, dict[str, list[IndexType]]],
+    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     processes_number: int = 1,
     writer_batch_size: int = 1,
     verbose: bool = False,
@@ -1047,9 +1062,10 @@ def plaid_generator_to_huggingface_datasetdict(
     _dict = {}
     for split_name, gen_func in generators.items():
         gen = partial(generator_fn, all_features_keys=all_features_keys)
+        gen_kwargs_ = gen_kwargs or {split_name: {} for split_name in generators.keys()}
         _dict[split_name] = datasets.Dataset.from_generator(
             generator=gen,
-            gen_kwargs={"gen_func": gen_func, **gen_kwargs[split_name]},
+            gen_kwargs={"gen_func": gen_func, **gen_kwargs_[split_name]},
             features=hf_features,
             num_proc=processes_number,
             writer_batch_size=writer_batch_size,

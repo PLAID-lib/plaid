@@ -68,7 +68,24 @@ def gen_kwargs(problem_definition) -> dict[str, dict]:
 
 
 @pytest.fixture()
-def generator_split(dataset, gen_kwargs) -> dict[str, Callable]:
+def generator_split(dataset, problem_definition) -> dict[str, Callable]:
+    generators_ = {}
+
+    main_splits = problem_definition.get_split()
+
+    for split_name, ids in main_splits.items():
+
+        def generator_():
+            for id in ids:
+                yield dataset[id]
+
+        generators_[split_name] = generator_
+
+    return generators_
+
+
+@pytest.fixture()
+def generator_split_with_kwargs(dataset, gen_kwargs) -> dict[str, Callable]:
     generators_ = {}
 
     for split_name in gen_kwargs.keys():
@@ -101,7 +118,7 @@ def generator_split_binary(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
     for split_name, ids in problem_definition.get_split().items():
 
-        def generator_(ids=ids):
+        def generator_():
             for id in ids:
                 yield {"sample": pickle.dumps(dataset[id])}
 
@@ -144,6 +161,7 @@ class Test_Huggingface_Bridge:
                 dataset, main_splits
             )
         )
+
         huggingface_bridge.to_plaid_sample(
             hf_dataset_dict["train"], 0, flat_cst["train"], key_mappings["cgns_types"]
         )
@@ -168,10 +186,17 @@ class Test_Huggingface_Bridge:
             dataset[0].get_mesh(), dataset[0].get_mesh()
         )
 
-    def test_with_generator(self, generator_split, gen_kwargs):
+    def test_with_generator(
+        self, generator_split_with_kwargs, generator_split, gen_kwargs
+    ):
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-                generator_split, gen_kwargs
+                generator_split_with_kwargs, gen_kwargs
+            )
+        )
+        hf_dataset_dict, flat_cst, key_mappings = (
+            huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+                generator_split
             )
         )
         huggingface_bridge.to_plaid_sample(
@@ -190,11 +215,11 @@ class Test_Huggingface_Bridge:
     # ------------------------------------------------------------------------------
 
     def test_save_load_to_disk(
-        self, current_directory, generator_split, infos, problem_definition, gen_kwargs
+        self, current_directory, generator_split, infos, problem_definition
     ):
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-                generator_split, gen_kwargs
+                generator_split
             )
         )
 
