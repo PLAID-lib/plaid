@@ -630,7 +630,10 @@ def kdeplot(
     ax.set_xlabel("Value", fontsize=12)
     ax.set_ylabel("Density", fontsize=12)
     ax.grid(True, alpha=0.3)
-    ax.legend(loc="best", fontsize=10)
+
+    # Only add legend if there are labeled artists
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend(loc="best", fontsize=10)
 
     plt.tight_layout()
     return fig
