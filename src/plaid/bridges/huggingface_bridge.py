@@ -1535,7 +1535,7 @@ def huggingface_dataset_to_plaid(
 
     infos = huggingface_description_to_infos(ds.description)
 
-    dataset.set_infos(infos)
+    dataset.set_infos(infos, warn=False)
 
     problem_definition = huggingface_description_to_problem_definition(ds.description)
 

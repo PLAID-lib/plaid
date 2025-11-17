@@ -272,6 +272,20 @@ class Test_Huggingface_Bridge:
         ds, _ = huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset)
         self.assert_plaid_dataset(ds)
 
+    def test_huggingface_dataset_to_plaid_no_warning(self, hf_dataset, caplog):
+        """Test that huggingface_dataset_to_plaid does not trigger infos replacement warning."""
+        import logging
+
+        with caplog.at_level(logging.WARNING):
+            ds, _ = huggingface_bridge.huggingface_dataset_to_plaid(
+                hf_dataset, verbose=False
+            )
+
+        # Should not warn about replacing infos
+        assert "infos not empty, replacing it anyway" not in caplog.text
+        # Dataset should still be valid
+        self.assert_plaid_dataset(ds)
+
     def test_huggingface_dataset_to_plaid_with_ids_binary(self, hf_dataset):
         huggingface_bridge.huggingface_dataset_to_plaid(hf_dataset, ids=[0, 1])
 

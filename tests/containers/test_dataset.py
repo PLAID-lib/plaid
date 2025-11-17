@@ -858,6 +858,27 @@ class Test_Dataset:
                 {"legal": {"illegal_info_key": "PLAID2", "license": "BSD-3"}}
             )
 
+    def test_set_infos_warn_parameter(self, dataset, infos, caplog):
+        """Test the warn parameter for silent replacement of infos."""
+        import logging
+
+        # First set should not warn (no user infos to replace)
+        with caplog.at_level(logging.WARNING):
+            dataset.set_infos(infos)
+        assert "infos not empty, replacing it anyway" not in caplog.text
+
+        # Second set with warn=True (default) should warn
+        caplog.clear()
+        with caplog.at_level(logging.WARNING):
+            dataset.set_infos({"legal": {"owner": "Owner2"}})
+        assert "infos not empty, replacing it anyway" in caplog.text
+
+        # Third set with warn=False should not warn
+        caplog.clear()
+        with caplog.at_level(logging.WARNING):
+            dataset.set_infos({"legal": {"owner": "Owner3"}}, warn=False)
+        assert "infos not empty, replacing it anyway" not in caplog.text
+
     def test_get_infos(self, dataset):
         assert dataset.get_infos()["plaid"]["version"] == str(
             Version(plaid.__version__)
