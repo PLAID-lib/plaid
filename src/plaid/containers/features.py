@@ -19,6 +19,7 @@ from plaid.containers.utils import (
 )
 from plaid.types import Array, CGNSNode, CGNSTree, Field
 from plaid.utils import cgns_helper as CGH
+from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +193,15 @@ class SampleFeatures:
             list[float]: A list of all available time steps.
         """
         return list(self.data.keys())
+
+    @deprecated(
+        "`get_all_mesh_times()` is deprecated, use instead `get_all_time_values()`",
+        version="0.1.11",
+        removal="0.2.0",
+    )
+    def get_all_mesh_times(self) -> list[float]:
+        """DEPRECATED: Use :meth:`get_all_time_values` instead."""
+        return self.get_all_time_values()
 
     def get_time_assignment(self, time: Optional[float] = None) -> float:
         """Retrieve the default time for the CGNS operations.

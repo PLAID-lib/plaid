@@ -26,7 +26,7 @@ class ElastoDataset(Dataset):
         self.plaid_ds = plaid_dataset
         self.ids = plaid_problem.get_split(split)
         sample0 = self.plaid_ds[self.ids[0]]
-        self.time_steps = sample0.get_all_time_values()
+        self.time_steps = sample0.get_all_mesh_times()
         self.n_steps = len(self.time_steps) - 1
         self.fields = fields
 

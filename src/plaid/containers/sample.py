@@ -59,6 +59,7 @@ FEATURES_METHODS = [
     "get_zone_assignment",
     "set_default_time",
     "get_all_time_values",
+    "get_all_mesh_times",
     "get_mesh",
     "get_base_names",
     "get_zone_names",
