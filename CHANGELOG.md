@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (features) rename `get_all_mesh_times()` to `get_all_time_values()`.
+
 ### Fixes
 
 ### Removed
