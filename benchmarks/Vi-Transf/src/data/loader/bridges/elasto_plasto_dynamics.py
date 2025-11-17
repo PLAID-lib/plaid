@@ -53,7 +53,7 @@ def elasto_plasto_dynamics_sample_to_geometric(
     input_scalars_names = ["time"]
     output_scalars_names = []
 
-    timestep_list = sample.get_all_mesh_times()
+    timestep_list = sample.get_all_time_values()
 
     output_fields = np.vstack(
         (

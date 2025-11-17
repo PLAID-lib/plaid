@@ -178,14 +178,14 @@ class SampleFeatures:
         """
         if time in (self._default_active_time, None):
             return
-        if time not in self.get_all_mesh_times():
+        if time not in self.get_all_time_values():
             raise ValueError(f"time {time} does not exist in mesh times")
 
         self._default_active_time = time
 
     # -------------------------------------------------------------------------#
 
-    def get_all_mesh_times(self) -> list[float]:
+    def get_all_time_values(self) -> list[float]:
         """Retrieve all time steps corresponding to the meshes, if available.
 
         Returns:
@@ -209,7 +209,7 @@ class SampleFeatures:
             - It is important for accessing and visualizing data at specific time points in a simulation.
         """
         if self._default_active_time is None and time is None:
-            timestamps = self.get_all_mesh_times()
+            timestamps = self.get_all_time_values()
             return sorted(timestamps)[0] if len(timestamps) > 0 else 0.0
         return self._default_active_time if time is None else time
 
@@ -958,7 +958,7 @@ class SampleFeatures:
             list[str]: List of global array names (excluding "Time" arrays).
         """
         if time is None:
-            all_times = self.get_all_mesh_times()
+            all_times = self.get_all_time_values()
         else:
             all_times = [time]
         global_names = []
@@ -1180,7 +1180,7 @@ class SampleFeatures:
             return names
 
         field_names = []
-        times = [time] if time is not None else self.get_all_mesh_times()
+        times = [time] if time is not None else self.get_all_time_values()
         for _time in times:
             base_names = (
                 [base_name]
