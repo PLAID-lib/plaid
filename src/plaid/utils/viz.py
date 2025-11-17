@@ -7,17 +7,19 @@
 #
 #
 
-# %% Imports
+from __future__ import annotations
 
+# %% Imports
 import logging
-from typing import Optional, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
 
-from plaid.containers.dataset import Dataset
-from plaid.containers.sample import Sample
+if TYPE_CHECKING:
+    from plaid.containers.dataset import Dataset
+    from plaid.containers.sample import Sample
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +73,9 @@ def scatter_plot(
         >>> # Customize appearance
         >>> scatter_plot(dataset, feature_names=["velocity"], figsize=(12, 6), alpha=0.6)
     """
+    # Lazy import to avoid circular dependency
+    from plaid.containers.dataset import Dataset
+
     # Input validation
     if isinstance(dataset, list):
         # Convert list of samples to Dataset for easier handling
@@ -275,6 +280,9 @@ def pairplot(
         >>> # Create corner pairplot with KDE on diagonal
         >>> pairplot(dataset, diag_kind="kde", corner=True)
     """
+    # Lazy import to avoid circular dependency
+    from plaid.containers.dataset import Dataset
+
     # Input validation
     if isinstance(dataset, list):
         # Convert list of samples to Dataset for easier handling
@@ -403,7 +411,10 @@ def pairplot(
                 # Off-diagonal: scatter plot
                 x_data = data_matrix[:, j]
                 y_data = data_matrix[:, i]
-                ax.scatter(x_data, y_data, alpha=0.5, **kwargs)
+                # Set default alpha if not provided in kwargs
+                scatter_kwargs = {"alpha": 0.5}
+                scatter_kwargs.update(kwargs)
+                ax.scatter(x_data, y_data, **scatter_kwargs)
 
             # Set labels
             if i == n_features - 1:
@@ -469,6 +480,9 @@ def kdeplot(
         >>> # Customize appearance
         >>> kdeplot(dataset, fill=False, bw_method='silverman', linewidth=2)
     """
+    # Lazy import to avoid circular dependency
+    from plaid.containers.dataset import Dataset
+
     # Input validation
     if isinstance(dataset, list):
         # Convert list of samples to Dataset for easier handling
