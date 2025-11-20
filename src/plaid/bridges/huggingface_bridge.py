@@ -348,7 +348,9 @@ def process_shard(
     )
 
 
-def _process_shard_debug(generator_fn, progress_queue, n_proc, shard_ids):
+def _process_shard_debug(
+    generator_fn, progress_queue, n_proc, shard_ids
+):  # pragma: no cover
     try:
         return process_shard(generator_fn, progress_queue, n_proc, shard_ids)
     except Exception as e:
@@ -418,7 +420,6 @@ def preprocess_splits(
     for split_name, generator_fn in generators.items():
         shards_ids_list = gen_kwargs_[split_name].get("shards_ids", [None])
         n_proc = max(1, processes_number or len(shards_ids_list))
-        print("shards_ids_list =", shards_ids_list)
 
         shards_data = []
 
