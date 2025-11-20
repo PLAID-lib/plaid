@@ -17,6 +17,8 @@ from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 from typing import Callable, Optional
+from queue import Empty
+import traceback
 
 import numpy as np
 import pyarrow as pa
@@ -294,15 +296,13 @@ def process_shard(
     shard_global_cgns_types = {}
     shard_global_feature_types = {}
 
-    if shard_ids:
+    if shard_ids is not None:
         generator = generator_fn([shard_ids])
     else:
         generator = generator_fn()
 
     n_samples = 0
     for sample in generator:
-        print("test_field_2785 =", sample.get_field("test_field_2785"))
-        print("shard_ids =", sample.get_field("test_field_2785"))
         hf_sample, all_paths, sample_cgns_types = build_hf_sample(sample)
 
         split_all_paths.update(hf_sample.keys())
@@ -346,6 +346,15 @@ def process_shard(
         split_constant_leaves,
         n_samples,
     )
+
+
+def _process_shard_debug(generator_fn, progress_queue, n_proc, shard_ids):
+    try:
+        return process_shard(generator_fn, progress_queue, n_proc, shard_ids)
+    except Exception as e:
+        print(f"Exception in worker for shards {shard_ids}: {e}", file=sys.stderr)
+        traceback.print_exc()
+        raise  # re-raise to propagate to main process
 
 
 def preprocess_splits(
@@ -427,29 +436,37 @@ def preprocess_splits(
             # Parallel execution
             manager = mp.Manager()
             progress_queue = manager.Queue()
+            shards_data = []
 
             try:
                 with mp.Pool(n_proc) as pool:
                     results = [
                         pool.apply_async(
-                            process_shard,
+                            _process_shard_debug,
                             args=(generator_fn, progress_queue, n_proc, shard_ids),
                         )
                         for shard_ids in shards_ids_list
                     ]
 
                     total_samples = sum(len(shard) for shard in shards_ids_list)
-                    with tqdm(
-                        total=total_samples,
-                        disable=not verbose,
-                        desc=f"Pre-process split {split_name}",
-                    ) as pbar:
-                        completed = 0
-                        while completed < total_samples:
-                            increment = progress_queue.get()
-                            pbar.update(increment)
-                            completed += increment
+                    completed = 0
 
+                    with tqdm(total=total_samples, disable=not verbose, desc=f"Pre-process split {split_name}") as pbar:
+                        while completed < total_samples:
+                            try:
+                                increment = progress_queue.get(timeout=0.5)
+                                pbar.update(increment)
+                                completed += increment
+                            except Empty:
+                                # Check for any crashed workers
+                                for r in results:
+                                    if r.ready():
+                                        try:
+                                            r.get(timeout=0.1)  # will raise worker exception if any
+                                        except Exception as e:
+                                            raise RuntimeError(f"Worker crashed: {e}")
+
+                    # Collect all results
                     for r in results:
                         shards_data.append(r.get())
 
