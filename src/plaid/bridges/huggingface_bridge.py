@@ -13,12 +13,12 @@ import os
 import pickle
 import shutil
 import sys
+import traceback
 from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
-from typing import Callable, Optional
 from queue import Empty
-import traceback
+from typing import Callable, Optional
 
 import numpy as np
 import pyarrow as pa
@@ -451,7 +451,11 @@ def preprocess_splits(
                     total_samples = sum(len(shard) for shard in shards_ids_list)
                     completed = 0
 
-                    with tqdm(total=total_samples, disable=not verbose, desc=f"Pre-process split {split_name}") as pbar:
+                    with tqdm(
+                        total=total_samples,
+                        disable=not verbose,
+                        desc=f"Pre-process split {split_name}",
+                    ) as pbar:
                         while completed < total_samples:
                             try:
                                 increment = progress_queue.get(timeout=0.5)
@@ -462,7 +466,9 @@ def preprocess_splits(
                                 for r in results:
                                     if r.ready():
                                         try:
-                                            r.get(timeout=0.1)  # will raise worker exception if any
+                                            r.get(
+                                                timeout=0.1
+                                            )  # will raise worker exception if any
                                         except Exception as e:
                                             raise RuntimeError(f"Worker crashed: {e}")
 
