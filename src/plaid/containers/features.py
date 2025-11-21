@@ -201,7 +201,7 @@ class SampleFeatures:
     )
     def get_all_mesh_times(self) -> list[float]:
         """DEPRECATED: Use :meth:`get_all_time_values` instead."""
-        return self.get_all_time_values()
+        return self.get_all_time_values()  # pragma: no cover
 
     def get_time_assignment(self, time: Optional[float] = None) -> float:
         """Retrieve the default time for the CGNS operations.
