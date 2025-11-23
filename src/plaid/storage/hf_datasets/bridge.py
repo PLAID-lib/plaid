@@ -8,6 +8,8 @@ from plaid import Dataset, Sample
 from plaid.storage.common import build_sample_dict
 from plaid.types import IndexType
 
+import numpy as np
+import pyarrow as pa
 
 def convert_dtype_to_hf_feature(feature_type):
     """Convert a dict {'dtype': ..., 'ndim': ...} into HF Feature/Sequence."""
@@ -190,3 +192,69 @@ def plaid_generator_to_datasetdict(
         )
 
     return datasets.DatasetDict(_dict)
+
+
+def to_var_sample_dict(
+    ds: datasets.Dataset,
+    i: int,
+    enforce_shapes: bool = True,
+) -> dict:
+    """Convert a Hugging Face dataset row to a PLAID Sample object.
+
+    Extracts a single row from a Hugging Face dataset and converts it
+    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
+    from flat_cst are merged with the variable features from the row.
+
+    Args:
+        ds (datasets.Dataset): The Hugging Face dataset containing the sample data.
+        i (int): The index of the row to convert.
+        flat_cst (dict[str, Any]): Dictionary of constant features to add to each sample.
+        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
+        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion. Defaults to True.
+
+    Returns:
+        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
+
+    Note:
+        - Uses the dataset's pyarrow table data for efficient access.
+        - Handles array shapes and types according to enforce_shapes.
+        - Constant features from flat_cst are merged with the variable features from the row.
+    """
+    table = ds.data
+    var_sample_dict = {}
+    if not enforce_shapes:
+        for name in table.column_names:
+            value = table[name][i].values
+            if value is None:
+                var_sample_dict[name] = None  # pragma: no cover
+            else:
+                var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
+    else:
+        for name in table.column_names:
+            if isinstance(table[name][i], pa.NullScalar):
+                var_sample_dict[name] = None  # pragma: no cover
+            else:
+                value = table[name][i].values
+                if value is None:
+                    var_sample_dict[name] = None  # pragma: no cover
+                else:
+                    if isinstance(value, pa.ListArray):
+                        var_sample_dict[name] = np.stack(value.to_numpy(zero_copy_only=False))
+                    elif isinstance(value, pa.StringArray):  # pragma: no cover
+                        var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
+                    else:
+                        var_sample_dict[name] = value.to_numpy(zero_copy_only=True)
+
+    return var_sample_dict
+
+
+def to_var_sample_dict_streamed(
+    hf_sample: dict,
+) -> dict:
+    var_sample_dict = {}
+    for name, value in hf_sample.items():
+        if value is None:
+            var_sample_dict[name] = None
+        else:
+            var_sample_dict[name] = np.array(value)
+    return var_sample_dict

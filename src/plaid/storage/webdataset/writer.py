@@ -1,17 +1,22 @@
 import yaml
+import io
 
 import multiprocessing as mp
 from pathlib import Path
 from typing import Union, Callable, Generator, Optional
 
 from tqdm import tqdm
+import numpy as np
 
-import zarr
+import webdataset as wds
 from plaid import Sample
 from plaid.storage.common import build_sample_dict
 from plaid.types import IndexType
 
 from huggingface_hub import HfApi, DatasetCard, hf_hub_download
+
+import logging
+logging.getLogger("webdataset").setLevel(logging.ERROR)
 
 
 def flatten_path(key: str) -> str:
@@ -41,11 +46,15 @@ def save_to_disk(
 
     var_features_keys = list(var_features_types.keys())
 
+    def _serialize(arr: np.ndarray) -> bytes:
+        with io.BytesIO() as f:
+            np.save(f, arr)
+            return f.getvalue()
+
     def worker_batch(
         split_root_path, gen_func, var_features_keys, batch, start_index, queue
     ):
         """Process a single batch and write samples to Zarr."""
-        split_root = zarr.open_group(split_root_path, mode="a")
         sample_counter = start_index
 
         for sample in gen_func([batch]):
@@ -54,9 +63,17 @@ def save_to_disk(
                 path: sample_dict.get(path, None) for path in var_features_keys
             }
 
-            g = split_root.create_group(f"sample_{sample_counter:09d}")
+            sample_dir = split_root_path / f"sample_{sample_counter:09d}"
+            sample_dir.mkdir(exist_ok=True, parents=True)
+
             for key, value in sample_data.items():
-                g.create_array(flatten_path(key), data=value)
+                flattened_key = flatten_path(key)
+                feat_tar_tpl = str(sample_dir / f"{flattened_key}-%06d.tar")
+                with wds.ShardWriter(feat_tar_tpl, maxcount=1) as sink:
+                    sink.write({
+                        "__key__": f"sample_{sample_counter:09d}",
+                        flattened_key: _serialize(value),
+                    })
 
             sample_counter += 1
             queue.put(1)
@@ -70,8 +87,9 @@ def save_to_disk(
                 pbar.update(1)
 
     for split_name, gen_func in generators.items():
-        split_root_path = str(output_folder / split_name)
-        split_root = zarr.open_group(split_root_path, mode="w")
+
+        split_root_path = output_folder / split_name
+        split_root_path.mkdir(exist_ok=True, parents=True)
 
         gen_kwargs_ = gen_kwargs or {sn: {} for sn in generators.keys()}
         batch_ids_list = gen_kwargs_.get(split_name, {}).get("shards_ids", [])
@@ -120,10 +138,16 @@ def save_to_disk(
                         path: sample_dict.get(path, None) for path in var_features_keys
                     }
 
-                    g = split_root.create_group(f"sample_{sample_counter:09d}")
-                    for key, value in sample_data.items():
-                        g.create_array(flatten_path(key), data=value)
+                    sample_dir = split_root_path / f"sample_{sample_counter:09d}"
+                    sample_dir.mkdir(exist_ok=True, parents=True)
 
+                    for key, value in sample_data.items():
+                        feat_tar_tpl = str(sample_dir / f"{flatten_path(key)}-%06d.tar")
+                        with wds.ShardWriter(feat_tar_tpl, maxcount=1) as sink:
+                            sink.write({
+                                "__key__": f"{sample_counter:09d}",
+                                key: _serialize(value),
+                            })
                     sample_counter += 1
                     pbar.update(1)
 
@@ -287,7 +311,7 @@ tags:
     )
 
     str__ += """
-Example of commands [TO UPDATE FOR ZARR]:
+Example of commands [TO UPDATE FOR WEBDATASET]:
 ```python
 from datasets import load_dataset
 from plaid.bridges import huggingface_bridge
