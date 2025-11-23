@@ -18,7 +18,7 @@ from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 from queue import Empty
-from typing import Callable, Optional
+from typing import Callable, Optional, Any, Union
 
 import numpy as np
 import pyarrow as pa
@@ -33,7 +33,6 @@ else:  # pragma: no cover
     Self = TypeVar("Self")
 
 import logging
-from typing import Any, Union
 
 import datasets
 from datasets import Features, Sequence, Value, load_dataset, load_from_disk
@@ -2050,7 +2049,7 @@ def huggingface_description_to_infos(
 
 def update_dataset_card(
     dataset_card: str,
-    infos: dict[str, dict[str, str]] = None,
+    infos: Optional[dict[str, dict[str, str]]] = None,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,

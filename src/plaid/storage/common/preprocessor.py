@@ -480,6 +480,16 @@ def preprocess(
     processes_number: int = 1,
     verbose: bool = True,
 ):
+
+    assert (
+        (gen_kwargs is None and processes_number == 1) or
+        (gen_kwargs is not None and processes_number > 1)
+    ), (
+        "Invalid configuration: either provide only `generators` with "
+        "`processes_number == 1`, or provide `gen_kwargs` with "
+        "`processes_number > 1`."
+    )
+
     (
         split_all_paths,
         split_flat_cst,
