@@ -161,7 +161,7 @@ def configure_dataset_card(
     repo_id: str,
     local_folder: Union[str, Path],
     infos: dict[str, dict[str, str]],
-    var_features_types: dict,
+    var_features_types: Optional[dict] = None,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,
@@ -259,13 +259,14 @@ tags:
 
     lines.insert(count, "dataset_info:")
     count += 1
-    lines.insert(count, "  features:")
-    count += 1
-    for fn, type_ in var_features_types.items():
-        lines.insert(count, f"  - name: {flatten_path(fn)}")
+    if var_features_types is not None:
+        lines.insert(count, "  features:")
         count += 1
-        lines.insert(count, _dict_to_list_format(type_))
-        count += 1
+        for fn, type_ in var_features_types.items():
+            lines.insert(count, f"  - name: {flatten_path(fn)}")
+            count += 1
+            lines.insert(count, _dict_to_list_format(type_))
+            count += 1
     lines.insert(count, "  splits:")
     count += 1
     for sn in split_names:

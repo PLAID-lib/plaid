@@ -45,9 +45,9 @@ def load_problem_definition_from_disk(
     return pb_def
 
 
-def load_tree_struct_from_disk(
+def load_metadata_from_disk(
     path: Union[str, Path],
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, int]]:
     """Load a tree structure for a dataset from disk.
 
     This function loads two components from the specified directory:
@@ -63,13 +63,19 @@ def load_tree_struct_from_disk(
             - `flat_cst` (dict): Dictionary of constant tree values.
             - `key_mappings` (dict): Dictionary of key mappings and metadata.
     """
-    with open(Path(path) / Path("key_mappings.yaml"), "r", encoding="utf-8") as f:
-        key_mappings = yaml.safe_load(f)
-
     with open(Path(path) / "tree_constant_part.pkl", "rb") as f:
         flat_cst = pickle.load(f)
 
-    return flat_cst, key_mappings
+    with open(Path(path) / Path("key_mappings.yaml"), "r", encoding="utf-8") as f:
+        key_mappings = yaml.safe_load(f)
+
+    with open(Path(path) / Path("var_features_types.yaml"), "r", encoding="utf-8") as f:
+        var_features_types = yaml.safe_load(f)
+
+    with open(Path(path) / Path("split_n_samples.yaml"), "r", encoding="utf-8") as f:
+        split_n_samples = yaml.safe_load(f)
+
+    return flat_cst, key_mappings, var_features_types, split_n_samples
 
 
 #------------------------------------------------------
@@ -132,9 +138,9 @@ def load_problem_definition_from_hub(
     return prob_def
 
 
-def load_tree_struct_from_hub(
+def load_metadata_from_hub(
     repo_id: str,
-) -> tuple[dict, dict]:  # pragma: no cover (not tested in unit tests)
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, int]]:  # pragma: no cover (not tested in unit tests)
     """Load the tree structure metadata of a PLAID dataset from the Hugging Face Hub.
 
     This function retrieves two artifacts previously uploaded alongside a dataset:
@@ -175,6 +181,24 @@ def load_tree_struct_from_hub(
     with open(yaml_path, "r", encoding="utf-8") as f:
         key_mappings = yaml.safe_load(f)
 
-    return flat_cst, key_mappings
+    # var_features_types
+    yaml_path = hf_hub_download(
+        repo_id=repo_id,
+        filename="var_features_types.yaml",
+        repo_type="dataset",
+    )
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        var_features_types = yaml.safe_load(f)
+
+    # split_n_samples
+    yaml_path = hf_hub_download(
+        repo_id=repo_id,
+        filename="split_n_samples.yaml",
+        repo_type="dataset",
+    )
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        split_n_samples = yaml.safe_load(f)
+
+    return flat_cst, key_mappings, var_features_types, split_n_samples
 
 

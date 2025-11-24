@@ -297,6 +297,7 @@ def preprocess_splits(
     dict[str, set[str]],
     dict[str, str],
     dict[str, Any],
+    dict[str, int],
 ]:
     """Pre-process dataset splits: inspect samples to infer features, constants and CGNS metadata.
 
@@ -341,6 +342,7 @@ def preprocess_splits(
     split_flat_cst = {}
     split_var_path = {}
     split_all_paths = {}
+    split_n_samples = {}
 
     gen_kwargs_ = gen_kwargs or {split_name: {} for split_name in generators.keys()}
 
@@ -440,6 +442,8 @@ def preprocess_splits(
 
             n_samples_total += n_samples
 
+        split_n_samples[split_name] = n_samples_total
+
         # Determine truly constant paths (same hash across all samples)
         constant_paths = [
             p
@@ -471,6 +475,7 @@ def preprocess_splits(
         split_var_path,
         global_cgns_types,
         global_feature_types,
+        split_n_samples
     )
 
 
@@ -496,6 +501,7 @@ def preprocess(
         split_var_path,
         global_cgns_types,
         global_feature_types,
+        split_n_samples,
     ) = preprocess_splits(generators, gen_kwargs, processes_number, verbose)
 
     # --- build features ---
@@ -542,4 +548,4 @@ def preprocess(
         "cgns_types": global_cgns_types,
     }
 
-    return split_flat_cst, key_mappings, var_features_types
+    return split_flat_cst, key_mappings, var_features_types, split_n_samples

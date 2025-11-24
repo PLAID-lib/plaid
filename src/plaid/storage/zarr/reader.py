@@ -2,10 +2,12 @@
 from pathlib import Path
 from typing import Union, Optional
 import fsspec
+import yaml
+import shutil
 
 import zarr
 from datasets import load_dataset, load_from_disk
-from huggingface_hub import HfApi, snapshot_download
+from huggingface_hub import HfApi, snapshot_download, hf_hub_download
 
 from .writer import flatten_path
 
@@ -50,124 +52,98 @@ def load_dataset_from_disk(
 # Load from from hub
 #------------------------------------------------------
 
+def zarr_patterns(repo_id, split_ids:Optional[dict[str, IndexType]]=None, features: Optional[list[str]]=None):
 
-def discover_splits(repo_id):
-    api = HfApi()
-    repo_files = api.list_repo_files(repo_id=repo_id, repo_type="dataset")
+    # include only selected sample ids
+    if split_ids is not None:
+        allow_patterns = []
+        for split, ids in split_ids.items():
+            allow_patterns.extend([f"data/{split}/zarr.json"])
+            allow_patterns.extend([f"data/{split}/sample_{i:09d}/*" for i in ids])
+    else:
+        allow_patterns = ["data/*"]
 
-    splits = []
-    for f in repo_files:
-        if f.count("/") == 2 and f.endswith("zarr.json") and f.startswith("data/"):
-            # data/<split>/zarr.json
-            _, split, _ = f.split("/")
-            splits.append(split)
+    # ignore unwanted features
+    ignore_patterns = []
+    if features:
+        yaml_path = hf_hub_download(
+            repo_id=repo_id,
+            filename="key_mappings.yaml",
+            repo_type="dataset",
+        )
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            key_mappings = yaml.safe_load(f)
 
-    return sorted(set(splits))
+        all_features = key_mappings["variable_features"] + key_mappings["constant_features"]
+        ignored_features = [f for f in all_features if f not in features]
 
+        ignore_patterns += [f"data/*/{flatten_path(feat)}/*" for feat in ignored_features]
 
-def zarr_partial_patterns(splits, ids=None, features=None):
-    patterns = {}  # split -> list of patterns
-
-    for split in splits:
-        base = f"data/{split}"
-        split_patterns = []
-
-        split_patterns.append(f"{base}/zarr.json")
-
-        if ids is not None and not features:
-            for i in ids:
-                sid = f"sample_{i:09d}"
-                split_patterns += [
-                    f"{base}/{sid}/zarr.json",
-                    f"{base}/{sid}/*/zarr.json",
-                    f"{base}/{sid}/*",
-                ]
-
-        elif ids is None and features:
-            split_patterns.append(f"{base}/*/zarr.json")
-            for feat in features:
-                p = flatten_path(feat)
-                split_patterns += [
-                    f"{base}/*/{p}/zarr.json",
-                    f"{base}/*/{p}/*",
-                ]
-
-        elif ids and features:
-            for i in ids:
-                sid = f"sample_{i:09d}"
-                split_patterns.append(f"{base}/{sid}/zarr.json")
-                for feat in features:
-                    p = flatten_path(feat)
-                    split_patterns += [
-                        f"{base}/{sid}/{p}/zarr.json",
-                        f"{base}/{sid}/{p}/*",
-                    ]
-        else:
-            split_patterns.append(f"{base}/**")
-
-        patterns[split] = split_patterns
-
-    return patterns
-
+    return allow_patterns, ignore_patterns
 
 
 def download_dataset_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
-    ids: Optional[IndexType] = None,
-    features: Optional[list[str]] = None
+    split_ids: Optional[dict[str, IndexType]] = None,
+    features: Optional[list[str]] = None,
+    overwrite = False
 )-> None:  # pragma: no cover (not tested in unit tests)
 
-    splits = discover_splits(repo_id)
-    split_patterns_dict = zarr_partial_patterns(splits, ids=ids, features=features)
+    local_dir = Path(local_dir)
+    if local_dir.is_dir():
+        if overwrite:
+            shutil.rmtree(local_dir)
+            logger.warning(f"Existing {local_dir} directory has been reset.")
+        else:
+            raise ValueError(
+                f"directory {local_dir} already exists. Set `overwrite` to True if needed."
+            )
 
-    patterns = []
-    for pat_list in split_patterns_dict.values():
-        patterns.extend(pat_list)
+    allow_patterns, ignore_patterns = zarr_patterns(repo_id, split_ids, features)
 
     snapshot_download(
         repo_id=repo_id,
         repo_type="dataset",
-        allow_patterns=patterns,
+        allow_patterns=allow_patterns,
+        ignore_patterns=ignore_patterns,
         local_dir=local_dir,
         local_files_only=False
     )
 
 
-
 class LazyZarrArray:
-    def __init__(self, store_url: str, path_in_store: str):
+    def __init__(self, url: str):
         """
         Lazily loads a Zarr array from a HF dataset URL.
 
-        store_url: HF dataset URL to the repo (resolve/main)
-        path_in_store: path to the Zarr array (flattened __ version, root folder containing zarr.json)
+        url: HF dataset URL to the Zarr array (resolve/main)
         """
-        self.store_url = store_url
-        self.path_in_store = path_in_store
+        self.url = url
         self.fs = fsspec.filesystem("https")
         self._arr = None
 
     @property
     def arr(self):
         if self._arr is None:
-            store = fsspec.get_mapper(f"{self.store_url}/{self.path_in_store}")
+            store = fsspec.get_mapper(f"{self.url}")
             self._arr = zarr.open(store, mode="r")
         return self._arr
 
     def __array__(self, dtype=None):
+        print(">>", self.url)
         arr = np.array(self.arr)
         if dtype is not None:
             arr = arr.astype(dtype)
         return arr
 
-    def __getitem__(self, key):
-        return np.array(self.arr[key])
+    # def __getitem__(self, key):
+    #     return np.array(self.arr[key])
 
 
 def stream_dataset_from_hub(
     repo_id: str,
-    ids: Optional[list[int]] = None,
+    split_ids: Optional[dict[str, IndexType]] = None,
     features: Optional[list[str]] = None
 ) -> dict[str, dict[int, dict[str, LazyZarrArray]]]:
     """
@@ -176,54 +152,39 @@ def stream_dataset_from_hub(
     Returns:
         dataset[split][sample_id][feature] -> LazyZarrArray
     """
-    from huggingface_hub import HfApi
-
-    api = HfApi()
-    repo_files = api.list_repo_files(repo_id, repo_type="dataset")
-
-    # Only consider files under data/
-    data_files = [f for f in repo_files if f.startswith("data/")]
-
-    # Discover splits
-    splits = sorted({f.split("/")[1] for f in data_files if len(f.split("/")) > 1})
-
-    dataset: dict[str, dict[int, dict[str, LazyZarrArray]]] = {s: {} for s in splits}
-
-    for f in data_files:
-        parts = f.split("/")
-        if len(parts) < 3:
-            continue  # skip top-level zarr.json etc
-        split, sample_dir = parts[1], parts[2]
-        if not sample_dir.startswith("sample_"):
-            continue
-        sid = int(sample_dir.split("_")[1])
-        if ids is not None and sid not in ids:
-            continue
-
-        if sid not in dataset[split]:
-            dataset[split][sid] = {}
-
-        # Skip split-level zarr.json
-        if f.endswith("zarr.json") and len(parts) == 3:
-            continue
-
-        # Feature path is everything after sample_dir
-        feat_path_flat = "/".join(parts[3:])
-
-        # Remove trailing /c/... if present
-        if "/c/" in feat_path_flat:
-            feat_path_flat = feat_path_flat.split("/c/")[0]
-
-        # Convert __ back to /
-        feat_path_orig = feat_path_flat.replace("__", "/")
-
-        # Optionally filter by features
-        if features is not None and feat_path_orig not in features:
-            continue
-
-        dataset[split][sid][feat_path_orig] = LazyZarrArray(
-            f"https://huggingface.co/datasets/{repo_id}/resolve/main",
-            "/".join(parts[:3] + [feat_path_flat])
+    if features is not None:
+        selected_features = features
+    else:
+        yaml_path = hf_hub_download(
+            repo_id=repo_id,
+            filename="key_mappings.yaml",
+            repo_type="dataset",
         )
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            key_mappings = yaml.safe_load(f)
+        selected_features = key_mappings["variable_features"]
+
+    if split_ids is not None:
+        selected_ids = split_ids
+    else:
+        yaml_path = hf_hub_download(
+            repo_id=repo_id,
+            filename="split_n_samples.yaml",
+            repo_type="dataset",
+        )
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            split_n_samples = yaml.safe_load(f)
+        selected_ids = {split:range(n_samples) for split, n_samples in split_n_samples.items()}
+
+    dataset: dict[str, dict[int, dict[str, LazyZarrArray]]] = {}
+    for split in split_ids.keys():
+        dataset[split] = {}
+        for sid in selected_ids[split]:
+            dataset[split][sid] = {}
+            for feat in selected_features:
+                flatten_feat = feat.replace("/", "__")
+                url = f"https://huggingface.co/datasets/{repo_id}/resolve/main/data/{split}/sample_{sid:09d}/{flatten_feat}"
+                dataset[split][sid][feat] = LazyZarrArray(url)
 
     return dataset
+

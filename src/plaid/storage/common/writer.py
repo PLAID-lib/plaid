@@ -40,10 +40,12 @@ def save_problem_definition_to_disk(
     pb_def.save_to_file(Path(path) / Path("problem_definitions") / Path(name))
 
 
-def save_tree_struct_to_disk(
+def save_metadata_to_disk(
     path: Union[str, Path],
     flat_cst: dict[str, Any],
     key_mappings: dict[str, Any],
+    var_features_types: dict[str, Any],
+    split_n_samples: dict[str, int],
 ) -> None:
     """Save the structure of a dataset tree to disk.
 
@@ -66,6 +68,12 @@ def save_tree_struct_to_disk(
 
     with open(Path(path) / "key_mappings.yaml", "w", encoding="utf-8") as f:
         yaml.dump(key_mappings, f, sort_keys=False)
+
+    with open(Path(path) / "var_features_types.yaml", "w", encoding="utf-8") as f:
+        yaml.dump(var_features_types, f, sort_keys=False)
+
+    with open(Path(path) / "split_n_samples.yaml", "w", encoding="utf-8") as f:
+        yaml.dump(split_n_samples, f, sort_keys=False)
 
 
 #------------------------------------------------------
@@ -132,10 +140,12 @@ def push_problem_definition_to_hub(
     )
 
 
-def push_tree_struct_to_hub(
+def push_metadata_to_hub(
     repo_id: str,
     flat_cst: dict[str, Any],
     key_mappings: dict[str, Any],
+    var_features_types: dict[str, Any],
+    split_n_samples: dict[str, int],
 ) -> None:  # pragma: no cover (not tested in unit tests)
     """Upload a dataset's tree structure to a Hugging Face dataset repository.
 
@@ -182,4 +192,28 @@ def push_tree_struct_to_hub(
         repo_id=repo_id,
         repo_type="dataset",
         commit_message="Upload key_mappings.yaml",
+    )
+
+    # var_features_types
+    yaml_str = yaml.dump(var_features_types, sort_keys=False)
+    yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+
+    api.upload_file(
+        path_or_fileobj=yaml_buffer,
+        path_in_repo="var_features_types.yaml",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message="Upload var_features_types.yaml",
+    )
+
+    # split_n_samples
+    yaml_str = yaml.dump(split_n_samples, sort_keys=False)
+    yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+
+    api.upload_file(
+        path_or_fileobj=yaml_buffer,
+        path_in_repo="split_n_samples.yaml",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message="Upload split_n_samples.yaml",
     )

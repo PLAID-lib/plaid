@@ -22,11 +22,10 @@ def _split_dict_feat(d, features_set):
     vals = {}
     times = {}
     for k, v in d.items():
-        if k in features_set:
-            if k.endswith("_times"):
-                times[k[:-6]] = v
-            else:
-                vals[k] = v
+        if k.endswith("_times") and k[:-6] in features_set:
+            times[k[:-6]] = v
+        elif k in features_set:
+            vals[k] = v
     return vals, times
 
 
@@ -80,7 +79,7 @@ def to_plaid_sample(
     sample_flat_trees = {}
     paths_none = {}
     for (path_t, times_struc), (path_v, val) in zip(row_tim.items(), row_val.items()):
-        assert path_t == path_v
+        assert path_t == path_v, "did you forget to specify the features arg?"
         if val is None:
             assert times_struc is None
             if path_v not in paths_none and cgns_types[path_v] not in [

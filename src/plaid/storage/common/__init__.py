@@ -1,7 +1,7 @@
 from .preprocessor import build_sample_dict, preprocess
 from .bridge import to_plaid_sample
 from .tree_handling import flatten_cgns_tree, unflatten_cgns_tree
-from .writer import save_infos_to_disk, save_problem_definition_to_disk, save_tree_struct_to_disk
-from .writer import push_infos_to_hub, push_problem_definition_to_hub, push_tree_struct_to_hub
-from .reader import load_infos_from_disk, load_problem_definition_from_disk, load_tree_struct_from_disk
-from .reader import load_infos_from_hub, load_problem_definition_from_hub, load_tree_struct_from_hub
+from .writer import save_infos_to_disk, save_problem_definition_to_disk, save_metadata_to_disk
+from .writer import push_infos_to_hub, push_problem_definition_to_hub, push_metadata_to_hub
+from .reader import load_infos_from_disk, load_problem_definition_from_disk, load_metadata_from_disk
+from .reader import load_infos_from_hub, load_problem_definition_from_hub, load_metadata_from_hub
