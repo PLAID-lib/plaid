@@ -65,58 +65,6 @@ def discover_splits(repo_id):
     return sorted(set(splits))
 
 
-# def zarr_partial_patterns(splits, ids=None, features=None):
-#     patterns = []
-
-#     for split in splits:
-#         base = f"data/{split}"
-
-#         # Always include split-level metadata
-#         patterns.append(f"{base}/zarr.json")
-
-#         # Case A — only ids
-#         if ids is not None and not features:
-#             for i in ids:
-#                 sid = f"sample_{i:09d}"
-#                 patterns += [
-#                     f"{base}/{sid}/zarr.json",
-#                     f"{base}/{sid}/*/zarr.json",
-#                     f"{base}/{sid}/*",
-#                 ]
-#             continue
-
-#         # Case B — only features (all samples)
-#         if ids is None and features:
-#             patterns.append(f"{base}/*/zarr.json")  # sample metadata
-#             for feat in features:
-#                 p = flatten_path(feat)
-#                 patterns += [
-#                     f"{base}/*/{p}/zarr.json",
-#                     f"{base}/*/{p}/*",
-#                 ]
-#             continue
-
-#         # Case C — both ids and features
-#         if ids and features:
-#             for i in ids:
-#                 sid = f"sample_{i:09d}"
-#                 patterns.append(f"{base}/{sid}/zarr.json")
-#                 for feat in features:
-#                     p = flatten_path(feat)
-#                     patterns += [
-#                         f"{base}/{sid}/{p}/zarr.json",
-#                         f"{base}/{sid}/{p}/*",
-#                     ]
-#             continue
-
-#         # Case D — no ids, no features → whole split
-#         patterns.append(f"{base}/**")
-
-#     return patterns
-
-
-
-
 def zarr_partial_patterns(splits, ids=None, features=None):
     patterns = {}  # split -> list of patterns
 
