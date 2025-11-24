@@ -16,7 +16,7 @@ from packaging.version import Version
 
 import plaid
 from plaid.problem_definition import ProblemDefinition
-from plaid.types.feature_types import FeatureIdentifier
+from plaid.containers import FeatureIdentifier
 
 # %% Fixtures
 

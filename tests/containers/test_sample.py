@@ -23,7 +23,7 @@ from plaid.containers.utils import (
     _read_index_array,
     _read_index_range,
 )
-from plaid.types.feature_types import FeatureIdentifier
+from plaid.containers import FeatureIdentifier
 from plaid.utils.cgns_helper import show_cgns_tree
 
 # %% Fixtures

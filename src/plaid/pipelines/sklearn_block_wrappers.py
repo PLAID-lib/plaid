@@ -36,7 +36,8 @@ from sklearn.utils.validation import check_is_fitted
 
 from plaid import Dataset
 from plaid.containers.utils import check_features_type_homogeneity
-from plaid.types import Array, FeatureIdentifier, SklearnBlock
+from plaid.containers import FeatureIdentifier
+from plaid.types import Array, SklearnBlock
 
 
 def get_2Darray_from_homogeneous_identifiers(

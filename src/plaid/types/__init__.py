@@ -14,7 +14,6 @@ from plaid.types.cgns_types import (
 from plaid.types.common import Array, ArrayDType, IndexType
 from plaid.types.feature_types import (
     Feature,
-    FeatureIdentifier,
     Field,
     Scalar,
     TimeSequence,
@@ -34,3 +33,7 @@ __all__ = [
     "FeatureIdentifier",
     "SklearnBlock",
 ]
+
+# Re-export FeatureIdentifier from containers to maintain backwards compatibility
+# Import is done at the bottom to avoid circular import issues
+from plaid.containers.feature_identifier import FeatureIdentifier

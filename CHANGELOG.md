@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (types/containers) move `FeatureIdentifier` class from `plaid.types` to `plaid.containers` (backwards compatibility maintained).
+
 ### Fixes
 
 ### Removed

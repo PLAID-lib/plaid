@@ -19,10 +19,8 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
 )
-from plaid.types import (
-    Feature,
-    FeatureIdentifier,
-)
+from plaid.containers.feature_identifier import FeatureIdentifier
+from plaid.types import Feature
 from plaid.utils.base import safe_len
 
 

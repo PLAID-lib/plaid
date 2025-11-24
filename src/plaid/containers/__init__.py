@@ -8,9 +8,11 @@
 #
 
 from .dataset import Dataset
+from .feature_identifier import FeatureIdentifier
 from .sample import Sample
 
 __all__ = [
     "Dataset",
+    "FeatureIdentifier",
     "Sample",
 ]

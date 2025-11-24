@@ -38,9 +38,9 @@ from plaid.constants import (
 )
 from plaid.containers.features import SampleFeatures
 from plaid.containers.utils import get_feature_type_and_details_from
+from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.types import (
     Feature,
-    FeatureIdentifier,
     Scalar,
 )
 from plaid.utils import cgns_helper as CGH
