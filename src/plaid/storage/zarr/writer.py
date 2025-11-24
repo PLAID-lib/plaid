@@ -7,6 +7,9 @@ from typing import Union, Callable, Generator, Optional
 from tqdm import tqdm
 
 import zarr
+
+import numpy as np
+
 from plaid import Sample
 from plaid.storage.common import build_sample_dict
 from plaid.types import IndexType
@@ -16,6 +19,20 @@ from huggingface_hub import HfApi, DatasetCard, hf_hub_download
 
 def flatten_path(key: str) -> str:
     return key.replace("/", "__")
+
+
+def auto_chunks(shape, target_n):
+    # ensure pure Python ints
+    target_n = int(target_n)
+    shape = tuple(int(s) for s in shape)
+
+    # elements in one "row"
+    elems_per_slice = int(np.prod(shape[1:]) or 1)
+
+    rows = max(1, target_n // elems_per_slice)
+    rows = min(rows, shape[0])  # cannot exceed the dimension size
+
+    return (rows,) + shape[1:]
 
 
 def save_to_disk(
@@ -56,7 +73,7 @@ def save_to_disk(
 
             g = split_root.create_group(f"sample_{sample_counter:09d}")
             for key, value in sample_data.items():
-                g.create_array(flatten_path(key), data=value)
+                g.create_array(flatten_path(key), data=value, chunks=auto_chunks(value.shape, 5_000_000)) # chunks=value.shape
 
             sample_counter += 1
             queue.put(1)
@@ -122,7 +139,7 @@ def save_to_disk(
 
                     g = split_root.create_group(f"sample_{sample_counter:09d}")
                     for key, value in sample_data.items():
-                        g.create_array(flatten_path(key), data=value)
+                        g.create_array(flatten_path(key), data=value, chunks=auto_chunks(value.shape, 5_000_000)) # chunks=value.shape
 
                     sample_counter += 1
                     pbar.update(1)
