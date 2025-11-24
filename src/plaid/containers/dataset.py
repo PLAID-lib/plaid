@@ -32,9 +32,9 @@ from tqdm import tqdm
 
 import plaid
 from plaid.constants import AUTHORIZED_INFO_KEYS, CGNS_FIELD_LOCATIONS
+from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
-from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.types import Array, Feature
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 from plaid.utils.deprecation import deprecated, deprecated_argument

@@ -36,9 +36,9 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
+from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.containers.features import SampleFeatures
 from plaid.containers.utils import get_feature_type_and_details_from
-from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.types import (
     Feature,
     Scalar,

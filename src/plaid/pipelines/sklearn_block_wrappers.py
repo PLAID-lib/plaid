@@ -35,8 +35,8 @@ from sklearn.base import (
 from sklearn.utils.validation import check_is_fitted
 
 from plaid import Dataset
-from plaid.containers.utils import check_features_type_homogeneity
 from plaid.containers import FeatureIdentifier
+from plaid.containers.utils import check_features_type_homogeneity
 from plaid.types import Array, SklearnBlock
 
 
