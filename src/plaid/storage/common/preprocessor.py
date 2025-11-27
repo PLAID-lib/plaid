@@ -529,23 +529,25 @@ def preprocess(
         )
     cst_features = first_value
 
-    var_features_types = {}
-    for path in var_features:
-        if path.endswith("_times"):
-            var_features_types[path] = {
-                "dtype": "float64",
-                "ndim": 1,
-            }  # pragma: no cover
-        else:
-            var_features_types[path] = global_feature_types[path]
-
     var_features = [path for path in var_features if not path.endswith("_times")]
     cst_features = [path for path in cst_features if not path.endswith("_times")]
 
-    key_mappings = {
-        "variable_features": var_features,
-        "constant_features": cst_features,
-        "cgns_types": global_cgns_types,
-    }
+    def _build_schema(feature_list:list[str])->dict:
+        schema = {}
+        for path in feature_list:
+            if path.endswith("_times"):
+                schema[path] = {
+                    "dtype": "float64",
+                    "ndim": 1,
+                }  # pragma: no cover
+            elif path in global_feature_types:
+                schema[path] = global_feature_types[path]
+            else:
+                schema[path] = {"dtype": None}
+            schema[path]["cgns_type"] = global_cgns_types[path]
+        return schema
 
-    return split_flat_cst, key_mappings, var_features_types, split_n_samples
+    variable_schema = _build_schema(var_features)
+    constant_schema = _build_schema(cst_features)
+
+    return split_flat_cst, variable_schema, constant_schema, split_n_samples

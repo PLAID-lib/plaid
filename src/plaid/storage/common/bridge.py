@@ -33,7 +33,7 @@ def to_plaid_sample(
     var_sample_dict:dict,
     flat_cst: dict[str, Any],
     cgns_types: dict[str, str],
-    features: Optional[list[str]] = None
+    features : Optional[list[str]] = None,
 ) -> Sample:
     """Convert a Hugging Face dataset row to a PLAID Sample object.
 
@@ -61,17 +61,15 @@ def to_plaid_sample(
     )
 
     if features is None:
-        flat_cst_val, flat_cst_times = _split_dict(flat_cst)
+        flat_cst_val, flat_cst_tim = _split_dict(flat_cst)
         row_val, row_tim = _split_dict(var_sample_dict)
-
     else:
         features_set = set(features)
-
-        flat_cst_val, flat_cst_times = _split_dict_feat(flat_cst, features_set)
+        flat_cst_val, flat_cst_tim = _split_dict_feat(flat_cst, features_set)
         row_val, row_tim = _split_dict_feat(var_sample_dict, features_set)
 
     row_val.update(flat_cst_val)
-    row_tim.update(flat_cst_times)
+    row_tim.update(flat_cst_tim)
 
     row_val = {p: row_val[p] for p in sorted(row_val)}
     row_tim = {p: row_tim[p] for p in sorted(row_tim)}

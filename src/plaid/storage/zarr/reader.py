@@ -1,13 +1,12 @@
+import os
 
 from pathlib import Path
 from typing import Union, Optional
 import fsspec
 import yaml
-import shutil
 
 import zarr
-from datasets import load_dataset, load_from_disk
-from huggingface_hub import HfApi, snapshot_download, hf_hub_download
+from huggingface_hub import snapshot_download, hf_hub_download
 
 from .writer import flatten_path
 
@@ -21,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Load from disk
 #------------------------------------------------------
 
-def load_dataset_from_disk(
+def load_datasetdict(
     path: Union[str, Path]
 )->dict[str, zarr.core.group.Group]:
     """Load a Hugging Face dataset or dataset dictionary from disk.
@@ -52,7 +51,7 @@ def load_dataset_from_disk(
 # Load from from hub
 #------------------------------------------------------
 
-def zarr_patterns(repo_id, split_ids:Optional[dict[str, IndexType]]=None, features: Optional[list[str]]=None):
+def _zarr_patterns(repo_id, split_ids:Optional[dict[str, IndexType]]=None, features: Optional[list[str]]=None):
 
     # include only selected sample ids
     if split_ids is not None:
@@ -68,13 +67,21 @@ def zarr_patterns(repo_id, split_ids:Optional[dict[str, IndexType]]=None, featur
     if features:
         yaml_path = hf_hub_download(
             repo_id=repo_id,
-            filename="key_mappings.yaml",
+            filename="variable_schema.yaml",
             repo_type="dataset",
         )
         with open(yaml_path, "r", encoding="utf-8") as f:
-            key_mappings = yaml.safe_load(f)
+            variable_schema = yaml.safe_load(f)
 
-        all_features = key_mappings["variable_features"] + key_mappings["constant_features"]
+        yaml_path = hf_hub_download(
+            repo_id=repo_id,
+            filename="constant_schema.yaml",
+            repo_type="dataset",
+        )
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            constant_schema = yaml.safe_load(f)
+
+        all_features = list(variable_schema.keys()) + list(constant_schema.keys())
         ignored_features = [f for f in all_features if f not in features]
 
         ignore_patterns += [f"data/*/{flatten_path(feat)}/*" for feat in ignored_features]
@@ -82,37 +89,25 @@ def zarr_patterns(repo_id, split_ids:Optional[dict[str, IndexType]]=None, featur
     return allow_patterns, ignore_patterns
 
 
-def download_dataset_from_hub(
+def download_datasetdict(
     repo_id: str,
     local_dir: Union[str, Path],
     split_ids: Optional[dict[str, IndexType]] = None,
     features: Optional[list[str]] = None,
-    overwrite = False
 )-> None:  # pragma: no cover (not tested in unit tests)
 
-    local_dir = Path(local_dir)
-    if local_dir.is_dir():
-        if overwrite:
-            shutil.rmtree(local_dir)
-            logger.warning(f"Existing {local_dir} directory has been reset.")
-        else:
-            raise ValueError(
-                f"directory {local_dir} already exists. Set `overwrite` to True if needed."
-            )
-
-    allow_patterns, ignore_patterns = zarr_patterns(repo_id, split_ids, features)
+    allow_patterns, ignore_patterns = _zarr_patterns(repo_id, split_ids, features)
 
     snapshot_download(
         repo_id=repo_id,
         repo_type="dataset",
         allow_patterns=allow_patterns,
         ignore_patterns=ignore_patterns,
-        local_dir=local_dir,
-        local_files_only=False
+        local_dir=local_dir
     )
 
 
-class LazyZarrArray:
+class _LazyZarrArray:
     def __init__(self, url: str):
         """
         Lazily loads a Zarr array from a HF dataset URL.
@@ -131,7 +126,6 @@ class LazyZarrArray:
         return self._arr
 
     def __array__(self, dtype=None):
-        print(">>", self.url)
         arr = np.array(self.arr)
         if dtype is not None:
             arr = arr.astype(dtype)
@@ -141,50 +135,54 @@ class LazyZarrArray:
     #     return np.array(self.arr[key])
 
 
-def stream_dataset_from_hub(
+def init_streamed_datasetdict(
     repo_id: str,
     split_ids: Optional[dict[str, IndexType]] = None,
     features: Optional[list[str]] = None
-) -> dict[str, dict[int, dict[str, LazyZarrArray]]]:
+) -> dict[str, dict[int, dict[str, _LazyZarrArray]]]:
     """
     Lazily stream a Zarr dataset from a HF dataset repo.
 
     Returns:
         dataset[split][sample_id][feature] -> LazyZarrArray
     """
+    hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
+    if hf_endpoint:
+        raise RuntimeError("Streaming mode not compatible with private mirror.")
+
     if features is not None:
         selected_features = features
     else:
         yaml_path = hf_hub_download(
             repo_id=repo_id,
-            filename="key_mappings.yaml",
+            filename="variable_schema.yaml",
             repo_type="dataset",
         )
         with open(yaml_path, "r", encoding="utf-8") as f:
-            key_mappings = yaml.safe_load(f)
-        selected_features = key_mappings["variable_features"]
+            variable_schema = yaml.safe_load(f)
+        selected_features = list(variable_schema.keys())
 
     if split_ids is not None:
         selected_ids = split_ids
     else:
         yaml_path = hf_hub_download(
             repo_id=repo_id,
-            filename="split_n_samples.yaml",
+            filename="infos.yaml",
             repo_type="dataset",
         )
         with open(yaml_path, "r", encoding="utf-8") as f:
-            split_n_samples = yaml.safe_load(f)
-        selected_ids = {split:range(n_samples) for split, n_samples in split_n_samples.items()}
+            infos = yaml.safe_load(f)
+        selected_ids = {split:range(n_samples) for split, n_samples in infos["num_samples"].items()}
 
-    dataset: dict[str, dict[int, dict[str, LazyZarrArray]]] = {}
-    for split in split_ids.keys():
+    dataset: dict[str, dict[int, dict[str, _LazyZarrArray]]] = {}
+    for split in selected_ids.keys():
         dataset[split] = {}
         for sid in selected_ids[split]:
             dataset[split][sid] = {}
             for feat in selected_features:
                 flatten_feat = feat.replace("/", "__")
                 url = f"https://huggingface.co/datasets/{repo_id}/resolve/main/data/{split}/sample_{sid:09d}/{flatten_feat}"
-                dataset[split][sid][feat] = LazyZarrArray(url)
+                dataset[split][sid][feat] = _LazyZarrArray(url)
 
     return dataset
 

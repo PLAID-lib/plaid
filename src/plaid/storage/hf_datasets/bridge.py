@@ -33,9 +33,9 @@ def convert_dtype_to_hf_feature(feature_type):
     return feature
 
 
-def convert_to_hf_feature(var_features_types):
+def convert_to_hf_feature(variable_schema):
     return Features(
-        {k: convert_dtype_to_hf_feature(v) for k, v in var_features_types.items()}
+        {k: convert_dtype_to_hf_feature(v) for k, v in variable_schema.items()}
     )
 
 
@@ -107,7 +107,7 @@ def plaid_dataset_to_datasetdict(
 
 def plaid_generator_to_datasetdict(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    var_features_types :dict[str, dict],
+    variable_schema :dict,
     gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     processes_number: int = 1,
     writer_batch_size: int = 1
@@ -169,9 +169,9 @@ def plaid_generator_to_datasetdict(
         >>> print(key_mappings["variable_features"][:3])
         ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
     """
-    hf_features = convert_to_hf_feature(var_features_types)
+    hf_features = convert_to_hf_feature(variable_schema)
 
-    all_features_keys = list(var_features_types.keys())
+    all_features_keys = list(variable_schema.keys())
 
     def generator_fn(gen_func, all_features_keys, **kwargs):
         for sample in gen_func(**kwargs):

@@ -1,4 +1,4 @@
 from .bridge import plaid_dataset_to_datasetdict, plaid_generator_to_datasetdict, to_var_sample_dict, to_var_sample_dict_streamed
-from .writer import save_dataset_dict_to_disk, push_dataset_dict_to_hub
+from .writer import save_datasetdict_to_disk, push_datasetdict_to_hub
 from .writer import configure_dataset_card
-from .reader import load_dataset_from_disk, load_dataset_from_hub
+from .reader import load_datasetdict, download_datasetdict, init_streamed_datasetdict

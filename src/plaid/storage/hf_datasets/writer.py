@@ -30,8 +30,8 @@ def _compute_num_shards(hf_dataset_dict: datasets.DatasetDict) -> dict[str, int]
     return num_shards
 
 
-def save_dataset_dict_to_disk(
-    path: Union[str, Path], hf_dataset_dict: datasets.DatasetDict, **kwargs
+def save_datasetdict_to_disk(
+    path: Union[str, Path], hf_datasetdict: datasets.DatasetDict, **kwargs
 ) -> None:
     """Save a Hugging Face DatasetDict to disk.
 
@@ -48,7 +48,7 @@ def save_dataset_dict_to_disk(
     Returns:
         None
     """
-    num_shards = _compute_num_shards(hf_dataset_dict)
+    num_shards = _compute_num_shards(hf_datasetdict)
     num_proc = kwargs.get("num_proc", None)
     if num_proc is not None:  # pragma: no cover
         min_num_shards = min(num_shards.values())
@@ -59,13 +59,13 @@ def save_dataset_dict_to_disk(
             num_proc = 1
         del kwargs["num_proc"]
 
-    hf_dataset_dict.save_to_disk(
-        str(path), num_shards=num_shards, num_proc=num_proc, **kwargs
+    hf_datasetdict.save_to_disk(
+        str(Path(path) / "data"), num_shards=num_shards, num_proc=num_proc, **kwargs
     )
 
 
-def push_dataset_dict_to_hub(
-    repo_id: str, hf_dataset_dict: datasets.DatasetDict, **kwargs
+def push_datasetdict_to_hub(
+    repo_id: str, hf_datasetdict: datasets.DatasetDict, **kwargs
 ) -> None:  # pragma: no cover (not tested in unit tests)
     """Push a Hugging Face `DatasetDict` to the Hugging Face Hub.
 
@@ -93,7 +93,7 @@ def push_dataset_dict_to_hub(
     Returns:
         None
     """
-    num_shards = _compute_num_shards(hf_dataset_dict)
+    num_shards = _compute_num_shards(hf_datasetdict)
     num_proc = kwargs.get("num_proc", None)
     if num_proc is not None:  # pragma: no cover
         min_num_shards = min(num_shards.values())
@@ -104,7 +104,7 @@ def push_dataset_dict_to_hub(
             num_proc = 1
         del kwargs["num_proc"]
 
-    hf_dataset_dict.push_to_hub(
+    hf_datasetdict.push_to_hub(
         repo_id, num_shards=num_shards, num_proc=num_proc, **kwargs
     )
 

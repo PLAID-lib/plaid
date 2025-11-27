@@ -38,7 +38,7 @@ def auto_chunks(shape, target_n):
 def save_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    var_features_types :dict[str, dict],
+    variable_schema :dict[str, dict],
     gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     processes_number: int = 1,
     verbose: bool = False,
@@ -56,7 +56,7 @@ def save_to_disk(
     output_folder = Path(output_folder) / "data"
     output_folder.mkdir(exist_ok=True, parents=True)
 
-    var_features_keys = list(var_features_types.keys())
+    var_features_keys = list(variable_schema.keys())
 
     def worker_batch(
         split_root_path, gen_func, var_features_keys, batch, start_index, queue
@@ -161,7 +161,7 @@ def configure_dataset_card(
     repo_id: str,
     local_folder: Union[str, Path],
     infos: dict[str, dict[str, str]],
-    var_features_types: Optional[dict] = None,
+    variable_schema: Optional[dict] = None,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,
@@ -259,10 +259,10 @@ tags:
 
     lines.insert(count, "dataset_info:")
     count += 1
-    if var_features_types is not None:
+    if variable_schema is not None:
         lines.insert(count, "  features:")
         count += 1
-        for fn, type_ in var_features_types.items():
+        for fn, type_ in variable_schema.items():
             lines.insert(count, f"  - name: {flatten_path(fn)}")
             count += 1
             lines.insert(count, _dict_to_list_format(type_))

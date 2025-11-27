@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Union
 
 import yaml
-from huggingface_hub import hf_hub_download
+from huggingface_hub import hf_hub_download, snapshot_download
 
 from plaid import ProblemDefinition
 
@@ -47,7 +47,7 @@ def load_problem_definition_from_disk(
 
 def load_metadata_from_disk(
     path: Union[str, Path],
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, int]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Load a tree structure for a dataset from disk.
 
     This function loads two components from the specified directory:
@@ -66,21 +66,36 @@ def load_metadata_from_disk(
     with open(Path(path) / "tree_constant_part.pkl", "rb") as f:
         flat_cst = pickle.load(f)
 
-    with open(Path(path) / Path("key_mappings.yaml"), "r", encoding="utf-8") as f:
-        key_mappings = yaml.safe_load(f)
+    with open(Path(path) / Path("variable_schema.yaml"), "r", encoding="utf-8") as f:
+        variable_schema = yaml.safe_load(f)
 
-    with open(Path(path) / Path("var_features_types.yaml"), "r", encoding="utf-8") as f:
-        var_features_types = yaml.safe_load(f)
+    with open(Path(path) / Path("constant_schema.yaml"), "r", encoding="utf-8") as f:
+        constant_schema = yaml.safe_load(f)
 
-    with open(Path(path) / Path("split_n_samples.yaml"), "r", encoding="utf-8") as f:
-        split_n_samples = yaml.safe_load(f)
+    cgns_types = {}
+    for path in variable_schema.keys():
+        cgns_types[path] = variable_schema[path]["cgns_type"]
+    for path in constant_schema.keys():
+        cgns_types[path] = constant_schema[path]["cgns_type"]
 
-    return flat_cst, key_mappings, var_features_types, split_n_samples
+    return flat_cst, variable_schema, constant_schema, cgns_types
 
 
 #------------------------------------------------------
 # Load from from hub
 #------------------------------------------------------
+
+def download_repo(
+    repo_id: str,
+    local_dir: Union[str, Path],
+)-> str:  # pragma: no cover (not tested in unit tests)
+
+    return snapshot_download(
+        repo_id=repo_id,
+        repo_type="dataset",
+        local_dir=local_dir
+    )
+
 
 def load_infos_from_hub(
     repo_id: str,
@@ -140,7 +155,7 @@ def load_problem_definition_from_hub(
 
 def load_metadata_from_hub(
     repo_id: str,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, int]]:  # pragma: no cover (not tested in unit tests)
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:  # pragma: no cover (not tested in unit tests)
     """Load the tree structure metadata of a PLAID dataset from the Hugging Face Hub.
 
     This function retrieves two artifacts previously uploaded alongside a dataset:
@@ -172,33 +187,30 @@ def load_metadata_from_hub(
     with open(flat_cst_path, "rb") as f:
         flat_cst = pickle.load(f)
 
-    # key mappings
+    # variable_schema
     yaml_path = hf_hub_download(
         repo_id=repo_id,
-        filename="key_mappings.yaml",
+        filename="variable_schema.yaml",
         repo_type="dataset",
     )
     with open(yaml_path, "r", encoding="utf-8") as f:
-        key_mappings = yaml.safe_load(f)
+        variable_schema = yaml.safe_load(f)
 
-    # var_features_types
+    # constant_schema
     yaml_path = hf_hub_download(
         repo_id=repo_id,
-        filename="var_features_types.yaml",
+        filename="constant_schema.yaml",
         repo_type="dataset",
     )
     with open(yaml_path, "r", encoding="utf-8") as f:
-        var_features_types = yaml.safe_load(f)
+        constant_schema = yaml.safe_load(f)
 
-    # split_n_samples
-    yaml_path = hf_hub_download(
-        repo_id=repo_id,
-        filename="split_n_samples.yaml",
-        repo_type="dataset",
-    )
-    with open(yaml_path, "r", encoding="utf-8") as f:
-        split_n_samples = yaml.safe_load(f)
+    cgns_types = {}
+    for path in variable_schema.keys():
+        cgns_types[path] = variable_schema[path]["cgns_type"]
+    for path in constant_schema.keys():
+        cgns_types[path] = constant_schema[path]["cgns_type"]
 
-    return flat_cst, key_mappings, var_features_types, split_n_samples
+    return flat_cst, variable_schema, constant_schema, cgns_types
 
 
