@@ -97,7 +97,7 @@ def plaid_dataset_to_datasetdict(
         for split_name, ids in main_splits.items()
     }
 
-    return plaid_generator_to_datasetdict(
+    return generator_to_datasetdict(
         generators,
         var_features_types,
         processes_number=processes_number,
@@ -105,7 +105,7 @@ def plaid_dataset_to_datasetdict(
     )
 
 
-def plaid_generator_to_datasetdict(
+def generator_to_datasetdict(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     variable_schema :dict,
     gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,

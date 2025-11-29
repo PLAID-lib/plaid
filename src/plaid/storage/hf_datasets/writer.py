@@ -172,8 +172,11 @@ def configure_dataset_card(
     lines = lines[: indices[1] + 1]
 
     count = 1
-    lines.insert(count, f"license: {infos['legal']['license']}")
-    count += 1
+    try:
+        lines.insert(count, f"license: {infos['legal']['license']}")
+        count += 1
+    except KeyError:
+        pass
     lines.insert(count, "task_categories:")
     count += 1
     lines.insert(count, "- graph-ml")

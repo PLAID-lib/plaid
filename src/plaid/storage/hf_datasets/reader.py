@@ -17,26 +17,49 @@ from typing import Union, Optional
 
 import tempfile
 import datasets
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from huggingface_hub import snapshot_download
+
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 #------------------------------------------------------
 # Load from disk
 #------------------------------------------------------
 
-def load_datasetdict(
-    path: Union[str, Path], **kwargs
+def init_datasetdict_from_disk(
+    path: Union[str, Path]
 ) -> datasets.DatasetDict:
-    return load_dataset(path = str(Path(path) / "data"), **kwargs)
+    file_ = Path(path) / "data" / "dataset_dict.json"
+    if file_.is_file():
+        # This is a dataset generated and save locally
+        return load_from_disk(dataset_path = str(Path(path) / "data"))
+    else:
+        # This is a dataset downloaded from the hub
+        return load_dataset(path = str(Path(path) / "data"))
 
 #------------------------------------------------------
 # Load from from hub
 #------------------------------------------------------
 
-def download_datasetdict(
+def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
+    overwrite: bool = False
 )-> str:  # pragma: no cover (not tested in unit tests)
+
+    output_folder = Path(local_dir)
+
+    if output_folder.is_dir():
+        if overwrite:
+            shutil.rmtree(local_dir)
+            logger.warning(f"Existing {local_dir} directory has been reset.")
+        elif any(local_dir.iterdir()):
+            raise ValueError(
+                f"directory {local_dir} already exists and is not empty. Set `overwrite` to True if needed."
+            )
 
     return snapshot_download(
         repo_id=repo_id,
@@ -46,13 +69,12 @@ def download_datasetdict(
     )
 
 
-def init_streamed_datasetdict(
+def init_datasetdict_streaming_from_hub(
     repo_id: str,
-    features: Optional[list[str]] = None,
-    **kwargs
+    features: Optional[list[str]] = None
 ):
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
         raise RuntimeError("Streaming mode not compatible with private mirror.")
 
-    return load_dataset(repo_id, streaming=True, columns = features, **kwargs)
+    return load_dataset(repo_id, streaming=True, columns = features)

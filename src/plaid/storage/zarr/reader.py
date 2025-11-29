@@ -1,4 +1,5 @@
 import os
+import shutil
 
 from pathlib import Path
 from typing import Union, Optional
@@ -14,13 +15,14 @@ import logging
 import numpy as np
 
 from plaid.types.common import IndexType
+
 logger = logging.getLogger(__name__)
 
 #------------------------------------------------------
 # Load from disk
 #------------------------------------------------------
 
-def load_datasetdict(
+def init_datasetdict_from_disk(
     path: Union[str, Path]
 )->dict[str, zarr.core.group.Group]:
     """Load a Hugging Face dataset or dataset dictionary from disk.
@@ -51,7 +53,7 @@ def load_datasetdict(
 # Load from from hub
 #------------------------------------------------------
 
-def _zarr_patterns(repo_id, split_ids:Optional[dict[str, IndexType]]=None, features: Optional[list[str]]=None):
+def _zarr_patterns(repo_id, split_ids:Optional[dict[str, int]]=None, features: Optional[list[str]]=None):
 
     # include only selected sample ids
     if split_ids is not None:
@@ -89,12 +91,24 @@ def _zarr_patterns(repo_id, split_ids:Optional[dict[str, IndexType]]=None, featu
     return allow_patterns, ignore_patterns
 
 
-def download_datasetdict(
+def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
-    split_ids: Optional[dict[str, IndexType]] = None,
+    split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,
+    overwrite: bool = False
 )-> None:  # pragma: no cover (not tested in unit tests)
+
+    output_folder = Path(local_dir)
+
+    if output_folder.is_dir():
+        if overwrite:
+            shutil.rmtree(local_dir)
+            logger.warning(f"Existing {local_dir} directory has been reset.")
+        elif any(local_dir.iterdir()):
+            raise ValueError(
+                f"directory {local_dir} already exists and is not empty. Set `overwrite` to True if needed."
+            )
 
     allow_patterns, ignore_patterns = _zarr_patterns(repo_id, split_ids, features)
 
@@ -108,36 +122,47 @@ def download_datasetdict(
 
 
 class _LazyZarrArray:
-    def __init__(self, url: str):
-        """
-        Lazily loads a Zarr array from a HF dataset URL.
+    __slots__ = ("url", "fs", "_store")
 
-        url: HF dataset URL to the Zarr array (resolve/main)
-        """
+    def __init__(self, url: str):
         self.url = url
         self.fs = fsspec.filesystem("https")
-        self._arr = None
+        self._store = None  # will be set lazily
 
     @property
-    def arr(self):
-        if self._arr is None:
-            store = fsspec.get_mapper(f"{self.url}")
-            self._arr = zarr.open(store, mode="r")
-        return self._arr
+    def store(self):
+        if self._store is None:
+            mapper = fsspec.get_mapper(self.url)
+            self._store = zarr.open(mapper, mode="r")
+        return self._store
+
+    @property
+    def ndim(self):
+        return self.store.ndim
+
+    @property
+    def shape(self):
+        return self.store.shape
+
+    def __getitem__(self, key):
+        return self.store[key]
 
     def __array__(self, dtype=None):
-        arr = np.array(self.arr)
+        arr = self.store[:]
         if dtype is not None:
             arr = arr.astype(dtype)
         return arr
 
-    # def __getitem__(self, key):
-    #     return np.array(self.arr[key])
+    def __call__(self):
+        return self.store[:]
+
+    def __repr__(self):
+        return f"<_LazyZarrArray url={self.url} shape={self.store.shape} ndim={self.store.ndim}>"
 
 
-def init_streamed_datasetdict(
+def init_datasetdict_streaming_from_hub(
     repo_id: str,
-    split_ids: Optional[dict[str, IndexType]] = None,
+    split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None
 ) -> dict[str, dict[int, dict[str, _LazyZarrArray]]]:
     """
@@ -174,15 +199,15 @@ def init_streamed_datasetdict(
             infos = yaml.safe_load(f)
         selected_ids = {split:range(n_samples) for split, n_samples in infos["num_samples"].items()}
 
-    dataset: dict[str, dict[int, dict[str, _LazyZarrArray]]] = {}
+    dataset_dict: dict[str, dict[int, dict[str, _LazyZarrArray]]] = {}
     for split in selected_ids.keys():
-        dataset[split] = {}
+        dataset_dict[split] = {}
         for sid in selected_ids[split]:
-            dataset[split][sid] = {}
+            dataset_dict[split][sid] = {}
             for feat in selected_features:
-                flatten_feat = feat.replace("/", "__")
+                flatten_feat = flatten_path(feat)
                 url = f"https://huggingface.co/datasets/{repo_id}/resolve/main/data/{split}/sample_{sid:09d}/{flatten_feat}"
-                dataset[split][sid][feat] = _LazyZarrArray(url)
+                dataset_dict[split][sid][feat] = _LazyZarrArray(url)
 
-    return dataset
+    return dataset_dict
 

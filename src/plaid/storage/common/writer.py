@@ -1,16 +1,33 @@
 from typing import Any, Union
+from collections.abc import Iterable
 from pathlib import Path
 import yaml
 import pickle
 import io
+import shutil
+import logging
 
 from plaid import ProblemDefinition
 
 from huggingface_hub import HfApi
 
+logger = logging.getLogger(__name__)
+
 #------------------------------------------------------
 # Write to disk
 #------------------------------------------------------
+
+
+def _check_folder(output_folder:Path, overwrite:bool)->None:
+    if output_folder.is_dir():
+        if overwrite:
+            shutil.rmtree(output_folder)
+            logger.warning(f"Existing {output_folder} directory has been reset.")
+        elif any(output_folder.iterdir()):
+            raise ValueError(
+                f"directory {output_folder} already exists and is not empty. Set `overwrite` to True if needed."
+            )
+
 
 def save_infos_to_disk(
     path: Union[str, Path], infos: dict[str, dict[str, str]]
@@ -27,8 +44,8 @@ def save_infos_to_disk(
         yaml.dump(infos, file, default_flow_style=False, sort_keys=False)
 
 
-def save_problem_definition_to_disk(
-    path: Union[str, Path], name: Union[str, Path], pb_def: ProblemDefinition
+def save_problem_definitions_to_disk(
+    path: Union[str, Path], pb_defs: Union[ProblemDefinition, Iterable[ProblemDefinition]]
 ) -> None:
     """Save a ProblemDefinition and its split information to disk.
 
@@ -37,7 +54,18 @@ def save_problem_definition_to_disk(
         name (str): The name of the problem_definition to store in the disk directory.
         pb_def (ProblemDefinition): The problem definition to save.
     """
-    pb_def.save_to_file(Path(path) / Path("problem_definitions") / Path(name))
+    if isinstance(pb_defs, ProblemDefinition):
+        pb_defs = [pb_defs]
+
+    if not isinstance(pb_defs, Iterable):
+        raise TypeError(f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}")
+
+    target_dir = Path(path) / "problem_definitions"
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    for pb_def in pb_defs:
+        name = pb_def.get_name() or "default"
+        pb_def.save_to_file(target_dir / name)
 
 
 def save_metadata_to_disk(
@@ -105,8 +133,8 @@ def push_infos_to_hub(
         raise ValueError("'infos' must not be empty")
 
 
-def push_problem_definition_to_hub(
-    repo_id: str, name: str, pb_def: ProblemDefinition
+def push_problem_definitions_to_hub(
+    repo_id: str, pb_defs: Union[ProblemDefinition, Iterable[ProblemDefinition]]
 ) -> None:  # pragma: no cover (not tested in unit tests)
     """Upload a ProblemDefinition and its split information to the Hugging Face Hub.
 
@@ -115,25 +143,34 @@ def push_problem_definition_to_hub(
         name (str): The name of the problem_definition to store in the repo.
         pb_def (ProblemDefinition): The problem definition to upload.
     """
+    if isinstance(pb_defs, ProblemDefinition):
+        pb_defs = [pb_defs]
+
+    if not isinstance(pb_defs, Iterable):
+        raise TypeError(f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}")
+
     api = HfApi()
-    data = pb_def._generate_problem_infos_dict()
-    for k, v in list(data.items()):
-        if not v:
-            data.pop(k)
-    if data is not None:
-        yaml_str = yaml.dump(data)
-        yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
 
-    if not name.endswith(".yaml"):
-        name = f"{name}.yaml"
+    for pb_def in pb_defs:
+        name = pb_def.get_name() or "default"
+        data = pb_def._generate_problem_infos_dict()
+        for k, v in list(data.items()):
+            if not v:
+                data.pop(k)
+        if data is not None:
+            yaml_str = yaml.dump(data)
+            yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
 
-    api.upload_file(
-        path_or_fileobj=yaml_buffer,
-        path_in_repo=f"problem_definitions/{name}",
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message=f"Upload problem_definitions/{name}",
-    )
+        if not name.endswith(".yaml"):
+            name = f"{name}.yaml"
+
+        api.upload_file(
+            path_or_fileobj=yaml_buffer,
+            path_in_repo=f"problem_definitions/{name}",
+            repo_id=repo_id,
+            repo_type="dataset",
+            commit_message=f"Upload problem_definitions/{name}",
+        )
 
 
 def push_metadata_to_hub(

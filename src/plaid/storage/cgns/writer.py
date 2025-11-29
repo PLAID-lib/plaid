@@ -1,4 +1,6 @@
 import yaml
+import shutil
+import logging
 
 import multiprocessing as mp
 from pathlib import Path
@@ -6,43 +8,33 @@ from typing import Union, Callable, Generator, Optional
 
 from tqdm import tqdm
 
-import zarr
-
-import numpy as np
-
 from plaid import Sample
-from plaid.storage.common import build_sample_dict
 from plaid.types import IndexType
 
 from huggingface_hub import HfApi, DatasetCard
 
-
-def flatten_path(key: str) -> str:
-    return key.replace("/", "__")
-
-
-def auto_chunks(shape, target_n):
-    # ensure pure Python ints
-    target_n = int(target_n)
-    shape = tuple(int(s) for s in shape)
-
-    # elements in one "row"
-    elems_per_slice = int(np.prod(shape[1:]) or 1)
-
-    rows = max(1, target_n // elems_per_slice)
-    rows = min(rows, shape[0])  # cannot exceed the dimension size
-
-    return (rows,) + shape[1:]
+logger = logging.getLogger(__name__)
 
 
 def save_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    variable_schema :dict[str, dict],
     gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
+    overwrite: bool = False
 ) -> None:
+
+    output_folder = Path(output_folder)
+
+    if output_folder.is_dir():
+        if overwrite:
+            shutil.rmtree(output_folder)
+            logger.warning(f"Existing {output_folder} directory has been reset.")
+        elif any(output_folder.iterdir()):
+            raise ValueError(
+                f"directory {output_folder} already exists and is not empty. Set `overwrite` to True if needed."
+            )
 
     assert (
         (gen_kwargs is None and num_proc == 1) or
@@ -53,27 +45,17 @@ def save_datasetdict_to_disk(
         "`num_proc > 1`."
     )
 
-    output_folder = Path(output_folder) / "data"
+    output_folder = output_folder / "data"
     output_folder.mkdir(exist_ok=True, parents=True)
 
-    var_features_keys = list(variable_schema.keys())
-
     def worker_batch(
-        split_root_path, gen_func, var_features_keys, batch, start_index, queue
+        gen_func, batch, start_index, queue
     ):
         """Process a single batch and write samples to Zarr."""
-        split_root = zarr.open_group(split_root_path, mode="a")
         sample_counter = start_index
 
         for sample in gen_func([batch]):
-            sample_dict, _, _ = build_sample_dict(sample)
-            sample_data = {
-                path: sample_dict.get(path, None) for path in var_features_keys
-            }
-
-            g = split_root.create_group(f"sample_{sample_counter:09d}")
-            for key, value in sample_data.items():
-                g.create_array(flatten_path(key), data=value, chunks=auto_chunks(value.shape, 5_000_000)) # chunks=value.shape
+            sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
 
             sample_counter += 1
             queue.put(1)
@@ -87,8 +69,8 @@ def save_datasetdict_to_disk(
                 pbar.update(1)
 
     for split_name, gen_func in generators.items():
-        split_root_path = str(output_folder / split_name)
-        split_root = zarr.open_group(split_root_path, mode="w")
+        split_path = output_folder / split_name
+        split_path.mkdir(exist_ok=True, parents=True)
 
         gen_kwargs_ = gen_kwargs or {sn: {} for sn in generators.keys()}
         batch_ids_list = gen_kwargs_.get(split_name, {}).get("shards_ids", [])
@@ -110,9 +92,7 @@ def save_datasetdict_to_disk(
                 p = mp.Process(
                     target=worker_batch,
                     args=(
-                        split_root_path,
                         gen_func,
-                        var_features_keys,
                         batch,
                         start_index,
                         queue,
@@ -132,14 +112,8 @@ def save_datasetdict_to_disk(
             sample_counter = 0
             with tqdm(total=total_samples, desc=f"Writing {split_name} split", disable = not verbose) as pbar:
                 for sample in gen_func():
-                    sample_dict, _, _ = build_sample_dict(sample)
-                    sample_data = {
-                        path: sample_dict.get(path, None) for path in var_features_keys
-                    }
 
-                    g = split_root.create_group(f"sample_{sample_counter:09d}")
-                    for key, value in sample_data.items():
-                        g.create_array(flatten_path(key), data=value, chunks=auto_chunks(value.shape, 5_000_000)) # chunks=value.shape
+                    sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
 
                     sample_counter += 1
                     pbar.update(1)
@@ -263,7 +237,7 @@ tags:
         lines.insert(count, "  features:")
         count += 1
         for fn, type_ in variable_schema.items():
-            lines.insert(count, f"  - name: {flatten_path(fn)}")
+            lines.insert(count, f"  - name: {fn}")
             count += 1
             lines.insert(count, _dict_to_list_format(type_))
             count += 1
@@ -305,7 +279,7 @@ tags:
     )
 
     str__ += """
-Example of commands [TO UPDATE FOR ZARR]:
+Example of commands [TO UPDATE FOR CGNS]:
 ```python
 from datasets import load_dataset
 from plaid.bridges import huggingface_bridge

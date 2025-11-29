@@ -1,7 +1,10 @@
 
 import pickle
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Union, Optional
+
+
+import tempfile
 
 import yaml
 from huggingface_hub import hf_hub_download, snapshot_download
@@ -13,7 +16,7 @@ from plaid import ProblemDefinition
 # Load from disk
 #------------------------------------------------------
 
-def load_infos_from_disk(path: Union[str, Path]) -> dict[str, dict[str, str]]:
+def load_infos_from_disk(path: Union[str, Path]) -> dict[str, Any]:
     """Load dataset information from a YAML file stored on disk.
 
     Args:
@@ -28,9 +31,9 @@ def load_infos_from_disk(path: Union[str, Path]) -> dict[str, dict[str, str]]:
     return infos
 
 
-def load_problem_definition_from_disk(
-    path: Union[str, Path], name: Union[str, Path]
-) -> ProblemDefinition:
+def load_problem_definitions_from_disk(
+    path: Union[str, Path]
+) -> Optional[list[ProblemDefinition]]:
     """Load a ProblemDefinition and its split information from disk.
 
     Args:
@@ -40,14 +43,23 @@ def load_problem_definition_from_disk(
     Returns:
         ProblemDefinition: The loaded problem definition.
     """
-    pb_def = ProblemDefinition()
-    pb_def._load_from_file_(Path(path) / Path("problem_definitions") / Path(name))
-    return pb_def
+    pb_def_dir = Path(path) / Path("problem_definitions")
 
+    if pb_def_dir.is_dir():
+
+        pb_defs = []
+        for p in pb_def_dir.iterdir():
+            if p.is_file():
+                pb_def = ProblemDefinition()
+                pb_def._load_from_file_(pb_def_dir/ Path(p.name))
+                pb_defs.append(pb_def)
+        return pb_defs
+    else:
+        return None
 
 def load_metadata_from_disk(
     path: Union[str, Path],
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Load a tree structure for a dataset from disk.
 
     This function loads two components from the specified directory:
@@ -72,34 +84,16 @@ def load_metadata_from_disk(
     with open(Path(path) / Path("constant_schema.yaml"), "r", encoding="utf-8") as f:
         constant_schema = yaml.safe_load(f)
 
-    cgns_types = {}
-    for path in variable_schema.keys():
-        cgns_types[path] = variable_schema[path]["cgns_type"]
-    for path in constant_schema.keys():
-        cgns_types[path] = constant_schema[path]["cgns_type"]
-
-    return flat_cst, variable_schema, constant_schema, cgns_types
+    return flat_cst, variable_schema, constant_schema
 
 
 #------------------------------------------------------
 # Load from from hub
 #------------------------------------------------------
 
-def download_repo(
-    repo_id: str,
-    local_dir: Union[str, Path],
-)-> str:  # pragma: no cover (not tested in unit tests)
-
-    return snapshot_download(
-        repo_id=repo_id,
-        repo_type="dataset",
-        local_dir=local_dir
-    )
-
-
 def load_infos_from_hub(
     repo_id: str,
-) -> dict[str, dict[str, str]]:  # pragma: no cover (not tested in unit tests)
+) -> dict[str, Any]:  # pragma: no cover (not tested in unit tests)
     """Load dataset infos from the Hugging Face Hub.
 
     Downloads the infos.yaml file from the specified repository and parses it as a dictionary.
@@ -120,9 +114,9 @@ def load_infos_from_hub(
     return infos
 
 
-def load_problem_definition_from_hub(
-    repo_id: str, name: str
-) -> ProblemDefinition:  # pragma: no cover (not tested in unit tests)
+def load_problem_definitions_from_hub(
+    repo_id: str
+) -> Optional[list[ProblemDefinition]]:  # pragma: no cover (not tested in unit tests)
     """Load a ProblemDefinition from the Hugging Face Hub.
 
     Downloads the problem infos YAML and split JSON files from the specified repository and location,
@@ -130,32 +124,24 @@ def load_problem_definition_from_hub(
 
     Args:
         repo_id (str): The repository ID on the Hugging Face Hub.
-        name (str): The name of the problem_definition stored in the repo.
 
     Returns:
         ProblemDefinition: The loaded problem definition.
     """
-    if not name.endswith(".yaml"):
-        name = f"{name}.yaml"
-
-    # Download problem_infos.yaml
-    yaml_path = hf_hub_download(
-        repo_id=repo_id,
-        filename=f"problem_definitions/{name}",
-        repo_type="dataset",
-    )
-    with open(yaml_path, "r", encoding="utf-8") as f:
-        yaml_data = yaml.safe_load(f)
-
-    prob_def = ProblemDefinition()
-    prob_def._initialize_from_problem_infos_dict(yaml_data)
-
-    return prob_def
+    with tempfile.TemporaryDirectory(prefix="pb_def_") as temp_folder:
+        snapshot_download(
+            repo_id=repo_id,
+            repo_type="dataset",
+            allow_patterns=[f"problem_definitions/"],
+            local_dir=temp_folder,
+        )
+        pb_defs = load_problem_definitions_from_disk(temp_folder)
+    return pb_defs
 
 
 def load_metadata_from_hub(
     repo_id: str,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:  # pragma: no cover (not tested in unit tests)
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:  # pragma: no cover (not tested in unit tests)
     """Load the tree structure metadata of a PLAID dataset from the Hugging Face Hub.
 
     This function retrieves two artifacts previously uploaded alongside a dataset:
@@ -205,12 +191,6 @@ def load_metadata_from_hub(
     with open(yaml_path, "r", encoding="utf-8") as f:
         constant_schema = yaml.safe_load(f)
 
-    cgns_types = {}
-    for path in variable_schema.keys():
-        cgns_types[path] = variable_schema[path]["cgns_type"]
-    for path in constant_schema.keys():
-        cgns_types[path] = constant_schema[path]["cgns_type"]
-
-    return flat_cst, variable_schema, constant_schema, cgns_types
+    return flat_cst, variable_schema, constant_schema
 
 

@@ -289,7 +289,7 @@ def _process_shard_debug(
 def preprocess_splits(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
-    processes_number: int = 1,
+    num_proc: int = 1,
     verbose: bool = True,
 ) -> tuple[
     dict[str, set[str]],
@@ -316,7 +316,7 @@ def preprocess_splits(
             accept a single argument (a sequence of shard ids) and yield PLAID samples.
         gen_kwargs (dict[str, dict[str, list[IndexType]]]):
             Per-split kwargs used to drive generator invocation (e.g. {"train": {"shards_ids": [...]}}).
-        processes_number (int, optional):
+        num_proc (int, optional):
             Number of worker processes to use for shard-level parallelism. Defaults to 1.
         verbose (bool, optional):
             If True, displays progress bars. Defaults to True.
@@ -348,7 +348,7 @@ def preprocess_splits(
 
     for split_name, generator_fn in generators.items():
         shards_ids_list = gen_kwargs_[split_name].get("shards_ids", [None])
-        n_proc = max(1, processes_number or len(shards_ids_list))
+        n_proc = max(1, num_proc or len(shards_ids_list))
 
         shards_data = []
 
@@ -482,17 +482,17 @@ def preprocess_splits(
 def preprocess(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
-    processes_number: int = 1,
+    num_proc: int = 1,
     verbose: bool = True,
 ):
 
     assert (
-        (gen_kwargs is None and processes_number == 1) or
-        (gen_kwargs is not None and processes_number > 1)
+        (gen_kwargs is None and num_proc == 1) or
+        (gen_kwargs is not None and num_proc > 1)
     ), (
         "Invalid configuration: either provide only `generators` with "
-        "`processes_number == 1`, or provide `gen_kwargs` with "
-        "`processes_number > 1`."
+        "`num_proc == 1`, or provide `gen_kwargs` with "
+        "`num_proc > 1`."
     )
 
     (
@@ -502,7 +502,7 @@ def preprocess(
         global_cgns_types,
         global_feature_types,
         split_n_samples,
-    ) = preprocess_splits(generators, gen_kwargs, processes_number, verbose)
+    ) = preprocess_splits(generators, gen_kwargs, num_proc, verbose)
 
     # --- build features ---
     var_features = sorted(list(set().union(*split_var_path.values())))
