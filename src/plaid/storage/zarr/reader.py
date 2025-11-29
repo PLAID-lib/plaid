@@ -144,7 +144,7 @@ def init_streamed_datasetdict(
     Lazily stream a Zarr dataset from a HF dataset repo.
 
     Returns:
-        dataset[split][sample_id][feature] -> LazyZarrArray
+        dataset[split][sample_id][feature] -> _LazyZarrArray
     """
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
