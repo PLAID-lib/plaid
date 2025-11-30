@@ -1,30 +1,26 @@
+import logging
 import os
 import shutil
-
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional, Union
+
 import fsspec
 import yaml
-
 import zarr
-from huggingface_hub import snapshot_download, hf_hub_download
+from huggingface_hub import hf_hub_download, snapshot_download
 
 from .writer import flatten_path
 
-import logging
-import numpy as np
-
-from plaid.types.common import IndexType
-
 logger = logging.getLogger(__name__)
 
-#------------------------------------------------------
+# ------------------------------------------------------
 # Load from disk
-#------------------------------------------------------
+# ------------------------------------------------------
+
 
 def init_datasetdict_from_disk(
-    path: Union[str, Path]
-)->dict[str, zarr.core.group.Group]:
+    path: Union[str, Path],
+) -> dict[str, zarr.core.group.Group]:
     """Load a Hugging Face dataset or dataset dictionary from disk.
 
     This function wraps `datasets.load_from_disk` to accept either a string path or a
@@ -46,15 +42,22 @@ def init_datasetdict_from_disk(
     """
     local_path = Path(path) / "data"
     split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
-    return {sn: zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r") for sn in split_names}
+    return {
+        sn: zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r")
+        for sn in split_names
+    }
 
 
-#------------------------------------------------------
+# ------------------------------------------------------
 # Load from from hub
-#------------------------------------------------------
+# ------------------------------------------------------
 
-def _zarr_patterns(repo_id, split_ids:Optional[dict[str, int]]=None, features: Optional[list[str]]=None):
 
+def _zarr_patterns(
+    repo_id,
+    split_ids: Optional[dict[str, int]] = None,
+    features: Optional[list[str]] = None,
+):
     # include only selected sample ids
     if split_ids is not None:
         allow_patterns = []
@@ -86,7 +89,9 @@ def _zarr_patterns(repo_id, split_ids:Optional[dict[str, int]]=None, features: O
         all_features = list(variable_schema.keys()) + list(constant_schema.keys())
         ignored_features = [f for f in all_features if f not in features]
 
-        ignore_patterns += [f"data/*/{flatten_path(feat)}/*" for feat in ignored_features]
+        ignore_patterns += [
+            f"data/*/{flatten_path(feat)}/*" for feat in ignored_features
+        ]
 
     return allow_patterns, ignore_patterns
 
@@ -96,9 +101,8 @@ def download_datasetdict_from_hub(
     local_dir: Union[str, Path],
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,
-    overwrite: bool = False
-)-> None:  # pragma: no cover (not tested in unit tests)
-
+    overwrite: bool = False,
+) -> None:  # pragma: no cover (not tested in unit tests)
     output_folder = Path(local_dir)
 
     if output_folder.is_dir():
@@ -117,7 +121,7 @@ def download_datasetdict_from_hub(
         repo_type="dataset",
         allow_patterns=allow_patterns,
         ignore_patterns=ignore_patterns,
-        local_dir=local_dir
+        local_dir=local_dir,
     )
 
 
@@ -163,10 +167,9 @@ class _LazyZarrArray:
 def init_datasetdict_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, int]] = None,
-    features: Optional[list[str]] = None
+    features: Optional[list[str]] = None,
 ) -> dict[str, dict[int, dict[str, _LazyZarrArray]]]:
-    """
-    Lazily stream a Zarr dataset from a HF dataset repo.
+    """Lazily stream a Zarr dataset from a HF dataset repo.
 
     Returns:
         dataset[split][sample_id][feature] -> _LazyZarrArray
@@ -197,7 +200,9 @@ def init_datasetdict_streaming_from_hub(
         )
         with open(yaml_path, "r", encoding="utf-8") as f:
             infos = yaml.safe_load(f)
-        selected_ids = {split:range(n_samples) for split, n_samples in infos["num_samples"].items()}
+        selected_ids = {
+            split: range(n_samples) for split, n_samples in infos["num_samples"].items()
+        }
 
     dataset_dict: dict[str, dict[int, dict[str, _LazyZarrArray]]] = {}
     for split in selected_ids.keys():
@@ -210,4 +215,3 @@ def init_datasetdict_streaming_from_hub(
                 dataset_dict[split][sid][feat] = _LazyZarrArray(url)
 
     return dataset_dict
-

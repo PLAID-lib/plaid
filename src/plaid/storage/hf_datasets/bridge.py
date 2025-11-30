@@ -2,14 +2,14 @@ from functools import partial
 from typing import Callable, Generator, Optional
 
 import datasets
+import numpy as np
+import pyarrow as pa
 from datasets import Features, Sequence, Value
 
 from plaid import Dataset, Sample
-from plaid.storage.common import build_sample_dict
+from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
 
-import numpy as np
-import pyarrow as pa
 
 def convert_dtype_to_hf_feature(feature_type):
     """Convert a dict {'dtype': ..., 'ndim': ...} into HF Feature/Sequence."""
@@ -17,9 +17,7 @@ def convert_dtype_to_hf_feature(feature_type):
     ndim = feature_type["ndim"]
 
     # Map numpy dtype to HF Value type
-    if base_dtype.startswith("float"):
-        value_type = Value("float32")  # or "float64" if you want
-    elif base_dtype.startswith("int"):
+    if base_dtype.startswith("float") or base_dtype.startswith("int"):
         value_type = Value(base_dtype)
     elif base_dtype.startswith("<U") or base_dtype.startswith("|S"):
         value_type = Value("string")
@@ -42,7 +40,7 @@ def convert_to_hf_feature(variable_schema):
 def plaid_dataset_to_datasetdict(
     dataset: Dataset,
     main_splits: dict[str, IndexType],
-    var_features_types :dict[str, dict],
+    var_features_types: dict[str, dict],
     processes_number: int = 1,
     writer_batch_size: int = 1,
 ) -> datasets.DatasetDict:
@@ -101,16 +99,16 @@ def plaid_dataset_to_datasetdict(
         generators,
         var_features_types,
         processes_number=processes_number,
-        writer_batch_size=writer_batch_size
+        writer_batch_size=writer_batch_size,
     )
 
 
 def generator_to_datasetdict(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    variable_schema :dict,
+    variable_schema: dict,
     gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     processes_number: int = 1,
-    writer_batch_size: int = 1
+    writer_batch_size: int = 1,
 ) -> datasets.DatasetDict:
     """Convert PLAID dataset generators into a Hugging Face `datasets.DatasetDict`.
 
@@ -239,7 +237,9 @@ def to_var_sample_dict(
                     var_sample_dict[name] = None  # pragma: no cover
                 else:
                     if isinstance(value, pa.ListArray):
-                        var_sample_dict[name] = np.stack(value.to_numpy(zero_copy_only=False))
+                        var_sample_dict[name] = np.stack(
+                            value.to_numpy(zero_copy_only=False)
+                        )
                     elif isinstance(value, pa.StringArray):  # pragma: no cover
                         var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
                     else:

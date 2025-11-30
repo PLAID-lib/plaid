@@ -1,25 +1,23 @@
-import os
-
-from pathlib import Path
-from typing import Union, Optional
-import fsspec
-import yaml
-import tempfile
-import shutil
-
-from huggingface_hub import snapshot_download, hf_hub_download
-
 import logging
-import numpy as np
+import os
+import shutil
+import tempfile
+from pathlib import Path
+from typing import Optional, Union
 
-from plaid.types.common import IndexType
+import fsspec
+import numpy as np
+import yaml
+from huggingface_hub import hf_hub_download, snapshot_download
+
 from plaid import Sample
 
 logger = logging.getLogger(__name__)
 
-#------------------------------------------------------
+# ------------------------------------------------------
 # Load from disk
-#------------------------------------------------------
+# ------------------------------------------------------
+
 
 class _LazySampleLocal:
     __slots__ = ("_sample_path",)
@@ -38,15 +36,18 @@ class _LazySampleLocal:
 
 
 def init_datasetdict_from_disk(
-    path: Union[str, Path]
+    path: Union[str, Path],
 ) -> dict[str, dict[int, _LazySampleLocal]]:
-
     path = Path(path) / "data"
 
     split_ids = {}
     for split in path.iterdir():
         if split.is_dir():
-            sample_dirs = [p for p in split.iterdir() if p.is_dir() and p.name.startswith("sample_")]
+            sample_dirs = [
+                p
+                for p in split.iterdir()
+                if p.is_dir() and p.name.startswith("sample_")
+            ]
             sids = np.array([int(p.name.split("_")[1]) for p in sample_dirs], dtype=int)
             split_ids[split.name] = np.sort(sids)
 
@@ -55,21 +56,21 @@ def init_datasetdict_from_disk(
     for split, ids in split_ids.items():
         split_path = path / split
         dataset[split] = {
-            sid: _LazySampleLocal(split_path / f"sample_{sid:09d}")
-            for sid in ids
+            sid: _LazySampleLocal(split_path / f"sample_{sid:09d}") for sid in ids
         }
 
     return dataset
 
 
-#------------------------------------------------------
+# ------------------------------------------------------
 # Load from from hub
-#------------------------------------------------------
+# ------------------------------------------------------
+
 
 class _LazySampleStreaming:
     __slots__ = ("repo_id", "split", "sid", "fs")
 
-    def __init__(self, repo_id:str, split:str, sid:str):
+    def __init__(self, repo_id: str, split: str, sid: str):
         self.repo_id = repo_id
         self.split = split
         self.sid = sid
@@ -83,7 +84,12 @@ class _LazySampleStreaming:
                 allow_patterns=[f"data/{self.split}/sample_{self.sid:09d}/"],
                 local_dir=temp_folder,
             )
-            sample = Sample(path=Path(temp_folder) / "data" / f"{self.split}" / f"sample_{self.sid:09d}")
+            sample = Sample(
+                path=Path(temp_folder)
+                / "data"
+                / f"{self.split}"
+                / f"sample_{self.sid:09d}"
+            )
         return sample
 
     def __call__(self):
@@ -97,9 +103,8 @@ def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
     split_ids: Optional[dict[str, int]] = None,
-    overwrite: bool = False
-)-> None:  # pragma: no cover (not tested in unit tests)
-
+    overwrite: bool = False,
+) -> None:  # pragma: no cover (not tested in unit tests)
     output_folder = Path(local_dir)
 
     if output_folder.is_dir():
@@ -122,13 +127,12 @@ def download_datasetdict_from_hub(
         repo_id=repo_id,
         repo_type="dataset",
         allow_patterns=allow_patterns,
-        local_dir=local_dir
+        local_dir=local_dir,
     )
 
 
 def init_datasetdict_streaming_from_hub(
-    repo_id: str,
-    split_ids: Optional[dict[str, int]] = None
+    repo_id: str, split_ids: Optional[dict[str, int]] = None
 ) -> dict[str, dict[int, dict[str, _LazySampleStreaming]]]:
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
@@ -144,7 +148,9 @@ def init_datasetdict_streaming_from_hub(
         )
         with open(yaml_path, "r", encoding="utf-8") as f:
             infos = yaml.safe_load(f)
-        selected_ids = {split:range(n_samples) for split, n_samples in infos["num_samples"].items()}
+        selected_ids = {
+            split: range(n_samples) for split, n_samples in infos["num_samples"].items()
+        }
 
     dataset_dict: dict[str, dict[int, dict[str, _LazySampleStreaming]]] = {}
     for split in selected_ids.keys():

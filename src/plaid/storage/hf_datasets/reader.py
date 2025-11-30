@@ -10,46 +10,43 @@
     - If the dataset is already cached locally, loads from disk.
     - Otherwise, loads from the hub, optionally using streaming mode.
 """
+
+import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Union, Optional
+from typing import Optional, Union
 
-import tempfile
 import datasets
 from datasets import load_dataset, load_from_disk
 from huggingface_hub import snapshot_download
 
-import logging
-
 logger = logging.getLogger(__name__)
 
 
-#------------------------------------------------------
+# ------------------------------------------------------
 # Load from disk
-#------------------------------------------------------
+# ------------------------------------------------------
 
-def init_datasetdict_from_disk(
-    path: Union[str, Path]
-) -> datasets.DatasetDict:
+
+def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
     file_ = Path(path) / "data" / "dataset_dict.json"
     if file_.is_file():
         # This is a dataset generated and save locally
-        return load_from_disk(dataset_path = str(Path(path) / "data"))
+        return load_from_disk(dataset_path=str(Path(path) / "data"))
     else:
         # This is a dataset downloaded from the hub
-        return load_dataset(path = str(Path(path) / "data"))
+        return load_dataset(path=str(Path(path) / "data"))
 
-#------------------------------------------------------
+
+# ------------------------------------------------------
 # Load from from hub
-#------------------------------------------------------
+# ------------------------------------------------------
+
 
 def download_datasetdict_from_hub(
-    repo_id: str,
-    local_dir: Union[str, Path],
-    overwrite: bool = False
-)-> str:  # pragma: no cover (not tested in unit tests)
-
+    repo_id: str, local_dir: Union[str, Path], overwrite: bool = False
+) -> str:  # pragma: no cover (not tested in unit tests)
     output_folder = Path(local_dir)
 
     if output_folder.is_dir():
@@ -65,16 +62,15 @@ def download_datasetdict_from_hub(
         repo_id=repo_id,
         repo_type="dataset",
         allow_patterns=["data/*"],
-        local_dir=local_dir
+        local_dir=local_dir,
     )
 
 
 def init_datasetdict_streaming_from_hub(
-    repo_id: str,
-    features: Optional[list[str]] = None
+    repo_id: str, features: Optional[list[str]] = None
 ):
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
         raise RuntimeError("Streaming mode not compatible with private mirror.")
 
-    return load_dataset(repo_id, streaming=True, columns = features)
+    return load_dataset(repo_id, streaming=True, columns=features)

@@ -18,7 +18,7 @@ from functools import partial
 from multiprocessing import Pool
 from pathlib import Path
 from queue import Empty
-from typing import Callable, Optional, Any, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import pyarrow as pa

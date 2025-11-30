@@ -1,14 +1,13 @@
-from typing import Union, Optional
 import logging
+from pathlib import Path
+from typing import Optional, Union
 
 import datasets
-
-from pathlib import Path
 import yaml
-
 from huggingface_hub import DatasetCard, hf_hub_download
 
 logger = logging.getLogger(__name__)
+
 
 def _compute_num_shards(hf_dataset_dict: datasets.DatasetDict) -> dict[str, int]:
     target_shard_size_mb = 500
@@ -155,8 +154,9 @@ def configure_dataset_card(
         dataset_card.push_to_hub("username/dataset")
         ```
     """
-
-    readme_path = hf_hub_download(repo_id=repo_id, filename="README.md", repo_type="dataset")
+    readme_path = hf_hub_download(
+        repo_id=repo_id, filename="README.md", repo_type="dataset"
+    )
 
     with open(readme_path, "r", encoding="utf-8") as f:
         dataset_card_str = f.read()
@@ -199,9 +199,7 @@ def configure_dataset_card(
             str__ += f"<img src='{url}' alt='{url}' width='1000'/>\n"
         str__ += "</p>\n\n"
 
-    str__ += (
-        f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
-    )
+    str__ += f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
 
     str__ += """
 Example of commands:

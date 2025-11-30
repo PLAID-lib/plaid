@@ -1,24 +1,24 @@
-from typing import Any, Union
+import io
+import logging
+import pickle
+import shutil
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any, Union
+
 import yaml
-import pickle
-import io
-import shutil
-import logging
+from huggingface_hub import HfApi
 
 from plaid import ProblemDefinition
 
-from huggingface_hub import HfApi
-
 logger = logging.getLogger(__name__)
 
-#------------------------------------------------------
+# ------------------------------------------------------
 # Write to disk
-#------------------------------------------------------
+# ------------------------------------------------------
 
 
-def _check_folder(output_folder:Path, overwrite:bool)->None:
+def _check_folder(output_folder: Path, overwrite: bool) -> None:
     if output_folder.is_dir():
         if overwrite:
             shutil.rmtree(output_folder)
@@ -45,7 +45,8 @@ def save_infos_to_disk(
 
 
 def save_problem_definitions_to_disk(
-    path: Union[str, Path], pb_defs: Union[ProblemDefinition, Iterable[ProblemDefinition]]
+    path: Union[str, Path],
+    pb_defs: Union[ProblemDefinition, Iterable[ProblemDefinition]],
 ) -> None:
     """Save a ProblemDefinition and its split information to disk.
 
@@ -58,7 +59,9 @@ def save_problem_definitions_to_disk(
         pb_defs = [pb_defs]
 
     if not isinstance(pb_defs, Iterable):
-        raise TypeError(f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}")
+        raise TypeError(
+            f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}"
+        )
 
     target_dir = Path(path) / "problem_definitions"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -72,7 +75,8 @@ def save_metadata_to_disk(
     path: Union[str, Path],
     flat_cst: dict[str, Any],
     variable_schema: dict[str, Any],
-    constant_schema: dict[str, Any]
+    constant_schema: dict[str, Any],
+    cgns_types: dict[str, Any]
 ) -> None:
     """Save the structure of a dataset tree to disk.
 
@@ -99,10 +103,14 @@ def save_metadata_to_disk(
     with open(Path(path) / "constant_schema.yaml", "w", encoding="utf-8") as f:
         yaml.dump(constant_schema, f, sort_keys=False)
 
+    with open(Path(path) / "cgns_types.yaml", "w", encoding="utf-8") as f:
+        yaml.dump(cgns_types, f, sort_keys=False)
 
-#------------------------------------------------------
+
+# ------------------------------------------------------
 # Push to hub
-#------------------------------------------------------
+# ------------------------------------------------------
+
 
 def push_infos_to_hub(
     repo_id: str, infos: dict[str, dict[str, str]]
@@ -147,7 +155,9 @@ def push_problem_definitions_to_hub(
         pb_defs = [pb_defs]
 
     if not isinstance(pb_defs, Iterable):
-        raise TypeError(f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}")
+        raise TypeError(
+            f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}"
+        )
 
     api = HfApi()
 
@@ -178,6 +188,7 @@ def push_metadata_to_hub(
     flat_cst: dict[str, Any],
     variable_schema: dict[str, Any],
     constant_schema: dict[str, Any],
+    cgns_types: dict[str, Any]
 ) -> None:  # pragma: no cover (not tested in unit tests)
     """Upload a dataset's tree structure to a Hugging Face dataset repository.
 
@@ -236,4 +247,16 @@ def push_metadata_to_hub(
         repo_id=repo_id,
         repo_type="dataset",
         commit_message="Upload constant_schema.yaml",
+    )
+
+    # cgns_types
+    yaml_str = yaml.dump(cgns_types, sort_keys=False)
+    yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+
+    api.upload_file(
+        path_or_fileobj=yaml_buffer,
+        path_in_repo="cgns_types.yaml",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message="Upload cgns_types.yaml",
     )

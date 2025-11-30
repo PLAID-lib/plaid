@@ -47,7 +47,7 @@ def infer_dtype(value) -> dict[str, int | str]:
 
 def build_sample_dict(
     sample: Sample,
-) -> tuple[dict[str, Any], list[str], dict[str, str]]:
+) -> tuple[dict[str, Any], set[str], dict[str, str]]:
     """Flatten a PLAID Sample's CGNS trees into Hugging Face–compatible arrays and metadata.
 
     The function traverses every CGNS tree stored in sample.features.data (keyed by time),
@@ -475,7 +475,7 @@ def preprocess_splits(
         split_var_path,
         global_cgns_types,
         global_feature_types,
-        split_n_samples
+        split_n_samples,
     )
 
 
@@ -485,10 +485,8 @@ def preprocess(
     num_proc: int = 1,
     verbose: bool = True,
 ):
-
-    assert (
-        (gen_kwargs is None and num_proc == 1) or
-        (gen_kwargs is not None and num_proc > 1)
+    assert (gen_kwargs is None and num_proc == 1) or (
+        gen_kwargs is not None and num_proc > 1
     ), (
         "Invalid configuration: either provide only `generators` with "
         "`num_proc == 1`, or provide `gen_kwargs` with "
@@ -529,10 +527,10 @@ def preprocess(
         )
     cst_features = first_value
 
-    var_features = [path for path in var_features if not path.endswith("_times")]
-    cst_features = [path for path in cst_features if not path.endswith("_times")]
+    # var_features = [path for path in var_features if not path.endswith("_times")]
+    # cst_features = [path for path in cst_features if not path.endswith("_times")]
 
-    def _build_schema(feature_list:list[str])->dict:
+    def _build_schema(feature_list: list[str]) -> dict:
         schema = {}
         for path in feature_list:
             if path.endswith("_times"):
@@ -544,10 +542,9 @@ def preprocess(
                 schema[path] = global_feature_types[path]
             else:
                 schema[path] = {"dtype": None}
-            schema[path]["cgns_type"] = global_cgns_types[path]
         return schema
 
     variable_schema = _build_schema(var_features)
     constant_schema = _build_schema(cst_features)
 
-    return split_flat_cst, variable_schema, constant_schema, split_n_samples
+    return split_flat_cst, variable_schema, constant_schema, split_n_samples, global_cgns_types

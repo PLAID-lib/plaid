@@ -1,20 +1,16 @@
-import yaml
-
 import multiprocessing as mp
 from pathlib import Path
-from typing import Union, Callable, Generator, Optional
-
-from tqdm import tqdm
-
-import zarr
+from typing import Callable, Generator, Optional, Union
 
 import numpy as np
+import yaml
+import zarr
+from huggingface_hub import DatasetCard, HfApi
+from tqdm import tqdm
 
 from plaid import Sample
-from plaid.storage.common import build_sample_dict
+from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
-
-from huggingface_hub import HfApi, DatasetCard
 
 
 def flatten_path(key: str) -> str:
@@ -38,15 +34,13 @@ def auto_chunks(shape, target_n):
 def save_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    variable_schema :dict[str, dict],
+    variable_schema: dict[str, dict],
     gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
 ) -> None:
-
-    assert (
-        (gen_kwargs is None and num_proc == 1) or
-        (gen_kwargs is not None and num_proc > 1)
+    assert (gen_kwargs is None and num_proc == 1) or (
+        gen_kwargs is not None and num_proc > 1
     ), (
         "Invalid configuration: either provide only `generators` with "
         "`num_proc == 1`, or provide `gen_kwargs` with "
@@ -73,14 +67,18 @@ def save_datasetdict_to_disk(
 
             g = split_root.create_group(f"sample_{sample_counter:09d}")
             for key, value in sample_data.items():
-                g.create_array(flatten_path(key), data=value, chunks=auto_chunks(value.shape, 5_000_000)) # chunks=value.shape
+                g.create_array(
+                    flatten_path(key),
+                    data=value,
+                    chunks=auto_chunks(value.shape, 5_000_000),
+                )  # chunks=value.shape
 
             sample_counter += 1
             queue.put(1)
 
     def tqdm_updater(total, queue, desc="Processing"):
         """Tqdm process that listens to the queue to update progress."""
-        with tqdm(total=total, desc=desc, disable = not verbose) as pbar:
+        with tqdm(total=total, desc=desc, disable=not verbose) as pbar:
             finished = 0
             while finished < total:
                 finished += queue.get()
@@ -130,7 +128,11 @@ def save_datasetdict_to_disk(
         else:
             # Sequential execution
             sample_counter = 0
-            with tqdm(total=total_samples, desc=f"Writing {split_name} split", disable = not verbose) as pbar:
+            with tqdm(
+                total=total_samples,
+                desc=f"Writing {split_name} split",
+                disable=not verbose,
+            ) as pbar:
                 for sample in gen_func():
                     sample_dict, _, _ = build_sample_dict(sample)
                     sample_data = {
@@ -139,13 +141,17 @@ def save_datasetdict_to_disk(
 
                     g = split_root.create_group(f"sample_{sample_counter:09d}")
                     for key, value in sample_data.items():
-                        g.create_array(flatten_path(key), data=value, chunks=auto_chunks(value.shape, 5_000_000)) # chunks=value.shape
+                        g.create_array(
+                            flatten_path(key),
+                            data=value,
+                            chunks=auto_chunks(value.shape, 5_000_000),
+                        )  # chunks=value.shape
 
                     sample_counter += 1
                     pbar.update(1)
 
 
-def push_datasetdict_to_hub(repo_id, local_dir, num_workers = 1):
+def push_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,
@@ -205,6 +211,7 @@ def configure_dataset_card(
         dataset_card.push_to_hub("username/dataset")
         ```
     """
+
     def _dict_to_list_format(d: dict) -> str:
         dtype = d.get("dtype", "unknown")
         ndim = d.get("ndim", 1)
@@ -236,8 +243,16 @@ tags:
     num_bytes = {}
     size_bytes = 0
     for sn in split_names:
-        nbe_samples[sn] = sum(1 for p in (local_folder / "data" / f"{sn}").iterdir() if p.is_dir() and p.name.startswith("sample_"))
-        num_bytes[sn] = sum(f.stat().st_size for f in (local_folder / "data" / f"{sn}").rglob('*') if f.is_file())
+        nbe_samples[sn] = sum(
+            1
+            for p in (local_folder / "data" / f"{sn}").iterdir()
+            if p.is_dir() and p.name.startswith("sample_")
+        )
+        num_bytes[sn] = sum(
+            f.stat().st_size
+            for f in (local_folder / "data" / f"{sn}").rglob("*")
+            if f.is_file()
+        )
         size_bytes += num_bytes[sn]
 
     lines = dataset_card_str.splitlines()
@@ -300,9 +315,7 @@ tags:
             str__ += f"<img src='{url}' alt='{url}' width='1000'/>\n"
         str__ += "</p>\n\n"
 
-    str__ += (
-        f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
-    )
+    str__ += f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
 
     str__ += """
 Example of commands [TO UPDATE FOR ZARR]:

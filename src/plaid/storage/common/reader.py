@@ -1,20 +1,17 @@
-
 import pickle
-from pathlib import Path
-from typing import Any, Union, Optional
-
-
 import tempfile
+from pathlib import Path
+from typing import Any, Optional, Union
 
 import yaml
 from huggingface_hub import hf_hub_download, snapshot_download
 
 from plaid import ProblemDefinition
 
-
-#------------------------------------------------------
+# ------------------------------------------------------
 # Load from disk
-#------------------------------------------------------
+# ------------------------------------------------------
+
 
 def load_infos_from_disk(path: Union[str, Path]) -> dict[str, Any]:
     """Load dataset information from a YAML file stored on disk.
@@ -32,7 +29,7 @@ def load_infos_from_disk(path: Union[str, Path]) -> dict[str, Any]:
 
 
 def load_problem_definitions_from_disk(
-    path: Union[str, Path]
+    path: Union[str, Path],
 ) -> Optional[list[ProblemDefinition]]:
     """Load a ProblemDefinition and its split information from disk.
 
@@ -46,20 +43,20 @@ def load_problem_definitions_from_disk(
     pb_def_dir = Path(path) / Path("problem_definitions")
 
     if pb_def_dir.is_dir():
-
         pb_defs = []
         for p in pb_def_dir.iterdir():
             if p.is_file():
                 pb_def = ProblemDefinition()
-                pb_def._load_from_file_(pb_def_dir/ Path(p.name))
+                pb_def._load_from_file_(pb_def_dir / Path(p.name))
                 pb_defs.append(pb_def)
         return pb_defs
     else:
         return None
 
+
 def load_metadata_from_disk(
     path: Union[str, Path],
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     """Load a tree structure for a dataset from disk.
 
     This function loads two components from the specified directory:
@@ -84,12 +81,16 @@ def load_metadata_from_disk(
     with open(Path(path) / Path("constant_schema.yaml"), "r", encoding="utf-8") as f:
         constant_schema = yaml.safe_load(f)
 
-    return flat_cst, variable_schema, constant_schema
+    with open(Path(path) / Path("cgns_types.yaml"), "r", encoding="utf-8") as f:
+        cgns_types = yaml.safe_load(f)
+
+    return flat_cst, variable_schema, constant_schema, cgns_types
 
 
-#------------------------------------------------------
+# ------------------------------------------------------
 # Load from from hub
-#------------------------------------------------------
+# ------------------------------------------------------
+
 
 def load_infos_from_hub(
     repo_id: str,
@@ -115,7 +116,7 @@ def load_infos_from_hub(
 
 
 def load_problem_definitions_from_hub(
-    repo_id: str
+    repo_id: str,
 ) -> Optional[list[ProblemDefinition]]:  # pragma: no cover (not tested in unit tests)
     """Load a ProblemDefinition from the Hugging Face Hub.
 
@@ -132,7 +133,7 @@ def load_problem_definitions_from_hub(
         snapshot_download(
             repo_id=repo_id,
             repo_type="dataset",
-            allow_patterns=[f"problem_definitions/"],
+            allow_patterns=["problem_definitions/"],
             local_dir=temp_folder,
         )
         pb_defs = load_problem_definitions_from_disk(temp_folder)
@@ -141,7 +142,9 @@ def load_problem_definitions_from_hub(
 
 def load_metadata_from_hub(
     repo_id: str,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:  # pragma: no cover (not tested in unit tests)
+) -> tuple[
+    dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
+]:  # pragma: no cover (not tested in unit tests)
     """Load the tree structure metadata of a PLAID dataset from the Hugging Face Hub.
 
     This function retrieves two artifacts previously uploaded alongside a dataset:
@@ -191,6 +194,14 @@ def load_metadata_from_hub(
     with open(yaml_path, "r", encoding="utf-8") as f:
         constant_schema = yaml.safe_load(f)
 
-    return flat_cst, variable_schema, constant_schema
+    # cgns_types
+    yaml_path = hf_hub_download(
+        repo_id=repo_id,
+        filename="cgns_types.yaml",
+        repo_type="dataset",
+    )
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        cgns_types = yaml.safe_load(f)
 
 
+    return flat_cst, variable_schema, constant_schema, cgns_types

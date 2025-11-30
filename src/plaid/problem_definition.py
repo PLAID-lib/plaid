@@ -126,6 +126,7 @@ class ProblemDefinition(object):
             raise ValueError(f"A name is already in self._name: (`{self._name}`)")
         else:
             self._name = name
+
     # -------------------------------------------------------------------------#
     def get_version(self) -> Version:
         """Get the version. None if not defined.

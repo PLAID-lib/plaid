@@ -124,4 +124,5 @@ def unflatten_cgns_tree(
         nodes[path] = [path.split("/")[-1], value, [], cgns_type]
 
     # Re-link nodes into tree structure
-    return nodes_to_tree(nodes)
+    tree = nodes_to_tree(nodes)
+    return tree
