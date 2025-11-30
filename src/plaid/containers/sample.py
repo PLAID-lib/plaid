@@ -668,7 +668,7 @@ class Sample(BaseModel):
             if overwrite:
                 shutil.rmtree(path)
                 logger.warning(f"Existing {path} directory has been reset.")
-            elif len(list(path.glob("*"))):
+            elif any(path.iterdir()):
                 raise ValueError(
                     f"directory {path} already exists and is not empty. Set `overwrite` to True if needed."
                 )
