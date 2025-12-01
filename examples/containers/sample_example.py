@@ -146,7 +146,7 @@ meshes_dict = {0.0: tree, 0.5: tree, 1.0: tree}
 # Set meshes in the Sample
 new_sample_mult_mesh.features.set_meshes(meshes_dict)
 
-print(f"{new_sample_mult_mesh.get_all_mesh_times() = }")
+print(f"{new_sample_mult_mesh.get_all_time_values() = }")
 
 # %% [markdown]
 # ## Section 2: Accessing and Modifying Sample Data
@@ -349,13 +349,13 @@ print(sample_mesh)
 
 # %%
 # Before adding new tree
-print(f"{sample.features.get_all_mesh_times() = }")
+print(f"{sample.features.get_all_time_values() = }")
 
 # Add one CGNS tree at time 1.
 sample.features.add_tree(tree, 1.0)
 
 # After adding new tree
-print(f"{sample.features.get_all_mesh_times() = }")
+print(f"{sample.features.get_all_time_values() = }")
 
 # %% [markdown]
 # ### Creating a Sample Hierarchy with bases, zones, and associated data.
@@ -385,7 +385,7 @@ for b_name in bases_names:
 
 # %%
 # Without a provided default time, it searches the first time available in all mesh times
-print(f"{sample.features.get_all_mesh_times() = }")
+print(f"{sample.features.get_all_time_values() = }")
 print(f"{sample.features.get_time_assignment() = }", end="\n\n")
 
 # Set default time
@@ -503,8 +503,15 @@ print(
 
 # %%
 from IPython.display import Image
+
 try:
-    filename = Path(__file__).parent.parent.parent / "docs" / "source" / "images" / "default_value_selection.png"
+    filename = (
+        Path(__file__).parent.parent.parent
+        / "docs"
+        / "source"
+        / "images"
+        / "default_value_selection.png"
+    )
 except NameError:
     filename = Path("..") / ".." / "images" / "default_value_selection.png"
 Image(filename=filename)
@@ -518,7 +525,9 @@ Image(filename=filename)
 # ### Save Sample to as a file tree
 
 # %%
-test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+test_pth = Path(
+    f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
+)
 test_pth.mkdir(parents=True, exist_ok=True)
 
 sample_save_fname = test_pth / "test"

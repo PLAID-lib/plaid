@@ -9,13 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- (docs) improve contribution guidelines
+- (docs) improve contribution guidelines.
 
 ### Changed
 
-- (types/containers) move `FeatureIdentifier` class from `plaid.types` to `plaid.containers` (backwards compatibility maintained).
+- (types/containers) move `FeatureIdentifier` class from `plaid.types` to `plaid.containers`.
+- (features) rename `get_all_mesh_times()` to `get_all_time_values()`.
 
 ### Fixes
+
+- (dataset/huggingface_bridge) add optional `warn` parameter to `Dataset.set_infos()` to allow silent replacement of infos; `huggingface_dataset_to_plaid` now uses `warn=False` to prevent unnecessary warnings.
 
 ### Removed
 
