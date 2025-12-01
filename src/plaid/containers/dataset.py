@@ -422,7 +422,7 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = [time] if time else sample.features.get_all_mesh_times()
+            times = [time] if time else sample.features.get_all_time_values()
             for time in times:
                 base_names = (
                     [base_name]
@@ -1216,7 +1216,7 @@ class Dataset(object):
                 scalar_counts[name] = scalar_counts.get(name, 0) + 1
 
             # Fields
-            times = sample.features.get_all_mesh_times()
+            times = sample.features.get_all_time_values()
             for time in times:
                 base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
@@ -1297,7 +1297,7 @@ class Dataset(object):
         for sample in self._samples.values():
             all_scalar_names.update(sample.get_scalar_names())
 
-            times = sample.features.get_all_mesh_times()
+            times = sample.features.get_all_time_values()
             for time in times:
                 base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
@@ -1326,7 +1326,7 @@ class Dataset(object):
 
             # Check fields
             sample_fields = set()
-            times = sample.features.get_all_mesh_times()
+            times = sample.features.get_all_time_values()
             for time in times:
                 base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
