@@ -16,9 +16,9 @@ import pytest
 from packaging.version import Version
 
 import plaid
+from plaid.containers import FeatureIdentifier
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
-from plaid.types.feature_types import FeatureIdentifier
 from plaid.utils.base import DeprecatedError, ShapeError
 
 # %% Fixtures
