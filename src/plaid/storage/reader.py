@@ -60,6 +60,10 @@ from plaid.storage.zarr.reader import (
 )
 
 
+# rewamp:
+# end of https://chatgpt.com/share/692df35e-f560-800f-9624-f625059acca0
+# use of IterableDataset, end of: https://chatgpt.com/share/692e8947-d160-800f-ae80-5380247eb6d5
+
 def _initialize_cgns_types(
         variable_schema: dict[str, Any],
         constant_schema: dict[str, Any])->dict[str, Any]:
