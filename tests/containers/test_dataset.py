@@ -16,9 +16,9 @@ import pytest
 from packaging.version import Version
 
 import plaid
+from plaid.containers import FeatureIdentifier
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
-from plaid.types.feature_types import FeatureIdentifier
 from plaid.utils.base import DeprecatedError, ShapeError
 
 # %% Fixtures
@@ -33,8 +33,8 @@ def current_directory():
 
 
 def compare_two_samples(sample_1: Sample, sample_2: Sample):
-    assert set(sample_1.features.get_all_mesh_times()) == set(
-        sample_2.features.get_all_mesh_times()
+    assert set(sample_1.features.get_all_time_values()) == set(
+        sample_2.features.get_all_time_values()
     )
     assert set(sample_1.get_scalar_names()) == set(sample_2.get_scalar_names())
     assert set(sample_1.get_field_names()) == set(sample_2.get_field_names())
@@ -857,6 +857,27 @@ class Test_Dataset:
             dataset.set_infos(
                 {"legal": {"illegal_info_key": "PLAID2", "license": "BSD-3"}}
             )
+
+    def test_set_infos_warn_parameter(self, dataset, infos, caplog):
+        """Test the warn parameter for silent replacement of infos."""
+        import logging
+
+        # First set should not warn (no user infos to replace)
+        with caplog.at_level(logging.WARNING):
+            dataset.set_infos(infos)
+        assert "infos not empty, replacing it anyway" not in caplog.text
+
+        # Second set with warn=True (default) should warn
+        caplog.clear()
+        with caplog.at_level(logging.WARNING):
+            dataset.set_infos({"legal": {"owner": "Owner2"}})
+        assert "infos not empty, replacing it anyway" in caplog.text
+
+        # Third set with warn=False should not warn
+        caplog.clear()
+        with caplog.at_level(logging.WARNING):
+            dataset.set_infos({"legal": {"owner": "Owner3"}}, warn=False)
+        assert "infos not empty, replacing it anyway" not in caplog.text
 
     def test_get_infos(self, dataset):
         assert dataset.get_infos()["plaid"]["version"] == str(

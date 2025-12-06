@@ -18,6 +18,7 @@ from data import *
 from utils import *
 from model import MeshGraphNet
 
+
 class ElastoDataset(Dataset):
     def __init__(
         self, plaid_dataset, plaid_problem, split="train", fields=("U_x", "U_y")

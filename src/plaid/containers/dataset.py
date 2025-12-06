@@ -32,9 +32,10 @@ from tqdm import tqdm
 
 import plaid
 from plaid.constants import AUTHORIZED_INFO_KEYS, CGNS_FIELD_LOCATIONS
+from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
-from plaid.types import Array, Feature, FeatureIdentifier
+from plaid.types import Array, Feature
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
 from plaid.utils.deprecation import deprecated, deprecated_argument
 
@@ -422,7 +423,7 @@ class Dataset(object):
 
         fields_names = []
         for sample in self.get_samples(ids, as_list=True):
-            times = [time] if time else sample.features.get_all_mesh_times()
+            times = [time] if time else sample.features.get_all_time_values()
             for time in times:
                 base_names = (
                     [base_name]
@@ -931,11 +932,12 @@ class Dataset(object):
         for key, value in infos.items():
             self._infos[cat_key][key] = value
 
-    def set_infos(self, infos: dict[str, dict[str, str]]) -> None:
+    def set_infos(self, infos: dict[str, dict[str, str]], warn: bool = True) -> None:
         """Set information to the :class:`Dataset <plaid.containers.dataset.Dataset>`, overwriting the existing one.
 
         Args:
             infos (dict[str,dict[str,str]]): Information to associate with this data set (Dataset).
+            warn (bool, optional): If True, warns when replacing existing infos. Defaults to True.
 
         Raises:
             KeyError: Invalid category key format in provided infos.
@@ -963,8 +965,10 @@ class Dataset(object):
                             f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
                         )
 
-        # if len(self._infos) > 0:
-        #     logger.warning("infos not empty, replacing it anyway")
+        # Check if there are any non-plaid infos being replaced
+        has_user_infos = any(key != "plaid" for key in self._infos.keys())
+        if has_user_infos and warn:
+            logger.warning("infos not empty, replacing it anyway")
         self._infos = copy.deepcopy(infos)
 
         if "plaid" not in self._infos:
@@ -1213,7 +1217,7 @@ class Dataset(object):
                 scalar_counts[name] = scalar_counts.get(name, 0) + 1
 
             # Fields
-            times = sample.features.get_all_mesh_times()
+            times = sample.features.get_all_time_values()
             for time in times:
                 base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
@@ -1294,7 +1298,7 @@ class Dataset(object):
         for sample in self._samples.values():
             all_scalar_names.update(sample.get_scalar_names())
 
-            times = sample.features.get_all_mesh_times()
+            times = sample.features.get_all_time_values()
             for time in times:
                 base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:
@@ -1323,7 +1327,7 @@ class Dataset(object):
 
             # Check fields
             sample_fields = set()
-            times = sample.features.get_all_mesh_times()
+            times = sample.features.get_all_time_values()
             for time in times:
                 base_names = sample.features.get_base_names(time=time)
                 for base_name in base_names:

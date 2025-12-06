@@ -36,11 +36,11 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
+from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.containers.features import SampleFeatures
 from plaid.containers.utils import get_feature_type_and_details_from
 from plaid.types import (
     Feature,
-    FeatureIdentifier,
     Scalar,
 )
 from plaid.utils import cgns_helper as CGH
@@ -58,6 +58,7 @@ FEATURES_METHODS = [
     "get_base_assignment",
     "get_zone_assignment",
     "set_default_time",
+    "get_all_time_values",
     "get_all_mesh_times",
     "get_mesh",
     "get_base_names",
@@ -212,7 +213,7 @@ class Sample(BaseModel):
         all_features_identifiers = []
         for sn in self.get_scalar_names():
             all_features_identifiers.append({"type": "scalar", "name": sn})
-        for t in self.features.get_all_mesh_times():
+        for t in self.features.get_all_time_values():
             for bn in self.features.get_base_names(time=t):
                 for zn in self.features.get_zone_names(base_name=bn, time=t):
                     if (
@@ -817,7 +818,7 @@ class Sample(BaseModel):
         str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
 
         # fields
-        times = self.features.get_all_mesh_times()
+        times = self.features.get_all_time_values()
         nb_timestamps = len(times)
         str_repr += f"{nb_timestamps} timestamp{'' if nb_timestamps == 1 else 's'}, "
 
@@ -896,7 +897,7 @@ class Sample(BaseModel):
             summary += "\n"
 
         # Mesh information
-        times = self.features.get_all_mesh_times()
+        times = self.features.get_all_time_values()
         summary += f"Meshes ({len(times)} timestamps):\n"
         if times:
             for time in times:
@@ -963,13 +964,13 @@ class Sample(BaseModel):
 
         # Check if sample has basic features
         has_scalars = len(self.get_scalar_names()) > 0
-        has_meshes = len(self.features.get_all_mesh_times()) > 0
+        has_meshes = len(self.features.get_all_time_values()) > 0
 
         report += f"Has scalars: {has_scalars}\n"
         report += f"Has meshes: {has_meshes}\n"
 
         if has_meshes:
-            times = self.features.get_all_mesh_times()
+            times = self.features.get_all_time_values()
             total_fields = set()
             for time in times:
                 base_names = self.features.get_base_names(time=time)

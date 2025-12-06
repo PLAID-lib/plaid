@@ -29,8 +29,8 @@ from packaging.version import Version
 
 import plaid
 from plaid.constants import AUTHORIZED_SCORE_FUNCTIONS, AUTHORIZED_TASKS
+from plaid.containers import FeatureIdentifier
 from plaid.types import IndexType
-from plaid.types.feature_types import FeatureIdentifier
 from plaid.utils.deprecation import deprecated
 
 # %% Globals

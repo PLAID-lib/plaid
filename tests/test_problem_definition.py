@@ -15,8 +15,8 @@ import pytest
 from packaging.version import Version
 
 import plaid
+from plaid.containers import FeatureIdentifier
 from plaid.problem_definition import ProblemDefinition
-from plaid.types.feature_types import FeatureIdentifier
 
 # %% Fixtures
 
