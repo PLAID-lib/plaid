@@ -8,7 +8,46 @@ from datasets import Features, Sequence, Value
 
 from plaid import Dataset, Sample
 from plaid.storage.common.preprocessor import build_sample_dict
+from plaid.storage.common.bridge import to_sample_dict, to_plaid_sample
 from plaid.types import IndexType
+
+
+
+# class DictView:
+#     def __init__(self, dataset, flat_cst, cgns_types):
+#         self.dataset = dataset
+#         self.flat_cst = flat_cst
+#         self.cgns_types = cgns_types
+
+#     def __len__(self):
+#         return len(self.dataset)
+
+#     def __getitem__(self, idx):
+#         var_sample_dict = to_var_sample_dict(self.dataset, idx)
+#         return to_sample_dict(
+#             var_sample_dict,
+#             self.flat_cst,
+#             self.cgns_types,
+#         )
+
+# class PLAIDView:
+#     def __init__(self, dataset, flat_cst, cgns_types):
+#         self.dataset = dataset
+#         self.flat_cst = flat_cst
+#         self.cgns_types = cgns_types
+
+#     def __len__(self):
+#         return len(self.dataset)
+
+#     def __getitem__(self, idx):
+#         var_sample_dict = to_var_sample_dict(self.dataset, idx)
+#         sample_dict = to_sample_dict(
+#             var_sample_dict,
+#             self.flat_cst,
+#             self.cgns_types,
+#         )
+#         return to_plaid_sample(sample_dict, self.cgns_types)
+
 
 
 def convert_dtype_to_hf_feature(feature_type):
@@ -248,7 +287,7 @@ def to_var_sample_dict(
     return var_sample_dict
 
 
-def to_var_sample_dict_streamed(
+def sample_to_var_sample_dict(
     hf_sample: dict,
 ) -> dict:
     var_sample_dict = {}

@@ -14,52 +14,106 @@ from plaid import Sample
 
 logger = logging.getLogger(__name__)
 
+
+
+# TODO: include _LazySampleStreaming in CGNSDataset
+
 # ------------------------------------------------------
 # Load from disk
 # ------------------------------------------------------
 
 
-class _LazySampleLocal:
-    __slots__ = ("_sample_path",)
+# class _LazySampleLocal:
+#     __slots__ = ("_sample_path",)
 
-    def __init__(self, sample_path: Path):
-        self._sample_path = sample_path
+#     def __init__(self, sample_path: Path):
+#         self._sample_path = sample_path
 
-    def load(self):
-        return Sample(path=self._sample_path)
+#     def load(self):
+#         return Sample(path=self._sample_path)
 
-    def __call__(self):
-        return self.load()
+#     def __call__(self):
+#         return self.load()
+
+#     def __repr__(self):
+#         return f"<LazySampleLocal path={self._sample_path}>"
+
+class CGNSDataset:
+    def __init__(self, path, **kwargs):
+
+        super().__setattr__('path', path)
+        super().__setattr__('_extra_fields', dict(kwargs))
+
+        if Path(path).is_dir():
+            sample_dirs = [
+                p
+                for p in path.iterdir()
+                if p.is_dir() and p.name.startswith("sample_")
+            ]
+            sids = np.array([int(p.name.split("_")[1]) for p in sample_dirs], dtype=int)
+            super().__setattr__('ids', np.sort(sids))
+        else:
+            raise ValueError("path mush be a local directory")
+
+    def __getitem__(self, idx):
+        assert idx in self.ids
+        return Sample(path=self.path / f"sample_{idx:09d}")
+
+    def __len__(self)->int:
+        return len(self.ids)
+
+    def __getattr__(self, name):
+        # fallback to extra fields
+        if name in self._extra_fields:
+            return self._extra_fields[name]
+        # fallback to zarr_group attributes
+        if hasattr(self.path, name):
+            return getattr(self.path, name)
+        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")
+
+    def __setattr__(self, name, value):
+        if name in ('path', '_extra_fields'):
+            super().__setattr__(name, value)
+        else:
+            self._extra_fields[name] = value
 
     def __repr__(self):
-        return f"<LazySampleLocal path={self._sample_path}>"
+        return f"<CGNSDataset {repr(self.path)} | extra_fields={self._extra_fields}>"
 
 
 def init_datasetdict_from_disk(
     path: Union[str, Path],
-) -> dict[str, dict[int, _LazySampleLocal]]:
-    path = Path(path) / "data"
+) -> dict[str, CGNSDataset]:
+    local_path = Path(path) / "data"
+    split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
+    return {
+        sn: CGNSDataset(local_path / sn)
+        for sn in split_names
+    }
 
-    split_ids = {}
-    for split in path.iterdir():
-        if split.is_dir():
-            sample_dirs = [
-                p
-                for p in split.iterdir()
-                if p.is_dir() and p.name.startswith("sample_")
-            ]
-            sids = np.array([int(p.name.split("_")[1]) for p in sample_dirs], dtype=int)
-            split_ids[split.name] = np.sort(sids)
 
-    dataset: dict[str, dict[int, _LazySampleLocal]] = {}
+    # path = Path(path) / "data"
 
-    for split, ids in split_ids.items():
-        split_path = path / split
-        dataset[split] = {
-            sid: _LazySampleLocal(split_path / f"sample_{sid:09d}") for sid in ids
-        }
+    # split_ids = {}
+    # for split in path.iterdir():
+    #     if split.is_dir():
+    #         sample_dirs = [
+    #             p
+    #             for p in split.iterdir()
+    #             if p.is_dir() and p.name.startswith("sample_")
+    #         ]
+    #         sids = np.array([int(p.name.split("_")[1]) for p in sample_dirs], dtype=int)
+    #         split_ids[split.name] = np.sort(sids)
 
-    return dataset
+    # dataset: dict[str, dict[int, _LazySampleLocal]] = {}
+
+    # for split, ids in split_ids.items():
+    #     split_path = path / split
+    #     dataset[split] = {
+    #         sid: _LazySampleLocal(split_path / f"sample_{sid:09d}") for sid in ids
+    #     }
+
+    # return dataset
 
 
 # ------------------------------------------------------

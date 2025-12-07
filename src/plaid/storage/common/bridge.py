@@ -5,7 +5,7 @@ import numpy as np
 from plaid import Sample
 from plaid.containers.features import SampleFeatures
 from plaid.storage.common.tree_handling import unflatten_cgns_tree
-
+from plaid.storage.common.preprocessor import build_sample_dict
 
 
 def to_plaid_sample_SAVE(
@@ -199,3 +199,20 @@ def to_plaid_sample(
         sample_data[time] = unflatten_cgns_tree(flat_tree, cgns_types)
 
     return Sample(path=None, features=SampleFeatures(sample_data))
+
+
+def plaid_to_sample_dict(
+    sample: Sample,
+    variable_schema,
+    constant_schema
+) -> tuple[dict[str, Any], dict[str, Any]]:
+
+    var_features = list(variable_schema.keys())
+    cst_features = list(constant_schema.keys())
+
+    hf_sample, _, _ = build_sample_dict(sample)
+
+    var_sample_dict = {path: hf_sample.get(path, None) for path in var_features}
+    cst_sample_dict = {path: hf_sample.get(path, None) for path in cst_features}
+
+    return cst_sample_dict, var_sample_dict

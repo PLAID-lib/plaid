@@ -9,18 +9,55 @@ import yaml
 import zarr
 from huggingface_hub import hf_hub_download, snapshot_download
 
+from plaid.storage.zarr.bridge import unflatten_zarr_key
+
 from .writer import flatten_path
 
 logger = logging.getLogger(__name__)
+
+
+# TODO: include _LazyZarrArray in ZarrDataset
+
+class ZarrDataset:
+    def __init__(self, zarr_group: zarr.Group, **kwargs):
+        super().__setattr__('zarr_group', zarr_group)
+        super().__setattr__('_extra_fields', dict(kwargs))
+
+    def __getitem__(self, idx):
+        zarr_sample = self.zarr_group[f"sample_{idx:09d}"]
+        return {
+            unflatten_zarr_key(path): zarr_sample[path] for path in zarr_sample.array_keys()
+        }
+
+
+    def __len__(self)->int:
+        return len(self.zarr_group)
+
+    def __getattr__(self, name):
+        # fallback to extra fields
+        if name in self._extra_fields:
+            return self._extra_fields[name]
+        # fallback to zarr_group attributes
+        if hasattr(self.zarr_group, name):
+            return getattr(self.zarr_group, name)
+        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")
+
+    def __setattr__(self, name, value):
+        if name in ('zarr_group', '_extra_fields'):
+            super().__setattr__(name, value)
+        else:
+            self._extra_fields[name] = value
+
+    def __repr__(self):
+        return f"<ZarrDataset {repr(self.zarr_group)} | extra_fields={self._extra_fields}>"
 
 # ------------------------------------------------------
 # Load from disk
 # ------------------------------------------------------
 
-
 def init_datasetdict_from_disk(
     path: Union[str, Path],
-) -> dict[str, zarr.core.group.Group]:
+) -> dict[str, ZarrDataset]:
     """Load a Hugging Face dataset or dataset dictionary from disk.
 
     This function wraps `datasets.load_from_disk` to accept either a string path or a
@@ -43,7 +80,9 @@ def init_datasetdict_from_disk(
     local_path = Path(path) / "data"
     split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
     return {
-        sn: zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r")
+        sn: ZarrDataset(
+            zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r")
+        )
         for sn in split_names
     }
 

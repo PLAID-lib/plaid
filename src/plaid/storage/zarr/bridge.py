@@ -1,20 +1,56 @@
 import zarr
 
-from plaid.storage.zarr.reader import _LazyZarrArray
+from typing import Any
+
+from plaid.storage.common.bridge import to_sample_dict, to_plaid_sample
+
+
+
+
+# class DictView:
+#     def __init__(self, dataset, flat_cst, cgns_types):
+#         self.dataset = dataset
+#         self.flat_cst = flat_cst
+#         self.cgns_types = cgns_types
+
+#     def __len__(self):
+#         return len(self.dataset)
+
+#     def __getitem__(self, idx):
+#         var_sample_dict = self.dataset[idx]
+#         return to_sample_dict(
+#             var_sample_dict,
+#             self.flat_cst,
+#             self.cgns_types
+#         )
+# class PLAIDView:
+#     def __init__(self, dataset, flat_cst, cgns_types):
+#         self.dataset = dataset
+#         self.flat_cst = flat_cst
+#         self.cgns_types = cgns_types
+
+#     def __len__(self):
+#         return len(self.dataset)
+
+#     def __getitem__(self, idx):
+#         var_sample_dict = self.dataset[idx]
+#         sample_dict = to_sample_dict(
+#             var_sample_dict,
+#             self.flat_cst,
+#             self.cgns_types,
+#         )
+#         return to_plaid_sample(sample_dict, self.cgns_types)
 
 
 def unflatten_zarr_key(key: str) -> str:
     return key.replace("__", "/")
 
 
-def to_var_sample_dict(zarr_dataset: zarr.core.group.Group, i: int) -> dict:
-    zarr_sample = zarr_dataset[f"sample_{i:09d}"]
-    return {
-        unflatten_zarr_key(path): zarr_sample[path] for path in zarr_sample.array_keys()
-    }
+def to_var_sample_dict(zarr_dataset: zarr.core.group.Group, idx: int) -> dict:
+    return zarr_dataset[idx]
 
 
-def to_var_sample_dict_streamed(
-    zarr_dataset: dict[int, dict[str, _LazyZarrArray]], i: int
+def sample_to_var_sample_dict(
+    zarr_sample: dict
 ) -> dict:
-    return {unflatten_zarr_key(path): value for path, value in zarr_dataset[i].items()}
+    return zarr_sample
