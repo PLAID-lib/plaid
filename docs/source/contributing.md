@@ -92,7 +92,7 @@ For feature requests:
 
 ### 3.3. Important Note
 
-The development dependency [**Muscat=2.5.0**](https://muscat.readthedocs.io/) is only available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) and not on [``PyPi``](https://pypi.org/project/muscat). Therefore, using a conda environment is required to:
+The development dependency [**Muscat=2.5**](https://muscat.readthedocs.io/) is only available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) and not on [``PyPi``](https://pypi.org/project/muscat). Therefore, using a conda environment is required to:
 
 - Run tests
 - Execute examples
