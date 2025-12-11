@@ -2,7 +2,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Iterator
 
 import fsspec
 import yaml
@@ -10,25 +10,32 @@ import zarr
 from huggingface_hub import hf_hub_download, snapshot_download
 
 from plaid.storage.zarr.bridge import unflatten_zarr_key
+from plaid.storage.zarr.writer import flatten_path
 
-from .writer import flatten_path
+from datasets import IterableDataset
+from datasets.splits import NamedSplit
 
 logger = logging.getLogger(__name__)
 
 
-# TODO: include _LazyZarrArray in ZarrDataset
+# ------------------------------------------------------
+# Classes and functions
+# ------------------------------------------------------
 
 class ZarrDataset:
     def __init__(self, zarr_group: zarr.Group, **kwargs):
-        super().__setattr__('zarr_group', zarr_group)
-        super().__setattr__('_extra_fields', dict(kwargs))
+        self.zarr_group = zarr_group
+        self._extra_fields =  dict(kwargs)
+
+    def __iter__(self):
+        for idx in self.ids:
+            yield self[idx]
 
     def __getitem__(self, idx):
         zarr_sample = self.zarr_group[f"sample_{idx:09d}"]
         return {
             unflatten_zarr_key(path): zarr_sample[path] for path in zarr_sample.array_keys()
         }
-
 
     def __len__(self)->int:
         return len(self.zarr_group)
@@ -50,46 +57,6 @@ class ZarrDataset:
 
     def __repr__(self):
         return f"<ZarrDataset {repr(self.zarr_group)} | extra_fields={self._extra_fields}>"
-
-# ------------------------------------------------------
-# Load from disk
-# ------------------------------------------------------
-
-def init_datasetdict_from_disk(
-    path: Union[str, Path],
-) -> dict[str, ZarrDataset]:
-    """Load a Hugging Face dataset or dataset dictionary from disk.
-
-    This function wraps `datasets.load_from_disk` to accept either a string path or a
-    `Path` object and returns the loaded dataset object.
-
-    Args:
-        path (Union[str, Path]): Path to the directory containing the saved dataset.
-        *args:
-            Positional arguments forwarded to
-            [`datasets.load_from_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/loading_methods#datasets.load_from_disk).
-        **kwargs:
-            Keyword arguments forwarded to
-            [`datasets.load_from_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/loading_methods#datasets.load_from_disk).
-
-    Returns:
-        Union[datasets.Dataset, datasets.DatasetDict]: The loaded Hugging Face dataset
-        object, which may be a single `Dataset` or a `DatasetDict` depending on what
-        was saved on disk.
-    """
-    local_path = Path(path) / "data"
-    split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
-    return {
-        sn: ZarrDataset(
-            zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r")
-        )
-        for sn in split_names
-    }
-
-
-# ------------------------------------------------------
-# Load from from hub
-# ------------------------------------------------------
 
 
 def _zarr_patterns(
@@ -135,6 +102,55 @@ def _zarr_patterns(
     return allow_patterns, ignore_patterns
 
 
+def sample_generator(repo_id: str, split: str, ids: list[int], selected_features: list[str]) -> Iterator[dict]:
+
+    base_url = f"https://huggingface.co/datasets/{repo_id}/resolve/main/data/{split}/sample_"
+    for idx in ids:
+        sample = {}
+        for feat in selected_features:
+            flatten_feat = flatten_path(feat)
+            mapper = fsspec.get_mapper(base_url + f"{idx:09d}/{flatten_feat}")
+            sample[feat] = zarr.open(mapper, mode="r")
+
+        yield sample
+
+
+def ZarrIterableDataset(repo_id, split, ids, selected_features):
+
+    def wrapped_gen():
+        yield from sample_generator(
+            repo_id, split, ids, selected_features
+        )
+
+    return IterableDataset.from_generator(
+        wrapped_gen,
+        split=NamedSplit(split),
+        features=None,
+    )
+
+
+
+# ------------------------------------------------------
+# Load from disk
+# ------------------------------------------------------
+
+def init_datasetdict_from_disk(
+    path: Union[str, Path],
+) -> dict[str, ZarrDataset]:
+    local_path = Path(path) / "data"
+    split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
+    return {
+        sn: ZarrDataset(
+            zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r")
+        )
+        for sn in split_names
+    }
+
+
+# ------------------------------------------------------
+# Load from from hub
+# ------------------------------------------------------
+
 def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
@@ -164,55 +180,11 @@ def download_datasetdict_from_hub(
     )
 
 
-class _LazyZarrArray:
-    __slots__ = ("url", "fs", "_store")
-
-    def __init__(self, url: str):
-        self.url = url
-        self.fs = fsspec.filesystem("https")
-        self._store = None  # will be set lazily
-
-    @property
-    def store(self):
-        if self._store is None:
-            mapper = fsspec.get_mapper(self.url)
-            self._store = zarr.open(mapper, mode="r")
-        return self._store
-
-    @property
-    def ndim(self):
-        return self.store.ndim
-
-    @property
-    def shape(self):
-        return self.store.shape
-
-    def __getitem__(self, key):
-        return self.store[key]
-
-    def __array__(self, dtype=None):
-        arr = self.store[:]
-        if dtype is not None:
-            arr = arr.astype(dtype)
-        return arr
-
-    def __call__(self):
-        return self.store[:]
-
-    def __repr__(self):
-        return f"<_LazyZarrArray url={self.url} shape={self.store.shape} ndim={self.store.ndim}>"
-
-
 def init_datasetdict_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,
-) -> dict[str, dict[int, dict[str, _LazyZarrArray]]]:
-    """Lazily stream a Zarr dataset from a HF dataset repo.
-
-    Returns:
-        dataset[split][sample_id][feature] -> _LazyZarrArray
-    """
+) -> dict[str, IterableDataset]:
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
         raise RuntimeError("Streaming mode not compatible with private mirror.")
@@ -243,14 +215,4 @@ def init_datasetdict_streaming_from_hub(
             split: range(n_samples) for split, n_samples in infos["num_samples"].items()
         }
 
-    dataset_dict: dict[str, dict[int, dict[str, _LazyZarrArray]]] = {}
-    for split in selected_ids.keys():
-        dataset_dict[split] = {}
-        for sid in selected_ids[split]:
-            dataset_dict[split][sid] = {}
-            for feat in selected_features:
-                flatten_feat = flatten_path(feat)
-                url = f"https://huggingface.co/datasets/{repo_id}/resolve/main/data/{split}/sample_{sid:09d}/{flatten_feat}"
-                dataset_dict[split][sid][feat] = _LazyZarrArray(url)
-
-    return dataset_dict
+    return {split:ZarrIterableDataset(repo_id, split, ids, selected_features) for split, ids in selected_ids.items()}

@@ -43,7 +43,6 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
 # Load from from hub
 # ------------------------------------------------------
 
-
 def download_datasetdict_from_hub(
     repo_id: str, local_dir: Union[str, Path], overwrite: bool = False
 ) -> str:  # pragma: no cover (not tested in unit tests)

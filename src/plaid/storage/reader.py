@@ -31,8 +31,6 @@ from plaid.storage.cgns.reader import (
 from plaid.storage.hf_datasets.bridge import (
     to_var_sample_dict as hf_to_var_sample_dict,
     sample_to_var_sample_dict as hf_sample_to_var_sample_dict,
-    # DictView as DictHFView,
-    # PLAIDView as PLAIDHFView
 )
 from plaid.storage.hf_datasets.reader import (
     init_datasetdict_from_disk as init_hf_datasetdict_from_disk,
@@ -44,8 +42,6 @@ from plaid.storage.hf_datasets.reader import (
 from plaid.storage.zarr.bridge import (
     to_var_sample_dict as zarr_to_var_sample_dict,
     sample_to_var_sample_dict as zarr_sample_to_var_sample_dict,
-    # DictView as DictZARRView,
-    # PLAIDView as PLAIDZARRView
 )
 from plaid.storage.zarr.reader import (
     download_datasetdict_from_hub as download_zarr_datasetdict_from_hub,
@@ -58,18 +54,6 @@ init_datasetdict_from_disk = {"hf_datasets": init_hf_datasetdict_from_disk,
                             "zarr": init_zarr_datasetdict_from_disk,
                             }
 
-# TODO:  single function for all backends of init_hf_datasetdict_streaming_from_hub and download_hf_datasetdict_from_hub
-# (all backend) and remove ifs
-
-
-# DictView = {"hf_datasets": DictHFView,
-#             "zarr": DictZARRView,
-#             }
-
-# PLAIDView = {"hf_datasets": PLAIDHFView,
-#             "zarr": PLAIDZARRView,
-#             }
-
 to_var_sample_dict = {"hf_datasets": hf_to_var_sample_dict,
             "zarr": zarr_to_var_sample_dict,
             }
@@ -77,84 +61,6 @@ to_var_sample_dict = {"hf_datasets": hf_to_var_sample_dict,
 sample_to_var_sample_dict = {"hf_datasets": hf_sample_to_var_sample_dict,
             "zarr": zarr_sample_to_var_sample_dict,
             }
-
-# rewamp:
-# end of https://chatgpt.com/share/692df35e-f560-800f-9624-f625059acca0
-# use of IterableDataset, end of https://chatgpt.com/share/692e8947-d160-800f-ae80-5380247eb6d5
-
-
-# class _SampleCreator:
-#     def __init__(
-#         self,
-#         backend: str,
-#         dataset,
-#         flat_cst: dict[str, Any],
-#         cgns_types: dict[str, Any],
-#         features: Optional[list[str]] = None,
-#     ):
-#         self.backend = backend
-#         self.dataset = dataset
-#         self.flat_cst = flat_cst
-#         self.cgns_types = cgns_types
-#         self.features = features
-
-#     def __getitem__(self, index: int) -> Sample:
-#         if self.backend == "hf_datasets":
-#             var_sample_dict = to_hf_var_sample_dict(self.dataset, index)
-#             sample_dict = to_sample_dict(
-#                 var_sample_dict, self.flat_cst, self.cgns_types, self.features
-#             )
-#             sample = to_plaid_sample(sample_dict, self.cgns_types)
-#         elif self.backend == "zarr":
-#             var_sample_dict = to_zarr_var_sample_dict(self.dataset, index)
-#             sample_dict = to_sample_dict(
-#                 var_sample_dict, self.flat_cst, self.cgns_types, self.features
-#             )
-#             sample = to_plaid_sample(sample_dict, self.cgns_types)
-#         elif self.backend == "cgns":
-#             sample = self.dataset[index]()
-#         else:
-#             raise ValueError(f"backend {self.backend} not implemented")
-#         return sample
-
-#     def __len__(self)->int:
-#         return len(self.dataset)
-
-
-
-# class _SampleDictCreator:
-#     def __init__(
-#         self,
-#         backend: str,
-#         dataset,
-#         flat_cst: dict[str, Any],
-#         cgns_types: dict[str, Any],
-#         features: Optional[list[str]] = None,
-#     ):
-#         self.backend = backend
-#         self.dataset = dataset
-#         self.flat_cst = flat_cst
-#         self.cgns_types = cgns_types
-#         self.features = features
-
-#     def __getitem__(self, index: int) -> dict[float, dict[str, Any]]:
-#         if self.backend == "hf_datasets":
-#             var_sample_dict = to_hf_var_sample_dict(self.dataset, index)
-#             sample_dict = to_sample_dict(
-#                 var_sample_dict, self.flat_cst, self.cgns_types, self.features
-#             )
-#         elif self.backend == "zarr":
-#             var_sample_dict = to_zarr_var_sample_dict(self.dataset, index)
-#             sample_dict = to_sample_dict(
-#                 var_sample_dict, self.flat_cst, self.cgns_types, self.features
-#             )
-#         else:
-#             raise ValueError(f"backend {self.backend} not implemented")
-#         return sample_dict
-
-#     def __len__(self)->int:
-#         return len(self.dataset)
-
 
 class Converter:
     def __init__(self, backend, flat_cst, cgns_types, variable_schema, constant_schema):
@@ -179,7 +85,7 @@ class Converter:
             sample_dict = self.to_dict(dataset, idx)
             return to_plaid_sample(sample_dict, self.cgns_types)
         else:
-            return dataset[idx]()
+            return dataset[idx]
 
     def sample_to_dict(self, sample):
         if self.backend == "cgns":
@@ -196,11 +102,14 @@ class Converter:
             sample_dict = self.sample_to_dict(sample)
             return to_plaid_sample(sample_dict, self.cgns_types)
         else:
-            return sample()
+            return sample
 
     def plaid_to_dict(self, plaid_sample):
         return plaid_to_sample_dict(plaid_sample, self.variable_schema, self.constant_schema)
 
+
+    def __repr__(self) -> str:
+        return f"Converter(backend={self.backend})"
 
 
 
@@ -213,22 +122,9 @@ def init_from_disk(local_dir: Union[Path, str]):
 
     datasetdict = init_datasetdict_from_disk[backend](local_dir)
 
-    for split, dataset in datasetdict.items():
-        dataset.backend = backend
-
     converterdict = {}
-    for split, dataset in datasetdict.items():
+    for split in datasetdict.keys():
         converterdict[split] = Converter(backend, flat_cst[str(split)], cgns_types, variable_schema, constant_schema)
-        # dataset.dict = DictView[backend](
-        #     dataset,
-        #     flat_cst[str(split)],
-        #     cgns_types,
-        # )
-        # dataset.plaid = PLAIDView[backend](
-        #     dataset,
-        #     flat_cst[str(split)],
-        #     cgns_types,
-        # )
     return datasetdict, converterdict
 
 
@@ -262,64 +158,6 @@ def download_from_hub(
         save_problem_definitions_to_disk(local_dir, pb_defs)
 
 
-# class _StreamedSampleCreator:
-#     def __init__(
-#         self,
-#         backend: str,
-#         dataset,
-#         flat_cst: dict[str, Any],
-#         cgns_types: dict[str, Any],
-#         features: Optional[list[str]] = None,
-#     ):
-#         self.backend = backend
-#         self.dataset = dataset
-#         self.flat_cst = flat_cst
-#         self.cgns_types = cgns_types
-#         self.features = features
-
-#     def __getitem__(self, index: int) -> Sample:
-#         if self.backend == "zarr":
-#             var_sample_dict = to_zarr_var_sample_dict_streamed(self.dataset, index)
-#             sample_dict = to_sample_dict(
-#                 var_sample_dict, self.flat_cst, self.cgns_types, self.features
-#             )
-#             sample = to_plaid_sample(sample_dict, self.cgns_types)
-#         elif self.backend == "cgns":
-#             sample = self.dataset[index]()
-#         else:
-#             raise ValueError(f"backend {self.backend} not implemented")
-#         return sample
-
-
-# class _StreamedIterableSampleCreator:
-#     def __init__(
-#         self,
-#         backend: str,
-#         dataset,
-#         flat_cst: dict[str, Any],
-#         cgns_types: dict[str, Any],
-#         features: Optional[list[str]] = None,
-#     ):
-#         assert backend == "hf_datasets", (
-#             f"only compatible with backend = hf_datasets (called with backend = {backend})"
-#         )
-#         self.backend = backend
-#         self.dataset = iter(dataset)
-#         self.flat_cst = flat_cst
-#         self.cgns_types = cgns_types
-#         self.features = features
-
-#     def __call__(self) -> Sample:
-#         var_sample_dict = to_hf_var_sample_dict_streamed(next(self.dataset))
-#         sample_dict = to_sample_dict(
-#             var_sample_dict, self.flat_cst, self.cgns_types, self.features
-#         )
-#         sample = to_plaid_sample(
-#             sample_dict, self.cgns_types
-#         )
-#         return sample
-
-
 def init_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, int]] = None,
@@ -332,62 +170,17 @@ def init_streaming_from_hub(
 
     if backend == "hf_datasets":
         datasetdict = init_hf_datasetdict_streaming_from_hub(repo_id, features)
-        converterdict = {}
-        for split, dataset in datasetdict.items():
-            converterdict[split] = Converter(backend, flat_cst[str(split)], cgns_types, variable_schema, constant_schema)
-
-        # sample_creator = {
-        #     split: _StreamedIterableSampleCreator(
-        #         backend,
-        #         datasetdict[str(split)],
-        #         flat_cst[str(split)],
-        #         cgns_types,
-        #         features,
-        #     )
-        #     for split in datasetdict.keys()
-        # }
-
-        return datasetdict, converterdict
-
     elif backend == "zarr":
         datasetdict = init_zarr_datasetdict_streaming_from_hub(
             repo_id, split_ids, features
         )
-        converterdict = {}
-        for split, dataset in datasetdict.items():
-            converterdict[split] = Converter(backend, flat_cst[str(split)], cgns_types, variable_schema, constant_schema)
-
-        # sample_creator = {
-        #     split: _StreamedSampleCreator(
-        #         backend,
-        #         datasetdict[str(split)],
-        #         flat_cst[str(split)],
-        #         cgns_types,
-        #         features,
-        #     )
-        #     for split in datasetdict.keys()
-        # }
-
-        return datasetdict, converterdict
-
     elif backend == "cgns":
         datasetdict = init_cgns_datasetdict_streaming_from_hub(repo_id, split_ids)
-        converterdict = {}
-        for split, dataset in datasetdict.items():
-            converterdict[split] = Converter(backend, flat_cst[str(split)], cgns_types, variable_schema, constant_schema)
-
-        # sample_creator = {
-        #     split: _StreamedSampleCreator(
-        #         backend,
-        #         datasetdict[str(split)],
-        #         flat_cst[str(split)],
-        #         cgns_types,
-        #         features,
-        #     )
-        #     for split in datasetdict.keys()
-        # }
-        return datasetdict, converterdict
-
     else:
         raise ValueError(f"backend {backend} not implemented")
 
+    converterdict = {}
+    for split in datasetdict.keys():
+        converterdict[split] = Converter(backend, flat_cst[str(split)], cgns_types, variable_schema, constant_schema)
+
+    return datasetdict, converterdict
