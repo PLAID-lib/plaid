@@ -2,7 +2,6 @@ name: plaid-dev
 channels:
   - conda-forge
   - nodefaults
-channel_priority: strict
 dependencies:
   - python=3.11
 ##### RUN #####
@@ -21,7 +20,7 @@ dependencies:
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs
-  - muscat-core=2.5
+  - muscat-core=2.5.1
 #---# base
   - rich
 #---# optim

@@ -684,11 +684,6 @@ class Test_Sample:
                 {"type": "field", "name": "OriginalIds", "location": "CellCenter"}
             ),
         )
-        sample_with_tree3d.del_feature(
-            feature_identifier=FeatureIdentifier(
-                {"type": "field", "name": "OriginalIds", "location": "FaceCenter"}
-            ),
-        )
         with pytest.raises(NotImplementedError):
             sample_with_tree3d.del_feature(
                 feature_identifier=FeatureIdentifier({"type": "nodes"}),
@@ -1412,7 +1407,7 @@ class Test_Sample:
 
     def test_get_all_features_identifiers(self, sample_with_tree_and_scalar):
         feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers()
-        assert len(feat_ids) == 9
+        assert len(feat_ids) == 8
         assert {"type": "scalar", "name": "r"} in feat_ids
         assert {"type": "scalar", "name": "test_scalar_1"} in feat_ids
         assert {
@@ -1443,14 +1438,6 @@ class Test_Sample:
             "base_name": "Base_2_2",
             "zone_name": "Zone",
             "location": "Vertex",
-            "time": 0.0,
-        } in feat_ids
-        assert {
-            "type": "field",
-            "name": "OriginalIds",
-            "base_name": "Base_2_2",
-            "zone_name": "Zone",
-            "location": "FaceCenter",
             "time": 0.0,
         } in feat_ids
         assert {
@@ -1491,7 +1478,7 @@ class Test_Sample:
         feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
             "field"
         )
-        assert len(feat_ids) == 6
+        assert len(feat_ids) == 5
         assert {
             "type": "field",
             "name": "big_node_field",
