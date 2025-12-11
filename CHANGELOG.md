@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (dependencies) force `muscat` version 2.5.0 in dev dependencies
 - (types/containers) move `FeatureIdentifier` class from `plaid.types` to `plaid.containers`.
 - (features) rename `get_all_mesh_times()` to `get_all_time_values()`.
 
