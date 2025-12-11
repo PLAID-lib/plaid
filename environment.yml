@@ -20,7 +20,7 @@ dependencies:
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs
-  - muscat-core=2.5
+  - muscat-core=2.5.1
 #---# base
   - rich
 #---# optim
