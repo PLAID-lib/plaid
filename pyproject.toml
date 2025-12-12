@@ -33,6 +33,7 @@ dependencies = [
     "tqdm",
     "pyyaml",
     "pycgns",
+    "zarr",
     "scikit-learn",
     "datasets",
     "numpy",
