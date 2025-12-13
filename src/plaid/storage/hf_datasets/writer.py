@@ -139,6 +139,7 @@ def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
 def configure_dataset_card(
     repo_id: str,
     infos: dict[str, dict[str, str]],
+    local_folder: Optional[Union[str, Path]] = None,  # noqa: ARG001
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,
@@ -232,6 +233,8 @@ def configure_dataset_card(
     str__ += """
 Example of commands:
 ```python
+>>>>>> TO UPDATE
+
 from datasets import load_dataset
 from plaid.bridges import huggingface_bridge
 

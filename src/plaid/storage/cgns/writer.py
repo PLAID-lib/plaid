@@ -122,8 +122,8 @@ def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
 
 def configure_dataset_card(
     repo_id: str,
-    local_folder: Union[str, Path],
     infos: dict[str, dict[str, str]],
+    local_folder: Union[str, Path],
     variable_schema: Optional[dict] = None,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
@@ -275,7 +275,9 @@ tags:
     str__ += f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
 
     str__ += """
-Example of commands [TO UPDATE FOR CGNS]:
+>>>>>> TO UPDATE
+
+Example of commands:
 ```python
 from datasets import load_dataset
 from plaid.bridges import huggingface_bridge

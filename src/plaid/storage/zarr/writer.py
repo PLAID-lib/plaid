@@ -165,8 +165,8 @@ def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
 
 def configure_dataset_card(
     repo_id: str,
-    local_folder: Union[str, Path],
     infos: dict[str, dict[str, str]],
+    local_folder: Union[str, Path],
     variable_schema: Optional[dict] = None,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
@@ -219,7 +219,7 @@ def configure_dataset_card(
         lines = []
         current_indent = "    "
 
-        for i in range(ndim - 1):
+        for _ in range(ndim - 1):
             lines.append(f"{current_indent}list:")
             current_indent += "  "
 
@@ -318,7 +318,9 @@ tags:
     str__ += f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
 
     str__ += """
-Example of commands [TO UPDATE FOR ZARR]:
+>>>>>> TO UPDATE
+
+Example of commands:
 ```python
 from datasets import load_dataset
 from plaid.bridges import huggingface_bridge

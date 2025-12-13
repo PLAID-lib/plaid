@@ -39,13 +39,13 @@ from plaid.storage.hf_datasets.writer import (
 from plaid.storage.zarr.writer import (
     generate_datasetdict_to_disk as generate_zarr_datasetdict_to_disk,
     push_local_datasetdict_to_hub as push_local_zarr_datasetdict_to_hub,
-    configure_dataset_card as configure_zarr_hf_dataset_card,
+    configure_dataset_card as configure_zarr_dataset_card,
 )
 
 from plaid.storage.cgns.writer import (
     generate_datasetdict_to_disk as generate_cgns_datasetdict_to_disk,
     push_local_datasetdict_to_hub as push_local_cgns_datasetdict_to_hub,
-    configure_dataset_card as configure_cgns_hf_dataset_card,
+    configure_dataset_card as configure_cgns_dataset_card,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,6 +62,12 @@ push_local_datasetdict_to_hub = {
     "hf_datasets": push_local_hf_datasetdict_to_hub,
     "zarr": push_local_zarr_datasetdict_to_hub,
     "cgns": push_local_cgns_datasetdict_to_hub,
+}
+
+configure_dataset_card = {
+    "hf_datasets": configure_hf_dataset_card,
+    "zarr": configure_zarr_dataset_card,
+    "cgns": configure_cgns_dataset_card,
 }
 
 def save_to_disk(
@@ -117,6 +123,7 @@ def push_to_hub(repo_id: str, local_dir: Union[str, Path], num_workers: int = 1)
     backend = infos["storage_backend"]
 
     push_local_datasetdict_to_hub[backend](repo_id, local_dir, num_workers=num_workers)
+    configure_dataset_card[backend](repo_id, infos, local_dir)
 
     push_metadata_to_hub(repo_id, flat_cst, variable_schema, constant_schema, cgns_types)
     push_infos_to_hub(repo_id, infos)
