@@ -115,7 +115,7 @@ def save_to_disk(
         save_problem_definitions_to_disk(output_folder, pb_defs)
 
 
-def push_to_hub(repo_id: str, local_dir: Union[str, Path], num_workers: int = 1) -> None:
+def push_to_hub(repo_id: str, local_dir: Union[str, Path], num_workers: int = 1, viewer: bool = False) -> None:
     pb_defs = load_problem_definitions_from_disk(local_dir)
     flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(local_dir)
     infos = load_infos_from_disk(local_dir)
@@ -123,7 +123,7 @@ def push_to_hub(repo_id: str, local_dir: Union[str, Path], num_workers: int = 1)
     backend = infos["storage_backend"]
 
     push_local_datasetdict_to_hub[backend](repo_id, local_dir, num_workers=num_workers)
-    configure_dataset_card[backend](repo_id, infos, local_dir)
+    configure_dataset_card[backend](repo_id, infos, local_dir, variable_schema, viewer)
 
     push_metadata_to_hub(repo_id, flat_cst, variable_schema, constant_schema, cgns_types)
     push_infos_to_hub(repo_id, infos)

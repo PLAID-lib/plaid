@@ -139,7 +139,9 @@ def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
 def configure_dataset_card(
     repo_id: str,
     infos: dict[str, dict[str, str]],
-    local_folder: Optional[Union[str, Path]] = None,  # noqa: ARG001
+    local_dir: Optional[Union[str, Path]] = None,  # noqa: ARG001
+    variable_schema: Optional[dict] = None,  # noqa: ARG001
+    viewer: bool = False,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,
@@ -201,11 +203,11 @@ def configure_dataset_card(
     lines = lines[: indices[1] + 1]
 
     count = 1
-    try:
-        lines.insert(count, f"license: {infos['legal']['license']}")
+    lines.insert(count, f"license: {infos['legal']['license']}")
+    count += 1
+    if viewer is False:
+        lines.insert(count, "viewer: false")
         count += 1
-    except KeyError:
-        pass
     lines.insert(count, "task_categories:")
     count += 1
     lines.insert(count, "- graph-ml")
@@ -231,42 +233,88 @@ def configure_dataset_card(
     str__ += f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
 
     str__ += """
-Example of commands:
+This dataset was generated with [`plaid`](https://plaid-lib.readthedocs.io/), we refer to this documentation for additional details on how to extract data from `plaid_sample` objects.
+
+The simplest way to use this dataset is to first download it:
 ```python
->>>>>> TO UPDATE
+from plaid.storage import download_from_hub
 
-from datasets import load_dataset
-from plaid.bridges import huggingface_bridge
+repo_id = "channel/dataset"
+local_folder = "downloaded_dataset"
 
-repo_id = "chanel/dataset"
-pb_def_name = "pb_def_name" #`pb_def_name` is to choose from the repo `problem_definitions` folder
-
-# Load the dataset
-hf_datasetdict = load_dataset(repo_id)
-
-# Load addition required data
-flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_hub(repo_id)
-pb_def = huggingface_bridge.load_problem_definition_from_hub(repo_id, pb_def_name)
-
-# Efficient reconstruction of plaid samples
-for split_name, hf_dataset in hf_datasetdict.items():
-    for i in range(len(hf_dataset)):
-        sample = huggingface_bridge.to_plaid_sample(
-            hf_dataset,
-            i,
-            flat_cst[split_name],
-            key_mappings["cgns_types"],
-        )
-
-# Extract input and output features from samples:
-for t in sample.get_all_mesh_times():
-    for path in pb_def.get_in_features_identifiers():
-        sample.get_feature_by_path(path=path, time=t)
-    for path in pb_def.get_out_features_identifiers():
-        sample.get_feature_by_path(path=path, time=t)
+download_from_hub(repo_id, local_folder)
 ```
+
+Then, to iterate over the dataset and instantiate samples:
+```python
+from plaid.storage import init_from_disk
+
+local_folder = "downloaded_dataset"
+split_name = "train"
+
+datasetdict, converterdict = init_from_disk(local_folder)
+
+dataset = datasetdict[split]
+converter = converterdict[split]
+
+for i in range(len(dataset)):
+    raw_sample = dataset[i]
+    plaid_sample = converter.to_plaid(dataset, i)
+```
+
+It is possible to stream the data directly:
+```python
+from plaid.storage import init_streaming_from_hub
+
+repo_id = "channel/dataset"
+
+datasetdict, converterdict = init_streaming_from_hub(repo_id)
+
+dataset = datasetdict[split]
+converter = converterdict[split]
+
+for sample_raw in dataset:
+    plaid_sample = converter.sample_to_plaid(sample_raw)
+```
+
+Plaid samples' features can be retrieved like the following:
+```python
+from plaid.storage import load_problem_definitions_from_disk
+local_folder = "downloaded_dataset"
+pb_defs = load_problem_definitions_from_disk(local_folder)
+
+# or
+from plaid.storage import load_problem_definitions_from_hub
+repo_id = "channel/dataset"
+pb_defs = load_problem_definitions_from_hub(repo_id)
+
+
+pb_def = pb_defs[0]
+
+plaid_sample = ... # use a method from above to instantiate a plaid sample
+
+for t in plaid_sample.get_all_time_values():
+    for path in pb_def.get_in_features_identifiers():
+        plaid_sample.get_feature_by_path(path=path, time=t)
+    for path in pb_def.get_out_features_identifiers():
+        plaid_sample.get_feature_by_path(path=path, time=t)
+```
+
+For those familiar with HF's `datasets` library, raw data can be retrieved without using the `plaid` library:
+```python
+from datasets import load_dataset
+
+repo_id = "channel/dataset"
+
+datasetdict = load_dataset(repo_id)
+
+for split_name, dataset in datasetdict.items():
+    for raw_sample in dataset:
+        for feat_name in dataset.column_names:
+            feature = raw_sample[feat_name]
+```
+Notice that raw data refers to the variable features only, with a specific encoding for time variable features.
 """
-    str__ += "This dataset was generated in [PLAID](https://plaid-lib.readthedocs.io/), we refer to this documentation for additional details on how to extract data from `sample` objects.\n"
 
     if dataset_long_description:
         str__ += f"""

@@ -22,7 +22,7 @@ def infer_dtype(value) -> dict[str, int | str]:
 
     # Scalars
     if np.isscalar(value):
-        raise "CGNS should return arrays"
+        raise ValueError("CGNS should return arrays")
         dtype = np.array(value).dtype
         if np.issubdtype(dtype, np.floating):
             dt = "float32"
