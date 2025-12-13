@@ -115,7 +115,7 @@ def sample_generator(repo_id: str, split: str, ids: list[int], selected_features
         yield sample
 
 
-def ZarrIterableDataset(repo_id, split, ids, selected_features):
+def create_zarr_iterable_dataset(repo_id, split, ids, selected_features):
 
     def wrapped_gen():
         yield from sample_generator(
@@ -215,4 +215,4 @@ def init_datasetdict_streaming_from_hub(
             split: range(n_samples) for split, n_samples in infos["num_samples"].items()
         }
 
-    return {split:ZarrIterableDataset(repo_id, split, ids, selected_features) for split, ids in selected_ids.items()}
+    return {split:create_zarr_iterable_dataset(repo_id, split, ids, selected_features) for split, ids in selected_ids.items()}

@@ -1,10 +1,15 @@
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, Callable, Generator, Optional
 
 import datasets
 import yaml
 from huggingface_hub import DatasetCard, hf_hub_download
+
+from plaid.storage.hf_datasets.bridge import generator_to_datasetdict
+from plaid.storage.hf_datasets.reader import init_datasetdict_from_disk
+from plaid import Sample
+from plaid.types import IndexType
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +68,24 @@ def save_datasetdict_to_disk(
     )
 
 
+def generate_datasetdict_to_disk(
+    output_folder: Union[str, Path],
+    generators: dict[str, Callable[..., Generator[Sample, None, None]]],
+    variable_schema: dict[str, dict],
+    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+    num_proc: int = 1,
+    verbose: bool = False,  # noqa: ARG001
+) -> None:
+
+    hf_datasetdict = generator_to_datasetdict(
+        generators,
+        variable_schema,
+        gen_kwargs=gen_kwargs,
+        processes_number=num_proc,
+    )
+    save_datasetdict_to_disk(output_folder, hf_datasetdict, num_proc=num_proc)
+
+
 def push_datasetdict_to_hub(
     repo_id: str, hf_datasetdict: datasets.DatasetDict, **kwargs
 ) -> None:  # pragma: no cover (not tested in unit tests)
@@ -106,6 +129,11 @@ def push_datasetdict_to_hub(
     hf_datasetdict.push_to_hub(
         repo_id, num_shards=num_shards, num_proc=num_proc, **kwargs
     )
+
+
+def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
+    datasetdict = init_datasetdict_from_disk(local_dir)
+    push_datasetdict_to_hub(repo_id, datasetdict, num_proc=num_workers)
 
 
 def configure_dataset_card(

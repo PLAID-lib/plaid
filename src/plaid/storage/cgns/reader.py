@@ -85,7 +85,7 @@ def sample_generator(repo_id: str, split: str, ids: list[int]) -> Iterator[Sampl
         yield sample
 
 
-def CGNSIterableDataset(repo_id: str,
+def create_CGNS_iterable_dataset(repo_id: str,
                         split: str,
                         ids: list[int]) -> IterableDataset:
 
@@ -98,10 +98,10 @@ def CGNSIterableDataset(repo_id: str,
         features=None,
     )
 
+
 # ------------------------------------------------------
 # Load from disk
 # ------------------------------------------------------
-
 
 def init_datasetdict_from_disk(
     path: Union[str, Path],
@@ -124,6 +124,7 @@ def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
     split_ids: Optional[dict[str, int]] = None,
+    features: Optional[list[str]] = None, # noqa: ARG001
     overwrite: bool = False,
 ) -> None:  # pragma: no cover (not tested in unit tests)
     output_folder = Path(local_dir)
@@ -153,7 +154,9 @@ def download_datasetdict_from_hub(
 
 
 def init_datasetdict_streaming_from_hub(
-    repo_id: str, split_ids: Optional[dict[str, int]] = None
+    repo_id: str,
+    split_ids: Optional[dict[str, int]] = None,
+    features: Optional[list[str]] = None,  # noqa: ARG001
 ) -> dict[str, IterableDataset]:
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
@@ -173,4 +176,4 @@ def init_datasetdict_streaming_from_hub(
             split: range(n_samples) for split, n_samples in infos["num_samples"].items()
         }
 
-    return {split:CGNSIterableDataset(repo_id, split, ids) for split, ids in selected_ids.items()}
+    return {split:create_CGNS_iterable_dataset(repo_id, split, ids) for split, ids in selected_ids.items()}

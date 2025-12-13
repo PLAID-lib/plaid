@@ -8,7 +8,6 @@ from packaging.version import Version
 import plaid
 from plaid import ProblemDefinition, Sample
 
-# COMMON
 from plaid.storage.common.preprocessor import preprocess
 from plaid.storage.common.reader import (
     load_infos_from_disk,
@@ -25,7 +24,6 @@ from plaid.storage.common.writer import (
     save_problem_definitions_to_disk,
 )
 
-# HF_DATASETS
 from plaid.storage.hf_datasets.bridge import (
     generator_to_datasetdict as generator_to_hf_datasetdict,
 )
@@ -33,30 +31,38 @@ from plaid.storage.hf_datasets.reader import (
     init_datasetdict_from_disk as init_hf_datasetdict_from_disk,
 )
 from plaid.storage.hf_datasets.writer import (
-    save_datasetdict_to_disk as save_hf_datasetdict_to_disk,
-    push_datasetdict_to_hub as push_hf_datasetdict_to_hub,
+    generate_datasetdict_to_disk as generate_hf_datasetdict_to_disk,
+    push_local_datasetdict_to_hub as push_local_hf_datasetdict_to_hub,
     configure_dataset_card as configure_hf_dataset_card,
 )
 
-# ZARR
 from plaid.storage.zarr.writer import (
-    save_datasetdict_to_disk as save_zarr_datasetdict_to_disk,
-    push_datasetdict_to_hub as push_zarr_datasetdict_to_hub,
+    generate_datasetdict_to_disk as generate_zarr_datasetdict_to_disk,
+    push_local_datasetdict_to_hub as push_local_zarr_datasetdict_to_hub,
     configure_dataset_card as configure_zarr_hf_dataset_card,
 )
 
-# CGNS
 from plaid.storage.cgns.writer import (
-    save_datasetdict_to_disk as save_cgns_datasetdict_to_disk,
-    push_datasetdict_to_hub as push_cgns_datasetdict_to_hub,
+    generate_datasetdict_to_disk as generate_cgns_datasetdict_to_disk,
+    push_local_datasetdict_to_hub as push_local_cgns_datasetdict_to_hub,
     configure_dataset_card as configure_cgns_hf_dataset_card,
 )
 
 logger = logging.getLogger(__name__)
 
-
 AVAILABLE_BACKENDS = ["cgns", "hf_datasets", "zarr"]
 
+generate_datasetdict_to_disk = {
+    "hf_datasets": generate_hf_datasetdict_to_disk,
+    "zarr": generate_zarr_datasetdict_to_disk,
+    "cgns": generate_cgns_datasetdict_to_disk,
+}
+
+push_local_datasetdict_to_hub = {
+    "hf_datasets": push_local_hf_datasetdict_to_hub,
+    "zarr": push_local_zarr_datasetdict_to_hub,
+    "cgns": push_local_cgns_datasetdict_to_hub,
+}
 
 def save_to_disk(
     output_folder: Union[str, Path],
@@ -81,36 +87,14 @@ def save_to_disk(
         generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
     )
 
-    if backend == "hf_datasets":
-        hf_datasetdict = generator_to_hf_datasetdict(
-            generators,
-            variable_schema,
-            gen_kwargs=gen_kwargs,
-            processes_number=num_proc,
-        )
-        save_hf_datasetdict_to_disk(output_folder, hf_datasetdict, num_proc=num_proc)
-
-    elif backend == "zarr":
-        save_zarr_datasetdict_to_disk(
+    generate_datasetdict_to_disk[backend](
             output_folder,
             generators,
             variable_schema,
             gen_kwargs=gen_kwargs,
             num_proc=num_proc,
             verbose=verbose,
-        )
-
-    elif backend == "cgns":
-        save_cgns_datasetdict_to_disk(
-            output_folder,
-            generators,
-            gen_kwargs=gen_kwargs,
-            num_proc=num_proc,
-            verbose=verbose,
-        )
-
-    else:
-        raise ValueError(f"backend {backend} not implemented")
+    )
 
     save_metadata_to_disk(output_folder, flat_cst, variable_schema, constant_schema, cgns_types)
 
@@ -125,25 +109,14 @@ def save_to_disk(
         save_problem_definitions_to_disk(output_folder, pb_defs)
 
 
-def push_to_hub(repo_id: str, local_dir: Union[str, Path], num_proc: int = 1) -> None:
+def push_to_hub(repo_id: str, local_dir: Union[str, Path], num_workers: int = 1) -> None:
     pb_defs = load_problem_definitions_from_disk(local_dir)
     flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(local_dir)
     infos = load_infos_from_disk(local_dir)
 
     backend = infos["storage_backend"]
 
-    if backend == "hf_datasets":
-        datasetdict = init_hf_datasetdict_from_disk(local_dir)
-        push_hf_datasetdict_to_hub(repo_id, datasetdict, num_proc=num_proc)
-        configure_hf_dataset_card(repo_id, infos)
-    elif backend == "zarr":
-        push_zarr_datasetdict_to_hub(repo_id, local_dir, num_workers=num_proc)
-        configure_zarr_hf_dataset_card(repo_id, local_dir, infos)
-    elif backend == "cgns":
-        push_cgns_datasetdict_to_hub(repo_id, local_dir, num_workers=num_proc)
-        configure_cgns_hf_dataset_card(repo_id, local_dir, infos)
-    else:
-        raise ValueError(f"backend {backend} not implemented")
+    push_local_datasetdict_to_hub[backend](repo_id, local_dir, num_workers=num_workers)
 
     push_metadata_to_hub(repo_id, flat_cst, variable_schema, constant_schema, cgns_types)
     push_infos_to_hub(repo_id, infos)

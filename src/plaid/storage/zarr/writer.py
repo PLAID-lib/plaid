@@ -31,7 +31,7 @@ def auto_chunks(shape, target_n):
     return (rows,) + shape[1:]
 
 
-def save_datasetdict_to_disk(
+def generate_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     variable_schema: dict[str, dict],
@@ -151,7 +151,7 @@ def save_datasetdict_to_disk(
                     pbar.update(1)
 
 
-def push_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
+def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,

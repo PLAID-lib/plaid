@@ -44,7 +44,11 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
 # ------------------------------------------------------
 
 def download_datasetdict_from_hub(
-    repo_id: str, local_dir: Union[str, Path], overwrite: bool = False
+    repo_id: str,
+    local_dir: Union[str, Path],
+    split_ids: Optional[dict[str, int]] = None, # noqa: ARG001
+    features: Optional[list[str]] = None, # noqa: ARG001
+    overwrite: bool = False,
 ) -> str:  # pragma: no cover (not tested in unit tests)
     output_folder = Path(local_dir)
 
@@ -66,7 +70,9 @@ def download_datasetdict_from_hub(
 
 
 def init_datasetdict_streaming_from_hub(
-    repo_id: str, features: Optional[list[str]] = None
+    repo_id: str,
+    split_ids: Optional[dict[str, int]] = None,  # noqa: ARG001
+    features: Optional[list[str]] = None,
 ):
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:

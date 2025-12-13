@@ -14,24 +14,16 @@ from plaid.types import IndexType
 logger = logging.getLogger(__name__)
 
 
-def save_datasetdict_to_disk(
+def generate_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
+    variable_schema: Optional[dict[str, dict]] = None,  # noqa: ARG001
     gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
-    overwrite: bool = False,
 ) -> None:
     output_folder = Path(output_folder)
 
-    if output_folder.is_dir():
-        if overwrite:
-            shutil.rmtree(output_folder)
-            logger.warning(f"Existing {output_folder} directory has been reset.")
-        elif any(output_folder.iterdir()):
-            raise ValueError(
-                f"directory {output_folder} already exists and is not empty. Set `overwrite` to True if needed."
-            )
 
     assert (gen_kwargs is None and num_proc == 1) or (
         gen_kwargs is not None and num_proc > 1
@@ -116,7 +108,7 @@ def save_datasetdict_to_disk(
                     pbar.update(1)
 
 
-def push_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
+def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,
