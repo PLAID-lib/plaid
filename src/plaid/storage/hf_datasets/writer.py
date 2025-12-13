@@ -258,7 +258,6 @@ dataset = datasetdict[split]
 converter = converterdict[split]
 
 for i in range(len(dataset)):
-    raw_sample = dataset[i]
     plaid_sample = converter.to_plaid(dataset, i)
 ```
 
