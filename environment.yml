@@ -9,8 +9,9 @@ dependencies:
   - tqdm
 #---# io
   - pyyaml
-#---# mesh/graph libs
+#---# storage backends
   - pycgns-core
+  - zarr
 #---# SciML
   - scikit-learn
   - datasets

@@ -924,6 +924,11 @@ class SampleFeatures:
         else:
             base_node = self.init_base(1, 1, "Global", time)
 
+        if isinstance(global_array, str):  # pragma: no cover
+            global_array = np.frombuffer(
+                global_array.encode("ascii"), dtype="S1", count=len(global_array)
+            )
+
         if CGU.getValueByPath(base_node, name) is None:
             CGL.newDataArray(base_node, name, value=global_array)
         else:
