@@ -10,9 +10,8 @@ import numpy as np
 from tqdm import tqdm
 
 from plaid import Sample
-from plaid.types import IndexType
-
 from plaid.storage.common.tree_handling import flatten_cgns_tree
+from plaid.types import IndexType
 
 
 def infer_dtype(value) -> dict[str, int | str]:
@@ -547,4 +546,10 @@ def preprocess(
     variable_schema = _build_schema(var_features)
     constant_schema = _build_schema(cst_features)
 
-    return split_flat_cst, variable_schema, constant_schema, split_n_samples, global_cgns_types
+    return (
+        split_flat_cst,
+        variable_schema,
+        constant_schema,
+        split_n_samples,
+        global_cgns_types,
+    )

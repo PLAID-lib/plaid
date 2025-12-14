@@ -36,6 +36,7 @@ import os, psutil
 import tempfile
 import shutil
 from time import time
+from functools import partial
 
 import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
@@ -167,21 +168,18 @@ print(f"{key_mappings = }")
 # Ganarators are used to handle large datasets that do not fit in memory:
 
 # %%
-gen_kwargs = {}
-gen_kwargs["train"] = {"shards_ids": [[0, 1]]}
-gen_kwargs["test"] = {"shards_ids": [[2]]}
+split_ids = {}
+split_ids["train"] = [0, 1]
+split_ids["test"] = [2]
 
 generators = {}
-for split_name in gen_kwargs.keys():
+for split_name in split_ids.keys():
 
-    def generator_(shards_ids):
-        for ids in shards_ids:
-            if isinstance(ids, int):
-                ids = [ids]
-            for id in ids:
-                yield dataset[id]
+    def generator_(ids):
+        for id in ids:
+            yield dataset[id]
 
-    generators[split_name] = generator_
+    generators[split_name] = partial(generator_, ids = split_ids[split_name])
 
 hf_datasetdict, flat_cst, key_mappings = (
     huggingface_bridge.plaid_generator_to_huggingface_datasetdict(

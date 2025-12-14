@@ -1,6 +1,5 @@
 import logging
 import multiprocessing as mp
-import shutil
 from pathlib import Path
 from typing import Callable, Generator, Optional, Union
 
@@ -23,7 +22,6 @@ def generate_datasetdict_to_disk(
     verbose: bool = False,
 ) -> None:
     output_folder = Path(output_folder)
-
 
     assert (gen_kwargs is None and num_proc == 1) or (
         gen_kwargs is not None and num_proc > 1
@@ -108,7 +106,9 @@ def generate_datasetdict_to_disk(
                     pbar.update(1)
 
 
-def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):  # pragma: no cover
+def push_local_datasetdict_to_hub(
+    repo_id, local_dir, num_workers=1
+):  # pragma: no cover
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,

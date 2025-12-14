@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Write to disk
 # ------------------------------------------------------
 
+
 def save_infos_to_disk(
     path: Union[str, Path], infos: dict[str, dict[str, str]]
 ) -> None:
@@ -63,7 +64,7 @@ def save_metadata_to_disk(
     flat_cst: dict[str, Any],
     variable_schema: dict[str, Any],
     constant_schema: dict[str, Any],
-    cgns_types: dict[str, Any]
+    cgns_types: dict[str, Any],
 ) -> None:
     """Save the structure of a dataset tree to disk.
 
@@ -175,7 +176,7 @@ def push_metadata_to_hub(
     flat_cst: dict[str, Any],
     variable_schema: dict[str, Any],
     constant_schema: dict[str, Any],
-    cgns_types: dict[str, Any]
+    cgns_types: dict[str, Any],
 ) -> None:  # pragma: no cover (not tested in unit tests)
     """Upload a dataset's tree structure to a Hugging Face dataset repository.
 

@@ -4,8 +4,8 @@ import numpy as np
 
 from plaid import Sample
 from plaid.containers.features import SampleFeatures
-from plaid.storage.common.tree_handling import unflatten_cgns_tree
 from plaid.storage.common.preprocessor import build_sample_dict
+from plaid.storage.common.tree_handling import unflatten_cgns_tree
 
 
 def _split_dict(d):
@@ -101,7 +101,6 @@ def to_plaid_sample(
     sample_dict: dict[float, dict[str, Any]],
     cgns_types: dict[str, str],
 ) -> Sample:
-
     sample_data = {}
     for time, flat_tree in sample_dict.items():
         sample_data[time] = unflatten_cgns_tree(flat_tree, cgns_types)
@@ -110,11 +109,8 @@ def to_plaid_sample(
 
 
 def plaid_to_sample_dict(
-    sample: Sample,
-    variable_schema,
-    constant_schema
+    sample: Sample, variable_schema, constant_schema
 ) -> tuple[dict[str, Any], dict[str, Any]]:
-
     var_features = list(variable_schema.keys())
     cst_features = list(constant_schema.keys())
 
@@ -124,7 +120,6 @@ def plaid_to_sample_dict(
     cst_sample_dict = {path: hf_sample.get(path, None) for path in cst_features}
 
     return cst_sample_dict, var_sample_dict
-
 
 
 ##############################################

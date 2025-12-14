@@ -152,7 +152,9 @@ def generate_datasetdict_to_disk(
                     pbar.update(1)
 
 
-def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):  # pragma: no cover
+def push_local_datasetdict_to_hub(
+    repo_id, local_dir, num_workers=1
+):  # pragma: no cover
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,

@@ -3,16 +3,15 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional, Union, Iterator
+from typing import Iterator, Optional, Union
 
-import fsspec
 import numpy as np
 import yaml
+from datasets import IterableDataset
+from datasets.splits import NamedSplit
 from huggingface_hub import hf_hub_download, snapshot_download
 
 from plaid import Sample
-from datasets import IterableDataset
-from datasets.splits import NamedSplit
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +19,9 @@ logger = logging.getLogger(__name__)
 # Classes and functions
 # ------------------------------------------------------
 
+
 class CGNSDataset:
     def __init__(self, path, **kwargs):
-
         self.path = path
         self._extra_fields = dict(kwargs)
 
@@ -45,17 +44,19 @@ class CGNSDataset:
         assert idx in self.ids
         return Sample(path=self.path / f"sample_{idx:09d}")
 
-    def __len__(self)->int:
+    def __len__(self) -> int:
         return len(self.ids)
 
     def __getattr__(self, name):
         # fallback to extra fields
         if name in self._extra_fields:
             return self._extra_fields[name]
-        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")  # pragma: no cover
+        raise AttributeError(
+            f"{type(self).__name__} has no attribute '{name}'"
+        )  # pragma: no cover
 
     def __setattr__(self, name, value):
-        if name in ('path', '_extra_fields'):
+        if name in ("path", "_extra_fields"):
             super().__setattr__(name, value)
         else:
             self._extra_fields[name] = value
@@ -64,7 +65,9 @@ class CGNSDataset:
         return f"<CGNSDataset {repr(self.path)} | extra_fields={self._extra_fields}>"
 
 
-def sample_generator(repo_id: str, split: str, ids: list[int]) -> Iterator[Sample]:  # pragma: no cover
+def sample_generator(
+    repo_id: str, split: str, ids: list[int]
+) -> Iterator[Sample]:  # pragma: no cover
     for idx in ids:
         with tempfile.TemporaryDirectory(prefix="plaid_sample_") as temp_folder:
             snapshot_download(
@@ -74,23 +77,17 @@ def sample_generator(repo_id: str, split: str, ids: list[int]) -> Iterator[Sampl
                 local_dir=temp_folder,
             )
             sample = Sample(
-                path=Path(temp_folder)
-                / "data"
-                / f"{split}"
-                / f"sample_{idx:09d}"
+                path=Path(temp_folder) / "data" / f"{split}" / f"sample_{idx:09d}"
             )
         yield sample
 
 
-def create_CGNS_iterable_dataset(repo_id: str,
-                        split: str,
-                        ids: list[int]) -> IterableDataset:  # pragma: no cover
-
+def create_CGNS_iterable_dataset(
+    repo_id: str, split: str, ids: list[int]
+) -> IterableDataset:  # pragma: no cover
     return IterableDataset.from_generator(
         sample_generator,
-        gen_kwargs={"repo_id": repo_id,
-                    "split": split,
-                    "ids": ids},
+        gen_kwargs={"repo_id": repo_id, "split": split, "ids": ids},
         split=NamedSplit(split),
         features=None,
     )
@@ -100,16 +97,13 @@ def create_CGNS_iterable_dataset(repo_id: str,
 # Load from disk
 # ------------------------------------------------------
 
+
 def init_datasetdict_from_disk(
     path: Union[str, Path],
 ) -> dict[str, CGNSDataset]:
     local_path = Path(path) / "data"
     split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
-    return {
-        sn: CGNSDataset(local_path / sn)
-        for sn in split_names
-    }
-
+    return {sn: CGNSDataset(local_path / sn) for sn in split_names}
 
 
 # ------------------------------------------------------
@@ -121,7 +115,7 @@ def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
     split_ids: Optional[dict[str, int]] = None,
-    features: Optional[list[str]] = None, # noqa: ARG001
+    features: Optional[list[str]] = None,  # noqa: ARG001
     overwrite: bool = False,
 ) -> None:  # pragma: no cover
     output_folder = Path(local_dir)
@@ -173,4 +167,7 @@ def init_datasetdict_streaming_from_hub(
             split: range(n_samples) for split, n_samples in infos["num_samples"].items()
         }
 
-    return {split:create_CGNS_iterable_dataset(repo_id, split, ids) for split, ids in selected_ids.items()}
+    return {
+        split: create_CGNS_iterable_dataset(repo_id, split, ids)
+        for split, ids in selected_ids.items()
+    }

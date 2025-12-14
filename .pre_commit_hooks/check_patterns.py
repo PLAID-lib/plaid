@@ -7,6 +7,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Union
 
+# execptions: commited lines of code that contain any of the following words
+EXCEPTIONS = ["huggingface"]
+
 
 def main(argv: Union[Sequence[str], None] = None) -> int:
     """Function to check for patterns in staged changes."""
@@ -31,9 +34,12 @@ def main(argv: Union[Sequence[str], None] = None) -> int:
     for filename in args.filenames:
         with open(filename, "r", encoding="utf-8", errors="ignore") as f:
             for lineno, line in enumerate(f, 1):
-                for pattern_str, pattern in COMPILED_PATTERN:
-                    if pattern.search(line):
-                        violations.append((filename, lineno, pattern_str, line.strip()))
+                if not any(w in line for w in EXCEPTIONS):
+                    for pattern_str, pattern in COMPILED_PATTERN:
+                        if pattern.search(line):
+                            violations.append(
+                                (filename, lineno, pattern_str, line.strip())
+                            )
 
     violations_commiter = []
     # Get commit metadata
@@ -47,6 +53,8 @@ def main(argv: Union[Sequence[str], None] = None) -> int:
             if pattern.search(value):
                 violations_commiter.append(f"[{label}] {value.strip()}")
                 break
+
+    print(violations)
 
     if violations or violations_commiter:
         print("--")

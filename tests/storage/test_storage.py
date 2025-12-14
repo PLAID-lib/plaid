@@ -7,7 +7,6 @@
 
 # %% Imports
 
-import pickle
 import shutil
 from pathlib import Path
 from typing import Callable
@@ -18,15 +17,16 @@ import pytest
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
-from plaid.utils import cgns_helper
-
-from plaid.storage import save_to_disk
-from plaid.storage import init_from_disk
-from plaid.storage import load_problem_definitions_from_disk
+from plaid.storage import (
+    init_from_disk,
+    load_problem_definitions_from_disk,
+    save_to_disk,
+)
 from plaid.storage.common.preprocessor import preprocess
-
-from plaid.storage.hf_datasets.bridge import to_var_sample_dict, plaid_dataset_to_datasetdict
-from plaid.storage.hf_datasets.writer import generate_datasetdict_to_disk
+from plaid.storage.hf_datasets.bridge import (
+    plaid_dataset_to_datasetdict,
+    to_var_sample_dict,
+)
 
 
 @pytest.fixture()
@@ -126,36 +126,51 @@ class Test_Huggingface_Bridge:
     #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
     # ------------------------------------------------------------------------------
 
-    def test_hf_datasets(self, dataset, main_splits, current_directory, generator_split, infos, problem_definition):
-
+    def test_hf_datasets(
+        self,
+        dataset,
+        main_splits,
+        current_directory,
+        generator_split,
+        infos,
+        problem_definition,
+    ):
         _, variable_schema, _, _, _ = preprocess(generator_split)
-        datasetdict = plaid_dataset_to_datasetdict(dataset, main_splits, variable_schema)
+        datasetdict = plaid_dataset_to_datasetdict(
+            dataset, main_splits, variable_schema
+        )
 
         test_dir = Path(current_directory) / Path("test_hf")
         if test_dir.is_dir():
             shutil.rmtree(test_dir)
 
-        save_to_disk(output_folder=test_dir,
-            generators = generator_split,
-            backend = "hf_datasets",
-            infos = infos,
-            pb_defs = problem_definition)
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs=problem_definition,
+        )
 
-        save_to_disk(output_folder=test_dir,
-            generators = generator_split,
-            backend = "hf_datasets",
-            infos = infos,
-            pb_defs = problem_definition,
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs=problem_definition,
             overwrite=True,
-            verbose=True)
+            verbose=True,
+        )
 
         with pytest.raises(ValueError):
-            save_to_disk(output_folder=test_dir,
-                generators = generator_split,
-                backend = "hf_datasets",
-                infos = infos,
-                pb_defs = problem_definition,
-                overwrite=False)
+            save_to_disk(
+                output_folder=test_dir,
+                generators=generator_split,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs=problem_definition,
+                overwrite=False,
+            )
 
         load_problem_definitions_from_disk(test_dir)
 
@@ -173,7 +188,7 @@ class Test_Huggingface_Bridge:
 
         converter.plaid_to_dict(plaid_sample)
 
-        to_var_sample_dict(dataset, 0, enforce_shapes = False)
+        to_var_sample_dict(dataset, 0, enforce_shapes=False)
 
         for t in plaid_sample.get_all_time_values():
             for path in problem_definition.get_in_features_identifiers():
@@ -187,18 +202,19 @@ class Test_Huggingface_Bridge:
         shutil.rmtree(test_dir)
 
     def test_zarr(self, current_directory, generator_split, infos, problem_definition):
-
         test_dir = Path(current_directory) / Path("test_zarr")
         if test_dir.is_dir():
             shutil.rmtree(test_dir)
 
-        save_to_disk(output_folder=test_dir,
-            generators = generator_split,
-            backend = "zarr",
-            infos = infos,
-            pb_defs = problem_definition,
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="zarr",
+            infos=infos,
+            pb_defs=problem_definition,
             overwrite=True,
-            verbose=True)
+            verbose=True,
+        )
 
         datasetdict, converterdict = init_from_disk(test_dir)
 
@@ -212,13 +228,12 @@ class Test_Huggingface_Bridge:
 
         converter.plaid_to_dict(plaid_sample)
 
-
         # coverage of ZarrDataset classe
         for sample in dataset:
             sample
         len(dataset)
         dataset.zarr_group
-        dataset.toto = 1.
+        dataset.toto = 1.0
         print(dataset)
 
         for t in plaid_sample.get_all_time_values():
@@ -232,20 +247,20 @@ class Test_Huggingface_Bridge:
 
         shutil.rmtree(test_dir)
 
-
     def test_cgns(self, current_directory, generator_split, infos, problem_definition):
-
         test_dir = Path(current_directory) / Path("test_cgns")
         if test_dir.is_dir():
             shutil.rmtree(test_dir)
 
-        save_to_disk(output_folder=test_dir,
-            generators = generator_split,
-            backend = "cgns",
-            infos = infos,
-            pb_defs = problem_definition,
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="cgns",
+            infos=infos,
+            pb_defs=problem_definition,
             overwrite=True,
-            verbose=True)
+            verbose=True,
+        )
 
         datasetdict, converterdict = init_from_disk(test_dir)
 
@@ -257,9 +272,8 @@ class Test_Huggingface_Bridge:
             sample
         len(dataset)
         dataset.ids
-        dataset.toto = 1.
+        dataset.toto = 1.0
         print(dataset)
-
 
         plaid_sample = converter.to_plaid(dataset, 0)
         self.assert_sample(plaid_sample)

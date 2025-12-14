@@ -7,7 +7,7 @@
 #
 #
 
-from typing import Any, Optional
+from typing import Any
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np

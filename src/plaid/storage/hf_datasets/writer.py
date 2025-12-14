@@ -1,14 +1,14 @@
 import logging
 from pathlib import Path
-from typing import Optional, Union, Callable, Generator, Optional
+from typing import Callable, Generator, Optional, Union
 
 import datasets
 import yaml
 from huggingface_hub import DatasetCard, hf_hub_download
 
+from plaid import Sample
 from plaid.storage.hf_datasets.bridge import generator_to_datasetdict
 from plaid.storage.hf_datasets.reader import init_datasetdict_from_disk
-from plaid import Sample
 from plaid.types import IndexType
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,6 @@ def generate_datasetdict_to_disk(
     num_proc: int = 1,
     verbose: bool = False,  # noqa: ARG001
 ) -> None:
-
     hf_datasetdict = generator_to_datasetdict(
         generators,
         variable_schema,
@@ -131,7 +130,9 @@ def push_datasetdict_to_hub(
     )
 
 
-def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):  # pragma: no cover
+def push_local_datasetdict_to_hub(
+    repo_id, local_dir, num_workers=1
+):  # pragma: no cover
     datasetdict = init_datasetdict_from_disk(local_dir)
     push_datasetdict_to_hub(repo_id, datasetdict, num_proc=num_workers)
 

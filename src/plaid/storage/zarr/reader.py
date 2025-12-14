@@ -2,20 +2,18 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Optional, Union, Iterator
+from typing import Iterator, Optional, Union
 
 import fsspec
+import numpy as np
 import yaml
 import zarr
-import numpy as np
-
+from datasets import IterableDataset
+from datasets.splits import NamedSplit
 from huggingface_hub import hf_hub_download, snapshot_download
 
 from plaid.storage.zarr.bridge import unflatten_zarr_key
 from plaid.storage.zarr.writer import flatten_path
-
-from datasets import IterableDataset
-from datasets.splits import NamedSplit
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +22,11 @@ logger = logging.getLogger(__name__)
 # Classes and functions
 # ------------------------------------------------------
 
+
 class ZarrDataset:
     def __init__(self, zarr_group: zarr.Group, **kwargs):
         self.zarr_group = zarr_group
-        self._extra_fields =  dict(kwargs)
+        self._extra_fields = dict(kwargs)
 
         ids = sorted(int(name[7:]) for name, _ in zarr_group.groups())
         self._extra_fields["ids"] = np.asarray(ids, dtype=int)
@@ -39,10 +38,11 @@ class ZarrDataset:
     def __getitem__(self, idx):
         zarr_sample = self.zarr_group[f"sample_{idx:09d}"]
         return {
-            unflatten_zarr_key(path): zarr_sample[path] for path in zarr_sample.array_keys()
+            unflatten_zarr_key(path): zarr_sample[path]
+            for path in zarr_sample.array_keys()
         }
 
-    def __len__(self)->int:
+    def __len__(self) -> int:
         return len(self.zarr_group)
 
     def __getattr__(self, name):
@@ -52,16 +52,20 @@ class ZarrDataset:
         # fallback to zarr_group attributes
         if hasattr(self.zarr_group, name):  # pragma: no cover
             return getattr(self.zarr_group, name)
-        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")  # pragma: no cover
+        raise AttributeError(
+            f"{type(self).__name__} has no attribute '{name}'"
+        )  # pragma: no cover
 
     def __setattr__(self, name, value):
-        if name in ('zarr_group', '_extra_fields'):
+        if name in ("zarr_group", "_extra_fields"):
             super().__setattr__(name, value)
         else:
             self._extra_fields[name] = value
 
     def __repr__(self):
-        return f"<ZarrDataset {repr(self.zarr_group)} | extra_fields={self._extra_fields}>"
+        return (
+            f"<ZarrDataset {repr(self.zarr_group)} | extra_fields={self._extra_fields}>"
+        )
 
 
 def _zarr_patterns(
@@ -107,9 +111,12 @@ def _zarr_patterns(
     return allow_patterns, ignore_patterns
 
 
-def sample_generator(repo_id: str, split: str, ids: list[int], selected_features: list[str]) -> Iterator[dict]:  # pragma: no cover
-
-    base_url = f"https://huggingface.co/datasets/{repo_id}/resolve/main/data/{split}/sample_"
+def sample_generator(
+    repo_id: str, split: str, ids: list[int], selected_features: list[str]
+) -> Iterator[dict]:  # pragma: no cover
+    base_url = (
+        f"https://huggingface.co/datasets/{repo_id}/resolve/main/data/{split}/sample_"
+    )
     for idx in ids:
         sample = {}
         for feat in selected_features:
@@ -120,12 +127,11 @@ def sample_generator(repo_id: str, split: str, ids: list[int], selected_features
         yield sample
 
 
-def create_zarr_iterable_dataset(repo_id, split, ids, selected_features):  # pragma: no cover
-
+def create_zarr_iterable_dataset(
+    repo_id, split, ids, selected_features
+):  # pragma: no cover
     def wrapped_gen():
-        yield from sample_generator(
-            repo_id, split, ids, selected_features
-        )
+        yield from sample_generator(repo_id, split, ids, selected_features)
 
     return IterableDataset.from_generator(
         wrapped_gen,
@@ -134,10 +140,10 @@ def create_zarr_iterable_dataset(repo_id, split, ids, selected_features):  # pra
     )
 
 
-
 # ------------------------------------------------------
 # Load from disk
 # ------------------------------------------------------
+
 
 def init_datasetdict_from_disk(
     path: Union[str, Path],
@@ -145,9 +151,7 @@ def init_datasetdict_from_disk(
     local_path = Path(path) / "data"
     split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
     return {
-        sn: ZarrDataset(
-            zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r")
-        )
+        sn: ZarrDataset(zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r"))
         for sn in split_names
     }
 
@@ -155,6 +159,7 @@ def init_datasetdict_from_disk(
 # ------------------------------------------------------
 # Load from from hub
 # ------------------------------------------------------
+
 
 def download_datasetdict_from_hub(
     repo_id: str,
@@ -220,4 +225,7 @@ def init_datasetdict_streaming_from_hub(
             split: range(n_samples) for split, n_samples in infos["num_samples"].items()
         }
 
-    return {split:create_zarr_iterable_dataset(repo_id, split, ids, selected_features) for split, ids in selected_ids.items()}
+    return {
+        split: create_zarr_iterable_dataset(repo_id, split, ids, selected_features)
+        for split, ids in selected_ids.items()
+    }

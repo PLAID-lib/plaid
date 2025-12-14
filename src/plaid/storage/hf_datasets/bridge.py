@@ -8,7 +8,6 @@ from datasets import Features, Sequence, Value
 
 from plaid import Dataset, Sample
 from plaid.storage.common.preprocessor import build_sample_dict
-from plaid.storage.common.bridge import to_sample_dict, to_plaid_sample
 from plaid.types import IndexType
 
 

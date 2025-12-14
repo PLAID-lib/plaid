@@ -14,7 +14,6 @@ from multiprocessing import Pool
 from pathlib import Path
 from typing import Any, Optional, Union
 
-
 import numpy as np
 import pyarrow as pa
 import yaml
@@ -46,6 +45,7 @@ pa.set_memory_pool(pa.system_memory_pool())
 # ------------------------------------------------------------------------------
 #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
 # ------------------------------------------------------------------------------
+
 
 def to_plaid_dataset(
     hf_dataset: datasets.Dataset,
@@ -502,7 +502,6 @@ def load_tree_struct_from_disk(
     return flat_cst, key_mappings
 
 
-
 # ------------------------------------------------------------------------------
 #     HUGGING FACE BINARY BRIDGE
 # ------------------------------------------------------------------------------
@@ -550,7 +549,6 @@ def binary_to_plaid_sample(hf_sample: dict[str, bytes]) -> Sample:
                 sample.add_scalar(sn, val)
 
         return Sample.model_validate(sample)
-
 
 
 def huggingface_dataset_to_plaid(
@@ -725,7 +723,6 @@ def huggingface_description_to_infos(
     return infos
 
 
-
 #########################################################################################
 #################################### SAVED FUNCTIONS ####################################
 #########################################################################################
@@ -736,10 +733,6 @@ import io
 import multiprocessing as mp
 import traceback
 from functools import partial
-
-from plaid.types import IndexType
-
-
 from queue import Empty
 from typing import Callable
 
@@ -749,6 +742,8 @@ from huggingface_hub import HfApi
 from plaid.storage.common.tree_handling import (
     flatten_cgns_tree,
 )
+from plaid.types import IndexType
+
 
 def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:
     """Infer Hugging Face dataset feature type from a given value.
@@ -1486,7 +1481,6 @@ def _generator_prepare_for_huggingface(
 #     return split_flat_cst, key_mappings, hf_features
 
 
-
 def plaid_dataset_to_huggingface_datasetdict(
     dataset: Dataset,
     main_splits: dict[str, IndexType],
@@ -1647,6 +1641,7 @@ def plaid_generator_to_huggingface_datasetdict(
 
     return datasets.DatasetDict(_dict), flat_cst, key_mappings
 
+
 def _compute_num_shards(hf_dataset_dict: datasets.DatasetDict) -> dict[str, int]:
     target_shard_size_mb = 500
 
@@ -1665,7 +1660,6 @@ def _compute_num_shards(hf_dataset_dict: datasets.DatasetDict) -> dict[str, int]
         )
         num_shards[split_name] = min(n_samples, int(n_shards))
     return num_shards
-
 
 
 def push_dataset_dict_to_hub(
@@ -1914,7 +1908,6 @@ def save_tree_struct_to_disk(
 
     with open(Path(path) / "key_mappings.yaml", "w", encoding="utf-8") as f:
         yaml.dump(key_mappings, f, sort_keys=False)
-
 
 
 def plaid_dataset_to_huggingface_binary(

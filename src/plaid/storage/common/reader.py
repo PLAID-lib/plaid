@@ -203,5 +203,4 @@ def load_metadata_from_hub(
     with open(yaml_path, "r", encoding="utf-8") as f:
         cgns_types = yaml.safe_load(f)
 
-
     return flat_cst, variable_schema, constant_schema, cgns_types

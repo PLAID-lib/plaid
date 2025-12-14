@@ -44,15 +44,17 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
         data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
         return load_dataset("parquet", data_files=data_files)
 
+
 # ------------------------------------------------------
 # Load from from hub
 # ------------------------------------------------------
 
+
 def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
-    split_ids: Optional[dict[str, int]] = None, # noqa: ARG001
-    features: Optional[list[str]] = None, # noqa: ARG001
+    split_ids: Optional[dict[str, int]] = None,  # noqa: ARG001
+    features: Optional[list[str]] = None,  # noqa: ARG001
     overwrite: bool = False,
 ) -> str:  # pragma: no cover (not tested in unit tests)
     output_folder = Path(local_dir)
