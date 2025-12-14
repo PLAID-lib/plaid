@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (storage) refactore the bridge to rely on a generic storage mechanism, with 3 backends developped: cgns, hf_datasets and zarr.
 - (docs) improve contribution guidelines.
 
 ### Changed
@@ -27,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (features) rename `get_all_mesh_times()` to `get_all_time_values()`.
 
 ### Removed
+
+- (python) remove python 3.10 support for zarr compatibility
 
 ## [0.1.10] - 2025-10-29
 
