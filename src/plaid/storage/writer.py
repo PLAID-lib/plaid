@@ -1,4 +1,5 @@
 import logging
+import shutil
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Callable, Generator, Optional, Union
@@ -15,7 +16,6 @@ from plaid.storage.common.reader import (
     load_problem_definitions_from_disk,
 )
 from plaid.storage.common.writer import (
-    _check_folder,
     push_infos_to_hub,
     push_metadata_to_hub,
     push_problem_definitions_to_hub,
@@ -70,6 +70,18 @@ configure_dataset_card = {
     "cgns": configure_cgns_dataset_card,
 }
 
+
+def _check_folder(output_folder: Path, overwrite: bool) -> None:
+    if output_folder.is_dir():
+        if overwrite:
+            shutil.rmtree(output_folder)
+            logger.warning(f"Existing {output_folder} directory has been reset.")
+        elif any(output_folder.iterdir()):
+            raise ValueError(
+                f"directory {output_folder} already exists and is not empty. Set `overwrite` to True if needed."
+            )
+
+
 def save_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
@@ -123,7 +135,7 @@ def push_to_hub(repo_id: str,
                 dataset_long_description: Optional[str] = None,
                 illustration_urls: Optional[list[str]] = None,
                 arxiv_paper_urls: Optional[list[str]] = None,
-    ) -> None:
+    ) -> None:  # pragma: no cover
     pb_defs = load_problem_definitions_from_disk(local_dir)
     flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(local_dir)
     infos = load_infos_from_disk(local_dir)

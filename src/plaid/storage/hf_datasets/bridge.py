@@ -17,17 +17,6 @@ def convert_dtype_to_hf_feature(feature_type):
     base_dtype = feature_type["dtype"]
     ndim = feature_type["ndim"]
 
-    # # Map numpy dtype to HF Value type
-    # if base_dtype.startswith("float") or base_dtype.startswith("int"):
-    #     value_type = Value(base_dtype)
-    # elif base_dtype.startswith("<U") or base_dtype.startswith("|S"):
-    #     value_type = Value("string")
-    # else:
-    #     raise ValueError(f"Unsupported dtype: {base_dtype}")
-
-    # # Wrap in Sequence according to ndim
-    # feature = value_type
-
     feature = Value(base_dtype)
     for _ in range(ndim):
         feature = Sequence(feature)

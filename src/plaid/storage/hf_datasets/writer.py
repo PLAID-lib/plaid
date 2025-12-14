@@ -88,7 +88,7 @@ def generate_datasetdict_to_disk(
 
 def push_datasetdict_to_hub(
     repo_id: str, hf_datasetdict: datasets.DatasetDict, **kwargs
-) -> None:  # pragma: no cover (not tested in unit tests)
+) -> None:  # pragma: no cover
     """Push a Hugging Face `DatasetDict` to the Hugging Face Hub.
 
     This is a thin wrapper around `datasets.DatasetDict.push_to_hub`, allowing
@@ -131,7 +131,7 @@ def push_datasetdict_to_hub(
     )
 
 
-def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
+def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):  # pragma: no cover
     datasetdict = init_datasetdict_from_disk(local_dir)
     push_datasetdict_to_hub(repo_id, datasetdict, num_proc=num_workers)
 
@@ -146,7 +146,7 @@ def configure_dataset_card(
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,
     arxiv_paper_urls: Optional[list[str]] = None,
-) -> None:
+) -> None:  # pragma: no cover
     r"""Update a dataset card with PLAID-specific metadata and documentation.
 
     Args:

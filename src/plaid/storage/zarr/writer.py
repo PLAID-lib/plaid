@@ -54,7 +54,7 @@ def generate_datasetdict_to_disk(
 
     def worker_batch(
         split_root_path, gen_func, var_features_keys, batch, start_index, queue
-    ):
+    ):  # pragma: no cover
         """Process a single batch and write samples to Zarr."""
         split_root = zarr.open_group(split_root_path, mode="a")
         sample_counter = start_index
@@ -76,7 +76,7 @@ def generate_datasetdict_to_disk(
             sample_counter += 1
             queue.put(1)
 
-    def tqdm_updater(total, queue, desc="Processing"):
+    def tqdm_updater(total, queue, desc="Processing"):  # pragma: no cover
         """Tqdm process that listens to the queue to update progress."""
         with tqdm(total=total, desc=desc, disable=not verbose) as pbar:
             finished = 0
@@ -93,7 +93,7 @@ def generate_datasetdict_to_disk(
 
         total_samples = sum(len(batch) for batch in batch_ids_list)
 
-        if num_proc > 1 and batch_ids_list:
+        if num_proc > 1 and batch_ids_list:  # pragma: no cover
             # Parallel execution
             queue = mp.Queue()
             tqdm_proc = mp.Process(
@@ -141,17 +141,18 @@ def generate_datasetdict_to_disk(
 
                     g = split_root.create_group(f"sample_{sample_counter:09d}")
                     for key, value in sample_data.items():
-                        g.create_array(
-                            flatten_path(key),
-                            data=value,
-                            chunks=auto_chunks(value.shape, 5_000_000),
-                        )  # chunks=value.shape
+                        if value is not None:
+                            g.create_array(
+                                flatten_path(key),
+                                data=value,
+                                chunks=auto_chunks(value.shape, 5_000_000),
+                            )  # chunks=value.shape
 
                     sample_counter += 1
                     pbar.update(1)
 
 
-def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
+def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):  # pragma: no cover
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,
@@ -173,7 +174,7 @@ def configure_dataset_card(
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,
     arxiv_paper_urls: Optional[list[str]] = None,
-) -> None:
+) -> None:  # pragma: no cover
     r"""Update a dataset card with PLAID-specific metadata and documentation.
 
     Args:

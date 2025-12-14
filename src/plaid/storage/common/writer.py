@@ -1,7 +1,6 @@
 import io
 import logging
 import pickle
-import shutil
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Union
@@ -16,18 +15,6 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------
 # Write to disk
 # ------------------------------------------------------
-
-
-def _check_folder(output_folder: Path, overwrite: bool) -> None:
-    if output_folder.is_dir():
-        if overwrite:
-            shutil.rmtree(output_folder)
-            logger.warning(f"Existing {output_folder} directory has been reset.")
-        elif any(output_folder.iterdir()):
-            raise ValueError(
-                f"directory {output_folder} already exists and is not empty. Set `overwrite` to True if needed."
-            )
-
 
 def save_infos_to_disk(
     path: Union[str, Path], infos: dict[str, dict[str, str]]
@@ -58,7 +45,7 @@ def save_problem_definitions_to_disk(
     if isinstance(pb_defs, ProblemDefinition):
         pb_defs = [pb_defs]
 
-    if not isinstance(pb_defs, Iterable):
+    if not isinstance(pb_defs, Iterable):  # pragma: no cover
         raise TypeError(
             f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}"
         )

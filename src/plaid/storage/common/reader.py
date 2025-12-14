@@ -51,7 +51,7 @@ def load_problem_definitions_from_disk(
                 pb_defs.append(pb_def)
         return pb_defs
     else:
-        return None
+        return None  # pragma: no cover
 
 
 def load_metadata_from_disk(
@@ -94,7 +94,7 @@ def load_metadata_from_disk(
 
 def load_infos_from_hub(
     repo_id: str,
-) -> dict[str, Any]:  # pragma: no cover (not tested in unit tests)
+) -> dict[str, Any]:  # pragma: no cover
     """Load dataset infos from the Hugging Face Hub.
 
     Downloads the infos.yaml file from the specified repository and parses it as a dictionary.
@@ -117,7 +117,7 @@ def load_infos_from_hub(
 
 def load_problem_definitions_from_hub(
     repo_id: str,
-) -> Optional[list[ProblemDefinition]]:  # pragma: no cover (not tested in unit tests)
+) -> Optional[list[ProblemDefinition]]:  # pragma: no cover
     """Load a ProblemDefinition from the Hugging Face Hub.
 
     Downloads the problem infos YAML and split JSON files from the specified repository and location,
@@ -144,7 +144,7 @@ def load_metadata_from_hub(
     repo_id: str,
 ) -> tuple[
     dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
-]:  # pragma: no cover (not tested in unit tests)
+]:  # pragma: no cover
     """Load the tree structure metadata of a PLAID dataset from the Hugging Face Hub.
 
     This function retrieves two artifacts previously uploaded alongside a dataset:

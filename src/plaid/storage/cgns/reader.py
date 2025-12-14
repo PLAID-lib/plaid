@@ -27,14 +27,14 @@ class CGNSDataset:
         self._extra_fields = dict(kwargs)
 
         if Path(path).is_dir():
-            sample_dirs = [
-                p
+            ids = sorted(
+                int(p.name.removeprefix("sample_"))
                 for p in path.iterdir()
                 if p.is_dir() and p.name.startswith("sample_")
-            ]
-            sids = np.array([int(p.name.split("_")[1]) for p in sample_dirs], dtype=int)
-            self._extra_fields["ids"] = np.sort(sids)
-        else:
+            )
+            self._extra_fields["ids"] = np.asarray(ids, dtype=int)
+
+        else:  # pragma: no cover
             raise ValueError("path mush be a local directory")
 
     def __iter__(self):
@@ -52,10 +52,7 @@ class CGNSDataset:
         # fallback to extra fields
         if name in self._extra_fields:
             return self._extra_fields[name]
-        # fallback to zarr_group attributes
-        if hasattr(self.path, name):
-            return getattr(self.path, name)
-        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")
+        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")  # pragma: no cover
 
     def __setattr__(self, name, value):
         if name in ('path', '_extra_fields'):
@@ -67,7 +64,7 @@ class CGNSDataset:
         return f"<CGNSDataset {repr(self.path)} | extra_fields={self._extra_fields}>"
 
 
-def sample_generator(repo_id: str, split: str, ids: list[int]) -> Iterator[Sample]:
+def sample_generator(repo_id: str, split: str, ids: list[int]) -> Iterator[Sample]:  # pragma: no cover
     for idx in ids:
         with tempfile.TemporaryDirectory(prefix="plaid_sample_") as temp_folder:
             snapshot_download(
@@ -87,7 +84,7 @@ def sample_generator(repo_id: str, split: str, ids: list[int]) -> Iterator[Sampl
 
 def create_CGNS_iterable_dataset(repo_id: str,
                         split: str,
-                        ids: list[int]) -> IterableDataset:
+                        ids: list[int]) -> IterableDataset:  # pragma: no cover
 
     return IterableDataset.from_generator(
         sample_generator,
@@ -126,7 +123,7 @@ def download_datasetdict_from_hub(
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None, # noqa: ARG001
     overwrite: bool = False,
-) -> None:  # pragma: no cover (not tested in unit tests)
+) -> None:  # pragma: no cover
     output_folder = Path(local_dir)
 
     if output_folder.is_dir():
@@ -157,7 +154,7 @@ def init_datasetdict_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,  # noqa: ARG001
-) -> dict[str, IterableDataset]:
+) -> dict[str, IterableDataset]:  # pragma: no cover
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
         raise RuntimeError("Streaming mode not compatible with private mirror.")

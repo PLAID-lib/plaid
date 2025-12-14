@@ -154,8 +154,6 @@ class Test_Huggingface_Bridge:
     def test_with_datasetdict(self, dataset, problem_definition):
         main_splits = problem_definition.get_split()
 
-        print(dataset)
-
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
                 dataset, main_splits

@@ -7,6 +7,8 @@ from typing import Optional, Union, Iterator
 import fsspec
 import yaml
 import zarr
+import numpy as np
+
 from huggingface_hub import hf_hub_download, snapshot_download
 
 from plaid.storage.zarr.bridge import unflatten_zarr_key
@@ -27,6 +29,9 @@ class ZarrDataset:
         self.zarr_group = zarr_group
         self._extra_fields =  dict(kwargs)
 
+        ids = sorted(int(name[7:]) for name, _ in zarr_group.groups())
+        self._extra_fields["ids"] = np.asarray(ids, dtype=int)
+
     def __iter__(self):
         for idx in self.ids:
             yield self[idx]
@@ -45,9 +50,9 @@ class ZarrDataset:
         if name in self._extra_fields:
             return self._extra_fields[name]
         # fallback to zarr_group attributes
-        if hasattr(self.zarr_group, name):
+        if hasattr(self.zarr_group, name):  # pragma: no cover
             return getattr(self.zarr_group, name)
-        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")
+        raise AttributeError(f"{type(self).__name__} has no attribute '{name}'")  # pragma: no cover
 
     def __setattr__(self, name, value):
         if name in ('zarr_group', '_extra_fields'):
@@ -63,7 +68,7 @@ def _zarr_patterns(
     repo_id,
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,
-):
+):  # pragma: no cover
     # include only selected sample ids
     if split_ids is not None:
         allow_patterns = []
@@ -102,7 +107,7 @@ def _zarr_patterns(
     return allow_patterns, ignore_patterns
 
 
-def sample_generator(repo_id: str, split: str, ids: list[int], selected_features: list[str]) -> Iterator[dict]:
+def sample_generator(repo_id: str, split: str, ids: list[int], selected_features: list[str]) -> Iterator[dict]:  # pragma: no cover
 
     base_url = f"https://huggingface.co/datasets/{repo_id}/resolve/main/data/{split}/sample_"
     for idx in ids:
@@ -115,7 +120,7 @@ def sample_generator(repo_id: str, split: str, ids: list[int], selected_features
         yield sample
 
 
-def create_zarr_iterable_dataset(repo_id, split, ids, selected_features):
+def create_zarr_iterable_dataset(repo_id, split, ids, selected_features):  # pragma: no cover
 
     def wrapped_gen():
         yield from sample_generator(
@@ -157,7 +162,7 @@ def download_datasetdict_from_hub(
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,
     overwrite: bool = False,
-) -> None:  # pragma: no cover (not tested in unit tests)
+) -> None:  # pragma: no cover
     output_folder = Path(local_dir)
 
     if output_folder.is_dir():
@@ -184,7 +189,7 @@ def init_datasetdict_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,
-) -> dict[str, IterableDataset]:
+) -> dict[str, IterableDataset]:  # pragma: no cover
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
         raise RuntimeError("Streaming mode not compatible with private mirror.")

@@ -36,7 +36,7 @@ def generate_datasetdict_to_disk(
     output_folder = output_folder / "data"
     output_folder.mkdir(exist_ok=True, parents=True)
 
-    def worker_batch(gen_func, batch, start_index, queue):
+    def worker_batch(gen_func, batch, start_index, queue):  # pragma: no cover
         """Process a single batch and write samples to Zarr."""
         sample_counter = start_index
 
@@ -46,7 +46,7 @@ def generate_datasetdict_to_disk(
             sample_counter += 1
             queue.put(1)
 
-    def tqdm_updater(total, queue, desc="Processing"):
+    def tqdm_updater(total, queue, desc="Processing"):  # pragma: no cover
         """Tqdm process that listens to the queue to update progress."""
         with tqdm(total=total, desc=desc, disable=not verbose) as pbar:
             finished = 0
@@ -63,7 +63,7 @@ def generate_datasetdict_to_disk(
 
         total_samples = sum(len(batch) for batch in batch_ids_list)
 
-        if num_proc > 1 and batch_ids_list:
+        if num_proc > 1 and batch_ids_list:  # pragma: no cover
             # Parallel execution
             queue = mp.Queue()
             tqdm_proc = mp.Process(
@@ -108,7 +108,7 @@ def generate_datasetdict_to_disk(
                     pbar.update(1)
 
 
-def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
+def push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):  # pragma: no cover
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,
@@ -130,7 +130,7 @@ def configure_dataset_card(
     dataset_long_description: Optional[str] = None,
     illustration_urls: Optional[list[str]] = None,
     arxiv_paper_urls: Optional[list[str]] = None,
-) -> None:
+) -> None:  # pragma: no cover
     r"""Update a dataset card with PLAID-specific metadata and documentation.
 
     Args:

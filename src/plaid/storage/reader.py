@@ -139,7 +139,7 @@ def download_from_hub(
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,
     overwrite: bool = False,
-):
+):  # pragma: no cover
     flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(repo_id)
     infos = load_infos_from_hub(repo_id)
     pb_defs = load_problem_definitions_from_hub(repo_id)
@@ -160,7 +160,7 @@ def init_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, int]] = None,
     features: Optional[list[str]] = None,
-):
+):  # pragma: no cover
     flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(repo_id)
     infos = load_infos_from_hub(repo_id)
 

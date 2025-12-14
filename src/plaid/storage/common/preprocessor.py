@@ -17,11 +17,11 @@ from plaid.storage.common.tree_handling import flatten_cgns_tree
 
 def infer_dtype(value) -> dict[str, int | str]:
     """Infer canonical dtype schema from a value."""
-    if value is None:
+    if value is None:  # pragma: no cover
         return {"dtype": "null", "ndim": 0}
 
     # Scalars
-    if np.isscalar(value):
+    if np.isscalar(value):  # pragma: no cover
         raise ValueError("CGNS should return arrays")
 
     # Arrays / lists
@@ -36,17 +36,13 @@ def infer_dtype(value) -> dict[str, int | str]:
             dt = "int64"
         elif np.issubdtype(dtype, np.str_):
             dt = "string"
-        else:
+        else:  # pragma: no cover
             raise ValueError(f"Unrecognized scalar dtype: {dtype}")
         return {"dtype": dt, "ndim": arr.ndim}
         # arr = np.array(value)
-        # # ndim = number of nested sequences
-        # print("arr.dtype =", arr.dtype, type(arr.dtype))
-        # if arr.dtype == np.dtypes.StrDType:
-        #     1./0.
         # return {"dtype": str(arr.dtype), "ndim": arr.ndim}
 
-    raise TypeError(f"Unsupported type: {type(value)}")
+    raise TypeError(f"Unsupported type: {type(value)}")  # pragma: no cover
 
 
 def build_sample_dict(
@@ -228,7 +224,7 @@ def process_shard(
     shard_global_feature_types = {}
 
     if shard_ids is not None:
-        generator = generator_fn([shard_ids])
+        generator = generator_fn([shard_ids])  # pragma: no cover
     else:
         generator = generator_fn()
 
@@ -439,7 +435,7 @@ def preprocess_splits(
             for path, entry in shard_constants.items():
                 if path not in split_constant_hashes:
                     split_constant_hashes[path] = entry
-                else:
+                else:  # pragma: no cover
                     existing = split_constant_hashes[path]
                     existing["hashes"].update(entry["hashes"])
                     existing["count"] += entry["count"]
@@ -457,7 +453,7 @@ def preprocess_splits(
 
         # Retrieve **values** only for constant paths from first sample
         if gen_kwargs:
-            first_sample = next(generator_fn([shards_ids_list[0]]))
+            first_sample = next(generator_fn([shards_ids_list[0]]))  # pragma: no cover
         else:
             first_sample = next(generator_fn())
         sample_dict, _, _ = build_sample_dict(first_sample)

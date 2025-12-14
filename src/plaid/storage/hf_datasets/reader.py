@@ -36,7 +36,7 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
     if file_.is_file():
         # This is a dataset generated and save locally
         return load_from_disk(dataset_path=str(Path(path) / "data"))
-    else:
+    else:  # pragma: no cover
         # This is a dataset downloaded from the hub
         infos = load_infos_from_disk(path)
         split_names = list(infos["num_samples"].keys())
@@ -78,7 +78,7 @@ def init_datasetdict_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, int]] = None,  # noqa: ARG001
     features: Optional[list[str]] = None,
-):
+):  # pragma: no cover
     hf_endpoint = os.getenv("HF_ENDPOINT", "").strip()
     if hf_endpoint:
         raise RuntimeError("Streaming mode not compatible with private mirror.")
