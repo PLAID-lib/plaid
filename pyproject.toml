@@ -28,7 +28,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
-
 dependencies = [
     "tqdm",
     "pyyaml",
