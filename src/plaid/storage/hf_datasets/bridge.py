@@ -132,9 +132,9 @@ def generator_to_datasetdict(
               Dictionary of constant features detected across all splits.
             - **key_mappings** (`dict[str, Any]`):
               Metadata dictionary containing:
-                - `"variable_features"`: list of paths for non-constant features.
-                - `"constant_features"`: list of paths for constant features.
-                - `"cgns_types"`: inferred CGNS types for all features.
+              - `"variable_features"`: list of paths for non-constant features.
+              - `"constant_features"`: list of paths for constant features.
+              - `"cgns_types"`: inferred CGNS types for all features.
 
     Example:
         >>> ds_dict, flat_cst, key_mappings = plaid_generator_to_huggingface_datasetdict(

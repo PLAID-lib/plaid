@@ -387,9 +387,9 @@ def load_tree_struct_from_hub(
         tuple[dict, dict]:
             - **flat_cst (dict)**: constant features dictionary (path → value).
             - **key_mappings (dict)**: metadata dictionary containing keys such as:
-                - `"variable_features"`: list of paths for non-constant features.
-                - `"constant_features"`: list of paths for constant features.
-                - `"cgns_types"`: mapping from paths to CGNS types.
+              - `"variable_features"`: list of paths for non-constant features.
+              - `"constant_features"`: list of paths for constant features.
+              - `"cgns_types"`: mapping from paths to CGNS types.
     """
     # constant part of the tree
     flat_cst_path = hf_hub_download(
@@ -838,7 +838,7 @@ def build_hf_sample(sample: Sample) -> tuple[dict[str, Any], list[str], dict[str
               (metadata produced by flatten_cgns_tree).
 
     Note:
-        - Byte-array encoded strings (dtype "|S1") are handled by reassembling and
+        - Byte-array encoded strings (dtype ``"|S1"``) are handled by reassembling and
           storing the string as a single-element numpy array; a sha256 hash is used
           for deduplication.
         - Deduplication reduces storage when identical blocks recur across times.
@@ -952,12 +952,12 @@ def process_shard(
 
     This function drives a shard-level pass over samples produced by `generator_fn`.
     For each sample it:
-      - flattens the sample into Hugging Face friendly arrays (build_hf_sample),
-      - collects observed flattened paths,
-      - aggregates CGNS type metadata,
-      - infers Hugging Face feature types for each path,
-      - detects per-path constants using a content hash,
-      - updates progress (either a multiprocessing.Queue or a tqdm progress bar).
+    - flattens the sample into Hugging Face friendly arrays (build_hf_sample),
+    - collects observed flattened paths,
+    - aggregates CGNS type metadata,
+    - infers Hugging Face feature types for each path,
+    - detects per-path constants using a content hash,
+    - updates progress (either a multiprocessing.Queue or a tqdm progress bar).
 
     Args:
         shard_ids (list[IndexType]): Sequence of sample ids (a single shard) to process.
@@ -1589,9 +1589,9 @@ def plaid_generator_to_huggingface_datasetdict(
               Dictionary of constant features detected across all splits.
             - **key_mappings** (`dict[str, Any]`):
               Metadata dictionary containing:
-                - `"variable_features"`: list of paths for non-constant features.
-                - `"constant_features"`: list of paths for constant features.
-                - `"cgns_types"`: inferred CGNS types for all features.
+              - `"variable_features"`: list of paths for non-constant features.
+              - `"constant_features"`: list of paths for constant features.
+              - `"cgns_types"`: inferred CGNS types for all features.
 
     Example:
         >>> ds_dict, flat_cst, key_mappings = plaid_generator_to_huggingface_datasetdict(
@@ -2085,27 +2085,6 @@ def update_dataset_card(
 
     Returns:
         str: The updated dataset card content as a string.
-
-    Example:
-        ```python
-        # Create initial dataset card
-        card = "---\ndataset_name: my_dataset\n---"
-
-        # Update with PLAID-specific content
-        updated_card = update_dataset_card(
-            dataset_card=card,
-            license="mit",
-            pretty_name="My PLAID Dataset",
-            dataset_long_description="This dataset contains...",
-            illustration_urls=["https://example.com/image.png"],
-            arxiv_paper_urls=["https://arxiv.org/abs/..."]
-        )
-
-        # Push to Hugging Face Hub
-        from huggingface_hub import DatasetCard
-        dataset_card = DatasetCard(updated_card)
-        dataset_card.push_to_hub("username/dataset")
-        ```
     """
     lines = dataset_card.splitlines()
     lines = [s for s in lines if not s.startswith("license")]

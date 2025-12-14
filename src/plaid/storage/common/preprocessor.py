@@ -73,7 +73,7 @@ def build_sample_dict(
               (metadata produced by flatten_cgns_tree).
 
     Note:
-        - Byte-array encoded strings (dtype "|S1") are handled by reassembling and
+        - Byte-array encoded strings (dtype ``"|S1"``) are handled by reassembling and
           storing the string as a single-element numpy array; a sha256 hash is used
           for deduplication.
         - Deduplication reduces storage when identical blocks recur across times.
@@ -189,12 +189,12 @@ def process_shard(
 
     This function drives a shard-level pass over samples produced by `generator_fn`.
     For each sample it:
-      - flattens the sample into Hugging Face friendly arrays (build_sample_dict),
-      - collects observed flattened paths,
-      - aggregates CGNS type metadata,
-      - infers Hugging Face feature types for each path,
-      - detects per-path constants using a content hash,
-      - updates progress (either a multiprocessing.Queue or a tqdm progress bar).
+    - flattens the sample into Hugging Face friendly arrays (build_sample_dict),
+    - collects observed flattened paths,
+    - aggregates CGNS type metadata,
+    - infers Hugging Face feature types for each path,
+    - detects per-path constants using a content hash,
+    - updates progress (either a multiprocessing.Queue or a tqdm progress bar).
 
     Args:
         shard_ids (list[IndexType]): Sequence of sample ids (a single shard) to process.

@@ -49,7 +49,7 @@ def nodes_to_tree(nodes: dict[str, CGNSTree]) -> Optional[CGNSTree]:
     """Reconstruct a CGNS tree from a dictionary of nodes keyed by their paths.
 
     Each node is assumed to follow the CGNSTree format:
-        [name: str, data: Any, children: List[CGNSTree], cgns_type: str]
+    [name: str, data: Any, children: List[CGNSTree], cgns_type: str]
 
     The dictionary keys are the full paths to each node, e.g. "Base1/Zone1/Field1".
 
@@ -101,7 +101,7 @@ def unflatten_cgns_tree(
     Returns:
         CGNSTree: The reconstructed CGNS tree with nodes properly nested according
         to their paths. Each node is a list in the format:
-            [name: str, data: Any, children: List[CGNSTree], cgns_type: str]
+        [name: str, data: Any, children: List[CGNSTree], cgns_type: str]
 
     Example:
         >>> flat = {

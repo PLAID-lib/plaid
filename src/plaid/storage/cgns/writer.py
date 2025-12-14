@@ -147,27 +147,6 @@ def configure_dataset_card(
 
     Returns:
         str: The updated dataset card content as a string.
-
-    Example:
-        ```python
-        # Create initial dataset card
-        card = "---\ndataset_name: my_dataset\n---"
-
-        # Update with PLAID-specific content
-        updated_card = update_dataset_card(
-            dataset_card=card,
-            license="mit",
-            pretty_name="My PLAID Dataset",
-            dataset_long_description="This dataset contains...",
-            illustration_urls=["https://example.com/image.png"],
-            arxiv_paper_urls=["https://arxiv.org/abs/..."]
-        )
-
-        # Push to Hugging Face Hub
-        from huggingface_hub import DatasetCard
-        dataset_card = DatasetCard(updated_card)
-        dataset_card.push_to_hub("username/dataset")
-        ```
     """
 
     def _dict_to_list_format(d: dict) -> str:

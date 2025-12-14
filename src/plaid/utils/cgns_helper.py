@@ -415,10 +415,10 @@ def compare_cgns_trees_no_types(
 
     This function is useful for heterogeneous or nested CGNS samples,
     such as those encountered in Hugging Face Arrow datasets. It compares:
-      - Node names
-      - Node data using `compare_leaves` (supports arrays, scalars, strings)
-      - CGNS type (extra field)
-      - Children nodes by name, ignoring their order
+    - Node names
+    - Node data using `compare_leaves` (supports arrays, scalars, strings)
+    - CGNS type (extra field)
+    - Children nodes by name, ignoring their order
 
     Args:
         tree1 (CGNSTree): The first CGNS tree node to compare.

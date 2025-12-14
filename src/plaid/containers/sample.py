@@ -93,7 +93,7 @@ class Sample(BaseModel):
         - You can provide a path to a folder containing the sample data, and it will be loaded during initialization.
         - You can provide `SampleFeatures` and `SampleFeatures` instances to initialize the sample with existing data.
 
-    The default `SampleFeatures` instance is initialized with `data=None`(i.e., no mesh data).
+    The default `SampleFeatures` instance is initialized with `data=None` (i.e., no mesh data).
     """
 
     # Pydantic configuration
