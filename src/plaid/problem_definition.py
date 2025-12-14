@@ -1753,6 +1753,8 @@ class ProblemDefinition(object):
         new_problem_definition = ProblemDefinition()
         if self._task is not None:
             new_problem_definition.set_task(self.get_task())
+        if self._name is not None:
+            new_problem_definition.set_name(self.get_name())
 
         in_features = self.filter_in_features_identifiers(identifiers)
         if len(in_features) > 0:
