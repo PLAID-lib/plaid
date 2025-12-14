@@ -23,7 +23,11 @@ def infer_dtype(value) -> dict[str, int | str]:
     # Scalars
     if np.isscalar(value):
         raise ValueError("CGNS should return arrays")
-        dtype = np.array(value).dtype
+
+    # Arrays / lists
+    elif isinstance(value, (list, tuple, np.ndarray)):
+        arr = np.array(value)
+        dtype = arr.dtype
         if np.issubdtype(dtype, np.floating):
             dt = "float32"
         elif np.issubdtype(dtype, np.int32):
@@ -34,13 +38,13 @@ def infer_dtype(value) -> dict[str, int | str]:
             dt = "string"
         else:
             raise ValueError(f"Unrecognized scalar dtype: {dtype}")
-        return {"dtype": dt, "ndim": 0}
-
-    # Arrays / lists
-    elif isinstance(value, (list, tuple, np.ndarray)):
-        arr = np.array(value)
-        # ndim = number of nested sequences
-        return {"dtype": str(arr.dtype), "ndim": arr.ndim}
+        return {"dtype": dt, "ndim": arr.ndim}
+        # arr = np.array(value)
+        # # ndim = number of nested sequences
+        # print("arr.dtype =", arr.dtype, type(arr.dtype))
+        # if arr.dtype == np.dtypes.StrDType:
+        #     1./0.
+        # return {"dtype": str(arr.dtype), "ndim": arr.ndim}
 
     raise TypeError(f"Unsupported type: {type(value)}")
 

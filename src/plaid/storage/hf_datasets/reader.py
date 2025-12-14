@@ -21,6 +21,8 @@ import datasets
 from datasets import load_dataset, load_from_disk
 from huggingface_hub import snapshot_download
 
+from plaid.storage.common.reader import load_infos_from_disk
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,8 +38,11 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
         return load_from_disk(dataset_path=str(Path(path) / "data"))
     else:
         # This is a dataset downloaded from the hub
-        return load_dataset(path=str(Path(path) / "data"))
-
+        infos = load_infos_from_disk(path)
+        split_names = list(infos["num_samples"].keys())
+        base = Path(path) / "data"
+        data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
+        return load_dataset("parquet", data_files=data_files)
 
 # ------------------------------------------------------
 # Load from from hub

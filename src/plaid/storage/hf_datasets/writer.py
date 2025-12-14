@@ -58,7 +58,7 @@ def save_datasetdict_to_disk(
         min_num_shards = min(num_shards.values())
         if min_num_shards < num_proc:
             logger.warning(
-                f"num_proc chaged from {num_proc} to 1 to safely adapt for num_shards={num_shards}"
+                f"num_proc changed from {num_proc} to 1 to safely adapt for num_shards={num_shards}"
             )
             num_proc = 1
         del kwargs["num_proc"]
@@ -121,7 +121,7 @@ def push_datasetdict_to_hub(
         min_num_shards = min(num_shards.values())
         if min_num_shards < num_proc:
             logger.warning(
-                f"num_proc chaged from {num_proc} to 1 to safely adapt for num_shards={num_shards}"
+                f"num_proc changed from {num_proc} to 1 to safely adapt for num_shards={num_shards}"
             )
             num_proc = 1
         del kwargs["num_proc"]
