@@ -7,7 +7,7 @@ It provides high-level classes such as :py:class:`~plaid.containers.dataset.Data
 
 PLAID relies on the CGNS standard for representing complex physics meshes and uses human-readable formats like `.yaml`, `.csv` for other features.
 
-For more details and examples, see the :doc:`core_concepts` and :doc:`notebooks` pages.
+For more details and examples, see the :doc:`core_concepts` and :doc:`examples_tutorials` pages.
 
 .. toctree::
    :glob:

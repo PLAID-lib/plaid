@@ -46,13 +46,15 @@ class CGNSDataset:
     This class represents a CGNS dataset stored on local disk, providing access to individual
     samples and associated metadata. It supports iteration over samples and attribute access
     to extra fields.
-
-    Attributes:
-        path: Path to the dataset directory.
-        ids: Array of sample IDs available in the dataset.
     """
 
     def __init__(self, path: Union[str, Path], **kwargs) -> None:
+        """Initialize a :class:`CGNSDataset`.
+
+        Args:
+            path: Path to the dataset directory.
+            ids: Array of sample IDs available in the dataset.
+        """
         self.path = path
         self._extra_fields = dict(kwargs)
 

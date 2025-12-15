@@ -42,7 +42,7 @@ Only the conda-forge package comes with a bundled HDF5 dependency.
 
 ## 3 Going further
 
-Explore {doc}`example notebooks <notebooks>` for practical use cases and advanced techniques.
+Explore {doc}`example examples_tutorials <examples_tutorials>` for practical use cases and advanced techniques.
 
 The {doc}`API documentation <../autoapi/plaid/index>` provides detailed information on all available classes and methods.
 

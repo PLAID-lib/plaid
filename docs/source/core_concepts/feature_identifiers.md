@@ -127,4 +127,4 @@ Legacy name-based methods (e.g., `add_input_scalars_names`) are deprecated; pref
 
 - {doc}`../core_concepts`
 - {doc}`defaults`
-- {doc}`../notebooks`
+- {doc}`../examples_tutorials`

@@ -50,13 +50,15 @@ class ZarrDataset:
     This class provides a convenient interface for accessing samples stored in Zarr format.
     It wraps a Zarr group and provides dictionary-like access to samples, along with
     additional metadata fields.
-
-    Attributes:
-        zarr_group (zarr.Group): The underlying Zarr group containing the data.
-        ids (np.ndarray): Array of sample IDs available in the dataset.
     """
 
     def __init__(self, zarr_group: zarr.Group, **kwargs) -> None:
+        """Initialize a :class:`ZarrDataset`.
+
+        Args:
+            zarr_group (zarr.Group): The underlying Zarr group containing the data.
+            ids (np.ndarray): Array of sample IDs available in the dataset.
+        """
         self.zarr_group = zarr_group
         self._extra_fields = dict(kwargs)
 

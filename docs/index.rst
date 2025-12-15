@@ -80,7 +80,7 @@ The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
    source/core_concepts.rst
    Data Conversion Guide <source/notebooks/convert_users_data_example>
-   Examples & Tutorials <source/notebooks.rst>
+   Examples & Tutorials <source/examples_tutorials.rst>
    API Reference <autoapi/plaid/index>
 
 .. toctree::

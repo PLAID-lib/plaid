@@ -18,6 +18,8 @@
 # %% [markdown]
 # # Hugging Face support
 #
+# IMPORTANT NOTICE: THIS CODE IS STILL FUNCTIONAL, BUT IS DEPRECATED. NEW DATA HANDLING DETAILED IN STORAGE DESCRIPTIONS.
+#
 # This Jupyter Notebook demonstrates various operations involving the Hugging Face bridge:
 #
 # 1. Converting a plaid dataset to Hugging Face

@@ -162,8 +162,8 @@ def to_plaid_sample(
 
 def plaid_to_sample_dict(
     sample: Sample, variable_schema: dict[str, Any], constant_schema: dict[str, Any]
-) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Convert PLAID Sample to sample dicts.
+) -> dict[str, Any]:
+    """Convert PLAID Sample to sample dict.
 
     Args:
         sample: The PLAID Sample.
@@ -171,7 +171,7 @@ def plaid_to_sample_dict(
         constant_schema: Constant schema dictionary.
 
     Returns:
-        tuple: (cst_sample_dict, var_sample_dict)
+        tuple: sample_dict
     """
     var_features = list(variable_schema.keys())
     cst_features = list(constant_schema.keys())
@@ -181,7 +181,7 @@ def plaid_to_sample_dict(
     var_sample_dict = {path: hf_sample.get(path, None) for path in var_features}
     cst_sample_dict = {path: hf_sample.get(path, None) for path in cst_features}
 
-    return cst_sample_dict, var_sample_dict
+    return cst_sample_dict | var_sample_dict
 
 
 ##############################################

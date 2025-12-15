@@ -114,13 +114,6 @@ class Converter:
     This class provides methods to convert samples between backend-specific storage formats
     and PLAID Sample objects. It handles the schema transformations and metadata required
     for proper data conversion.
-
-    Attributes:
-        backend: The storage backend ('hf_datasets', 'zarr', or 'cgns').
-        flat_cst: Flattened constants for the dataset.
-        cgns_types: CGNS type information.
-        variable_schema: Schema for variable fields.
-        constant_schema: Schema for constant fields.
     """
 
     def __init__(
@@ -131,6 +124,15 @@ class Converter:
         variable_schema: Any,
         constant_schema: Any,
     ) -> None:
+        """Initialize a :class:`Converter`.
+
+        Args:
+            backend: The storage backend ('hf_datasets', 'zarr', or 'cgns').
+            flat_cst: Flattened constants for the dataset.
+            cgns_types: CGNS type information.
+            variable_schema: Schema for variable fields.
+            constant_schema: Schema for constant fields.
+        """
         self.backend = backend
         self.flat_cst = flat_cst
         self.cgns_types = cgns_types

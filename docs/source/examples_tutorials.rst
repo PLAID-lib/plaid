@@ -1,7 +1,7 @@
-Notebooks
-=========
+Examples and Tutorials
+======================
 
-You can find here detailed examples for different parts of plaid, explained in jupyter notebooks.
+You can find here detailed examples for different parts of plaid, explained mainly in jupyter notebooks.
 
 .. note::
    The `Muscat=2.5.1 <https://anaconda.org/conda-forge/muscat>`_ dependency is required on some of the notebooks,
@@ -26,3 +26,4 @@ You can find here detailed examples for different parts of plaid, explained in j
    notebooks/bridges/huggingface_example
    notebooks/pipelines/pipeline_example
    notebooks/examples/downloadable_example
+   tutorials/storage
