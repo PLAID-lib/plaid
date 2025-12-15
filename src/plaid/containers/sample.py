@@ -51,7 +51,6 @@ logger = logging.getLogger(__name__)
 
 CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
 
-
 FEATURES_METHODS = [
     "set_default_base",
     "set_default_zone_base",
