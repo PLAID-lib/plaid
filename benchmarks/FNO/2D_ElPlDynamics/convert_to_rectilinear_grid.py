@@ -17,8 +17,8 @@ import copy
 import os
 
 
-dataset_path = # path to update to input plaid dataset
-rect_dataset_path = # path to update to location where rectilinear dataset is created
+dataset_path = "/path/to/plaid/" # path to update to input plaid dataset
+rect_dataset_path = "/path/to/rect_dataset_path/" # path to update to location where rectilinear dataset is created
 
 
 dataset = Dataset()
