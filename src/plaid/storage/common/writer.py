@@ -1,3 +1,17 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+"""Common storage writer utilities.
+
+This module provides common utilities for writing dataset metadata, problem definitions,
+and other auxiliary files to disk or uploading them to Hugging Face Hub. It handles
+serialization of infos, problem definitions, and dataset tree structures.
+"""
+
 import io
 import logging
 import pickle
@@ -11,6 +25,7 @@ from huggingface_hub import HfApi
 from plaid import ProblemDefinition
 
 logger = logging.getLogger(__name__)
+
 
 # ------------------------------------------------------
 # Write to disk
@@ -36,12 +51,11 @@ def save_problem_definitions_to_disk(
     path: Union[str, Path],
     pb_defs: Union[ProblemDefinition, Iterable[ProblemDefinition]],
 ) -> None:
-    """Save a ProblemDefinition and its split information to disk.
+    """Save ProblemDefinitions to disk.
 
     Args:
-        path (Union[str, Path]): The root directory path for saving.
-        name (str): The name of the problem_definition to store in the disk directory.
-        pb_def (ProblemDefinition): The problem definition to save.
+        path (Union[str, Path]): The directory path for saving.
+        pb_defs (Union[ProblemDefinition, Iterable[ProblemDefinition]]): The problem definitions to save.
     """
     if isinstance(pb_defs, ProblemDefinition):
         pb_defs = [pb_defs]
@@ -75,7 +89,9 @@ def save_metadata_to_disk(
     Args:
         path (Union[str, Path]): Directory path where the tree structure files will be saved.
         flat_cst (dict): Dictionary containing the constant part of the tree.
-        key_mappings (dict): Dictionary containing key mappings for the tree structure.
+        variable_schema (dict): Dictionary containing the variable schema.
+        constant_schema (dict): Dictionary containing the constant schema.
+        cgns_types (dict): Dictionary containing CGNS types.
 
     Returns:
         None
@@ -132,12 +148,11 @@ def push_infos_to_hub(
 def push_problem_definitions_to_hub(
     repo_id: str, pb_defs: Union[ProblemDefinition, Iterable[ProblemDefinition]]
 ) -> None:  # pragma: no cover (not tested in unit tests)
-    """Upload a ProblemDefinition and its split information to the Hugging Face Hub.
+    """Upload ProblemDefinitions to Hugging Face Hub.
 
     Args:
         repo_id (str): The repository ID on the Hugging Face Hub.
-        name (str): The name of the problem_definition to store in the repo.
-        pb_def (ProblemDefinition): The problem definition to upload.
+        pb_defs (Union[ProblemDefinition, Iterable[ProblemDefinition]]): The problem definitions to upload.
     """
     if isinstance(pb_defs, ProblemDefinition):
         pb_defs = [pb_defs]
@@ -185,15 +200,16 @@ def push_metadata_to_hub(
 
     1. `flat_cst`: the constant parts of the dataset tree, serialized as a pickle file
        (`tree_constant_part.pkl`).
-    2. `key_mappings`: the dictionary of key mappings and metadata for the dataset tree,
-       serialized as a YAML file (`key_mappings.yaml`).
-
-    Both files are uploaded using the Hugging Face `HfApi().upload_file` method.
+    2. `variable_schema`: the variable schema, serialized as a YAML file (`variable_schema.yaml`).
+    3. `constant_schema`: the constant schema, serialized as a YAML file (`constant_schema.yaml`).
+    4. `cgns_types`: the CGNS types, serialized as a YAML file (`cgns_types.yaml`).
 
     Args:
         repo_id (str): The Hugging Face dataset repository ID where files will be uploaded.
         flat_cst (dict[str, Any]): Dictionary containing constant values in the dataset tree.
-        key_mappings (dict[str, Any]): Dictionary containing key mappings and additional metadata.
+        variable_schema (dict[str, Any]): Dictionary containing the variable schema.
+        constant_schema (dict[str, Any]): Dictionary containing the constant schema.
+        cgns_types (dict[str, Any]): Dictionary containing CGNS types.
 
     Returns:
         None

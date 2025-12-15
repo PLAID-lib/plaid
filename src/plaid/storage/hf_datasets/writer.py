@@ -1,3 +1,23 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+"""HF Datasets writer module.
+
+This module provides functionality for writing and managing datasets in Hugging Face Datasets format
+for the PLAID library. It includes utilities for generating datasets from sample generators,
+saving to disk, uploading to Hugging Face Hub, and configuring dataset cards with metadata.
+
+Key features:
+- Dataset generation from generators with parallel processing
+- Disk saving with automatic sharding
+- Hub uploading with optimized sharding
+- Dataset card configuration and updating
+"""
+
 import logging
 from pathlib import Path
 from typing import Callable, Generator, Optional, Union
@@ -15,6 +35,14 @@ logger = logging.getLogger(__name__)
 
 
 def _compute_num_shards(hf_dataset_dict: datasets.DatasetDict) -> dict[str, int]:
+    """Computes the number of shards for each split in a DatasetDict.
+
+    Args:
+        hf_dataset_dict (datasets.DatasetDict): The dataset dictionary.
+
+    Returns:
+        dict[str, int]: Mapping of split names to number of shards.
+    """
     target_shard_size_mb = 500
 
     num_shards = {}
@@ -44,7 +72,7 @@ def save_datasetdict_to_disk(
 
     Args:
         path (Union[str, Path]): Directory path where the DatasetDict will be saved.
-        hf_dataset_dict (datasets.DatasetDict): The Hugging Face DatasetDict to save.
+        hf_datasetdict (datasets.DatasetDict): The Hugging Face DatasetDict to save.
         **kwargs:
             Keyword arguments forwarded to
             [`DatasetDict.save_to_disk`](https://huggingface.co/docs/datasets/main/en/package_reference/main_classes#datasets.DatasetDict.save_to_disk).
@@ -76,6 +104,18 @@ def generate_datasetdict_to_disk(
     num_proc: int = 1,
     verbose: bool = False,  # noqa: ARG001
 ) -> None:
+    """Generates and saves a DatasetDict to disk from sample generators.
+
+    Args:
+        output_folder (Union[str, Path]): Base directory to save the dataset.
+        generators (dict[str, Callable[..., Generator[Sample, None, None]]]):
+            Dictionary of split names to generator functions.
+        variable_schema (dict[str, dict]): Schema describing variables.
+        gen_kwargs (Optional[dict[str, dict[str, list[IndexType]]]]): Optional
+            generator arguments for parallel processing.
+        num_proc (int): Number of processes for generation.
+        verbose (bool): Whether to enable verbose output.
+    """
     hf_datasetdict = generator_to_datasetdict(
         generators,
         variable_schema,
@@ -105,7 +145,7 @@ def push_datasetdict_to_hub(
         repo_id (str):
             The repository ID on the Hugging Face Hub
             (e.g. `"username/dataset_name"`).
-        hf_dataset_dict (datasets.DatasetDict):
+        hf_datasetdict (datasets.DatasetDict):
             The Hugging Face dataset dictionary to push.
         **kwargs:
             Keyword arguments forwarded to
@@ -131,8 +171,15 @@ def push_datasetdict_to_hub(
 
 
 def push_local_datasetdict_to_hub(
-    repo_id, local_dir, num_workers=1
-):  # pragma: no cover
+    repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
+) -> None:  # pragma: no cover
+    """Pushes a local DatasetDict to Hugging Face Hub.
+
+    Args:
+        repo_id (str): The repository ID on Hugging Face Hub.
+        local_dir (Union[str, Path]): Local directory containing the dataset.
+        num_workers (int): Number of workers for uploading.
+    """
     datasetdict = init_datasetdict_from_disk(local_dir)
     push_datasetdict_to_hub(repo_id, datasetdict, num_proc=num_workers)
 
@@ -148,22 +195,34 @@ def configure_dataset_card(
     illustration_urls: Optional[list[str]] = None,
     arxiv_paper_urls: Optional[list[str]] = None,
 ) -> None:  # pragma: no cover
-    r"""Update a dataset card with PLAID-specific metadata and documentation.
+    """Configures and updates a dataset card on Hugging Face Hub for HF datasets backend.
+
+    This function downloads the existing README.md (dataset card) from the specified
+    Hugging Face repository, modifies it by adding metadata such as license, viewer
+    settings, task categories, tags, and optional descriptions/illustrations. It then
+    pushes the updated card back to the repository.
 
     Args:
-        dataset_card (str): The original dataset card content to update.
-        infos (dict[str, dict[str, str]]): Dictionary containing dataset information
-            with "legal" and "data_production" sections. Defaults to None.
-        pretty_name (str, optional): A human-readable name for the dataset. Defaults to None.
-        dataset_long_description (str, optional): Detailed description of the dataset's content,
-            purpose, and characteristics. Defaults to None.
-        illustration_urls (list[str], optional): List of URLs to images illustrating the dataset.
-            Defaults to None.
-        arxiv_paper_urls (list[str], optional): List of URLs to related arXiv papers.
-            Defaults to None.
+        repo_id (str): The Hugging Face repository ID where the dataset card is located
+            and will be updated.
+        infos (dict[str, dict[str, str]]): Dictionary containing dataset metadata,
+            including legal information like license.
+        local_dir (Optional[Union[str, Path]]): Unused parameter for local directory path.
+        variable_schema (Optional[dict]): Unused parameter for variable schema.
+        viewer (bool): Whether to enable the dataset viewer. Defaults to False, which
+            sets 'viewer: false' in the card.
+        pretty_name (Optional[str]): A human-readable name for the dataset to
+            display in the card.
+        dataset_long_description (Optional[str]): A detailed description of the
+            dataset to include in the card.
+        illustration_urls (Optional[list[str]]): List of URLs to images that
+            illustrate the dataset, displayed in the card.
+        arxiv_paper_urls (Optional[list[str]]): List of arXiv URLs for papers
+            related to the dataset, included as sources.
 
     Returns:
-        str: The updated dataset card content as a string.
+        None: This function does not return a value; it updates the dataset card
+            directly on Hugging Face Hub.
     """
     readme_path = hf_hub_download(
         repo_id=repo_id, filename="README.md", repo_type="dataset"

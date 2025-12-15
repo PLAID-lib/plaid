@@ -1,4 +1,4 @@
-"""Package for PLAID containers such as `Dataset` and `Sample`."""
+"""Package for HF_datasets storage."""
 
 # -*- coding: utf-8 -*-
 #

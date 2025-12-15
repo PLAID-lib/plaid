@@ -1,4 +1,17 @@
-# from datasets import Features, Sequence, Value
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+"""Common preprocessing utilities.
+
+This module provides utilities for preprocessing PLAID samples into formats suitable
+for storage, including flattening CGNS trees, inferring data types, and handling
+parallel processing of sample shards.
+"""
+
 import hashlib
 import multiprocessing as mp
 import sys
@@ -14,7 +27,7 @@ from plaid.storage.common.tree_handling import flatten_cgns_tree
 from plaid.types import IndexType
 
 
-def infer_dtype(value) -> dict[str, int | str]:
+def infer_dtype(value: Any) -> dict[str, int | str]:
     """Infer canonical dtype schema from a value."""
     if value is None:  # pragma: no cover
         return {"dtype": "null", "ndim": 0}
@@ -166,8 +179,15 @@ def build_sample_dict(
     return sample_dict, all_paths, sample_cgns_types
 
 
-def _hash_value(value):
-    """Compute a hash for a value (np.ndarray or basic types)."""
+def _hash_value(value: Any) -> str:
+    """Compute a hash for a value for deduplication.
+
+    Args:
+        value: The value to hash (np.ndarray or basic types).
+
+    Returns:
+        str: The MD5 hash of the value.
+    """
     if isinstance(value, np.ndarray):
         return hashlib.md5(value.view(np.uint8)).hexdigest()
     return hashlib.md5(str(value).encode("utf-8")).hexdigest()
@@ -275,8 +295,22 @@ def process_shard(
 
 
 def _process_shard_debug(
-    generator_fn, progress_queue, n_proc, shard_ids
-):  # pragma: no cover
+    generator_fn: Callable[..., Any],
+    progress_queue: Any,
+    n_proc: int,
+    shard_ids: Optional[list[IndexType]],
+) -> Any:  # pragma: no cover
+    """Debug wrapper for process_shard that prints exceptions.
+
+    Args:
+        generator_fn: The generator function.
+        progress_queue: Queue for progress tracking.
+        n_proc: Number of processes.
+        shard_ids: List of shard IDs.
+
+    Returns:
+        The result of process_shard.
+    """
     try:
         return process_shard(generator_fn, progress_queue, n_proc, shard_ids)
     except Exception as e:
@@ -332,6 +366,8 @@ def preprocess_splits(
                 Aggregated mapping from flattened path -> CGNS node type.
             - global_feature_types (dict[str, Union[Value, Sequence]]):
                 Aggregated inferred Hugging Face feature types for each variable path.
+            - split_n_samples (dict[str, int]):
+                For each split, the total number of samples processed.
 
     Raises:
         ValueError: If inconsistent feature types or CGNS types are detected across shards/splits.
@@ -484,6 +520,17 @@ def preprocess(
     num_proc: int = 1,
     verbose: bool = True,
 ):
+    """Preprocess generators to extract schemas and metadata.
+
+    Args:
+        generators: Dict of split generators.
+        gen_kwargs: Optional generator kwargs for parallel processing.
+        num_proc: Number of processes.
+        verbose: Whether to show progress.
+
+    Returns:
+        tuple: (split_flat_cst, variable_schema, constant_schema, split_n_samples, global_cgns_types)
+    """
     assert (gen_kwargs is None and num_proc == 1) or (
         gen_kwargs is not None and num_proc > 1
     ), (

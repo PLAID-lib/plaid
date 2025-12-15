@@ -1,3 +1,17 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+"""Common tree handling utilities.
+
+This module provides utilities for flattening and unflattening CGNS trees,
+converting between hierarchical tree structures and flat dictionaries for
+storage and serialization purposes.
+"""
+
 from typing import Optional
 
 from plaid.types import CGNSTree
@@ -6,26 +20,15 @@ from plaid.types import CGNSTree
 def flatten_cgns_tree(
     pyTree: CGNSTree,
 ) -> tuple[dict[str, object], dict[str, str]]:
-    """Flatten a CGNS tree into dictionaries of primitives for Hugging Face serialization.
-
-    Traverses the CGNS tree and produces:
-      - flat: a dictionary mapping paths to primitive values (lists, scalars, or None)
-      - dtypes: a dictionary mapping paths to dtype strings
-      - extras: a dictionary mapping paths to extra CGNS metadata
+    """Flatten a CGNS tree into dictionaries of primitives.
 
     Args:
         pyTree (CGNSTree): The CGNS tree to flatten.
 
     Returns:
-        tuple[dict[str, object], dict[str, str], dict[str, object]]:
+        tuple[dict[str, object], dict[str, str]]:
             - flat: dict of paths to primitive values
-            - dtypes: dict of paths to dtype strings
-            - extras: dict of paths to extra CGNS metadata
-
-    Example:
-        >>> flat, dtypes, extras = flatten_cgns_tree(pyTree)
-        >>> flat["Base1/Zone1/Solution1/Field1"]  # [1.0, 2.0, ...]
-        >>> dtypes["Base1/Zone1/Solution1/Field1"]  # 'float64'
+            - cgns_types: dict of paths to CGNS type strings
     """
     flat = {}
     cgns_types = {}

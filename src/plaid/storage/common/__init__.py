@@ -1,4 +1,4 @@
-"""Package for PLAID containers such as `Dataset` and `Sample`."""
+"""Package for common functions of the storage backends."""
 
 # -*- coding: utf-8 -*-
 #

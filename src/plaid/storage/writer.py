@@ -1,3 +1,23 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+"""PLAID storage writer module.
+
+This module provides high-level functions for saving PLAID datasets to local disk and pushing
+them to Hugging Face Hub. It supports multiple storage backends including CGNS, HF Datasets,
+and Zarr, abstracting the backend-specific implementations.
+
+Key features:
+- Unified interface for saving datasets across different backends
+- Automatic preprocessing and schema extraction
+- Metadata and problem definition handling
+- Hub integration with dataset cards and metadata
+"""
+
 import logging
 import shutil
 from collections.abc import Iterable
@@ -74,6 +94,16 @@ configure_dataset_card = {
 
 
 def _check_folder(output_folder: Path, overwrite: bool) -> None:
+    """Check and prepare the output folder for dataset saving.
+
+    This function ensures the output directory is ready for writing. If the directory exists
+    and overwrite is True, it removes the existing directory. If it exists and is not empty
+    without overwrite, it raises an error.
+
+    Args:
+        output_folder: Path to the output directory to check/prepare.
+        overwrite: If True, removes existing directory if it exists.
+    """
     if output_folder.is_dir():
         if overwrite:
             shutil.rmtree(output_folder)
@@ -95,6 +125,22 @@ def save_to_disk(
     verbose: bool = False,
     overwrite: bool = False,
 ) -> None:
+    """Save a PLAID dataset to local disk using the specified backend.
+
+    This function preprocesses the dataset generators, extracts schemas, and saves the dataset
+    to disk using the chosen backend. It also saves metadata, infos, and problem definitions.
+
+    Args:
+        output_folder: Path to the output directory where the dataset will be saved.
+        generators: Dictionary mapping split names to sample generators.
+        backend: Storage backend to use ('cgns', 'hf_datasets', or 'zarr').
+        infos: Optional additional information to save with the dataset.
+        pb_defs: Optional problem definitions to save.
+        gen_kwargs: Optional keyword arguments for the generators.
+        num_proc: Number of processes to use for preprocessing.
+        verbose: If True, enables verbose output during processing.
+        overwrite: If True, overwrites existing output directory.
+    """
     assert backend in AVAILABLE_BACKENDS, (
         f"backend {backend} not among available ones: {AVAILABLE_BACKENDS}"
     )
@@ -143,6 +189,22 @@ def push_to_hub(
     illustration_urls: Optional[list[str]] = None,
     arxiv_paper_urls: Optional[list[str]] = None,
 ) -> None:  # pragma: no cover
+    """Push a local PLAID dataset to Hugging Face Hub.
+
+    This function uploads a previously saved dataset from local disk to Hugging Face Hub,
+    including data, metadata, infos, and problem definitions. It automatically detects the
+    backend used for saving and configures the dataset card.
+
+    Args:
+        repo_id: Hugging Face repository ID (e.g., 'username/dataset-name').
+        local_dir: Local directory containing the saved dataset.
+        num_workers: Number of workers for parallel upload.
+        viewer: If True, enables dataset viewer on Hub.
+        pretty_name: Optional pretty name for the dataset.
+        dataset_long_description: Optional detailed description.
+        illustration_urls: Optional list of illustration URLs.
+        arxiv_paper_urls: Optional list of arXiv paper URLs.
+    """
     pb_defs = load_problem_definitions_from_disk(local_dir)
     flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(
         local_dir

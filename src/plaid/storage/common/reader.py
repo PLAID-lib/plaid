@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+"""Common storage reader utilities.
+
+This module provides common utilities for reading dataset metadata, problem definitions,
+and other auxiliary files from disk or downloading them from Hugging Face Hub.
+"""
+
 import pickle
 import tempfile
 from pathlib import Path
@@ -31,14 +44,13 @@ def load_infos_from_disk(path: Union[str, Path]) -> dict[str, Any]:
 def load_problem_definitions_from_disk(
     path: Union[str, Path],
 ) -> Optional[list[ProblemDefinition]]:
-    """Load a ProblemDefinition and its split information from disk.
+    """Load ProblemDefinitions from disk.
 
     Args:
-        path (Union[str, Path]): The root directory path for loading.
-        name (str): The name of the problem_definition stored in the disk directory.
+        path (Union[str, Path]): The directory path for loading.
 
     Returns:
-        ProblemDefinition: The loaded problem definition.
+        Optional[list[ProblemDefinition]]: List of loaded problem definitions, or None if not found.
     """
     pb_def_dir = Path(path) / Path("problem_definitions")
 
@@ -57,20 +69,17 @@ def load_problem_definitions_from_disk(
 def load_metadata_from_disk(
     path: Union[str, Path],
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
-    """Load a tree structure for a dataset from disk.
-
-    This function loads two components from the specified directory:
-    1. `tree_constant_part.pkl`: a pickled dictionary containing the constant parts of the tree.
-    2. `key_mappings.yaml`: a YAML file containing key mappings and metadata.
+    """Load dataset metadata from disk.
 
     Args:
-        path (Union[str, Path]): Directory path containing the `tree_constant_part.pkl`
-            and `key_mappings.yaml` files.
+        path (Union[str, Path]): Directory path containing the metadata files.
 
     Returns:
-        tuple[dict, dict]: A tuple containing:
-            - `flat_cst` (dict): Dictionary of constant tree values.
-            - `key_mappings` (dict): Dictionary of key mappings and metadata.
+        tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+            - flat_cst: constant features dictionary
+            - variable_schema: variable schema dictionary
+            - constant_schema: constant schema dictionary
+            - cgns_types: CGNS types dictionary
     """
     with open(Path(path) / "tree_constant_part.pkl", "rb") as f:
         flat_cst = pickle.load(f)
@@ -118,16 +127,13 @@ def load_infos_from_hub(
 def load_problem_definitions_from_hub(
     repo_id: str,
 ) -> Optional[list[ProblemDefinition]]:  # pragma: no cover
-    """Load a ProblemDefinition from the Hugging Face Hub.
-
-    Downloads the problem infos YAML and split JSON files from the specified repository and location,
-    then initializes a ProblemDefinition object with this information.
+    """Load ProblemDefinitions from Hugging Face Hub.
 
     Args:
         repo_id (str): The repository ID on the Hugging Face Hub.
 
     Returns:
-        ProblemDefinition: The loaded problem definition.
+        Optional[list[ProblemDefinition]]: List of loaded problem definitions, or None if not found.
     """
     with tempfile.TemporaryDirectory(prefix="pb_def_") as temp_folder:
         snapshot_download(
@@ -145,26 +151,17 @@ def load_metadata_from_hub(
 ) -> tuple[
     dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
 ]:  # pragma: no cover
-    """Load the tree structure metadata of a PLAID dataset from the Hugging Face Hub.
-
-    This function retrieves two artifacts previously uploaded alongside a dataset:
-      - **tree_constant_part.pkl**: a pickled dictionary of constant feature values
-        (features that are identical across all samples).
-      - **key_mappings.yaml**: a YAML file containing metadata about the dataset
-        feature structure, including variable features, constant features, and CGNS types.
+    """Load dataset metadata from Hugging Face Hub.
 
     Args:
-        repo_id (str):
-            The repository ID on the Hugging Face Hub
-            (e.g., `"username/dataset_name"`).
+        repo_id (str): The repository ID on the Hugging Face Hub.
 
     Returns:
-        tuple[dict, dict]:
-            - **flat_cst (dict)**: constant features dictionary (path → value).
-            - **key_mappings (dict)**: metadata dictionary containing keys such as:
-                - `"variable_features"`: list of paths for non-constant features.
-                - `"constant_features"`: list of paths for constant features.
-                - `"cgns_types"`: mapping from paths to CGNS types.
+        tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+            - flat_cst: constant features dictionary
+            - variable_schema: variable schema dictionary
+            - constant_schema: constant schema dictionary
+            - cgns_types: CGNS types dictionary
     """
     # constant part of the tree
     flat_cst_path = hf_hub_download(

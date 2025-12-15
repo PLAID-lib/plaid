@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
 """Public API for plaid.storage."""
 
 from plaid.storage.common.reader import (

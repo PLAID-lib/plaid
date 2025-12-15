@@ -1,3 +1,17 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+"""CGNS dataset writer module.
+
+This module provides functionality for writing datasets in CGNS format for the PLAID library.
+It includes utilities for generating datasets from sample generators, saving to disk,
+uploading to Hugging Face Hub, and configuring dataset cards.
+"""
+
 import logging
 import multiprocessing as mp
 from pathlib import Path
@@ -21,6 +35,16 @@ def generate_datasetdict_to_disk(
     num_proc: int = 1,
     verbose: bool = False,
 ) -> None:
+    """Generates and saves a dataset to disk in CGNS format.
+
+    Args:
+        output_folder: Base directory to save the dataset.
+        generators: Dict of split generators.
+        variable_schema: Unused variable schema.
+        gen_kwargs: Optional generator kwargs for parallel processing.
+        num_proc: Number of processes.
+        verbose: Whether to show progress.
+    """
     output_folder = Path(output_folder)
 
     assert (gen_kwargs is None and num_proc == 1) or (
@@ -34,8 +58,10 @@ def generate_datasetdict_to_disk(
     output_folder = output_folder / "data"
     output_folder.mkdir(exist_ok=True, parents=True)
 
-    def worker_batch(gen_func, batch, start_index, queue):  # pragma: no cover
-        """Process a single batch and write samples to Zarr."""
+    def worker_batch(
+        gen_func: Callable, batch: list[IndexType], start_index: int, queue: mp.Queue
+    ) -> None:  # pragma: no cover
+        """Process a single batch and write samples to disk."""
         sample_counter = start_index
 
         for sample in gen_func([batch]):
@@ -44,7 +70,9 @@ def generate_datasetdict_to_disk(
             sample_counter += 1
             queue.put(1)
 
-    def tqdm_updater(total, queue, desc="Processing"):  # pragma: no cover
+    def tqdm_updater(
+        total: int, queue: mp.Queue, desc: str = "Processing"
+    ) -> None:  # pragma: no cover
         """Tqdm process that listens to the queue to update progress."""
         with tqdm(total=total, desc=desc, disable=not verbose) as pbar:
             finished = 0
@@ -107,8 +135,15 @@ def generate_datasetdict_to_disk(
 
 
 def push_local_datasetdict_to_hub(
-    repo_id, local_dir, num_workers=1
-):  # pragma: no cover
+    repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
+) -> None:  # pragma: no cover
+    """Pushes a local dataset directory to Hugging Face Hub.
+
+    Args:
+        repo_id: The repository ID.
+        local_dir: Local directory path.
+        num_workers: Number of upload workers.
+    """
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,
@@ -131,25 +166,38 @@ def configure_dataset_card(
     illustration_urls: Optional[list[str]] = None,
     arxiv_paper_urls: Optional[list[str]] = None,
 ) -> None:  # pragma: no cover
-    r"""Update a dataset card with PLAID-specific metadata and documentation.
+    """Configures and pushes a dataset card to Hugging Face Hub for a CGNS backend dataset.
+
+    This function generates a dataset card in YAML format with metadata, features,
+    splits information, and usage examples. It automatically detects splits and
+    sample counts from the local directory structure, then pushes the card to
+    the specified Hugging Face repository.
 
     Args:
-        dataset_card (str): The original dataset card content to update.
-        infos (dict[str, dict[str, str]]): Dictionary containing dataset information
-            with "legal" and "data_production" sections. Defaults to None.
-        pretty_name (str, optional): A human-readable name for the dataset. Defaults to None.
-        dataset_long_description (str, optional): Detailed description of the dataset's content,
-            purpose, and characteristics. Defaults to None.
-        illustration_urls (list[str], optional): List of URLs to images illustrating the dataset.
-            Defaults to None.
-        arxiv_paper_urls (list[str], optional): List of URLs to related arXiv papers.
-            Defaults to None.
+        repo_id (str): The Hugging Face repository ID where the dataset card will be pushed.
+        infos (dict[str, dict[str, str]]): Dictionary containing dataset metadata,
+            including legal information like license.
+        local_dir (Union[str, Path]): Path to the local directory containing the
+            dataset files, expected to have a 'data' subdirectory with split folders.
+        variable_schema (Optional[dict]): Schema describing the variables/features
+            in the dataset, used to generate the features section in the card.
+        viewer (Optional[bool]): Unused parameter for viewer configuration.
+        pretty_name (Optional[str]): A human-readable name for the dataset to
+            display in the card.
+        dataset_long_description (Optional[str]): A detailed description of the
+            dataset to include in the card.
+        illustration_urls (Optional[list[str]]): List of URLs to images that
+            illustrate the dataset, displayed in the card.
+        arxiv_paper_urls (Optional[list[str]]): List of arXiv URLs for papers
+            related to the dataset, included as sources.
 
     Returns:
-        str: The updated dataset card content as a string.
+        None: This function does not return a value; it pushes the dataset card
+            directly to Hugging Face Hub.
     """
 
     def _dict_to_list_format(d: dict) -> str:
+        """Converts a variable schema dict to YAML list format."""
         dtype = d.get("dtype", "unknown")
         ndim = d.get("ndim", 1)
 

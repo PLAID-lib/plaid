@@ -1,5 +1,20 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+
+"""HF Datasets bridge utilities.
+
+This module provides bridge functions for converting between PLAID datasets/samples
+and Hugging Face Datasets format. It includes utilities for feature type conversion,
+dataset generation from PLAID objects, and sample reconstruction.
+"""
+
 from functools import partial
-from typing import Callable, Generator, Optional
+from typing import Any, Callable, Generator, Optional
 
 import datasets
 import numpy as np
@@ -11,8 +26,15 @@ from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
 
 
-def convert_dtype_to_hf_feature(feature_type):
-    """Convert a dict {'dtype': ..., 'ndim': ...} into HF Feature/Sequence."""
+def convert_dtype_to_hf_feature(feature_type: dict[str, Any]):
+    """Convert a PLAID feature type dict to Hugging Face Feature.
+
+    Args:
+        feature_type (dict): Dictionary with 'dtype' and 'ndim' keys.
+
+    Returns:
+        Features or Sequence: The corresponding HF feature type.
+    """
     base_dtype = feature_type["dtype"]
     ndim = feature_type["ndim"]
 
@@ -22,7 +44,15 @@ def convert_dtype_to_hf_feature(feature_type):
     return feature
 
 
-def convert_to_hf_feature(variable_schema):
+def convert_to_hf_feature(variable_schema: dict[str, dict]):
+    """Convert a PLAID variable schema to Hugging Face Features.
+
+    Args:
+        variable_schema (dict[str, dict]): Mapping of variable names to type dicts.
+
+    Returns:
+        Features: The HF Features object.
+    """
     return Features(
         {k: convert_dtype_to_hf_feature(v) for k, v in variable_schema.items()}
     )
@@ -48,12 +78,12 @@ def plaid_dataset_to_datasetdict(
         main_splits (dict[str, IndexType]):
             Mapping from split names (e.g. "train", "test") to the subset of
             sample indices belonging to that split.
+        var_features_types (dict[str, dict]):
+            Dictionary mapping feature names to their type information.
         processes_number (int, optional, default=1):
             Number of parallel processes to use when writing the Hugging Face dataset.
         writer_batch_size (int, optional, default=1):
             Batch size used when writing samples to disk in Hugging Face format.
-        verbose (bool, optional, default=False):
-            If True, print progress and debug information.
 
     Returns:
         datasets.DatasetDict:
@@ -113,6 +143,8 @@ def generator_to_datasetdict(
             Mapping from split names (e.g., "train", "test") to generator functions.
             Each generator function must return an iterable of PLAID samples, where
             each sample provides `sample.features.data[0.0]` for flattening.
+        variable_schema (dict):
+            Dictionary defining the schema of variables/features in the dataset.
         processes_number (int, optional, default=1):
             Number of processes used internally by Hugging Face when materializing
             the dataset from the generators.
@@ -121,8 +153,6 @@ def generator_to_datasetdict(
         gen_kwargs (dict, optional, default=None):
             Optional mapping from split names to dictionaries of keyword arguments
             to be passed to each generator function, used for parallelization.
-        verbose (bool, optional, default=False):
-            If True, displays progress bars and diagnostic messages.
 
     Returns:
         tuple:
@@ -188,26 +218,15 @@ def to_var_sample_dict(
     i: int,
     enforce_shapes: bool = True,
 ) -> dict:
-    """Convert a Hugging Face dataset row to a PLAID Sample object.
-
-    Extracts a single row from a Hugging Face dataset and converts it
-    into a PLAID Sample by unflattening the CGNS tree structure. Constant features
-    from flat_cst are merged with the variable features from the row.
+    """Convert a Hugging Face dataset row to a variable sample dict.
 
     Args:
-        ds (datasets.Dataset): The Hugging Face dataset containing the sample data.
-        i (int): The index of the row to convert.
-        flat_cst (dict[str, Any]): Dictionary of constant features to add to each sample.
-        cgns_types (dict[str, str]): Dictionary mapping paths to CGNS types for reconstruction.
-        enforce_shapes (bool, optional): If True, ensures consistent array shapes during conversion. Defaults to True.
+        ds (datasets.Dataset): The Hugging Face dataset.
+        i (int): The row index.
+        enforce_shapes (bool): Whether to enforce consistent shapes.
 
     Returns:
-        Sample: A validated PLAID Sample object reconstructed from the Hugging Face dataset row.
-
-    Note:
-        - Uses the dataset's pyarrow table data for efficient access.
-        - Handles array shapes and types according to enforce_shapes.
-        - Constant features from flat_cst are merged with the variable features from the row.
+        dict: The variable sample dictionary.
     """
     table = ds.data
     var_sample_dict = {}
@@ -240,8 +259,16 @@ def to_var_sample_dict(
 
 
 def sample_to_var_sample_dict(
-    hf_sample: dict,
-) -> dict:
+    hf_sample: dict[str, Any],
+) -> dict[str, Any]:
+    """Convert a Hugging Face sample dict to variable sample dict.
+
+    Args:
+        hf_sample (dict): The HF sample dictionary.
+
+    Returns:
+        dict: The processed variable sample dictionary.
+    """
     var_sample_dict = {}
     for name, value in hf_sample.items():
         if value is None:

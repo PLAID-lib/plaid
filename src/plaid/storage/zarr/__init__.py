@@ -1,4 +1,4 @@
-"""Package for PLAID containers such as `Dataset` and `Sample`."""
+"""Package for Zarr storage."""
 
 # -*- coding: utf-8 -*-
 #

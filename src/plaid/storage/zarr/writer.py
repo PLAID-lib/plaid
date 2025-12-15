@@ -1,6 +1,27 @@
+"""Zarr dataset writer module.
+
+This module provides functionality for writing and managing datasets in Zarr format
+for the PLAID library. It includes utilities for generating datasets from sample
+generators, saving them to disk with optimized chunking, uploading to Hugging Face
+Hub, and configuring dataset cards with metadata and usage examples.
+
+Key features:
+- Parallel and sequential dataset generation from generators
+- Automatic chunking for efficient storage
+- Integration with Hugging Face Hub for dataset sharing
+- Dataset card generation with splits, features, and documentation
+"""
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
 import multiprocessing as mp
 from pathlib import Path
-from typing import Callable, Generator, Optional, Union
+from typing import Any, Callable, Generator, Optional, Union
 
 import numpy as np
 import yaml
@@ -13,11 +34,28 @@ from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
 
 
-def flatten_path(key: str) -> str:
+def _flatten_path(key: str) -> str:
+    """Flattens a path key by replacing slashes with underscores.
+
+    Args:
+        key (str): The path key to flatten.
+
+    Returns:
+        str: The flattened key with slashes replaced by underscores.
+    """
     return key.replace("/", "__")
 
 
-def auto_chunks(shape, target_n):
+def _auto_chunks(shape: tuple[int, ...], target_n: int) -> tuple[int, ...]:
+    """Computes automatic chunk sizes for Zarr arrays based on shape and target size.
+
+    Args:
+        shape (tuple[int, ...]): The shape of the array.
+        target_n (int): The target number of elements per chunk.
+
+    Returns:
+        tuple[int, ...]: The computed chunk sizes.
+    """
     # ensure pure Python ints
     target_n = int(target_n)
     shape = tuple(int(s) for s in shape)
@@ -39,6 +77,33 @@ def generate_datasetdict_to_disk(
     num_proc: int = 1,
     verbose: bool = False,
 ) -> None:
+    """Generates and saves a dataset dictionary to disk in Zarr format.
+
+    This function processes sample generators for different dataset splits,
+    converts samples to dictionaries, and writes them to Zarr arrays on disk.
+    It supports both sequential and parallel processing modes. In parallel mode,
+    gen_kwargs must be provided with batch information for each split.
+
+    Args:
+        output_folder (Union[str, Path]): Base directory where the dataset will be saved.
+            A 'data' subdirectory will be created inside this folder.
+        generators (dict[str, Callable[..., Generator[Sample, None, None]]]):
+            Dictionary mapping split names (e.g., "train", "test") to generator
+            functions that yield Sample objects.
+        variable_schema (dict[str, dict]): Schema describing the structure and types
+            of variables/features in the samples.
+        gen_kwargs (Optional[dict[str, dict[str, list[IndexType]]]]): Optional
+            generator arguments for parallel processing. Must include "shards_ids"
+            for each split when num_proc > 1. Required for parallel execution.
+        num_proc (int, optional): Number of processes to use for parallel processing.
+            Defaults to 1 (sequential). Must be > 1 only when gen_kwargs is provided.
+        verbose (bool, optional): Whether to display progress bars during processing.
+            Defaults to False.
+
+    Returns:
+        None: This function does not return a value; it writes the dataset directly
+            to disk.
+    """
     assert (gen_kwargs is None and num_proc == 1) or (
         gen_kwargs is not None and num_proc > 1
     ), (
@@ -53,9 +118,23 @@ def generate_datasetdict_to_disk(
     var_features_keys = list(variable_schema.keys())
 
     def worker_batch(
-        split_root_path, gen_func, var_features_keys, batch, start_index, queue
-    ):  # pragma: no cover
-        """Process a single batch and write samples to Zarr."""
+        split_root_path: str,
+        gen_func: Callable[..., Generator[Sample, None, None]],
+        var_features_keys: list[str],
+        batch: list[IndexType],
+        start_index: int,
+        queue: mp.Queue,
+    ) -> None:  # pragma: no cover
+        """Processes a single batch and writes samples to Zarr.
+
+        Args:
+            split_root_path (str): Path to the Zarr group for the split.
+            gen_func (Callable): Generator function for samples.
+            var_features_keys (list[str]): List of feature keys.
+            batch (list[IndexType]): Batch of sample IDs.
+            start_index (int): Starting sample index.
+            queue (mp.Queue): Queue for progress tracking.
+        """
         split_root = zarr.open_group(split_root_path, mode="a")
         sample_counter = start_index
 
@@ -68,16 +147,24 @@ def generate_datasetdict_to_disk(
             g = split_root.create_group(f"sample_{sample_counter:09d}")
             for key, value in sample_data.items():
                 g.create_array(
-                    flatten_path(key),
+                    _flatten_path(key),
                     data=value,
-                    chunks=auto_chunks(value.shape, 5_000_000),
+                    chunks=_auto_chunks(value.shape, 5_000_000),
                 )  # chunks=value.shape
 
             sample_counter += 1
             queue.put(1)
 
-    def tqdm_updater(total, queue, desc="Processing"):  # pragma: no cover
-        """Tqdm process that listens to the queue to update progress."""
+    def tqdm_updater(
+        total: int, queue: mp.Queue, desc: str = "Processing"
+    ) -> None:  # pragma: no cover
+        """Tqdm process that listens to the queue to update progress.
+
+        Args:
+            total (int): Total number of items to process.
+            queue (mp.Queue): Queue to receive progress updates.
+            desc (str): Description for the progress bar.
+        """
         with tqdm(total=total, desc=desc, disable=not verbose) as pbar:
             finished = 0
             while finished < total:
@@ -143,9 +230,9 @@ def generate_datasetdict_to_disk(
                     for key, value in sample_data.items():
                         if value is not None:
                             g.create_array(
-                                flatten_path(key),
+                                _flatten_path(key),
                                 data=value,
-                                chunks=auto_chunks(value.shape, 5_000_000),
+                                chunks=_auto_chunks(value.shape, 5_000_000),
                             )  # chunks=value.shape
 
                     sample_counter += 1
@@ -153,8 +240,26 @@ def generate_datasetdict_to_disk(
 
 
 def push_local_datasetdict_to_hub(
-    repo_id, local_dir, num_workers=1
-):  # pragma: no cover
+    repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
+) -> None:  # pragma: no cover
+    """Pushes a local dataset directory to Hugging Face Hub.
+
+    This function uploads the contents of a local directory to a specified
+    Hugging Face repository as a dataset. It uses the HfApi to handle large
+    folder uploads with configurable parallelism.
+
+    Args:
+        repo_id (str): The Hugging Face repository ID where the dataset will be uploaded
+            (e.g., "username/dataset_name").
+        local_dir (str or Path): Path to the local directory containing the dataset files
+            to upload.
+        num_workers (int, optional): Number of worker threads to use for uploading.
+            Defaults to 1.
+
+    Returns:
+        None: This function does not return a value; it uploads the dataset directly
+            to Hugging Face Hub.
+    """
     api = HfApi()
     api.upload_large_folder(
         folder_path=local_dir,
@@ -177,25 +282,45 @@ def configure_dataset_card(
     illustration_urls: Optional[list[str]] = None,
     arxiv_paper_urls: Optional[list[str]] = None,
 ) -> None:  # pragma: no cover
-    r"""Update a dataset card with PLAID-specific metadata and documentation.
+    """Configures and pushes a dataset card to Hugging Face Hub for a zarr backend dataset.
+
+    This function generates a dataset card in YAML format with metadata, features,
+    splits information, and usage examples. It automatically detects splits and
+    sample counts from the local directory structure, then pushes the card to
+    the specified Hugging Face repository.
 
     Args:
-        dataset_card (str): The original dataset card content to update.
-        infos (dict[str, dict[str, str]]): Dictionary containing dataset information
-            with "legal" and "data_production" sections. Defaults to None.
-        pretty_name (str, optional): A human-readable name for the dataset. Defaults to None.
-        dataset_long_description (str, optional): Detailed description of the dataset's content,
-            purpose, and characteristics. Defaults to None.
-        illustration_urls (list[str], optional): List of URLs to images illustrating the dataset.
-            Defaults to None.
-        arxiv_paper_urls (list[str], optional): List of URLs to related arXiv papers.
-            Defaults to None.
+        repo_id (str): The Hugging Face repository ID where the dataset card will be pushed.
+        infos (dict[str, dict[str, str]]): Dictionary containing dataset metadata,
+            including legal information like license.
+        local_dir (Union[str, Path]): Path to the local directory containing the
+            dataset files, expected to have a 'data' subdirectory with split folders.
+        variable_schema (Optional[dict]): Schema describing the variables/features
+            in the dataset, used to generate the features section in the card.
+        viewer (Optional[bool]): Unused parameter for viewer configuration.
+        pretty_name (Optional[str]): A human-readable name for the dataset to
+            display in the card.
+        dataset_long_description (Optional[str]): A detailed description of the
+            dataset to include in the card.
+        illustration_urls (Optional[list[str]]): List of URLs to images that
+            illustrate the dataset, displayed in the card.
+        arxiv_paper_urls (Optional[list[str]]): List of arXiv URLs for papers
+            related to the dataset, included as sources.
 
     Returns:
-        str: The updated dataset card content as a string.
+        None: This function does not return a value; it pushes the dataset card
+            directly to Hugging Face Hub.
     """
 
-    def _dict_to_list_format(d: dict) -> str:
+    def _dict_to_list_format(d: dict[str, Any]) -> str:
+        """Converts a variable schema dict to YAML list format.
+
+        Args:
+            d (dict[str, Any]): Dictionary with 'dtype' and 'ndim' keys.
+
+        Returns:
+            str: YAML-formatted string representing the list structure.
+        """
         dtype = d.get("dtype", "unknown")
         ndim = d.get("ndim", 1)
 
@@ -263,7 +388,7 @@ tags:
         lines.insert(count, "  features:")
         count += 1
         for fn, type_ in variable_schema.items():
-            lines.insert(count, f"  - name: {flatten_path(fn)}")
+            lines.insert(count, f"  - name: {_flatten_path(fn)}")
             count += 1
             lines.insert(count, _dict_to_list_format(type_))
             count += 1

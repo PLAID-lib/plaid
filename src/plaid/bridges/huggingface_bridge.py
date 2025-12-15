@@ -26,21 +26,35 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
+# ------------------------------------------------------------------------------
+# imports for the saved functions at the end of the file
+import hashlib
+import io
 import logging
+import multiprocessing as mp
+import traceback
+from functools import partial
+from queue import Empty
+from typing import Callable
 
 import datasets
-from datasets import load_dataset, load_from_disk
-from huggingface_hub import hf_hub_download, snapshot_download
+from datasets import Features, Sequence, Value, load_dataset, load_from_disk
+from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from pydantic import ValidationError
 
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
 from plaid.storage.common.tree_handling import (
+    flatten_cgns_tree,
     unflatten_cgns_tree,
 )
+from plaid.types import IndexType
+
+# ------------------------------------------------------------------------------
 
 logger = logging.getLogger(__name__)
 pa.set_memory_pool(pa.system_memory_pool())
+
 
 # ------------------------------------------------------------------------------
 #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
@@ -727,22 +741,6 @@ def huggingface_description_to_infos(
 #################################### SAVED FUNCTIONS ####################################
 #########################################################################################
 ################### kept temporarily in case of lost functionalities ####################
-
-import hashlib
-import io
-import multiprocessing as mp
-import traceback
-from functools import partial
-from queue import Empty
-from typing import Callable
-
-from datasets import Features, Sequence, Value
-from huggingface_hub import HfApi
-
-from plaid.storage.common.tree_handling import (
-    flatten_cgns_tree,
-)
-from plaid.types import IndexType
 
 
 def infer_hf_features_from_value(value: Any) -> Union[Value, Sequence]:

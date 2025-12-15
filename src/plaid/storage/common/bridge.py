@@ -1,3 +1,16 @@
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
+"""Common bridge utilities.
+
+This module provides bridge functions for converting between PLAID samples and
+storage formats, including flattening/unflattening and sample reconstruction.
+"""
+
 from typing import Any, Optional
 
 import numpy as np
@@ -8,7 +21,15 @@ from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.storage.common.tree_handling import unflatten_cgns_tree
 
 
-def _split_dict(d):
+def _split_dict(d: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Split a dictionary into values and times based on key suffixes.
+
+    Args:
+        d: Dictionary with keys that may end with '_times'.
+
+    Returns:
+        tuple: (vals, times) where vals has non-times keys, times has times keys.
+    """
     vals = {}
     times = {}
     for k, v in d.items():
@@ -19,7 +40,18 @@ def _split_dict(d):
     return vals, times
 
 
-def _split_dict_feat(d, features_set):  # pragma: no cover
+def _split_dict_feat(
+    d: dict[str, Any], features_set: set[str]
+) -> tuple[dict[str, Any], dict[str, Any]]:  # pragma: no cover
+    """Split a dictionary into values and times, filtering by features set.
+
+    Args:
+        d: Dictionary with keys.
+        features_set: Set of feature names to include.
+
+    Returns:
+        tuple: (vals, times) filtered by features_set.
+    """
     vals = {}
     times = {}
     for k, v in d.items():
@@ -36,6 +68,17 @@ def to_sample_dict(
     cgns_types: dict[str, str],
     features: Optional[list[str]] = None,
 ) -> dict[float, dict[str, Any]]:
+    """Convert variable sample dict to time-based sample dict.
+
+    Args:
+        var_sample_dict: Variable features dictionary.
+        flat_cst: Constant features dictionary.
+        cgns_types: CGNS types dictionary.
+        features: Optional list of features to include.
+
+    Returns:
+        dict: Time-based sample dictionary.
+    """
     assert not isinstance(flat_cst[next(iter(flat_cst))], dict), (
         "did you provide the complete `flat_cst` instead of the one for the considered split?"
     )
@@ -101,6 +144,15 @@ def to_plaid_sample(
     sample_dict: dict[float, dict[str, Any]],
     cgns_types: dict[str, str],
 ) -> Sample:
+    """Convert sample dict to PLAID Sample.
+
+    Args:
+        sample_dict: Time-based sample dictionary.
+        cgns_types: CGNS types dictionary.
+
+    Returns:
+        Sample: The reconstructed PLAID Sample.
+    """
     sample_data = {}
     for time, flat_tree in sample_dict.items():
         sample_data[time] = unflatten_cgns_tree(flat_tree, cgns_types)
@@ -109,8 +161,18 @@ def to_plaid_sample(
 
 
 def plaid_to_sample_dict(
-    sample: Sample, variable_schema, constant_schema
+    sample: Sample, variable_schema: dict[str, Any], constant_schema: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Convert PLAID Sample to sample dicts.
+
+    Args:
+        sample: The PLAID Sample.
+        variable_schema: Variable schema dictionary.
+        constant_schema: Constant schema dictionary.
+
+    Returns:
+        tuple: (cst_sample_dict, var_sample_dict)
+    """
     var_features = list(variable_schema.keys())
     cst_features = list(constant_schema.keys())
 
