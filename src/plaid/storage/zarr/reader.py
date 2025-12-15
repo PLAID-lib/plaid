@@ -57,7 +57,9 @@ class ZarrDataset:
 
         Args:
             zarr_group (zarr.Group): The underlying Zarr group containing the data.
-            ids (np.ndarray): Array of sample IDs available in the dataset.
+            **kwargs: Optional keyword metadata to attach to the dataset instance.
+                All provided kwargs are stored in ``self._extra_fields`` and are
+                accessible as attributes via ``__getattr__`` / ``__setattr__``.
         """
         self.zarr_group = zarr_group
         self._extra_fields = dict(kwargs)

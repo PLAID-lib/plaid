@@ -53,7 +53,9 @@ class CGNSDataset:
 
         Args:
             path: Path to the dataset directory.
-            ids: Array of sample IDs available in the dataset.
+            **kwargs: Optional keyword metadata to attach to the dataset instance.
+                All provided kwargs are stored in ``self._extra_fields`` and are
+                accessible as attributes via ``__getattr__`` / ``__setattr__``.
         """
         self.path = path
         self._extra_fields = dict(kwargs)

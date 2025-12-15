@@ -2,7 +2,7 @@
 title: Storage backends
 ---
 
-# Tutorial
+# Storage tutorial
 
 This tutorial demonstrates end‑to‑end workflows for creating, saving, and loading PLAID datasets using the three storage backends implemented in PLAID:
 - hf_datasets (Hugging Face Datasets),
@@ -29,7 +29,7 @@ Use these examples as templates to:
 - Tune parallelism and sharding to match dataset size and available compute.
 
 
-# How to create data and save to disk/push to hub
+## How to create data and save to disk/push to hub
 
 ```python
 import time
@@ -269,7 +269,7 @@ if Path(tmp_cache_dir).exists():
     shutil.rmtree(Path(tmp_cache_dir))
 ```
 
-# How to read data from disk/hub
+## How to read data from disk/hub
 
 ```python
 import time
