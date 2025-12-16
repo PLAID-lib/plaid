@@ -63,7 +63,7 @@ def _split_dict_feat(
 
 
 def to_sample_dict(
-    var_sample_dict: dict,
+    var_sample_dict: dict[str, Any],
     flat_cst: dict[str, Any],
     cgns_types: dict[str, str],
     features: Optional[list[str]] = None,
@@ -171,7 +171,7 @@ def plaid_to_sample_dict(
         constant_schema: Constant schema dictionary.
 
     Returns:
-        tuple: sample_dict
+        dict[str, Any]: sample_dict
     """
     var_features = list(variable_schema.keys())
     cst_features = list(constant_schema.keys())

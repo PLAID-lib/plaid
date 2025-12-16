@@ -69,7 +69,7 @@ class CGNSDataset:
             self._extra_fields["ids"] = np.asarray(ids, dtype=int)
 
         else:  # pragma: no cover
-            raise ValueError("path mush be a local directory")
+            raise ValueError("path must be a local directory")
 
     def __iter__(self) -> Iterator[Sample]:
         """Iterate over all samples in the dataset.

@@ -217,8 +217,8 @@ def to_var_sample_dict(
     ds: datasets.Dataset,
     i: int,
     enforce_shapes: bool = True,
-) -> dict:
-    """Convert a Hugging Face dataset row to a variable sample dict.
+) -> dict[str, Any]:
+    """Convert a Hugging Face dataset row to a variable sample dict containing the features that vary in the dataset.
 
     Args:
         ds (datasets.Dataset): The Hugging Face dataset.

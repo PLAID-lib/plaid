@@ -11,6 +11,7 @@ This module provides common utilities for reading dataset metadata, problem defi
 and other auxiliary files from disk or downloading them from Hugging Face Hub.
 """
 
+import logging
 import pickle
 import tempfile
 from pathlib import Path
@@ -20,6 +21,8 @@ import yaml
 from huggingface_hub import hf_hub_download, snapshot_download
 
 from plaid import ProblemDefinition
+
+logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------
 # Load from disk
@@ -63,6 +66,7 @@ def load_problem_definitions_from_disk(
                 pb_defs.append(pb_def)
         return pb_defs
     else:
+        logger.warning("No problem definitions found on disk.")
         return None  # pragma: no cover
 
 
