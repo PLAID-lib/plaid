@@ -173,6 +173,7 @@ class Test_Storage:
             )
 
         load_problem_definitions_from_disk(test_dir)
+        load_problem_definitions_from_disk("dummy")
 
         datasetdict, converterdict = init_from_disk(test_dir)
 
