@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixes
+
+### Removed
+
+## [0.1.11] - 2025-12-19
+
+### Added
+
 - (storage) refactore the bridge to rely on a generic storage mechanism, with 3 backends developped: cgns, hf_datasets and zarr.
 - (docs) improve contribution guidelines.
 
@@ -192,7 +202,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Migration from [GitLab](https://gitlab.com/drti/plaid).
 
-[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.10...HEAD
+[unreleased]: https://github.com/PLAID-lib/plaid/compare/0.1.11...HEAD
+[0.1.11]: https://github.com/PLAID-lib/plaid/compare/0.1.10...0.1.11
 [0.1.10]: https://github.com/PLAID-lib/plaid/compare/0.1.9...0.1.10
 [0.1.9]: https://github.com/PLAID-lib/plaid/compare/0.1.8...0.1.9
 [0.1.8]: https://github.com/PLAID-lib/plaid/compare/0.1.7...0.1.8
