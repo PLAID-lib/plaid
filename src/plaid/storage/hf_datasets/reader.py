@@ -88,11 +88,11 @@ def download_datasetdict_from_hub(
 
     if output_folder.is_dir():
         if overwrite:
-            shutil.rmtree(local_dir)
-            logger.warning(f"Existing {local_dir} directory has been reset.")
-        elif any(local_dir.iterdir()):
+            shutil.rmtree(output_folder)
+            logger.warning(f"Existing {output_folder} directory has been reset.")
+        elif any(output_folder.iterdir()):
             raise ValueError(
-                f"directory {local_dir} already exists and is not empty. Set `overwrite` to True if needed."
+                f"directory {output_folder} already exists and is not empty. Set `overwrite` to True if needed."
             )
 
     return snapshot_download(
