@@ -59,15 +59,46 @@ def generator(dataset) -> Callable:
 
 
 @pytest.fixture()
+def gen_kwargs(problem_definition) -> dict[str, dict]:
+    gen_kwargs = {}
+    for split_name, ids in problem_definition.get_split().items():
+        mid = len(ids) // 2
+        gen_kwargs[split_name] = {"shards_ids": [ids[:mid], ids[mid:]]}
+    return gen_kwargs
+
+
+@pytest.fixture()
 def generator_split(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
-    for split_name, ids in problem_definition.get_split().items():
 
-        def generator_(ids=ids):
+    main_splits = problem_definition.get_split()
+
+    for split_name, ids in main_splits.items():
+
+        def generator_():
             for id in ids:
                 yield dataset[id]
 
         generators_[split_name] = generator_
+
+    return generators_
+
+
+@pytest.fixture()
+def generator_split_with_kwargs(dataset, gen_kwargs) -> dict[str, Callable]:
+    generators_ = {}
+
+    for split_name in gen_kwargs.keys():
+
+        def generator_(shards_ids):
+            for ids in shards_ids:
+                if isinstance(ids, int):
+                    ids = [ids]
+                for id in ids:
+                    yield dataset[id]
+
+        generators_[split_name] = generator_
+
     return generators_
 
 
@@ -87,7 +118,7 @@ def generator_split_binary(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
     for split_name, ids in problem_definition.get_split().items():
 
-        def generator_(ids=ids):
+        def generator_():
             for id in ids:
                 yield {"sample": pickle.dumps(dataset[id])}
 
@@ -123,13 +154,12 @@ class Test_Huggingface_Bridge:
     def test_with_datasetdict(self, dataset, problem_definition):
         main_splits = problem_definition.get_split()
 
-        print(dataset)
-
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(
                 dataset, main_splits
             )
         )
+
         huggingface_bridge.to_plaid_sample(
             hf_dataset_dict["train"], 0, flat_cst["train"], key_mappings["cgns_types"]
         )
@@ -154,7 +184,14 @@ class Test_Huggingface_Bridge:
             dataset[0].get_mesh(), dataset[0].get_mesh()
         )
 
-    def test_with_generator(self, generator_split):
+    def test_with_generator(
+        self, generator_split_with_kwargs, generator_split, gen_kwargs
+    ):
+        hf_dataset_dict, flat_cst, key_mappings = (
+            huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+                generator_split_with_kwargs, gen_kwargs
+            )
+        )
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
                 generator_split
@@ -330,20 +367,14 @@ class Test_Huggingface_Bridge:
         huggingface_bridge.huggingface_description_to_infos(hf_description)
 
     # ---- Deprecated ----
-    def test_create_string_for_huggingface_dataset_card(self, hf_dataset):
-        huggingface_bridge.create_string_for_huggingface_dataset_card(
-            description=hf_dataset.description,
-            download_size_bytes=10,
-            dataset_size_bytes=10,
-            nb_samples=10,
-            owner="Safran",
-            license="cc-by-sa-4.0",
-            zenodo_url="https://zenodo.org/records/10124594",
-            arxiv_paper_url="https://arxiv.org/pdf/2305.12871",
+    def test_create_string_for_huggingface_dataset_card(self, infos):
+        dataset_card = "---\ndataset_name: my_dataset\n---"
+
+        huggingface_bridge.update_dataset_card(
+            dataset_card=dataset_card,
+            infos=infos,
             pretty_name="2D quasistatic non-linear structural mechanics solutions",
-            size_categories=["n<1K"],
-            task_categories=["graph-ml"],
-            tags=["physics learning", "geometry learning"],
             dataset_long_description="my long description",
-            url_illustration="url3",
+            illustration_urls=["url0", "url1"],
+            arxiv_paper_urls=["url2"],
         )

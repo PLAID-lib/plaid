@@ -18,6 +18,8 @@
 # %% [markdown]
 # # Hugging Face support
 #
+# IMPORTANT NOTICE: THIS CODE IS STILL FUNCTIONAL, BUT IS DEPRECATED. NEW DATA HANDLING DETAILED IN STORAGE DESCRIPTIONS.
+#
 # This Jupyter Notebook demonstrates various operations involving the Hugging Face bridge:
 #
 # 1. Converting a plaid dataset to Hugging Face
@@ -36,6 +38,7 @@ import os, psutil
 import tempfile
 import shutil
 from time import time
+from functools import partial
 
 import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
@@ -167,17 +170,23 @@ print(f"{key_mappings = }")
 # Ganarators are used to handle large datasets that do not fit in memory:
 
 # %%
-generators = {}
-for split_name, ids in main_splits.items():
+split_ids = {}
+split_ids["train"] = [0, 1]
+split_ids["test"] = [2]
 
-    def generator_(ids=ids):
+generators = {}
+for split_name in split_ids.keys():
+
+    def generator_(ids):
         for id in ids:
             yield dataset[id]
 
-    generators[split_name] = generator_
+    generators[split_name] = partial(generator_, ids = split_ids[split_name])
 
 hf_datasetdict, flat_cst, key_mappings = (
-    huggingface_bridge.plaid_generator_to_huggingface_datasetdict(generators)
+    huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+        generators
+    )
 )
 print(f"{hf_datasetdict = }")
 print(f"{flat_cst = }")

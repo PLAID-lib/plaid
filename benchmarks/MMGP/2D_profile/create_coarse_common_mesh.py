@@ -14,7 +14,7 @@ from Muscat.IO.CGNSReader import ReadCGNS
 import os
 
 
-plaid_location = # path to update to input plaid dataset
+plaid_location = "/path/to/plaid/" # path to update to input plaid dataset
 
 
 reference_mesh_index = 0

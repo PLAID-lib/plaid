@@ -73,6 +73,7 @@ class ProblemDefinition(object):
                 print(problem_definition)
                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
+        self._name: str = None
         self._version: Union[Version] = Version(plaid.__version__)
         self._task: str = None
         self._score_function: str = None
@@ -105,6 +106,26 @@ class ProblemDefinition(object):
         if path is not None:
             path = Path(path)
             self._load_from_dir_(path)
+
+    # -------------------------------------------------------------------------#
+    def get_name(self) -> str:
+        """Get the name. None if not defined.
+
+        Returns:
+            str: The name, such as "regression_1".
+        """
+        return self._name
+
+    def set_name(self, name: str) -> None:
+        """Set the name.
+
+        Args:
+            name (str): The name, such as "regression_1".
+        """
+        if self._name is not None:
+            raise ValueError(f"A name is already in self._name: (`{self._name}`)")
+        else:
+            self._name = name
 
     # -------------------------------------------------------------------------#
     def get_version(self) -> Version:
@@ -1432,6 +1453,8 @@ class ProblemDefinition(object):
             data["train_split"] = self._train_split
         if self._test_split is not None:
             data["test_split"] = self._test_split
+        if self._name is not None:
+            data["name"] = self._name
         if Version(plaid.__version__) < Version("0.2.0"):
             data.update(
                 {
@@ -1575,7 +1598,6 @@ class ProblemDefinition(object):
             self._version = None
         else:
             self._version = Version(data["version"])
-
         self._task = data["task"]
         self.in_features_identifiers = []
         if "input_features" in data:
@@ -1626,6 +1648,8 @@ class ProblemDefinition(object):
             self._train_split = data["train_split"]
         if "test_split" in data:
             self._test_split = data["test_split"]
+        if "name" in data:
+            self._name = data["name"]
 
     def _load_from_file_(self, path: Union[str, Path]) -> None:
         """Load problem information, inputs, outputs, and split from the specified file in YAML format.
@@ -1729,6 +1753,8 @@ class ProblemDefinition(object):
         new_problem_definition = ProblemDefinition()
         if self._task is not None:
             new_problem_definition.set_task(self.get_task())
+        if self._name is not None:
+            new_problem_definition.set_name(self.get_name())
 
         in_features = self.filter_in_features_identifiers(identifiers)
         if len(in_features) > 0:

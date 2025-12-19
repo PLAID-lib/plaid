@@ -29,6 +29,7 @@ def problem_definition() -> ProblemDefinition:
 @pytest.fixture()
 def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDefinition:
     problem_definition.set_task("regression")
+    problem_definition.set_name("regression_1")
 
     # ----
     feature_identifier = FeatureIdentifier({"type": "scalar", "name": "feature"})
@@ -666,6 +667,7 @@ class Test_ProblemDefinition:
         #
         problem = ProblemDefinition.load(d_path)
         assert problem.get_task() == "regression"
+        assert problem.get_name() == "regression_1"
         assert set(problem.get_input_scalars_names()) == set(
             ["predict_scalar", "scalar", "test_scalar"]
         )
@@ -726,6 +728,9 @@ class Test_ProblemDefinition:
         problem_definition.add_in_features_identifiers([in_id_1, in_id_2])
         problem_definition.add_out_features_identifiers([out_id_1, out_id_2])
         problem_definition.set_task("regression")
+        problem_definition.set_name("regression_1")
+        with pytest.raises(ValueError):
+            problem_definition.set_name("regression_2")
         problem_definition.set_split({"train": [0, 1], "test": [2, 3]})
 
         sub_problem_definition = (
@@ -738,6 +743,7 @@ class Test_ProblemDefinition:
         assert sub_problem_definition.get_out_features_identifiers() == [out_id_1]
         assert sub_problem_definition.get_version() == problem_definition.get_version()
         assert sub_problem_definition.get_task() == "regression"
+        assert sub_problem_definition.get_name() == "regression_1"
         assert sub_problem_definition.get_split() == {"train": [0, 1], "test": [2, 3]}
 
 

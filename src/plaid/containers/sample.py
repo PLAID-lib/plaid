@@ -51,7 +51,6 @@ logger = logging.getLogger(__name__)
 
 CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
 
-
 FEATURES_METHODS = [
     "set_default_base",
     "set_default_zone_base",
@@ -93,7 +92,7 @@ class Sample(BaseModel):
         - You can provide a path to a folder containing the sample data, and it will be loaded during initialization.
         - You can provide `SampleFeatures` and `SampleFeatures` instances to initialize the sample with existing data.
 
-    The default `SampleFeatures` instance is initialized with `data=None`(i.e., no mesh data).
+    The default `SampleFeatures` instance is initialized with `data=None` (i.e., no mesh data).
     """
 
     # Pydantic configuration
@@ -669,7 +668,7 @@ class Sample(BaseModel):
             if overwrite:
                 shutil.rmtree(path)
                 logger.warning(f"Existing {path} directory has been reset.")
-            elif len(list(path.glob("*"))):
+            elif any(path.iterdir()):
                 raise ValueError(
                     f"directory {path} already exists and is not empty. Set `overwrite` to True if needed."
                 )

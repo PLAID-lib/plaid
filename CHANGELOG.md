@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (storage) refactore the bridge to rely on a generic storage mechanism, with 3 backends developped: cgns, hf_datasets and zarr.
 - (docs) improve contribution guidelines.
 
 ### Changed
 
+- (huggingface bridge) full parallel support in `from_generator`, with optimization of constant leaf detection (no large data communicated between processes).
+- (samples/features) add string support to globals.
+- (huggingface bridge) correct split_constant tree derivation, add heuristic for number of shards usage in push_to_dict, robustify infer_hf_features_from_value with respect to numpy arrays of strings, modernize update_dataset_card.
 - (dependencies) migrate to muscat=2.5.1
 - (types/containers) move `FeatureIdentifier` class from `plaid.types` to `plaid.containers`.
 - (features) rename `get_all_mesh_times()` to `get_all_time_values()`.
@@ -20,8 +24,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixes
 
 - (dataset/huggingface_bridge) add optional `warn` parameter to `Dataset.set_infos()` to allow silent replacement of infos; `huggingface_dataset_to_plaid` now uses `warn=False` to prevent unnecessary warnings.
+- (types/containers) move `FeatureIdentifier` class from `plaid.types` to `plaid.containers`.
+- (features) rename `get_all_mesh_times()` to `get_all_time_values()`.
 
 ### Removed
+
+- (python) remove python 3.10 support for zarr compatibility
 
 ## [0.1.10] - 2025-10-29
 

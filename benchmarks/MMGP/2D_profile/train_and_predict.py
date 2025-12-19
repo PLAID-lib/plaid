@@ -18,7 +18,7 @@ from model import GPyRegressor
 from utils_2dprofile import POD
 import os
 
-plaid_location = # path to update to input plaid dataset
+plaid_location = "/path/to/plaid/" # path to update to input plaid dataset
 
 
 
