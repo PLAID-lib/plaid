@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (tests) improve temp folder handling
+
 ### Fixes
 
 - (storage/hf_datasets/reader) correct folder existence check in download_datasetdict_from_hub
