@@ -8,8 +8,6 @@
 # %% Imports
 
 import pickle
-import shutil
-from pathlib import Path
 from typing import Callable
 
 import pytest
@@ -19,11 +17,6 @@ from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.utils import cgns_helper
-
-
-@pytest.fixture()
-def current_directory():
-    return Path(__file__).absolute().parent
 
 
 # %% Fixtures
@@ -213,7 +206,7 @@ class Test_Huggingface_Bridge:
     # ------------------------------------------------------------------------------
 
     def test_save_load_to_disk(
-        self, current_directory, generator_split, infos, problem_definition
+        self, tmp_path, generator_split, infos, problem_definition
     ):
         hf_dataset_dict, flat_cst, key_mappings = (
             huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
@@ -221,7 +214,7 @@ class Test_Huggingface_Bridge:
             )
         )
 
-        test_dir = Path(current_directory) / Path("test")
+        test_dir = tmp_path / "test"
         huggingface_bridge.save_dataset_dict_to_disk(test_dir, hf_dataset_dict)
         huggingface_bridge.save_infos_to_disk(test_dir, infos)
         huggingface_bridge.save_problem_definition_to_disk(
@@ -233,21 +226,20 @@ class Test_Huggingface_Bridge:
         huggingface_bridge.load_infos_from_disk(test_dir)
         huggingface_bridge.load_problem_definition_from_disk(test_dir, "task_1")
         huggingface_bridge.load_tree_struct_from_disk(test_dir)
-        shutil.rmtree(test_dir)
 
     # ------------------------------------------------------------------------------
     #     HUGGING FACE BINARY BRIDGE
     # ------------------------------------------------------------------------------
 
     def test_save_load_to_disk_binary(
-        self, current_directory, generator_split_binary, infos, problem_definition
+        self, tmp_path, generator_split_binary, infos, problem_definition
     ):
         hf_dataset_dict = (
             huggingface_bridge.plaid_generator_to_huggingface_datasetdict_binary(
                 generator_split_binary
             )
         )
-        test_dir = Path(current_directory) / Path("test")
+        test_dir = tmp_path / "test"
         huggingface_bridge.save_dataset_dict_to_disk(test_dir, hf_dataset_dict)
         huggingface_bridge.save_infos_to_disk(test_dir, infos)
         huggingface_bridge.save_problem_definition_to_disk(
@@ -256,7 +248,6 @@ class Test_Huggingface_Bridge:
         huggingface_bridge.load_dataset_from_disk(test_dir)
         huggingface_bridge.load_infos_from_disk(test_dir)
         huggingface_bridge.load_problem_definition_from_disk(test_dir, "task_1")
-        shutil.rmtree(test_dir)
 
     def test_binary_to_plaid_sample(self, generator_binary):
         hfds = huggingface_bridge.plaid_generator_to_huggingface_binary(

@@ -117,7 +117,7 @@ def _read_index_range(pyTree: list, dim: list[int]):
 
 
 def get_sample_ids(savedir: Union[str, Path]) -> list[int]:
-    """Return list of sample ids in a dataset on disk.
+    """Return list of sample ids from a dataset on disk.
 
     Args:
         savedir (Union[str,Path]): The path to the directory where sample files are stored.

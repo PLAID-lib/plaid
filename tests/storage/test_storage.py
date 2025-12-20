@@ -7,7 +7,6 @@
 
 # %% Imports
 
-import shutil
 from pathlib import Path
 from typing import Callable
 
@@ -130,7 +129,7 @@ class Test_Storage:
         self,
         dataset,
         main_splits,
-        current_directory,
+        tmp_path,
         generator_split,
         infos,
         problem_definition,
@@ -140,9 +139,7 @@ class Test_Storage:
             dataset, main_splits, variable_schema
         )
 
-        test_dir = Path(current_directory) / Path("test_hf")
-        if test_dir.is_dir():
-            shutil.rmtree(test_dir)
+        test_dir = tmp_path / "test_hf"
 
         save_to_disk(
             output_folder=test_dir,
@@ -200,12 +197,8 @@ class Test_Storage:
         converter.to_dict(dataset, 0)
         converter.sample_to_dict(dataset[0])
 
-        shutil.rmtree(test_dir)
-
-    def test_zarr(self, current_directory, generator_split, infos, problem_definition):
-        test_dir = Path(current_directory) / Path("test_zarr")
-        if test_dir.is_dir():
-            shutil.rmtree(test_dir)
+    def test_zarr(self, tmp_path, generator_split, infos, problem_definition):
+        test_dir = tmp_path / "test_hf"
 
         save_to_disk(
             output_folder=test_dir,
@@ -246,12 +239,8 @@ class Test_Storage:
         converter.to_dict(dataset, 0)
         converter.sample_to_dict(dataset[0])
 
-        shutil.rmtree(test_dir)
-
-    def test_cgns(self, current_directory, generator_split, infos, problem_definition):
-        test_dir = Path(current_directory) / Path("test_cgns")
-        if test_dir.is_dir():
-            shutil.rmtree(test_dir)
+    def test_cgns(self, tmp_path, generator_split, infos, problem_definition):
+        test_dir = tmp_path / "test_cgns"
 
         save_to_disk(
             output_folder=test_dir,
@@ -293,5 +282,3 @@ class Test_Storage:
             converter.to_dict(dataset, 0)
         with pytest.raises(ValueError):
             converter.sample_to_dict(dataset[0])
-
-        shutil.rmtree(test_dir)
