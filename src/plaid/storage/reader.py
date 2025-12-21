@@ -168,7 +168,7 @@ class Converter:
                     f"Missing features in dataset/converter: {sorted(missing)}"
                 )
 
-            req_var_feat = [f for f in features if f in self.variable_schema] or None
+            req_var_feat = [f for f in features if f in self.variable_schema]
         else:
             req_var_feat = None
 

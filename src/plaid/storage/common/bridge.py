@@ -152,13 +152,27 @@ def to_sample_dict(
                 else:
                     sample_flat_trees[time] = {path_v: values}
 
+    def _wants(path: str) -> bool:
+        return features is None or path in features
+
     for time, tree in sample_flat_trees.items():
-        bases = list(set([k.split("/")[0] for k in tree.keys()]))
+        bases = {k.split("/", 1)[0] for k in tree}
+
         for base in bases:
-            tree[f"{base}/Time"] = np.array([1], dtype=np.int32)
-            tree[f"{base}/Time/IterationValues"] = np.array([1], dtype=np.int32)
-            tree[f"{base}/Time/TimeValues"] = np.array([time], dtype=np.float64)
-        tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
+            time_base = f"{base}/Time"
+
+            if _wants(time_base):
+                tree[time_base] = np.array([1], dtype=np.int32)
+
+            if _wants(f"{time_base}/IterationValues"):
+                tree[f"{time_base}/IterationValues"] = np.array([1], dtype=np.int32)
+
+            if _wants(f"{time_base}/TimeValues"):
+                tree[f"{time_base}/TimeValues"] = np.array([time], dtype=np.float64)
+
+        if _wants("CGNSLibraryVersion"):
+            tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
+
         tree.update(paths_none)
 
     return sample_flat_trees
