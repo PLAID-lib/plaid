@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- (storage/reader) Converter class: to_dict now takes features argument to prevent reader complete samples
+- (storage/reader) Converter class: to_dict now takes features argument to prevent reading complete samples
 
 ### Changed
 
