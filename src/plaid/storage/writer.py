@@ -117,7 +117,7 @@ def _check_folder(output_folder: Path, overwrite: bool) -> None:
 def save_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    backend: str,
+    backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
     pb_defs: Optional[Union[ProblemDefinition, Iterable[ProblemDefinition]]] = None,
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
