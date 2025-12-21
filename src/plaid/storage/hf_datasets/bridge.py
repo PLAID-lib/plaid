@@ -216,6 +216,7 @@ def generator_to_datasetdict(
 def to_var_sample_dict(
     ds: datasets.Dataset,
     i: int,
+    features: Optional[list[str]] = None,
     enforce_shapes: bool = True,
 ) -> dict[str, Any]:
     """Convert a Hugging Face dataset row to a variable sample dict containing the features that vary in the dataset.
@@ -224,21 +225,30 @@ def to_var_sample_dict(
         ds (datasets.Dataset): The Hugging Face dataset.
         i (int): The row index.
         enforce_shapes (bool): Whether to enforce consistent shapes.
+        features: Iterable of feature names (keys) to extract from the dataset.
 
     Returns:
         dict: The variable sample dictionary.
     """
     table = ds.data
+
+    if features is None:
+        features = table.column_names
+    else:
+        missing = set(features) - set(table.column_names)
+        if missing:  # pragma: no cover
+            raise KeyError(f"Missing features in hf_dataset: {sorted(missing)}")
+
     var_sample_dict = {}
     if not enforce_shapes:
-        for name in table.column_names:
+        for name in features:
             value = table[name][i].values
             if value is None:
                 var_sample_dict[name] = None  # pragma: no cover
             else:
                 var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
     else:
-        for name in table.column_names:
+        for name in features:
             if isinstance(table[name][i], pa.NullScalar):
                 var_sample_dict[name] = None  # pragma: no cover
             else:

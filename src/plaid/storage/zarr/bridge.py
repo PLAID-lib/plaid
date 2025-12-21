@@ -11,34 +11,37 @@ This module provides utility functions for bridging between PLAID samples and Za
 It includes functions for key transformation and sample data conversion.
 """
 
-from typing import Any
+from typing import Any, Optional
 
 import zarr
 
-
-def unflatten_zarr_key(key: str) -> str:
-    """Unflattens a Zarr key by replacing underscores with slashes.
-
-    Args:
-        key (str): The flattened key with underscores.
-
-    Returns:
-        str: The unflattened key with slashes.
-    """
-    return key.replace("__", "/")
+from plaid.storage.common.bridge import flatten_path, unflatten_path
 
 
-def to_var_sample_dict(zarr_dataset: zarr.Group, idx: int) -> dict[str, Any]:
+def to_var_sample_dict(
+    zarr_dataset: zarr.Group, idx: int, features: Optional[list[str]]
+) -> dict[str, Any]:
     """Extracts a sample dictionary from a Zarr dataset by index.
 
     Args:
         zarr_dataset (zarr.Group): The Zarr group containing the dataset.
         idx (int): The sample index to extract.
+        features: Iterable of feature names (keys) to extract from the dataset.
 
     Returns:
         dict[str, Any]: Dictionary of variable features for the sample.
     """
-    return zarr_dataset[idx]
+    zarr_sample = zarr_dataset.zarr_group[f"sample_{idx:09d}"]
+
+    if features is None:
+        features = [unflatten_path(p) for p in zarr_sample.array_keys()]
+
+    flattened = {feat: flatten_path(feat) for feat in features}
+    missing = set(flattened.values()) - set(zarr_sample.array_keys())
+    if missing:  # pragma: no cover
+        raise KeyError(f"Missing features in sample {idx}: {sorted(missing)}")
+
+    return {feat: zarr_sample[flat_feat] for feat, flat_feat in flattened.items()}
 
 
 def sample_to_var_sample_dict(zarr_sample: dict[str, Any]) -> dict[str, Any]:

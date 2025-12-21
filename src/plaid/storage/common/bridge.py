@@ -21,6 +21,30 @@ from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.storage.common.tree_handling import unflatten_cgns_tree
 
 
+def unflatten_path(key: str) -> str:
+    """Unflattens a Zarr key by replacing underscores with slashes.
+
+    Args:
+        key (str): The flattened key with underscores.
+
+    Returns:
+        str: The unflattened key with slashes.
+    """
+    return key.replace("__", "/")
+
+
+def flatten_path(key: str) -> str:
+    """Flattens a path key by replacing slashes with underscores.
+
+    Args:
+        key (str): The path key to flatten.
+
+    Returns:
+        str: The flattened key with slashes replaced by underscores.
+    """
+    return key.replace("/", "__")
+
+
 def _split_dict(d: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Split a dictionary into values and times based on key suffixes.
 
@@ -176,9 +200,9 @@ def plaid_to_sample_dict(
     var_features = list(variable_schema.keys())
     cst_features = list(constant_schema.keys())
 
-    hf_sample, _, _ = build_sample_dict(sample)
+    sample_dict, _, _ = build_sample_dict(sample)
 
-    var_sample_dict = {path: hf_sample.get(path, None) for path in var_features}
-    cst_sample_dict = {path: hf_sample.get(path, None) for path in cst_features}
+    var_sample_dict = {path: sample_dict.get(path, None) for path in var_features}
+    cst_sample_dict = {path: sample_dict.get(path, None) for path in cst_features}
 
     return cst_sample_dict | var_sample_dict

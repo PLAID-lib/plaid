@@ -33,8 +33,7 @@ from datasets import IterableDataset
 from datasets.splits import NamedSplit
 from huggingface_hub import hf_hub_download, snapshot_download
 
-from plaid.storage.zarr.bridge import unflatten_zarr_key
-from plaid.storage.zarr.writer import _flatten_path
+from plaid.storage.common.bridge import flatten_path, unflatten_path
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +86,7 @@ class ZarrDataset:
         """
         zarr_sample = self.zarr_group[f"sample_{idx:09d}"]
         return {
-            unflatten_zarr_key(path): zarr_sample[path]
-            for path in zarr_sample.array_keys()
+            unflatten_path(path): zarr_sample[path] for path in zarr_sample.array_keys()
         }
 
     def __len__(self) -> int:
@@ -191,7 +189,7 @@ def _zarr_patterns(
         ignored_features = [f for f in all_features if f not in features]
 
         ignore_patterns += [
-            f"data/*/{_flatten_path(feat)}/*" for feat in ignored_features
+            f"data/*/{flatten_path(feat)}/*" for feat in ignored_features
         ]
 
     return allow_patterns, ignore_patterns
@@ -217,7 +215,7 @@ def sample_generator(
     for idx in ids:
         sample = {}
         for feat in selected_features:
-            flatten_feat = _flatten_path(feat)
+            flatten_feat = flatten_path(feat)
             mapper = fsspec.get_mapper(base_url + f"{idx:09d}/{flatten_feat}")
             sample[feat] = zarr.open(mapper, mode="r")
 

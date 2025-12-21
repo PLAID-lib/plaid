@@ -30,20 +30,9 @@ from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
 from plaid import Sample
+from plaid.storage.common.bridge import flatten_path
 from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
-
-
-def _flatten_path(key: str) -> str:
-    """Flattens a path key by replacing slashes with underscores.
-
-    Args:
-        key (str): The path key to flatten.
-
-    Returns:
-        str: The flattened key with slashes replaced by underscores.
-    """
-    return key.replace("/", "__")
 
 
 def _auto_chunks(shape: tuple[int, ...], target_n: int) -> tuple[int, ...]:
@@ -147,7 +136,7 @@ def generate_datasetdict_to_disk(
             g = split_root.create_group(f"sample_{sample_counter:09d}")
             for key, value in sample_data.items():
                 g.create_array(
-                    _flatten_path(key),
+                    flatten_path(key),
                     data=value,
                     chunks=_auto_chunks(value.shape, 5_000_000),
                 )  # chunks=value.shape
@@ -230,7 +219,7 @@ def generate_datasetdict_to_disk(
                     for key, value in sample_data.items():
                         if value is not None:
                             g.create_array(
-                                _flatten_path(key),
+                                flatten_path(key),
                                 data=value,
                                 chunks=_auto_chunks(value.shape, 5_000_000),
                             )  # chunks=value.shape
@@ -388,7 +377,7 @@ tags:
         lines.insert(count, "  features:")
         count += 1
         for fn, type_ in variable_schema.items():
-            lines.insert(count, f"  - name: {_flatten_path(fn)}")
+            lines.insert(count, f"  - name: {flatten_path(fn)}")
             count += 1
             lines.insert(count, _dict_to_list_format(type_))
             count += 1

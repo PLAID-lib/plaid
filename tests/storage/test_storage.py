@@ -197,6 +197,24 @@ class Test_Storage:
         converter.to_dict(dataset, 0)
         converter.sample_to_dict(dataset[0])
 
+        # print(converter.flat_cst)
+        converter.to_dict(
+            dataset,
+            0,
+            features=[
+                "TestBaseName/TestZoneName/VertexFields/test_field_same_size",
+                "Global/global_0",
+            ],
+        )
+        converter.to_dict(
+            dataset,
+            0,
+            features=["TestBaseName/TestZoneName/VertexFields/test_field_same_size"],
+        )
+        converter.to_dict(dataset, 0, features=["Global/global_0"])
+        with pytest.raises(KeyError):
+            converter.to_dict(dataset, 0, features=["dummy"])
+
     def test_zarr(self, tmp_path, generator_split, infos, problem_definition):
         test_dir = tmp_path / "test_hf"
 
@@ -238,6 +256,17 @@ class Test_Storage:
 
         converter.to_dict(dataset, 0)
         converter.sample_to_dict(dataset[0])
+
+        converter.to_dict(
+            dataset,
+            0,
+            features=[
+                "TestBaseName/TestZoneName/VertexFields/test_field_same_size",
+                "Global/global_0",
+            ],
+        )
+        with pytest.raises(KeyError):
+            converter.to_dict(dataset, 0, features=["dummy"])
 
     def test_cgns(self, tmp_path, generator_split, infos, problem_definition):
         test_dir = tmp_path / "test_cgns"
