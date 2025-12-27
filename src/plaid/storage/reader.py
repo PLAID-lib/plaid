@@ -18,6 +18,14 @@ Key features:
 - Sample conversion between storage formats and PLAID objects
 """
 
+try:
+    import torch
+
+    _HAS_TORCH = True
+except ImportError:
+    torch = None
+    _HAS_TORCH = False
+
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
@@ -123,6 +131,7 @@ class Converter:
         cgns_types: Any,
         variable_schema: Any,
         constant_schema: Any,
+        num_samples: Any,
     ) -> None:
         """Initialize a :class:`Converter`.
 
@@ -132,15 +141,20 @@ class Converter:
             cgns_types: CGNS type information.
             variable_schema: Schema for variable fields.
             constant_schema: Schema for constant fields.
+            num_samples: Mapping providing the number of samples for each split.
         """
         self.backend = backend
         self.flat_cst = flat_cst
         self.cgns_types = cgns_types
         self.variable_schema = variable_schema
         self.constant_schema = constant_schema
+        self.num_samples = num_samples
 
     def to_dict(
-        self, dataset: Any, idx: int, features: Optional[list[str]] = None
+        self,
+        dataset: Any,
+        idx: int,
+        features: Optional[list[str]] = None,
     ) -> dict[float, dict[str, Any]]:
         """Convert a dataset sample to dictionary format.
 
@@ -173,6 +187,7 @@ class Converter:
             req_var_feat = None
 
         var_sample_dict = to_var_sample_dict[self.backend](dataset, idx, req_var_feat)
+
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types, features)
 
     def to_plaid(self, dataset: Any, idx: int) -> Sample:
@@ -266,13 +281,19 @@ def init_from_disk(
     infos = load_infos_from_disk(local_dir)
 
     backend = infos["storage_backend"]
+    num_samples = infos["num_samples"]
 
     datasetdict = init_datasetdict_from_disk[backend](local_dir)
 
     converterdict = {}
     for split in datasetdict.keys():
         converterdict[split] = Converter(
-            backend, flat_cst[str(split)], cgns_types, variable_schema, constant_schema
+            backend,
+            flat_cst[str(split)],
+            cgns_types,
+            variable_schema,
+            constant_schema,
+            num_samples[str(split)],
         )
     return datasetdict, converterdict
 
@@ -341,6 +362,7 @@ def init_streaming_from_hub(
     infos = load_infos_from_hub(repo_id)
 
     backend = infos["storage_backend"]
+    num_samples = infos["num_samples"]
 
     datasetdict = init_datasetdict_streaming_from_hub[backend](
         repo_id, split_ids, features
@@ -349,7 +371,12 @@ def init_streaming_from_hub(
     converterdict = {}
     for split in datasetdict.keys():
         converterdict[split] = Converter(
-            backend, flat_cst[str(split)], cgns_types, variable_schema, constant_schema
+            backend,
+            flat_cst[str(split)],
+            cgns_types,
+            variable_schema,
+            constant_schema,
+            num_samples[str(split)],
         )
 
     return datasetdict, converterdict

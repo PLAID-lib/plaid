@@ -11,6 +11,14 @@ This module provides bridge functions for converting between PLAID samples and
 storage formats, including flattening/unflattening and sample reconstruction.
 """
 
+try:
+    import torch
+
+    _HAS_TORCH = True
+except ImportError:
+    torch = None
+    _HAS_TORCH = False
+
 from typing import Any, Optional
 
 import numpy as np

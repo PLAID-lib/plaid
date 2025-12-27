@@ -51,16 +51,21 @@ class ZarrDataset:
     additional metadata fields.
     """
 
-    def __init__(self, zarr_group: zarr.Group, **kwargs) -> None:
+    def __init__(
+        self, zarr_group: zarr.Group, path: Union[str, Path], **kwargs
+    ) -> None:
         """Initialize a :class:`ZarrDataset`.
 
         Args:
             zarr_group (zarr.Group): The underlying Zarr group containing the data.
+            path (Union[str, Path]): Path to the dataset root (local directory or remote
+                identifier). Stored on the instance as ``self.path``.
             **kwargs: Optional keyword metadata to attach to the dataset instance.
                 All provided kwargs are stored in ``self._extra_fields`` and are
                 accessible as attributes via ``__getattr__`` / ``__setattr__``.
         """
         self.zarr_group = zarr_group
+        self.path = path
         self._extra_fields = dict(kwargs)
 
         ids = sorted(int(name[7:]) for name, _ in zarr_group.groups())
@@ -126,7 +131,7 @@ class ZarrDataset:
             name: Attribute name.
             value: Attribute value.
         """
-        if name in ("zarr_group", "_extra_fields"):
+        if name in ("zarr_group", "path", "_extra_fields"):
             super().__setattr__(name, value)
         else:
             self._extra_fields[name] = value
@@ -266,7 +271,9 @@ def init_datasetdict_from_disk(
     local_path = Path(path) / "data"
     split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
     return {
-        sn: ZarrDataset(zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r"))
+        sn: ZarrDataset(
+            zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r"), path
+        )
         for sn in split_names
     }
 
