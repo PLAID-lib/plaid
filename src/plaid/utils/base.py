@@ -87,36 +87,3 @@ class DeprecatedError(Exception):
     """Exception for deprecated methods."""
 
     pass
-
-
-def get_feature_type_by_path(path: str) -> str:
-    """Retrieve a feature value type from a CGNS-style path.
-
-    Args:
-        path (str): CGNS node path relative to the mesh root (for example
-            "BaseName/ZoneName/GridCoordinates/CoordinateX" or
-            "BaseName/ZoneName/Solution/FieldName").
-    """
-    if path.startswith("Global/"):
-        return "global"
-    elif path.endswith("/ElementConnectivity"):
-        return "element_connectivity"
-    elif path.endswith("/ElementRange"):
-        return "element_range"
-    elif path.endswith("/PointList"):
-        return "tag"
-    elif path.endswith(("/CoordinateX", "/CoordinateY", "/CoordinateZ")):
-        return "node_coordinate"
-    else:
-        return "field"
-
-
-def get_feature_name_by_path(path: str) -> str:
-    """Retrieve a feature name from a CGNS-style path.
-
-    Args:
-        path (str): CGNS node path relative to the mesh root (for example
-            "BaseName/ZoneName/GridCoordinates/CoordinateX" or
-            "BaseName/ZoneName/Solution/FieldName").
-    """
-    return path.split("/")[-1]

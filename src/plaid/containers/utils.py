@@ -18,10 +18,19 @@ import numpy as np
 from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
+    CGNS_FIELD_LOCATIONS,
 )
 from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.types import Feature
 from plaid.utils.base import safe_len
+
+path_to_location = {f"{loc}Fields": loc for loc in CGNS_FIELD_LOCATIONS}
+retrocompatibility = {
+    "PointData": "Vertex",
+    "CellData": "CellCenter",
+    "SurfaceData": "FaceCenter",
+}
+path_to_location.update(path_to_location)
 
 
 def _check_names(names: Union[str, list[str]]):
@@ -283,3 +292,40 @@ def has_duplicates_feature_ids(feature_identifiers: list[FeatureIdentifier]):
             return True
         seen.add(frozen)
     return False
+
+
+def get_feature_details_from_path(path: str) -> dict[str, str]:
+    """Retrieve details from a CGNS-style path.
+
+    Args:
+        path (str): CGNS node path relative to the mesh root (for example
+            "BaseName/ZoneName/GridCoordinates/CoordinateX" or
+            "BaseName/ZoneName/Solution/FieldName").
+    """
+    split_path = path.split("/")
+    feat_det = {}
+    if path.startswith("Global/"):
+        feat_det["type"] = "global"
+        feat_det["name"] = split_path[1]
+    else:
+        if path.endswith("/ElementConnectivity"):
+            feat_det["type"] = "element_connectivity"
+            feat_det["element"] = split_path[2]
+        elif path.endswith("/ElementRange"):
+            feat_det["type"] = "element_range"
+            feat_det["element"] = split_path[2]
+        elif path.endswith("/PointList"):
+            feat_det["type"] = "tag"
+            feat_det["sub_type"] = split_path[2]
+            feat_det["name"] = split_path[3]
+        elif path.endswith(("/CoordinateX", "/CoordinateY", "/CoordinateZ")):
+            feat_det["type"] = "node_coordinate"
+            feat_det["name"] = split_path[3]
+        else:
+            feat_det["type"] = "field"
+            feat_det["location"] = path_to_location[split_path[2]]
+            feat_det["name"] = split_path[3]
+        feat_det["base"] = split_path[0]
+        feat_det["zone"] = split_path[1]
+
+    return feat_det

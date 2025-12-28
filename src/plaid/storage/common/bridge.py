@@ -186,6 +186,98 @@ def to_sample_dict(
     return sample_flat_trees
 
 
+def to_sample_dict_2(
+    sample_dict: dict[str, Any],
+    cgns_types: dict[str, str],
+    features: Optional[list[str]] = None,
+) -> dict[float, dict[str, Any]]:
+    """Convert a flattened sample dict into a time-indexed flat-tree mapping.
+
+    This function processes a single flattened sample dictionary where keys
+    are feature paths or feature path suffixed with '_times' (holding time
+    interval specs). It splits values and their corresponding time
+    specifications, slices feature arrays per interval and groups features
+    by their sample time into CGNS-style flattened trees.
+
+    Args:
+        sample_dict: Mapping of flattened feature paths to values or to time
+            specifications (keys ending with '_times'). Time specifications
+            must be sequences or arrays reshapeable to (-1, 3) rows of
+            (time, start, end).
+        cgns_types: Mapping from feature path to CGNS node type; used to
+            determine which None-valued features should be preserved.
+        features: Optional list of feature paths to include; if None all
+            features are included.
+
+    Returns:
+        A dict mapping time (float) to a flattened tree dict (path -> array or None).
+    """
+    if features is None:
+        row_val, row_tim = _split_dict(sample_dict)
+    else:  # pragma: no cover
+        features_set = set(features)
+        row_val, row_tim = _split_dict_feat(sample_dict, features_set)
+
+    row_val = {p: row_val[p] for p in sorted(row_val)}
+    row_tim = {p: row_tim[p] for p in sorted(row_tim)}
+
+    sample_flat_trees = {}
+    paths_none = {}
+    for (path_t, times_struc), (path_v, val) in zip(row_tim.items(), row_val.items()):
+        assert path_t == path_v, "did you forget to specify the features arg?"
+        if val is None:
+            assert times_struc is None
+            if path_v not in paths_none and cgns_types[path_v] not in [
+                "DataArray_t",
+                "IndexArray_t",
+            ]:
+                paths_none[path_v] = None
+        else:
+            times_struc = np.array(times_struc, dtype=np.float64).reshape((-1, 3))
+            for i, time in enumerate(times_struc[:, 0]):
+                start = int(times_struc[i, 1])
+                end = int(times_struc[i, 2])
+                if end == -1:
+                    end = None
+                if val.ndim > 1:
+                    values = val[:, start:end]
+                else:
+                    values = val[start:end]
+                    if isinstance(values[0], str):
+                        values = np.frombuffer(
+                            values[0].encode("ascii", "strict"), dtype="|S1"
+                        )
+                if time in sample_flat_trees:
+                    sample_flat_trees[time][path_v] = values
+                else:
+                    sample_flat_trees[time] = {path_v: values}
+
+    def _wants(path: str) -> bool:
+        return features is None or path in features
+
+    for time, tree in sample_flat_trees.items():
+        bases = {k.split("/", 1)[0] for k in tree}
+
+        for base in bases:
+            time_base = f"{base}/Time"
+
+            if _wants(time_base):
+                tree[time_base] = np.array([1], dtype=np.int32)
+
+            if _wants(f"{time_base}/IterationValues"):
+                tree[f"{time_base}/IterationValues"] = np.array([1], dtype=np.int32)
+
+            if _wants(f"{time_base}/TimeValues"):
+                tree[f"{time_base}/TimeValues"] = np.array([time], dtype=np.float64)
+
+        if _wants("CGNSLibraryVersion"):
+            tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
+
+        tree.update(paths_none)
+
+    return sample_flat_trees
+
+
 def to_plaid_sample(
     sample_dict: dict[float, dict[str, Any]],
     cgns_types: dict[str, str],
