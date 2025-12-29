@@ -321,11 +321,22 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
         elif path.endswith(("/CoordinateX", "/CoordinateY", "/CoordinateZ")):
             feat_det["type"] = "node_coordinate"
             feat_det["name"] = split_path[3]
-        else:
+        elif len(split_path) == 4:
             feat_det["type"] = "field"
             feat_det["location"] = path_to_location[split_path[2]]
             feat_det["name"] = split_path[3]
+        elif len(split_path) <= 2:
+            pass
+        else:
+            raise ValueError("path not recognized")
+
         feat_det["base"] = split_path[0]
+        assert feat_det["base"] == "Global" or feat_det["base"][:5] == "Base_", (
+            "path not recognized"
+        )
+        if len(split_path) == 1:
+            return feat_det
+
         feat_det["zone"] = split_path[1]
 
     return feat_det

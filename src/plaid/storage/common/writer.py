@@ -64,6 +64,10 @@ def save_problem_definitions_to_disk(
     target_dir.mkdir(parents=True, exist_ok=True)
 
     for name, pb_def in pb_defs.items():
+        if name is None:
+            raise ValueError(
+                "At leadt one of the provided pb_defs has no initilized name."
+            )
         pb_def.save_to_file(target_dir / name)
 
 
@@ -174,7 +178,7 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
                         nbytes = len(raw)
 
                     # ---- CASE 2: CGNS char array ----
-                    else:
+                    else:  # pragma: no cover
                         arr = arr.astype("<U1")
                         arr_bytes = arr.astype("|S1")
 
