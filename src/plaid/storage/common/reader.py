@@ -47,14 +47,35 @@ def load_infos_from_disk(path: Union[str, Path]) -> dict[str, Any]:
 
 def load_problem_definitions_from_disk(
     path: Union[str, Path],
-) -> Optional[dict[str, ProblemDefinition]]:
-    """Load ProblemDefinitions from disk.
+) -> dict[str, ProblemDefinition]:
+    """Load ProblemDefinitions from a local dataset directory.
+
+    This function reads all serialized ``ProblemDefinition`` files located in the
+    ``problem_definitions/`` subdirectory under ``path`` and reconstructs them
+    into ``ProblemDefinition`` objects.
+
+    Each file is loaded using ``ProblemDefinition._load_from_file_`` and inserted
+    into a dictionary keyed by the problem definition name.
+
+    Expected local layout:
+        <path>/
+            problem_definitions/
+                <problem_name_1>
+                <problem_name_2>
+                ...
 
     Args:
-        path (Union[str, Path]): The directory path for loading.
+        path (Union[str, Path]):
+            Root dataset directory containing the ``problem_definitions/`` folder.
 
     Returns:
-        Optional[list[ProblemDefinition]]: List of loaded problem definitions, or None if not found.
+        dict[str, ProblemDefinition]:
+            Mapping from problem definition names to loaded ``ProblemDefinition``
+            objects.
+
+    Raises:
+        ValueError:
+            If the ``problem_definitions/`` directory does not exist.
     """
     pb_def_dir = Path(path) / Path("problem_definitions")
 
@@ -67,8 +88,7 @@ def load_problem_definitions_from_disk(
                 pb_defs[pb_def.get_name()] = pb_def
         return pb_defs
     else:
-        logger.warning("No problem definitions found on disk.")
-        return None  # pragma: no cover
+        raise ValueError("No problem definitions found on disk.")  # pragma: no cover
 
 
 def load_constants_from_disk(path):

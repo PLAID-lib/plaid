@@ -18,14 +18,6 @@ Key features:
 - Sample conversion between storage formats and PLAID objects
 """
 
-try:
-    import torch
-
-    _HAS_TORCH = True
-except ImportError:
-    torch = None
-    _HAS_TORCH = False
-
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 

@@ -48,10 +48,11 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
         datasets.DatasetDict: The loaded dataset dictionary.
     """
     file_ = Path(path) / "data" / "dataset_dict.json"
+
     if file_.is_file():
         # This is a dataset generated and save locally
         datasetdict = load_from_disk(dataset_path=str(Path(path) / "data"))
-        return datasetdict
+
     else:  # pragma: no cover
         # This is a dataset downloaded from the hub
         infos = load_infos_from_disk(path)
@@ -59,8 +60,10 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
         base = Path(path) / "data"
         data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
         datasetdict = load_dataset("parquet", data_files=data_files)
+
     for split in datasetdict.keys():
         datasetdict[split].path = path
+
     return datasetdict
 
 

@@ -116,7 +116,7 @@ def save_to_disk(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
-    pb_defs: Optional[dict[str, ProblemDefinition]] = None,
+    pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
