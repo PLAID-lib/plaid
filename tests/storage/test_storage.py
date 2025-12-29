@@ -179,7 +179,7 @@ class Test_Storage:
                 backend="hf_datasets",
                 infos=infos,
                 pb_defs=problem_definition,
-                overwrite=False,
+                overwrite=True,
             )
 
         load_problem_definitions_from_disk(test_dir)
