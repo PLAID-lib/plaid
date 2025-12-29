@@ -10,12 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - (storage/reader) Converter class: to_dict now takes features argument to prevent reading complete samples
+- (containers/utils) add get_feature_details_from_path
+- (problem_definition) add set_[out/in]_features_identifiers
 
 ### Changed
+
+- (storage) minor refactoring, simplify configure_dataset_card for all backends, problem_definitions handles as a dict instead of a list, change pickle support to numpy.memmap + json for constant parts of the CGNS trees, add `path` param to dataset when read from disk,
 
 ### Fixes
 
 ### Removed
+
 
 ## [0.1.12] - 2025-12-20
 

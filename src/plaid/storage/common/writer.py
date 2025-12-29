@@ -66,7 +66,7 @@ def save_problem_definitions_to_disk(
     for name, pb_def in pb_defs.items():
         if name is None:
             raise ValueError(
-                "At leadt one of the provided pb_defs has no initilized name."
+                "At least one of the provided pb_defs has no initialized name."
             )
         pb_def.save_to_file(target_dir / name)
 

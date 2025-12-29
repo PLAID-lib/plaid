@@ -171,6 +171,17 @@ class Test_Storage:
                 overwrite=False,
             )
 
+        with pytest.raises(ValueError):
+            problem_definition.set_name(None)
+            save_to_disk(
+                output_folder=test_dir,
+                generators=generator_split,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs=problem_definition,
+                overwrite=False,
+            )
+
         load_problem_definitions_from_disk(test_dir)
         with pytest.raises(ValueError):
             load_problem_definitions_from_disk("dummy")
@@ -200,7 +211,6 @@ class Test_Storage:
         converter.to_dict(dataset, 0)
         converter.sample_to_dict(dataset[0])
 
-        # print(converter.flat_cst)
         converter.to_dict(
             dataset,
             0,

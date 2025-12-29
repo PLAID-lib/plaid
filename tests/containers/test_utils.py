@@ -75,6 +75,10 @@ class Test_Container_Utils:
         details = get_feature_details_from_path("Base_2_2")
         assert details["base"] == "Base_2_2"
 
+        details = get_feature_details_from_path("Global/toto")
+        assert details["type"] == "global"
+        assert details["name"] == "toto"
+
         details = get_feature_details_from_path("Base_2_2/Zone")
         assert details["base"] == "Base_2_2"
         assert details["zone"] == "Zone"

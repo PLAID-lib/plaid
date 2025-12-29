@@ -305,6 +305,7 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     split_path = path.split("/")
     feat_det = {}
     if path.startswith("Global/"):
+        assert len(split_path) == 2, "path not recognized"
         feat_det["type"] = "global"
         feat_det["name"] = split_path[1]
     else:
@@ -331,9 +332,7 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
             raise ValueError("path not recognized")
 
         feat_det["base"] = split_path[0]
-        assert feat_det["base"] == "Global" or feat_det["base"][:5] == "Base_", (
-            "path not recognized"
-        )
+        assert feat_det["base"][:5] == "Base_", "path not recognized"
         if len(split_path) == 1:
             return feat_det
 
