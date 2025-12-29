@@ -23,7 +23,6 @@ from plaid.storage.reader import (
 from plaid.storage.writer import (
     push_to_hub,
     save_to_disk,
-    # save_to_disk_single_pass
 )
 
 __all__ = [
@@ -36,5 +35,4 @@ __all__ = [
     "load_problem_definitions_from_hub",
     "push_local_problem_definitions_to_hub",
     "save_problem_definitions_to_disk",
-    # "save_to_disk_single_pass"
 ]

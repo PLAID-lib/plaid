@@ -188,7 +188,6 @@ def configure_dataset_card(
     repo_id: str,
     infos: dict[str, dict[str, str]],
     local_dir: Optional[Union[str, Path]] = None,  # noqa: ARG001
-    # variable_schema: Optional[dict] = None,  # noqa: ARG001
     viewer: bool = False,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,

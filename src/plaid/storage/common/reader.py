@@ -182,13 +182,6 @@ def load_metadata_from_disk(
     path = Path(path)
 
     flat_cst, constant_schema = load_constants_from_disk(path)
-    ########
-    # with open(Path(path) / "tree_constant_part.pkl", "rb") as f:
-    #     flat_cst = pickle.load(f)
-
-    # with open(Path(path) / Path("constant_schema.yaml"), "r", encoding="utf-8") as f:
-    #     constant_schema = yaml.safe_load(f)
-    ########
 
     with open(path / "variable_schema.yaml", "r", encoding="utf-8") as f:
         variable_schema = yaml.safe_load(f)

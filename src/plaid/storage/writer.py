@@ -202,9 +202,6 @@ def push_to_hub(
         illustration_urls: Optional list of illustration URLs.
         arxiv_paper_urls: Optional list of arXiv paper URLs.
     """
-    # flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(
-    #     local_dir
-    # )
     infos = load_infos_from_disk(local_dir)
 
     backend = infos["storage_backend"]
@@ -227,7 +224,4 @@ def push_to_hub(
 
     push_infos_to_hub(repo_id, infos)
 
-    # pb_defs = load_problem_definitions_from_disk(local_dir)
-    # if pb_defs is not None:
-    #     push_problem_definitions_to_hub(repo_id, pb_defs)
     push_local_problem_definitions_to_hub(repo_id, local_dir)
