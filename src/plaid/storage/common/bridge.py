@@ -129,13 +129,9 @@ def to_sample_dict(
     row_val = {p: row_val[p] for p in sorted(row_val)}
     row_tim = {p: row_tim[p] for p in sorted(row_tim)}
 
-    print("row_val =", row_val)
-    print("row_tim =", row_tim)
-
     sample_flat_trees = {}
     paths_none = {}
     for (path_t, times_struc), (path_v, val) in zip(row_tim.items(), row_val.items()):
-        print(">>", path_t, path_v)
         assert path_t == path_v, "did you forget to specify the features arg?"
         if val is None:
             assert times_struc is None
@@ -186,8 +182,6 @@ def to_sample_dict(
             tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
 
         tree.update(paths_none)
-
-    print("sample_flat_trees =", sample_flat_trees)
 
     return sample_flat_trees
 

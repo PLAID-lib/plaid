@@ -161,8 +161,6 @@ def load_metadata_from_disk(
     """
     path = Path(path)
 
-    print(">>>", path)
-
     flat_cst, constant_schema = load_constants_from_disk(path)
     ########
     # with open(Path(path) / "tree_constant_part.pkl", "rb") as f:
