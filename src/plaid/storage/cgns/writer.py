@@ -159,7 +159,7 @@ def configure_dataset_card(
     repo_id: str,
     infos: dict[str, dict[str, str]],
     local_dir: Union[str, Path],
-    variable_schema: Optional[dict] = None,
+    # variable_schema: Optional[dict] = None,
     viewer: Optional[bool] = None,  # noqa: ARG001
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
@@ -195,23 +195,22 @@ def configure_dataset_card(
         None: This function does not return a value; it pushes the dataset card
             directly to Hugging Face Hub.
     """
+    # def _dict_to_list_format(d: dict) -> str:
+    #     """Converts a variable schema dict to YAML list format."""
+    #     dtype = d.get("dtype", "unknown")
+    #     ndim = d.get("ndim", 1)
 
-    def _dict_to_list_format(d: dict) -> str:
-        """Converts a variable schema dict to YAML list format."""
-        dtype = d.get("dtype", "unknown")
-        ndim = d.get("ndim", 1)
+    #     lines = []
+    #     current_indent = "    "
 
-        lines = []
-        current_indent = "    "
+    #     for i in range(ndim - 1):
+    #         lines.append(f"{current_indent}list:")
+    #         current_indent += "  "
 
-        for i in range(ndim - 1):
-            lines.append(f"{current_indent}list:")
-            current_indent += "  "
+    #     # last level contains the dtype as value
+    #     lines.append(f"{current_indent}list: {dtype}")
 
-        # last level contains the dtype as value
-        lines.append(f"{current_indent}list: {dtype}")
-
-        return "\n".join(lines)
+    #     return "\n".join(lines)
 
     dataset_card_str = """---
 task_categories:
@@ -261,14 +260,14 @@ tags:
 
     lines.insert(count, "dataset_info:")
     count += 1
-    if variable_schema is not None:
-        lines.insert(count, "  features:")
-        count += 1
-        for fn, type_ in variable_schema.items():
-            lines.insert(count, f"  - name: {fn}")
-            count += 1
-            lines.insert(count, _dict_to_list_format(type_))
-            count += 1
+    # if variable_schema is not None:
+    #     lines.insert(count, "  features:")
+    #     count += 1
+    #     for fn, type_ in variable_schema.items():
+    #         lines.insert(count, f"  - name: {fn}")
+    #         count += 1
+    #         lines.insert(count, _dict_to_list_format(type_))
+    #         count += 1
     lines.insert(count, "  splits:")
     count += 1
     for sn in split_names:

@@ -12,7 +12,7 @@ from plaid.storage.common.reader import (
     load_problem_definitions_from_hub,
 )
 from plaid.storage.common.writer import (
-    push_problem_definitions_to_hub,
+    push_local_problem_definitions_to_hub,
     save_problem_definitions_to_disk,
 )
 from plaid.storage.reader import (
@@ -34,7 +34,7 @@ __all__ = [
     "save_to_disk",
     "load_problem_definitions_from_disk",
     "load_problem_definitions_from_hub",
-    "push_problem_definitions_to_hub",
+    "push_local_problem_definitions_to_hub",
     "save_problem_definitions_to_disk",
     # "save_to_disk_single_pass"
 ]

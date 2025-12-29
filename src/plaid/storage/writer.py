@@ -20,7 +20,6 @@ Key features:
 
 import logging
 import shutil
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Callable, Generator, Optional, Union
 
@@ -40,13 +39,11 @@ from plaid.storage.cgns.writer import (
 from plaid.storage.common.preprocessor import preprocess
 from plaid.storage.common.reader import (
     load_infos_from_disk,
-    load_metadata_from_disk,
-    load_problem_definitions_from_disk,
 )
 from plaid.storage.common.writer import (
     push_infos_to_hub,
-    push_metadata_to_hub,
-    push_problem_definitions_to_hub,
+    push_local_metadata_to_hub,
+    push_local_problem_definitions_to_hub,
     save_infos_to_disk,
     save_metadata_to_disk,
     save_problem_definitions_to_disk,
@@ -119,7 +116,7 @@ def save_to_disk(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
-    pb_defs: Optional[Union[ProblemDefinition, Iterable[ProblemDefinition]]] = None,
+    pb_defs: Optional[dict[str, ProblemDefinition]] = None,
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
@@ -205,20 +202,20 @@ def push_to_hub(
         illustration_urls: Optional list of illustration URLs.
         arxiv_paper_urls: Optional list of arXiv paper URLs.
     """
-    pb_defs = load_problem_definitions_from_disk(local_dir)
-    flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(
-        local_dir
-    )
+    # flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(
+    #     local_dir
+    # )
     infos = load_infos_from_disk(local_dir)
 
     backend = infos["storage_backend"]
 
     push_local_datasetdict_to_hub[backend](repo_id, local_dir, num_workers=num_workers)
+
     configure_dataset_card[backend](
         repo_id,
         infos,
         local_dir,
-        variable_schema,
+        # variable_schema,
         viewer,
         pretty_name,
         dataset_long_description,
@@ -226,9 +223,11 @@ def push_to_hub(
         arxiv_paper_urls,
     )
 
-    push_metadata_to_hub(
-        repo_id, flat_cst, variable_schema, constant_schema, cgns_types
-    )
+    push_local_metadata_to_hub(repo_id, local_dir)
+
     push_infos_to_hub(repo_id, infos)
-    if pb_defs is not None:
-        push_problem_definitions_to_hub(repo_id, pb_defs)
+
+    # pb_defs = load_problem_definitions_from_disk(local_dir)
+    # if pb_defs is not None:
+    #     push_problem_definitions_to_hub(repo_id, pb_defs)
+    push_local_problem_definitions_to_hub(repo_id, local_dir)

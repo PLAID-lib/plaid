@@ -292,7 +292,7 @@ def init_from_disk(
             flat_cst[str(split)],
             cgns_types,
             variable_schema,
-            constant_schema,
+            constant_schema[str(split)],
             num_samples[str(split)],
         )
     return datasetdict, converterdict
@@ -375,7 +375,7 @@ def init_streaming_from_hub(
             flat_cst[str(split)],
             cgns_types,
             variable_schema,
-            constant_schema,
+            constant_schema[str(split)],
             num_samples[str(split)],
         )
 

@@ -117,7 +117,9 @@ def generator_split_with_kwargs(dataset, gen_kwargs) -> dict[str, Callable]:
 class Test_Storage:
     def assert_sample(self, sample):
         assert isinstance(sample, Sample)
-        assert sorted(sample.get_scalar_names())[0] == "global_0"
+        sorted_names = sorted(sample.get_scalar_names())
+        for i in range(4):
+            assert sorted_names[i] == f"global_{i}"
         assert "test_field_same_size" in sample.get_field_names()
         assert sample.get_field("test_field_same_size").shape[0] == 17
 
@@ -146,7 +148,7 @@ class Test_Storage:
             generators=generator_split,
             backend="hf_datasets",
             infos=infos,
-            pb_defs=problem_definition,
+            pb_defs={"pb_def": problem_definition},
         )
 
         save_to_disk(
@@ -154,7 +156,7 @@ class Test_Storage:
             generators=generator_split,
             backend="hf_datasets",
             infos=infos,
-            pb_defs=problem_definition,
+            pb_defs={"pb_def": problem_definition},
             overwrite=True,
             verbose=True,
         )
@@ -165,7 +167,7 @@ class Test_Storage:
                 generators=generator_split,
                 backend="hf_datasets",
                 infos=infos,
-                pb_defs=problem_definition,
+                pb_defs={"pb_def": problem_definition},
                 overwrite=False,
             )
 
@@ -223,7 +225,7 @@ class Test_Storage:
             generators=generator_split,
             backend="zarr",
             infos=infos,
-            pb_defs=problem_definition,
+            pb_defs={"pb_def": problem_definition},
             overwrite=True,
             verbose=True,
         )
@@ -276,7 +278,7 @@ class Test_Storage:
             generators=generator_split,
             backend="cgns",
             infos=infos,
-            pb_defs=problem_definition,
+            pb_defs={"pb_def": problem_definition},
             overwrite=True,
             verbose=True,
         )

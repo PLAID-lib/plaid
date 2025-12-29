@@ -13,12 +13,12 @@ serialization of infos, problem definitions, and dataset tree structures.
 """
 
 import io
+import json
 import logging
-import pickle
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Union
 
+import numpy as np
 import yaml
 from huggingface_hub import HfApi
 
@@ -49,7 +49,7 @@ def save_infos_to_disk(
 
 def save_problem_definitions_to_disk(
     path: Union[str, Path],
-    pb_defs: Union[ProblemDefinition, Iterable[ProblemDefinition]],
+    pb_defs: dict[str, ProblemDefinition],
 ) -> None:
     """Save ProblemDefinitions to disk.
 
@@ -57,20 +57,149 @@ def save_problem_definitions_to_disk(
         path (Union[str, Path]): The directory path for saving.
         pb_defs (Union[ProblemDefinition, Iterable[ProblemDefinition]]): The problem definitions to save.
     """
-    if isinstance(pb_defs, ProblemDefinition):
-        pb_defs = [pb_defs]
-
-    if not isinstance(pb_defs, Iterable):  # pragma: no cover
-        raise TypeError(
-            f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}"
-        )
-
     target_dir = Path(path) / "problem_definitions"
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    for pb_def in pb_defs:
-        name = pb_def.get_name() or "default"
+    for name, pb_def in pb_defs.items():
         pb_def.save_to_file(target_dir / name)
+
+
+# def save_constants_to_disk(path, constant_schema, flat_cst):
+
+#     for split in flat_cst.keys():
+
+#         layout = {}
+#         offset = 0
+
+#         cst_path = path / "constants" / split
+#         cst_path.mkdir(parents=True, exist_ok=True)
+
+#         with open(cst_path / "data.mmap", "wb") as f:
+#             for key, spec in constant_schema[split].items():
+
+#                 dtype = spec["dtype"]
+
+#                 if dtype is None:
+#                     layout[key] = None
+#                     continue
+
+#                 value = flat_cst[split][key]
+#                 arr = value
+
+#                 assert arr.ndim == spec["ndim"]
+
+#                 if dtype == "string":
+#                     arr_bytes = np.asarray(arr, dtype="<U1").astype("|S1")
+
+#                     f.write(arr_bytes.tobytes(order="C"))
+#                     nbytes = arr_bytes.nbytes
+
+#                 else:
+#                     f.write(arr.tobytes(order="C"))
+#                     nbytes = arr.nbytes
+
+#                 layout[key] = {
+#                     "offset": offset,
+#                     "shape": list(arr.shape),
+#                 }
+
+#                 offset += nbytes
+
+#         json.dump(layout, open(cst_path / "layout.json", "w"), indent=2)
+
+#         with open(cst_path / "constant_schema.yaml", "w", encoding="utf-8") as f:
+#             yaml.dump(constant_schema[split], f, sort_keys=False)
+
+
+def save_constants_to_disk(path, constant_schema, flat_cst):
+    """Write constant features to disk under <path>/constants/.
+
+    For each split in flat_cst this creates a directory:
+      <path>/constants/<split>/
+        - data.mmap            : concatenated raw bytes of all constants for that split
+        - layout.json          : mapping constant_name -> {'offset': int, 'shape': [...] } or None
+        - constant_schema.yaml : the provided schema for that split (dtype and ndim)
+
+    Behavior:
+      - Numeric constants are written as their C-order bytes.
+      - String constants support two cases:
+          * CGNS string scalar: a 1-element array of Python str -> written as ASCII bytes, shape recorded as [len].
+          * CGNS char array: multi-char arrays -> converted to fixed-width bytes and written.
+      - If a schema entry's dtype is None, the layout entry is set to None and no bytes are written.
+
+    Args:
+        path (str | Path): Root dataset directory where "constants" will be created.
+        constant_schema (dict): Mapping split -> {constant_name: {'dtype': str | None, 'ndim': int, ...}}.
+        flat_cst (dict): Mapping split -> {constant_name: numpy array | None} containing values to save.
+
+    Returns:
+        None
+
+    Raises:
+        AssertionError: if a numeric array does not match the expected ndim.
+        OSError / IOError: on file system write errors.
+    """
+    for split in flat_cst.keys():
+        layout = {}
+        offset = 0
+
+        cst_path = path / "constants" / split
+        cst_path.mkdir(parents=True, exist_ok=True)
+
+        with open(cst_path / "data.mmap", "wb") as f:
+            for key, spec in constant_schema[split].items():
+                dtype = spec["dtype"]
+
+                if dtype is None:
+                    layout[key] = None
+                    continue
+
+                value = flat_cst[split][key]
+
+                if dtype == "string":
+                    arr = np.asarray(value)
+
+                    # ---- CASE 1: CGNS string scalar ----
+                    if arr.ndim == 1 and arr.size == 1:
+                        s = arr[0]
+                        assert isinstance(s, str)
+
+                        raw = s.encode("ascii", "strict")
+                        f.write(raw)
+
+                        shape = [len(raw)]
+                        nbytes = len(raw)
+
+                    # ---- CASE 2: CGNS char array ----
+                    else:
+                        arr = arr.astype("<U1")
+                        arr_bytes = arr.astype("|S1")
+
+                        f.write(arr_bytes.tobytes(order="C"))
+
+                        shape = list(arr.shape)
+                        nbytes = arr_bytes.nbytes
+
+                # ---- NUMERIC CASE ----
+                else:
+                    arr = np.asarray(value)
+                    assert arr.ndim == spec["ndim"]
+
+                    f.write(arr.tobytes(order="C"))
+                    shape = list(arr.shape)
+                    nbytes = arr.nbytes
+
+                layout[key] = {
+                    "offset": offset,
+                    "shape": shape,
+                }
+
+                offset += nbytes
+
+        json.dump(layout, open(cst_path / "layout.json", "w"), indent=2)
+
+        with open(cst_path / "constant_schema.yaml", "w", encoding="utf-8") as f:
+            yaml.dump(constant_schema[split], f, sort_keys=False)
 
 
 def save_metadata_to_disk(
@@ -96,18 +225,22 @@ def save_metadata_to_disk(
     Returns:
         None
     """
-    Path(path).mkdir(parents=True, exist_ok=True)
+    path = Path(path)
+    path.mkdir(parents=True, exist_ok=True)
 
-    with open(Path(path) / "tree_constant_part.pkl", "wb") as f:
-        pickle.dump(flat_cst, f)
+    save_constants_to_disk(path, constant_schema, flat_cst)
+    # ########
+    # with open(Path(path) / "tree_constant_part.pkl", "wb") as f:
+    #     pickle.dump(flat_cst, f)
 
-    with open(Path(path) / "variable_schema.yaml", "w", encoding="utf-8") as f:
+    # with open(Path(path) / "constant_schema.yaml", "w", encoding="utf-8") as f:
+    #     yaml.dump(constant_schema, f, sort_keys=False)
+    # ########
+
+    with open(path / "variable_schema.yaml", "w", encoding="utf-8") as f:
         yaml.dump(variable_schema, f, sort_keys=False)
 
-    with open(Path(path) / "constant_schema.yaml", "w", encoding="utf-8") as f:
-        yaml.dump(constant_schema, f, sort_keys=False)
-
-    with open(Path(path) / "cgns_types.yaml", "w", encoding="utf-8") as f:
+    with open(path / "cgns_types.yaml", "w", encoding="utf-8") as f:
         yaml.dump(cgns_types, f, sort_keys=False)
 
 
@@ -119,16 +252,22 @@ def save_metadata_to_disk(
 def push_infos_to_hub(
     repo_id: str, infos: dict[str, dict[str, str]]
 ) -> None:  # pragma: no cover (not tested in unit tests)
-    """Upload dataset infos to the Hugging Face Hub.
+    """Upload dataset infos.yaml to a Hugging Face dataset repository.
 
-    Serializes the infos dictionary to YAML and uploads it to the specified repository as infos.yaml.
+    Serializes the provided `infos` mapping to YAML and uploads it as `infos.yaml`
+    to the target `repo_id` using the HfApi.
 
     Args:
-        repo_id (str): The repository ID on the Hugging Face Hub.
-        infos (dict[str, dict[str, str]]): Dictionary containing dataset infos to upload.
+        repo_id (str): Hugging Face dataset repository identifier (e.g. "user/repo").
+        infos (dict[str, dict[str, str]]): Dataset infos mapping to serialize and upload.
 
     Raises:
-        ValueError: If the infos dictionary is empty.
+        ValueError: If `infos` is empty.
+        OSError / IOError: If the upload fails due to I/O errors or network problems.
+
+    Notes:
+        - The function uses HfApi.upload_file and constructs the file contents in-memory.
+        - Not covered by unit tests (pragma: no cover).
     """
     if len(infos) > 0:
         api = HfApi()
@@ -145,120 +284,169 @@ def push_infos_to_hub(
         raise ValueError("'infos' must not be empty")
 
 
-def push_problem_definitions_to_hub(
-    repo_id: str, pb_defs: Union[ProblemDefinition, Iterable[ProblemDefinition]]
-) -> None:  # pragma: no cover (not tested in unit tests)
-    """Upload ProblemDefinitions to Hugging Face Hub.
-
-    Args:
-        repo_id (str): The repository ID on the Hugging Face Hub.
-        pb_defs (Union[ProblemDefinition, Iterable[ProblemDefinition]]): The problem definitions to upload.
-    """
-    if isinstance(pb_defs, ProblemDefinition):
-        pb_defs = [pb_defs]
-
-    if not isinstance(pb_defs, Iterable):
-        raise TypeError(
-            f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}"
-        )
-
-    api = HfApi()
-
-    for pb_def in pb_defs:
-        name = pb_def.get_name() or "default"
-        data = pb_def._generate_problem_infos_dict()
-        for k, v in list(data.items()):
-            if not v:
-                data.pop(k)
-        if data is not None:
-            yaml_str = yaml.dump(data)
-            yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
-
-        if not name.endswith(".yaml"):
-            name = f"{name}.yaml"
-
-        api.upload_file(
-            path_or_fileobj=yaml_buffer,
-            path_in_repo=f"problem_definitions/{name}",
-            repo_id=repo_id,
-            repo_type="dataset",
-            commit_message=f"Upload problem_definitions/{name}",
-        )
-
-
-def push_metadata_to_hub(
+def push_local_problem_definitions_to_hub(
     repo_id: str,
-    flat_cst: dict[str, Any],
-    variable_schema: dict[str, Any],
-    constant_schema: dict[str, Any],
-    cgns_types: dict[str, Any],
+    path: Union[Path, str],
 ) -> None:  # pragma: no cover (not tested in unit tests)
-    """Upload a dataset's tree structure to a Hugging Face dataset repository.
+    """Upload local ProblemDefinitions to a Hugging Face dataset repository.
 
-    This function pushes two components of a dataset tree structure to the specified
-    Hugging Face Hub repository:
+    This function uploads the entire local ``problem_definitions/`` directory
+    located under ``path`` to the target Hugging Face dataset repository using
+    ``HfApi.upload_folder``.
 
-    1. `flat_cst`: the constant parts of the dataset tree, serialized as a pickle file
-       (`tree_constant_part.pkl`).
-    2. `variable_schema`: the variable schema, serialized as a YAML file (`variable_schema.yaml`).
-    3. `constant_schema`: the constant schema, serialized as a YAML file (`constant_schema.yaml`).
-    4. `cgns_types`: the CGNS types, serialized as a YAML file (`cgns_types.yaml`).
+    Expected local layout:
+        <path>/
+            problem_definitions/
+                <name_1>
+                <name_2>
+                ...
+
+    Each problem definition is assumed to already be serialized on disk
+    (e.g. via ``ProblemDefinition.save_to_file``). The function performs a
+    directory-level upload and does not inspect, validate, or re-serialize
+    individual problem definitions.
 
     Args:
-        repo_id (str): The Hugging Face dataset repository ID where files will be uploaded.
-        flat_cst (dict[str, Any]): Dictionary containing constant values in the dataset tree.
-        variable_schema (dict[str, Any]): Dictionary containing the variable schema.
-        constant_schema (dict[str, Any]): Dictionary containing the constant schema.
-        cgns_types (dict[str, Any]): Dictionary containing CGNS types.
+        repo_id (str):
+            Hugging Face dataset repository identifier
+            (e.g. ``"username/dataset_name"``).
 
-    Returns:
-        None
+        path (Union[Path, str]):
+            Root dataset directory containing the ``problem_definitions/`` folder.
 
-    Note:
-        - Each upload includes a commit message indicating the filename.
-        - This function is not covered by unit tests (`pragma: no cover`).
+    Notes:
+        - Upload is atomic at the folder level.
+        - Existing files in ``problem_definitions/`` on the Hub may be overwritten.
+        - Uses ``repo_type="dataset"``.
+        - Not covered by unit tests (``pragma: no cover``).
+
+    Raises:
+        OSError / IOError:
+            If the local folder does not exist or an upload error occurs.
     """
+    path = Path(path)
+
     api = HfApi()
 
-    # constant part of the tree
-    api.upload_file(
-        path_or_fileobj=io.BytesIO(pickle.dumps(flat_cst)),
-        path_in_repo="tree_constant_part.pkl",
+    api.upload_folder(
+        folder_path=path / Path("problem_definitions"),
         repo_id=repo_id,
         repo_type="dataset",
-        commit_message="Upload tree_constant_part.pkl",
+        path_in_repo="problem_definitions",
+        commit_message="Upload problem_definitions",
     )
 
-    # key mappings
-    yaml_str = yaml.dump(variable_schema, sort_keys=False)
-    yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+    # pb_defs = load_problem_definitions_from_disk(path)
+    # if isinstance(pb_defs, ProblemDefinition):
+    #     pb_defs = [pb_defs]
 
+    # if not isinstance(pb_defs, Iterable):
+    #     raise TypeError(
+    #         f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}"
+    #     )
+
+    # api = HfApi()
+
+    # for pb_def in pb_defs:
+    #     name = pb_def.get_name() or "default"
+    #     data = pb_def._generate_problem_infos_dict()
+    #     for k, v in list(data.items()):
+    #         if not v:
+    #             data.pop(k)
+    #     if data is not None:
+    #         yaml_str = yaml.dump(data)
+    #         yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
+
+    #     if not name.endswith(".yaml"):
+    #         name = f"{name}.yaml"
+
+    #     api.upload_file(
+    #         path_or_fileobj=yaml_buffer,
+    #         path_in_repo=f"problem_definitions/{name}",
+    #         repo_id=repo_id,
+    #         repo_type="dataset",
+    #         commit_message=f"Upload problem_definitions/{name}",
+    #     )
+
+
+def push_local_metadata_to_hub(
+    repo_id: str,
+    path: Union[Path, str],
+) -> None:  # pragma: no cover (not tested in unit tests)
+    """Upload locally stored dataset metadata to a Hugging Face dataset repository.
+
+    This function uploads the structural metadata of a PLAID dataset from disk
+    to a Hugging Face Hub *dataset* repository. The upload consists of:
+
+      1. The ``constants/`` directory, containing:
+         - ``data.mmap`` files with concatenated constant values,
+         - ``layout.json`` files describing byte offsets and shapes,
+         - ``constant_schema.yaml`` files describing constant dtypes and dimensions,
+         organized per dataset split.
+
+      2. ``variable_schema.yaml``, describing the schema of variable (sample-dependent)
+         features.
+
+      3. ``cgns_types.yaml``, describing CGNS node types associated with dataset paths.
+
+    All metadata files are assumed to have been previously generated on disk
+    (e.g. via ``save_metadata_to_disk``). This function performs no validation,
+    transformation, or serialization; it strictly uploads existing files.
+
+    Expected local layout:
+        <path>/
+            constants/
+                <split>/
+                    data.mmap
+                    layout.json
+                    constant_schema.yaml
+            variable_schema.yaml
+            cgns_types.yaml
+
+    Args:
+        repo_id (str):
+            Hugging Face dataset repository identifier
+            (e.g. ``"username/dataset_name"``).
+
+        path (Union[Path, str]):
+            Root dataset directory containing the metadata files.
+
+    Notes:
+        - Uploads use ``repo_type="dataset"``.
+        - Folder uploads may overwrite existing files on the Hub.
+        - The operation is atomic per uploaded artifact
+          (``constants/`` folder, individual YAML files).
+        - Not covered by unit tests (``pragma: no cover``).
+
+    Raises:
+        OSError / IOError:
+            If required local files are missing or if an upload error occurs.
+    """
+    api = HfApi()
+
+    path = Path(path)
+
+    # constant part of the tree
+    api.upload_folder(
+        folder_path=path / "constants",
+        repo_id=repo_id,
+        repo_type="dataset",
+        path_in_repo="constants",
+        commit_message="Upload constants (memmap + layout)",
+    )
+
+    # variable_schema
     api.upload_file(
-        path_or_fileobj=yaml_buffer,
+        path_or_fileobj=path / "variable_schema.yaml",
         path_in_repo="variable_schema.yaml",
         repo_id=repo_id,
         repo_type="dataset",
         commit_message="Upload variable_schema.yaml",
     )
 
-    # var_features_types
-    yaml_str = yaml.dump(constant_schema, sort_keys=False)
-    yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
-
-    api.upload_file(
-        path_or_fileobj=yaml_buffer,
-        path_in_repo="constant_schema.yaml",
-        repo_id=repo_id,
-        repo_type="dataset",
-        commit_message="Upload constant_schema.yaml",
-    )
-
     # cgns_types
-    yaml_str = yaml.dump(cgns_types, sort_keys=False)
-    yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
-
     api.upload_file(
-        path_or_fileobj=yaml_buffer,
+        path_or_fileobj=path / "cgns_types.yaml",
         path_in_repo="cgns_types.yaml",
         repo_id=repo_id,
         repo_type="dataset",

@@ -109,6 +109,8 @@ class OnlineStatistics(object):
         if not isinstance(x, np.ndarray):
             raise TypeError("Input must be a numpy array")
 
+        print("x =", x)
+
         if np.any(~np.isfinite(x)):
             raise ValueError("Input contains NaN or Inf values")
 

@@ -21,7 +21,7 @@ Key features:
 
 import multiprocessing as mp
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Callable, Generator, Optional, Union
 
 import numpy as np
 import yaml
@@ -56,6 +56,71 @@ def _auto_chunks(shape: tuple[int, ...], target_n: int) -> tuple[int, ...]:
     rows = min(rows, shape[0])  # cannot exceed the dimension size
 
     return (rows,) + shape[1:]
+
+
+def write_sample(split_root, sample, var_features_keys, sample_counter):
+    """Write a single PLAID sample to a Zarr group on disk.
+
+    This function serializes one ``Sample`` instance into a dedicated Zarr group
+    under the given split root. Each sample is written as:
+
+        sample_<zero-padded index>/
+
+    Only variable features listed in ``var_features_keys`` are written. Feature
+    paths are flattened before being used as Zarr array names.
+
+    Behavior:
+      - A new Zarr group named ``sample_{sample_counter:09d}`` is created.
+      - Each selected feature is written as a Zarr array if its value is not ``None``.
+      - NumPy arrays with Unicode dtype (``dtype.kind == 'U'``) are converted to
+        UTF-8 encoded byte arrays to ensure stable storage (notably for Zarr v3).
+      - Chunk sizes are automatically determined using ``_auto_chunks`` with a
+        target chunk size of approximately 5 million elements.
+
+    Args:
+        split_root:
+            Open Zarr group corresponding to a dataset split
+            (e.g. ``zarr.open_group(..., mode="a")``).
+
+        sample (Sample):
+            PLAID ``Sample`` object to serialize.
+
+        var_features_keys (list[str]):
+            List of feature paths (as defined in the variable schema) to extract
+            and write for this sample.
+
+        sample_counter (int):
+            Global index of the sample within the split, used to generate the
+            group name and ensure deterministic ordering.
+
+    Notes:
+        - The function assumes ``split_root`` already exists and is writable.
+        - No schema validation is performed at write time.
+        - Missing features (``None`` values) are silently skipped.
+        - The function is side-effect only and returns ``None``.
+
+    Raises:
+        zarr.errors.ContainsGroupError:
+            If a sample group with the same name already exists.
+        OSError / IOError:
+            If an underlying filesystem or Zarr write error occurs.
+    """
+    sample_dict, _, _ = build_sample_dict(sample)
+    sample_data = {path: sample_dict.get(path, None) for path in var_features_keys}
+
+    g = split_root.create_group(f"sample_{sample_counter:09d}")
+    for key, value in sample_data.items():
+        if value is not None:
+            if isinstance(value, np.ndarray) and value.dtype.kind == "U":
+                # Unicode → UTF-8 bytes (stable Zarr V3)
+                s = "".join(value.ravel().tolist())
+                value = np.frombuffer(s.encode("utf-8"), dtype=np.uint8)
+
+            g.create_array(
+                flatten_path(key),
+                data=value,
+                chunks=_auto_chunks(value.shape, 5_000_000),
+            )
 
 
 def generate_datasetdict_to_disk(
@@ -128,18 +193,28 @@ def generate_datasetdict_to_disk(
         sample_counter = start_index
 
         for sample in gen_func([batch]):
-            sample_dict, _, _ = build_sample_dict(sample)
-            sample_data = {
-                path: sample_dict.get(path, None) for path in var_features_keys
-            }
+            write_sample(split_root, sample, var_features_keys, sample_counter)
 
-            g = split_root.create_group(f"sample_{sample_counter:09d}")
-            for key, value in sample_data.items():
-                g.create_array(
-                    flatten_path(key),
-                    data=value,
-                    chunks=_auto_chunks(value.shape, 5_000_000),
-                )  # chunks=value.shape
+            # sample_dict, _, _ = build_sample_dict(sample)
+            # sample_data = {
+            #     path: sample_dict.get(path, None) for path in var_features_keys
+            # }
+
+            # g = split_root.create_group(f"sample_{sample_counter:09d}")
+            # for key, value in sample_data.items():
+
+            #     if value is not None:
+
+            #         if isinstance(value, np.ndarray) and value.dtype.kind == "U":
+            #             # Unicode → UTF-8 bytes (stable Zarr V3)
+            #             s = "".join(value.ravel().tolist())
+            #             value = np.frombuffer(s.encode("utf-8"), dtype=np.uint8)
+
+            #         g.create_array(
+            #             flatten_path(key),
+            #             data=value,
+            #             chunks=_auto_chunks(value.shape, 5_000_000),
+            #         )
 
             sample_counter += 1
             queue.put(1)
@@ -210,19 +285,28 @@ def generate_datasetdict_to_disk(
                 disable=not verbose,
             ) as pbar:
                 for sample in gen_func():
-                    sample_dict, _, _ = build_sample_dict(sample)
-                    sample_data = {
-                        path: sample_dict.get(path, None) for path in var_features_keys
-                    }
+                    write_sample(split_root, sample, var_features_keys, sample_counter)
 
-                    g = split_root.create_group(f"sample_{sample_counter:09d}")
-                    for key, value in sample_data.items():
-                        if value is not None:
-                            g.create_array(
-                                flatten_path(key),
-                                data=value,
-                                chunks=_auto_chunks(value.shape, 5_000_000),
-                            )  # chunks=value.shape
+                    # sample_dict, _, _ = build_sample_dict(sample)
+                    # sample_data = {
+                    #     path: sample_dict.get(path, None) for path in var_features_keys
+                    # }
+
+                    # g = split_root.create_group(f"sample_{sample_counter:09d}")
+                    # for key, value in sample_data.items():
+
+                    #     if value is not None:
+
+                    #         if isinstance(value, np.ndarray) and value.dtype.kind == "U":
+                    #             # Unicode → UTF-8 bytes (stable Zarr V3)
+                    #             s = "".join(value.ravel().tolist())
+                    #             value = np.frombuffer(s.encode("utf-8"), dtype=np.uint8)
+
+                    #         g.create_array(
+                    #             flatten_path(key),
+                    #             data=value,
+                    #             chunks=_auto_chunks(value.shape, 5_000_000),
+                    #         )
 
                     sample_counter += 1
                     pbar.update(1)
@@ -264,7 +348,7 @@ def configure_dataset_card(
     repo_id: str,
     infos: dict[str, dict[str, str]],
     local_dir: Union[str, Path],
-    variable_schema: Optional[dict] = None,
+    # variable_schema: Optional[dict] = None,
     viewer: Optional[bool] = None,  # noqa: ARG001
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
@@ -300,30 +384,29 @@ def configure_dataset_card(
         None: This function does not return a value; it pushes the dataset card
             directly to Hugging Face Hub.
     """
+    # def _dict_to_list_format(d: dict[str, Any]) -> str:
+    #     """Converts a variable schema dict to YAML list format.
 
-    def _dict_to_list_format(d: dict[str, Any]) -> str:
-        """Converts a variable schema dict to YAML list format.
+    #     Args:
+    #         d (dict[str, Any]): Dictionary with 'dtype' and 'ndim' keys.
 
-        Args:
-            d (dict[str, Any]): Dictionary with 'dtype' and 'ndim' keys.
+    #     Returns:
+    #         str: YAML-formatted string representing the list structure.
+    #     """
+    #     dtype = d.get("dtype", "unknown")
+    #     ndim = d.get("ndim", 1)
 
-        Returns:
-            str: YAML-formatted string representing the list structure.
-        """
-        dtype = d.get("dtype", "unknown")
-        ndim = d.get("ndim", 1)
+    #     lines = []
+    #     current_indent = "    "
 
-        lines = []
-        current_indent = "    "
+    #     for _ in range(ndim - 1):
+    #         lines.append(f"{current_indent}list:")
+    #         current_indent += "  "
 
-        for _ in range(ndim - 1):
-            lines.append(f"{current_indent}list:")
-            current_indent += "  "
+    #     # last level contains the dtype as value
+    #     lines.append(f"{current_indent}list: {dtype}")
 
-        # last level contains the dtype as value
-        lines.append(f"{current_indent}list: {dtype}")
-
-        return "\n".join(lines)
+    #     return "\n".join(lines)
 
     dataset_card_str = """---
 task_categories:
@@ -373,14 +456,14 @@ tags:
 
     lines.insert(count, "dataset_info:")
     count += 1
-    if variable_schema is not None:
-        lines.insert(count, "  features:")
-        count += 1
-        for fn, type_ in variable_schema.items():
-            lines.insert(count, f"  - name: {flatten_path(fn)}")
-            count += 1
-            lines.insert(count, _dict_to_list_format(type_))
-            count += 1
+    # if variable_schema is not None:
+    #     lines.insert(count, "  features:")
+    #     count += 1
+    #     for fn, type_ in variable_schema.items():
+    #         lines.insert(count, f"  - name: {flatten_path(fn)}")
+    #         count += 1
+    #         lines.insert(count, _dict_to_list_format(type_))
+    #         count += 1
     lines.insert(count, "  splits:")
     count += 1
     for sn in split_names:
