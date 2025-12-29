@@ -151,16 +151,6 @@ class Test_Storage:
             pb_defs={"pb_def": problem_definition},
         )
 
-        save_to_disk(
-            output_folder=test_dir,
-            generators=generator_split,
-            backend="hf_datasets",
-            infos=infos,
-            pb_defs={"pb_def": problem_definition},
-            overwrite=True,
-            verbose=True,
-        )
-
         with pytest.raises(ValueError):
             save_to_disk(
                 output_folder=test_dir,
@@ -181,6 +171,16 @@ class Test_Storage:
                 pb_defs=problem_definition,
                 overwrite=True,
             )
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+            verbose=True,
+        )
 
         load_problem_definitions_from_disk(test_dir)
         with pytest.raises(ValueError):
