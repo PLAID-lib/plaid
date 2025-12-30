@@ -163,6 +163,9 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
 
                 value = flat_cst[split][key]
 
+                # -----------------
+                # STRING CASE
+                # -----------------
                 if dtype == "string":
                     arr = np.asarray(value)
 
@@ -177,6 +180,13 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
                         shape = [len(raw)]
                         nbytes = len(raw)
 
+                        layout[key] = {
+                            "offset": offset,
+                            "shape": shape,
+                            "dtype": "|S1",
+                            "order": "C",
+                        }
+
                     # ---- CASE 2: CGNS char array ----
                     else:  # pragma: no cover
                         arr = arr.astype("<U1")
@@ -187,19 +197,35 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
                         shape = list(arr.shape)
                         nbytes = arr_bytes.nbytes
 
-                # ---- NUMERIC CASE ----
+                        layout[key] = {
+                            "offset": offset,
+                            "shape": shape,
+                            "dtype": "|S1",
+                            "order": "C",
+                        }
+
+                # -----------------
+                # NUMERIC CASE
+                # -----------------
                 else:
                     arr = np.asarray(value)
                     assert arr.ndim == spec["ndim"]
 
+                    # FORCE contiguous + little-endian
+                    arr = np.ascontiguousarray(arr)
+                    arr = arr.astype(arr.dtype.newbyteorder("<"), copy=False)
+
                     f.write(arr.tobytes(order="C"))
+
                     shape = list(arr.shape)
                     nbytes = arr.nbytes
 
-                layout[key] = {
-                    "offset": offset,
-                    "shape": shape,
-                }
+                    layout[key] = {
+                        "offset": offset,
+                        "shape": shape,
+                        "dtype": arr.dtype.str,  # e.g. '<f8'
+                        "order": "C",
+                    }
 
                 offset += nbytes
 
@@ -236,13 +262,6 @@ def save_metadata_to_disk(
     path.mkdir(parents=True, exist_ok=True)
 
     save_constants_to_disk(path, constant_schema, flat_cst)
-    # ########
-    # with open(Path(path) / "tree_constant_part.pkl", "wb") as f:
-    #     pickle.dump(flat_cst, f)
-
-    # with open(Path(path) / "constant_schema.yaml", "w", encoding="utf-8") as f:
-    #     yaml.dump(constant_schema, f, sort_keys=False)
-    # ########
 
     with open(path / "variable_schema.yaml", "w", encoding="utf-8") as f:
         yaml.dump(variable_schema, f, sort_keys=False)

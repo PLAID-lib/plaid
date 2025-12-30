@@ -131,12 +131,6 @@ def load_constants_from_disk(path):
         with open(folder / "constant_schema.yaml", "r", encoding="utf-8") as f:
             constant_schema[split] = yaml.safe_load(f)
 
-        mmap = np.memmap(
-            folder / "data.mmap",
-            mode="r",
-            dtype=np.uint8,
-        )
-
         flat_cst[split] = {}
 
         for key, spec in constant_schema[split].items():
@@ -147,19 +141,33 @@ def load_constants_from_disk(path):
                 continue
 
             offset = entry["offset"]
-            shape = entry["shape"]
+            shape = tuple(entry["shape"])
+            dtype = np.dtype(entry["dtype"])
+            order = entry.get("order", "C")
 
+            # -----------------
+            # STRING CASE
+            # -----------------
             if spec["dtype"] == "string":
                 nbytes = int(np.prod(shape))
-                raw = mmap[offset : offset + nbytes].tobytes()
+                with open(folder / "data.mmap", "rb") as f:
+                    f.seek(offset)
+                    raw = f.read(nbytes)
+
                 flat_cst[split][key] = np.array([raw.decode("ascii", "strict")])
 
+            # -----------------
+            # NUMERIC CASE
+            # -----------------
             else:
-                dtype = np.dtype(spec["dtype"])
-                nbytes = int(np.prod(shape)) * dtype.itemsize
-
-                view = mmap[offset : offset + nbytes]
-                flat_cst[split][key] = view.view(dtype).reshape(shape)
+                flat_cst[split][key] = np.memmap(
+                    folder / "data.mmap",
+                    mode="r",
+                    dtype=dtype,
+                    offset=offset,
+                    shape=shape,
+                    order=order,
+                )
 
     return flat_cst, constant_schema
 
