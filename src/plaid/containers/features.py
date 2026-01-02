@@ -72,7 +72,7 @@ class SampleFeatures:
         """
         self.defaults.set_default_zone_base(zone_name, base_name, time=time)
 
-    def get_time_assignment(self, time: Optional[float] = None) -> float:
+    def resolve_time(self, time: Optional[float] = None) -> float:
         """Get the resolved time assignment. Calls the DefaultManager to resolve the time.
 
         Args:
@@ -83,7 +83,7 @@ class SampleFeatures:
         """
         return self.defaults.resolve_time(time)
 
-    def get_base_assignment(
+    def resolve_base(
         self, base_name: Optional[str] = None, time: Optional[float] = None
     ) -> Optional[str]:
         """Get the resolved base assignment. Calls the DefaultManager to resolve the base.
@@ -97,7 +97,7 @@ class SampleFeatures:
         """
         return self.defaults.resolve_base(base_name=base_name, time=time)
 
-    def get_zone_assignment(
+    def resolve_zone(
         self,
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
@@ -145,7 +145,7 @@ class SampleFeatures:
         Returns:
             CGNSTree (list): The initialized or existing CGNS tree structure for the specified time step.
         """
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
 
         if not self.data:
             self.data = {time: CGL.newCGNSTree()}
@@ -166,7 +166,7 @@ class SampleFeatures:
         if not self.data:
             return None
 
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
         return self.data[time]
 
     def set_meshes(self, meshes: dict[float, CGNSTree]) -> None:
@@ -204,7 +204,7 @@ class SampleFeatures:
         if tree == []:
             raise ValueError("CGNS Tree should not be an empty list")
 
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
 
         if not self.data:
             self.data = {time: tree}
@@ -324,7 +324,7 @@ class SampleFeatures:
         """
         _check_names([base_name])
 
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
 
         if base_name is None:
             base_name = "Base_" + str(topological_dim) + "_" + str(physical_dim)
@@ -395,7 +395,7 @@ class SampleFeatures:
         Returns:
             list[str]:
         """
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
 
         if self.data and time in self.data and self.data[time] is not None:
             return CGH.get_base_names(
@@ -442,13 +442,13 @@ class SampleFeatures:
         Returns:
             CGNSNode or None: The Base node with the specified name or None if it is not found.
         """
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
         if time not in self.data or self.data[time] is None:
             logger.warning(f"No mesh exists in the sample at {time=}")
             return None
 
         if base_name != "Global":
-            base_name = self.get_base_assignment(base_name, time)
+            base_name = self.resolve_base(base_name, time)
         return CGU.getNodeByPath(self.data[time], f"/CGNSTree/{base_name}")
 
     # -------------------------------------------------------------------------#
@@ -486,7 +486,7 @@ class SampleFeatures:
                 f"there is no base <{base_name}>, you should first create one with `Sample.init_base({base_name=})`"
             )
 
-        zone_name = self.get_zone_assignment(zone_name, base_name, time)
+        zone_name = self.resolve_zone(zone_name, base_name, time)
         if zone_name is None:
             zone_name = "Zone"
         zone_node = CGL.newZone(base_node, zone_name, zone_shape, zone_type)
@@ -603,7 +603,7 @@ class SampleFeatures:
             return None
 
         # _zone_attribution will look for default base_name
-        zone_name = self.get_zone_assignment(zone_name, base_name, time)
+        zone_name = self.resolve_zone(zone_name, base_name, time)
         if zone_name is None:
             # logger.warning(f"No zone with name {zone_name} in this base ({base_name})")
             return None
@@ -721,7 +721,7 @@ class SampleFeatures:
         Returns:
             Optional[Array]: The global array if found, otherwise None. Returns a scalar if the array has size 1.
         """
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
         if self.has_globals(time):
             global_ = CGU.getValueByPath(self.data[time], "Global/" + name)
             return global_.item() if getattr(global_, "size", None) == 1 else global_
@@ -1205,7 +1205,7 @@ class SampleFeatures:
         """
         # get_zone will look for default zone_name, base_name, and time
         zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
         mesh_tree = self.data[time]
 
         if zone_node is None:
@@ -1239,7 +1239,7 @@ class SampleFeatures:
         Args:
             time (float, optional): The time step for which you want to display the CGNS tree structure. Defaults to None. If a specific time is not provided, the method will display the tree structure for the default time step.
         """
-        time = self.get_time_assignment(time)
+        time = self.resolve_time(time)
 
         if self.data is not None:
             CGH.show_cgns_tree(self.data.get(time))

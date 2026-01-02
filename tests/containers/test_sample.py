@@ -193,17 +193,15 @@ class Test_Sample:
         assert sample.features.get_topological_dim() == topological_dim
         assert sample.features.get_physical_dim() == physical_dim
         assert (
-            sample.features.get_base_assignment()
-            == f"Base_{topological_dim}_{physical_dim}"
+            sample.features.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
         )
-        assert sample.features.get_time_assignment() == 0.5
-        assert sample.features.get_base_assignment("test") == "test"
+        assert sample.features.resolve_time() == 0.5
+        assert sample.features.resolve_base("test") == "test"
 
         sample.set_default_base(f"Base_{topological_dim}_{physical_dim}")  # already set
         sample.set_default_base(None)  # will not assign to None
         assert (
-            sample.features.get_base_assignment()
-            == f"Base_{topological_dim}_{physical_dim}"
+            sample.features.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
         )
         with pytest.raises(ValueError):
             sample.set_default_base("Unknown base name")
@@ -247,22 +245,22 @@ class Test_Sample:
         # check dims getters
         assert sample.features.get_topological_dim() == topological_dim
         assert sample.features.get_physical_dim() == physical_dim
-        assert sample.features.get_base_assignment() == base_name
-        assert sample.features.get_time_assignment() == 0.5
+        assert sample.features.resolve_base() == base_name
+        assert sample.features.resolve_time() == 0.5
 
         sample.set_default_base(base_name)  # already set
         sample.set_default_base(None)  # will not assign to None
-        assert sample.features.get_base_assignment() == base_name
+        assert sample.features.resolve_base() == base_name
         with pytest.raises(ValueError):
             sample.set_default_base("Unknown base name")
 
-        assert sample.features.get_zone_assignment() == zone_name
-        assert sample.features.get_time_assignment() == 0.5
+        assert sample.features.resolve_zone() == zone_name
+        assert sample.features.resolve_time() == 0.5
 
         assert sample.features.get_zone() is not None
         sample.set_default_zone_base(zone_name, base_name)
         sample.set_default_zone_base(None, base_name)  # will not assign to None
-        assert sample.features.get_zone_assignment() == zone_name
+        assert sample.features.resolve_zone() == zone_name
         with pytest.raises(ValueError):
             sample.set_default_zone_base("Unknown zone name", base_name)
 
@@ -270,13 +268,13 @@ class Test_Sample:
         sample.init_base(topological_dim, physical_dim, time=0.5)
         sample.init_base(topological_dim, physical_dim, "OK_name", time=1.5)
 
-        assert sample.features.get_time_assignment() == 0.5
+        assert sample.features.resolve_time() == 0.5
         sample.set_default_time(1.5)
-        assert sample.features.get_time_assignment() == 1.5, "here"
+        assert sample.features.resolve_time() == 1.5, "here"
 
         sample.set_default_time(1.5)  # already set
         sample.set_default_time(None)  # will not assign to None
-        assert sample.features.get_time_assignment() == 1.5
+        assert sample.features.resolve_time() == 1.5
         with pytest.raises(ValueError):
             sample.set_default_time(2.5)
 

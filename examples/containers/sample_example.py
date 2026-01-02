@@ -386,12 +386,12 @@ for b_name in bases_names:
 # %%
 # Without a provided default time, it searches the first time available in all mesh times
 print(f"{sample.features.get_all_time_values() = }")
-print(f"{sample.features.get_time_assignment() = }", end="\n\n")
+print(f"{sample.features.resolve_time() = }", end="\n\n")
 
 # Set default time
 sample.set_default_time(1.0)
 # Now that default time has been assigned, there's no need to specify it in function calls.
-print(f"{sample.features.get_time_assignment() = }", end="\n\n")
+print(f"{sample.features.resolve_time() = }", end="\n\n")
 
 # Print the tree at time 1.0
 sample.show_tree()  # == sample.show_tree(1.0)
@@ -408,7 +408,7 @@ sample.show_tree(0.0)  # Print the tree at time 0.0 even if default time is 1.0
 sample.features._default_active_time = None
 
 # Without a provided default time, it searches the first time available in all mesh times
-print(f"{sample.features.get_time_assignment() = }", end="\n\n")
+print(f"{sample.features.resolve_time() = }", end="\n\n")
 
 # Create new bases
 sample.init_base(1, 1, "new_base", 0.0)
@@ -419,7 +419,7 @@ print(f"{sample.features.get_physical_dim('new_base', 0.0) = }")
 # Attempting to get a base when the default base is not set, and there are multiple bases available.
 print(f"{sample.features.get_base_names() = }", end="\n\n")
 try:
-    sample.features.get_base_assignment()
+    sample.features.resolve_base()
 except KeyError as e:
     print(str(e))
 
@@ -428,8 +428,8 @@ except KeyError as e:
 sample.set_default_base("SurfaceMesh", 0.0)
 
 # Now that default base and time have been assigned, it is no longer necessary to specify them in function calls.
-print(f"{sample.features.get_time_assignment() = }")
-print(f"{sample.features.get_base_assignment() = }", end="\n\n")
+print(f"{sample.features.resolve_time() = }")
+print(f"{sample.features.resolve_base() = }", end="\n\n")
 
 # Print the topological and physical dim for the default base == 'SurfaceMesh'
 print(f"{sample.features.get_topological_dim() = }")
@@ -450,7 +450,7 @@ sample.features._default_active_time = None
 sample.features._default_active_base = None
 
 # Without a provided default time, it searches the first time available in all mesh times
-print(f"{sample.features.get_time_assignment() = }", end="\n\n")
+print(f"{sample.features.resolve_time() = }", end="\n\n")
 
 # Create a new zone in 'SurfaceMesh' base
 sample.init_zone(
@@ -469,7 +469,7 @@ sample.set_default_base("SurfaceMesh")
 # Attempting to get a zone when the default zone is not set, and there are multiple zones available in the default base.
 print(f"{sample.features.get_zone_names() = }", end="\n\n")
 try:
-    sample.features.get_zone_assignment()
+    sample.features.resolve_zone()
 except KeyError as e:
     print(str(e))
 
@@ -482,9 +482,9 @@ sample.features._default_active_base = None
 sample.set_default_zone_base("TestZoneName", "SurfaceMesh", 0.0)
 
 # Now that default base, zone and time have been assigned, it is no longer necessary to specify them in function calls.
-print(f"{sample.features.get_time_assignment() = }")
-print(f"{sample.features.get_base_assignment() = }")
-print(f"{sample.features.get_zone_assignment() = }", end="\n\n")
+print(f"{sample.features.resolve_time() = }")
+print(f"{sample.features.resolve_base() = }")
+print(f"{sample.features.resolve_zone() = }", end="\n\n")
 
 # Print the type of the default zone (from the default base)
 print(f"{sample.features.get_zone_type() = }")
