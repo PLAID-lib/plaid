@@ -44,7 +44,7 @@ class SampleFeatures:
     # -------------------------------------------------------------------------#
 
     def set_default_time(self, time: float) -> None:
-        """Set the default active time.
+        """Set the default active time. Calls the DefaultManager to set the default time.
 
         Args:
             time (float): The time to set as the default active time.
@@ -52,7 +52,7 @@ class SampleFeatures:
         self.defaults.set_default_time(time)
 
     def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
-        """Set the default active base.
+        """Set the default active base. Calls the DefaultManager to set the default base.
 
         Args:
             base_name (str): The base name to set as the default active base.
@@ -63,7 +63,7 @@ class SampleFeatures:
     def set_default_zone_base(
         self, zone_name: str, base_name: str, time: Optional[float] = None
     ) -> None:
-        """Set the default active zone within a base.
+        """Set the default active zone within a base. Calls the DefaultManager to set the default zone and base.
 
         Args:
             zone_name (str): The zone name to set as the default active zone.
@@ -73,7 +73,7 @@ class SampleFeatures:
         self.defaults.set_default_zone_base(zone_name, base_name, time=time)
 
     def get_time_assignment(self, time: Optional[float] = None) -> float:
-        """Get the resolved time assignment.
+        """Get the resolved time assignment. Calls the DefaultManager to resolve the time.
 
         Args:
             time (float, optional): The time to resolve. Defaults to None.
@@ -86,7 +86,7 @@ class SampleFeatures:
     def get_base_assignment(
         self, base_name: Optional[str] = None, time: Optional[float] = None
     ) -> Optional[str]:
-        """Get the resolved base assignment.
+        """Get the resolved base assignment. Calls the DefaultManager to resolve the base.
 
         Args:
             base_name (str, optional): The base name to resolve. Defaults to None.
@@ -103,7 +103,7 @@ class SampleFeatures:
         base_name: Optional[str] = None,
         time: Optional[float] = None,
     ) -> Optional[str]:
-        """Get the resolved zone assignment.
+        """Get the resolved zone assignment. Calls the DefaultManager to resolve the zone.
 
         Args:
             zone_name (str, optional): The zone name to resolve. Defaults to None.
