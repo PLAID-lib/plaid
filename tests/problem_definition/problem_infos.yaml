@@ -6,6 +6,14 @@ input_features:
   name: test_feature
 - type: scalar
   name: feature
+split:
+  test:
+  - 3
+  - 4
+  train:
+  - 0
+  - 1
+  - 2
 output_features:
 - type: scalar
   name: predict_feature
@@ -13,35 +21,3 @@ output_features:
   name: test_feature
 - type: scalar
   name: feature
-input_scalars:
-- predict_scalar
-- scalar
-- test_scalar
-output_scalars:
-- scalar
-- test_scalar
-- predict_scalar
-input_fields:
-- field
-- predict_field
-- test_field
-output_fields:
-- field
-- predict_field
-- test_field
-input_timeseries:
-- predict_timeseries
-- test_timeseries
-- timeseries
-output_timeseries:
-- timeseries
-- test_timeseries
-- predict_timeseries
-input_meshes:
-- mesh
-- predict_mesh
-- test_mesh
-output_meshes:
-- mesh
-- test_mesh
-- predict_mesh

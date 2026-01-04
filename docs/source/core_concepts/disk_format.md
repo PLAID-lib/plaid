@@ -18,8 +18,7 @@ folder
 │   │   └── sample_yyyyyyyyy
 │   └── infos.yaml
 └── problem_definition
-    ├── problem_infos.yaml
-    └── split.json (or split.csv for <=0.1.7)
+    └── problem_infos.yaml
 ```
 
 - `dataset/samples/`: one directory per {py:class}`~plaid.containers.sample.Sample`.

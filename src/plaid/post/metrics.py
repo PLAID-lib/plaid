@@ -148,7 +148,7 @@ def compute_metrics(
     if isinstance(pred_dataset, (str, Path)):
         pred_dataset: Dataset = Dataset(pred_dataset)
     if isinstance(problem, (str, Path)):
-        problem: ProblemDefinition = ProblemDefinition(problem)
+        problem: ProblemDefinition = ProblemDefinition.load(problem)
 
     ### Get important formated values ###
     problem_split = problem.get_split()

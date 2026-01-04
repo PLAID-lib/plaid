@@ -375,8 +375,7 @@ def load_problem_definition_from_hub(
     with open(yaml_path, "r", encoding="utf-8") as f:
         yaml_data = yaml.safe_load(f)
 
-    prob_def = ProblemDefinition()
-    prob_def._initialize_from_problem_infos_dict(yaml_data)
+    prob_def = ProblemDefinition.model_validate(yaml_data)
 
     return prob_def
 
@@ -484,9 +483,7 @@ def load_problem_definition_from_disk(
     Returns:
         ProblemDefinition: The loaded problem definition.
     """
-    pb_def = ProblemDefinition()
-    pb_def._load_from_file_(Path(path) / Path("problem_definitions") / Path(name))
-    return pb_def
+    return ProblemDefinition.load(Path(path) / Path("problem_definitions") / Path(name))
 
 
 def load_tree_struct_from_disk(
@@ -698,19 +695,33 @@ def huggingface_description_to_problem_definition(
     problem_definition = ProblemDefinition()
     for func, key in [
         (problem_definition.set_task, "task"),
+        (problem_definition.set_score_function, "score_function"),
         (problem_definition.set_split, "split"),
+    ]:
+        if key in description:
+            func(description[key])
+
+    if "input_features" in description:
+        problem_definition.add_in_features_identifiers(description["input_features"])
+    if "output_features" in description:
+        problem_definition.add_out_features_identifiers(description["output_features"])
+    if "constant_features" in description:
+        problem_definition.add_constant_features_identifiers(
+            description["constant_features"]
+        )
+    legacy_keys = [
         (problem_definition.add_input_scalars_names, "in_scalars_names"),
         (problem_definition.add_output_scalars_names, "out_scalars_names"),
         (problem_definition.add_input_fields_names, "in_fields_names"),
         (problem_definition.add_output_fields_names, "out_fields_names"),
+        (problem_definition.add_input_timeseries_names, "in_timeseries_names"),
+        (problem_definition.add_output_timeseries_names, "out_timeseries_names"),
         (problem_definition.add_input_meshes_names, "in_meshes_names"),
         (problem_definition.add_output_meshes_names, "out_meshes_names"),
-    ]:
-        try:
+    ]
+    for func, key in legacy_keys:
+        if key in description:
             func(description[key])
-        except KeyError:
-            logger.error(f"Could not retrieve key:'{key}' from description")
-            pass
 
     return problem_definition
 

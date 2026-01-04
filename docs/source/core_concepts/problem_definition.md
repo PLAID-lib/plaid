@@ -27,7 +27,10 @@ pb.add_out_feature_identifier(FeatureIdentifier({
 splits = {"train": [0, 1, 2], "test": [3, 4]}
 pb.set_split(splits)
 
-pb._save_to_dir_("problem_definition")
+pb.save_to_dir("problem_definition")
+
+# later
+pb2 = ProblemDefinition.load("problem_definition")
 ```
 
 {py:class}`~plaid.problem_definition.ProblemDefinition` supports filtering helpers to intersect existing inputs/outputs with a candidate list of identifiers.

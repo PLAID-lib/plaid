@@ -154,7 +154,7 @@ problem.save_to_dir(pb_def_save_fname)
 # ### Load a ProblemDefinition from a directory via initialization
 
 # %%
-problem = ProblemDefinition(pb_def_save_fname)
+problem = ProblemDefinition.load(pb_def_save_fname)
 print(problem)
 
 # %% [markdown]
@@ -168,6 +168,5 @@ print(problem)
 # ### Load from a directory via a Dataset instance
 
 # %%
-problem = ProblemDefinition()
-problem.load(pb_def_save_fname)
+problem = ProblemDefinition.load(pb_def_save_fname)
 print(problem)

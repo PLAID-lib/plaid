@@ -61,9 +61,7 @@ def load_problem_definitions_from_disk(
         pb_defs = []
         for p in pb_def_dir.iterdir():
             if p.is_file():
-                pb_def = ProblemDefinition()
-                pb_def._load_from_file_(pb_def_dir / Path(p.name))
-                pb_defs.append(pb_def)
+                pb_defs.append(ProblemDefinition.load(p))
         return pb_defs
     else:
         logger.warning("No problem definitions found on disk.")
