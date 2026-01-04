@@ -143,7 +143,6 @@ def load_constants_from_disk(path):
             offset = entry["offset"]
             shape = tuple(entry["shape"])
             dtype = np.dtype(entry["dtype"])
-            order = entry.get("order", "C")
 
             # -----------------
             # STRING CASE
@@ -166,7 +165,7 @@ def load_constants_from_disk(path):
                     dtype=dtype,
                     offset=offset,
                     shape=shape,
-                    order=order,
+                    order="C",
                 )
 
     return flat_cst, constant_schema
