@@ -184,7 +184,6 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
                             "offset": offset,
                             "shape": shape,
                             "dtype": "|S1",
-                            "order": "C",
                         }
 
                     # ---- CASE 2: CGNS char array ----
@@ -201,7 +200,6 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
                             "offset": offset,
                             "shape": shape,
                             "dtype": "|S1",
-                            "order": "C",
                         }
 
                 # -----------------
@@ -223,8 +221,7 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
                     layout[key] = {
                         "offset": offset,
                         "shape": shape,
-                        "dtype": arr.dtype.str,  # e.g. '<f8'
-                        "order": "C",
+                        "dtype": arr.dtype.str,
                     }
 
                 offset += nbytes
