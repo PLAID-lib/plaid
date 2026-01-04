@@ -47,7 +47,7 @@ except NameError:
 # Load PLAID datasets and problem metadata objects
 ref_ds = Dataset(dataset_directory / "dataset_ref")
 pred_ds = Dataset(dataset_directory / "dataset_near_pred")
-problem = ProblemDefinition(dataset_directory / "problem_definition")
+problem = ProblemDefinition.load(dataset_directory / "problem_definition")
 
 # Get output scalars from reference and prediction dataset
 ref_out_scalars, pred_out_scalars, out_scalars_names = prepare_datasets(
@@ -98,7 +98,7 @@ print("=== Plot with PLAID objects ===")
 # Load PLAID datasets and problem metadata objects
 ref_path = Dataset(dataset_directory / "dataset_ref")
 pred_path = Dataset(dataset_directory / "dataset_pred")
-problem_path = ProblemDefinition(dataset_directory / "problem_definition")
+problem_path = ProblemDefinition.load(dataset_directory / "problem_definition")
 
 # Using PLAID objects to generate bisect plot on feature_2
 plot_bisect(ref_path, pred_path, problem_path, "feature_2", "equal_bisect_plot")
@@ -114,7 +114,7 @@ print("=== Mix with scalar index and verbose ===")
 # Mix
 ref_path = dataset_directory / "dataset_ref"
 pred_path = dataset_directory / "dataset_near_pred"
-problem_path = ProblemDefinition(dataset_directory / "problem_definition")
+problem_path = ProblemDefinition.load(dataset_directory / "problem_definition")
 
 # Using scalar index and verbose option to generate bisect plot
 scalar_index = 0

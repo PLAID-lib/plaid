@@ -37,7 +37,7 @@ def dataset(samples, infos) -> Dataset:
 def problem_definition() -> ProblemDefinition:
     problem_definition = ProblemDefinition()
     problem_definition.set_task("regression")
-    problem_definition.add_input_scalars_names(["feature_name_1", "feature_name_2"])
+    problem_definition.add_in_features_identifiers(["feature_name_1", "feature_name_2"])
     problem_definition.set_split({"train": [0, 2], "test": [1, 3]})
     return problem_definition
 

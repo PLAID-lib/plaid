@@ -56,7 +56,7 @@ def main_splits() -> dict:
 def problem_definition(main_splits) -> ProblemDefinition:
     problem_definition = ProblemDefinition()
     problem_definition.set_task("regression")
-    problem_definition.add_input_scalars_names(["feature_name_1", "feature_name_2"])
+    problem_definition.add_in_features_identifiers(["feature_name_1", "feature_name_2"])
     problem_definition.set_split(main_splits)
     return problem_definition
 

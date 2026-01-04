@@ -46,7 +46,7 @@ except NameError:
 # Load PLAID datasets and problem metadata objects
 ref_ds = Dataset(dataset_directory / "dataset_ref")
 pred_ds = Dataset(dataset_directory / "dataset_near_pred")
-problem = ProblemDefinition(dataset_directory / "problem_definition")
+problem = ProblemDefinition.load(dataset_directory / "problem_definition")
 
 # Get output scalars from reference and prediction dataset
 ref_out_scalars, pred_out_scalars, out_scalars_names = prepare_datasets(
@@ -102,7 +102,7 @@ print("=== Metrics with PLAID objects and verbose ===")
 # Load PLAID datasets and problem metadata objects
 ref_ds = Dataset(dataset_directory / "dataset_ref")
 pred_ds = Dataset(dataset_directory / "dataset_pred")
-problem = ProblemDefinition(dataset_directory / "problem_definition")
+problem = ProblemDefinition.load(dataset_directory / "problem_definition")
 
 # Pretty print activated with verbose mode
 metrics = compute_metrics(ref_ds, pred_ds, problem, "second_metrics", verbose=True)

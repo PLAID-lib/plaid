@@ -121,7 +121,7 @@ Legacy name-based methods (e.g., `add_input_scalars_names`) are deprecated; pref
 - Always include enough context to disambiguate a feature. For fields/nodes on multiple bases/zones/times, set all relevant keys.
 - Use {py:meth}`~plaid.containers.sample.Sample.get_all_features_identifiers()` to introspect what identifiers exist in a sample.
 - Use sets to deduplicate identifiers safely: `set(list_of_identifiers)`.
-- When authoring problem definitions on disk, {py:meth}`~plaid.problem_definition.ProblemDefinition._save_to_dir_` persists identifiers under `problem_definition/problem_infos.yaml` (keys `input_features` and `output_features`).
+- When authoring problem definitions on disk, {py:meth}`~plaid.problem_definition.ProblemDefinition.save_to_dir` persists identifiers under `problem_definition/problem_infos.yaml` (keys `input_features` and `output_features`).
 
 ## See also
 

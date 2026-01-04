@@ -104,7 +104,7 @@ def plot_bisect(
     if isinstance(pred_dataset, (str, Path)):
         pred_dataset: Dataset = Dataset(pred_dataset)
     if isinstance(problem_def, (str, Path)):
-        problem_def: ProblemDefinition = ProblemDefinition(problem_def)
+        problem_def: ProblemDefinition = ProblemDefinition.load(problem_def)
 
     # Load the testing_set
     # testing_set = problem_def.get_split("test")
