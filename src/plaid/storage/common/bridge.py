@@ -1,15 +1,15 @@
+"""Common bridge utilities.
+
+This module provides bridge functions for converting between PLAID samples and
+storage formats, including flattening/unflattening and sample reconstruction.
+"""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-
-"""Common bridge utilities.
-
-This module provides bridge functions for converting between PLAID samples and
-storage formats, including flattening/unflattening and sample reconstruction.
-"""
 
 from typing import Any, Optional
 

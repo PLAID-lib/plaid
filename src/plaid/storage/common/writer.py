@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """Common storage writer utilities.
 
 This module provides common utilities for writing dataset metadata, problem definitions,
 and other auxiliary files to disk or uploading them to Hugging Face Hub. It handles
 serialization of infos, problem definitions, and dataset tree structures.
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import io
 import json

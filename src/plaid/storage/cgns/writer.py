@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """CGNS dataset writer module.
 
 This module provides functionality for writing datasets in CGNS format for the PLAID library.
 It includes utilities for generating datasets from sample generators, saving to disk,
 uploading to Hugging Face Hub, and configuring dataset cards.
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 import multiprocessing as mp

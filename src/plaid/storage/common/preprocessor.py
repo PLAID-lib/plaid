@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """Common preprocessing utilities.
 
 This module provides utilities for preprocessing PLAID samples into formats suitable
 for storage, including flattening CGNS trees, inferring data types, and handling
 parallel processing of sample shards.
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import hashlib
 import multiprocessing as mp

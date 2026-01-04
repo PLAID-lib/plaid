@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """Reader for hf dataset storage.
 
 - If the environment variable `HF_ENDPOINT` is set, uses a private Hugging Face mirror.
@@ -17,6 +10,13 @@
     - If the dataset is already cached locally, loads from disk.
     - Otherwise, loads from the hub, optionally using streaming mode.
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 import os

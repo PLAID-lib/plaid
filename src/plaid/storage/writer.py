@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """PLAID storage writer module.
 
 This module provides high-level functions for saving PLAID datasets to local disk and pushing
@@ -17,6 +10,13 @@ Key features:
 - Metadata and problem definition handling
 - Hub integration with dataset cards and metadata
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 import shutil

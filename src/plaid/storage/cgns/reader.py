@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """CGNS dataset reader module for PLAID.
 
 This module provides functionality for reading and streaming CGNS datasets for the PLAID library.
@@ -17,6 +10,13 @@ Key features:
 - Selective loading of splits and sample IDs
 - Integration with PLAID Sample objects
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 import os

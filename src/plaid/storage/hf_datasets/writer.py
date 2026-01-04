@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """HF Datasets writer module.
 
 This module provides functionality for writing and managing datasets in Hugging Face Datasets format
@@ -17,6 +10,13 @@ Key features:
 - Hub uploading with optimized sharding
 - Dataset card configuration and updating
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 from pathlib import Path
