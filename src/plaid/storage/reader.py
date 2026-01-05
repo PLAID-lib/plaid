@@ -231,9 +231,7 @@ def download_from_hub(
     backend = infos["storage_backend"]
 
     backend_spec = get_backend(backend)
-    backend_spec.download_from_hub(
-        repo_id, local_dir, split_ids, features, overwrite
-    )
+    backend_spec.download_from_hub(repo_id, local_dir, split_ids, features, overwrite)
 
     save_metadata_to_disk(
         local_dir, flat_cst, variable_schema, constant_schema, cgns_types
@@ -270,9 +268,7 @@ def init_streaming_from_hub(
     backend = infos["storage_backend"]
 
     backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_streaming_from_hub(
-        repo_id, split_ids, features
-    )
+    datasetdict = backend_spec.init_streaming_from_hub(repo_id, split_ids, features)
 
     converterdict = {}
     for split in datasetdict.keys():
