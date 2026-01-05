@@ -22,15 +22,6 @@ from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
 from plaid import Sample
-from plaid.storage.cgns.reader import (
-    download_datasetdict_from_hub as download_cgns_datasetdict_from_hub,
-)
-from plaid.storage.cgns.reader import (
-    init_datasetdict_from_disk as init_cgns_datasetdict_from_disk,
-)
-from plaid.storage.cgns.reader import (
-    init_datasetdict_streaming_from_hub as init_cgns_datasetdict_streaming_from_hub,
-)
 from plaid.storage.common.bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,
@@ -48,64 +39,7 @@ from plaid.storage.common.writer import (
     save_metadata_to_disk,
     save_problem_definitions_to_disk,
 )
-from plaid.storage.hf_datasets.bridge import (
-    sample_to_var_sample_dict as hf_sample_to_var_sample_dict,
-)
-from plaid.storage.hf_datasets.bridge import (
-    to_var_sample_dict as hf_to_var_sample_dict,
-)
-from plaid.storage.hf_datasets.reader import (
-    download_datasetdict_from_hub as download_hf_datasetdict_from_hub,
-)
-from plaid.storage.hf_datasets.reader import (
-    init_datasetdict_from_disk as init_hf_datasetdict_from_disk,
-)
-from plaid.storage.hf_datasets.reader import (
-    init_datasetdict_streaming_from_hub as init_hf_datasetdict_streaming_from_hub,
-)
-from plaid.storage.zarr.bridge import (
-    sample_to_var_sample_dict as zarr_sample_to_var_sample_dict,
-)
-from plaid.storage.zarr.bridge import (
-    to_var_sample_dict as zarr_to_var_sample_dict,
-)
-from plaid.storage.zarr.reader import (
-    download_datasetdict_from_hub as download_zarr_datasetdict_from_hub,
-)
-from plaid.storage.zarr.reader import (
-    init_datasetdict_from_disk as init_zarr_datasetdict_from_disk,
-)
-from plaid.storage.zarr.reader import (
-    init_datasetdict_streaming_from_hub as init_zarr_datasetdict_streaming_from_hub,
-)
-
-init_datasetdict_from_disk = {
-    "hf_datasets": init_hf_datasetdict_from_disk,
-    "cgns": init_cgns_datasetdict_from_disk,
-    "zarr": init_zarr_datasetdict_from_disk,
-}
-
-download_datasetdict_from_hub = {
-    "hf_datasets": download_hf_datasetdict_from_hub,
-    "cgns": download_cgns_datasetdict_from_hub,
-    "zarr": download_zarr_datasetdict_from_hub,
-}
-
-init_datasetdict_streaming_from_hub = {
-    "hf_datasets": init_hf_datasetdict_streaming_from_hub,
-    "cgns": init_cgns_datasetdict_streaming_from_hub,
-    "zarr": init_zarr_datasetdict_streaming_from_hub,
-}
-
-to_var_sample_dict = {
-    "hf_datasets": hf_to_var_sample_dict,
-    "zarr": zarr_to_var_sample_dict,
-}
-
-sample_to_var_sample_dict = {
-    "hf_datasets": hf_sample_to_var_sample_dict,
-    "zarr": zarr_sample_to_var_sample_dict,
-}
+from plaid.storage.registry import get_backend
 
 
 class Converter:
@@ -134,6 +68,7 @@ class Converter:
             constant_schema: Schema for constant fields.
         """
         self.backend = backend
+        self.backend_spec = get_backend(backend)
         self.flat_cst = flat_cst
         self.cgns_types = cgns_types
         self.variable_schema = variable_schema
@@ -154,7 +89,11 @@ class Converter:
         """
         if self.backend == "cgns":
             raise ValueError("Converter.to_dict not available for cgns backend")
-        var_sample_dict = to_var_sample_dict[self.backend](dataset, idx)
+        if self.backend_spec.to_var_sample_dict is None:
+            raise ValueError(
+                f"Converter.to_dict not available for {self.backend} backend"
+            )
+        var_sample_dict = self.backend_spec.to_var_sample_dict(dataset, idx)
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types)
 
     def to_plaid(self, dataset: Any, idx: int) -> Sample:
@@ -187,7 +126,11 @@ class Converter:
         """
         if self.backend == "cgns":
             raise ValueError("Converter.sample_to_dict not available for cgns backend")
-        var_sample_dict = sample_to_var_sample_dict[self.backend](sample)
+        if self.backend_spec.sample_to_var_sample_dict is None:
+            raise ValueError(
+                f"Converter.sample_to_dict not available for {self.backend} backend"
+            )
+        var_sample_dict = self.backend_spec.sample_to_var_sample_dict(sample)
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types)
 
     def sample_to_plaid(self, sample: Sample) -> Sample:
@@ -249,7 +192,8 @@ def init_from_disk(
 
     backend = infos["storage_backend"]
 
-    datasetdict = init_datasetdict_from_disk[backend](local_dir)
+    backend_spec = get_backend(backend)
+    datasetdict = backend_spec.init_from_disk(local_dir)
 
     converterdict = {}
     for split in datasetdict.keys():
@@ -286,7 +230,8 @@ def download_from_hub(
 
     backend = infos["storage_backend"]
 
-    download_datasetdict_from_hub[backend](
+    backend_spec = get_backend(backend)
+    backend_spec.download_from_hub(
         repo_id, local_dir, split_ids, features, overwrite
     )
 
@@ -324,7 +269,8 @@ def init_streaming_from_hub(
 
     backend = infos["storage_backend"]
 
-    datasetdict = init_datasetdict_streaming_from_hub[backend](
+    backend_spec = get_backend(backend)
+    datasetdict = backend_spec.init_streaming_from_hub(
         repo_id, split_ids, features
     )
 
