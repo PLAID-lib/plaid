@@ -71,53 +71,6 @@ def save_problem_definitions_to_disk(
         pb_def.save_to_file(target_dir / name)
 
 
-# def save_constants_to_disk(path, constant_schema, flat_cst):
-
-#     for split in flat_cst.keys():
-
-#         layout = {}
-#         offset = 0
-
-#         cst_path = path / "constants" / split
-#         cst_path.mkdir(parents=True, exist_ok=True)
-
-#         with open(cst_path / "data.mmap", "wb") as f:
-#             for key, spec in constant_schema[split].items():
-
-#                 dtype = spec["dtype"]
-
-#                 if dtype is None:
-#                     layout[key] = None
-#                     continue
-
-#                 value = flat_cst[split][key]
-#                 arr = value
-
-#                 assert arr.ndim == spec["ndim"]
-
-#                 if dtype == "string":
-#                     arr_bytes = np.asarray(arr, dtype="<U1").astype("|S1")
-
-#                     f.write(arr_bytes.tobytes(order="C"))
-#                     nbytes = arr_bytes.nbytes
-
-#                 else:
-#                     f.write(arr.tobytes(order="C"))
-#                     nbytes = arr.nbytes
-
-#                 layout[key] = {
-#                     "offset": offset,
-#                     "shape": list(arr.shape),
-#                 }
-
-#                 offset += nbytes
-
-#         json.dump(layout, open(cst_path / "layout.json", "w"), indent=2)
-
-#         with open(cst_path / "constant_schema.yaml", "w", encoding="utf-8") as f:
-#             yaml.dump(constant_schema[split], f, sort_keys=False)
-
-
 def save_constants_to_disk(path, constant_schema, flat_cst):
     """Write constant features to disk under <path>/constants/.
 
@@ -358,38 +311,6 @@ def push_local_problem_definitions_to_hub(
         path_in_repo="problem_definitions",
         commit_message="Upload problem_definitions",
     )
-
-    # pb_defs = load_problem_definitions_from_disk(path)
-    # if isinstance(pb_defs, ProblemDefinition):
-    #     pb_defs = [pb_defs]
-
-    # if not isinstance(pb_defs, Iterable):
-    #     raise TypeError(
-    #         f"pb_defs must be a ProblemDefinition or an iterable, got {type(pb_defs)}"
-    #     )
-
-    # api = HfApi()
-
-    # for pb_def in pb_defs:
-    #     name = pb_def.get_name() or "default"
-    #     data = pb_def._generate_problem_infos_dict()
-    #     for k, v in list(data.items()):
-    #         if not v:
-    #             data.pop(k)
-    #     if data is not None:
-    #         yaml_str = yaml.dump(data)
-    #         yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
-
-    #     if not name.endswith(".yaml"):
-    #         name = f"{name}.yaml"
-
-    #     api.upload_file(
-    #         path_or_fileobj=yaml_buffer,
-    #         path_in_repo=f"problem_definitions/{name}",
-    #         repo_id=repo_id,
-    #         repo_type="dataset",
-    #         commit_message=f"Upload problem_definitions/{name}",
-    #     )
 
 
 def push_local_metadata_to_hub(
