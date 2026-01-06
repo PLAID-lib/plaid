@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """Reader for hf dataset storage.
 
 - If the environment variable `HF_ENDPOINT` is set, uses a private Hugging Face mirror.
@@ -17,6 +10,13 @@
     - If the dataset is already cached locally, loads from disk.
     - Otherwise, loads from the hub, optionally using streaming mode.
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 import os
@@ -48,16 +48,23 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
         datasets.DatasetDict: The loaded dataset dictionary.
     """
     file_ = Path(path) / "data" / "dataset_dict.json"
+
     if file_.is_file():
         # This is a dataset generated and save locally
-        return load_from_disk(dataset_path=str(Path(path) / "data"))
+        datasetdict = load_from_disk(dataset_path=str(Path(path) / "data"))
+
     else:  # pragma: no cover
         # This is a dataset downloaded from the hub
         infos = load_infos_from_disk(path)
         split_names = list(infos["num_samples"].keys())
         base = Path(path) / "data"
         data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
-        return load_dataset("parquet", data_files=data_files)
+        datasetdict = load_dataset("parquet", data_files=data_files)
+
+    for split in datasetdict.keys():
+        datasetdict[split].path = path
+
+    return datasetdict
 
 
 # ------------------------------------------------------

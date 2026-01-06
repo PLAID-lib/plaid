@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """Common preprocessing utilities.
 
 This module provides utilities for preprocessing PLAID samples into formats suitable
 for storage, including flattening CGNS trees, inferring data types, and handling
 parallel processing of sample shards.
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import hashlib
 import multiprocessing as mp
@@ -576,14 +576,14 @@ def preprocess(
     # var_features = [path for path in var_features if not path.endswith("_times")]
     # cst_features = [path for path in cst_features if not path.endswith("_times")]
 
-    def _build_schema(feature_list: list[str]) -> dict:
+    def _build_schema(feature_list: list[str], split_flat_cst=None) -> dict:
         schema = {}
         for path in feature_list:
             if path.endswith("_times"):
-                schema[path] = {
-                    "dtype": "float64",
-                    "ndim": 1,
-                }  # pragma: no cover
+                if split_flat_cst and split_flat_cst[path] is None:
+                    schema[path] = {"dtype": None}
+                else:
+                    schema[path] = {"dtype": "float64", "ndim": 1}
             elif path in global_feature_types:
                 schema[path] = global_feature_types[path]
             else:
@@ -591,7 +591,10 @@ def preprocess(
         return schema
 
     variable_schema = _build_schema(var_features)
-    constant_schema = _build_schema(cst_features)
+    constant_schema = {
+        split: _build_schema(cst_features, flat_cst)
+        for split, flat_cst in split_flat_cst.items()
+    }
 
     return (
         split_flat_cst,

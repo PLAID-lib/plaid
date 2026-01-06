@@ -117,7 +117,9 @@ def generator_split_with_kwargs(dataset, gen_kwargs) -> dict[str, Callable]:
 class Test_Storage:
     def assert_sample(self, sample):
         assert isinstance(sample, Sample)
-        assert sorted(sample.get_scalar_names())[0] == "global_0"
+        sorted_names = sorted(sample.get_scalar_names())
+        for i in range(4):
+            assert sorted_names[i] == f"global_{i}"
         assert "test_field_same_size" in sample.get_field_names()
         assert sample.get_field("test_field_same_size").shape[0] == 17
 
@@ -146,17 +148,7 @@ class Test_Storage:
             generators=generator_split,
             backend="hf_datasets",
             infos=infos,
-            pb_defs=problem_definition,
-        )
-
-        save_to_disk(
-            output_folder=test_dir,
-            generators=generator_split,
-            backend="hf_datasets",
-            infos=infos,
-            pb_defs=problem_definition,
-            overwrite=True,
-            verbose=True,
+            pb_defs={"pb_def": problem_definition},
         )
 
         with pytest.raises(ValueError):
@@ -165,12 +157,34 @@ class Test_Storage:
                 generators=generator_split,
                 backend="hf_datasets",
                 infos=infos,
-                pb_defs=problem_definition,
+                pb_defs={"pb_def": problem_definition},
                 overwrite=False,
             )
 
+        with pytest.raises(ValueError):
+            problem_definition.set_name(None)
+            save_to_disk(
+                output_folder=test_dir,
+                generators=generator_split,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs=problem_definition,
+                overwrite=True,
+            )
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+            verbose=True,
+        )
+
         load_problem_definitions_from_disk(test_dir)
-        load_problem_definitions_from_disk("dummy")
+        with pytest.raises(ValueError):
+            load_problem_definitions_from_disk("dummy")
 
         datasetdict, converterdict = init_from_disk(test_dir)
 
@@ -197,6 +211,23 @@ class Test_Storage:
         converter.to_dict(dataset, 0)
         converter.sample_to_dict(dataset[0])
 
+        converter.to_dict(
+            dataset,
+            0,
+            features=[
+                "TestBaseName/TestZoneName/VertexFields/test_field_same_size",
+                "Global/global_0",
+            ],
+        )
+        converter.to_dict(
+            dataset,
+            0,
+            features=["TestBaseName/TestZoneName/VertexFields/test_field_same_size"],
+        )
+        converter.to_dict(dataset, 0, features=["Global/global_0"])
+        with pytest.raises(KeyError):
+            converter.to_dict(dataset, 0, features=["dummy"])
+
     def test_zarr(self, tmp_path, generator_split, infos, problem_definition):
         test_dir = tmp_path / "test_hf"
 
@@ -205,7 +236,7 @@ class Test_Storage:
             generators=generator_split,
             backend="zarr",
             infos=infos,
-            pb_defs=problem_definition,
+            pb_defs={"pb_def": problem_definition},
             overwrite=True,
             verbose=True,
         )
@@ -239,6 +270,17 @@ class Test_Storage:
         converter.to_dict(dataset, 0)
         converter.sample_to_dict(dataset[0])
 
+        converter.to_dict(
+            dataset,
+            0,
+            features=[
+                "TestBaseName/TestZoneName/VertexFields/test_field_same_size",
+                "Global/global_0",
+            ],
+        )
+        with pytest.raises(KeyError):
+            converter.to_dict(dataset, 0, features=["dummy"])
+
     def test_cgns(self, tmp_path, generator_split, infos, problem_definition):
         test_dir = tmp_path / "test_cgns"
 
@@ -247,7 +289,7 @@ class Test_Storage:
             generators=generator_split,
             backend="cgns",
             infos=infos,
-            pb_defs=problem_definition,
+            pb_defs={"pb_def": problem_definition},
             overwrite=True,
             verbose=True,
         )

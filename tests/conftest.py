@@ -22,7 +22,7 @@ def sample():
     return Sample()
 
 
-def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
+def generate_samples_no_string(nb: int, zone_name: str, base_name: str) -> list[Sample]:
     """Generate a list of Sample objects with randomized scalar and field data."""
     sample_list = []
     for i in range(nb):
@@ -49,6 +49,14 @@ def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
     return sample_list
 
 
+def generate_samples(nb: int, zone_name: str, base_name: str) -> list[Sample]:
+    sample_list = generate_samples_no_string(nb, zone_name, base_name)
+    for i, sample in enumerate(sample_list):
+        sample.add_global("global_2", "a_string")
+        sample.add_global("global_3", f"another_string_{i}")
+    return sample_list
+
+
 @pytest.fixture()
 def nb_samples() -> int:
     """Number of samples to generate for tests."""
@@ -71,6 +79,12 @@ def zone_name() -> str:
 def samples(nb_samples: int, zone_name: str, base_name: str) -> list[Sample]:
     """A fixture providing a list of generated Sample objects."""
     return generate_samples(nb_samples, zone_name, base_name)
+
+
+@pytest.fixture()
+def samples_no_string(nb_samples: int, zone_name: str, base_name: str) -> list[Sample]:
+    """A fixture providing a list of generated Sample objects."""
+    return generate_samples_no_string(nb_samples, zone_name, base_name)
 
 
 @pytest.fixture()
