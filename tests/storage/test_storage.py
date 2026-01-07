@@ -324,3 +324,23 @@ class Test_Storage:
             converter.to_dict(dataset, 0)
         with pytest.raises(ValueError):
             converter.sample_to_dict(dataset[0])
+
+    def test_registry(self):
+        from plaid.storage import registry
+
+        backends = registry.available_backends()
+        assert "hf_datasets" in backends
+        assert "zarr" in backends
+        assert "cgns" in backends
+
+        hf_module = registry.get_backend("hf_datasets")
+        assert hf_module is not None
+
+        zarr_module = registry.get_backend("zarr")
+        assert zarr_module is not None
+
+        cgns_module = registry.get_backend("cgns")
+        assert cgns_module is not None
+
+        with pytest.raises(ValueError):
+            _ = registry.get_backend("non_existent_backend")

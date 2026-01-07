@@ -98,7 +98,7 @@ class Converter:
             ValueError: If called with CGNS backend.
         """
         if self.backend_spec.to_var_sample_dict is None:
-            raise ValueError(  # pragma: no cover
+            raise ValueError(
                 f"Converter.to_dict not available for {self.backend} backend"
             )
 
