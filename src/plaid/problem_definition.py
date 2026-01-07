@@ -358,6 +358,21 @@ class ProblemDefinition(object):
         """
         return self.in_features_identifiers
 
+    def set_in_features_identifiers(
+        self, features_identifiers: Sequence[Union[str, FeatureIdentifier]]
+    ) -> None:
+        """Set the input features identifiers of the problem.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                problem.set_in_features_identifiers(in_features_identifiers)
+        """
+        self.in_features_identifiers = features_identifiers
+
     def add_in_features_identifiers(
         self, inputs: Sequence[Union[str, FeatureIdentifier]]
     ) -> None:
@@ -446,6 +461,21 @@ class ProblemDefinition(object):
                 >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
         """
         return self.out_features_identifiers
+
+    def set_out_features_identifiers(
+        self, features_identifiers: Sequence[Union[str, FeatureIdentifier]]
+    ) -> None:
+        """Set the output features identifiers of the problem.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                problem.set_out_features_identifiers(out_features_identifiers)
+        """
+        self.out_features_identifiers = features_identifiers
 
     def add_out_features_identifiers(
         self, outputs: Sequence[Union[str, FeatureIdentifier]]

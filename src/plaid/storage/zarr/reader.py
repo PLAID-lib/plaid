@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """Zarr dataset reader module.
 
 This module provides functionality for reading and streaming datasets stored in Zarr format
@@ -18,6 +11,13 @@ Key features:
 - Selective loading of splits and features
 - ZarrDataset class for convenient data access
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 import os
@@ -33,8 +33,7 @@ from datasets import IterableDataset
 from datasets.splits import NamedSplit
 from huggingface_hub import hf_hub_download, snapshot_download
 
-from plaid.storage.zarr.bridge import unflatten_zarr_key
-from plaid.storage.zarr.writer import _flatten_path
+from plaid.storage.common.bridge import flatten_path, unflatten_path
 
 logger = logging.getLogger(__name__)
 
@@ -52,16 +51,21 @@ class ZarrDataset:
     additional metadata fields.
     """
 
-    def __init__(self, zarr_group: zarr.Group, **kwargs) -> None:
+    def __init__(
+        self, zarr_group: zarr.Group, path: Union[str, Path], **kwargs
+    ) -> None:
         """Initialize a :class:`ZarrDataset`.
 
         Args:
             zarr_group (zarr.Group): The underlying Zarr group containing the data.
+            path (Union[str, Path]): Path to the dataset root (local directory or remote
+                identifier). Stored on the instance as ``self.path``.
             **kwargs: Optional keyword metadata to attach to the dataset instance.
                 All provided kwargs are stored in ``self._extra_fields`` and are
                 accessible as attributes via ``__getattr__`` / ``__setattr__``.
         """
         self.zarr_group = zarr_group
+        self.path = path
         self._extra_fields = dict(kwargs)
 
         ids = sorted(int(name[7:]) for name, _ in zarr_group.groups())
@@ -87,8 +91,7 @@ class ZarrDataset:
         """
         zarr_sample = self.zarr_group[f"sample_{idx:09d}"]
         return {
-            unflatten_zarr_key(path): zarr_sample[path]
-            for path in zarr_sample.array_keys()
+            unflatten_path(path): zarr_sample[path] for path in zarr_sample.array_keys()
         }
 
     def __len__(self) -> int:
@@ -128,7 +131,7 @@ class ZarrDataset:
             name: Attribute name.
             value: Attribute value.
         """
-        if name in ("zarr_group", "_extra_fields"):
+        if name in ("zarr_group", "path", "_extra_fields"):
             super().__setattr__(name, value)
         else:
             self._extra_fields[name] = value
@@ -191,7 +194,7 @@ def _zarr_patterns(
         ignored_features = [f for f in all_features if f not in features]
 
         ignore_patterns += [
-            f"data/*/{_flatten_path(feat)}/*" for feat in ignored_features
+            f"data/*/{flatten_path(feat)}/*" for feat in ignored_features
         ]
 
     return allow_patterns, ignore_patterns
@@ -217,7 +220,7 @@ def sample_generator(
     for idx in ids:
         sample = {}
         for feat in selected_features:
-            flatten_feat = _flatten_path(feat)
+            flatten_feat = flatten_path(feat)
             mapper = fsspec.get_mapper(base_url + f"{idx:09d}/{flatten_feat}")
             sample[feat] = zarr.open(mapper, mode="r")
 
@@ -268,7 +271,9 @@ def init_datasetdict_from_disk(
     local_path = Path(path) / "data"
     split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
     return {
-        sn: ZarrDataset(zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r"))
+        sn: ZarrDataset(
+            zarr.open(zarr.storage.LocalStore(local_path / sn), mode="r"), path
+        )
         for sn in split_names
     }
 

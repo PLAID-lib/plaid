@@ -54,8 +54,8 @@ CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
 FEATURES_METHODS = [
     "set_default_base",
     "set_default_zone_base",
-    "get_base_assignment",
-    "get_zone_assignment",
+    "resolve_base",
+    "resolve_zone",
     "set_default_time",
     "get_all_time_values",
     "get_all_mesh_times",
@@ -271,7 +271,7 @@ class Sample(BaseModel):
                 "BaseName/ZoneName/Solution/FieldName").
             time (Optional[int], optional): Time selection for the mesh. If an integer,
                 it is interpreted via the SampleFeatures time-assignment logic
-                (see SampleFeatures.get_time_assignment). If None, the default time
+                (see SampleFeatures.resolve_time). If None, the default time
                 assignment is used. Defaults to None.
 
         Returns:
@@ -281,7 +281,7 @@ class Sample(BaseModel):
             - This is a thin wrapper around CGNS.PAT.cgnsutils.getValueByPath and Sample.get_mesh(time). Callers should handle a returned None when the path or value does not exist.
             - For field-like features, prefer using Sample.get_field which applies additional validation and selection logic.
         """
-        time = self.features.get_time_assignment(time)
+        time = self.features.resolve_time(time)
         return CGU.getValueByPath(self.get_mesh(time), path)
 
     def get_feature_from_string_identifier(
@@ -567,7 +567,7 @@ class Sample(BaseModel):
 
             if feature is not None:
                 # get time of current feature
-                time = self.features.get_time_assignment(time=feat_id.get("time"))
+                time = self.features.resolve_time(time=feat_id.get("time"))
 
                 # if the constructed sample does not have a tree, add the one from the source sample, with no field
                 if len(sample.features.get_base_names(time=time)) == 0:
@@ -627,7 +627,7 @@ class Sample(BaseModel):
         #     # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
         #     if feat_id["type"] in ["field", "nodes"]:
         #         # get time of current feature
-        #         time = sample.features.get_time_assignment(time=feat_id.get("time"))
+        #         time = sample.features.resolve_time(time=feat_id.get("time"))
 
         #         # if the constructed sample does not have a tree, add the one from the source sample, with no field
         #         if not merged_dataset.features.get_mesh(time):
@@ -641,14 +641,14 @@ class Sample(BaseModel):
 
     # -------------------------------------------------------------------------#
     @deprecated(
-        "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_dir(...)`",
+        "`Sample.save(...)` is deprecated, use instead `Sample.save_to_dir(...)`",
         version="0.1.8",
         removal="0.2",
     )
     def save(
         self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
     ) -> None:
-        """DEPRECATED: use :meth:`Dataset.save_to_dir` instead."""
+        """DEPRECATED: use :meth:`Sample.save_to_dir` instead."""
         self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
 
     # -------------------------------------------------------------------------#

@@ -168,6 +168,12 @@ class Test_ProblemDefinition:
     def test_get_in_features_identifiers(self, problem_definition):
         assert problem_definition.get_in_features_identifiers() == []
 
+    def test_set_in_features_identifiers(self, problem_definition):
+        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
+        problem_definition.set_in_features_identifiers(dummy_identifier)
+        dummy_identifier = "Global/toto"
+        problem_definition.set_in_features_identifiers(dummy_identifier)
+
     def test_add_in_features_identifiers_fail_same_identifier(self, problem_definition):
         dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
         with pytest.raises(ValueError):
@@ -196,6 +202,12 @@ class Test_ProblemDefinition:
     # -------------------------------------------------------------------------#
     def test_get_out_features_identifiers(self, problem_definition):
         assert problem_definition.get_out_features_identifiers() == []
+
+    def test_set_out_features_identifiers(self, problem_definition):
+        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
+        problem_definition.set_out_features_identifiers(dummy_identifier)
+        dummy_identifier = "Global/toto"
+        problem_definition.set_out_features_identifiers(dummy_identifier)
 
     def test_add_out_features_identifiers_fail(self, problem_definition):
         dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
@@ -745,6 +757,3 @@ class Test_ProblemDefinition:
         assert sub_problem_definition.get_task() == "regression"
         assert sub_problem_definition.get_name() == "regression_1"
         assert sub_problem_definition.get_split() == {"train": [0, 1], "test": [2, 3]}
-
-
-# %%

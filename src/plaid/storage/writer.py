@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """PLAID storage writer module.
 
 This module provides high-level functions for saving PLAID datasets to local disk and pushing
@@ -18,9 +11,15 @@ Key features:
 - Hub integration with dataset cards and metadata
 """
 
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
+
 import logging
 import shutil
-from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Callable, Generator, Optional, Union
 
@@ -31,13 +30,11 @@ from plaid import ProblemDefinition, Sample
 from plaid.storage.common.preprocessor import preprocess
 from plaid.storage.common.reader import (
     load_infos_from_disk,
-    load_metadata_from_disk,
-    load_problem_definitions_from_disk,
 )
 from plaid.storage.common.writer import (
     push_infos_to_hub,
-    push_metadata_to_hub,
-    push_problem_definitions_to_hub,
+    push_local_metadata_to_hub,
+    push_local_problem_definitions_to_hub,
     save_infos_to_disk,
     save_metadata_to_disk,
     save_problem_definitions_to_disk,
@@ -71,9 +68,9 @@ def _check_folder(output_folder: Path, overwrite: bool) -> None:
 def save_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    backend: str,
+    backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
-    pb_defs: Optional[Union[ProblemDefinition, Iterable[ProblemDefinition]]] = None,
+    pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
@@ -160,10 +157,6 @@ def push_to_hub(
         illustration_urls: Optional list of illustration URLs.
         arxiv_paper_urls: Optional list of arXiv paper URLs.
     """
-    pb_defs = load_problem_definitions_from_disk(local_dir)
-    flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(
-        local_dir
-    )
     infos = load_infos_from_disk(local_dir)
 
     backend = infos["storage_backend"]
@@ -182,9 +175,8 @@ def push_to_hub(
         arxiv_paper_urls,
     )
 
-    push_metadata_to_hub(
-        repo_id, flat_cst, variable_schema, constant_schema, cgns_types
-    )
+    push_local_metadata_to_hub(repo_id, local_dir)
+
     push_infos_to_hub(repo_id, infos)
-    if pb_defs is not None:
-        push_problem_definitions_to_hub(repo_id, pb_defs)
+
+    push_local_problem_definitions_to_hub(repo_id, local_dir)

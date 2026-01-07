@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """HF Datasets writer module.
 
 This module provides functionality for writing and managing datasets in Hugging Face Datasets format
@@ -17,6 +10,13 @@ Key features:
 - Hub uploading with optimized sharding
 - Dataset card configuration and updating
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 from pathlib import Path
@@ -188,7 +188,6 @@ def configure_dataset_card(
     repo_id: str,
     infos: dict[str, dict[str, str]],
     local_dir: Optional[Union[str, Path]] = None,  # noqa: ARG001
-    variable_schema: Optional[dict] = None,  # noqa: ARG001
     viewer: bool = False,
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
