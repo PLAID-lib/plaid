@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """CGNS dataset writer module.
 
 This module provides functionality for writing datasets in CGNS format for the PLAID library.
 It includes utilities for generating datasets from sample generators, saving to disk,
 uploading to Hugging Face Hub, and configuring dataset cards.
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 import logging
 import multiprocessing as mp
@@ -159,7 +159,6 @@ def configure_dataset_card(
     repo_id: str,
     infos: dict[str, dict[str, str]],
     local_dir: Union[str, Path],
-    variable_schema: Optional[dict] = None,
     viewer: Optional[bool] = None,  # noqa: ARG001
     pretty_name: Optional[str] = None,
     dataset_long_description: Optional[str] = None,
@@ -195,24 +194,6 @@ def configure_dataset_card(
         None: This function does not return a value; it pushes the dataset card
             directly to Hugging Face Hub.
     """
-
-    def _dict_to_list_format(d: dict) -> str:
-        """Converts a variable schema dict to YAML list format."""
-        dtype = d.get("dtype", "unknown")
-        ndim = d.get("ndim", 1)
-
-        lines = []
-        current_indent = "    "
-
-        for i in range(ndim - 1):
-            lines.append(f"{current_indent}list:")
-            current_indent += "  "
-
-        # last level contains the dtype as value
-        lines.append(f"{current_indent}list: {dtype}")
-
-        return "\n".join(lines)
-
     dataset_card_str = """---
 task_categories:
 - graph-ml
@@ -261,14 +242,6 @@ tags:
 
     lines.insert(count, "dataset_info:")
     count += 1
-    if variable_schema is not None:
-        lines.insert(count, "  features:")
-        count += 1
-        for fn, type_ in variable_schema.items():
-            lines.insert(count, f"  - name: {fn}")
-            count += 1
-            lines.insert(count, _dict_to_list_format(type_))
-            count += 1
     lines.insert(count, "  splits:")
     count += 1
     for sn in split_names:

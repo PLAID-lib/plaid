@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 """Common tree handling utilities.
 
 This module provides utilities for flattening and unflattening CGNS trees,
 converting between hierarchical tree structures and flat dictionaries for
 storage and serialization purposes.
 """
+
+# -*- coding: utf-8 -*-
+#
+# This file is subject to the terms and conditions defined in
+# file 'LICENSE.txt', which is part of this source code package.
+#
+#
 
 from typing import Optional
 

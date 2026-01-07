@@ -195,17 +195,17 @@ class Test_Stats:
     def test__init__(self, stats):
         pass
 
-    def test_add_samples(self, stats, samples):
-        stats.add_samples(samples)
+    def test_add_samples(self, stats, samples_no_string):
+        stats.add_samples(samples_no_string)
 
     def test_add_dataset(self, stats, dataset):
         stats.add_dataset(dataset)
 
-    def test_get_stats(self, stats, samples):
-        stats.add_samples(samples)
+    def test_get_stats(self, stats, samples_no_string):
+        stats.add_samples(samples_no_string)
         stats_dict = stats.get_stats()
 
-        sample: Sample = samples[0]
+        sample: Sample = samples_no_string[0]
         feature_names = sample.get_scalar_names()
         for base_name in sample.features.get_base_names():
             for zone_name in sample.features.get_zone_names(base_name=base_name):
@@ -247,8 +247,8 @@ class Test_Stats:
             s = stats1._stats[key]
             assert s.n_samples > 0
 
-    def test_clear_statistics(self, stats, samples):
-        stats.add_samples(samples)
+    def test_clear_statistics(self, stats, samples_no_string):
+        stats.add_samples(samples_no_string)
         stats.clear_statistics()
         assert len(stats.get_available_statistics()) == 0
 

@@ -1,15 +1,15 @@
+"""Common bridge utilities.
+
+This module provides bridge functions for converting between PLAID samples and
+storage formats, including flattening/unflattening and sample reconstruction.
+"""
+
 # -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-
-"""Common bridge utilities.
-
-This module provides bridge functions for converting between PLAID samples and
-storage formats, including flattening/unflattening and sample reconstruction.
-"""
 
 from typing import Any, Optional
 
@@ -19,6 +19,30 @@ from plaid import Sample
 from plaid.containers.features import SampleFeatures
 from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.storage.common.tree_handling import unflatten_cgns_tree
+
+
+def unflatten_path(key: str) -> str:
+    """Unflattens a Zarr key by replacing underscores with slashes.
+
+    Args:
+        key (str): The flattened key with underscores.
+
+    Returns:
+        str: The unflattened key with slashes.
+    """
+    return key.replace("__", "/")
+
+
+def flatten_path(key: str) -> str:
+    """Flattens a path key by replacing slashes with underscores.
+
+    Args:
+        key (str): The path key to flatten.
+
+    Returns:
+        str: The flattened key with slashes replaced by underscores.
+    """
+    return key.replace("/", "__")
 
 
 def _split_dict(d: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -83,16 +107,42 @@ def to_sample_dict(
         "did you provide the complete `flat_cst` instead of the one for the considered split?"
     )
 
+    flat_dict = var_sample_dict | flat_cst
+
+    return flat_dict_to_sample_dict(flat_dict, cgns_types, features)
+
+
+def flat_dict_to_sample_dict(
+    flat_dict: dict[str, Any],
+    cgns_types: dict[str, str],
+    features: Optional[list[str]] = None,
+) -> dict[float, dict[str, Any]]:
+    """Convert a flattened sample dict into a time-indexed flat-tree mapping.
+
+    This function processes a single flattened sample dictionary where keys
+    are feature paths or feature path suffixed with '_times' (holding time
+    interval specs). It splits values and their corresponding time
+    specifications, slices feature arrays per interval and groups features
+    by their sample time into CGNS-style flattened trees.
+
+    Args:
+        flat_dict: Mapping of flattened feature paths to values or to time
+            specifications (keys ending with '_times'). Time specifications
+            must be sequences or arrays reshapeable to (-1, 3) rows of
+            (time, start, end).
+        cgns_types: Mapping from feature path to CGNS node type; used to
+            determine which None-valued features should be preserved.
+        features: Optional list of feature paths to include; if None all
+            features are included.
+
+    Returns:
+        A dict mapping time (float) to a flattened tree dict (path -> array or None).
+    """
     if features is None:
-        flat_cst_val, flat_cst_tim = _split_dict(flat_cst)
-        row_val, row_tim = _split_dict(var_sample_dict)
+        row_val, row_tim = _split_dict(flat_dict)
     else:  # pragma: no cover
         features_set = set(features)
-        flat_cst_val, flat_cst_tim = _split_dict_feat(flat_cst, features_set)
-        row_val, row_tim = _split_dict_feat(var_sample_dict, features_set)
-
-    row_val.update(flat_cst_val)
-    row_tim.update(flat_cst_tim)
+        row_val, row_tim = _split_dict_feat(flat_dict, features_set)
 
     row_val = {p: row_val[p] for p in sorted(row_val)}
     row_tim = {p: row_tim[p] for p in sorted(row_tim)}
@@ -128,13 +178,27 @@ def to_sample_dict(
                 else:
                     sample_flat_trees[time] = {path_v: values}
 
+    def _wants(path: str) -> bool:
+        return features is None or path in features
+
     for time, tree in sample_flat_trees.items():
-        bases = list(set([k.split("/")[0] for k in tree.keys()]))
+        bases = {k.split("/", 1)[0] for k in tree}
+
         for base in bases:
-            tree[f"{base}/Time"] = np.array([1], dtype=np.int32)
-            tree[f"{base}/Time/IterationValues"] = np.array([1], dtype=np.int32)
-            tree[f"{base}/Time/TimeValues"] = np.array([time], dtype=np.float64)
-        tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
+            time_base = f"{base}/Time"
+
+            if _wants(time_base):
+                tree[time_base] = np.array([1], dtype=np.int32)
+
+            if _wants(f"{time_base}/IterationValues"):
+                tree[f"{time_base}/IterationValues"] = np.array([1], dtype=np.int32)
+
+            if _wants(f"{time_base}/TimeValues"):
+                tree[f"{time_base}/TimeValues"] = np.array([time], dtype=np.float64)
+
+        if _wants("CGNSLibraryVersion"):
+            tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
+
         tree.update(paths_none)
 
     return sample_flat_trees
@@ -176,9 +240,9 @@ def plaid_to_sample_dict(
     var_features = list(variable_schema.keys())
     cst_features = list(constant_schema.keys())
 
-    hf_sample, _, _ = build_sample_dict(sample)
+    sample_dict, _, _ = build_sample_dict(sample)
 
-    var_sample_dict = {path: hf_sample.get(path, None) for path in var_features}
-    cst_sample_dict = {path: hf_sample.get(path, None) for path in cst_features}
+    var_sample_dict = {path: sample_dict.get(path, None) for path in var_features}
+    cst_sample_dict = {path: sample_dict.get(path, None) for path in cst_features}
 
     return cst_sample_dict | var_sample_dict

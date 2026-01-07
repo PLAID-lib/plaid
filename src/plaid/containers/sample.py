@@ -641,14 +641,14 @@ class Sample(BaseModel):
 
     # -------------------------------------------------------------------------#
     @deprecated(
-        "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_dir(...)`",
+        "`Sample.save(...)` is deprecated, use instead `Sample.save_to_dir(...)`",
         version="0.1.8",
         removal="0.2",
     )
     def save(
         self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
     ) -> None:
-        """DEPRECATED: use :meth:`Dataset.save_to_dir` instead."""
+        """DEPRECATED: use :meth:`Sample.save_to_dir` instead."""
         self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
 
     # -------------------------------------------------------------------------#

@@ -386,8 +386,7 @@ for backend in all_backends:
         shuffle=False,
         num_workers=12,
         pin_memory=True,
-        persistent_workers=True,
-        collate_fn=lambda batch: batch
+        persistent_workers=True
     )
     print("backend: ", converter.backend)
     start = time.time()
