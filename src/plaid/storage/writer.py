@@ -27,15 +27,6 @@ from packaging.version import Version
 
 import plaid
 from plaid import ProblemDefinition, Sample
-from plaid.storage.cgns.writer import (
-    configure_dataset_card as configure_cgns_dataset_card,
-)
-from plaid.storage.cgns.writer import (
-    generate_datasetdict_to_disk as generate_cgns_datasetdict_to_disk,
-)
-from plaid.storage.cgns.writer import (
-    push_local_datasetdict_to_hub as push_local_cgns_datasetdict_to_hub,
-)
 from plaid.storage.common.preprocessor import preprocess
 from plaid.storage.common.reader import (
     load_infos_from_disk,
@@ -48,46 +39,9 @@ from plaid.storage.common.writer import (
     save_metadata_to_disk,
     save_problem_definitions_to_disk,
 )
-from plaid.storage.hf_datasets.writer import (
-    configure_dataset_card as configure_hf_dataset_card,
-)
-from plaid.storage.hf_datasets.writer import (
-    generate_datasetdict_to_disk as generate_hf_datasetdict_to_disk,
-)
-from plaid.storage.hf_datasets.writer import (
-    push_local_datasetdict_to_hub as push_local_hf_datasetdict_to_hub,
-)
-from plaid.storage.zarr.writer import (
-    configure_dataset_card as configure_zarr_dataset_card,
-)
-from plaid.storage.zarr.writer import (
-    generate_datasetdict_to_disk as generate_zarr_datasetdict_to_disk,
-)
-from plaid.storage.zarr.writer import (
-    push_local_datasetdict_to_hub as push_local_zarr_datasetdict_to_hub,
-)
+from plaid.storage.registry import available_backends, get_backend
 
 logger = logging.getLogger(__name__)
-
-AVAILABLE_BACKENDS = ["cgns", "hf_datasets", "zarr"]
-
-generate_datasetdict_to_disk = {
-    "hf_datasets": generate_hf_datasetdict_to_disk,
-    "zarr": generate_zarr_datasetdict_to_disk,
-    "cgns": generate_cgns_datasetdict_to_disk,
-}
-
-push_local_datasetdict_to_hub = {
-    "hf_datasets": push_local_hf_datasetdict_to_hub,
-    "zarr": push_local_zarr_datasetdict_to_hub,
-    "cgns": push_local_cgns_datasetdict_to_hub,
-}
-
-configure_dataset_card = {
-    "hf_datasets": configure_hf_dataset_card,
-    "zarr": configure_zarr_dataset_card,
-    "cgns": configure_cgns_dataset_card,
-}
 
 
 def _check_folder(output_folder: Path, overwrite: bool) -> None:
@@ -138,8 +92,8 @@ def save_to_disk(
         verbose: If True, enables verbose output during processing.
         overwrite: If True, overwrites existing output directory.
     """
-    assert backend in AVAILABLE_BACKENDS, (
-        f"backend {backend} not among available ones: {AVAILABLE_BACKENDS}"
+    assert backend in available_backends(), (
+        f"backend {backend} not among available ones: {available_backends()}"
     )
 
     output_folder = Path(output_folder)
@@ -152,7 +106,8 @@ def save_to_disk(
         )
     )
 
-    generate_datasetdict_to_disk[backend](
+    backend_spec = get_backend(backend)
+    backend_spec.generate_to_disk(
         output_folder,
         generators,
         variable_schema,
@@ -206,9 +161,9 @@ def push_to_hub(
 
     backend = infos["storage_backend"]
 
-    push_local_datasetdict_to_hub[backend](repo_id, local_dir, num_workers=num_workers)
-
-    configure_dataset_card[backend](
+    backend_spec = get_backend(backend)
+    backend_spec.push_local_to_hub(repo_id, local_dir, num_workers=num_workers)
+    backend_spec.configure_dataset_card(
         repo_id,
         infos,
         local_dir,

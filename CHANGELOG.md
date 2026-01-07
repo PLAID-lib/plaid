@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (storage) minor refactoring, simplify configure_dataset_card for all backends, problem_definitions handles as a dict instead of a list, change pickle support to numpy.memmap + json for constant parts of the CGNS trees, add `path` param to dataset when read from disk
 - (SampleFeatures) renamed `get_$_assigment` to `resolve_$`. For instance: `get_time_assginment` -> `resolve_time`.
+- (storage) Refactor storage backends to use a common interface.
 
 ### Fixes
 
