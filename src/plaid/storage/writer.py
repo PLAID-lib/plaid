@@ -174,7 +174,7 @@ def push_to_hub(
         repo_id,
         infos,
         local_dir,
-        variable_schema,
+        # variable_schema,
         viewer,
         pretty_name,
         dataset_long_description,
