@@ -148,11 +148,9 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend == "cgns":
-            raise ValueError("Converter.sample_to_dict not available for cgns backend")
         if self.backend_spec.sample_to_var_sample_dict is None:
             raise ValueError(
-                f"Converter.sample_to_dict not available for {self.backend} backend"
+                f"Converter.sample_to_var_sample_dict not available for {self.backend} backend"
             )
         var_sample_dict = self.backend_spec.sample_to_var_sample_dict(sample)
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types)
