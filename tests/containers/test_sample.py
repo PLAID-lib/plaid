@@ -293,6 +293,7 @@ class Test_Sample:
 
     def test_get_tree(self, sample_with_tree_and_scalar):
         sample_with_tree_and_scalar.get_tree()
+        sample_with_tree_and_scalar.get_tree(only_mesh=True)
 
     def test_set_trees_empty(self, sample, tree):
         sample.features.set_trees({0.0: tree})

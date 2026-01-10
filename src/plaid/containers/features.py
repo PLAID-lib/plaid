@@ -174,12 +174,11 @@ class SampleFeatures:
         tree = self.data[time]
         if only_mesh:
             flat_tree, cgns_types = CGH.flatten_cgns_tree(tree)
-            for path, value in flat_tree.items():
-                print("path =", path)
             updated_flat_tree = {
                 path: value
                 for path, value in flat_tree.items()
-                if get_feature_details_from_path(path)["type"] in ["global", "field"]
+                if get_feature_details_from_path(path)["type"]
+                not in ["global", "field"]
             }
             tree = CGH.unflatten_cgns_tree(updated_flat_tree, cgns_types)
         return tree
