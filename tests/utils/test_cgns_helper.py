@@ -18,7 +18,7 @@ from plaid.utils import cgns_helper
 # %% Tests
 class Test_cgns_helper:
     def test_get_base_names(self, sample_with_tree):
-        tree = sample_with_tree.get_mesh()
+        tree = sample_with_tree.get_tree()
         # Test with full_path=False and unique=False
         base_names = cgns_helper.get_base_names(tree, full_path=False, unique=False)
         assert base_names == ["Base_2_2"]
@@ -36,7 +36,7 @@ class Test_cgns_helper:
         assert base_names_unique == ["Base_2_2"]
 
     def test_get_time_values(self, samples):
-        tree = samples[0].get_mesh()
+        tree = samples[0].get_tree()
         time_value = cgns_helper.get_time_values(tree)
         assert time_value == 0.0
 
@@ -56,7 +56,7 @@ class Test_cgns_helper:
 
     def test_compare_cgns_trees(self, tree, samples):
         assert cgns_helper.compare_cgns_trees(tree, tree)
-        assert not cgns_helper.compare_cgns_trees(tree, samples[0].get_mesh())
+        assert not cgns_helper.compare_cgns_trees(tree, samples[0].get_tree())
 
         tree2 = copy.deepcopy(tree)
         tree2[0] = "A"
@@ -83,7 +83,7 @@ class Test_cgns_helper:
 
     def test_compare_cgns_trees_no_types(self, tree, samples):
         assert cgns_helper.compare_cgns_trees_no_types(tree, tree)
-        assert not cgns_helper.compare_cgns_trees_no_types(tree, samples[0].get_mesh())
+        assert not cgns_helper.compare_cgns_trees_no_types(tree, samples[0].get_tree())
 
         tree2 = copy.deepcopy(tree)
         tree2[0] = "A"

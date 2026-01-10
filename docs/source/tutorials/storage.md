@@ -424,5 +424,5 @@ for backend in all_backends:
     plaid_sample = converter.sample_to_plaid(raw_sample)
 
     # utility to print a summary of the CGNS tree from the plaid sample
-    show_cgns_tree(plaid_sample.get_mesh(0.))
+    show_cgns_tree(plaid_sample.get_tree(0.))
 ```

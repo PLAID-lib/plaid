@@ -59,7 +59,7 @@ FEATURES_METHODS = [
     "set_default_time",
     "get_all_time_values",
     "get_all_mesh_times",
-    "get_mesh",
+    "get_tree",
     "get_base_names",
     "get_zone_names",
     "get_nodal_tags",
@@ -278,11 +278,11 @@ class Sample(BaseModel):
             Feature: The value stored at the given CGNS path. This may be a numpy array, a scalar, or None if the node has no value.
 
         Note:
-            - This is a thin wrapper around CGNS.PAT.cgnsutils.getValueByPath and Sample.get_mesh(time). Callers should handle a returned None when the path or value does not exist.
+            - This is a thin wrapper around CGNS.PAT.cgnsutils.getValueByPath and Sample.get_tree(time). Callers should handle a returned None when the path or value does not exist.
             - For field-like features, prefer using Sample.get_field which applies additional validation and selection logic.
         """
         time = self.features.resolve_time(time)
-        return CGU.getValueByPath(self.get_mesh(time), path)
+        return CGU.getValueByPath(self.get_tree(time), path)
 
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
@@ -571,7 +571,7 @@ class Sample(BaseModel):
 
                 # if the constructed sample does not have a tree, add the one from the source sample, with no field
                 if len(sample.features.get_base_names(time=time)) == 0:
-                    sample.features.add_tree(source_sample.features.get_mesh(time))
+                    sample.features.add_tree(source_sample.features.get_tree(time))
                     for name in sample.features.get_global_names(time=time):
                         sample.features.del_global(name, time)
 
@@ -630,8 +630,8 @@ class Sample(BaseModel):
         #         time = sample.features.resolve_time(time=feat_id.get("time"))
 
         #         # if the constructed sample does not have a tree, add the one from the source sample, with no field
-        #         if not merged_dataset.features.get_mesh(time):
-        #             merged_dataset.features.add_tree(source_sample.get_mesh(time))
+        #         if not merged_dataset.features.get_tree(time):
+        #             merged_dataset.features.add_tree(source_sample.get_tree(time))
 
         return merged_dataset.update_features_from_identifier(
             feature_identifiers=all_features_identifiers,

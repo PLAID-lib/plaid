@@ -15,10 +15,10 @@ from typing import Any, Optional
 
 import numpy as np
 
-from plaid import Sample
 from plaid.containers.features import SampleFeatures
+from plaid.containers.sample import Sample
 from plaid.storage.common.preprocessor import build_sample_dict
-from plaid.storage.common.tree_handling import unflatten_cgns_tree
+from plaid.utils.cgns_helper import unflatten_cgns_tree
 
 
 def unflatten_path(key: str) -> str:

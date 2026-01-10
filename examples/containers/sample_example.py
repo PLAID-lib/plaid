@@ -144,7 +144,7 @@ new_sample_mult_mesh = Sample()
 meshes_dict = {0.0: tree, 0.5: tree, 1.0: tree}
 
 # Set meshes in the Sample
-new_sample_mult_mesh.features.set_meshes(meshes_dict)
+new_sample_mult_mesh.features.set_trees(meshes_dict)
 
 print(f"{new_sample_mult_mesh.get_all_time_values() = }")
 
@@ -341,7 +341,7 @@ print(f"{sample.features.has_zone('unknown_zone_name', base_name) = }")
 # ### Get mesh from sample
 
 # %%
-sample_mesh = sample.get_mesh()
+sample_mesh = sample.get_tree()
 print(sample_mesh)
 
 # %% [markdown]

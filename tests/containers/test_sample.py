@@ -287,19 +287,19 @@ class Test_Sample:
         sample.features.init_tree()
         sample.features.init_tree(0.5)
 
-    def test_get_mesh_empty(self, sample: Sample):
-        sample.get_mesh()
-        sample.features.get_mesh()
+    def test_get_tree_empty(self, sample: Sample):
+        sample.get_tree()
+        sample.features.get_tree()
 
-    def test_get_mesh(self, sample_with_tree_and_scalar):
-        sample_with_tree_and_scalar.get_mesh()
+    def test_get_tree(self, sample_with_tree_and_scalar):
+        sample_with_tree_and_scalar.get_tree()
 
-    def test_set_meshes_empty(self, sample, tree):
-        sample.features.set_meshes({0.0: tree})
+    def test_set_trees_empty(self, sample, tree):
+        sample.features.set_trees({0.0: tree})
 
-    def test_set_meshes(self, sample_with_tree: Sample, tree):
+    def test_set_trees(self, sample_with_tree: Sample, tree):
         with pytest.raises(KeyError):
-            sample_with_tree.features.set_meshes({0.0: tree})
+            sample_with_tree.features.set_trees({0.0: tree})
 
     def test_add_tree_empty(self, sample_with_tree: Sample):
         with pytest.raises(ValueError):
@@ -1534,8 +1534,8 @@ class Test_Sample:
         new_sample = Sample()
         new_sample.load(save_dir)
         assert CGU.checkSameTree(
-            sample_with_tree_and_scalar.get_mesh(),
-            new_sample.get_mesh(),
+            sample_with_tree_and_scalar.get_tree(),
+            new_sample.get_tree(),
         )
 
     def test_load_from_dir(self, sample_with_tree_and_scalar, tmp_path):
@@ -1543,8 +1543,8 @@ class Test_Sample:
         sample_with_tree_and_scalar.save(save_dir)
         new_sample = Sample.load_from_dir(save_dir)
         assert CGU.checkSameTree(
-            sample_with_tree_and_scalar.get_mesh(),
-            new_sample.get_mesh(),
+            sample_with_tree_and_scalar.get_tree(),
+            new_sample.get_tree(),
         )
 
     # -------------------------------------------------------------------------#
