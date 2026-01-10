@@ -380,7 +380,7 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
         if len(split_path) == 4:
             feat["sub_type"] = "bc"
         elif len(split_path) == 5:
-            feat["sub_type"] = split_path[4]  # PointList, GridLocation
+            feat["sub_type"] = split_path[4]  # PointList or GridLocation
 
         return feat
 
