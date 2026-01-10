@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- (sample/features) rename get_mesh to get_tree to homogeneize synthax.
+- (sample/features) rename get_mesh to get_tree to homogeneize syntax, and add `only_mesh` option.
 - (utils) move storage/common/tree_hjandling methods to utils/cgns_helpers to prevent circular imports.
 - (storage) minor refactoring, simplify configure_dataset_card for all backends, problem_definitions handles as a dict instead of a list, change pickle support to numpy.memmap + json for constant parts of the CGNS trees, add `path` param to dataset when read from disk.
 - (SampleFeatures) renamed `get_$_assigment` to `resolve_$`. For instance: `get_time_assginment` -> `resolve_time`.
