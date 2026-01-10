@@ -9,14 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- (storage/reader) Converter class: to_dict now takes features argument to prevent reading complete samples
-- (containers/utils) add get_feature_details_from_path
-- (problem_definition) add set_[out/in]_features_identifiers
+- (storage/reader) Converter class: to_dict now takes features argument to prevent reading complete samples.
+- (containers/utils) add get_feature_details_from_path.
+- (problem_definition) add set_[out/in]_features_identifiers.
 - (containers/managers/default_manager) A new DefaultManager class to handle default CGNS context values (base, zone, time).
 
 ### Changed
 
-- (storage) minor refactoring, simplify configure_dataset_card for all backends, problem_definitions handles as a dict instead of a list, change pickle support to numpy.memmap + json for constant parts of the CGNS trees, add `path` param to dataset when read from disk
+- (sample/features) rename get_mesh to get_tree to homogeneize synthax.
+- (utils) move storage/common/tree_hjandling methods to utils/cgns_helpers to prevent circular imports.
+- (storage) minor refactoring, simplify configure_dataset_card for all backends, problem_definitions handles as a dict instead of a list, change pickle support to numpy.memmap + json for constant parts of the CGNS trees, add `path` param to dataset when read from disk.
 - (SampleFeatures) renamed `get_$_assigment` to `resolve_$`. For instance: `get_time_assginment` -> `resolve_time`.
 - (storage) Refactor storage backends to use a common interface.
 
@@ -31,11 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- (tests) improve temp folder handling
+- (tests) improve temp folder handling.
 
 ### Fixes
 
-- (storage/hf_datasets/reader) correct folder existence check in download_datasetdict_from_hub
+- (storage/hf_datasets/reader) correct folder existence check in download_datasetdict_from_hub.
 
 ### Removed
 
@@ -51,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (huggingface bridge) full parallel support in `from_generator`, with optimization of constant leaf detection (no large data communicated between processes).
 - (samples/features) add string support to globals.
 - (huggingface bridge) correct split_constant tree derivation, add heuristic for number of shards usage in push_to_dict, robustify infer_hf_features_from_value with respect to numpy arrays of strings, modernize update_dataset_card.
-- (dependencies) migrate to muscat=2.5.1
+- (dependencies) migrate to muscat=2.5.1.
 - (types/containers) move `FeatureIdentifier` class from `plaid.types` to `plaid.containers`.
 - (features) rename `get_all_mesh_times()` to `get_all_time_values()`.
 
