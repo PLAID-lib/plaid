@@ -172,9 +172,9 @@ class Test_Huggingface_Bridge:
             cgns_types=key_mappings["cgns_types"],
             enforce_shapes=False,
         )
-        cgns_helper.compare_cgns_trees(dataset[0].get_mesh(), dataset[0].get_mesh())
+        cgns_helper.compare_cgns_trees(dataset[0].get_tree(), dataset[0].get_tree())
         cgns_helper.compare_cgns_trees_no_types(
-            dataset[0].get_mesh(), dataset[0].get_mesh()
+            dataset[0].get_tree(), dataset[0].get_tree()
         )
 
     def test_with_generator(

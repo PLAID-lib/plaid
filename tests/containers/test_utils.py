@@ -88,23 +88,26 @@ class Test_Container_Utils:
         )
         assert details["base"] == "Base_2_2"
         assert details["zone"] == "Zone"
-        assert details["type"] == "element_connectivity"
-        assert details["element"] == "Elements_QUAD_4"
+        assert details["type"] == "elements"
+        assert details["sub_type"] == "connectivity"
+        assert details["element_type"] == "QUAD_4"
 
         details = get_feature_details_from_path(
             "Base_2_2/Zone/Elements_QUAD_4/ElementRange"
         )
         assert details["base"] == "Base_2_2"
         assert details["zone"] == "Zone"
-        assert details["type"] == "element_range"
-        assert details["element"] == "Elements_QUAD_4"
+        assert details["type"] == "elements"
+        assert details["sub_type"] == "range"
+        assert details["element_type"] == "QUAD_4"
 
         details = get_feature_details_from_path(
             "Base_2_2/Zone/GridCoordinates/CoordinateX"
         )
         assert details["base"] == "Base_2_2"
         assert details["zone"] == "Zone"
-        assert details["type"] == "node_coordinate"
+        assert details["type"] == "coordinate"
+        assert details["sub_type"] == "node"
         assert details["name"] == "CoordinateX"
 
         details = get_feature_details_from_path("Base_2_2/Zone/VertexFields/materialID")
@@ -119,12 +122,29 @@ class Test_Container_Utils:
         )
         assert details["base"] == "Base_2_2"
         assert details["zone"] == "Zone"
-        assert details["type"] == "tag"
-        assert details["sub_type"] == "ZoneBC"
+        assert details["type"] == "boundary_condition"
+        assert details["sub_type"] == "PointList"
         assert details["name"] == "BottomLeft"
+
+        details = get_feature_details_from_path("Base_2_2/Time")
+        assert details["base"] == "Base_2_2"
+        assert details["zone"] == "Time"
+        assert details["type"] == "zone"
+
+        details = get_feature_details_from_path("Base_2_2/Time/IterationValues")
+        assert details["base"] == "Base_2_2"
+        assert details["zone"] == "Time"
+        assert details["type"] == "other"
+        assert details["path"] == "Base_2_2/Time/IterationValues"
+
+        details = get_feature_details_from_path("Base_2_2/Time/TimeValues")
+        assert details["base"] == "Base_2_2"
+        assert details["zone"] == "Time"
+        assert details["type"] == "other"
+        assert details["path"] == "Base_2_2/Time/TimeValues"
 
         with pytest.raises(AssertionError):
             get_feature_details_from_path("Dummy")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(AssertionError):
             get_feature_details_from_path("Dummy/Dummy/Dummy/Dummy/Dummy/Dummy/Dummy")

@@ -23,8 +23,8 @@ import numpy as np
 from tqdm import tqdm
 
 from plaid import Sample
-from plaid.storage.common.tree_handling import flatten_cgns_tree
 from plaid.types import IndexType
+from plaid.utils.cgns_helper import flatten_cgns_tree
 
 
 def infer_dtype(value: Any) -> dict[str, int | str]:

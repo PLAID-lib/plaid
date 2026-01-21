@@ -17,6 +17,7 @@ from plaid.containers.managers.default_manager import DefaultManager
 from plaid.containers.utils import (
     _check_names,
     _read_index,
+    get_feature_details_from_path,
 )
 from plaid.types import Array, CGNSNode, CGNSTree, Field
 from plaid.utils import cgns_helper as CGH
@@ -154,11 +155,14 @@ class SampleFeatures:
 
         return self.data[time]
 
-    def get_mesh(self, time: Optional[float] = None) -> Optional[CGNSTree]:
+    def get_tree(
+        self, time: Optional[float] = None, only_mesh: bool = False
+    ) -> Optional[CGNSTree]:
         """Retrieve the CGNS tree structure for a specified time step, if available.
 
         Args:
             time (float, optional): The time step for which to retrieve the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
+            only_mesh (bool): If True, features of type global and fields are removed from the sample
 
         Returns:
             CGNSTree: The CGNS tree structure for the specified time step if available; otherwise, returns None.
@@ -167,9 +171,19 @@ class SampleFeatures:
             return None
 
         time = self.resolve_time(time)
-        return self.data[time]
+        tree = self.data[time]
+        if only_mesh:
+            flat_tree, cgns_types = CGH.flatten_cgns_tree(tree)
+            updated_flat_tree = {
+                path: value
+                for path, value in flat_tree.items()
+                if get_feature_details_from_path(path)["type"]
+                not in ["global", "field"]
+            }
+            tree = CGH.unflatten_cgns_tree(updated_flat_tree, cgns_types)
+        return tree
 
-    def set_meshes(self, meshes: dict[float, CGNSTree]) -> None:
+    def set_trees(self, meshes: dict[float, CGNSTree]) -> None:
         """Set all meshes with their corresponding time step.
 
         Args:

@@ -295,47 +295,110 @@ def has_duplicates_feature_ids(feature_identifiers: list[FeatureIdentifier]):
 
 
 def get_feature_details_from_path(path: str) -> dict[str, str]:
-    """Retrieve details from a CGNS-style path.
-
-    Args:
-        path (str): CGNS node path relative to the mesh root (for example
-            "BaseName/ZoneName/GridCoordinates/CoordinateX" or
-            "BaseName/ZoneName/Solution/FieldName").
-    """
+    """Retrieve semantic details from a CGNS-style path."""
     split_path = path.split("/")
-    feat_det = {}
-    if path.startswith("Global/"):
-        assert len(split_path) == 2, "path not recognized"
-        feat_det["type"] = "global"
-        feat_det["name"] = split_path[1]
-    else:
-        if path.endswith("/ElementConnectivity"):
-            feat_det["type"] = "element_connectivity"
-            feat_det["element"] = split_path[2]
-        elif path.endswith("/ElementRange"):
-            feat_det["type"] = "element_range"
-            feat_det["element"] = split_path[2]
-        elif path.endswith("/PointList"):
-            feat_det["type"] = "tag"
-            feat_det["sub_type"] = split_path[2]
-            feat_det["name"] = split_path[3]
-        elif path.endswith(("/CoordinateX", "/CoordinateY", "/CoordinateZ")):
-            feat_det["type"] = "node_coordinate"
-            feat_det["name"] = split_path[3]
-        elif len(split_path) == 4:
-            feat_det["type"] = "field"
-            feat_det["location"] = path_to_location[split_path[2]]
-            feat_det["name"] = split_path[3]
-        elif len(split_path) <= 2:
-            pass
-        else:
-            raise ValueError("path not recognized")
+    feat: dict[str, str] = {}
 
-        feat_det["base"] = split_path[0]
-        assert feat_det["base"][:5] == "Base_", "path not recognized"
+    # ----------------------
+    # Global
+    # ----------------------
+    if split_path[0] == "Global":
+        feat["type"] = "global"
+
         if len(split_path) == 1:
-            return feat_det
+            feat["sub_type"] = "root"
 
-        feat_det["zone"] = split_path[1]
+        elif split_path[1] == "Time":
+            feat["sub_type"] = "time"
+            if len(split_path) == 3:
+                feat["name"] = split_path[2]
 
-    return feat_det
+        else:
+            feat["sub_type"] = "scalar"
+            feat["name"] = split_path[-1]
+
+        return feat
+
+    # ----------------------
+    # CGNS library version
+    # ----------------------
+    if path == "CGNSLibraryVersion":
+        return {
+            "type": "cgns",
+            "sub_type": "library_version",
+        }
+
+    # ----------------------
+    # Base / Zone
+    # ----------------------
+    feat["base"] = split_path[0]
+    assert feat["base"].startswith("Base_"), "path not recognized"
+
+    if len(split_path) == 1:
+        feat["type"] = "base"
+        return feat
+
+    feat["zone"] = split_path[1]
+
+    if len(split_path) == 2:
+        feat["type"] = "zone"
+        return feat
+
+    node = split_path[2]
+
+    # ----------------------
+    # Grid coordinates
+    # ----------------------
+    if node == "GridCoordinates" and len(split_path) == 4:
+        feat["type"] = "coordinate"
+        feat["sub_type"] = "node"
+        feat["name"] = split_path[3]
+        return feat
+
+    # ----------------------
+    # Elements
+    # ----------------------
+    if node.startswith("Elements_") and len(split_path) == 4:
+        feat["type"] = "elements"
+        feat["element_type"] = node[len("Elements_") :]
+
+        leaf = split_path[3]
+        if leaf == "ElementConnectivity":
+            feat["sub_type"] = "connectivity"
+        elif leaf == "ElementRange":
+            feat["sub_type"] = "range"
+
+        return feat
+
+    # ----------------------
+    # Boundary conditions
+    # ----------------------
+    if node == "ZoneBC" and len(split_path) >= 4:
+        feat["type"] = "boundary_condition"
+        feat["name"] = split_path[3]
+
+        if len(split_path) == 4:
+            feat["sub_type"] = "bc"
+        elif len(split_path) == 5:
+            feat["sub_type"] = split_path[4]  # PointList or GridLocation
+
+        return feat
+
+    # ----------------------
+    # Fields (generic location)
+    # ----------------------
+    if node in path_to_location:
+        feat["type"] = "field"
+        feat["location"] = path_to_location[node]
+
+        if len(split_path) == 4:
+            feat["name"] = split_path[3]
+
+        return feat
+
+    # ----------------------
+    # Fallback
+    # ----------------------
+    feat["type"] = "other"
+    feat["path"] = path
+    return feat

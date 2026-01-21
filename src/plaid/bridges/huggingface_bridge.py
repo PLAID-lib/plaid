@@ -44,11 +44,11 @@ from pydantic import ValidationError
 
 from plaid import Dataset, ProblemDefinition, Sample
 from plaid.containers.features import SampleFeatures
-from plaid.storage.common.tree_handling import (
+from plaid.types import IndexType
+from plaid.utils.cgns_helper import (
     flatten_cgns_tree,
     unflatten_cgns_tree,
 )
-from plaid.types import IndexType
 
 # ------------------------------------------------------------------------------
 
