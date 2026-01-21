@@ -1,3 +1,6 @@
+This folder is referenced by `AGENT.md` as the authoritative source
+for dataset conversion patterns.
+
 # Dataset Conversion Examples
 
 This folder contains **working examples** of converting external datasets
@@ -60,6 +63,65 @@ A typical conversion script will:
 
 Explicit control flow and dataset-specific logic are preferred over hidden
 abstractions.
+
+---
+
+## Variability across conversion examples
+
+Conversion scripts in this folder may differ significantly in structure.
+
+Depending on the dataset, a script may:
+- represent temporal trajectories or static samples,
+- use structured grids or unstructured meshes,
+- rely on sequential or parallel generators,
+- target one or multiple storage backends.
+
+This variability is intentional and reflects the diversity of real-world
+datasets handled by PLAID.
+
+---
+
+## Temporal metadata and mixed feature semantics
+
+Some conversion examples rely on external metadata files (e.g. PVD, XML)
+to define the temporal structure of a dataset.
+
+In such cases:
+- time steps may not correspond directly to file indices,
+- global quantities may vary over time,
+- temporal subsampling may be applied intentionally.
+
+These semantics are encoded explicitly in the conversion scripts and should
+be preserved when adapting them to new datasets.
+
+---
+
+## Field location and parameterized datasets
+
+Some conversion examples use **cell-centered (element-based) fields**
+rather than nodal fields. In such cases, fields are attached to mesh
+elements (e.g. `CellData`, `elemFields`) and not to nodes.
+
+Other examples generate multiple PLAID datasets by sweeping over one or
+more physical or numerical parameters at the script level. Each parameter
+value typically corresponds to a separate dataset or repository.
+
+These choices are dataset-driven and intentionally explicit in the code.
+
+---
+
+## Relation to PLAID documentation
+
+Conceptual documentation for PLAID (data model, terminology, and APIs)
+is available in the main documentation.
+
+The conversion scripts in this folder should be read alongside the
+documentation, but they are the **authoritative reference** for how PLAID
+is used in real dataset conversions.
+
+When in doubt:
+- consult the documentation for conceptual definitions,
+- consult these examples for concrete usage patterns.
 
 ---
 
