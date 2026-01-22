@@ -217,17 +217,17 @@ def to_var_sample_dict(
     i: int,
     features: Optional[list[str]] = None,
     enforce_shapes: bool = True,
-) -> dict[str, Any]:
+) -> dict[str, Optional[np.ndarray]]:
     """Convert a Hugging Face dataset row to a variable sample dict containing the features that vary in the dataset.
 
     Args:
         ds (datasets.Dataset): The Hugging Face dataset.
         i (int): The row index.
-        enforce_shapes (bool): Whether to enforce consistent shapes.
         features: Iterable of feature names (keys) to extract from the dataset.
+        enforce_shapes (bool): Whether to enforce consistent shapes.
 
     Returns:
-        dict: The variable sample dictionary.
+        dict[str, Optional[np.ndarray]]: The variable sample dictionary.
     """
     table = ds.data
 

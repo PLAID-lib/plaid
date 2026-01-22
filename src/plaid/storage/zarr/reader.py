@@ -18,7 +18,6 @@ Key features:
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-
 import logging
 import os
 import shutil
@@ -256,17 +255,19 @@ def create_zarr_iterable_dataset(
 # Load from disk
 # ------------------------------------------------------
 
+ZarrDatasetDict = dict[str, ZarrDataset]
+
 
 def init_datasetdict_from_disk(
     path: Union[str, Path],
-) -> dict[str, ZarrDataset]:
+) -> ZarrDatasetDict:
     """Initializes dataset dictionaries from local Zarr files.
 
     Args:
         path (Union[str, Path]): Path to the local directory containing the dataset.
 
     Returns:
-        dict[str, ZarrDataset]: Dictionary mapping split names to ZarrDataset objects.
+        ZarrDatasetDict: Dictionary mapping split names to ZarrDataset objects.
     """
     local_path = Path(path) / "data"
     split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
@@ -289,7 +290,7 @@ def download_datasetdict_from_hub(
     split_ids: Optional[dict[str, list[int]]] = None,
     features: Optional[list[str]] = None,
     overwrite: bool = False,
-) -> None:  # pragma: no cover
+) -> str:  # pragma: no cover
     """Downloads dataset from Hugging Face Hub to local directory.
 
     Args:
@@ -300,7 +301,7 @@ def download_datasetdict_from_hub(
         overwrite (bool): Whether to overwrite existing directory.
 
     Returns:
-        None
+        str: Path to the local directory where the dataset has been downloaded.
     """
     output_folder = Path(local_dir)
 
@@ -315,7 +316,7 @@ def download_datasetdict_from_hub(
 
     allow_patterns, ignore_patterns = _zarr_patterns(repo_id, split_ids, features)
 
-    snapshot_download(
+    return snapshot_download(
         repo_id=repo_id,
         repo_type="dataset",
         allow_patterns=allow_patterns,

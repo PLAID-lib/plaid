@@ -194,7 +194,7 @@ class Converter:
 
 def init_from_disk(
     local_dir: Union[Path, str],
-) -> tuple[dict[str, Any], dict[str, "Converter"]]:
+) -> tuple[dict[str, Any], dict[str, Converter]]:
     """Initialize dataset and converters from local disk.
 
     This function loads a previously saved PLAID dataset from local disk, automatically
