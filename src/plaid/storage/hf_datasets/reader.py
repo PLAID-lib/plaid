@@ -37,15 +37,17 @@ logger = logging.getLogger(__name__)
 # Load from disk
 # ------------------------------------------------------
 
+HFDatasetDict = dict[str, datasets.DatasetDict]
 
-def init_datasetdict_from_disk(path: Union[str, Path]) -> datasets.DatasetDict:
+
+def init_datasetdict_from_disk(path: Union[str, Path]) -> HFDatasetDict:
     """Initializes a DatasetDict from local disk files.
 
     Args:
         path (Union[str, Path]): Path to the directory containing the dataset files.
 
     Returns:
-        datasets.DatasetDict: The loaded dataset dictionary.
+        HFDatasetDict: The loaded dataset dictionary.
     """
     file_ = Path(path) / "data" / "dataset_dict.json"
 

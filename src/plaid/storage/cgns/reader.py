@@ -140,6 +140,9 @@ class CGNSDataset:
         return f"<CGNSDataset {repr(self.path)} | extra_fields={self._extra_fields}>"
 
 
+CGNSDatasetDict = dict[str, CGNSDataset]
+
+
 def sample_generator(
     repo_id: str, split: str, ids: Iterable[int]
 ) -> Iterator[Sample]:  # pragma: no cover
@@ -203,7 +206,7 @@ def create_CGNS_iterable_dataset(
 
 def init_datasetdict_from_disk(
     path: Union[str, Path],
-) -> dict[str, CGNSDataset]:
+) -> CGNSDatasetDict:
     """Initialize a dataset dictionary from local disk.
 
     This function scans a local directory structure and creates CGNSDataset objects
@@ -214,7 +217,7 @@ def init_datasetdict_from_disk(
             with split subdirectories.
 
     Returns:
-        dict[str, CGNSDataset]: Dictionary mapping split names to CGNSDataset objects.
+        CGNSDatasetDict: Dictionary mapping split names to CGNSDataset objects.
     """
     local_path = Path(path) / "data"
     split_names = [p.name for p in local_path.iterdir() if p.is_dir()]
@@ -232,7 +235,7 @@ def download_datasetdict_from_hub(
     split_ids: Optional[dict[str, Iterable[int]]] = None,
     features: Optional[list[str]] = None,  # noqa: ARG001
     overwrite: bool = False,
-) -> None:  # pragma: no cover
+) -> str:  # pragma: no cover
     """Download a CGNS dataset from Hugging Face Hub to local disk.
 
     This function downloads selected parts or the entire CGNS dataset from a Hugging Face
@@ -245,6 +248,9 @@ def download_datasetdict_from_hub(
             If None, downloads all splits and samples.
         features: Optional list of features to download (currently unused).
         overwrite: If True, removes existing local directory before downloading.
+
+    Returns:
+        str: Path to the local directory where the dataset has been downloaded.
     """
     output_folder = Path(local_dir)
 
@@ -264,7 +270,7 @@ def download_datasetdict_from_hub(
     else:
         allow_patterns = ["data/*"]
 
-    snapshot_download(
+    return snapshot_download(
         repo_id=repo_id,
         repo_type="dataset",
         allow_patterns=allow_patterns,

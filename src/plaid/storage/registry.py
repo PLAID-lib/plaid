@@ -12,7 +12,14 @@ source of truth for backend capabilities.
 """
 
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from pathlib import Path
+from typing import Any, Callable, Optional, Union
+
+import datasets
+
+from plaid.storage.cgns.reader import CGNSDatasetDict
+from plaid.storage.hf_datasets.reader import HFDatasetDict
+from plaid.storage.zarr.reader import ZarrDatasetDict
 
 from . import cgns, hf_datasets, zarr
 
@@ -22,12 +29,16 @@ class BackendSpec:
     """Backend wiring for storage operations."""
 
     name: str
-    init_from_disk: Callable[..., Any]
-    download_from_hub: Callable[..., Any]
-    init_streaming_from_hub: Callable[..., Any]
-    generate_to_disk: Callable[..., Any]
-    push_local_to_hub: Callable[..., Any]
-    configure_dataset_card: Callable[..., Any]
+    init_from_disk: Callable[
+        [Union[str, Path]], Union[CGNSDatasetDict, HFDatasetDict, ZarrDatasetDict]
+    ]
+    download_from_hub: Callable[..., str]
+    init_streaming_from_hub: Callable[
+        ..., dict[str, datasets.IterableDataset] | datasets.IterableDatasetDict
+    ]
+    generate_to_disk: Callable[..., None]
+    push_local_to_hub: Callable[..., None]
+    configure_dataset_card: Callable[..., None]
     to_var_sample_dict: Optional[Callable[..., dict[str, Any]]]
     sample_to_var_sample_dict: Optional[Callable[..., dict[str, Any]]]
 
