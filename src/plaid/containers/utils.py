@@ -30,7 +30,7 @@ retrocompatibility = {
     "CellData": "CellCenter",
     "SurfaceData": "FaceCenter",
 }
-path_to_location.update(path_to_location)
+path_to_location.update(retrocompatibility)
 
 
 def _check_names(names: Union[str, list[str]]):
