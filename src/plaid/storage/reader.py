@@ -118,7 +118,27 @@ class Converter:
         var_sample_dict = self.backend_spec.to_var_sample_dict(
             dataset, idx, features=req_var_feat
         )
-        return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types, features)
+
+        # PISTE 2 FIX: Clean flat_cst for backends that don't store None features
+        # Problem: flat_cst may contain orphan "_times" entries (e.g., "feature_times": None
+        # without "feature"), causing mismatch in _split_dict when merging with var_sample_dict
+        if self.backend in ["webdataset", "zarr"]:
+            clean_flat_cst = {}
+            for key, val in self.flat_cst.items():
+                if key.endswith("_times"):
+                    base_key = key[:-6]
+                    # Keep _times only if the base feature will exist in the merged dict
+                    # Base feature exists if: in var_sample_dict OR in flat_cst
+                    if base_key in var_sample_dict or base_key in self.flat_cst:
+                        clean_flat_cst[key] = val
+                    # else: skip orphan _times
+                else:
+                    clean_flat_cst[key] = val
+            use_flat_cst = clean_flat_cst
+        else:
+            use_flat_cst = self.flat_cst
+
+        return to_sample_dict(var_sample_dict, use_flat_cst, self.cgns_types, features)
 
     def to_plaid(self, dataset: Any, idx: int) -> Sample:
         """Convert a dataset sample to PLAID Sample object.

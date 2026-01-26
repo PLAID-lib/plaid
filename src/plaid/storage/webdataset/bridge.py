@@ -31,8 +31,8 @@ def to_var_sample_dict(
     wds_sample = wds_dataset[idx]
 
     if features is None:
-        # Return only features that exist in the sample (non-None features)
-        # This matches zarr behavior
+        # Return only what's actually stored in the tar (non-None features)
+        # The Converter.to_dict() now cleans orphan _times from flat_cst
         return wds_sample
 
     # Return requested features
