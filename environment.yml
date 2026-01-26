@@ -12,6 +12,7 @@ dependencies:
 #---# storage backends
   - pycgns-core
   - zarr
+  - webdataset
 #---# SciML
   - scikit-learn
   - datasets
