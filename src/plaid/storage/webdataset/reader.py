@@ -27,8 +27,8 @@ from pathlib import Path
 from typing import Any, Iterator, Optional, Union
 
 import numpy as np
-import yaml
 import webdataset as wds
+import yaml
 from huggingface_hub import hf_hub_download, snapshot_download
 
 logger = logging.getLogger(__name__)
@@ -399,7 +399,7 @@ def download_datasetdict_from_hub(
 def init_datasetdict_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, list[int]]] = None,
-    features: Optional[list[str]] = None,
+    features: Optional[list[str]] = None,  # noqa: ARG001
 ) -> dict[str, wds.WebDataset]:  # pragma: no cover
     """Initializes streaming dataset dictionaries from Hugging Face Hub.
 

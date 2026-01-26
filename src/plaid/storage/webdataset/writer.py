@@ -20,14 +20,13 @@ Key features:
 #
 
 import io
-import json
 import multiprocessing as mp
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Callable, Generator, Optional, Union
 
 import numpy as np
-import yaml
 import webdataset as wds
+import yaml
 from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
@@ -208,7 +207,9 @@ def generate_datasetdict_to_disk(
         gen_kwargs_ = gen_kwargs or {sn: {} for sn in generators.keys()}
         batch_ids_list = gen_kwargs_.get(split_name, {}).get("shards_ids", [])
 
-        total_samples = sum(len(batch) for batch in batch_ids_list) if batch_ids_list else 0
+        total_samples = (
+            sum(len(batch) for batch in batch_ids_list) if batch_ids_list else 0
+        )
 
         if num_proc > 1 and batch_ids_list:  # pragma: no cover
             # Parallel execution
