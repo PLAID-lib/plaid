@@ -21,6 +21,8 @@ Key features:
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
+import numpy as np
+
 from plaid import Sample
 from plaid.storage.common.bridge import (
     plaid_to_sample_dict,
@@ -123,18 +125,66 @@ class Converter:
         # Problem: flat_cst may contain orphan "_times" entries (e.g., "feature_times": None
         # without "feature"), causing mismatch in _split_dict when merging with var_sample_dict
         if self.backend in ["webdataset", "zarr"]:
+            # Create case-insensitive lookup sets for var_sample_dict
+            # (webdataset uses lowercase paths, flat_cst uses original case)
+            var_keys_lower = {k.lower() for k in var_sample_dict.keys()}
+            flat_keys_lower = {k.lower() for k in self.flat_cst.keys()}
+
             clean_flat_cst = {}
             for key, val in self.flat_cst.items():
                 if key.endswith("_times"):
                     base_key = key[:-6]
-                    # Keep _times only if the base feature will exist in the merged dict
-                    # Base feature exists if: in var_sample_dict OR in flat_cst
-                    if base_key in var_sample_dict or base_key in self.flat_cst:
+                    base_key_lower = base_key.lower()
+                    # Keep _times only if the base feature is ALSO in flat_cst (i.e., it's a constant)
+                    # If the base is in var_sample_dict (i.e., it's a variable), exclude its _times
+                    # because the variable will handle its own timing
+                    if base_key_lower in flat_keys_lower and base_key_lower not in var_keys_lower:
                         clean_flat_cst[key] = val
-                    # else: skip orphan _times
+                    # else: skip orphan _times (or _times for variable features)
                 else:
                     clean_flat_cst[key] = val
-            use_flat_cst = clean_flat_cst
+
+            # Normalize case: Create a case mapping from var_sample_dict to use for flat_cst keys
+            # This ensures that when merged, keys will have consistent case for proper zip() alignment
+            case_map = {k.lower(): k for k in var_sample_dict.keys()}
+            normalized_flat_cst = {}
+            for key, val in clean_flat_cst.items():
+                key_lower = key.lower()
+                # If this key (or its base for _times keys) exists in var_sample_dict, use its case
+                if key_lower in case_map:
+                    normalized_flat_cst[case_map[key_lower]] = val
+                elif key.endswith("_times"):
+                    base_lower = key_lower[:-6]
+                    if base_lower in case_map:
+                        # Use the var_sample_dict case for the base, then add _times
+                        normalized_flat_cst[case_map[base_lower] + "_times"] = val
+                    else:
+                        # Keep original case if not in var_sample_dict
+                        normalized_flat_cst[key] = val
+                else:
+                    # Keep original case for keys not in var_sample_dict
+                    normalized_flat_cst[key] = val
+
+            # Add synthetic _times for variables that don't have them
+            # Variables from var_sample_dict need _times entries for _split_dict to work
+            merged_with_times = {}
+            for key, val in normalized_flat_cst.items():
+                merged_with_times[key] = val
+
+            for key, val in var_sample_dict.items():
+                merged_with_times[key] = val
+                # If this is a variable and doesn't have a _times entry, create one
+                times_key = key + "_times"
+                if times_key not in merged_with_times and val is not None:
+                    # Create synthetic _times: single time point at 0.0, covering whole array
+                    # Format: [[time, start_idx, end_idx]]
+                    if hasattr(val, 'shape') and len(val.shape) > 0:
+                        merged_with_times[times_key] = np.array([[0.0, 0, -1]], dtype=np.float64)
+                    else:
+                        # Scalar or 0-d array
+                        merged_with_times[times_key] = np.array([[0.0, 0, -1]], dtype=np.float64)
+
+            use_flat_cst = merged_with_times
         else:
             use_flat_cst = self.flat_cst
 
