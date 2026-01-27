@@ -69,26 +69,59 @@ class WebDatasetWrapper:
         self._cache = []
         self._ids = []
 
-        # Create WebDataset pipeline to read tar
-        dataset = wds.WebDataset(str(self.tar_path))
+        # Read tar directly to preserve case in filenames
+        import tarfile
+        with tarfile.open(str(self.tar_path), 'r') as tar:
+            # Group files by sample
+            samples_dict = {}
+            for member in tar.getmembers():
+                if not member.isfile():
+                    continue
 
-        for sample in dataset:
-            # Decode the sample
-            decoded_sample = self._decode_sample(sample)
+                # Extract sample ID and feature from filename
+                # Format: sample_XXXXXXXXX.Feature__Path.npy
+                parts = member.name.split('.', 1)
+                if len(parts) != 2:
+                    continue
 
-            # Filter features if specified
-            if self.features is not None:
-                decoded_sample = {
-                    k: v for k, v in decoded_sample.items() if k in self.features
-                }
+                sample_key = parts[0]
+                rest = parts[1]
 
-            self._cache.append(decoded_sample)
+                if not rest.endswith('.npy'):
+                    continue
 
-            # Extract sample index from __key__ (e.g., "sample_000000001")
-            if "__key__" in sample:
-                basename = sample["__key__"]
-                if basename.startswith("sample_"):
-                    idx = int(basename.split("_")[1])
+                if sample_key not in samples_dict:
+                    samples_dict[sample_key] = {}
+
+                samples_dict[sample_key][rest] = member
+
+            # Process each sample in order
+            for sample_key in sorted(samples_dict.keys()):
+                sample_members = samples_dict[sample_key]
+                decoded_sample = {}
+
+                for feature_key, member in sample_members.items():
+                    # Remove .npy extension and convert __ to /
+                    feature_path = feature_key[:-4].replace("__", "/")
+
+                    # Read and decode the numpy array
+                    file_obj = tar.extractfile(member)
+                    if file_obj:
+                        buffer = io.BytesIO(file_obj.read())
+                        array = np.load(buffer, allow_pickle=True)
+                        decoded_sample[feature_path] = array
+
+                # Filter features if specified
+                if self.features is not None:
+                    decoded_sample = {
+                        k: v for k, v in decoded_sample.items() if k in self.features
+                    }
+
+                self._cache.append(decoded_sample)
+
+                # Extract sample index
+                if sample_key.startswith("sample_"):
+                    idx = int(sample_key.split("_")[1])
                     self._ids.append(idx)
 
         self._ids = np.array(self._ids, dtype=int)
@@ -119,7 +152,7 @@ class WebDatasetWrapper:
 
                 # Decode numpy array
                 buffer = io.BytesIO(value)
-                array = np.load(buffer, allow_pickle=False)
+                array = np.load(buffer, allow_pickle=True)
                 decoded[feature_path] = array
 
         return decoded
