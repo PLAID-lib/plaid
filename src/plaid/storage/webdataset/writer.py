@@ -175,15 +175,17 @@ def generate_datasetdict_to_disk(
         """
         # Create tar writer for this batch (will be appended to main tar)
         temp_tar = tar_path.replace(".tar", f"_batch_{start_index}.tar")
-        with wds.TarWriter(temp_tar) as tar_writer:
-            sample_counter = start_index
+        # Open file explicitly to handle Windows paths
+        with open(temp_tar, 'wb') as f:
+            with wds.TarWriter(f) as tar_writer:
+                sample_counter = start_index
 
-            for sample in gen_func([batch]):
-                _write_sample_to_tar(
-                    tar_writer, sample, var_features_keys, sample_counter
-                )
-                sample_counter += 1
-                queue.put(1)
+                for sample in gen_func([batch]):
+                    _write_sample_to_tar(
+                        tar_writer, sample, var_features_keys, sample_counter
+                    )
+                    sample_counter += 1
+                    queue.put(1)
 
     def tqdm_updater(
         total: int, queue: mp.Queue, desc: str = "Processing"
@@ -248,13 +250,15 @@ def generate_datasetdict_to_disk(
             tqdm_proc.join()
 
             # Merge temporary tar files
-            with wds.TarWriter(tar_path) as main_tar:
-                for temp_tar in temp_tars:
-                    if Path(temp_tar).exists():
-                        with wds.ShardList([temp_tar]) as shard:
-                            for sample in shard:
-                                main_tar.write(sample)
-                        Path(temp_tar).unlink()
+            # Open file explicitly to handle Windows paths
+            with open(tar_path, 'wb') as f:
+                with wds.TarWriter(f) as main_tar:
+                    for temp_tar in temp_tars:
+                        if Path(temp_tar).exists():
+                            with wds.ShardList([temp_tar]) as shard:
+                                for sample in shard:
+                                    main_tar.write(sample)
+                            Path(temp_tar).unlink()
 
         else:
             # Sequential execution
@@ -265,19 +269,21 @@ def generate_datasetdict_to_disk(
                 # No batch info, estimate or skip progress
                 total_samples = None
 
-            with wds.TarWriter(tar_path) as tar_writer:
-                with tqdm(
-                    total=total_samples,
-                    desc=f"Writing {split_name} split",
-                    disable=not verbose,
-                ) as pbar:
-                    for sample in gen_func():
-                        _write_sample_to_tar(
-                            tar_writer, sample, var_features_keys, sample_counter
-                        )
-                        sample_counter += 1
-                        if total_samples is not None:
-                            pbar.update(1)
+            # Open file explicitly to handle Windows paths
+            with open(tar_path, 'wb') as f:
+                with wds.TarWriter(f) as tar_writer:
+                    with tqdm(
+                        total=total_samples,
+                        desc=f"Writing {split_name} split",
+                        disable=not verbose,
+                    ) as pbar:
+                        for sample in gen_func():
+                            _write_sample_to_tar(
+                                tar_writer, sample, var_features_keys, sample_counter
+                            )
+                            sample_counter += 1
+                            if total_samples is not None:
+                                pbar.update(1)
 
 
 def push_local_datasetdict_to_hub(
