@@ -138,7 +138,10 @@ class Converter:
                     # Keep _times only if the base feature is ALSO in flat_cst (i.e., it's a constant)
                     # If the base is in var_sample_dict (i.e., it's a variable), exclude its _times
                     # because the variable will handle its own timing
-                    if base_key_lower in flat_keys_lower and base_key_lower not in var_keys_lower:
+                    if (
+                        base_key_lower in flat_keys_lower
+                        and base_key_lower not in var_keys_lower
+                    ):
                         clean_flat_cst[key] = val
                     # else: skip orphan _times (or _times for variable features)
                 else:
@@ -178,11 +181,15 @@ class Converter:
                 if times_key not in merged_with_times and val is not None:
                     # Create synthetic _times: single time point at 0.0, covering whole array
                     # Format: [[time, start_idx, end_idx]]
-                    if hasattr(val, 'shape') and len(val.shape) > 0:
-                        merged_with_times[times_key] = np.array([[0.0, 0, -1]], dtype=np.float64)
+                    if hasattr(val, "shape") and len(val.shape) > 0:
+                        merged_with_times[times_key] = np.array(
+                            [[0.0, 0, -1]], dtype=np.float64
+                        )
                     else:
                         # Scalar or 0-d array
-                        merged_with_times[times_key] = np.array([[0.0, 0, -1]], dtype=np.float64)
+                        merged_with_times[times_key] = np.array(
+                            [[0.0, 0, -1]], dtype=np.float64
+                        )
 
             use_flat_cst = merged_with_times
         else:

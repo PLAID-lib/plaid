@@ -71,7 +71,8 @@ class WebDatasetWrapper:
 
         # Read tar directly to preserve case in filenames
         import tarfile
-        with tarfile.open(str(self.tar_path), 'r') as tar:
+
+        with tarfile.open(str(self.tar_path), "r") as tar:
             # Group files by sample
             samples_dict = {}
             for member in tar.getmembers():
@@ -80,14 +81,14 @@ class WebDatasetWrapper:
 
                 # Extract sample ID and feature from filename
                 # Format: sample_XXXXXXXXX.Feature__Path.npy
-                parts = member.name.split('.', 1)
+                parts = member.name.split(".", 1)
                 if len(parts) != 2:
                     continue
 
                 sample_key = parts[0]
                 rest = parts[1]
 
-                if not rest.endswith('.npy'):
+                if not rest.endswith(".npy"):
                     continue
 
                 if sample_key not in samples_dict:
