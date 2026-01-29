@@ -21,7 +21,7 @@ from plaid.storage.cgns.reader import CGNSDatasetDict
 from plaid.storage.hf_datasets.reader import HFDatasetDict
 from plaid.storage.zarr.reader import ZarrDatasetDict
 
-from . import cgns, hf_datasets, zarr
+from . import cgns, hf_datasets, webdataset, zarr
 
 
 @dataclass(frozen=True)
@@ -76,6 +76,17 @@ BACKENDS = {
         configure_dataset_card=zarr.configure_dataset_card,
         to_var_sample_dict=zarr.to_var_sample_dict,
         sample_to_var_sample_dict=zarr.sample_to_var_sample_dict,
+    ),
+    "webdataset": BackendSpec(
+        name="webdataset",
+        init_from_disk=webdataset.init_datasetdict_from_disk,
+        download_from_hub=webdataset.download_datasetdict_from_hub,
+        init_streaming_from_hub=webdataset.init_datasetdict_streaming_from_hub,
+        generate_to_disk=webdataset.generate_datasetdict_to_disk,
+        push_local_to_hub=webdataset.push_local_datasetdict_to_hub,
+        configure_dataset_card=webdataset.configure_dataset_card,
+        to_var_sample_dict=webdataset.to_var_sample_dict,
+        sample_to_var_sample_dict=webdataset.sample_to_var_sample_dict,
     ),
 }
 

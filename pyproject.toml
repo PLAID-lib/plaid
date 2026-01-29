@@ -38,6 +38,7 @@ dependencies = [
     "numpy",
     "matplotlib",
     "pydantic",
+    "webdataset>=0.2.0",
 ]
 
 dynamic = ["version"]
