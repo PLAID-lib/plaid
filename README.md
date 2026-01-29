@@ -57,7 +57,8 @@ pip install pyplaid
 
 **Note**
 
-Only the conda-forge package comes with a bundled HDF5 dependency.
+- Only the conda-forge package comes with a bundled HDF5 dependency.
+- On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 
 ### 2.2 Contributing to the library
