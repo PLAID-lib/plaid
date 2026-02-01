@@ -23,12 +23,16 @@ import json
 import logging
 import warnings
 from pathlib import Path
-from typing import Optional, Sequence, Union, Dict, List, Any
-
-from pydantic import BaseModel, ConfigDict, Field, field_validator, PrivateAttr, model_validator
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import yaml
 from packaging.version import Version
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+)
 
 import plaid
 from plaid.constants import AUTHORIZED_SCORE_FUNCTIONS, AUTHORIZED_TASKS
@@ -51,12 +55,19 @@ class ProblemDefinition(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, extra="ignore")
 
     name: Optional[str] = Field(None, description="Name of the problem")
-    version: Optional[Union[str, Version]] = Field(default_factory=lambda: Version(plaid.__version__), description="Version of the problem definition")
+    version: Optional[Union[str, Version]] = Field(
+        default_factory=lambda: Version(plaid.__version__),
+        description="Version of the problem definition",
+    )
     task: Optional[str] = Field(None, description="Task of the problem")
     score_function: Optional[str] = Field(None, description="Score function used")
-    
-    in_features_identifiers: List[Union[str, FeatureIdentifier]] = Field(default_factory=list)
-    out_features_identifiers: List[Union[str, FeatureIdentifier]] = Field(default_factory=list)
+
+    in_features_identifiers: List[Union[str, FeatureIdentifier]] = Field(
+        default_factory=list
+    )
+    out_features_identifiers: List[Union[str, FeatureIdentifier]] = Field(
+        default_factory=list
+    )
     constant_features_identifiers: List[str] = Field(default_factory=list)
 
     # Legacy fields
@@ -86,6 +97,7 @@ class ProblemDefinition(BaseModel):
         Args:
             path (Union[str,Path], optional): The path from which to load PLAID problem definition files.
             directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
+            **data: Additional arguments to initialize the Pydantic model.
 
         Example:
             .. code-block:: python
@@ -122,8 +134,9 @@ class ProblemDefinition(BaseModel):
     @field_validator("task")
     @classmethod
     def validate_task(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that the task is among the authorized tasks."""
         if v is not None and v not in AUTHORIZED_TASKS:
-             raise TypeError(
+            raise TypeError(
                 f"{v} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_TASKS}"
             )
         return v
@@ -131,16 +144,17 @@ class ProblemDefinition(BaseModel):
     @field_validator("score_function")
     @classmethod
     def validate_score_function(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that the score function is among the authorized score functions."""
         if v is not None and v not in AUTHORIZED_SCORE_FUNCTIONS:
-             raise TypeError(
+            raise TypeError(
                 f"{v} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_SCORE_FUNCTIONS}"
             )
         return v
-    
+
     @property
     def _name(self) -> Optional[str]:
         return self.name
-    
+
     @_name.setter
     def _name(self, value: Optional[str]):
         self.name = value
@@ -204,7 +218,7 @@ class ProblemDefinition(BaseModel):
     @property
     def _train_split(self) -> Optional[Dict[str, Dict[str, Any]]]:
         return self.train_split
-    
+
     @_train_split.setter
     def _train_split(self, value: Optional[Dict[str, Dict[str, Any]]]):
         self.train_split = value
