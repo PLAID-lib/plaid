@@ -10,6 +10,8 @@ title: Problem definition
 - outputs: list of FeatureIdentifiers
 - split: arbitrary named splits (train/val/test, etc.) stored as JSON
 
+`ProblemDefinition` is built on top of [Pydantic](https://docs.pydantic.dev/), providing robust data validation. Authorized tasks and score functions are strictly enforced.
+
 Typical usage:
 
 ```python
