@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (ProblemDefinition) Refactor to use `pydantic` for data validation and parsing.
+- (ProblemDefinition) `directory_path` argument in `__init__` is deprecated, use `path` instead.
+
 ### Fixes
 
 ### Removed

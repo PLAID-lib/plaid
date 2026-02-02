@@ -21,11 +21,18 @@ else:  # pragma: no cover
 import csv
 import json
 import logging
+import warnings
 from pathlib import Path
-from typing import Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Union
 
 import yaml
 from packaging.version import Version
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+)
 
 import plaid
 from plaid.constants import AUTHORIZED_SCORE_FUNCTIONS, AUTHORIZED_TASKS
@@ -42,13 +49,46 @@ logger = logging.getLogger(__name__)
 # %% Classes
 
 
-class ProblemDefinition(object):
+class ProblemDefinition(BaseModel):
     """Gathers all necessary informations to define a learning problem."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="ignore")
+
+    name: Optional[str] = Field(None, description="Name of the problem")
+    version: Optional[Union[str, Version]] = Field(
+        default_factory=lambda: Version(plaid.__version__),
+        description="Version of the problem definition",
+    )
+    task: Optional[str] = Field(None, description="Task of the problem")
+    score_function: Optional[str] = Field(None, description="Score function used")
+
+    in_features_identifiers: List[Union[str, FeatureIdentifier]] = Field(
+        default_factory=list
+    )
+    out_features_identifiers: List[Union[str, FeatureIdentifier]] = Field(
+        default_factory=list
+    )
+    constant_features_identifiers: List[str] = Field(default_factory=list)
+
+    # Legacy fields
+    in_scalars_names: List[str] = Field(default_factory=list)
+    out_scalars_names: List[str] = Field(default_factory=list)
+    in_timeseries_names: List[str] = Field(default_factory=list)
+    out_timeseries_names: List[str] = Field(default_factory=list)
+    in_fields_names: List[str] = Field(default_factory=list)
+    out_fields_names: List[str] = Field(default_factory=list)
+    in_meshes_names: List[str] = Field(default_factory=list)
+    out_meshes_names: List[str] = Field(default_factory=list)
+
+    split: Optional[Dict[str, Any]] = Field(None)
+    train_split: Optional[Dict[str, Dict[str, Any]]] = Field(None)
+    test_split: Optional[Dict[str, Dict[str, Any]]] = Field(None)
 
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
         directory_path: Optional[Union[str, Path]] = None,
+        **data: Any,
     ) -> None:
         """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`.
 
@@ -57,6 +97,7 @@ class ProblemDefinition(object):
         Args:
             path (Union[str,Path], optional): The path from which to load PLAID problem definition files.
             directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
+            **data: Additional arguments to initialize the Pydantic model.
 
         Example:
             .. code-block:: python
@@ -73,39 +114,122 @@ class ProblemDefinition(object):
                 print(problem_definition)
                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression')
         """
-        self._name: str = None
-        self._version: Union[Version] = Version(plaid.__version__)
-        self._task: str = None
-        self._score_function: str = None
-        self.in_features_identifiers: Sequence[Union[str, FeatureIdentifier]] = []
-        self.out_features_identifiers: Sequence[Union[str, FeatureIdentifier]] = []
-        self.constant_features_identifiers: list[str] = []
-        self.in_scalars_names: list[str] = []
-        self.out_scalars_names: list[str] = []
-        self.in_timeseries_names: list[str] = []
-        self.out_timeseries_names: list[str] = []
-        self.in_fields_names: list[str] = []
-        self.out_fields_names: list[str] = []
-        self.in_meshes_names: list[str] = []
-        self.out_meshes_names: list[str] = []
-        self._split: Optional[dict[str, IndexType]] = None
-        self._train_split: Optional[dict[str, dict[str, IndexType]]] = None
-        self._test_split: Optional[dict[str, dict[str, IndexType]]] = None
+        super().__init__(**data)
 
         if directory_path is not None:
             if path is not None:
                 raise ValueError(
                     "Arguments `path` and `directory_path` cannot be both set. Use only `path` as `directory_path` is deprecated."
                 )
-            else:
-                path = directory_path
-                logger.warning(
-                    "DeprecationWarning: 'directory_path' is deprecated, use 'path' instead."
-                )
+            warnings.warn(
+                "`directory_path` is deprecated, use `path` instead.",
+                DeprecationWarning,
+            )
+            path = directory_path
 
         if path is not None:
             path = Path(path)
             self._load_from_dir_(path)
+
+    @field_validator("task")
+    @classmethod
+    def validate_task(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that the task is among the authorized tasks."""
+        if v is not None and v not in AUTHORIZED_TASKS:
+            raise ValueError(
+                f"{v} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_TASKS}"
+            )
+        return v
+
+    @field_validator("score_function")
+    @classmethod
+    def validate_score_function(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that the score function is among the authorized score functions."""
+        if v is not None and v not in AUTHORIZED_SCORE_FUNCTIONS:
+            raise ValueError(
+                f"{v} not among authorized score functions. Maybe you want to try among: {AUTHORIZED_SCORE_FUNCTIONS}"
+            )
+        return v
+
+    @property
+    def _name(self) -> Optional[str]:
+        return self.name
+
+    @_name.setter
+    def _name(self, value: Optional[str]):
+        self.name = value
+
+    @property
+    def _version(self) -> Optional[Union[str, Version]]:
+        return self.version
+
+    @_version.setter
+    def _version(self, value: Optional[Union[str, Version]]):
+        self.version = value
+
+    @property
+    def _task(self) -> Optional[str]:
+        return self.task
+
+    @_task.setter
+    def _task(self, value: Optional[str]):
+        self.task = value
+
+    @property
+    def _score_function(self) -> Optional[str]:
+        return self.score_function
+
+    @_score_function.setter
+    def _score_function(self, value: Optional[str]):
+        self.score_function = value
+
+    @property
+    def _in_features_identifiers(self) -> List[Union[str, FeatureIdentifier]]:
+        return self.in_features_identifiers
+
+    @_in_features_identifiers.setter
+    def _in_features_identifiers(self, value: List[Union[str, FeatureIdentifier]]):
+        self.in_features_identifiers = value
+
+    @property
+    def _out_features_identifiers(self) -> List[Union[str, FeatureIdentifier]]:
+        return self.out_features_identifiers
+
+    @_out_features_identifiers.setter
+    def _out_features_identifiers(self, value: List[Union[str, FeatureIdentifier]]):
+        self.out_features_identifiers = value
+
+    @property
+    def _constant_features_identifiers(self) -> List[str]:
+        return self.constant_features_identifiers
+
+    @_constant_features_identifiers.setter
+    def _constant_features_identifiers(self, value: List[str]):
+        self.constant_features_identifiers = value
+
+    @property
+    def _split(self) -> Optional[Dict[str, Any]]:
+        return self.split
+
+    @_split.setter
+    def _split(self, value: Optional[Dict[str, Any]]):
+        self.split = value
+
+    @property
+    def _train_split(self) -> Optional[Dict[str, Dict[str, Any]]]:
+        return self.train_split
+
+    @_train_split.setter
+    def _train_split(self, value: Optional[Dict[str, Dict[str, Any]]]):
+        self.train_split = value
+
+    @property
+    def _test_split(self) -> Optional[Dict[str, Dict[str, Any]]]:
+        return self.test_split
+
+    @_test_split.setter
+    def _test_split(self, value: Optional[Dict[str, Dict[str, Any]]]):
+        self.test_split = value
 
     # -------------------------------------------------------------------------#
     def get_name(self) -> str:
@@ -156,7 +280,7 @@ class ProblemDefinition(object):
         elif task in AUTHORIZED_TASKS:
             self._task = task
         else:
-            raise TypeError(
+            raise ValueError(
                 f"{task} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_TASKS}"
             )
 
@@ -182,8 +306,8 @@ class ProblemDefinition(object):
         elif score_function in AUTHORIZED_SCORE_FUNCTIONS:
             self._score_function = score_function
         else:
-            raise TypeError(
-                f"{score_function} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_SCORE_FUNCTIONS}"
+            raise ValueError(
+                f"{score_function} not among authorized score functions. Maybe you want to try among: {AUTHORIZED_SCORE_FUNCTIONS}"
             )
 
     # -------------------------------------------------------------------------#
