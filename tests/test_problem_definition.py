@@ -13,12 +13,12 @@ from pathlib import Path
 
 import pytest
 from packaging.version import Version
+from pydantic import ValidationError
 
 import plaid
+from plaid.constants import AUTHORIZED_SCORE_FUNCTIONS, AUTHORIZED_TASKS
 from plaid.containers import FeatureIdentifier
 from plaid.problem_definition import ProblemDefinition
-from plaid.constants import AUTHORIZED_TASKS, AUTHORIZED_SCORE_FUNCTIONS
-from pydantic import ValidationError
 
 # %% Fixtures
 
@@ -797,4 +797,3 @@ class Test_ProblemDefinition:
 
         pd._score_function = list(AUTHORIZED_SCORE_FUNCTIONS)[0]
         assert pd.score_function == list(AUTHORIZED_SCORE_FUNCTIONS)[0]
-
