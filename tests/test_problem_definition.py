@@ -17,6 +17,8 @@ from packaging.version import Version
 import plaid
 from plaid.containers import FeatureIdentifier
 from plaid.problem_definition import ProblemDefinition
+from plaid.constants import AUTHORIZED_TASKS, AUTHORIZED_SCORE_FUNCTIONS
+from pydantic import ValidationError
 
 # %% Fixtures
 
@@ -144,7 +146,7 @@ class Test_ProblemDefinition:
     # -------------------------------------------------------------------------#
     def test_task(self, problem_definition):
         # Unauthorized task
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             problem_definition.set_task("ighyurgv")
         problem_definition.set_task("classification")
         with pytest.raises(ValueError):
@@ -155,7 +157,7 @@ class Test_ProblemDefinition:
     # -------------------------------------------------------------------------#
     def test_score_function(self, problem_definition):
         # Unauthorized task
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             problem_definition.set_score_function("ighyurgv")
         problem_definition.set_score_function("RRMSE")
         with pytest.raises(ValueError):
@@ -757,3 +759,42 @@ class Test_ProblemDefinition:
         assert sub_problem_definition.get_task() == "regression"
         assert sub_problem_definition.get_name() == "regression_1"
         assert sub_problem_definition.get_split() == {"train": [0, 1], "test": [2, 3]}
+
+    def test_init_invalid_task(self):
+        """Test initialization with an invalid task to trigger Pydantic validator."""
+        with pytest.raises(ValidationError) as excinfo:
+            ProblemDefinition(task="invalid_task_name")
+        # Check that the underlying error is TypeError (as raised by validator) or just check msg
+        assert "not among authorized tasks" in str(excinfo.value)
+
+    def test_init_invalid_score_function(self):
+        """Test initialization with an invalid score function."""
+        with pytest.raises(ValidationError) as excinfo:
+            ProblemDefinition(score_function="invalid_score_function")
+        assert "not among authorized score functions" in str(excinfo.value)
+
+    def test_init_valid_task(self):
+        """Test initialization with a valid task."""
+        task = list(AUTHORIZED_TASKS)[0]
+        pd = ProblemDefinition(task=task)
+        assert pd.task == task
+
+    def test_init_valid_score_function(self):
+        """Test initialization with a valid score function."""
+        sf = list(AUTHORIZED_SCORE_FUNCTIONS)[0]
+        pd = ProblemDefinition(score_function=sf)
+        assert pd.score_function == sf
+
+    def test_legacy_properties(self):
+        """Test legacy property access via Pydantic model."""
+        pd = ProblemDefinition()
+        pd._name = "test_name"
+        assert pd.name == "test_name"
+        assert pd._name == "test_name"
+
+        pd._task = list(AUTHORIZED_TASKS)[0]
+        assert pd.task == list(AUTHORIZED_TASKS)[0]
+
+        pd._score_function = list(AUTHORIZED_SCORE_FUNCTIONS)[0]
+        assert pd.score_function == list(AUTHORIZED_SCORE_FUNCTIONS)[0]
+

@@ -136,7 +136,7 @@ class ProblemDefinition(BaseModel):
     def validate_task(cls, v: Optional[str]) -> Optional[str]:
         """Validate that the task is among the authorized tasks."""
         if v is not None and v not in AUTHORIZED_TASKS:
-            raise TypeError(
+            raise ValueError(
                 f"{v} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_TASKS}"
             )
         return v
@@ -146,8 +146,8 @@ class ProblemDefinition(BaseModel):
     def validate_score_function(cls, v: Optional[str]) -> Optional[str]:
         """Validate that the score function is among the authorized score functions."""
         if v is not None and v not in AUTHORIZED_SCORE_FUNCTIONS:
-            raise TypeError(
-                f"{v} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_SCORE_FUNCTIONS}"
+            raise ValueError(
+                f"{v} not among authorized score functions. Maybe you want to try among: {AUTHORIZED_SCORE_FUNCTIONS}"
             )
         return v
 
@@ -280,7 +280,7 @@ class ProblemDefinition(BaseModel):
         elif task in AUTHORIZED_TASKS:
             self._task = task
         else:
-            raise TypeError(
+            raise ValueError(
                 f"{task} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_TASKS}"
             )
 
@@ -306,8 +306,8 @@ class ProblemDefinition(BaseModel):
         elif score_function in AUTHORIZED_SCORE_FUNCTIONS:
             self._score_function = score_function
         else:
-            raise TypeError(
-                f"{score_function} not among authorized tasks. Maybe you want to try among: {AUTHORIZED_SCORE_FUNCTIONS}"
+            raise ValueError(
+                f"{score_function} not among authorized score functions. Maybe you want to try among: {AUTHORIZED_SCORE_FUNCTIONS}"
             )
 
     # -------------------------------------------------------------------------#
