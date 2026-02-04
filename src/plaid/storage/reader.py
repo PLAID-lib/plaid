@@ -40,6 +40,7 @@ from plaid.storage.common.writer import (
     save_problem_definitions_to_disk,
 )
 from plaid.storage.registry import get_backend
+from plaid.utils.cgns_helper import update_features_for_CGNS_compatibility
 
 
 class Converter:
@@ -55,8 +56,8 @@ class Converter:
         backend: str,
         flat_cst: Any,
         cgns_types: Any,
-        variable_schema: Any,
-        constant_schema: Any,
+        variable_features: Any,
+        constant_features: Any,
         num_samples: Any,
     ) -> None:
         """Initialize a :class:`Converter`.
@@ -65,16 +66,16 @@ class Converter:
             backend: The storage backend ('hf_datasets', 'zarr', or 'cgns').
             flat_cst: Flattened constants for the dataset.
             cgns_types: CGNS type information.
-            variable_schema: Schema for variable fields.
-            constant_schema: Schema for constant fields.
+            variable_features: Set of variable feature names.
+            constant_features: Set of constant feature names.
             num_samples: Mapping providing the number of samples for each split.
         """
         self.backend = backend
         self.backend_spec = get_backend(backend)
         self.flat_cst = flat_cst
         self.cgns_types = cgns_types
-        self.variable_schema = variable_schema
-        self.constant_schema = constant_schema
+        self.variable_features = set(variable_features)
+        self.constant_features = set(constant_features)
         self.num_samples = num_samples
 
     def to_dict(
@@ -103,15 +104,10 @@ class Converter:
             )
 
         if features:
-            schema_keys = set(self.variable_schema) | set(self.constant_schema)
-
-            missing = set(features) - schema_keys
-            if missing:
-                raise KeyError(
-                    f"Missing features in dataset/converter: {sorted(missing)}"
-                )
-
-            req_var_feat = [f for f in features if f in self.variable_schema]
+            features = update_features_for_CGNS_compatibility(
+                features, self.constant_features, self.variable_features
+            )
+            req_var_feat = [f for f in features if f in self.variable_features]
         else:
             req_var_feat = None
 
@@ -120,18 +116,30 @@ class Converter:
         )
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types, features)
 
-    def to_plaid(self, dataset: Any, idx: int) -> Sample:
+    def to_plaid(
+        self,
+        dataset: Any,
+        idx: int,
+        features: Optional[list[str]] = None,
+    ) -> Sample:
         """Convert a dataset sample to PLAID Sample object.
 
         Args:
             dataset: The dataset object containing the sample.
             idx: Index of the sample to convert.
+            features: Optional list of feature names to include from the variable fields.
+                If None, all variable features available for the backend are included.
+                Features are retreated based on self.constant_features and self.variable_features to satisfy the CGNS conventions.
 
         Returns:
             Sample: A PLAID Sample object.
         """
+        if features:
+            features = update_features_for_CGNS_compatibility(
+                features, self.constant_features, self.variable_features
+            )
         if self.backend != "cgns":
-            sample_dict = self.to_dict(dataset, idx)
+            sample_dict = self.to_dict(dataset, idx, features)
             return to_plaid_sample(sample_dict, self.cgns_types)
         else:
             return dataset[idx]
@@ -180,7 +188,7 @@ class Converter:
             dict: Sample data in dictionary format suitable for storage.
         """
         return plaid_to_sample_dict(
-            plaid_sample, self.variable_schema, self.constant_schema
+            plaid_sample, self.variable_features, self.constant_features
         )
 
     def __repr__(self) -> str:
@@ -229,8 +237,8 @@ def init_from_disk(
             backend,
             flat_cst[str(split)],
             cgns_types,
-            variable_schema,
-            constant_schema[str(split)],
+            list(variable_schema.keys()),
+            list(constant_schema[str(split)].keys()),
             num_samples[str(split)],
         )
     return datasetdict, converterdict
@@ -310,8 +318,8 @@ def init_streaming_from_hub(
             backend,
             flat_cst[str(split)],
             cgns_types,
-            variable_schema,
-            constant_schema[str(split)],
+            list(variable_schema.keys()),
+            list(constant_schema[str(split)].keys()),
             num_samples[str(split)],
         )
 

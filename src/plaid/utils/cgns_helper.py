@@ -7,11 +7,13 @@
 #
 #
 
+from copy import copy
 from typing import Any, Optional
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 
+from plaid.containers.utils import get_feature_details_from_path
 from plaid.types import CGNSTree
 
 
@@ -530,3 +532,143 @@ def unflatten_cgns_tree(
     # Re-link nodes into tree structure
     tree = nodes_to_tree(nodes)
     return tree
+
+
+def update_features_for_CGNS_compatibility(
+    features: list[str],
+    context_constant_features: set[str],
+    context_variable_features: set[str],
+):
+    """Expand a list of feature paths to include all CGNS hierarchy nodes and metadata required for compatibility.
+
+    This function takes a list of requested features and expands it to include all necessary
+    CGNS tree nodes, metadata, and temporal information (_times suffixes) needed to maintain
+    a valid and complete CGNS structure. It handles different feature types (global, fields,
+    coordinates, elements, boundary conditions) and ensures all parent nodes and related
+    metadata are included.
+
+    Args:
+        features (list[str]): List of feature paths to expand. Paths follow the CGNS hierarchy
+            format (e.g., "Base/Zone/Solution/Field", "Global/parameter").
+        context_constant_features (set[str]): Set of constant feature paths available in the
+            context (e.g., grid coordinates, element connectivity).
+        context_variable_features (set[str]): Set of variable feature paths available in the
+            context (e.g., flow solution fields, time-varying parameters).
+
+    Returns:
+        list[str]: Expanded list of feature paths including:
+            - Original requested features
+            - Parent nodes in the CGNS hierarchy
+            - Associated metadata nodes (GridLocation, ZoneType, FamilyName)
+            - Temporal information (_times suffix for all features)
+            - Related structural elements (coordinates, elements, boundary conditions)
+
+    Raises:
+        KeyError: If any requested feature is not found in the combined context features.
+
+    Example:
+        >>> context_const = {'Base/Zone', 'Base/Zone/GridCoordinates', ...}
+        >>> context_var = {'Base/Zone/GridCoordinates/CoordinateX', ...}
+        >>> features = ['Base/Zone/GridCoordinates/CoordinateX']
+        >>> expanded = update_features_for_CGNS_compatibility(
+        ...     features, context_const, context_var
+        ... )
+        >>> 'Base/Zone/GridCoordinates' in expanded
+        True
+        >>> 'Base/Zone/GridCoordinates/CoordinateX_times' in expanded
+        True
+
+    Note:
+        - The function modifies the input features list in place and returns it.
+        - Features with type 'field' automatically include their parent FlowSolution node
+          and GridLocation metadata.
+        - Global features trigger inclusion of 'Global' and 'Global_times' nodes.
+        - Spatial features (coordinates, elements, boundary conditions) include full zone
+          hierarchy (Base, Zone, ZoneType, FamilyName) and related structural information.
+    """
+    context_features = context_constant_features | context_variable_features
+    missing = set(features) - context_features
+
+    if missing:
+        raise KeyError(f"Missing features in dataset/converter: {sorted(missing)}")
+
+    bases = set()
+    spatial_features_b_z = set()
+
+    feat_to_append_from_fields = []
+    for feat in features:
+        details = get_feature_details_from_path(feat)
+        if "base" in details:
+            bases.add(details["base"])
+        if details["type"] == "global":
+            bases.add("Global")
+        if details["type"] in ["elements", "coordinate", "boundary_condition", "field"]:
+            spatial_features_b_z.add((details["base"], details["zone"]))
+        if details["type"] == "field":
+            parts = feat.split("/")
+            root = "/".join(parts[:-1])
+            if root not in features:
+                feat_to_append_from_fields.append(root)
+
+    for feat in feat_to_append_from_fields:
+        features.append(feat)
+        features.append(feat + "/GridLocation")
+
+    if "Global" in bases:
+        features.append("Global")
+        features.append("Global_times")
+
+    zone_or_familly = {}
+    for feat in context_features:
+        details = get_feature_details_from_path(feat)
+        parts = feat.split("/")
+
+        if len(parts) == 2 and not feat.endswith("_times") and parts[0] != "Global":
+            if parts[0] not in zone_or_familly:
+                zone_or_familly[parts[0]] = {parts[1]}
+            else:
+                zone_or_familly[parts[0]].add(parts[1])
+
+        if (
+            details["type"] in ["elements", "coordinate", "boundary_condition"]
+            and (details["base"], details["zone"]) in spatial_features_b_z
+        ):
+            features.append(feat)
+
+            root = "/".join(parts[:-1])
+            if root not in features:
+                features.append(root)
+            if len(parts) == 5:
+                root = "/".join(parts[:-2])
+                if root not in features:
+                    features.append(root)
+
+    for b, z in spatial_features_b_z:
+        features.append(f"{b}")
+        features.append(f"{b}_times")
+        features.append(f"{b}/{z}")
+        features.append(f"{b}/{z}_times")
+        features.append(f"{b}/{z}/ZoneType")
+        features.append(f"{b}/{z}/ZoneType_times")
+        features.append(f"{b}/{z}/FamilyName")
+        features.append(f"{b}/{z}/FamilyName_times")
+        z_or_f = copy(zone_or_familly[b])
+        z_or_f.remove(z)
+        ll = len(z_or_f)
+        assert ll <= 1
+        if ll == 1:
+            f = next(iter(z_or_f))
+            features.append(f"{b}/{f}")
+            features.append(f"{b}/{f}_times")
+
+    feat_times_to_append = []
+    for feat in features:
+        if not feat.endswith("_times"):
+            feat_times_to_append.append(feat)
+
+    for feat in feat_times_to_append:
+        features.append(feat + "_times")
+
+    features = list(set(features))
+
+    return features

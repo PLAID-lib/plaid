@@ -216,14 +216,14 @@ class Test_Storage:
             dataset,
             0,
             features=[
-                "TestBaseName/TestZoneName/VertexFields/test_field_same_size",
+                "Base_Name/Zone_Name/VertexFields/test_field_same_size",
                 "Global/global_0",
             ],
         )
         converter.to_dict(
             dataset,
             0,
-            features=["TestBaseName/TestZoneName/VertexFields/test_field_same_size"],
+            features=["Base_Name/Zone_Name/VertexFields/test_field_same_size"],
         )
         converter.to_dict(dataset, 0, features=["Global/global_0"])
         with pytest.raises(KeyError):
@@ -276,7 +276,7 @@ class Test_Storage:
             dataset,
             0,
             features=[
-                "TestBaseName/TestZoneName/VertexFields/test_field_same_size",
+                "Base_Name/Zone_Name/VertexFields/test_field_same_size",
                 "Global/global_0",
             ],
         )
