@@ -186,6 +186,7 @@ class Test_Storage:
         with pytest.raises(ValueError):
             load_problem_definitions_from_disk("dummy")
 
+        datasetdict, converterdict = init_from_disk(test_dir, splits=["train"])
         datasetdict, converterdict = init_from_disk(test_dir)
 
         dataset = datasetdict["train"]
@@ -241,6 +242,7 @@ class Test_Storage:
             verbose=True,
         )
 
+        datasetdict, converterdict = init_from_disk(test_dir, splits=["train"])
         datasetdict, converterdict = init_from_disk(test_dir)
 
         dataset = datasetdict["train"]
@@ -294,6 +296,7 @@ class Test_Storage:
             verbose=True,
         )
 
+        datasetdict, converterdict = init_from_disk(test_dir, splits=["train"])
         datasetdict, converterdict = init_from_disk(test_dir)
 
         dataset = datasetdict["train"]

@@ -193,7 +193,7 @@ class Converter:
 
 
 def init_from_disk(
-    local_dir: Union[Path, str],
+    local_dir: Union[Path, str], splits: Optional[list[str]] = None
 ) -> tuple[dict[str, Any], dict[str, Converter]]:
     """Initialize dataset and converters from local disk.
 
@@ -202,6 +202,8 @@ def init_from_disk(
 
     Args:
         local_dir: Path to the local directory containing the saved dataset.
+        splits: Optional list of split names to load converters for. If None, converters
+            are created for all splits present in the dataset.
 
     Returns:
         tuple: A tuple containing (datasetdict, converterdict) where datasetdict maps
@@ -218,8 +220,11 @@ def init_from_disk(
     backend_spec = get_backend(backend)
     datasetdict = backend_spec.init_from_disk(local_dir)
 
+    if splits is None:
+        splits = list(datasetdict.keys())
+
     converterdict = {}
-    for split in datasetdict.keys():
+    for split in splits:
         converterdict[split] = Converter(
             backend,
             flat_cst[str(split)],
