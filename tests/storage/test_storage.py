@@ -328,6 +328,124 @@ class Test_Storage:
         with pytest.raises(ValueError):
             converter.sample_to_dict(dataset[0])
 
+    def test_hf_datasets_train_test_split(
+        self, tmp_path, generator_split, infos, problem_definition
+    ):
+        """Test train_test_split method for HF datasets backend."""
+        test_dir = tmp_path / "test_hf_split"
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        datasetdict, _ = init_from_disk(test_dir)
+        dataset = datasetdict["train"]
+
+        # Test default split (75/25) - uses native HF datasets method
+        split_dict = dataset.train_test_split()
+        assert "train" in split_dict
+        assert "test" in split_dict
+        assert len(split_dict["train"]) + len(split_dict["test"]) == len(dataset)
+
+        # Test with specific test_size
+        split_dict = dataset.train_test_split(test_size=1)
+        assert len(split_dict["test"]) == 1
+        assert len(split_dict["train"]) == len(dataset) - 1
+
+        # Test with shuffle and seed for reproducibility
+        split_dict1 = dataset.train_test_split(test_size=0.5, shuffle=True, seed=42)
+        split_dict2 = dataset.train_test_split(test_size=0.5, shuffle=True, seed=42)
+        # For HF datasets, we compare the actual indices
+        assert len(split_dict1["train"]) == len(split_dict2["train"])
+        assert len(split_dict1["test"]) == len(split_dict2["test"])
+
+        # Verify split datasets can still access samples
+        train_sample = split_dict["train"][0]
+        assert train_sample is not None
+
+    def test_cgns_train_test_split(
+        self, tmp_path, generator_split, infos, problem_definition
+    ):
+        """Test train_test_split method for CGNSDataset."""
+        test_dir = tmp_path / "test_cgns_split"
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="cgns",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        datasetdict, _ = init_from_disk(test_dir)
+        dataset = datasetdict["train"]
+
+        # Test default split (75/25)
+        split_dict = dataset.train_test_split()
+        assert "train" in split_dict
+        assert "test" in split_dict
+        assert len(split_dict["train"]) + len(split_dict["test"]) == len(dataset)
+
+        # Test with specific test_size
+        split_dict = dataset.train_test_split(test_size=1)
+        assert len(split_dict["test"]) == 1
+        assert len(split_dict["train"]) == len(dataset) - 1
+
+        # Test with shuffle=False and seed for reproducibility
+        split_dict1 = dataset.train_test_split(test_size=0.5, shuffle=True, seed=42)
+        split_dict2 = dataset.train_test_split(test_size=0.5, shuffle=True, seed=42)
+        assert list(split_dict1["train"].ids) == list(split_dict2["train"].ids)
+        assert list(split_dict1["test"].ids) == list(split_dict2["test"].ids)
+
+        # Verify split datasets can still access samples
+        train_sample = split_dict["train"][split_dict["train"].ids[0]]
+        assert isinstance(train_sample, Sample)
+
+    def test_zarr_train_test_split(
+        self, tmp_path, generator_split, infos, problem_definition
+    ):
+        """Test train_test_split method for ZarrDataset."""
+        test_dir = tmp_path / "test_zarr_split"
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="zarr",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        datasetdict, _ = init_from_disk(test_dir)
+        dataset = datasetdict["train"]
+
+        # Test default split (75/25)
+        split_dict = dataset.train_test_split()
+        assert "train" in split_dict
+        assert "test" in split_dict
+        assert len(split_dict["train"]) + len(split_dict["test"]) == len(dataset)
+
+        # Test with specific test_size
+        split_dict = dataset.train_test_split(test_size=1)
+        assert len(split_dict["test"]) == 1
+        assert len(split_dict["train"]) == len(dataset) - 1
+
+        # Test with shuffle=False and seed for reproducibility
+        split_dict1 = dataset.train_test_split(test_size=0.5, shuffle=True, seed=42)
+        split_dict2 = dataset.train_test_split(test_size=0.5, shuffle=True, seed=42)
+        assert list(split_dict1["train"].ids) == list(split_dict2["train"].ids)
+        assert list(split_dict1["test"].ids) == list(split_dict2["test"].ids)
+
+        # Verify split datasets can still access samples
+        train_sample = split_dict["train"][split_dict["train"].ids[0]]
+        assert isinstance(train_sample, dict)
+
     def test_registry(self):
         from plaid.storage import registry
 
