@@ -194,6 +194,14 @@ class Test_Storage:
 
         print(converter)
 
+        plaid_sample = converter.to_plaid(
+            dataset,
+            0,
+            features=[
+                "Base_Name/Zone_Name/VertexFields/test_field_same_size",
+                "Global/global_0",
+            ],
+        )
         plaid_sample = converter.to_plaid(dataset, 0)
         self.assert_sample(plaid_sample)
         plaid_sample = converter.sample_to_plaid(dataset[0])
@@ -248,6 +256,14 @@ class Test_Storage:
         dataset = datasetdict["train"]
         converter = converterdict["train"]
 
+        plaid_sample = converter.to_plaid(
+            dataset,
+            0,
+            features=[
+                "Base_Name/Zone_Name/VertexFields/test_field_same_size",
+                "Global/global_0",
+            ],
+        )
         plaid_sample = converter.to_plaid(dataset, 0)
         self.assert_sample(plaid_sample)
         plaid_sample = converter.sample_to_plaid(dataset[0])

@@ -650,8 +650,6 @@ def update_features_for_CGNS_compatibility(
         features.append(f"{b}/{z}_times")
         features.append(f"{b}/{z}/ZoneType")
         features.append(f"{b}/{z}/ZoneType_times")
-        features.append(f"{b}/{z}/FamilyName")
-        features.append(f"{b}/{z}/FamilyName_times")
         z_or_f = copy(zone_or_familly[b])
         z_or_f.remove(z)
         ll = len(z_or_f)
@@ -660,6 +658,8 @@ def update_features_for_CGNS_compatibility(
             f = next(iter(z_or_f))
             features.append(f"{b}/{f}")
             features.append(f"{b}/{f}_times")
+            features.append(f"{b}/{z}/FamilyName")
+            features.append(f"{b}/{z}/FamilyName_times")
 
     feat_times_to_append = []
     for feat in features:
