@@ -536,8 +536,8 @@ def unflatten_cgns_tree(
 
 def update_features_for_CGNS_compatibility(
     features: list[str],
-    context_constant_features: set[str],
-    context_variable_features: set[str],
+    context_constant_features: list[str],
+    context_variable_features: list[str],
 ):
     """Expand a list of feature paths to include all CGNS hierarchy nodes and metadata required for compatibility.
 
@@ -550,9 +550,9 @@ def update_features_for_CGNS_compatibility(
     Args:
         features (list[str]): List of feature paths to expand. Paths follow the CGNS hierarchy
             format (e.g., "Base/Zone/Solution/Field", "Global/parameter").
-        context_constant_features (set[str]): Set of constant feature paths available in the
+        context_constant_features (list[str]): Set of constant feature paths available in the
             context (e.g., grid coordinates, element connectivity).
-        context_variable_features (set[str]): Set of variable feature paths available in the
+        context_variable_features (list[str]): Set of variable feature paths available in the
             context (e.g., flow solution fields, time-varying parameters).
 
     Returns:
@@ -586,7 +586,7 @@ def update_features_for_CGNS_compatibility(
         - Spatial features (coordinates, elements, boundary conditions) include full zone
           hierarchy (Base, Zone, ZoneType, FamilyName) and related structural information.
     """
-    context_features = context_constant_features | context_variable_features
+    context_features = set(context_constant_features) | set(context_variable_features)
     missing = set(features) - context_features
 
     if missing:
