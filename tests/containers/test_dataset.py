@@ -435,16 +435,16 @@ class Test_Dataset:
             "field::test_field_same_size"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size///TestBaseName"
+            "field::test_field_same_size///Base_Name"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size//TestZoneName/TestBaseName"
+            "field::test_field_same_size//Zone_Name/Base_Name"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/Vertex/TestZoneName/TestBaseName"
+            "field::test_field_same_size/Vertex/Zone_Name/Base_Name"
         )
         dataset_with_samples.get_feature_from_string_identifier(
-            "field::test_field_same_size/Vertex/TestZoneName/TestBaseName/0"
+            "field::test_field_same_size/Vertex/Zone_Name/Base_Name/0"
         )
 
         dataset_with_samples_with_tree.get_feature_from_string_identifier("nodes::")
@@ -472,23 +472,23 @@ class Test_Dataset:
             {
                 "type": "field",
                 "name": "test_field_same_size",
-                "base_name": "TestBaseName",
+                "base_name": "Base_Name",
             }
         )
         dataset_with_samples.get_feature_from_identifier(
             {
                 "type": "field",
                 "name": "test_field_same_size",
-                "base_name": "TestBaseName",
-                "zone_name": "TestZoneName",
+                "base_name": "Base_Name",
+                "zone_name": "Zone_Name",
             }
         )
         dataset_with_samples.get_feature_from_identifier(
             {
                 "type": "field",
                 "name": "test_field_same_size",
-                "base_name": "TestBaseName",
-                "zone_name": "TestZoneName",
+                "base_name": "Base_Name",
+                "zone_name": "Zone_Name",
                 "location": "Vertex",
             }
         )
@@ -496,8 +496,8 @@ class Test_Dataset:
             {
                 "type": "field",
                 "name": "test_field_same_size",
-                "base_name": "TestBaseName",
-                "zone_name": "TestZoneName",
+                "base_name": "Base_Name",
+                "zone_name": "Zone_Name",
                 "location": "Vertex",
                 "time": 0.0,
             }
@@ -509,7 +509,7 @@ class Test_Dataset:
             {
                 "type": "field",
                 "name": "test_field_same_size",
-                "base_name": "TestBaseName",
+                "base_name": "Base_Name",
                 "time": 0.0,
             }
         )
@@ -517,7 +517,7 @@ class Test_Dataset:
             {
                 "type": "field",
                 "name": "test_field_same_size",
-                "zone_name": "TestZoneName",
+                "zone_name": "Zone_Name",
                 "location": "Vertex",
                 "time": 0.0,
             }

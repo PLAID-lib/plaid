@@ -238,6 +238,16 @@ class Test_ProblemDefinition:
     def test_get_constant_features_identifiers(self, problem_definition):
         assert problem_definition.get_constant_features_identifiers() == []
 
+    def test_set_constant_features_identifiers(self, problem_definition):
+        dummy_identifier_1 = "Global/P"
+        dummy_identifier_2 = "Base_2_2/Zone/GridCoordinates"
+        problem_definition.set_constant_features_identifiers(
+            [dummy_identifier_1, dummy_identifier_2]
+        )
+        constants = problem_definition.get_constant_features_identifiers()
+        assert len(constants) == 2
+        assert set(constants) == set([dummy_identifier_1, dummy_identifier_2])
+
     def test_add_constant_features_identifiers_fail(self, problem_definition):
         dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
         with pytest.raises(ValueError):

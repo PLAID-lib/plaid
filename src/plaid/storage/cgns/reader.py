@@ -139,6 +139,57 @@ class CGNSDataset:
         """
         return f"<CGNSDataset {repr(self.path)} | extra_fields={self._extra_fields}>"
 
+    def train_test_split(
+        self,
+        test_size: Optional[Union[float, int]] = None,
+        train_size: Optional[Union[float, int]] = None,
+        shuffle: bool = True,
+        seed: Optional[int] = None,
+    ) -> dict[str, "CGNSDataset"]:
+        """Split the dataset into train and test sets.
+
+        Mimics HuggingFace datasets.Dataset.train_test_split behavior.
+
+        Args:
+            test_size: Size of test set. If float, represents proportion (0.0 to 1.0).
+                If int, represents absolute number of test samples. If None, defaults
+                to complement of train_size. If both are None, defaults to 0.25.
+            train_size: Size of train set. If float, represents proportion (0.0 to 1.0).
+                If int, represents absolute number of train samples. If None, defaults
+                to complement of test_size.
+            shuffle: Whether to shuffle the dataset before splitting.
+            seed: Random seed for reproducibility when shuffle=True.
+
+        Returns:
+            dict: Dictionary with 'train' and 'test' keys containing CGNSDataset instances.
+        """
+        from sklearn.model_selection import train_test_split
+
+        # Get all sample IDs
+        all_ids = self.ids
+
+        # Split the IDs
+        train_ids, test_ids = train_test_split(
+            all_ids,
+            test_size=test_size,
+            train_size=train_size,
+            shuffle=shuffle,
+            random_state=seed,
+        )
+
+        # Create new dataset instances with filtered IDs
+        train_dataset = CGNSDataset.__new__(CGNSDataset)
+        train_dataset.path = self.path
+        train_dataset._extra_fields = dict(self._extra_fields)
+        train_dataset._extra_fields["ids"] = np.asarray(sorted(train_ids), dtype=int)
+
+        test_dataset = CGNSDataset.__new__(CGNSDataset)
+        test_dataset.path = self.path
+        test_dataset._extra_fields = dict(self._extra_fields)
+        test_dataset._extra_fields["ids"] = np.asarray(sorted(test_ids), dtype=int)
+
+        return {"train": train_dataset, "test": test_dataset}
+
 
 CGNSDatasetDict = dict[str, CGNSDataset]
 

@@ -27,8 +27,8 @@ def test_get_2Darray_from_homogeneous_identifiers(
     field_same_size_feat_id = {
         "type": "field",
         "name": "test_field_same_size",
-        "base_name": "TestBaseName",
-        "zone_name": "TestZoneName",
+        "base_name": "Base_Name",
+        "zone_name": "Zone_Name",
         "location": "Vertex",
         "time": 0.0,
     }
@@ -45,8 +45,8 @@ def test_get_2Darray_from_homogeneous_identifiers(
             {
                 "type": "field",
                 "name": "test_field_2785",
-                "base_name": "TestBaseName",
-                "zone_name": "TestZoneName",
+                "base_name": "Base_Name",
+                "zone_name": "Zone_Name",
                 "location": "Vertex",
                 "time": 0.0,
             },

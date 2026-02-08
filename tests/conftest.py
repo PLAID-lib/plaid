@@ -66,13 +66,13 @@ def nb_samples() -> int:
 @pytest.fixture()
 def base_name() -> str:
     """Base name for initializing samples' base hierarchy."""
-    return "TestBaseName"
+    return "Base_Name"
 
 
 @pytest.fixture()
 def zone_name() -> str:
     """Zone name for initializing samples' zone hierarchy."""
-    return "TestZoneName"
+    return "Zone_Name"
 
 
 @pytest.fixture()

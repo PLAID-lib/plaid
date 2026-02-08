@@ -302,7 +302,7 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     # ----------------------
     # Global
     # ----------------------
-    if split_path[0] == "Global":
+    if split_path[0] == "Global" or split_path[0] == "Global_times":
         feat["type"] = "global"
 
         if len(split_path) == 1:
