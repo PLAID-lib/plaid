@@ -568,6 +568,21 @@ class ProblemDefinition(object):
         """
         return self.constant_features_identifiers
 
+    def set_constant_features_identifiers(
+        self, features_identifiers: list[str]
+    ) -> None:
+        """Set the constant features identifiers of the problem.
+
+        Example:
+            .. code-block:: python
+
+                from plaid.problem_definition import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                problem.set_constant_features_identifiers(constant_features_identifiers)
+        """
+        self.constant_features_identifiers = features_identifiers
+
     def add_constant_features_identifiers(self, inputs: list[str]) -> None:
         """Add input features identifiers to the problem.
 

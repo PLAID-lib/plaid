@@ -178,26 +178,16 @@ def flat_dict_to_sample_dict(
                 else:
                     sample_flat_trees[time] = {path_v: values}
 
-    def _wants(path: str) -> bool:
-        return features is None or path in features
-
     for time, tree in sample_flat_trees.items():
         bases = {k.split("/", 1)[0] for k in tree}
 
         for base in bases:
             time_base = f"{base}/Time"
+            tree[time_base] = np.array([1], dtype=np.int32)
+            tree[f"{time_base}/IterationValues"] = np.array([1], dtype=np.int32)
+            tree[f"{time_base}/TimeValues"] = np.array([time], dtype=np.float64)
 
-            if _wants(time_base):
-                tree[time_base] = np.array([1], dtype=np.int32)
-
-            if _wants(f"{time_base}/IterationValues"):
-                tree[f"{time_base}/IterationValues"] = np.array([1], dtype=np.int32)
-
-            if _wants(f"{time_base}/TimeValues"):
-                tree[f"{time_base}/TimeValues"] = np.array([time], dtype=np.float64)
-
-        if _wants("CGNSLibraryVersion"):
-            tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
+        tree["CGNSLibraryVersion"] = np.array([4.0], dtype=np.float32)
 
         tree.update(paths_none)
 
@@ -205,8 +195,7 @@ def flat_dict_to_sample_dict(
 
 
 def to_plaid_sample(
-    sample_dict: dict[float, dict[str, Any]],
-    cgns_types: dict[str, str],
+    sample_dict: dict[float, dict[str, Any]], cgns_types: dict[str, str]
 ) -> Sample:
     """Convert sample dict to PLAID Sample.
 
@@ -225,24 +214,21 @@ def to_plaid_sample(
 
 
 def plaid_to_sample_dict(
-    sample: Sample, variable_schema: dict[str, Any], constant_schema: dict[str, Any]
+    sample: Sample, variable_features: list[str], constant_features: list[str]
 ) -> dict[str, Any]:
     """Convert PLAID Sample to sample dict.
 
     Args:
         sample: The PLAID Sample.
-        variable_schema: Variable schema dictionary.
-        constant_schema: Constant schema dictionary.
+        variable_features: List of variable feature names.
+        constant_features: List of constant feature names.
 
     Returns:
         dict[str, Any]: sample_dict
     """
-    var_features = list(variable_schema.keys())
-    cst_features = list(constant_schema.keys())
-
     sample_dict, _, _ = build_sample_dict(sample)
 
-    var_sample_dict = {path: sample_dict.get(path, None) for path in var_features}
-    cst_sample_dict = {path: sample_dict.get(path, None) for path in cst_features}
+    var_sample_dict = {path: sample_dict.get(path, None) for path in variable_features}
+    cst_sample_dict = {path: sample_dict.get(path, None) for path in constant_features}
 
     return cst_sample_dict | var_sample_dict
