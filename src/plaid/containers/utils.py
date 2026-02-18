@@ -414,13 +414,13 @@ def validate_required_infos(infos: dict[str, Any]) -> None:
     Raises:
         ValueError: If a required infos category or key is missing.
     """
+    assert isinstance(infos, dict)
+
     missing_entries = []
 
     for category, required_keys in REQUIRED_INFOS_KEYS.items():
         category_infos = infos.get(category)
-        if not isinstance(category_infos, dict):
-            missing_entries.append(category)
-            continue
+        assert isinstance(category_infos, dict)
 
         for key in required_keys:
             if key not in category_infos:

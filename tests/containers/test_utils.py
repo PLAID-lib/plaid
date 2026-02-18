@@ -163,3 +163,7 @@ class Test_Container_Utils:
         }
         with pytest.raises(ValueError):
             validate_required_infos(infos_missing_license)
+
+        infos_dummy = {"dummy": "toto"}
+        with pytest.raises(AssertionError):
+            validate_required_infos(infos_dummy)
