@@ -10,7 +10,7 @@
 # %% Imports
 
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
@@ -19,6 +19,7 @@ from plaid.constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
+    REQUIRED_INFOS_KEYS,
 )
 from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.types import Feature
@@ -402,3 +403,32 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     feat["type"] = "other"
     feat["path"] = path
     return feat
+
+
+def validate_required_infos(infos: dict[str, Any]) -> None:
+    """Validate that required infos categories and keys are present.
+
+    Args:
+        infos: Dataset infos dictionary loaded from disk.
+
+    Raises:
+        ValueError: If a required infos category or key is missing.
+    """
+    missing_entries = []
+
+    for category, required_keys in REQUIRED_INFOS_KEYS.items():
+        category_infos = infos.get(category)
+        if not isinstance(category_infos, dict):
+            missing_entries.append(category)
+            continue
+
+        for key in required_keys:
+            if key not in category_infos:
+                missing_entries.append(f"{category}.{key}")
+
+    if missing_entries:
+        raise ValueError(
+            "Missing required infos entries: "
+            + ", ".join(sorted(missing_entries))
+            + f". Required entries are defined by {REQUIRED_INFOS_KEYS!r}."
+        )

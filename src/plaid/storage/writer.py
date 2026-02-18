@@ -27,6 +27,7 @@ from packaging.version import Version
 
 import plaid
 from plaid import ProblemDefinition, Sample
+from plaid.containers.utils import validate_required_infos
 from plaid.storage.common.preprocessor import preprocess
 from plaid.storage.common.reader import (
     load_infos_from_disk,
@@ -95,6 +96,8 @@ def save_to_disk(
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
     )
+    if infos:
+        validate_required_infos(infos)
 
     output_folder = Path(output_folder)
 
@@ -158,6 +161,8 @@ def push_to_hub(
         arxiv_paper_urls: Optional list of arXiv paper URLs.
     """
     infos = load_infos_from_disk(local_dir)
+
+    validate_required_infos(infos)
 
     backend = infos["storage_backend"]
 
