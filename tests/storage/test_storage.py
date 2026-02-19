@@ -299,6 +299,57 @@ class Test_Storage:
         with pytest.raises(KeyError):
             converter.to_dict(dataset, 0, features=["dummy"])
 
+    def test_webdataset(self, tmp_path, generator_split, infos, problem_definition):
+        test_dir = tmp_path / "test_webdataset"
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="webdataset",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+            verbose=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+
+        dataset = datasetdict["train"]
+        converter = converterdict["train"]
+
+        plaid_sample = converter.to_plaid(dataset, 0)
+        self.assert_sample(plaid_sample)
+        plaid_sample = converter.sample_to_plaid(dataset[0])
+        self.assert_sample(plaid_sample)
+
+        converter.plaid_to_dict(plaid_sample)
+
+        # coverage of WebDatasetWrapper class
+        for sample in dataset:
+            sample
+        len(dataset)
+        dataset.ids
+
+        for t in plaid_sample.get_all_time_values():
+            for path in problem_definition.get_in_features_identifiers():
+                plaid_sample.get_feature_by_path(path=path, time=t)
+            for path in problem_definition.get_out_features_identifiers():
+                plaid_sample.get_feature_by_path(path=path, time=t)
+
+        converter.to_dict(dataset, 0)
+        converter.sample_to_dict(dataset[0])
+
+        converter.to_dict(
+            dataset,
+            0,
+            features=[
+                "TestBaseName/TestZoneName/VertexFields/test_field_same_size",
+                "Global/global_0",
+            ],
+        )
+        with pytest.raises(KeyError):
+            converter.to_dict(dataset, 0, features=["dummy"])
+
     def test_cgns(self, tmp_path, generator_split, infos, problem_definition):
         test_dir = tmp_path / "test_cgns"
 
@@ -469,6 +520,7 @@ class Test_Storage:
         assert "hf_datasets" in backends
         assert "zarr" in backends
         assert "cgns" in backends
+        assert "webdataset" in backends
 
         hf_module = registry.get_backend("hf_datasets")
         assert hf_module is not None
@@ -478,6 +530,9 @@ class Test_Storage:
 
         cgns_module = registry.get_backend("cgns")
         assert cgns_module is not None
+
+        webdataset_module = registry.get_backend("webdataset")
+        assert webdataset_module is not None
 
         with pytest.raises(ValueError):
             _ = registry.get_backend("non_existent_backend")
