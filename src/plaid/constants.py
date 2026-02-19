@@ -54,6 +54,10 @@ AUTHORIZED_INFO_KEYS = {
     ],
 }
 
+REQUIRED_INFOS_KEYS = {
+    "legal": ["owner", "license"],
+}
+
 # See https://cgns.org/standard/SIDS/grid.html#flow-solution-structure-definition-flowsolution-t
 CGNS_FIELD_LOCATIONS = [
     "Vertex",

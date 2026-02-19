@@ -18,6 +18,7 @@ from plaid.containers.utils import (
     get_number_of_samples,
     get_sample_ids,
     has_duplicates_feature_ids,
+    validate_required_infos,
 )
 
 # %% Fixtures
@@ -148,3 +149,21 @@ class Test_Container_Utils:
 
         with pytest.raises(AssertionError):
             get_feature_details_from_path("Dummy/Dummy/Dummy/Dummy/Dummy/Dummy/Dummy")
+
+    def test_validate_required_infos(self):
+        infos = {
+            "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
+        }
+        validate_required_infos(infos)
+
+        infos_missing_license = {
+            "legal": {
+                "owner": "Joh Doe",
+            },
+        }
+        with pytest.raises(ValueError):
+            validate_required_infos(infos_missing_license)
+
+        infos_dummy = {"dummy": "toto"}
+        with pytest.raises(AssertionError):
+            validate_required_infos(infos_dummy)
