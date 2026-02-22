@@ -128,7 +128,7 @@ def test_check_names():
     with pytest.raises(ValueError):
         _check_names([r"test\/name"])
     with pytest.raises(ValueError):
-        _check_names("a" * 32)
+        _check_names("a" * 33)
     with pytest.raises(ValueError):
         _check_names(["ok", "b" * 40])
 
@@ -137,7 +137,7 @@ def test_add_tree_invalid_name_length(sample: Sample, tree):
     invalid_tree = copy.deepcopy(tree)
     base_path = CGU.getPathsByTypeSet(invalid_tree, ["CGNSBase_t"])[0]
     base_node = CGU.getNodeByPath(invalid_tree, base_path)
-    base_node[0] = "B" * 32
+    base_node[0] = "B" * 33
 
     with pytest.raises(ValueError):
         sample.features.add_tree(invalid_tree)

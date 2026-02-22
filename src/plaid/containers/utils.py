@@ -52,9 +52,9 @@ def _check_names(names: Union[str, list[Optional[str]], None]):
             raise ValueError(
                 f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurence of `/` with something else, for example: `name.replace('/','__')`"
             )
-        if (name is not None) and (len(name) >= 32):
+        if (name is not None) and (len(name) > 32):
             raise ValueError(
-                f"CGNS names must be shorter than 32 characters, but got {name=} with length {len(name)}"
+                f"CGNS names must be shorter than or equal to 32 characters, but got {name=} with length {len(name)}"
             )
 
 
