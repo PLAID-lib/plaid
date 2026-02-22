@@ -10,7 +10,7 @@
 # %% Imports
 
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
@@ -34,21 +34,27 @@ retrocompatibility = {
 path_to_location.update(retrocompatibility)
 
 
-def _check_names(names: Union[str, list[str]]):
+def _check_names(names: Union[str, list[Optional[str]], None]):
     """Check that names do not contain invalid character ``/``.
 
     Args:
-        names (Union[str, list[str]]): The names to check.
+        names (Union[str, list[Optional[str]], None]): The names to check.
 
     Raises:
         ValueError: If any name contains the invalid character ``/``.
     """
+    if names is None:
+        names = [None]
     if isinstance(names, str):
         names = [names]
     for name in names:
         if (name is not None) and ("/" in name):
             raise ValueError(
                 f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurence of `/` with something else, for example: `name.replace('/','__')`"
+            )
+        if (name is not None) and (len(name) >= 32):
+            raise ValueError(
+                f"CGNS names must be shorter than 32 characters, but got {name=} with length {len(name)}"
             )
 
 
