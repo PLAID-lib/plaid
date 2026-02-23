@@ -11,11 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (containers/managers) return a warning when an automatically resolved time stamp is different from 0.0.
 - (storage/writer) add validate_required_infos before creating and pushing heavy data to prevent later error
 - (storage) add splits args to init_from_disk, add train_test_split for all backends.
 - (utils/cgns_helper) add update_features_for_CGNS_compatibility which enable filtering features in conv.to_plaid while maintaining a correct CGNS tree (geometrical support is kept when only a field is requested, for instance).
 
 ### Fixes
+
+- (sample) fix fields summarize in `__str__`
 
 ### Removed
 
