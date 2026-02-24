@@ -218,7 +218,7 @@ class SampleFeatures:
         if tree == []:
             raise ValueError("CGNS Tree should not be an empty list")
 
-        def _iter_node_names(node) -> list[str]:
+        def _iter_node_names(node: Optional[list]) -> list[str]:
             names = []
             if isinstance(node, list) and len(node) > 0:
                 if isinstance(node[0], str):
