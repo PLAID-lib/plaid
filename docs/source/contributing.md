@@ -80,7 +80,7 @@ For feature requests:
 
     ```bash
     conda create -n plaid python=3.12 pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
-    conda run -n plaid-dev uv sync --active --group dev
+    conda run -n plaid-dev uv pip install -e . --group dev
     ```
 
    - Using uv:
