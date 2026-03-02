@@ -74,7 +74,7 @@ To configure an environment manually, you can either conda
 
 ```bash
 conda create -n plaid python=3.12 pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
-conda run -n plaid-dev uv pip install -e . --group devv
+conda run -n plaid-dev uv sync --group dev --editable
 ```
 
 Or uv:
