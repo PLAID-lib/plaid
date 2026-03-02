@@ -19,7 +19,6 @@ dependencies:
 #---# data validation
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
-  - setuptools
 #---# mesh/graph libs
   - muscat-core>=2.5.1
 #---# base

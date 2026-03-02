@@ -91,11 +91,13 @@ jobs:
           use-mamba: true
           auto-activate-base: false
           miniforge-variant: Miniforge3
+          activate-environment: plaid-dev
+          environment-file: environment.yml
+          python-version: ${{ matrix.python-version }}
 
-      - name: Create environment (macOS/Windows)
+      - name: Install package in editable mode (macOS/Windows)
         if: runner.os != 'Linux'
         run: |
-          mamba env create -n plaid-dev python=${{ matrix.python-version }} -f environment.yml
           conda run -n plaid-dev pip install -e . --no-deps
 
       - name: Run tests (macOS/Windows)
