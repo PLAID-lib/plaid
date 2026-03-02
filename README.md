@@ -42,14 +42,14 @@ It has been developped at SafranTech, the research center of [Safran group](http
 
 ### 2.1 Using the library
 
-To use the library, the simplest way is to install it as follows:
+To use the library, the simplest way is to install it from the packages available:
 
+on conda-forge for Windows, macOS and Linux:
 ```bash
 conda install -c conda-forge plaid
 ```
 
-or
-
+or on PyPi for Linux:
 ```bash
 pip install pyplaid
 ```
