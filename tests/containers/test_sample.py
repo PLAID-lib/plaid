@@ -7,6 +7,7 @@
 
 # %% Imports
 
+import copy
 from pathlib import Path
 
 import CGNS.PAT.cgnskeywords as CGK
@@ -117,12 +118,29 @@ def full_sample(sample_with_tree_and_scalar: Sample, tree3d):
 def test_check_names():
     _check_names("test name")
     _check_names(["test name", "test_name_2"])
+    _check_names(None)
+    _check_names([None, "short_name"])
+    _check_names("a" * 31)
     with pytest.raises(ValueError):
         _check_names("test/name")
     with pytest.raises(ValueError):
         _check_names(["test/name"])
     with pytest.raises(ValueError):
         _check_names([r"test\/name"])
+    with pytest.raises(ValueError):
+        _check_names("a" * 33)
+    with pytest.raises(ValueError):
+        _check_names(["ok", "b" * 40])
+
+
+def test_add_tree_invalid_name_length(sample: Sample, tree):
+    invalid_tree = copy.deepcopy(tree)
+    base_path = CGU.getPathsByTypeSet(invalid_tree, ["CGNSBase_t"])[0]
+    base_node = CGU.getNodeByPath(invalid_tree, base_path)
+    base_node[0] = "B" * 33
+
+    with pytest.raises(ValueError):
+        sample.features.add_tree(invalid_tree)
 
 
 def test_read_index(tree, physical_dim):
@@ -797,7 +815,7 @@ class Test_Sample:
             time=1.0,
         )
         sample.add_field(
-            name="test_vertex_Zone_1_Base_1_2_t_m0.1",
+            name="vertex_Zone_1_Base_1_2_t_m0.1",
             field=np.random.randn(10),
             location="Vertex",
             zone_name="Zone_1",
@@ -805,7 +823,7 @@ class Test_Sample:
             time=-0.1,
         )
         sample.add_field(
-            name="test_cell_Zone_1_Base_1_2_t_m0.1",
+            name="cell_Zone_1_Base_1_2_t_m0.1",
             field=np.random.randn(10),
             location="CellCenter",
             zone_name="Zone_1",
@@ -813,7 +831,7 @@ class Test_Sample:
             time=-0.1,
         )
         sample.add_field(
-            name="test_vertex_Zone_2_Base_1_2_t_m0.1",
+            name="vertex_Zone_2_Base_1_2_t_m0.1",
             field=np.random.randn(10),
             location="Vertex",
             zone_name="Zone_2",
@@ -821,7 +839,7 @@ class Test_Sample:
             time=-0.1,
         )
         sample.add_field(
-            name="test_cell_Zone_2_Base_1_2_t_m0.1",
+            name="cell_Zone_2_Base_1_2_t_m0.1",
             field=np.random.randn(10),
             location="CellCenter",
             zone_name="Zone_2",
@@ -829,7 +847,7 @@ class Test_Sample:
             time=-0.1,
         )
         sample.add_field(
-            name="test_vertex_Zone_1_Base_2_2_t_m0.1",
+            name="vertex_Zone_1_Base_2_2_t_m0.1",
             field=np.random.randn(10),
             location="Vertex",
             zone_name="Zone_1",
@@ -837,7 +855,7 @@ class Test_Sample:
             time=-0.1,
         )
         sample.add_field(
-            name="test_cell_Zone_1_Base_2_2_t_m0.1",
+            name="cell_Zone_1_Base_2_2_t_m0.1",
             field=np.random.randn(10),
             location="CellCenter",
             zone_name="Zone_1",
@@ -845,7 +863,7 @@ class Test_Sample:
             time=-0.1,
         )
         sample.add_field(
-            name="test_vertex_Zone_2_Base_2_2_t_m0.1",
+            name="vertex_Zone_2_Base_2_2_t_m0.1",
             field=np.random.randn(10),
             location="Vertex",
             zone_name="Zone_2",
@@ -853,7 +871,7 @@ class Test_Sample:
             time=-0.1,
         )
         sample.add_field(
-            name="test_cell_Zone_2_Base_2_2_t_m0.1",
+            name="cell_Zone_2_Base_2_2_t_m0.1",
             field=np.random.randn(10),
             location="CellCenter",
             zone_name="Zone_2",
@@ -861,7 +879,7 @@ class Test_Sample:
             time=-0.1,
         )
         sample.add_field(
-            name="test_vertex_Zone_1_Base_1_3_t_1.0",
+            name="vertex_Zone_1_Base_1_3_t_1.0",
             field=np.random.randn(10),
             location="Vertex",
             zone_name="Zone_1",
@@ -869,7 +887,7 @@ class Test_Sample:
             time=1.0,
         )
         sample.add_field(
-            name="test_cell_Zone_1_Base_1_3_t_1.0",
+            name="cell_Zone_1_Base_1_3_t_1.0",
             field=np.random.randn(10),
             location="CellCenter",
             zone_name="Zone_1",
@@ -877,7 +895,7 @@ class Test_Sample:
             time=1.0,
         )
         sample.add_field(
-            name="test_vertex_Zone_2_Base_1_3_t_1.0",
+            name="vertex_Zone_2_Base_1_3_t_1.0",
             field=np.random.randn(10),
             location="Vertex",
             zone_name="Zone_2",
@@ -885,7 +903,7 @@ class Test_Sample:
             time=1.0,
         )
         sample.add_field(
-            name="test_cell_Zone_2_Base_1_3_t_1.0",
+            name="cell_Zone_2_Base_1_3_t_1.0",
             field=np.random.randn(10),
             location="CellCenter",
             zone_name="Zone_2",
@@ -893,7 +911,7 @@ class Test_Sample:
             time=1.0,
         )
         sample.add_field(
-            name="test_vertex_Zone_1_Base_3_3_t_1.0",
+            name="vertex_Zone_1_Base_3_3_t_1.0",
             field=np.random.randn(10),
             location="Vertex",
             zone_name="Zone_1",
@@ -901,7 +919,7 @@ class Test_Sample:
             time=1.0,
         )
         sample.add_field(
-            name="test_cell_Zone_1_Base_3_3_t_1.0",
+            name="cell_Zone_1_Base_3_3_t_1.0",
             field=np.random.randn(10),
             location="CellCenter",
             zone_name="Zone_1",
@@ -909,7 +927,7 @@ class Test_Sample:
             time=1.0,
         )
         sample.add_field(
-            name="test_vertex_Zone_2_Base_3_3_t_1.0",
+            name="vertex_Zone_2_Base_3_3_t_1.0",
             field=np.random.randn(10),
             location="Vertex",
             zone_name="Zone_2",
@@ -917,7 +935,7 @@ class Test_Sample:
             time=1.0,
         )
         sample.add_field(
-            name="test_cell_Zone_2_Base_3_3_t_1.0",
+            name="cell_Zone_2_Base_3_3_t_1.0",
             field=np.random.randn(10),
             location="CellCenter",
             zone_name="Zone_2",
@@ -925,22 +943,22 @@ class Test_Sample:
             time=1.0,
         )
         expected_field_names = [
-            "test_vertex_Zone_1_Base_1_2_t_m0.1",
-            "test_cell_Zone_1_Base_1_2_t_m0.1",
-            "test_vertex_Zone_2_Base_1_2_t_m0.1",
-            "test_cell_Zone_2_Base_1_2_t_m0.1",
-            "test_vertex_Zone_1_Base_2_2_t_m0.1",
-            "test_cell_Zone_1_Base_2_2_t_m0.1",
-            "test_vertex_Zone_2_Base_2_2_t_m0.1",
-            "test_cell_Zone_2_Base_2_2_t_m0.1",
-            "test_vertex_Zone_1_Base_1_3_t_1.0",
-            "test_cell_Zone_1_Base_1_3_t_1.0",
-            "test_vertex_Zone_2_Base_1_3_t_1.0",
-            "test_cell_Zone_2_Base_1_3_t_1.0",
-            "test_vertex_Zone_1_Base_3_3_t_1.0",
-            "test_cell_Zone_1_Base_3_3_t_1.0",
-            "test_vertex_Zone_2_Base_3_3_t_1.0",
-            "test_cell_Zone_2_Base_3_3_t_1.0",
+            "vertex_Zone_1_Base_1_2_t_m0.1",
+            "cell_Zone_1_Base_1_2_t_m0.1",
+            "vertex_Zone_2_Base_1_2_t_m0.1",
+            "cell_Zone_2_Base_1_2_t_m0.1",
+            "vertex_Zone_1_Base_2_2_t_m0.1",
+            "cell_Zone_1_Base_2_2_t_m0.1",
+            "vertex_Zone_2_Base_2_2_t_m0.1",
+            "cell_Zone_2_Base_2_2_t_m0.1",
+            "vertex_Zone_1_Base_1_3_t_1.0",
+            "cell_Zone_1_Base_1_3_t_1.0",
+            "vertex_Zone_2_Base_1_3_t_1.0",
+            "cell_Zone_2_Base_1_3_t_1.0",
+            "vertex_Zone_1_Base_3_3_t_1.0",
+            "cell_Zone_1_Base_3_3_t_1.0",
+            "vertex_Zone_2_Base_3_3_t_1.0",
+            "cell_Zone_2_Base_3_3_t_1.0",
         ]
         assert sample.get_field_names() == sorted(set(expected_field_names))
 

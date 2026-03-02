@@ -1,7 +1,10 @@
 """DefaultManager for managing default time/base/zone selections."""
 
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from typing import Optional, Protocol
+
+logger = logging.getLogger(__name__)
 
 
 class FeaturesBackend(Protocol):
@@ -55,6 +58,10 @@ class DefaultManager:
     _default_active_base: Optional[str] = None
     _default_active_zone: Optional[str] = None
     _default_active_time: Optional[float] = None
+
+    _warned_resolved_times: set[float] = field(
+        default_factory=set, init=False, repr=False
+    )
 
     def set_default_time(self, time: float) -> None:
         """Set the default time for the system.
@@ -212,10 +219,21 @@ class DefaultManager:
             return time
 
         if self._default_active_time is not None:
-            return self._default_active_time
+            resolved_time = self._default_active_time
 
-        timestamps = self._features.get_all_time_values()
-        return sorted(timestamps)[0] if timestamps else 0.0
+        else:
+            timestamps = self._features.get_all_time_values()
+            resolved_time = sorted(timestamps)[0] if timestamps else 0.0
+            if (
+                resolved_time != 0.0
+                and resolved_time not in self._warned_resolved_times
+            ):
+                logger.warning(
+                    f"A time stamp has been automatically resolved at {resolved_time}"
+                )
+                self._warned_resolved_times.add(resolved_time)
+
+        return resolved_time
 
     def resolve_base(
         self, base_name: Optional[str] = None, time: Optional[float] = None
