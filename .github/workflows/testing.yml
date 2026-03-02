@@ -94,19 +94,8 @@ jobs:
       - name: Create environment (macOS/Windows)
         if: runner.os != 'Linux'
         run: |
-          conda create -y -n plaid-dev -c conda-forge \
-            python=${{ matrix.python-version }} \
-            pycgns-core "muscat-core>=2.5.1" \
-            pip uv
-
-          conda run -n plaid-dev uv export --frozen \
-            --format requirements.txt \
-            --group dev \
-            --no-hashes > requirements-dev.txt
-
-          conda run -n plaid-dev python -m pip install --upgrade pip
-          conda run -n plaid-dev python -m pip install -r requirements-dev.txt
-          conda run -n plaid-dev python -m pip install -e .
+          conda create -n plaid-dev python=${{ matrix.python-version }} pycgns-core muscat-core>=2.5.1 -c conda-forge
+          conda run -n plaid-dev pip install -e .[dev]
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'
