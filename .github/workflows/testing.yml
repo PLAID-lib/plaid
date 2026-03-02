@@ -86,16 +86,14 @@ jobs:
         if: runner.os != 'Linux'
         uses: conda-incubator/setup-miniconda@v2
         with:
-          use-mamba: false
-          python-version: 3.11
+          use-mamba: true
           auto-activate-base: false
           miniforge-variant: Miniforge3
 
       - name: Create environment (macOS/Windows)
         if: runner.os != 'Linux'
         run: |
-          conda create -n plaid-dev python=${{ matrix.python-version }} pycgns-core muscat-core>=2.5.1 -c conda-forge
-          conda run -n plaid-dev pip install -e .[dev]
+          mamba env create -f environment.yml -n plaid-dev python=${{ matrix.python-version }}
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'

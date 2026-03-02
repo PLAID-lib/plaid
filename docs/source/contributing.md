@@ -77,12 +77,11 @@ For feature requests:
 
 2. Configure the development environment:
 
-   - Using conda (Windows and macOS):
+   - Using conda (Windows, macOS and Linux):
 
     ```bash
-    conda create -n plaid-dev python=3.12 pycgns-core "muscat-core>=2.5.1" uv -c conda-forge
-    conda activate plaid-dev
-    UV_PROJECT_ENVIRONMENT="$CONDA_PREFIX" uv sync --group dev --editable
+    conda create -n plaid-dev -f environment.yml
+    pip install -e .
     ```
 
    - Using uv (Linux):

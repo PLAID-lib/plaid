@@ -18,9 +18,7 @@ keywords=[
 classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: BSD License",
-    "Operating System :: MacOS",
     "Operating System :: POSIX",
-    "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -31,7 +29,7 @@ classifiers = [
 dependencies = [
     "tqdm",
     "pyyaml",
-    "pyCGNS; platform_system == 'Linux'",
+    "pyCGNS",
     "zarr",
     "scikit-learn",
     "datasets",
@@ -85,10 +83,7 @@ dev = [
     "myst-parser",
     "furo",
     "jupytext",
-    "muscat[storage]>=2.5.1; platform_system == 'Linux'"
-]
-build = [
-  "build",
+    "muscat[storage]>=2.5.1"
 ]
 
 [tool.coverage.run]
@@ -96,22 +91,3 @@ omit = ["src/plaid/examples/*"]
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"
-
-# pip support for conda + pip inv in github action
-[project.optional-dependencies]
-dev = [
-    "rich",
-    "optuna",
-    "pytest",
-    "pytest-cov",
-    "ruff",
-    "pre-commit",
-    "sphinx",
-    "sphinx-autoapi",
-    "sphinx-tabs",
-    "sphinxcontrib.bibtex",
-    "myst-nb",
-    "myst-parser",
-    "furo",
-    "jupytext",
-]
