@@ -58,7 +58,7 @@ jobs:
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          uv sync --all-groups --editable
+          uv sync --dev
 
       - name: Run tests (Linux)
         if: runner.os == 'Linux'
@@ -96,7 +96,7 @@ jobs:
         if: runner.os != 'Linux'
         run: |
           mamba env create -n plaid-dev python=${{ matrix.python-version }} -f environment.yml
-          pip install -e . --no-deps
+          conda run -n plaid-dev pip install -e . --no-deps
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'
