@@ -1,27 +1,35 @@
-# .readthedocs.yml
-# Read the Docs configuration file
-# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
-
+# .readthedocs.yaml
 version: 2
 
 sphinx:
   configuration: docs/conf.py
 
 build:
-  os: "ubuntu-24.04"
+  os: ubuntu-24.04
   tools:
     python: "3.12"
+
   jobs:
     post_checkout:
       - git fetch origin --unshallow || true
-      - git rev-list --count HEAD
+
     post_create_environment:
       - python -m pip install --upgrade pip
-      - python -m pip install uv
+      - python -m pip install --upgrade uv
+
     post_install:
-      - uv export --frozen --group dev --format requirements-txt --no-hashes > /tmp/requirements-dev.txt
-      - uv pip install --system -r /tmp/requirements-dev.txt
+      # Install *exactly* what's in your lockfile, into the RTD environment
+      # (no .venv creation, no PATH issues with console scripts).
+      #
+      # NOTE: This assumes you have a uv.lock at repo root.
+      - uv sync --system --frozen --group dev
+
+      # Install your project editable (optional if uv.lock already includes it as a workspace package;
+      # keep it if you rely on editable import paths during docs build).
       - uv pip install --system -e .
+
+      # Optional: fail fast with a clear error if jupytext isn't available
+      - python -c "import jupytext; print('jupytext OK:', getattr(jupytext, '__version__', 'unknown'))"
 
 python:
   install: []
