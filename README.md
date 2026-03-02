@@ -51,13 +51,12 @@ conda install -c conda-forge plaid
 or
 
 ```bash
-sudo apt-get install -y libhdf5-dev
 pip install pyplaid
 ```
 
 **Note**
 
-- Only the conda-forge package comes with a bundled HDF5 dependency.
+- Only the conda-forge package (all OS) and the linux pypi package come with a bundled HDF5 dependency. For other situation, you must install HDF5 separately.
 - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 

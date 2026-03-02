@@ -41,47 +41,46 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          use-mamba: false
-          python-version: 3.11
-          auto-activate-base: false
-          miniforge-variant: Miniforge3
+          python-version: ${{ matrix.python-version }}
 
-      - name: Create environment
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
         run: |
-          conda create -n plaid-dev python=${{ matrix.python-version }} pycgns-core muscat-core=2.5.1 -c conda-forge
-          conda run -n plaid-dev pip install -e .[dev]
+          uv pip install --system -e . --group dev
 
       - name: Run tests on Linux
         if: runner.os == 'Linux'
         run: |
-          conda run -n plaid-dev pytest tests --cov=src --cov-report=xml --cov-report=term
+          uv run pytest tests --cov=src --cov-report=xml --cov-report=term
 
       - name: Run tests on macOS
         if: runner.os == 'macOS'
         run: |
-          conda run -n plaid-dev pytest tests
+          uv run pytest tests
 
       - name: Run tests on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          conda run -n plaid-dev pytest tests
+          uv run pytest tests
 
       - name: Run examples on Unix
         if: runner.os != 'Windows'
         run: |
           cd examples
-          conda run -n plaid-dev bash run_examples.sh
+          uv run bash run_examples.sh
 
       - name: Run examples on Windows
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           cd examples
-          conda run -n plaid-dev run_examples.bat
+          uv run run_examples.bat
 
       - name: Upload coverage to Codecov (Linux and python 3.11 only)
         if: runner.os == 'Linux' && matrix.python-version == '3.11'
