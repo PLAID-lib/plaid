@@ -146,13 +146,18 @@ def cell_center_field():
 
 
 @pytest.fixture()
-def tree(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
-    Mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
-    Mesh.GetNodalTag("tag").AddToTag(nodal_tags)
-    Mesh.nodeFields["test_node_field_1"] = vertex_field
-    Mesh.nodeFields["big_node_field"] = np.random.randn(50)
-    Mesh.elemFields["test_elem_field_1"] = cell_center_field
-    tree = MeshToCGNS(Mesh)
+def muscat_mesh(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
+    muscat_mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
+    muscat_mesh.GetNodalTag("tag").AddToTag(nodal_tags)
+    muscat_mesh.nodeFields["test_node_field_1"] = vertex_field
+    muscat_mesh.nodeFields["big_node_field"] = np.random.randn(50)
+    muscat_mesh.elemFields["test_elem_field_1"] = cell_center_field
+    return muscat_mesh
+
+
+@pytest.fixture()
+def tree(muscat_mesh):
+    tree = MeshToCGNS(muscat_mesh)
     return tree
 
 

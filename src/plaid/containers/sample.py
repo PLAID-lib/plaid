@@ -812,9 +812,9 @@ class Sample(BaseModel):
         # TODO rewrite using self.get_all_features_identifiers()
         str_repr = "Sample("
 
-        # scalars
-        nb_scalars = len(self.get_scalar_names())
-        str_repr += f"{nb_scalars} scalar{'' if nb_scalars == 1 else 's'}, "
+        # globals
+        nb_globals = len(self.get_global_names())
+        str_repr += f"{nb_globals} global{'' if nb_globals == 1 else 's'}, "
 
         # fields
         times = self.features.get_all_time_values()
@@ -826,7 +826,7 @@ class Sample(BaseModel):
             ## Need to include all possible location within the count
             base_names = self.features.get_base_names(time=time)
             for bn in base_names:
-                zone_names = self.features.get_zone_names(base_name=bn)
+                zone_names = self.features.get_zone_names(base_name=bn, time=time)
                 for zn in zone_names:
                     for location in CGNS_FIELD_LOCATIONS:
                         field_names = field_names.union(
