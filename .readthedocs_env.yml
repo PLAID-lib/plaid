@@ -4,6 +4,7 @@ channels:
   - nodefaults
 dependencies:
   - python=3.11
+  - setuptools
 ##### RUN #####
 #---# base
   - tqdm
