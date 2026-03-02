@@ -68,7 +68,7 @@ To contribute to the library, you need to clone the repo using git:
 git clone https://github.com/PLAID-lib/plaid.git
 ```
 
-#### 2.2.1 Developement dependencies
+#### 2.2.1 Development dependencies
 
 To configure an environment manually, you can either conda
 
