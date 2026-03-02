@@ -73,8 +73,9 @@ git clone https://github.com/PLAID-lib/plaid.git
 To configure an environment manually, you can either conda
 
 ```bash
-conda create -n plaid python=3.12 pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
-conda run -n plaid-dev uv sync --group dev --editable
+conda create -n plaid-dev python=3.12 pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
+conda activate plaid-dev
+UV_PROJECT_ENVIRONMENT="$CONDA_PREFIX" uv sync --group dev --editable
 ```
 
 Or uv:
