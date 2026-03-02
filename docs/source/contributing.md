@@ -76,7 +76,8 @@ For feature requests:
     ```
 
 2. Configure the development environment:
-   - Using conda:
+
+   - Using conda (Windows and macOS):
 
     ```bash
     conda create -n plaid-dev python=3.12 pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
@@ -84,7 +85,7 @@ For feature requests:
     UV_PROJECT_ENVIRONMENT="$CONDA_PREFIX" uv sync --group dev --editable
     ```
 
-   - Using uv:
+   - Using uv (Linux):
 
     ```bash
     uv sync --all-groups --editable

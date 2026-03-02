@@ -70,7 +70,7 @@ git clone https://github.com/PLAID-lib/plaid.git
 
 #### 2.2.1 Development dependencies
 
-To configure an environment manually, you can either conda
+To configure an environment manually, you can either conda (Windows and macOS)
 
 ```bash
 conda create -n plaid-dev python=3.12 pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
@@ -78,7 +78,7 @@ conda activate plaid-dev
 UV_PROJECT_ENVIRONMENT="$CONDA_PREFIX" uv sync --group dev --editable
 ```
 
-Or uv:
+Or uv (Linux):
 
 ```bash
 uv sync --all-groups --editable
