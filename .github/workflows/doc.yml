@@ -32,7 +32,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          uv pip install --system -e . --group dev
+          uv sync --all-groups --editable
 
       - name: Compile documentation
         run: |

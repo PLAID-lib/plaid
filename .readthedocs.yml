@@ -7,19 +7,21 @@ version: 2
 sphinx:
   configuration: docs/conf.py
 
-conda:
-  environment: environment.yml
-
 build:
   os: "ubuntu-24.04"
   tools:
-    python: "mambaforge-latest"
+    python: "3.12"
   jobs:
-    pre_build:
-      - git fetch origin --unshallow
+    post_checkout:
+      - git fetch origin --unshallow || true
       - git rev-list --count HEAD
+    post_create_environment:
+      - python -m pip install --upgrade pip
+      - python -m pip install uv
+    post_install:
+      - uv export --frozen --group dev --format requirements-txt --no-hashes > /tmp/requirements-dev.txt
+      - uv pip install --system -r /tmp/requirements-dev.txt
+      - uv pip install --system -e .
 
 python:
-  install:
-    - method: pip
-      path: .
+  install: []

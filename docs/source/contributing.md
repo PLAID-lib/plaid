@@ -76,13 +76,18 @@ For feature requests:
     ```
 
 2. Configure the development environment:
-   - Using conda (recommended):
+   - Using conda:
 
     ```bash
-    conda env create -f environment.yml
+    conda create -n plaid pycgns-core "muscat-core>=2.5.1" -c conda-forge
+    conda run -n plaid-dev pip install -e . --group dev
     ```
 
-   - Manual setup: Install dependencies listed in `environment.yml`
+   - Using uv:
+
+    ```bash
+    uv sync --all-groups --editable
+    ```
 
 3. Install the library in editable mode:
 

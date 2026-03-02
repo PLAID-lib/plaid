@@ -58,7 +58,7 @@ jobs:
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          uv pip install --system -e . --group dev
+          uv sync --all-groups --editable
 
       - name: Run tests (Linux)
         if: runner.os == 'Linux'
@@ -97,7 +97,7 @@ jobs:
         if: runner.os != 'Linux'
         run: |
           conda create -n plaid-dev python=${{ matrix.python-version }} pycgns-core "muscat-core>=2.5.1" -c conda-forge
-          conda run -n plaid-dev pip install -e ".[dev]"
+          conda run -n plaid-dev pip install -e . --group dev
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'

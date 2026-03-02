@@ -68,18 +68,19 @@ To contribute to the library, you need to clone the repo using git:
 git clone https://github.com/PLAID-lib/plaid.git
 ```
 
-#### 2.2.1 Development dependencies
+#### 2.2.1 Developement dependencies
 
-To configure an environment manually, you can follow the dependencies listed in ``environment.yml``, or generate it using conda:
+To configure an environment manually, you can either conda
 
 ```bash
-conda env create -f environment.yml
+conda create -n plaid pycgns-core "muscat-core>=2.5.1" -c conda-forge
+conda run -n plaid-dev pip install -e . --group dev
 ```
 
-Then, to install the library:
+Or uv:
 
 ```bash
-pip install -e .
+uv sync --all-groups --editable
 ```
 
 **Note**
