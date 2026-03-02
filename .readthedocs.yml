@@ -1,4 +1,3 @@
-# .readthedocs.yaml
 version: 2
 
 sphinx:
@@ -15,21 +14,21 @@ build:
 
     post_create_environment:
       - python -m pip install --upgrade pip
-      - python -m pip install --upgrade uv
+      - python -m pip install uv
 
     post_install:
-      # Install *exactly* what's in your lockfile, into the RTD environment
-      # (no .venv creation, no PATH issues with console scripts).
-      #
-      # NOTE: This assumes you have a uv.lock at repo root.
-      - uv sync --system --frozen --group dev
+      # Export locked dependencies from uv
+      - uv export --frozen --group dev --format requirements-txt --no-hashes > /tmp/requirements.txt
 
-      # Install your project editable (optional if uv.lock already includes it as a workspace package;
-      # keep it if you rely on editable import paths during docs build).
+      # Install INTO the RTD environment (critical)
+      - uv pip install --system -r /tmp/requirements.txt
+
+      # Install project itself
       - uv pip install --system -e .
 
-      # Optional: fail fast with a clear error if jupytext isn't available
-      - python -c "import jupytext; print('jupytext OK:', getattr(jupytext, '__version__', 'unknown'))"
+      # Debug safety check
+      - python -c "import sys; print('Sphinx will use:', sys.executable)"
+      - python -c "import jupytext; print('jupytext OK')"
 
 python:
   install: []
