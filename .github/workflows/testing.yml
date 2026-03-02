@@ -96,8 +96,8 @@ jobs:
       - name: Create environment (macOS/Windows)
         if: runner.os != 'Linux'
         run: |
-          conda create -n plaid-dev python=${{ matrix.python-version }} pycgns-core "muscat-core>=2.5.1" -c conda-forge
-          conda run -n plaid-dev pip install -e . --group dev
+          conda create -n plaid-dev python=${{ matrix.python-version }} pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
+          conda run -n plaid-dev uv sync --active --group dev
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'

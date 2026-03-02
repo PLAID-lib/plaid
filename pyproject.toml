@@ -87,6 +87,9 @@ dev = [
     "jupytext",
     "muscat[storage]>=2.5.1"
 ]
+build = [
+  "build",
+]
 
 [tool.coverage.run]
 omit = ["src/plaid/examples/*"]
