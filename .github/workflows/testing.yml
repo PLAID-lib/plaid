@@ -97,7 +97,7 @@ jobs:
         if: runner.os != 'Linux'
         run: |
           conda create -n plaid-dev python=${{ matrix.python-version }} pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
-          conda run -n plaid-dev uv sync --group dev --editable
+          conda run -n plaid-dev env UV_PROJECT_ENVIRONMENT="$CONDA_PREFIX" uv sync --group dev --editable
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'
