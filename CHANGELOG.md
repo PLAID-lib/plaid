@@ -14,8 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (storage/writer) add validate_required_infos before creating and pushing heavy data to prevent later error
 - (storage) add splits args to init_from_disk, add train_test_split for all backends.
 - (utils/cgns_helper) add update_features_for_CGNS_compatibility which enable filtering features in conv.to_plaid while maintaining a correct CGNS tree (geometrical support is kept when only a field is requested, for instance).
+- (containers/utils) strengthen `_check_names` to support `None` values and enforce CGNS node name length constraints (<=32 characters).
+- (containers/features) validate all names in input trees in `SampleFeatures.add_tree` before insertion.
 
 ### Fixes
+
+- (tests/containers) update sample field-name fixtures and add dedicated coverage for invalid CGNS name lengths.
 
 ### Removed
 
