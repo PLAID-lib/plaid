@@ -96,6 +96,7 @@ jobs:
         if: runner.os != 'Linux'
         run: |
           mamba env create -n plaid-dev python=${{ matrix.python-version }} -f environment.yml
+          pip install -e . --no-deps
 
       - name: Run tests (macOS/Windows)
         if: runner.os != 'Linux'

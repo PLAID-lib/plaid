@@ -80,8 +80,8 @@ For feature requests:
    - Using conda (Windows, macOS and Linux):
 
     ```bash
-    conda create -n plaid-dev python=3.12 -f environment.yml
-    pip install -e .
+    conda env create -n plaid-dev python=3.12 -f environment.yml
+    pip install -e . --no-deps
     ```
 
    - Using uv (Linux):

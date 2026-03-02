@@ -73,8 +73,8 @@ git clone https://github.com/PLAID-lib/plaid.git
 To configure an environment manually, you can either conda (Windows, macOS and Linux)
 
 ```bash
-conda create -n plaid-dev python=3.12 -f environment.yml
-pip install -e .
+conda env create -n plaid-dev python=3.12 -f environment.yml
+pip install -e . --no-deps
 ```
 
 or uv (Linux):
