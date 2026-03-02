@@ -79,20 +79,14 @@ For feature requests:
    - Using conda:
 
     ```bash
-    conda create -n plaid pycgns-core "muscat-core>=2.5.1" -c conda-forge
-    conda run -n plaid-dev pip install -e . --group dev
+    conda create -n plaid pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
+    conda run -n plaid-dev uv sync --active --group dev
     ```
 
    - Using uv:
 
     ```bash
     uv sync --all-groups --editable
-    ```
-
-3. Install the library in editable mode:
-
-    ```bash
-    pip install -e .
     ```
 
 ### 3.3. Important Note
