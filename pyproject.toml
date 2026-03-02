@@ -96,3 +96,22 @@ omit = ["src/plaid/examples/*"]
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"
+
+# pip support for conda + pip inv in github action
+[project.optional-dependencies]
+dev = [
+    "rich",
+    "optuna",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "pre-commit",
+    "sphinx",
+    "sphinx-autoapi",
+    "sphinx-tabs",
+    "sphinxcontrib.bibtex",
+    "myst-nb",
+    "myst-parser",
+    "furo",
+    "jupytext",
+]

@@ -80,7 +80,7 @@ For feature requests:
    - Using conda (Windows and macOS):
 
     ```bash
-    conda create -n plaid-dev python=3.12 pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
+    conda create -n plaid-dev python=3.12 pycgns-core "muscat-core>=2.5.1" uv -c conda-forge
     conda activate plaid-dev
     UV_PROJECT_ENVIRONMENT="$CONDA_PREFIX" uv sync --group dev --editable
     ```
