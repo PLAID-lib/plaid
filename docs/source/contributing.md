@@ -80,14 +80,14 @@ For feature requests:
    - Using conda (Windows, macOS and Linux):
 
     ```bash
-    conda create -n plaid-dev -f environment.yml
+    conda create -n plaid-dev python=3.12 -f environment.yml
     pip install -e .
     ```
 
    - Using uv (Linux):
 
     ```bash
-    uv sync --all-groups --editable
+    uv sync --dev
     ```
 
 ### 3.3. Important Note
