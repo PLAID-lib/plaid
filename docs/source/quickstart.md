@@ -27,7 +27,7 @@ pip install pyplaid
 
 **Note**
 
-- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled HDF5 dependency. In other situations, which we have not tested, HDF5 must be installed separately beforehand.
+- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled pycgns dependency. In other situations, which we have not tested, pycgns must be installed separately beforehand.
 - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 

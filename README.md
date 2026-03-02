@@ -56,7 +56,7 @@ pip install pyplaid
 
 **Note**
 
-- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled HDF5 dependency. In other situations, which we have not tested, HDF5 must be installed separately beforehand.
+- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled pycgns dependency. In other situations, which we have not tested, pycgns must be installed separately beforehand.
 - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 
@@ -73,7 +73,7 @@ git clone https://github.com/PLAID-lib/plaid.git
 To configure an environment manually, you can either conda
 
 ```bash
-conda create -n plaid pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
+conda create -n plaid python=3.12 pycgns-core "muscat-core>=2.5.1" pip uv -c conda-forge
 conda run -n plaid-dev uv sync --active --group dev
 ```
 
