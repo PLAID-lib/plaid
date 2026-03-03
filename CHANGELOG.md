@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (env) add uv-compatible environment management for Linux
+
 ### Changed
 
 - (docs/actions) better explain which package and dev env for which OS, and repair readthedocs generation.
@@ -26,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-## [0.1.12] - 2026-01-22
+## [0.1.13] - 2026-01-22
 
 ### Added
 
