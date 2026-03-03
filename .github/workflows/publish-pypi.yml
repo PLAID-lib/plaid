@@ -43,7 +43,6 @@ jobs:
       - name: Verify version matches tag
         id: verify-version
         run: |
-          uv pip install --system .
           if [ "${{ github.event_name }}" = "release" ]; then
             RELEASE_VER=${GITHUB_REF#refs/*/}
           else
