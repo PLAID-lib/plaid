@@ -44,19 +44,19 @@ It has been developped at SafranTech, the research center of [Safran group](http
 
 To use the library, the simplest way is to install it from the packages available:
 
-on conda-forge for Windows, macOS and Linux:
-```bash
-conda install -c conda-forge plaid
-```
+- on conda-forge for Windows, macOS and Linux:
+  ```bash
+  conda install -c conda-forge plaid
+  ```
 
-or on PyPi for Linux:
-```bash
-pip install pyplaid
-```
+- or on PyPi for Linux:
+  ```bash
+  pip install pyplaid
+  ```
 
 **Note**
 
-- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled pycgns dependency. In other situations, which we have not tested, pycgns must be installed separately beforehand.
+- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled pyCGNS dependency. In other situations, which we have not tested, pyCGNS must be installed separately beforehand.
 - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 
@@ -70,23 +70,18 @@ git clone https://github.com/PLAID-lib/plaid.git
 
 #### 2.2.1 Development dependencies
 
-To configure an environment manually, you can either conda (Windows, macOS and Linux)
+To configure an environment:
 
-```bash
-conda env create -n plaid-dev python=3.12 -f environment.yml
-pip install -e . --no-deps
-```
+- using conda (Windows, macOS and Linux):
+  ```bash
+  conda env create -n plaid-dev python=3.12 -f environment.yml
+  pip install -e . --no-deps
+  ```
 
-or uv (Linux):
-
-```bash
-uv sync --dev
-```
-
-**Note**
-
-The development dependency [**Muscat=2.5.1**](https://muscat.readthedocs.io/) is available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) but not on [``PyPi``](https://pypi.org/project/muscat). A a consequence, using a conda environment is the only way to run tests and examples, and compile the documentation.
-
+- using uv (Linux):
+  ```bash
+  uv sync --dev
+  ```
 
 #### 2.2.2 Tests and examples
 
