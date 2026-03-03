@@ -136,8 +136,8 @@ myst_heading_anchors = 7  # max 7
 # autosummary options
 autosummary_generate = True
 
-extensions.append("sphinx_tabs.tabs")
-sphinx_tabs_valid_builders = ["linkcheck"]
+# extensions.append("sphinx_tabs.tabs")
+# sphinx_tabs_valid_builders = ["linkcheck"]
 
 # -----------------------------------------------------------------------------#
 # autoapi options :

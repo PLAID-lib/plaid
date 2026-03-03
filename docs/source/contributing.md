@@ -76,18 +76,18 @@ For feature requests:
     ```
 
 2. Configure the development environment:
-   - Using conda (recommended):
+
+   - Using conda (Windows, macOS and Linux):
 
     ```bash
-    conda env create -f environment.yml
+    conda env create -n plaid-dev python=3.12 -f environment.yml
+    pip install -e . --no-deps
     ```
 
-   - Manual setup: Install dependencies listed in `environment.yml`
-
-3. Install the library in editable mode:
+   - Using uv (Linux):
 
     ```bash
-    pip install -e .
+    uv sync --dev
     ```
 
 ### 3.3. Important Note

@@ -13,22 +13,21 @@ Everything you need to start using PLAID and contributing effectively.
 
 ## 1 Using the library
 
-To use the library, the simplest way is to install it as follows:
+To use the library, the simplest way is to install it from the packages available:
 
+on conda-forge for Windows, macOS and Linux:
 ```bash
 conda install -c conda-forge plaid
 ```
 
-or
-
+or on PyPi for Linux:
 ```bash
-sudo apt-get install -y libhdf5-dev
 pip install pyplaid
 ```
 
 **Note**
 
-- Only the conda-forge package comes with a bundled HDF5 dependency.
+- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled pycgns dependency. In other situations, which we have not tested, pycgns must be installed separately beforehand.
 - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 

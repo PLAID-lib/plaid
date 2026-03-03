@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (docs/actions) better explain which package and dev env for which OS, and repair readthedocs generation.
 - (containers/managers) return a warning when an automatically resolved time stamp is different from 0.0.
 - (storage/writer) add validate_required_infos before creating and pushing heavy data to prevent later error
 - (storage) add splits args to init_from_disk, add train_test_split for all backends.
