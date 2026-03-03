@@ -90,14 +90,6 @@ For feature requests:
     uv sync --dev
     ```
 
-### 3.3. Important Note
-
-The development dependency [**Muscat=2.5.1**](https://muscat.readthedocs.io/) is only available on [``conda-forge``](https://anaconda.org/conda-forge/muscat) and not on [``PyPi``](https://pypi.org/project/muscat). Therefore, using a conda environment is required to:
-
-- Run tests
-- Execute examples
-- Compile documentation
-
 
 ## 4. Tests and examples
 
