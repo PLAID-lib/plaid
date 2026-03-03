@@ -27,15 +27,15 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
-    "tqdm",
-    "pyyaml",
-    "pyCGNS",
-    "zarr",
-    "scikit-learn",
-    "datasets",
-    "numpy",
-    "matplotlib",
-    "pydantic",
+  "tqdm>=4.60,<5",
+  "pyyaml>=6,<7",
+  "pycgns>=6.3,<7",
+  "zarr>=3.1,<4",
+  "scikit-learn>=1.4,<2",
+  "datasets>=2.18,<5",
+  "numpy>=1.26,<3",
+  "matplotlib>=3.8,<4",
+  "pydantic>=2.6,<3",
 ]
 
 dynamic = ["version"]
@@ -69,21 +69,21 @@ include = ["plaid*"]
 
 [dependency-groups]
 dev = [
-    "rich",
-    "optuna",
-    "pytest",
-    "pytest-cov",
-    "ruff",
-    "pre-commit",
-    "sphinx",
-    "sphinx-autoapi",
-    "sphinx-tabs",
-    "sphinxcontrib.bibtex",
-    "myst-nb",
-    "myst-parser",
-    "furo",
-    "jupytext",
-    "muscat[storage]>=2.5.1"
+    "furo>=2025.12.19",
+    "jupytext>=1.19.1",
+    "muscat[storage]>=2.6.0rc1,<3",
+    "myst-nb>=1.4.0",
+    "myst-parser>=5.0.0",
+    "optuna>=4.7.0",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "rich>=14.3.3",
+    "ruff>=0.15.4",
+    "sphinx>=9.0.4",
+    "sphinx-autoapi>=3.7.0",
+    "sphinx-tabs>=3.4.7",
+    "sphinxcontrib-bibtex>=2.6.5",
 ]
 
 [tool.coverage.run]
