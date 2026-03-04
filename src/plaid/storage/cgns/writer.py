@@ -90,7 +90,7 @@ def generate_datasetdict_to_disk(
             sum(len(batch) for batch in batch_ids_list) if batch_ids_list else None
         )
 
-        if num_proc > 1:
+        if num_proc > 1:  # pragma: no cover
             assert batch_ids_list, (
                 f"Parallel mode requires gen_kwargs['{split_name}']['shards_ids'] "
                 "to be provided and non-empty."
