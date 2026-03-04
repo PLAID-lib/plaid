@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional, Union
 
 import fsspec
-import numpy as np
 import yaml
 import zarr
 from datasets import IterableDataset
@@ -50,25 +49,18 @@ class ZarrDataset:
     additional metadata fields.
     """
 
-    def __init__(
-        self, zarr_group: zarr.Group, path: Union[str, Path], **kwargs
-    ) -> None:
+    def __init__(self, zarr_group: zarr.Group, path: Union[str, Path]) -> None:
         """Initialize a :class:`ZarrDataset`.
 
         Args:
             zarr_group (zarr.Group): The underlying Zarr group containing the data.
             path (Union[str, Path]): Path to the dataset root (local directory or remote
                 identifier). Stored on the instance as ``self.path``.
-            **kwargs: Optional keyword metadata to attach to the dataset instance.
-                All provided kwargs are stored in ``self._extra_fields`` and are
-                accessible as attributes via ``__getattr__`` / ``__setattr__``.
         """
         self.zarr_group = zarr_group
         self.path = path
-        self._extra_fields = dict(kwargs)
 
-        ids = sorted(int(name[7:]) for name, _ in zarr_group.groups())
-        self._extra_fields["ids"] = np.asarray(ids, dtype=int)
+        self.ids = sorted(int(name[7:]) for name, _ in zarr_group.groups())
 
     def __iter__(self) -> Iterator[dict[str, Any]]:
         """Iterate over all samples in the dataset.
@@ -101,102 +93,13 @@ class ZarrDataset:
         """
         return len(self.ids)
 
-    def __getattr__(self, name: str) -> Any:
-        """Get attribute from extra fields or zarr group.
-
-        Args:
-            name: Attribute name.
-
-        Returns:
-            Any: Attribute value.
-
-        Raises:
-            AttributeError: If attribute not found.
-        """
-        # fallback to extra fields
-        if name in self._extra_fields:
-            return self._extra_fields[name]
-        # fallback to zarr_group attributes
-        if hasattr(self.zarr_group, name):  # pragma: no cover
-            return getattr(self.zarr_group, name)
-        raise AttributeError(
-            f"{type(self).__name__} has no attribute '{name}'"
-        )  # pragma: no cover
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        """Set attribute in extra fields.
-
-        Args:
-            name: Attribute name.
-            value: Attribute value.
-        """
-        if name in ("zarr_group", "path", "_extra_fields"):
-            super().__setattr__(name, value)
-        else:
-            self._extra_fields[name] = value
-
     def __repr__(self) -> str:
         """String representation of the dataset.
 
         Returns:
             str: String representation.
         """
-        return (
-            f"<ZarrDataset {repr(self.zarr_group)} | extra_fields={self._extra_fields}>"
-        )
-
-    def train_test_split(
-        self,
-        test_size: Optional[Union[float, int]] = None,
-        train_size: Optional[Union[float, int]] = None,
-        shuffle: bool = True,
-        seed: Optional[int] = None,
-    ) -> dict[str, "ZarrDataset"]:
-        """Split the dataset into train and test sets.
-
-        Mimics HuggingFace datasets.Dataset.train_test_split behavior.
-
-        Args:
-            test_size: Size of test set. If float, represents proportion (0.0 to 1.0).
-                If int, represents absolute number of test samples. If None, defaults
-                to complement of train_size. If both are None, defaults to 0.25.
-            train_size: Size of train set. If float, represents proportion (0.0 to 1.0).
-                If int, represents absolute number of train samples. If None, defaults
-                to complement of test_size.
-            shuffle: Whether to shuffle the dataset before splitting.
-            seed: Random seed for reproducibility when shuffle=True.
-
-        Returns:
-            dict: Dictionary with 'train' and 'test' keys containing ZarrDataset instances.
-        """
-        from sklearn.model_selection import train_test_split
-
-        # Get all sample IDs
-        all_ids = self.ids
-
-        # Split the IDs
-        train_ids, test_ids = train_test_split(
-            all_ids,
-            test_size=test_size,
-            train_size=train_size,
-            shuffle=shuffle,
-            random_state=seed,
-        )
-
-        # Create new dataset instances with filtered IDs
-        train_dataset = ZarrDataset.__new__(ZarrDataset)
-        train_dataset.zarr_group = self.zarr_group
-        train_dataset.path = self.path
-        train_dataset._extra_fields = dict(self._extra_fields)
-        train_dataset._extra_fields["ids"] = np.asarray(sorted(train_ids), dtype=int)
-
-        test_dataset = ZarrDataset.__new__(ZarrDataset)
-        test_dataset.zarr_group = self.zarr_group
-        test_dataset.path = self.path
-        test_dataset._extra_fields = dict(self._extra_fields)
-        test_dataset._extra_fields["ids"] = np.asarray(sorted(test_ids), dtype=int)
-
-        return {"train": train_dataset, "test": test_dataset}
+        return f"<ZarrDataset {repr(self.zarr_group)} | ids={self.ids}>"
 
 
 def _zarr_patterns(

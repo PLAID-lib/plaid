@@ -19,6 +19,7 @@ Key features:
 #
 #
 
+import gc
 import multiprocessing as mp
 from pathlib import Path
 from typing import Callable, Generator, Optional, Union
@@ -122,6 +123,33 @@ def write_sample(split_root, sample, var_features_keys, sample_counter):
                 chunks=_auto_chunks(value.shape, 5_000_000),
             )
 
+    del sample_dict, sample_data, value
+    gc.collect()
+
+
+def _zarr_worker_batch_job(args) -> int:  # pragma: no cover
+    """Worker job for one shard/batch.
+
+    args = (split_root_path, gen_func, var_features_keys, batch, start_index)
+    Returns number of samples written.
+    """
+    split_root_path, gen_func, var_features_keys, batch, start_index = args
+
+    # split_root = zarr.open_group(split_root_path, mode="a")
+    store = zarr.storage.LocalStore(split_root_path)
+    split_root = zarr.group(store=store)
+
+    sample_counter = start_index
+    written = 0
+
+    # Keep original semantics: gen_func expects a list of batches
+    for sample in gen_func([batch]):
+        write_sample(split_root, sample, var_features_keys, sample_counter)
+        sample_counter += 1
+        written += 1
+
+    return written
+
 
 def generate_datasetdict_to_disk(
     output_folder: Union[str, Path],
@@ -170,102 +198,60 @@ def generate_datasetdict_to_disk(
     output_folder.mkdir(exist_ok=True, parents=True)
 
     var_features_keys = list(variable_schema.keys())
-
-    def worker_batch(
-        split_root_path: str,
-        gen_func: Callable[..., Generator[Sample, None, None]],
-        var_features_keys: list[str],
-        batch: list[IndexType],
-        start_index: int,
-        queue: mp.Queue,
-    ) -> None:  # pragma: no cover
-        """Processes a single batch and writes samples to Zarr.
-
-        Args:
-            split_root_path (str): Path to the Zarr group for the split.
-            gen_func (Callable): Generator function for samples.
-            var_features_keys (list[str]): List of feature keys.
-            batch (list[IndexType]): Batch of sample IDs.
-            start_index (int): Starting sample index.
-            queue (mp.Queue): Queue for progress tracking.
-        """
-        split_root = zarr.open_group(split_root_path, mode="a")
-        sample_counter = start_index
-
-        for sample in gen_func([batch]):
-            write_sample(split_root, sample, var_features_keys, sample_counter)
-
-            sample_counter += 1
-            queue.put(1)
-
-    def tqdm_updater(
-        total: int, queue: mp.Queue, desc: str = "Processing"
-    ) -> None:  # pragma: no cover
-        """Tqdm process that listens to the queue to update progress.
-
-        Args:
-            total (int): Total number of items to process.
-            queue (mp.Queue): Queue to receive progress updates.
-            desc (str): Description for the progress bar.
-        """
-        with tqdm(total=total, desc=desc, disable=not verbose) as pbar:
-            finished = 0
-            while finished < total:
-                finished += queue.get()
-                pbar.update(1)
+    gen_kwargs_ = gen_kwargs or {sn: {} for sn in generators.keys()}
 
     for split_name, gen_func in generators.items():
         split_root_path = str(output_folder / split_name)
-        split_root = zarr.open_group(split_root_path, mode="w")
+        _ = zarr.open_group(split_root_path, mode="w")  # create/overwrite
 
-        gen_kwargs_ = gen_kwargs or {sn: {} for sn in generators.keys()}
         batch_ids_list = gen_kwargs_.get(split_name, {}).get("shards_ids", [])
+        total_samples = (
+            sum(len(batch) for batch in batch_ids_list) if batch_ids_list else None
+        )
 
-        total_samples = sum(len(batch) for batch in batch_ids_list)
-
-        if num_proc > 1 and batch_ids_list:  # pragma: no cover
-            # Parallel execution
-            queue = mp.Queue()
-            tqdm_proc = mp.Process(
-                target=tqdm_updater,
-                args=(total_samples, queue, f"Writing {split_name} split"),
+        if num_proc > 1:  # pragma: no cover
+            assert batch_ids_list, (
+                f"Parallel mode requires gen_kwargs['{split_name}']['shards_ids'] "
+                "to be provided and non-empty."
             )
-            tqdm_proc.start()
 
-            processes = []
-            start_index = 0
+            # deterministic start indices (prefix sums)
+            start_indices = []
+            s = 0
             for batch in batch_ids_list:
-                p = mp.Process(
-                    target=worker_batch,
-                    args=(
-                        split_root_path,
-                        gen_func,
-                        var_features_keys,
-                        batch,
-                        start_index,
-                        queue,
-                    ),
-                )
-                p.start()
-                processes.append(p)
-                start_index += len(batch)
+                start_indices.append(s)
+                s += len(batch)
 
-            for p in processes:
-                p.join()
+            jobs = [
+                (split_root_path, gen_func, var_features_keys, batch, start_idx)
+                for batch, start_idx in zip(batch_ids_list, start_indices)
+            ]
 
-            tqdm_proc.join()
+            # If your platform/library stack is sensitive to fork, use spawn:
+            # ctx = mp.get_context("spawn")
+            # with ctx.Pool(processes=num_proc) as pool:
+            with mp.Pool(processes=num_proc) as pool:
+                with tqdm(
+                    total=total_samples,
+                    desc=f"Writing {split_name} split",
+                    disable=not verbose,
+                ) as pbar:
+                    for written in pool.imap_unordered(
+                        _zarr_worker_batch_job, jobs, chunksize=1
+                    ):
+                        pbar.update(written)
 
         else:
             # Sequential execution
             sample_counter = 0
             with tqdm(
-                total=total_samples,
+                total=total_samples,  # can be None; tqdm will handle unknown
                 desc=f"Writing {split_name} split",
                 disable=not verbose,
             ) as pbar:
+                # Keep your original semantics: sequential gen_func() with no kwargs
                 for sample in gen_func():
-                    write_sample(split_root, sample, var_features_keys, sample_counter)
-
+                    write_sample(_, sample, var_features_keys, sample_counter)
                     sample_counter += 1
                     pbar.update(1)
 

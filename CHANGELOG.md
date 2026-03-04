@@ -23,10 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (storage) fix cgns and zarr parallel writers (spawn as many processes as num_proc instead of num_shards)
 - (sample) fix fields summarize in `__str__`
 - (tests/containers) update sample field-name fixtures and add dedicated coverage for invalid CGNS name lengths.
 
 ### Removed
+
+- (storage) remove train_test_split - this lead to unwanted behaviors with the `hf_datasets` backend.
+- (storage) remove `extra_fields` and useless `__setattr__`/`__getattr__` mechanisms.
 
 ## [0.1.13] - 2026-01-22
 
