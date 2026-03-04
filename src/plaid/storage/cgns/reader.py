@@ -23,7 +23,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Optional, Union
+from typing import Iterable, Iterator, Optional, Union
 
 import numpy as np
 import yaml
@@ -48,28 +48,20 @@ class CGNSDataset:
     to extra fields.
     """
 
-    def __init__(self, path: Union[str, Path], **kwargs) -> None:
+    def __init__(self, path: Union[str, Path]) -> None:
         """Initialize a :class:`CGNSDataset`.
 
         Args:
             path: Path to the dataset directory.
-            **kwargs: Optional keyword metadata to attach to the dataset instance.
-                All provided kwargs are stored in ``self._extra_fields`` and are
-                accessible as attributes via ``__getattr__`` / ``__setattr__``.
         """
         self.path = path
-        self._extra_fields = dict(kwargs)
 
-        if Path(path).is_dir():
-            ids = sorted(
-                int(p.name.removeprefix("sample_"))
-                for p in path.iterdir()
-                if p.is_dir() and p.name.startswith("sample_")
-            )
-            self._extra_fields["ids"] = np.asarray(ids, dtype=int)
-
-        else:  # pragma: no cover
-            raise ValueError("path must be a local directory")
+        ids = sorted(
+            int(p.name.removeprefix("sample_"))
+            for p in path.iterdir()
+            if p.is_dir() and p.name.startswith("sample_")
+        )
+        self.ids = np.asarray(ids, dtype=int)
 
     def __iter__(self) -> Iterator[Sample]:
         """Iterate over all samples in the dataset.
@@ -100,95 +92,13 @@ class CGNSDataset:
         """
         return len(self.ids)
 
-    def __getattr__(self, name: str):
-        """Get attribute from extra fields.
-
-        Args:
-            name: Attribute name.
-
-        Returns:
-            Any: Attribute value.
-
-        Raises:
-            AttributeError: If attribute not found.
-        """
-        # fallback to extra fields
-        if name in self._extra_fields:
-            return self._extra_fields[name]
-        raise AttributeError(
-            f"{type(self).__name__} has no attribute '{name}'"
-        )  # pragma: no cover
-
-    def __setattr__(self, name: str, value: Any) -> None:
-        """Set attribute in extra fields.
-
-        Args:
-            name: Attribute name.
-            value: Attribute value.
-        """
-        if name in ("path", "_extra_fields"):
-            super().__setattr__(name, value)
-        else:
-            self._extra_fields[name] = value
-
     def __repr__(self) -> str:
         """String representation of the dataset.
 
         Returns:
             str: String representation.
         """
-        return f"<CGNSDataset {repr(self.path)} | extra_fields={self._extra_fields}>"
-
-    def train_test_split(
-        self,
-        test_size: Optional[Union[float, int]] = None,
-        train_size: Optional[Union[float, int]] = None,
-        shuffle: bool = True,
-        seed: Optional[int] = None,
-    ) -> dict[str, "CGNSDataset"]:
-        """Split the dataset into train and test sets.
-
-        Mimics HuggingFace datasets.Dataset.train_test_split behavior.
-
-        Args:
-            test_size: Size of test set. If float, represents proportion (0.0 to 1.0).
-                If int, represents absolute number of test samples. If None, defaults
-                to complement of train_size. If both are None, defaults to 0.25.
-            train_size: Size of train set. If float, represents proportion (0.0 to 1.0).
-                If int, represents absolute number of train samples. If None, defaults
-                to complement of test_size.
-            shuffle: Whether to shuffle the dataset before splitting.
-            seed: Random seed for reproducibility when shuffle=True.
-
-        Returns:
-            dict: Dictionary with 'train' and 'test' keys containing CGNSDataset instances.
-        """
-        from sklearn.model_selection import train_test_split
-
-        # Get all sample IDs
-        all_ids = self.ids
-
-        # Split the IDs
-        train_ids, test_ids = train_test_split(
-            all_ids,
-            test_size=test_size,
-            train_size=train_size,
-            shuffle=shuffle,
-            random_state=seed,
-        )
-
-        # Create new dataset instances with filtered IDs
-        train_dataset = CGNSDataset.__new__(CGNSDataset)
-        train_dataset.path = self.path
-        train_dataset._extra_fields = dict(self._extra_fields)
-        train_dataset._extra_fields["ids"] = np.asarray(sorted(train_ids), dtype=int)
-
-        test_dataset = CGNSDataset.__new__(CGNSDataset)
-        test_dataset.path = self.path
-        test_dataset._extra_fields = dict(self._extra_fields)
-        test_dataset._extra_fields["ids"] = np.asarray(sorted(test_ids), dtype=int)
-
-        return {"train": train_dataset, "test": test_dataset}
+        return f"<CGNSDataset {repr(self.path)} | ids={self.ids}>"
 
 
 CGNSDatasetDict = dict[str, CGNSDataset]

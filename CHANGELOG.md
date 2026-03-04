@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- (storage) remove train_test_split - this lead to unwanted behaviors with the `hf_datasets` backend.
+- (storage) remove `extra_fields` and useless `__setattr__`/`__getattr__` mechanisms.
+
 ## [0.1.13] - 2026-01-22
 
 ### Added
