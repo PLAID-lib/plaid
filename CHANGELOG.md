@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (storage/common/bridge) complete missing keys with `None` in bridges: required for reading zarr backend for which written features cannot be `None`.
 - (storage) fix cgns and zarr parallel writers (spawn as many processes as num_proc instead of num_shards)
 - (sample) fix fields summarize in `__str__`
 - (tests/containers) update sample field-name fixtures and add dedicated coverage for invalid CGNS name lengths.
