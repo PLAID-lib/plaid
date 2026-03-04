@@ -27,6 +27,27 @@ from plaid.types import IndexType
 logger = logging.getLogger(__name__)
 
 
+def _cgns_worker_batch_job(args) -> int:  # pragma: no cover
+    """Write one shard (batch) of samples to disk.
+
+    args = (split_path_str, gen_func, batch, start_index)
+    Returns: number of samples written.
+    """
+    split_path_str, gen_func, batch, start_index = args
+    split_path = Path(split_path_str)
+
+    sample_counter = start_index
+    written = 0
+
+    # Keep original semantics: generator expects a list of batches
+    for sample in gen_func([batch]):
+        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
+        sample_counter += 1
+        written += 1
+
+    return written
+
+
 def generate_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
@@ -58,69 +79,51 @@ def generate_datasetdict_to_disk(
     output_folder = output_folder / "data"
     output_folder.mkdir(exist_ok=True, parents=True)
 
-    def worker_batch(
-        gen_func: Callable, batch: list[IndexType], start_index: int, queue: mp.Queue
-    ) -> None:  # pragma: no cover
-        """Process a single batch and write samples to disk."""
-        sample_counter = start_index
-
-        for sample in gen_func([batch]):
-            sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
-
-            sample_counter += 1
-            queue.put(1)
-
-    def tqdm_updater(
-        total: int, queue: mp.Queue, desc: str = "Processing"
-    ) -> None:  # pragma: no cover
-        """Tqdm process that listens to the queue to update progress."""
-        with tqdm(total=total, desc=desc, disable=not verbose) as pbar:
-            finished = 0
-            while finished < total:
-                finished += queue.get()
-                pbar.update(1)
+    gen_kwargs_ = gen_kwargs or {sn: {} for sn in generators.keys()}
 
     for split_name, gen_func in generators.items():
         split_path = output_folder / split_name
         split_path.mkdir(exist_ok=True, parents=True)
 
-        gen_kwargs_ = gen_kwargs or {sn: {} for sn in generators.keys()}
         batch_ids_list = gen_kwargs_.get(split_name, {}).get("shards_ids", [])
+        total_samples = (
+            sum(len(batch) for batch in batch_ids_list) if batch_ids_list else None
+        )
 
-        total_samples = sum(len(batch) for batch in batch_ids_list)
-
-        if num_proc > 1 and batch_ids_list:  # pragma: no cover
-            # Parallel execution
-            queue = mp.Queue()
-            tqdm_proc = mp.Process(
-                target=tqdm_updater,
-                args=(total_samples, queue, f"Writing {split_name} split"),
+        if num_proc > 1:
+            assert batch_ids_list, (
+                f"Parallel mode requires gen_kwargs['{split_name}']['shards_ids'] "
+                "to be provided and non-empty."
             )
-            tqdm_proc.start()
 
-            processes = []
-            start_index = 0
+            # deterministic start indices (prefix sums)
+            start_indices = []
+            s = 0
             for batch in batch_ids_list:
-                p = mp.Process(
-                    target=worker_batch,
-                    args=(
-                        gen_func,
-                        batch,
-                        start_index,
-                        queue,
-                    ),
-                )
-                p.start()
-                processes.append(p)
-                start_index += len(batch)
+                start_indices.append(s)
+                s += len(batch)
 
-            for p in processes:
-                p.join()
+            jobs = [
+                (str(split_path), gen_func, batch, start_idx)
+                for batch, start_idx in zip(batch_ids_list, start_indices)
+            ]
 
-            tqdm_proc.join()
+            # If your stack is sensitive to fork, switch to spawn:
+            # ctx = mp.get_context("spawn")
+            # with ctx.Pool(processes=num_proc) as pool:
+            with mp.Pool(processes=num_proc) as pool:
+                with tqdm(
+                    total=total_samples,
+                    desc=f"Writing {split_name} split",
+                    disable=not verbose,
+                ) as pbar:
+                    for written in pool.imap_unordered(
+                        _cgns_worker_batch_job, jobs, chunksize=1
+                    ):
+                        pbar.update(written)
 
         else:
-            # Sequential execution
+            # Sequential execution (kept as close as possible to your original)
             sample_counter = 0
             with tqdm(
                 total=total_samples,
@@ -129,7 +132,6 @@ def generate_datasetdict_to_disk(
             ) as pbar:
                 for sample in gen_func():
                     sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
-
                     sample_counter += 1
                     pbar.update(1)
 
