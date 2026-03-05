@@ -155,6 +155,7 @@ def flat_dict_to_sample_dict(
     sample_flat_trees = {}
     paths_none = {}
     for (path_t, times_struc), (path_v, val) in zip(row_tim.items(), row_val.items()):
+        # assert path_t == path_v, "did you forget to specify the features arg?"
         if val is None:
             assert times_struc is None
             if path_v not in paths_none and cgns_types[path_v] not in [
