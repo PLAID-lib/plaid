@@ -37,11 +37,15 @@ def to_var_sample_dict(
         features = [unflatten_path(p) for p in zarr_sample.array_keys()]
 
     flattened = {feat: flatten_path(feat) for feat in features}
-    missing = set(flattened.values()) - set(zarr_sample.array_keys())
-    if missing:  # pragma: no cover
-        raise KeyError(f"Missing features in sample {idx}: {sorted(missing)}")
+    # missing = set(flattened.values()) - set(zarr_sample.array_keys())
+    # if missing:  # pragma: no cover
+    #     raise KeyError(f"Missing features in sample {idx}: {sorted(missing)}")
 
-    return {feat: zarr_sample[flat_feat] for feat, flat_feat in flattened.items()}
+    return {
+        feat: zarr_sample[flat_feat]
+        for feat, flat_feat in flattened.items()
+        if flat_feat in zarr_sample.array_keys()
+    }
 
 
 def sample_to_var_sample_dict(zarr_sample: dict[str, Any]) -> dict[str, Any]:

@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (storage/zarr/bridge) remove missing keys check: required for zarr backend for which written features cannot be `None`.
 - (storage/common/bridge) complete missing keys with `None` in bridges: required for reading zarr backend for which written features cannot be `None`.
 - (storage) fix cgns and zarr parallel writers (spawn as many processes as num_proc instead of num_shards)
 - (sample) fix fields summarize in `__str__`
