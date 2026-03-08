@@ -579,13 +579,16 @@ def update_features_for_CGNS_compatibility(
         True
 
     Note:
-        - The function modifies the input features list in place and returns it.
+        - The function creates a copy of the input features list to avoid modifying the original.
         - Features with type 'field' automatically include their parent FlowSolution node
           and GridLocation metadata.
         - Global features trigger inclusion of 'Global' and 'Global_times' nodes.
         - Spatial features (coordinates, elements, boundary conditions) include full zone
           hierarchy (Base, Zone, ZoneType, FamilyName) and related structural information.
     """
+    # Create a copy to avoid modifying the input list
+    features = features.copy()
+
     context_features = set(context_constant_features) | set(context_variable_features)
     missing = set(features) - context_features
 
