@@ -562,19 +562,15 @@ def preprocess(
             if path in split_flat_cst[split_name]:
                 split_flat_cst[split_name].pop(path)  # pragma: no cover
 
-    cst_features = {
+    cst_features_by_split = {
         split_name: sorted(list(cst.keys()))
         for split_name, cst in split_flat_cst.items()
     }
-    first_split, first_value = next(iter(cst_features.items()))
-    for split, value in cst_features.items():
-        assert value == first_value, (
-            f"cst_features differ for split '{split}' (vs '{first_split}')"
-        )
-    cst_features = first_value
-
     # var_features = [path for path in var_features if not path.endswith("_times")]
-    # cst_features = [path for path in cst_features if not path.endswith("_times")]
+    # cst_features_by_split = {
+    #     split: [path for path in cst_features if not path.endswith("_times")]
+    #     for split, cst_features in cst_features_by_split.items()
+    # }
 
     def _build_schema(feature_list: list[str], split_flat_cst=None) -> dict:
         schema = {}
@@ -592,7 +588,7 @@ def preprocess(
 
     variable_schema = _build_schema(var_features)
     constant_schema = {
-        split: _build_schema(cst_features, flat_cst)
+        split: _build_schema(cst_features_by_split[split], flat_cst)
         for split, flat_cst in split_flat_cst.items()
     }
 
