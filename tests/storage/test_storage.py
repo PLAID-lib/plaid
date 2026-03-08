@@ -7,6 +7,8 @@
 
 # %% Imports
 
+from copy import deepcopy
+from functools import partial
 from pathlib import Path
 from typing import Callable
 
@@ -38,10 +40,11 @@ def current_directory():
 def dataset(samples, infos) -> Dataset:
     samples_ = []
     for i, sample in enumerate(samples):
-        if i == 1:
-            sample.add_scalar("toto", 1.0)
-        samples_.append(sample)
-        samples_.append(sample)
+        sample_ = deepcopy(sample)
+        if i == 0 or i == 2:
+            sample_.add_scalar("toto", 1.0)
+        samples_.append(sample_)
+
     dataset = Dataset(samples=samples_)
     dataset.set_infos(infos)
     return dataset
@@ -87,11 +90,11 @@ def generator_split(dataset, problem_definition) -> dict[str, Callable]:
 
     for split_name, ids in main_splits.items():
 
-        def generator_():
+        def generator_(ids):
             for id in ids:
                 yield dataset[id]
 
-        generators_[split_name] = generator_
+        generators_[split_name] = partial(generator_, ids)
 
     return generators_
 
@@ -238,7 +241,7 @@ class Test_Storage:
             converter.to_dict(dataset, 0, features=["dummy"])
 
     def test_zarr(self, tmp_path, generator_split, infos, problem_definition):
-        test_dir = tmp_path / "test_hf"
+        test_dir = tmp_path / "test_zarr"
 
         save_to_disk(
             output_folder=test_dir,
