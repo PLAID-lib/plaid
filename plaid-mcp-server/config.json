@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "plaid": {
+      "command": "python",
+      "args": [
+        "/home/sagemaker-user/softs/plaid/plaid-mcp-server/server.py"
+      ],
+      "env": {
+        "PYTHONPATH": "/home/sagemaker-user/softs/plaid:/home/sagemaker-user/softs/plaid-mcp-server"
+      }
+    }
+  }
+}

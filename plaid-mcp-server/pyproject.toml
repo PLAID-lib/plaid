@@ -1,0 +1,26 @@
+[project]
+name = "plaid-mcp-server"
+version = "0.1.0"
+description = "MCP Server for PLAID dataset management and conversion script generation"
+authors = [
+    {name = "PLAID Team"}
+]
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=0.9.0",
+    "pyplaid>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "black>=23.0",
+    "ruff>=0.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["tools", "session_manager.py", "server.py"]
