@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (datasets) fix missing location use in get_field_names, and improve corresponding tests.
 - (cgns_helpers) update_features_for_CGNS_compatibility: fix behavior where input variable was modified by the function.
 - (storage/common/preprocessor) make constant_features split-dependant.
 - (storage/zarr/bridge) remove missing keys check: required for zarr backend for which written features cannot be `None`.

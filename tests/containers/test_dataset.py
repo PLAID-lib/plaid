@@ -334,8 +334,12 @@ class Test_Dataset:
         dataset_with_samples.get_scalar_names([0, 0])
 
     def test_get_field_names(self, dataset_with_samples, nb_samples):
-        dataset_with_samples.get_field_names()
-        dataset_with_samples.get_field_names(np.random.randint(2, nb_samples, size=2))
+        assert sorted(dataset_with_samples.get_field_names()) == sorted(['test_field_2785', 'test_field_same_size'])
+        assert sorted(dataset_with_samples.get_field_names(np.random.randint(2, nb_samples, size=2))) == sorted(['test_field_2785', 'test_field_same_size'])
+        assert sorted(dataset_with_samples.get_field_names(location="Vertex")) == sorted(['test_field_2785', 'test_field_same_size'])
+        assert sorted(dataset_with_samples.get_field_names(zone_name="Zone_Name")) == sorted(['test_field_2785', 'test_field_same_size'])
+        assert sorted(dataset_with_samples.get_field_names(base_name="Base_Name")) == sorted(['test_field_2785', 'test_field_same_size'])
+        assert sorted(dataset_with_samples.get_field_names(time=0.)) == sorted(['test_field_2785', 'test_field_same_size'])
 
     # -------------------------------------------------------------------------#
     def test_add_tabular_scalars(self, dataset, tabular, scalar_names, nb_samples):
