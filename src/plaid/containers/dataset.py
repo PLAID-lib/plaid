@@ -442,7 +442,10 @@ class Dataset(object):
                         locations = [location] if location else CGNS_FIELD_LOCATIONS
                         for location in locations:
                             f_names = sample.get_field_names(
-                                zone_name=zone_name, base_name=base_name, location=location, time=time
+                                zone_name=zone_name,
+                                base_name=base_name,
+                                location=location,
+                                time=time,
                             )
                             for f_name in f_names:
                                 if f_name not in fields_names:
