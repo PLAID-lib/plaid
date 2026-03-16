@@ -18,8 +18,8 @@ Key features:
 #
 #
 
-import tempfile
 import logging
+import tempfile
 from pathlib import Path
 from typing import Callable, Generator, Optional, Union
 
@@ -117,9 +117,7 @@ def generate_datasetdict_to_disk(
         num_proc (int): Number of processes for generation.
         verbose (bool): Whether to enable verbose output.
     """
-
     with tempfile.TemporaryDirectory() as tmpdirname:
-
         hf_datasetdict = generator_to_datasetdict(
             generators,
             variable_schema,
