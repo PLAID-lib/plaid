@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (storage) hf_datasets backend: modify `init_datasetdict_from_disk` implementation for very minimal cache usage.
 - (storage) `generator_to_datasetdict` add cache_dir argument and set hf_dataset backend's `generate_datasetdict_to_disk` to use a temporary directory and cache_dir.
 - (huggingface bridge) full parallel support in `from_generator`, with optimization of constant leaf detection (no large data communicated between processes).
 - (samples/features) add string support to globals.

@@ -21,6 +21,7 @@
 import logging
 import os
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Optional, Union
 
@@ -28,7 +29,7 @@ import datasets
 from datasets import load_dataset, load_from_disk
 from huggingface_hub import snapshot_download
 
-from plaid.storage.common.reader import load_infos_from_disk
+from plaid.storage.common.reader import load_infos_from_hub
 
 logger = logging.getLogger(__name__)
 
@@ -49,24 +50,7 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> HFDatasetDict:
     Returns:
         HFDatasetDict: The loaded dataset dictionary.
     """
-    file_ = Path(path) / "data" / "dataset_dict.json"
-
-    if file_.is_file():
-        # This is a dataset generated and save locally
-        datasetdict = load_from_disk(dataset_path=str(Path(path) / "data"))
-
-    else:  # pragma: no cover
-        # This is a dataset downloaded from the hub
-        infos = load_infos_from_disk(path)
-        split_names = list(infos["num_samples"].keys())
-        base = Path(path) / "data"
-        data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
-        datasetdict = load_dataset("parquet", data_files=data_files)
-
-    for split in datasetdict.keys():
-        datasetdict[split].path = path
-
-    return datasetdict
+    return load_from_disk(dataset_path=str(Path(path) / "data"))
 
 
 # ------------------------------------------------------
@@ -104,12 +88,21 @@ def download_datasetdict_from_hub(
                 f"directory {output_folder} already exists and is not empty. Set `overwrite` to True if needed."
             )
 
-    return snapshot_download(
-        repo_id=repo_id,
-        repo_type="dataset",
-        allow_patterns=["data/*"],
-        local_dir=local_dir,
-    )
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        snapshot_download(
+            repo_id=repo_id,
+            repo_type="dataset",
+            allow_patterns=["data/*"],
+            local_dir=tmp_dir,
+        )
+        infos = load_infos_from_hub(repo_id=repo_id)
+        split_names = list(infos["num_samples"].keys())
+        base = Path(tmp_dir) / "data"
+        data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
+        datasetdict = load_dataset("parquet", data_files=data_files, cache_dir=tmp_dir)
+        datasetdict.save_to_disk(str(Path(output_folder) / "data"))
+
+    return output_folder
 
 
 def init_datasetdict_streaming_from_hub(
