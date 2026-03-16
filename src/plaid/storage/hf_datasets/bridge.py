@@ -57,135 +57,78 @@ def convert_to_hf_feature(variable_schema: dict[str, dict]):
     )
 
 
-def plaid_dataset_to_datasetdict(
-    dataset: Dataset,
-    main_splits: dict[str, IndexType],
-    var_features_types: dict[str, dict],
-    processes_number: int = 1,
-    writer_batch_size: int = 1,
-) -> datasets.DatasetDict:
-    """Convert a PLAID dataset into a Hugging Face `datasets.DatasetDict`.
-
-    This is a thin wrapper that creates per-split generators from a PLAID dataset
-    and delegates the actual dataset construction to
-    `plaid_generator_to_datasetdict`.
-
-    Args:
-        dataset (plaid.Dataset):
-            The PLAID dataset to be converted. Must support indexing with
-            a list of IDs (from `main_splits`).
-        main_splits (dict[str, IndexType]):
-            Mapping from split names (e.g. "train", "test") to the subset of
-            sample indices belonging to that split.
-        var_features_types (dict[str, dict]):
-            Dictionary mapping feature names to their type information.
-        processes_number (int, optional, default=1):
-            Number of parallel processes to use when writing the Hugging Face dataset.
-        writer_batch_size (int, optional, default=1):
-            Batch size used when writing samples to disk in Hugging Face format.
-
-    Returns:
-        datasets.DatasetDict:
-            A Hugging Face `DatasetDict` containing one dataset per split.
-
-    Example:
-        >>> ds_dict = plaid_dataset_to_huggingface_datasetdict(
-        ...     dataset=my_plaid_dataset,
-        ...     main_splits={"train": [0, 1, 2], "test": [3]},
-        ...     processes_number=4,
-        ...     writer_batch_size=3
-        ... )
-        >>> print(ds_dict)
-        DatasetDict({
-            train: Dataset({
-                features: ...
-            }),
-            test: Dataset({
-                features: ...
-            })
-        })
-    """
-
-    def generator(dataset):
-        for sample in dataset:
-            yield sample
-
-    generators = {
-        split_name: partial(generator, dataset[ids])
-        for split_name, ids in main_splits.items()
-    }
-
-    return generator_to_datasetdict(
-        generators,
-        var_features_types,
-        processes_number=processes_number,
-        writer_batch_size=writer_batch_size,
-    )
-
-
 def generator_to_datasetdict(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     variable_schema: dict,
+    cache_dir: str,
     gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
     processes_number: int = 1,
     writer_batch_size: int = 1,
 ) -> datasets.DatasetDict:
     """Convert PLAID dataset generators into a Hugging Face `datasets.DatasetDict`.
 
-    This function inspects samples produced by the given generators, flattens their
-    CGNS tree structure, infers Hugging Face feature types, and builds one
-    `datasets.Dataset` per split. Constant features (identical across all samples)
-    are separated out from variable features.
+    This function takes generator functions that yield PLAID samples and converts them
+    into a Hugging Face DatasetDict. Each generator corresponds to a split (e.g., "train",
+    "test") and the function processes samples by flattening their structure and converting
+    them to the Hugging Face format based on the provided variable schema.
 
     Args:
-        generators (dict[str, Callable]):
+        generators (dict[str, Callable[..., Generator[Sample, None, None]]]):
             Mapping from split names (e.g., "train", "test") to generator functions.
-            Each generator function must return an iterable of PLAID samples, where
-            each sample provides `sample.features.data[0.0]` for flattening.
-        variable_schema (dict):
+            Each generator function must yield PLAID Sample objects that will be
+            converted to the Hugging Face format.
+        variable_schema (dict[str, dict]):
             Dictionary defining the schema of variables/features in the dataset.
-        processes_number (int, optional, default=1):
-            Number of processes used internally by Hugging Face when materializing
-            the dataset from the generators.
-        writer_batch_size (int, optional, default=1):
-            Batch size used when writing samples to disk in Hugging Face format.
-        gen_kwargs (dict, optional, default=None):
+            Maps feature names to their type information (dtype and ndim).
+        cache_dir (str):
+            Directory path used as cache directory for the Hugging Face
+            dataset generation process.
+        gen_kwargs (dict[str, dict[str, list[IndexType]]], optional):
             Optional mapping from split names to dictionaries of keyword arguments
-            to be passed to each generator function, used for parallelization.
+            to be passed to each generator function. Useful for passing split-specific
+            parameters like sample indices. Default is None, which creates empty
+            kwargs for each split.
+        processes_number (int, optional):
+            Number of parallel processes to use when materializing the dataset from
+            the generators. Default is 1 (no parallelization).
+        writer_batch_size (int, optional):
+            Batch size used when writing samples to disk in Hugging Face format.
+            Default is 1.
 
     Returns:
-        tuple:
-            - **DatasetDict** (`datasets.DatasetDict`):
-              A Hugging Face dataset dictionary with one dataset per split.
-            - **flat_cst** (`dict[str, Any]`):
-              Dictionary of constant features detected across all splits.
-            - **key_mappings** (`dict[str, Any]`):
-              Metadata dictionary containing:
-              - `"variable_features"`: list of paths for non-constant features.
-              - `"constant_features"`: list of paths for constant features.
-              - `"cgns_types"`: inferred CGNS types for all features.
+        datasets.DatasetDict:
+            A Hugging Face DatasetDict containing one Dataset per split, where each
+            dataset contains the samples generated by the corresponding generator.
 
     Example:
-        >>> ds_dict, flat_cst, key_mappings = plaid_generator_to_huggingface_datasetdict(
-        ...     {"train": lambda: iter(train_samples),
-        ...      "test": lambda: iter(test_samples)},
+        >>> def train_generator():
+        ...     for sample in train_samples:
+        ...         yield sample
+        >>> def test_generator():
+        ...     for sample in test_samples:
+        ...         yield sample
+        >>> variable_schema = {
+        ...     "velocity_x": {"dtype": "float32", "ndim": 2},
+        ...     "velocity_y": {"dtype": "float32", "ndim": 2}
+        ... }
+        >>> ds_dict = generator_to_datasetdict(
+        ...     generators={"train": train_generator, "test": test_generator},
+        ...     variable_schema=variable_schema,
+        ...     cache_dir="/tmp/hf_cache",
         ...     processes_number=4,
-        ...     writer_batch_size=2,
-        ...     verbose=True
+        ...     writer_batch_size=10
         ... )
         >>> print(ds_dict)
         DatasetDict({
             train: Dataset({
-                features: ...
+                features: ['velocity_x', 'velocity_y'],
+                num_rows: ...
             }),
             test: Dataset({
-                features: ...
+                features: ['velocity_x', 'velocity_y'],
+                num_rows: ...
             })
         })
-        >>> print(flat_cst)
-        {'Zone1/GridCoordinates': array([0., 0.1, 0.2])}
-        >>> print(key_mappings["variable_features"][:3])
-        ['Zone1/FlowSolution/VelocityX', 'Zone1/FlowSolution/VelocityY', ...]
     """
     hf_features = convert_to_hf_feature(variable_schema)
 
@@ -204,11 +147,11 @@ def generator_to_datasetdict(
             generator=gen,
             gen_kwargs={"gen_func": gen_func, **gen_kwargs_[split_name]},
             features=hf_features,
+            cache_dir=cache_dir,
             num_proc=processes_number,
             writer_batch_size=writer_batch_size,
             split=datasets.splits.NamedSplit(split_name),
         )
-
     return datasets.DatasetDict(_dict)
 
 
