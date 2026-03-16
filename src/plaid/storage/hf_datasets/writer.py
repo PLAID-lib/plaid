@@ -19,6 +19,7 @@ Key features:
 #
 
 import logging
+import tempfile
 from pathlib import Path
 from typing import Callable, Generator, Optional, Union
 
@@ -116,13 +117,15 @@ def generate_datasetdict_to_disk(
         num_proc (int): Number of processes for generation.
         verbose (bool): Whether to enable verbose output.
     """
-    hf_datasetdict = generator_to_datasetdict(
-        generators,
-        variable_schema,
-        gen_kwargs=gen_kwargs,
-        processes_number=num_proc,
-    )
-    save_datasetdict_to_disk(output_folder, hf_datasetdict, num_proc=num_proc)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        hf_datasetdict = generator_to_datasetdict(
+            generators,
+            variable_schema,
+            cache_dir=tmpdirname,
+            gen_kwargs=gen_kwargs,
+            processes_number=num_proc,
+        )
+        save_datasetdict_to_disk(output_folder, hf_datasetdict, num_proc=num_proc)
 
 
 def push_datasetdict_to_hub(

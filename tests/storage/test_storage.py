@@ -23,9 +23,7 @@ from plaid.storage import (
     load_problem_definitions_from_disk,
     save_to_disk,
 )
-from plaid.storage.common.preprocessor import preprocess
 from plaid.storage.hf_datasets.bridge import (
-    plaid_dataset_to_datasetdict,
     to_var_sample_dict,
 )
 
@@ -133,17 +131,11 @@ class Test_Storage:
     def test_hf_datasets(
         self,
         dataset,
-        main_splits,
         tmp_path,
         generator_split,
         infos,
         problem_definition,
     ):
-        _, variable_schema, _, _, _ = preprocess(generator_split)
-        datasetdict = plaid_dataset_to_datasetdict(
-            dataset, main_splits, variable_schema
-        )
-
         test_dir = tmp_path / "test_hf"
 
         save_to_disk(
