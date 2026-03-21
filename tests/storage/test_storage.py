@@ -28,6 +28,26 @@ from plaid.storage.hf_datasets.bridge import (
 )
 
 
+def _yield_samples_from_ids(dataset: Dataset, ids: list[int]):
+    for id_ in ids:
+        yield dataset[id_]
+
+
+def _yield_samples_from_local_ids(
+    dataset: Dataset, split_global_ids: list[int], ids: list[int]
+):
+    for id_ in ids:
+        yield dataset[split_global_ids[id_]]
+
+
+def _yield_samples_from_shards_ids(dataset: Dataset, shards_ids):
+    for ids in shards_ids:
+        if isinstance(ids, int):
+            ids = [ids]
+        for id_ in ids:
+            yield dataset[id_]
+
+
 @pytest.fixture()
 def current_directory():
     return Path(__file__).absolute().parent
@@ -81,6 +101,16 @@ def gen_kwargs(problem_definition) -> dict[str, dict]:
 
 
 @pytest.fixture()
+def split_global_ids(problem_definition) -> dict[str, list[int]]:
+    return problem_definition.get_split()
+
+
+@pytest.fixture()
+def split_n_samples(problem_definition) -> dict[str, int]:
+    return {k: len(v) for k, v in problem_definition.get_split().items()}
+
+
+@pytest.fixture()
 def generator_split(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
 
@@ -102,15 +132,19 @@ def generator_split_with_kwargs(dataset, gen_kwargs) -> dict[str, Callable]:
     generators_ = {}
 
     for split_name in gen_kwargs.keys():
+        generators_[split_name] = partial(_yield_samples_from_shards_ids, dataset)
 
-        def generator_(shards_ids):
-            for ids in shards_ids:
-                if isinstance(ids, int):
-                    ids = [ids]
-                for id in ids:
-                    yield dataset[id]
+    return generators_
 
-        generators_[split_name] = generator_
+
+@pytest.fixture()
+def generator_split_from_local_ids(dataset, split_global_ids) -> dict[str, Callable]:
+    generators_ = {}
+
+    for split_name, global_ids in split_global_ids.items():
+        generators_[split_name] = partial(
+            _yield_samples_from_local_ids, dataset, global_ids
+        )
 
     return generators_
 
@@ -133,10 +167,25 @@ class Test_Storage:
         dataset,
         tmp_path,
         generator_split,
+        generator_split_with_kwargs,
         infos,
         problem_definition,
+        gen_kwargs,
     ):
         test_dir = tmp_path / "test_hf"
+        legacy_kwargs_test_dir = tmp_path / "test_hf_legacy_kwargs"
+
+        save_to_disk(
+            output_folder=legacy_kwargs_test_dir,
+            generators=generator_split_with_kwargs,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            gen_kwargs=gen_kwargs,
+            num_proc=2,
+            overwrite=True,
+            verbose=True,
+        )
 
         save_to_disk(
             output_folder=test_dir,
@@ -358,3 +407,43 @@ class Test_Storage:
 
         with pytest.raises(ValueError):
             _ = registry.get_backend("non_existent_backend")
+
+    def test_hf_datasets_with_split_n_samples_parallel(
+        self,
+        tmp_path,
+        infos,
+        problem_definition,
+        split_n_samples,
+        gen_kwargs,
+        generator_split_from_local_ids,
+    ):
+        test_dir = tmp_path / "test_hf_split_n_samples"
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split_from_local_ids,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            split_n_samples=split_n_samples,
+            num_proc=2,
+            overwrite=True,
+            verbose=True,
+        )
+
+        datasetdict, _ = init_from_disk(test_dir)
+        assert len(datasetdict["train"]) == split_n_samples["train"]
+        assert len(datasetdict["test"]) == split_n_samples["test"]
+
+        with pytest.raises(ValueError):
+            save_to_disk(
+                output_folder=test_dir,
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples=split_n_samples,
+                gen_kwargs=gen_kwargs,
+                num_proc=2,
+                overwrite=True,
+            )

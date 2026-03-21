@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (storage/writer) simplify parallel dataset generation API: `save_to_disk` now exposes `split_n_samples` as the high-level sharding entrypoint while keeping `gen_kwargs` for backward compatibility.
+- (storage/docs) clarify generator contract for storage writing: generators must accept `ids`; with `split_n_samples`, these are local split indices (`0..n-1`) and are internally sharded by PLAID when `num_proc > 1`.
+- (tutorials/storage) update parallel and sequential examples to consistently handle local-vs-global indexing when using curated split subsets.
 - (containers/features) `add_field` now warns and auto-converts `np.int32`/`np.int64` fields to `np.float64` for CGNS compatibility.
 - (sample) add_tree: add in_place arg to decide whether the added tree should be kept unchanged (with in_place=False).
 - (docs/actions) better explain which package and dev env for which OS, and repair readthedocs generation.
@@ -34,11 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (storage) fix cgns and zarr parallel writers (spawn as many processes as num_proc instead of num_shards)
 - (sample) fix fields summarize in `__str__`
 - (tests/containers) update sample field-name fixtures and add dedicated coverage for invalid CGNS name lengths.
+- (tests/storage) align storage tests with the simplified public API (`split_n_samples` + `gen_kwargs`) and remove public `split_ids`-based save path coverage.
 
 ### Removed
 
 - (storage) remove train_test_split - this lead to unwanted behaviors with the `hf_datasets` backend.
 - (storage) remove `extra_fields` and useless `__setattr__`/`__getattr__` mechanisms.
+- (storage/writer) remove public `split_ids` argument from `save_to_disk` (internal sharding/id handling remains private).
 
 ## [0.1.13] - 2026-01-22
 
