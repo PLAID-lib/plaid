@@ -629,6 +629,7 @@ class Test_Sample:
     def test_get_scalar(self, sample_with_scalar):
         assert sample_with_scalar.get_scalar("missing_scalar_name") is None
         assert sample_with_scalar.get_scalar("test_scalar_1") is not None
+        assert isinstance(sample_with_scalar.get_scalar("test_scalar_1"), np.float64)
 
     def test_scalars_add_empty(self, sample_with_scalar):
         assert isinstance(sample_with_scalar.get_scalar("test_scalar_1"), float)

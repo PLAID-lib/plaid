@@ -751,11 +751,18 @@ class SampleFeatures:
             Optional[Array]: The global array if found, otherwise None. Returns a scalar if the array has size 1.
         """
         time = self.resolve_time(time)
-        if self.has_globals(time):
-            global_ = CGU.getValueByPath(self.data[time], "Global/" + name)
-            return global_.item() if getattr(global_, "size", None) == 1 else global_
-        else:
+
+        if not self.has_globals(time):
             return None
+
+        global_ = CGU.getValueByPath(self.data[time], "Global/" + name)
+        if global_ is None:
+            return None
+
+        if getattr(global_, "size", None) == 1:
+            return global_[0]
+
+        return global_
 
     def add_global(
         self,
