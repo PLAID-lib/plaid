@@ -1171,6 +1171,7 @@ class SampleFeatures:
         Raises:
             KeyError: Raised if the specified zone does not exist in the given base.
         """
+        assert isinstance(field, np.ndarray)
         _check_names([name])
         # init_tree will look for default time
         self.init_tree(time)
@@ -1181,6 +1182,12 @@ class SampleFeatures:
             raise KeyError(
                 f"there is no Zone with name {zone_name} in base {base_name}. Did you check topological and physical dimensions ?"
             )
+
+        if field.dtype in (np.int32, np.int64):
+            logger.warning(
+                f"(add_field) provided field is of type {field.dtype} and has been converted to np.float64 for CGNS compatibility."
+            )
+            field = np.astype(field, np.float64)
 
         # solution_paths = CGU.getPathsByTypeOrNameList(self._tree, '/.*/.*/FlowSolution_t')
         solution_paths = CGU.getPathsByTypeSet(zone_node, "FlowSolution_t")
