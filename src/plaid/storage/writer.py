@@ -209,16 +209,6 @@ def save_to_disk(
         )
     )
 
-    backend_spec = get_backend(backend)
-    backend_spec.generate_to_disk(
-        output_folder,
-        generators,
-        variable_schema,
-        gen_kwargs=gen_kwargs,
-        num_proc=num_proc,
-        verbose=verbose,
-    )
-
     save_metadata_to_disk(
         output_folder, flat_cst, variable_schema, constant_schema, cgns_types
     )
@@ -232,6 +222,16 @@ def save_to_disk(
 
     if pb_defs is not None:
         save_problem_definitions_to_disk(output_folder, pb_defs)
+
+    backend_spec = get_backend(backend)
+    backend_spec.generate_to_disk(
+        output_folder,
+        generators,
+        variable_schema,
+        gen_kwargs=gen_kwargs,
+        num_proc=num_proc,
+        verbose=verbose,
+    )
 
 
 def push_to_hub(

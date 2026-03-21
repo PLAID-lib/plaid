@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (storage/writer) save_to_disk: dataset write has been moved after metadata writes, for error  concerning meta data to be raised instantly (without waiting for all the heavy data to be written)
 - (sample) get_global in the scalar case now returns the scalar with the original type.
 - (datasets) fix missing location use in get_field_names, and improve corresponding tests.
 - (cgns_helpers) update_features_for_CGNS_compatibility: fix behavior where input variable was modified by the function.
