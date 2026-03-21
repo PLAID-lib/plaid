@@ -37,7 +37,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (storage) fix cgns and zarr parallel writers (spawn as many processes as num_proc instead of num_shards)
 - (sample) fix fields summarize in `__str__`
 - (tests/containers) update sample field-name fixtures and add dedicated coverage for invalid CGNS name lengths.
-- (tests/storage) align storage tests with the simplified public API (`split_n_samples` + `gen_kwargs`) and remove public `split_ids`-based save path coverage.
 
 ### Removed
 
