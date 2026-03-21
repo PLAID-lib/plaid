@@ -1189,7 +1189,7 @@ class SampleFeatures:
             logger.warning(
                 f"(add_field) provided field is of type {field.dtype} and has been converted to np.float64 for CGNS compatibility."
             )
-            field = np.astype(field, np.float64)
+            field = field.astype(np.float64)
 
         # solution_paths = CGU.getPathsByTypeOrNameList(self._tree, '/.*/.*/FlowSolution_t')
         solution_paths = CGU.getPathsByTypeSet(zone_node, "FlowSolution_t")
