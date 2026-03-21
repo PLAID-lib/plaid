@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (sample) get_global in the scalar case now returns the scalar with the original type.
 - (datasets) fix missing location use in get_field_names, and improve corresponding tests.
 - (cgns_helpers) update_features_for_CGNS_compatibility: fix behavior where input variable was modified by the function.
 - (storage/common/preprocessor) make constant_features split-dependant.
