@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (containers/features) `add_field` now warns and auto-converts `np.int32`/`np.int64` fields to `np.float64` for CGNS compatibility.
 - (sample) add_tree: add in_place arg to decide whether the added tree should be kept unchanged (with in_place=False).
 - (docs/actions) better explain which package and dev env for which OS, and repair readthedocs generation.
 - (containers/managers) return a warning when an automatically resolved time stamp is different from 0.0.

@@ -1160,7 +1160,9 @@ class SampleFeatures:
 
         Args:
             name (str): The name of the field to be added.
-            field (Field): The field data to be added.
+            field (Field): The field data to be added. Integer arrays with dtype
+                ``np.int32`` or ``np.int64`` are automatically converted to
+                ``np.float64`` (with a warning) for CGNS compatibility.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
