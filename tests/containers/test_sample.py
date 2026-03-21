@@ -329,6 +329,28 @@ class Test_Sample:
         sample.features.add_tree(tree)
         sample.features.add_tree(tree, time=0.2)
 
+    def test_add_tree_in_place_true_mutates_input_tree(self, sample: Sample, tree):
+        base_path = CGU.getPathsByTypeSet(tree, ["CGNSBase_t"])[0]
+        base_node = CGU.getNodeByPath(tree, base_path)
+        assert CGU.getValueByPath(base_node, "Time/TimeValues") is None
+
+        sample.features.add_tree(tree, in_place=True)
+
+        # With in_place=True, the same object may be reused internally.
+        assert CGU.getValueByPath(base_node, "Time/TimeValues") is not None
+
+    def test_add_tree_in_place_false_preserves_input_tree(self, sample: Sample, tree):
+        base_path = CGU.getPathsByTypeSet(tree, ["CGNSBase_t"])[0]
+        base_node = CGU.getNodeByPath(tree, base_path)
+        assert CGU.getValueByPath(base_node, "Time/TimeValues") is None
+
+        sample.features.add_tree(tree, in_place=False)
+
+        # With in_place=False, the input tree is deep-copied first.
+        assert CGU.getValueByPath(base_node, "Time/TimeValues") is None
+        added_base_node = sample.features.get_base(time=0.0)
+        assert CGU.getValueByPath(added_base_node, "Time/TimeValues") is not None
+
     def test_del_tree(self, sample, tree):
         sample.features.add_tree(tree)
         sample.features.add_tree(tree, time=0.2)

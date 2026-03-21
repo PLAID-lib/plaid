@@ -1,6 +1,7 @@
 """Module for implementing collections of features within a Sample."""
 
 import logging
+from copy import deepcopy
 from typing import Optional
 
 import CGNS.PAT.cgnskeywords as CGK
@@ -199,24 +200,35 @@ class SampleFeatures:
                 "meshes is already set, you cannot overwrite it, delete it first or extend it with `Sample.add_tree`"
             )
 
-    def add_tree(self, tree: CGNSTree, time: Optional[float] = None) -> CGNSTree:
-        """Merge a CGNS tree to the already existing tree.
+    def add_tree(
+        self, tree: CGNSTree, time: Optional[float] = None, in_place: bool = True
+    ) -> CGNSTree:
+        """Merge a CGNS tree into the tree stored at a given time.
+
+        If there is no tree at ``time``, ``tree`` is stored directly. Otherwise, Base
+        nodes from ``tree`` are appended only when their name does not already exist in
+        the destination tree. Bases with duplicate names are ignored and a warning is
+        emitted.
 
         Args:
-            tree (CGNSTree): The CGNS tree to be merged. If a Base node already exists, it is ignored.
-            time (float, optional): The time step for which to add the CGNS tree structure. If a specific time is not provided, the method will display the tree structure for the default time step.
+            tree (CGNSTree): CGNS tree to add.
+            time (float, optional): Time step at which the tree is added. If omitted,
+                the default time resolution is used.
+            in_place (bool, optional): Controls ownership of the input tree. When
+                ``True`` (default), the provided object may be stored/used directly.
+                When ``False``, the input tree is deep-copied before insertion.
 
         Raises:
-            ValueError: If the provided CGNS tree is an empty list.
-
-        Note:
-            `tree` should not be reused after, since it will be modified by functions on the feature.
+            ValueError: If ``tree`` is an empty list.
 
         Returns:
-            CGNSTree: The merged CGNS tree.
+            CGNSTree: The resulting tree for the resolved ``time``.
         """
         if tree == []:
             raise ValueError("CGNS Tree should not be an empty list")
+
+        if not in_place:
+            tree = deepcopy(tree)
 
         def _iter_node_names(node: CGNSNode) -> list[str]:
             names = []
