@@ -744,7 +744,9 @@ class Test_Dataset:
     ):
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
         for sample in dataset_with_samples_with_tree_:
-            sample.add_field("test_node_field_1", [0, 1], warning_overwrite=False)
+            sample.add_field(
+                "test_node_field_1", np.array([0, 1]), warning_overwrite=False
+            )
         with pytest.raises(AssertionError):
             dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
                 feature_identifiers=[
@@ -758,10 +760,10 @@ class Test_Dataset:
     ):
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
         dataset_with_samples_with_tree_[0].add_field(
-            "test_node_field_1", [0, 1], warning_overwrite=False
+            "test_node_field_1", np.array([0, 1]), warning_overwrite=False
         )
         dataset_with_samples_with_tree_[0].add_field(
-            "OriginalIds", [0, 1], warning_overwrite=False
+            "OriginalIds", np.array([0, 1]), warning_overwrite=False
         )
         with pytest.raises(AssertionError):
             dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(

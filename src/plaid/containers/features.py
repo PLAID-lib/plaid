@@ -1160,7 +1160,9 @@ class SampleFeatures:
 
         Args:
             name (str): The name of the field to be added.
-            field (Field): The field data to be added.
+            field (Field): The field data to be added. Integer arrays with dtype
+                ``np.int32`` or ``np.int64`` are automatically converted to
+                ``np.float64`` (with a warning) for CGNS compatibility.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
             zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
@@ -1171,6 +1173,7 @@ class SampleFeatures:
         Raises:
             KeyError: Raised if the specified zone does not exist in the given base.
         """
+        assert isinstance(field, np.ndarray)
         _check_names([name])
         # init_tree will look for default time
         self.init_tree(time)
@@ -1181,6 +1184,12 @@ class SampleFeatures:
             raise KeyError(
                 f"there is no Zone with name {zone_name} in base {base_name}. Did you check topological and physical dimensions ?"
             )
+
+        if field.dtype in (np.int32, np.int64):
+            logger.warning(
+                f"(add_field) provided field is of type {field.dtype} and has been converted to np.float64 for CGNS compatibility."
+            )
+            field = field.astype(np.float64)
 
         # solution_paths = CGU.getPathsByTypeOrNameList(self._tree, '/.*/.*/FlowSolution_t')
         solution_paths = CGU.getPathsByTypeSet(zone_node, "FlowSolution_t")

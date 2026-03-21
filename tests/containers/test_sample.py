@@ -984,6 +984,17 @@ class Test_Sample:
             "cell_Zone_2_Base_3_3_t_1.0",
         ]
         assert sample.get_field_names() == sorted(set(expected_field_names))
+        sample.add_field(
+            name="field_of_ints",
+            field=np.arange(10),
+            zone_name="Zone_2",
+            base_name="Base_3_3",
+            time=1.0,
+        )
+        field = sample.get_field(
+            "field_of_ints", zone_name="Zone_2", base_name="Base_3_3", time=1.0
+        )
+        assert field.dtype == np.float64
 
     def test_get_field_empty(self, sample: Sample):
         assert sample.get_field("missing_field_name") is None
