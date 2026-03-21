@@ -447,3 +447,63 @@ class Test_Storage:
                 num_proc=2,
                 overwrite=True,
             )
+
+    def test_hf_datasets_with_split_n_samples_sequential_and_validation(
+        self,
+        tmp_path,
+        infos,
+        problem_definition,
+        split_n_samples,
+        generator_split_from_local_ids,
+    ):
+        test_dir = tmp_path / "test_hf_split_n_samples_seq"
+
+        # Sequential path (`num_proc=1`) covers internal no-sharding flow.
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split_from_local_ids,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            split_n_samples=split_n_samples,
+            num_proc=1,
+            overwrite=True,
+            verbose=True,
+        )
+
+        datasetdict, _ = init_from_disk(test_dir)
+        assert len(datasetdict["train"]) == split_n_samples["train"]
+        assert len(datasetdict["test"]) == split_n_samples["test"]
+
+        with pytest.raises(ValueError, match="Missing split sizes"):
+            save_to_disk(
+                output_folder=tmp_path / "test_hf_split_n_samples_missing",
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples={"train": split_n_samples["train"]},
+                overwrite=True,
+            )
+
+        with pytest.raises(ValueError, match="Unexpected split size keys"):
+            save_to_disk(
+                output_folder=tmp_path / "test_hf_split_n_samples_extra",
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples={**split_n_samples, "dummy": 1},
+                overwrite=True,
+            )
+
+        with pytest.raises(ValueError, match="split_n_samples values must be >= 0"):
+            save_to_disk(
+                output_folder=tmp_path / "test_hf_split_n_samples_negative",
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples={**split_n_samples, "train": -1},
+                overwrite=True,
+            )
