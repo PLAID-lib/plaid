@@ -173,10 +173,6 @@ def save_to_disk(
     if infos:
         validate_required_infos(infos)
 
-    output_folder = Path(output_folder)
-
-    _check_folder(output_folder, overwrite)
-
     if split_n_samples is not None and gen_kwargs is not None:
         raise ValueError(
             "Provide either `split_n_samples` (high-level API) or `gen_kwargs` (advanced API), not both."
@@ -203,6 +199,9 @@ def save_to_disk(
         generators = _wrap_generators_with_split_ids(generators, split_ids)
         if num_proc > 1:
             gen_kwargs = _build_parallel_gen_kwargs(split_ids, num_proc)
+
+    output_folder = Path(output_folder)
+    _check_folder(output_folder, overwrite)
 
     flat_cst, variable_schema, constant_schema, split_n_samples, cgns_types = (
         preprocess(

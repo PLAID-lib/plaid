@@ -10,7 +10,7 @@
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
-from typing import Callable
+from typing import Callable, cast
 
 import pytest
 
@@ -26,11 +26,8 @@ from plaid.storage import (
 from plaid.storage.hf_datasets.bridge import (
     to_var_sample_dict,
 )
-
-
-def _yield_samples_from_ids(dataset: Dataset, ids: list[int]):
-    for id_ in ids:
-        yield dataset[id_]
+from plaid.storage.writer import _split_list
+from plaid.types import IndexType
 
 
 def _yield_samples_from_local_ids(
@@ -418,6 +415,7 @@ class Test_Storage:
         generator_split_from_local_ids,
     ):
         test_dir = tmp_path / "test_hf_split_n_samples"
+        invalid_args_test_dir = tmp_path / "test_hf_split_n_samples_invalid_args"
 
         save_to_disk(
             output_folder=test_dir,
@@ -437,7 +435,7 @@ class Test_Storage:
 
         with pytest.raises(ValueError):
             save_to_disk(
-                output_folder=test_dir,
+                output_folder=invalid_args_test_dir,
                 generators=generator_split_from_local_ids,
                 backend="hf_datasets",
                 infos=infos,
@@ -507,3 +505,8 @@ class Test_Storage:
                 split_n_samples={**split_n_samples, "train": -1},
                 overwrite=True,
             )
+
+    def test_split_list_single_split(self):
+        """Cover _split_list early return path (`n_splits <= 1`)."""
+        ids = cast(list[IndexType], [0, 1, 2])
+        assert _split_list(ids, 1) == [[0, 1, 2]]
