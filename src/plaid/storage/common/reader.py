@@ -25,6 +25,22 @@ from plaid import ProblemDefinition
 
 logger = logging.getLogger(__name__)
 
+
+def _materialize_memmaps(
+    flat_cst: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Return constants with numeric memmaps materialized into in-memory arrays.
+
+    This is used for metadata loaded from ephemeral locations (e.g. temporary
+    download directories), where memmap-backed file lifetimes are not guaranteed.
+    """
+    for split, split_cst in flat_cst.items():
+        for key, value in split_cst.items():
+            if isinstance(value, np.memmap):
+                flat_cst[split][key] = np.asarray(value).copy()
+    return flat_cst
+
+
 # ------------------------------------------------------
 # Load from disk
 # ------------------------------------------------------
@@ -107,8 +123,8 @@ def load_constants_from_disk(path):
     Returns:
         tuple:
             flat_cst (dict[str, dict[str, Any]]): Mapping split -> {constant_name: numpy array | None}.
-                - Numeric constants are returned as numpy arrays with the dtype and shape specified
-                  in the schema.
+                - Numeric constants are returned as ``np.memmap`` arrays backed by
+                  ``data.mmap`` in the dataset directory.
                 - String constants are returned as 1-element numpy arrays of Python str decoded using ASCII.
                 - If layout entry for a key is None, the value is returned as None.
             constant_schema (dict[str, dict[str, Any]]): Mapping split -> loaded constant schema (from YAML).
@@ -181,7 +197,8 @@ def load_metadata_from_disk(
 
     Returns:
         tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
-            - flat_cst: constant features dictionary
+            - flat_cst: constant features dictionary (numeric constants kept as
+              file-backed ``np.memmap``)
             - variable_schema: variable schema dictionary
             - constant_schema: constant schema dictionary
             - cgns_types: CGNS types dictionary
@@ -261,7 +278,8 @@ def load_metadata_from_hub(
 
     Returns:
         tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
-            - flat_cst: constant features dictionary
+            - flat_cst: constant features dictionary (numeric constants are
+              materialized to in-memory arrays)
             - variable_schema: variable schema dictionary
             - constant_schema: constant schema dictionary
             - cgns_types: CGNS types dictionary
@@ -275,6 +293,9 @@ def load_metadata_from_hub(
             local_dir=temp_folder,
         )
         flat_cst, constant_schema = load_constants_from_disk(temp_folder)
+        # Hub metadata is downloaded under a temporary directory: materialize
+        # memmaps so returned constants remain valid after temp cleanup.
+        flat_cst = _materialize_memmaps(flat_cst)
 
     # variable_schema
     yaml_path = hf_hub_download(
