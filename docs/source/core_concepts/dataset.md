@@ -6,6 +6,8 @@ title: Dataset
 
 A PLAID {py:class}`~plaid.containers.dataset.Dataset` is a collection of physics configurations, organized into {py:class}`~plaid.containers.sample.Sample`. Each {py:class}`~plaid.containers.sample.Sample` contains all the necessary features to define a specific configuration, including mesh and scalar data.
 
+A dataset must contain at least two different samples, i.e. having at least one features different between the two samples.
+
 ## Create and load
 
 - Empty dataset:
