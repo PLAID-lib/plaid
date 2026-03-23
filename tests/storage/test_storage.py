@@ -12,7 +12,7 @@ import shutil
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
-from typing import Callable
+from typing import Callable, cast
 
 import numpy as np
 import pytest
@@ -29,6 +29,23 @@ from plaid.storage import (
 from plaid.storage.hf_datasets.bridge import (
     to_var_sample_dict,
 )
+from plaid.storage.writer import _split_list
+from plaid.types import IndexType
+
+
+def _yield_samples_from_local_ids(
+    dataset: Dataset, split_global_ids: list[int], ids: list[int]
+):
+    for id_ in ids:
+        yield dataset[split_global_ids[id_]]
+
+
+def _yield_samples_from_shards_ids(dataset: Dataset, shards_ids):
+    for ids in shards_ids:
+        if isinstance(ids, int):
+            ids = [ids]
+        for id_ in ids:
+            yield dataset[id_]
 
 
 def test_load_metadata_from_hub_materializes_memmaps(tmp_path, monkeypatch):
@@ -188,6 +205,16 @@ def gen_kwargs(problem_definition) -> dict[str, dict]:
 
 
 @pytest.fixture()
+def split_global_ids(problem_definition) -> dict[str, list[int]]:
+    return problem_definition.get_split()
+
+
+@pytest.fixture()
+def split_n_samples(problem_definition) -> dict[str, int]:
+    return {k: len(v) for k, v in problem_definition.get_split().items()}
+
+
+@pytest.fixture()
 def generator_split(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
 
@@ -209,15 +236,19 @@ def generator_split_with_kwargs(dataset, gen_kwargs) -> dict[str, Callable]:
     generators_ = {}
 
     for split_name in gen_kwargs.keys():
+        generators_[split_name] = partial(_yield_samples_from_shards_ids, dataset)
 
-        def generator_(shards_ids):
-            for ids in shards_ids:
-                if isinstance(ids, int):
-                    ids = [ids]
-                for id in ids:
-                    yield dataset[id]
+    return generators_
 
-        generators_[split_name] = generator_
+
+@pytest.fixture()
+def generator_split_from_local_ids(dataset, split_global_ids) -> dict[str, Callable]:
+    generators_ = {}
+
+    for split_name, global_ids in split_global_ids.items():
+        generators_[split_name] = partial(
+            _yield_samples_from_local_ids, dataset, global_ids
+        )
 
     return generators_
 
@@ -240,10 +271,25 @@ class Test_Storage:
         dataset,
         tmp_path,
         generator_split,
+        generator_split_with_kwargs,
         infos,
         problem_definition,
+        gen_kwargs,
     ):
         test_dir = tmp_path / "test_hf"
+        legacy_kwargs_test_dir = tmp_path / "test_hf_legacy_kwargs"
+
+        save_to_disk(
+            output_folder=legacy_kwargs_test_dir,
+            generators=generator_split_with_kwargs,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            gen_kwargs=gen_kwargs,
+            num_proc=2,
+            overwrite=True,
+            verbose=True,
+        )
 
         save_to_disk(
             output_folder=test_dir,
@@ -465,3 +511,109 @@ class Test_Storage:
 
         with pytest.raises(ValueError):
             _ = registry.get_backend("non_existent_backend")
+
+    def test_hf_datasets_with_split_n_samples_parallel(
+        self,
+        tmp_path,
+        infos,
+        problem_definition,
+        split_n_samples,
+        gen_kwargs,
+        generator_split_from_local_ids,
+    ):
+        test_dir = tmp_path / "test_hf_split_n_samples"
+        invalid_args_test_dir = tmp_path / "test_hf_split_n_samples_invalid_args"
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split_from_local_ids,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            split_n_samples=split_n_samples,
+            num_proc=2,
+            overwrite=True,
+            verbose=True,
+        )
+
+        datasetdict, _ = init_from_disk(test_dir)
+        assert len(datasetdict["train"]) == split_n_samples["train"]
+        assert len(datasetdict["test"]) == split_n_samples["test"]
+
+        with pytest.raises(ValueError):
+            save_to_disk(
+                output_folder=invalid_args_test_dir,
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples=split_n_samples,
+                gen_kwargs=gen_kwargs,
+                num_proc=2,
+                overwrite=True,
+            )
+
+    def test_hf_datasets_with_split_n_samples_sequential_and_validation(
+        self,
+        tmp_path,
+        infos,
+        problem_definition,
+        split_n_samples,
+        generator_split_from_local_ids,
+    ):
+        test_dir = tmp_path / "test_hf_split_n_samples_seq"
+
+        # Sequential path (`num_proc=1`) covers internal no-sharding flow.
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split_from_local_ids,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            split_n_samples=split_n_samples,
+            num_proc=1,
+            overwrite=True,
+            verbose=True,
+        )
+
+        datasetdict, _ = init_from_disk(test_dir)
+        assert len(datasetdict["train"]) == split_n_samples["train"]
+        assert len(datasetdict["test"]) == split_n_samples["test"]
+
+        with pytest.raises(ValueError, match="Missing split sizes"):
+            save_to_disk(
+                output_folder=tmp_path / "test_hf_split_n_samples_missing",
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples={"train": split_n_samples["train"]},
+                overwrite=True,
+            )
+
+        with pytest.raises(ValueError, match="Unexpected split size keys"):
+            save_to_disk(
+                output_folder=tmp_path / "test_hf_split_n_samples_extra",
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples={**split_n_samples, "dummy": 1},
+                overwrite=True,
+            )
+
+        with pytest.raises(ValueError, match="split_n_samples values must be >= 0"):
+            save_to_disk(
+                output_folder=tmp_path / "test_hf_split_n_samples_negative",
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples={**split_n_samples, "train": -1},
+                overwrite=True,
+            )
+
+    def test_split_list_single_split(self):
+        """Cover _split_list early return path (`n_splits <= 1`)."""
+        ids = cast(list[IndexType], [0, 1, 2])
+        assert _split_list(ids, 1) == [[0, 1, 2]]

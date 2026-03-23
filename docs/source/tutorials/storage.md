@@ -20,7 +20,7 @@ The examples show:
 Notes and requirements:
 - The example uses external tools (plyfile, Muscat) to construct meshes; these are not part of PLAID runtime dependencies.
 - Configure a dedicated HF cache (datasets.config.HF_DATASETS_CACHE) when running the Hugging Face backend.
-- Parallel mode demonstrates sharding and num_proc controls; writer_batch_size / num_workers are used when uploading to the hub.
+- Parallel mode demonstrates `num_proc` controls; PLAID can build internal shards from split sample counts (`split_n_samples`) so users do not need to manually manage shard lists.
 - The tutorial includes utilities to inspect CGNS trees and to save single Plaid samples to disk for visualization (e.g., Paraview).
 
 Constants loading policy (metadata):
@@ -62,7 +62,6 @@ config.HF_DATASETS_CACHE = tmp_cache_dir
 # Choose to execute the parallel of sequential version
 VERSION = "PARALLEL"
 N_PROC = 6 # number of parallel processes
-N_SHARD = 6 # number of shards, used by the generator in parallel mode, will be overridden by internal logic at writing stage
 # VERSION = "SEQUENTIAL"
 
 # raw data dowloaded from https://zenodo.org/records/13993629
@@ -78,11 +77,6 @@ all_backends = ["hf_datasets", "cgns", "zarr"]
 
 #---------------------------------------------------------------
 # define some functions to handle ShapeNetCar data
-
-def split_list(lst, n_splits):
-    n = len(lst)
-    k, m = divmod(n, n_splits)
-    return [lst[i*k + min(i, m):(i+1)*k + min(i+1, m)] for i in range(n_splits)]
 
 with open(f"{BASE_RAW_DATA_FOLDER}/train.txt") as f:
     line = f.readline().strip()
@@ -151,40 +145,50 @@ pb_def.set_test_split({"test":"all"})
 
 if VERSION == "PARALLEL":
 
-    def _generator(shards_ids):
-        for ids in shards_ids:
-            for i in ids:
-                folder = tri_folders[i]
+    # IMPORTANT CONTRACT:
+    # - with split_n_samples, PLAID calls generators with local split indices
+    #   ids in [0, ..., split_n_samples[split]-1]
+    # - in parallel mode, PLAID internally shards these ids and each call gets a subset
 
-                plydata = PlyData.read(folder / "tri_mesh.ply")
-                tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
+    split_global_ids = {"train": curated_train_ids,
+                        "test": curated_test_ids}
 
-                vertex_data = plydata['vertex'].data
-                x = vertex_data['x']
-                y = vertex_data['y']
-                z = vertex_data['z']
+    def _generator(split_name, ids):
+        global_ids = split_global_ids[split_name]
+        for i in ids:
+            # ids are local indices in [0, ..., split_n_samples[split_name]-1]
+            # map them back to global indices in tri_folders
+            folder = tri_folders[global_ids[i]]
 
-                nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
+            plydata = PlyData.read(folder / "tri_mesh.ply")
+            tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
 
-                mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
+            vertex_data = plydata['vertex'].data
+            x = vertex_data['x']
+            y = vertex_data['y']
+            z = vertex_data['z']
 
-                press = np.load(folder / "press.npy")
-                offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
-                mesh.nodeFields["pressure"] = press[offset:]
+            nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
 
-                tree = MeshToCGNS(mesh, exportOriginalIDs=False)
+            mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
 
-                sample = Sample()
-                sample.add_tree(tree)
+            press = np.load(folder / "press.npy")
+            offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
+            mesh.nodeFields["pressure"] = press[offset:]
 
-                yield sample
+            tree = MeshToCGNS(mesh, exportOriginalIDs=False)
+
+            sample = Sample()
+            sample.add_tree(tree)
+
+            yield sample
 
 
-    gen_kwargs = {"train": {'shards_ids': split_list(curated_train_ids, N_SHARD)},
-                "test": {'shards_ids': split_list(curated_test_ids, N_SHARD)}}
+    split_n_samples = {"train": len(curated_train_ids),
+                       "test": len(curated_test_ids)}
 
-    generators = {"train": _generator,
-                "test": _generator}
+    generators = {"train": partial(_generator, "train"),
+                "test": partial(_generator, "test")}
 
 
     for backend in all_backends:
@@ -202,7 +206,7 @@ if VERSION == "PARALLEL":
                     backend = backend,
                     infos = infos,
                     pb_defs = pb_def,
-                    gen_kwargs = gen_kwargs,
+                    split_n_samples = split_n_samples,
                     num_proc = N_PROC,
                     overwrite = True,
                     verbose = True)
@@ -248,8 +252,8 @@ if VERSION == "SEQUENTIAL":
 
             yield sample
 
-    generators = {"train": partial(_generator, range(len(curated_train_ids))),
-                "test": partial(_generator, range(len(curated_test_ids)))}
+    generators = {"train": partial(_generator, curated_train_ids),
+                "test": partial(_generator, curated_test_ids)}
 
     for backend in all_backends:
 
@@ -267,7 +271,7 @@ if VERSION == "SEQUENTIAL":
                     overwrite=True,
                     verbose=True)
 
-        print(f"duration generate with N_PROC={N_PROC} and N_SHARD={N_SHARD} is {time.time()-start} s")
+        print(f"duration generate in sequential mode is {time.time()-start} s")
 
 if Path(tmp_cache_dir).exists():
     shutil.rmtree(Path(tmp_cache_dir))

@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (storage/writer) simplify parallel dataset generation API: `save_to_disk` now exposes `split_n_samples` as the high-level sharding entrypoint while keeping `gen_kwargs` for backward compatibility.
+- (storage/docs) clarify generator contract for storage writing: generators must accept `ids`; with `split_n_samples`, these are local split indices (`0..n-1`) and are internally sharded by PLAID when `num_proc > 1`.
+- (tutorials/storage) update parallel and sequential examples to consistently handle local-vs-global indexing when using curated split subsets.
 - (containers/features) `add_field` now warns and auto-converts `np.int32`/`np.int64` fields to `np.float64` for CGNS compatibility.
 - (sample) add_tree: add in_place arg to decide whether the added tree should be kept unchanged (with in_place=False).
 - (docs/actions) better explain which package and dev env for which OS, and repair readthedocs generation.
@@ -25,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (storage/writer) save_to_disk: dataset write has been moved after metadata writes, for errors concerning meta data to be raised instantly (without waiting for all the heavy data to be written)
 - (storage/common/reader) clarify constants loading policy: local disk keeps numeric constants as `np.memmap` for efficiency, while Hub metadata loading materializes them to in-memory arrays to avoid temporary-directory lifetime issues.
 - (sample) get_global in the scalar case now returns the scalar with the original type.
 - (datasets) fix missing location use in get_field_names, and improve corresponding tests.
