@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (storage/writer) generate_datasetdict_to_disk: free DatasetDict memory after saving to disk to release for tempfile
+
 ### Removed
 
 ## [0.1.14] - 2026-03-23
