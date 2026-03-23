@@ -23,6 +23,10 @@ Notes and requirements:
 - Parallel mode demonstrates `num_proc` controls; PLAID can build internal shards from split sample counts (`split_n_samples`) so users do not need to manually manage shard lists.
 - The tutorial includes utilities to inspect CGNS trees and to save single Plaid samples to disk for visualization (e.g., Paraview).
 
+Constants loading policy (metadata):
+- Loading metadata from **local disk** keeps numeric constants as file-backed `np.memmap` for memory efficiency on large datasets.
+- Loading metadata from the **Hub** materializes numeric constants into in-memory arrays before returning them, to avoid lifetime issues with temporary download folders.
+
 Use these examples as templates to:
 - Adapt generators to your raw data format,
 - Choose the backend that fits your workflow (hf_datasets for hub integration, cgns for native CGNS interchange, zarr for efficient chunked numeric storage),

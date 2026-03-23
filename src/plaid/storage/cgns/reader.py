@@ -132,6 +132,9 @@ def sample_generator(
             sample = Sample(
                 path=Path(temp_folder) / "data" / f"{split}" / f"sample_{idx:09d}"
             )
+            # Sample data are eagerly loaded in memory during initialization;
+            # clear the transient on-disk path before leaving the temp dir.
+            sample.path = None
         yield sample
 
 

@@ -7,14 +7,17 @@
 
 # %% Imports
 
+import json
+import shutil
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
 from typing import Callable, cast
 
+import numpy as np
 import pytest
+import yaml
 
-# from plaid.bridges import huggingface_bridge
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
@@ -43,6 +46,110 @@ def _yield_samples_from_shards_ids(dataset: Dataset, shards_ids):
             ids = [ids]
         for id_ in ids:
             yield dataset[id_]
+
+
+def test_load_metadata_from_hub_materializes_memmaps(tmp_path, monkeypatch):
+    """Hub metadata loader must return arrays independent from temp files."""
+    from plaid.storage.common import reader as common_reader
+
+    repo_root = tmp_path / "fake_hub_repo"
+    constants_dir = repo_root / "constants" / "train"
+    constants_dir.mkdir(parents=True)
+
+    data = np.arange(6, dtype=np.float32).reshape(2, 3)
+    with open(constants_dir / "data.mmap", "wb") as f:
+        f.write(data.tobytes(order="C"))
+
+    with open(constants_dir / "layout.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "Global/cst_numeric": {
+                    "offset": 0,
+                    "shape": list(data.shape),
+                    "dtype": str(data.dtype),
+                }
+            },
+            f,
+        )
+
+    with open(constants_dir / "constant_schema.yaml", "w", encoding="utf-8") as f:
+        yaml.safe_dump({"Global/cst_numeric": {"dtype": str(data.dtype), "ndim": 2}}, f)
+
+    with open(repo_root / "variable_schema.yaml", "w", encoding="utf-8") as f:
+        yaml.safe_dump({"Global/var": {"dtype": "float32", "ndim": 1}}, f)
+
+    with open(repo_root / "cgns_types.yaml", "w", encoding="utf-8") as f:
+        yaml.safe_dump({"Global": "DataArray_t"}, f)
+
+    def _fake_snapshot_download(**kwargs):
+        local_dir = Path(kwargs["local_dir"])
+        shutil.copytree(
+            repo_root / "constants", local_dir / "constants", dirs_exist_ok=True
+        )
+        return str(local_dir)
+
+    def _fake_hf_hub_download(**kwargs):
+        return str(repo_root / kwargs["filename"])
+
+    monkeypatch.setattr(common_reader, "snapshot_download", _fake_snapshot_download)
+    monkeypatch.setattr(common_reader, "hf_hub_download", _fake_hf_hub_download)
+
+    flat_cst, variable_schema, constant_schema, cgns_types = (
+        common_reader.load_metadata_from_hub("dummy/repo")
+    )
+
+    loaded = flat_cst["train"]["Global/cst_numeric"]
+    assert isinstance(loaded, np.ndarray)
+    assert not isinstance(loaded, np.memmap)
+    assert np.array_equal(loaded, data)
+    assert variable_schema["Global/var"]["dtype"] == "float32"
+    assert "Global/cst_numeric" in constant_schema["train"]
+    assert cgns_types["Global"] == "DataArray_t"
+
+
+def test_load_metadata_from_disk_keeps_memmaps(tmp_path):
+    """Local metadata loader keeps memmap-backed numeric constants."""
+    from plaid.storage.common import reader as common_reader
+
+    dataset_root = tmp_path / "dataset"
+    constants_dir = dataset_root / "constants" / "train"
+    constants_dir.mkdir(parents=True)
+
+    data = np.arange(6, dtype=np.float32).reshape(2, 3)
+    with open(constants_dir / "data.mmap", "wb") as f:
+        f.write(data.tobytes(order="C"))
+
+    with open(constants_dir / "layout.json", "w", encoding="utf-8") as f:
+        json.dump(
+            {
+                "Global/cst_numeric": {
+                    "offset": 0,
+                    "shape": list(data.shape),
+                    "dtype": str(data.dtype),
+                }
+            },
+            f,
+        )
+
+    with open(constants_dir / "constant_schema.yaml", "w", encoding="utf-8") as f:
+        yaml.safe_dump({"Global/cst_numeric": {"dtype": str(data.dtype), "ndim": 2}}, f)
+
+    with open(dataset_root / "variable_schema.yaml", "w", encoding="utf-8") as f:
+        yaml.safe_dump({"Global/var": {"dtype": "float32", "ndim": 1}}, f)
+
+    with open(dataset_root / "cgns_types.yaml", "w", encoding="utf-8") as f:
+        yaml.safe_dump({"Global": "DataArray_t"}, f)
+
+    flat_cst, variable_schema, constant_schema, cgns_types = (
+        common_reader.load_metadata_from_disk(dataset_root)
+    )
+
+    loaded = flat_cst["train"]["Global/cst_numeric"]
+    assert isinstance(loaded, np.memmap)
+    assert np.array_equal(np.asarray(loaded), data)
+    assert variable_schema["Global/var"]["dtype"] == "float32"
+    assert "Global/cst_numeric" in constant_schema["train"]
+    assert cgns_types["Global"] == "DataArray_t"
 
 
 @pytest.fixture()
