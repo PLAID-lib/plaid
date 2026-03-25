@@ -124,6 +124,35 @@ def _extract_ids_from_partial(
     )
 
 
+class _ShardGenerator:
+    """Picklable shard generator callable.
+
+    This replaces the local closure that was previously defined inside
+    ``_build_gen_kwargs_from_partials``.  Because ``multiprocessing`` needs to
+    pickle the generator function sent to worker processes, it **must** be
+    defined at module level (local / nested functions are not picklable).
+    """
+
+    def __init__(
+        self,
+        base_func: Callable,
+        extra_args: tuple = (),
+        extra_kwargs: Optional[dict] = None,
+    ) -> None:
+        self._base_func = base_func
+        self._extra_args = extra_args
+        self._extra_kwargs = extra_kwargs or {}
+
+    def __call__(
+        self,
+        shards_ids: Optional[list[list]] = None,
+    ) -> Generator[Sample, None, None]:
+        if shards_ids is None:
+            shards_ids = [[]]
+        for shard in shards_ids:
+            yield from self._base_func(shard, *self._extra_args, **self._extra_kwargs)
+
+
 def _build_gen_kwargs_from_partials(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     num_proc: int,
@@ -164,17 +193,9 @@ def _build_gen_kwargs_from_partials(
             chunk for chunk in _split_list(list(data), n_shards) if len(chunk) > 0
         ]
 
-        def _shard_generator(
-            *,
-            shards_ids: list[list],
-            _base_func: Callable = base_func,
-            _extra_args: tuple = extra_args,
-            _extra_kwargs: dict = extra_kwargs,
-        ) -> Generator[Sample, None, None]:
-            for shard in shards_ids:
-                yield from _base_func(shard, *_extra_args, **_extra_kwargs)
-
-        wrapped_generators[split_name] = _shard_generator
+        wrapped_generators[split_name] = _ShardGenerator(
+            base_func, extra_args, extra_kwargs
+        )
         gen_kwargs[split_name] = {"shards_ids": shards}
 
     return wrapped_generators, gen_kwargs
