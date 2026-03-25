@@ -68,14 +68,6 @@ def generate_datasetdict_to_disk(
     """
     output_folder = Path(output_folder)
 
-    assert (gen_kwargs is None and num_proc == 1) or (
-        gen_kwargs is not None and num_proc > 1
-    ), (
-        "Invalid configuration: either provide only `generators` with "
-        "`num_proc == 1`, or provide `gen_kwargs` with "
-        "`num_proc > 1`."
-    )
-
     output_folder = output_folder / "data"
     output_folder.mkdir(exist_ok=True, parents=True)
 
@@ -90,7 +82,7 @@ def generate_datasetdict_to_disk(
             sum(len(batch) for batch in batch_ids_list) if batch_ids_list else None
         )
 
-        if num_proc > 1:  # pragma: no cover
+        if num_proc > 1:
             assert batch_ids_list, (
                 f"Parallel mode requires gen_kwargs['{split_name}']['shards_ids'] "
                 "to be provided and non-empty."
@@ -123,17 +115,23 @@ def generate_datasetdict_to_disk(
                         pbar.update(written)
 
         else:
-            # Sequential execution (kept as close as possible to your original)
+            # Sequential execution
             sample_counter = 0
             with tqdm(
                 total=total_samples,
                 desc=f"Writing {split_name} split",
                 disable=not verbose,
             ) as pbar:
-                for sample in gen_func():
-                    sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
-                    sample_counter += 1
-                    pbar.update(1)
+                if batch_ids_list:
+                    for sample in gen_func(batch_ids_list):
+                        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
+                        sample_counter += 1
+                        pbar.update(1)
+                else:
+                    for sample in gen_func():
+                        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
+                        sample_counter += 1
+                        pbar.update(1)
 
 
 def push_local_datasetdict_to_hub(

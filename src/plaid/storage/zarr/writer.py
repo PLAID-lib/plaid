@@ -186,14 +186,6 @@ def generate_datasetdict_to_disk(
         None: This function does not return a value; it writes the dataset directly
             to disk.
     """
-    assert (gen_kwargs is None and num_proc == 1) or (
-        gen_kwargs is not None and num_proc > 1
-    ), (
-        "Invalid configuration: either provide only `generators` with "
-        "`num_proc == 1`, or provide `gen_kwargs` with "
-        "`num_proc > 1`."
-    )
-
     output_folder = Path(output_folder) / "data"
     output_folder.mkdir(exist_ok=True, parents=True)
 
@@ -209,7 +201,7 @@ def generate_datasetdict_to_disk(
             sum(len(batch) for batch in batch_ids_list) if batch_ids_list else None
         )
 
-        if num_proc > 1:  # pragma: no cover
+        if num_proc > 1:
             assert batch_ids_list, (
                 f"Parallel mode requires gen_kwargs['{split_name}']['shards_ids'] "
                 "to be provided and non-empty."
@@ -245,15 +237,20 @@ def generate_datasetdict_to_disk(
             # Sequential execution
             sample_counter = 0
             with tqdm(
-                total=total_samples,  # can be None; tqdm will handle unknown
+                total=total_samples,
                 desc=f"Writing {split_name} split",
                 disable=not verbose,
             ) as pbar:
-                # Keep your original semantics: sequential gen_func() with no kwargs
-                for sample in gen_func():
-                    write_sample(_, sample, var_features_keys, sample_counter)
-                    sample_counter += 1
-                    pbar.update(1)
+                if batch_ids_list:
+                    for sample in gen_func(batch_ids_list):
+                        write_sample(_, sample, var_features_keys, sample_counter)
+                        sample_counter += 1
+                        pbar.update(1)
+                else:
+                    for sample in gen_func():
+                        write_sample(_, sample, var_features_keys, sample_counter)
+                        sample_counter += 1
+                        pbar.update(1)
 
 
 def push_local_datasetdict_to_hub(

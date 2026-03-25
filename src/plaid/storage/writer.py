@@ -20,9 +20,8 @@ Key features:
 
 import logging
 import shutil
-from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Union, cast
+from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Union
 
 from packaging.version import Version
 
@@ -42,12 +41,11 @@ from plaid.storage.common.writer import (
     save_problem_definitions_to_disk,
 )
 from plaid.storage.registry import available_backends, get_backend
-from plaid.types import IndexType
 
 logger = logging.getLogger(__name__)
 
 
-def _split_list(lst: list[IndexType], n_splits: int) -> list[list[IndexType]]:
+def _split_list(lst: list, n_splits: int) -> list[list]:
     """Split a list into n nearly-equal chunks."""
     if n_splits <= 1:
         return [lst]
@@ -58,58 +56,49 @@ def _split_list(lst: list[IndexType], n_splits: int) -> list[list[IndexType]]:
     ]
 
 
-def _build_parallel_gen_kwargs(
-    split_ids: dict[str, list[IndexType]],
-    num_proc: int,
-) -> dict[str, dict[str, list[list[IndexType]]]]:
-    """Build internal per-split shard ids from split ids and process count."""
-    gen_kwargs: dict[str, dict[str, list[list[IndexType]]]] = {}
-    for split_name, ids in split_ids.items():
-        n_shards = min(max(1, num_proc), max(1, len(ids)))
-        shards_ids = [chunk for chunk in _split_list(ids, n_shards) if len(chunk) > 0]
-        gen_kwargs[split_name] = {"shards_ids": shards_ids}
-    return gen_kwargs
+class _SampleFuncGenerator:
+    """Picklable generator callable that wraps a user-provided sample function.
 
-
-def _generator_from_split_ids(
-    shards_ids: Optional[list[list[IndexType]]] = None,
-    *,
-    gen_func: Callable[..., Generator[Sample, None, None]],
-    split_ids: list[IndexType],
-) -> Generator[Sample, None, None]:
-    """Adapter generator used by high-level index-based APIs."""
-    if shards_ids is None:
-        yield from gen_func(split_ids)
-    else:
-        for ids in shards_ids:
-            yield from gen_func(ids)
-
-
-def _wrap_generators_with_split_ids(
-    generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    split_ids: dict[str, list[IndexType]],
-) -> dict[str, Callable[..., Generator[Sample, None, None]]]:
-    """Wrap generators so users can provide `ids` while internals keep shard semantics.
-
-    Input generators are expected to accept one argument `ids` (a list of indices)
-    and yield samples. With `split_n_samples`, these ids are local split indices in
-    [0, ..., n-1].
-
-    The wrapper supports both:
-    - sequential internal calls with no args, by using full split ids,
-    - parallel internal calls with `shards_ids`, by iterating over shard chunks.
+    This class turns a simple ``sample_constructor(id) -> Sample`` into a generator
+    compatible with the backend ``generate_to_disk`` interface.  It is defined
+    at module level so that ``multiprocessing`` can pickle it.
     """
-    wrapped: dict[str, Callable[..., Generator[Sample, None, None]]] = {}
 
-    for split_name, gen_func in generators.items():
-        split_ids_ = split_ids[split_name]
-        wrapped[split_name] = partial(
-            _generator_from_split_ids,
-            gen_func=gen_func,
-            split_ids=split_ids_,
-        )
+    def __init__(self, sample_constructor: Callable[[Any], Sample]) -> None:
+        self._func = sample_constructor
 
-    return wrapped
+    def __call__(
+        self,
+        shards_ids: Optional[list[list]] = None,
+    ) -> Generator[Sample, None, None]:
+        if shards_ids is None:
+            shards_ids = [[]]
+        for shard in shards_ids:
+            for id_ in shard:
+                yield self._func(id_)
+
+
+def _build_gen_kwargs(
+    ids: Mapping[str, Sequence],
+    num_proc: int,
+) -> dict[str, dict[str, Any]]:
+    """Build ``gen_kwargs`` by sharding the ids for each split.
+
+    Returns:
+    -------
+    gen_kwargs : dict
+        Per-split kwargs with ``shards_ids`` containing the shard lists.
+    """
+    gen_kwargs: dict[str, dict[str, Any]] = {}
+
+    for split_name, split_ids in ids.items():
+        n_shards = min(max(1, num_proc), max(1, len(split_ids)))
+        shards = [
+            chunk for chunk in _split_list(list(split_ids), n_shards) if len(chunk) > 0
+        ]
+        gen_kwargs[split_name] = {"shards_ids": shards}
+
+    return gen_kwargs
 
 
 def _check_folder(output_folder: Path, overwrite: bool) -> None:
@@ -135,35 +124,63 @@ def _check_folder(output_folder: Path, overwrite: bool) -> None:
 
 def save_to_disk(
     output_folder: Union[str, Path],
-    generators: dict[str, Callable[..., Generator[Sample, None, None]]],
+    sample_constructor: Callable[[Any], Sample],
+    ids: Mapping[str, Sequence],
     backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
     pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
-    split_n_samples: Optional[dict[str, int]] = None,
-    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
     overwrite: bool = False,
 ) -> None:
     """Save a PLAID dataset to local disk using the specified backend.
 
-    This function preprocesses the dataset generators, extracts schemas, and saves the dataset
-    to disk using the chosen backend. It also saves metadata, infos, and problem definitions.
+    This function preprocesses the dataset, extracts schemas, and saves
+    the dataset to disk using the chosen backend.  It also saves metadata, infos,
+    and problem definitions.
+
+    The user provides a simple function ``sample_constructor`` that takes a single
+    identifier and returns a :class:`~plaid.Sample`, together with a dictionary
+    ``ids`` mapping split names to sliceable sequences of identifiers.
+    PLAID handles iteration, generator creation, and parallel sharding
+    internally.
+
+    Example::
+
+        from plaid import Sample
+        from plaid.storage import save_to_disk
+
+        def sample_constructor(file_path):
+            sample = Sample()
+            sample.add_tree(load_my_data(file_path))
+            return sample
+
+        save_to_disk(
+            "output/",
+            sample_constructor=sample_constructor,
+            ids={
+                "train": train_file_paths,
+                "test":  test_file_paths,
+            },
+            num_proc=6,
+        )
 
     Args:
         output_folder: Path to the output directory where the dataset will be saved.
-        generators: Dictionary mapping split names to sample generators.
-            Each generator must accept one positional argument `ids` and yield
-            corresponding samples.
-        backend: Storage backend to use ('cgns', 'hf_datasets', or 'zarr').
+        sample_constructor: A callable that takes a single identifier (of any type)
+            and returns a :class:`~plaid.Sample`.
+        ids: Dictionary mapping split names (e.g. ``"train"``, ``"test"``) to
+            sliceable sequences of sample identifiers.  Each sequence must
+            support ``__getitem__`` and ``__len__`` (list, tuple, numpy array,
+            …).  The identifiers can be of any type: integers, file paths,
+            strings, tuples, etc.
+        backend: Storage backend to use (``'cgns'``, ``'hf_datasets'``, or
+            ``'zarr'``).
         infos: Optional additional information to save with the dataset.
         pb_defs: Optional problem definitions to save.
-        split_n_samples: Optional mapping split -> number of samples. When provided,
-            PLAID builds internal shard ids using local indices [0..n-1] and handles
-            sharding internally for parallel writing. In this mode, generator `ids`
-            are local indices in each split.
-        gen_kwargs: Optional keyword arguments for the generators.
-        num_proc: Number of processes to use for preprocessing.
+        num_proc: Number of processes to use for parallel writing.  When
+            ``num_proc > 1`` PLAID automatically shards the identifier
+            sequences and distributes work across workers.
         verbose: If True, enables verbose output during processing.
         overwrite: If True, overwrites existing output directory.
     """
@@ -173,40 +190,37 @@ def save_to_disk(
     if infos:
         validate_required_infos(infos)
 
-    if split_n_samples is not None and gen_kwargs is not None:
-        raise ValueError(
-            "Provide either `split_n_samples` (high-level API) or `gen_kwargs` (advanced API), not both."
-        )
-
-    if split_n_samples is not None:
-        missing = set(generators.keys()) - set(split_n_samples.keys())
-        if missing:
-            raise ValueError(
-                f"Missing split sizes for splits: {sorted(missing)}. Expected one size per generator split."
+    # ---- validate ids: must be sliceable sequences ---------------------------
+    for split_name, split_ids in ids.items():
+        if not (hasattr(split_ids, "__getitem__") and hasattr(split_ids, "__len__")):
+            raise TypeError(
+                f"ids for split '{split_name}' must be a sliceable sequence "
+                f"(with __getitem__ and __len__), got {type(split_ids).__name__}. "
+                f"Use a list, tuple, or numpy array of sample identifiers."
             )
-        extra = set(split_n_samples.keys()) - set(generators.keys())
-        if extra:
-            raise ValueError(
-                f"Unexpected split size keys not found in generators: {sorted(extra)}."
-            )
-        if any(n < 0 for n in split_n_samples.values()):
-            raise ValueError("split_n_samples values must be >= 0.")
 
-        split_ids = {
-            split_name: [cast(IndexType, i) for i in range(split_n)]
-            for split_name, split_n in split_n_samples.items()
+    # ---- build generators from sample_constructor -----------------------------------
+    generators: dict[str, Callable[..., Generator[Sample, None, None]]] = {}
+    for split_name in ids:
+        generators[split_name] = _SampleFuncGenerator(sample_constructor)
+
+    # ---- auto-shard when running in parallel ---------------------------------
+    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None
+    if num_proc > 1:
+        gen_kwargs = _build_gen_kwargs(ids, num_proc)
+    else:
+        # For sequential execution, wrap ids into a single shard so the
+        # generator receives them via shards_ids
+        gen_kwargs = {
+            split_name: {"shards_ids": [list(split_ids)]}
+            for split_name, split_ids in ids.items()
         }
-        generators = _wrap_generators_with_split_ids(generators, split_ids)
-        if num_proc > 1:
-            gen_kwargs = _build_parallel_gen_kwargs(split_ids, num_proc)
 
     output_folder = Path(output_folder)
     _check_folder(output_folder, overwrite)
 
-    flat_cst, variable_schema, constant_schema, split_n_samples, cgns_types = (
-        preprocess(
-            generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
-        )
+    flat_cst, variable_schema, constant_schema, num_samples, cgns_types = preprocess(
+        generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
     )
 
     save_metadata_to_disk(
@@ -214,7 +228,7 @@ def save_to_disk(
     )
 
     infos = infos.copy() if infos else {}
-    infos.setdefault("num_samples", split_n_samples)
+    infos.setdefault("num_samples", num_samples)
     infos.setdefault("storage_backend", backend)
     infos.setdefault("plaid", {"version": str(Version(plaid.__version__))})
 
@@ -232,6 +246,11 @@ def save_to_disk(
         num_proc=num_proc,
         verbose=verbose,
     )
+
+
+# ---------------------------------------------------------------------------
+# Hub push
+# ---------------------------------------------------------------------------
 
 
 def push_to_hub(

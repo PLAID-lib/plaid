@@ -7,15 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
 ### Changed
+
+- (storage/writer) **Breaking**: simplify `save_to_disk` API — replace `generators` (dict of `functools.partial`) with two explicit parameters: `sample_constructor` (a callable taking a single identifier and returning a `Sample`) and `ids` (a dict mapping split names to sliceable sequences of identifiers of any type). PLAID now handles iteration, generator creation, and parallel sharding internally.
 
 ### Fixes
 
 - (storage/writer) generate_datasetdict_to_disk: free DatasetDict memory after saving to disk to release for tempfile
-
-### Removed
 
 ## [0.1.14] - 2026-03-23
 
