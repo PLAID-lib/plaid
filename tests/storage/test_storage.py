@@ -9,7 +9,6 @@
 
 import json
 import shutil
-import warnings
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
@@ -36,13 +35,6 @@ from plaid.storage.writer import (
     _split_list,
 )
 from plaid.types import IndexType
-
-
-def _yield_samples_from_local_ids(
-    dataset: Dataset, split_global_ids: list[int], ids: list[int]
-):
-    for id_ in ids:
-        yield dataset[split_global_ids[id_]]
 
 
 def _yield_samples_from_shards_ids(dataset: Dataset, shards_ids):
@@ -210,16 +202,6 @@ def gen_kwargs(problem_definition) -> dict[str, dict]:
 
 
 @pytest.fixture()
-def split_global_ids(problem_definition) -> dict[str, list[int]]:
-    return problem_definition.get_split()
-
-
-@pytest.fixture()
-def split_n_samples(problem_definition) -> dict[str, int]:
-    return {k: len(v) for k, v in problem_definition.get_split().items()}
-
-
-@pytest.fixture()
 def generator_split(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
 
@@ -242,18 +224,6 @@ def generator_split_with_kwargs(dataset, gen_kwargs) -> dict[str, Callable]:
 
     for split_name in gen_kwargs.keys():
         generators_[split_name] = partial(_yield_samples_from_shards_ids, dataset)
-
-    return generators_
-
-
-@pytest.fixture()
-def generator_split_from_local_ids(dataset, split_global_ids) -> dict[str, Callable]:
-    generators_ = {}
-
-    for split_name, global_ids in split_global_ids.items():
-        generators_[split_name] = partial(
-            _yield_samples_from_local_ids, dataset, global_ids
-        )
 
     return generators_
 
@@ -517,133 +487,6 @@ class Test_Storage:
         with pytest.raises(ValueError):
             _ = registry.get_backend("non_existent_backend")
 
-    def test_hf_datasets_with_split_n_samples_parallel(
-        self,
-        tmp_path,
-        infos,
-        problem_definition,
-        split_n_samples,
-        gen_kwargs,
-        generator_split_from_local_ids,
-    ):
-        test_dir = tmp_path / "test_hf_split_n_samples"
-        invalid_args_test_dir = tmp_path / "test_hf_split_n_samples_invalid_args"
-
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            save_to_disk(
-                output_folder=test_dir,
-                generators=generator_split_from_local_ids,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                split_n_samples=split_n_samples,
-                num_proc=2,
-                overwrite=True,
-                verbose=True,
-            )
-
-        datasetdict, _ = init_from_disk(test_dir)
-        assert len(datasetdict["train"]) == split_n_samples["train"]
-        assert len(datasetdict["test"]) == split_n_samples["test"]
-
-        with pytest.raises(ValueError):
-            save_to_disk(
-                output_folder=invalid_args_test_dir,
-                generators=generator_split_from_local_ids,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                split_n_samples=split_n_samples,
-                gen_kwargs=gen_kwargs,
-                num_proc=2,
-                overwrite=True,
-            )
-
-    def test_hf_datasets_with_split_n_samples_sequential_and_validation(
-        self,
-        tmp_path,
-        infos,
-        problem_definition,
-        split_n_samples,
-        generator_split_from_local_ids,
-    ):
-        test_dir = tmp_path / "test_hf_split_n_samples_seq"
-
-        # Sequential path (`num_proc=1`) covers internal no-sharding flow.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            save_to_disk(
-                output_folder=test_dir,
-                generators=generator_split_from_local_ids,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                split_n_samples=split_n_samples,
-                num_proc=1,
-                overwrite=True,
-                verbose=True,
-            )
-
-        datasetdict, _ = init_from_disk(test_dir)
-        assert len(datasetdict["train"]) == split_n_samples["train"]
-        assert len(datasetdict["test"]) == split_n_samples["test"]
-
-        with pytest.raises(ValueError, match="Missing split sizes"):
-            save_to_disk(
-                output_folder=tmp_path / "test_hf_split_n_samples_missing",
-                generators=generator_split_from_local_ids,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                split_n_samples={"train": split_n_samples["train"]},
-                overwrite=True,
-            )
-
-        with pytest.raises(ValueError, match="Unexpected split size keys"):
-            save_to_disk(
-                output_folder=tmp_path / "test_hf_split_n_samples_extra",
-                generators=generator_split_from_local_ids,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                split_n_samples={**split_n_samples, "dummy": 1},
-                overwrite=True,
-            )
-
-        with pytest.raises(ValueError, match="split_n_samples values must be >= 0"):
-            save_to_disk(
-                output_folder=tmp_path / "test_hf_split_n_samples_negative",
-                generators=generator_split_from_local_ids,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                split_n_samples={**split_n_samples, "train": -1},
-                overwrite=True,
-            )
-
-    def test_split_n_samples_emits_deprecation_warning(
-        self,
-        tmp_path,
-        infos,
-        problem_definition,
-        split_n_samples,
-        generator_split_from_local_ids,
-    ):
-        """Using split_n_samples must emit a DeprecationWarning."""
-        test_dir = tmp_path / "test_deprecation_warning"
-        with pytest.warns(DeprecationWarning, match="split_n_samples is deprecated"):
-            save_to_disk(
-                output_folder=test_dir,
-                generators=generator_split_from_local_ids,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                split_n_samples=split_n_samples,
-                num_proc=1,
-                overwrite=True,
-            )
-
     def test_split_list_single_split(self):
         """Cover _split_list early return path (`n_splits <= 1`)."""
         ids = cast(list[IndexType], [0, 1, 2])
@@ -766,13 +609,13 @@ class Test_Storage:
         plaid_sample = converter.to_plaid(datasetdict["train"], 0)
         self.assert_sample(plaid_sample)
 
-    def test_save_to_disk_raises_on_non_partial_with_multiproc(
+    def test_save_to_disk_raises_on_non_partial(
         self,
         tmp_path,
         infos,
         problem_definition,
     ):
-        """save_to_disk raises TypeError when non-partial generators are used with num_proc > 1."""
+        """save_to_disk raises TypeError when generators are not functools.partial."""
 
         def plain_gen(ids):
             yield from ids
@@ -789,6 +632,48 @@ class Test_Storage:
                 backend="hf_datasets",
                 infos=infos,
                 pb_defs={"pb_def": problem_definition},
-                num_proc=2,
+                num_proc=1,
+                overwrite=True,
+            )
+
+    def test_save_to_disk_raises_on_partial_no_args(
+        self,
+        tmp_path,
+        infos,
+        problem_definition,
+    ):
+        """save_to_disk raises TypeError when partial has no positional arguments."""
+        generators = {
+            "train": partial(lambda: None),
+        }
+
+        with pytest.raises(TypeError, match="no positional arguments"):
+            save_to_disk(
+                output_folder=tmp_path / "test_partial_no_args",
+                generators=generators,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                overwrite=True,
+            )
+
+    def test_save_to_disk_raises_on_non_sliceable_first_arg(
+        self,
+        tmp_path,
+        infos,
+        problem_definition,
+    ):
+        """save_to_disk raises TypeError when first arg of partial is not sliceable."""
+        generators = {
+            "train": partial(lambda _x: None, 42),  # int is not sliceable
+        }
+
+        with pytest.raises(TypeError, match="must be a sliceable sequence"):
+            save_to_disk(
+                output_folder=tmp_path / "test_non_sliceable",
+                generators=generators,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
                 overwrite=True,
             )

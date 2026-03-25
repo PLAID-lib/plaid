@@ -20,10 +20,9 @@ Key features:
 
 import logging
 import shutil
-import warnings
 from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Union, cast
+from typing import Any, Callable, Generator, Optional, Union
 
 from packaging.version import Version
 
@@ -43,7 +42,6 @@ from plaid.storage.common.writer import (
     save_problem_definitions_to_disk,
 )
 from plaid.storage.registry import available_backends, get_backend
-from plaid.types import IndexType
 
 logger = logging.getLogger(__name__)
 
@@ -166,9 +164,8 @@ def save_to_disk(
     num_proc: int = 1,
     verbose: bool = False,
     overwrite: bool = False,
-    # --- advanced / deprecated -------------------------------------------------
+    # --- advanced ---------------------------------------------------------------
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
-    split_n_samples: Optional[dict[str, int]] = None,
 ) -> None:
     """Save a PLAID dataset to local disk using the specified backend.
 
@@ -177,10 +174,12 @@ def save_to_disk(
     and problem definitions.
 
     Generators must be ``functools.partial`` objects whose first positional
-    argument is a **sliceable sequence** of sample identifiers (list of ints,
-    paths, strings, …).  PLAID calls the underlying function with the full
-    sequence for sequential execution and with sub-sequences (shards) for
-    parallel execution — the user code is identical in both cases::
+    argument is a **sliceable sequence** of sample identifiers or data
+    references — anything with ``__getitem__`` and ``__len__``.  This can be
+    a list of integers, file paths, strings, pre-loaded data objects, a numpy
+    array, etc.  PLAID calls the underlying function with the full sequence
+    for sequential execution and with sub-sequences (shards) for parallel
+    execution — the user code is identical in both cases::
 
         from functools import partial
 
@@ -217,8 +216,6 @@ def save_to_disk(
         gen_kwargs: *Advanced* — explicit per-split generator keyword
             arguments.  When provided PLAID skips automatic sharding and
             forwards these kwargs directly to the backend.
-        split_n_samples: *Deprecated* — use the ``partial`` interface
-            instead.  Mapping split → number of samples.
     """
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
@@ -226,52 +223,39 @@ def save_to_disk(
     if infos:
         validate_required_infos(infos)
 
-    # ---- backward-compat: deprecated split_n_samples path --------------------
-    if split_n_samples is not None:
-        warnings.warn(
-            "split_n_samples is deprecated. Use functools.partial generators "
-            "instead — see save_to_disk docstring.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if gen_kwargs is not None:
-            raise ValueError(
-                "Provide either `split_n_samples` (deprecated) or `gen_kwargs` "
-                "(advanced API), not both."
+    # ---- validate generators: must be partial with sliceable first arg -------
+    for split_name, gen in generators.items():
+        if not isinstance(gen, partial):
+            raise TypeError(
+                f"Generator for split '{split_name}' must be a functools.partial, "
+                f"got {type(gen).__name__}. "
+                f"Wrap your generator function: partial(my_generator, my_ids)."
             )
-        missing = set(generators.keys()) - set(split_n_samples.keys())
-        if missing:
-            raise ValueError(
-                f"Missing split sizes for splits: {sorted(missing)}. "
-                f"Expected one size per generator split."
+        if not gen.args:
+            raise TypeError(
+                f"Generator for split '{split_name}' is a functools.partial but has "
+                f"no positional arguments. The first positional argument must be a "
+                f"sliceable sequence of sample identifiers "
+                f"(e.g. partial(my_gen, my_ids))."
             )
-        extra = set(split_n_samples.keys()) - set(generators.keys())
-        if extra:
-            raise ValueError(
-                f"Unexpected split size keys not found in generators: {sorted(extra)}."
+        data = gen.args[0]
+        if not hasattr(data, "__getitem__") or not hasattr(data, "__len__"):
+            raise TypeError(
+                f"Generator for split '{split_name}': the first positional argument "
+                f"must be a sliceable sequence (with __getitem__ and __len__), "
+                f"got {type(data).__name__}. "
+                f"Use a list, tuple, or numpy array of sample identifiers."
             )
-        if any(n < 0 for n in split_n_samples.values()):
-            raise ValueError("split_n_samples values must be >= 0.")
 
-        split_ids: dict[str, list[IndexType]] = {
-            split_name: [cast(IndexType, i) for i in range(split_n)]
-            for split_name, split_n in split_n_samples.items()
-        }
-        generators = _wrap_generators_with_split_ids(generators, split_ids)
-        if num_proc > 1:
-            gen_kwargs = _build_parallel_gen_kwargs(split_ids, num_proc)
-
-    # ---- new unified path: auto-shard from partial ---------------------------
-    if gen_kwargs is None and num_proc > 1 and split_n_samples is None:
+    # ---- auto-shard from partial when running in parallel --------------------
+    if gen_kwargs is None and num_proc > 1:
         generators, gen_kwargs = _build_gen_kwargs_from_partials(generators, num_proc)
 
     output_folder = Path(output_folder)
     _check_folder(output_folder, overwrite)
 
-    flat_cst, variable_schema, constant_schema, preprocess_n_samples, cgns_types = (
-        preprocess(
-            generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
-        )
+    flat_cst, variable_schema, constant_schema, num_samples, cgns_types = preprocess(
+        generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
     )
 
     save_metadata_to_disk(
@@ -279,7 +263,7 @@ def save_to_disk(
     )
 
     infos = infos.copy() if infos else {}
-    infos.setdefault("num_samples", preprocess_n_samples)
+    infos.setdefault("num_samples", num_samples)
     infos.setdefault("storage_backend", backend)
     infos.setdefault("plaid", {"version": str(Version(plaid.__version__))})
 
@@ -297,54 +281,6 @@ def save_to_disk(
         num_proc=num_proc,
         verbose=verbose,
     )
-
-
-# ---------------------------------------------------------------------------
-# Legacy helpers (kept for backward compatibility with split_n_samples)
-# ---------------------------------------------------------------------------
-
-
-def _build_parallel_gen_kwargs(
-    split_ids: dict[str, list[IndexType]],
-    num_proc: int,
-) -> dict[str, dict[str, list[list[IndexType]]]]:
-    """Build internal per-split shard ids from split ids and process count."""
-    gen_kwargs: dict[str, dict[str, list[list[IndexType]]]] = {}
-    for split_name, ids in split_ids.items():
-        n_shards = min(max(1, num_proc), max(1, len(ids)))
-        shards_ids = [chunk for chunk in _split_list(ids, n_shards) if len(chunk) > 0]
-        gen_kwargs[split_name] = {"shards_ids": shards_ids}
-    return gen_kwargs
-
-
-def _generator_from_split_ids(
-    shards_ids: Optional[list[list[IndexType]]] = None,
-    *,
-    gen_func: Callable[..., Generator[Sample, None, None]],
-    split_ids: list[IndexType],
-) -> Generator[Sample, None, None]:
-    """Adapter generator used by the deprecated split_n_samples API."""
-    if shards_ids is None:
-        yield from gen_func(split_ids)
-    else:
-        for ids in shards_ids:
-            yield from gen_func(ids)
-
-
-def _wrap_generators_with_split_ids(
-    generators: dict[str, Callable[..., Generator[Sample, None, None]]],
-    split_ids: dict[str, list[IndexType]],
-) -> dict[str, Callable[..., Generator[Sample, None, None]]]:
-    """Wrap generators for the deprecated split_n_samples path."""
-    wrapped: dict[str, Callable[..., Generator[Sample, None, None]]] = {}
-    for split_name, gen_func in generators.items():
-        split_ids_ = split_ids[split_name]
-        wrapped[split_name] = partial(
-            _generator_from_split_ids,
-            gen_func=gen_func,
-            split_ids=split_ids_,
-        )
-    return wrapped
 
 
 # ---------------------------------------------------------------------------

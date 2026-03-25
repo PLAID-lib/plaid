@@ -9,11 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (storage/writer) `save_to_disk` now validates upfront that every generator is a `functools.partial` whose first positional argument is a sliceable sequence (`__getitem__` + `__len__`), with explicit error messages for each failure case (not a partial, no positional args, non-sliceable first arg).
+
 ### Changed
+
+- (storage/writer) **Breaking**: remove deprecated `split_n_samples` parameter and all associated backward-compatibility code (`_build_parallel_gen_kwargs`, `_generator_from_split_ids`, `_wrap_generators_with_split_ids`). Use `functools.partial` generators instead — the first positional argument can be any sliceable sequence (list of ints, file paths, strings, pre-loaded data objects, numpy arrays, …).
+- (storage/writer) clarify docstring: the first argument of generator partials accepts any sliceable sequence, not just integers.
+- (tutorials/storage) rewrite tutorial to use the simplified `functools.partial` API; remove parallel/sequential branching and stale `VERSION` toggle.
 
 ### Fixes
 
 ### Removed
+
+- (storage/writer) `split_n_samples` parameter and legacy helpers.
 
 ## [0.1.14] - 2026-03-23
 
