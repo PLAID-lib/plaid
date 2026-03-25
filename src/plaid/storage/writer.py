@@ -18,6 +18,7 @@ Key features:
 #
 #
 
+import inspect
 import logging
 import shutil
 from functools import partial
@@ -57,20 +58,70 @@ def _split_list(lst: list, n_splits: int) -> list[list]:
     ]
 
 
-def _extract_partial_data(
-    gen: Callable,
-) -> Optional[list]:
-    """Extract the first positional argument from a functools.partial.
+def _extract_ids_from_partial(
+    gen: partial,
+    split_name: str,
+) -> tuple[Any, Callable, tuple, dict]:
+    """Extract the ids sequence from a ``functools.partial``.
 
-    Returns the data (first arg) if *gen* is a ``functools.partial``, otherwise
-    ``None``.
+    Supports both positional and keyword syntax::
+
+        partial(my_gen, my_ids)              # positional
+        partial(my_gen, my_ids=my_ids)       # keyword (first param name)
+
+    Returns:
+        tuple of (data, base_func, extra_args, extra_kwargs) where *data* is the
+        sliceable ids sequence, *base_func* is the unwrapped generator function,
+        and *extra_args*/*extra_kwargs* are the remaining partial arguments
+        (with the ids removed).
+
+    Raises:
+        TypeError: If the ids cannot be found or are not sliceable.
     """
-    if isinstance(gen, partial) and gen.args:
+    # --- Try positional first -------------------------------------------------
+    if gen.args:
         data = gen.args[0]
-        # Ensure it's something we can slice
         if hasattr(data, "__getitem__") and hasattr(data, "__len__"):
-            return data
-    return None
+            return data, gen.func, gen.args[1:], gen.keywords
+        raise TypeError(
+            f"Generator for split '{split_name}': the first positional argument "
+            f"must be a sliceable sequence (with __getitem__ and __len__), "
+            f"got {type(data).__name__}. "
+            f"Use a list, tuple, or numpy array of sample identifiers."
+        )
+
+    # --- Try keyword: look up the first parameter of the underlying function --
+    try:
+        sig = inspect.signature(gen.func)
+        first_param = next(iter(sig.parameters))
+    except (ValueError, StopIteration):
+        first_param = None
+
+    if first_param and first_param in gen.keywords:
+        data = gen.keywords[first_param]
+        if hasattr(data, "__getitem__") and hasattr(data, "__len__"):
+            remaining_kwargs = {
+                k: v for k, v in gen.keywords.items() if k != first_param
+            }
+            return data, gen.func, (), remaining_kwargs
+        raise TypeError(
+            f"Generator for split '{split_name}': keyword argument '{first_param}' "
+            f"must be a sliceable sequence (with __getitem__ and __len__), "
+            f"got {type(data).__name__}. "
+            f"Use a list, tuple, or numpy array of sample identifiers."
+        )
+
+    # --- Nothing found --------------------------------------------------------
+    hint = (
+        f"partial(my_gen, {first_param}=my_ids)"
+        if first_param
+        else "partial(my_gen, my_ids)"
+    )
+    raise TypeError(
+        f"Generator for split '{split_name}' is a functools.partial but has "
+        f"no identifiable ids argument. Pass them as the first positional arg "
+        f"or as a keyword matching the first parameter name: {hint}."
+    )
 
 
 def _build_gen_kwargs_from_partials(
@@ -99,24 +150,19 @@ def _build_gen_kwargs_from_partials(
     gen_kwargs: dict[str, dict[str, Any]] = {}
 
     for split_name, gen in generators.items():
-        data = _extract_partial_data(gen)
-        if data is None:
+        if not isinstance(gen, partial):
             raise TypeError(
-                f"Generator for split '{split_name}' must be a functools.partial "
-                f"whose first positional argument is a sliceable sequence of sample "
-                f"identifiers (e.g. partial(my_gen, my_ids)). "
-                f"Got {type(gen).__name__} instead."
+                f"Generator for split '{split_name}' must be a functools.partial, "
+                f"got {type(gen).__name__}."
             )
+        data, base_func, extra_args, extra_kwargs = _extract_ids_from_partial(
+            gen, split_name
+        )
 
         n_shards = min(max(1, num_proc), max(1, len(data)))
         shards = [
             chunk for chunk in _split_list(list(data), n_shards) if len(chunk) > 0
         ]
-
-        # The underlying function (unwrapped from partial)
-        base_func = gen.func
-        extra_args = gen.args[1:]  # any additional positional args
-        extra_kwargs = gen.keywords  # any additional keyword args
 
         def _shard_generator(
             *,
@@ -173,13 +219,13 @@ def save_to_disk(
     the dataset to disk using the chosen backend.  It also saves metadata, infos,
     and problem definitions.
 
-    Generators must be ``functools.partial`` objects whose first positional
-    argument is a **sliceable sequence** of sample identifiers or data
-    references — anything with ``__getitem__`` and ``__len__``.  This can be
-    a list of integers, file paths, strings, pre-loaded data objects, a numpy
-    array, etc.  PLAID calls the underlying function with the full sequence
-    for sequential execution and with sub-sequences (shards) for parallel
-    execution — the user code is identical in both cases::
+    Generators must be ``functools.partial`` objects whose first argument
+    (positional **or** keyword) is a **sliceable sequence** of sample
+    identifiers or data references — anything with ``__getitem__`` and
+    ``__len__``.  This can be a list of integers, file paths, strings,
+    pre-loaded data objects, a numpy array, etc.
+
+    Both positional and keyword syntax are supported::
 
         from functools import partial
 
@@ -187,9 +233,16 @@ def save_to_disk(
             for i in ids:
                 yield make_sample(i)
 
+        # Positional (recommended)
         generators = {
             "train": partial(my_generator, train_ids),
             "test":  partial(my_generator, test_ids),
+        }
+
+        # Keyword — also works (matched by first parameter name)
+        generators = {
+            "train": partial(my_generator, ids=train_ids),
+            "test":  partial(my_generator, ids=test_ids),
         }
 
         # Sequential
@@ -223,7 +276,7 @@ def save_to_disk(
     if infos:
         validate_required_infos(infos)
 
-    # ---- validate generators: must be partial with sliceable first arg -------
+    # ---- validate generators: must be partial with sliceable ids arg ---------
     for split_name, gen in generators.items():
         if not isinstance(gen, partial):
             raise TypeError(
@@ -231,21 +284,8 @@ def save_to_disk(
                 f"got {type(gen).__name__}. "
                 f"Wrap your generator function: partial(my_generator, my_ids)."
             )
-        if not gen.args:
-            raise TypeError(
-                f"Generator for split '{split_name}' is a functools.partial but has "
-                f"no positional arguments. The first positional argument must be a "
-                f"sliceable sequence of sample identifiers "
-                f"(e.g. partial(my_gen, my_ids))."
-            )
-        data = gen.args[0]
-        if not hasattr(data, "__getitem__") or not hasattr(data, "__len__"):
-            raise TypeError(
-                f"Generator for split '{split_name}': the first positional argument "
-                f"must be a sliceable sequence (with __getitem__ and __len__), "
-                f"got {type(data).__name__}. "
-                f"Use a list, tuple, or numpy array of sample identifiers."
-            )
+        # _extract_ids_from_partial validates that ids exist and are sliceable
+        _extract_ids_from_partial(gen, split_name)
 
     # ---- auto-shard from partial when running in parallel --------------------
     if gen_kwargs is None and num_proc > 1:

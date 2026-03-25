@@ -8,7 +8,7 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 
 ## Key concepts
 
-- **Generators** are `functools.partial` objects whose first positional argument is a **sliceable sequence** of sample identifiers or data references — anything with `__getitem__` and `__len__` (list of ints, file paths, strings, pre-loaded data objects, numpy arrays, …). PLAID calls the underlying function with the full sequence for sequential execution and with sub-sequences (shards) for parallel execution — user code is identical in both cases, only `num_proc` changes.
+- **Generators** are `functools.partial` objects whose first argument (positional **or** keyword) is a **sliceable sequence** of sample identifiers or data references — anything with `__getitem__` and `__len__` (list of ints, file paths, strings, pre-loaded data objects, numpy arrays, …). Both `partial(my_gen, my_ids)` and `partial(my_gen, ids=my_ids)` are supported. PLAID calls the underlying function with the full sequence for sequential execution and with sub-sequences (shards) for parallel execution — user code is identical in both cases, only `num_proc` changes.
 - **`save_to_disk`** writes a dataset locally; **`push_to_hub`** uploads it to Hugging Face Hub.
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
 - Backend converters turn raw backend samples into PLAID `Sample` objects.
@@ -127,9 +127,10 @@ pb_def.set_test_split({"test":"all"})
 
 #---------------------------------------------------------------
 # Define the generator once — it works for both sequential and parallel modes.
-# Generators must be functools.partial objects whose first positional argument
-# is a sliceable sequence of sample identifiers or data references (list of ints,
-# file paths, strings, pre-loaded objects, numpy arrays, …).
+# Generators must be functools.partial objects whose first argument (positional
+# or keyword) is a sliceable sequence of sample identifiers or data references
+# (list of ints, file paths, strings, pre-loaded objects, numpy arrays, …).
+# Both partial(gen, ids) and partial(gen, ids=ids) are supported.
 # When num_proc > 1, PLAID automatically shards the sequence across workers.
 
 def _generator(ids):

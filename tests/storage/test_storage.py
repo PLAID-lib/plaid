@@ -12,7 +12,7 @@ import shutil
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
-from typing import Callable, cast
+from typing import Callable
 
 import numpy as np
 import pytest
@@ -31,18 +31,9 @@ from plaid.storage.hf_datasets.bridge import (
 )
 from plaid.storage.writer import (
     _build_gen_kwargs_from_partials,
-    _extract_partial_data,
+    _extract_ids_from_partial,
     _split_list,
 )
-from plaid.types import IndexType
-
-
-def _yield_samples_from_shards_ids(dataset: Dataset, shards_ids):
-    for ids in shards_ids:
-        if isinstance(ids, int):
-            ids = [ids]
-        for id_ in ids:
-            yield dataset[id_]
 
 
 def test_load_metadata_from_hub_materializes_memmaps(tmp_path, monkeypatch):
@@ -184,24 +175,6 @@ def problem_definition(main_splits) -> ProblemDefinition:
 
 
 @pytest.fixture()
-def generator(dataset) -> Callable:
-    def generator_():
-        for sample in dataset:
-            yield sample
-
-    return generator_
-
-
-@pytest.fixture()
-def gen_kwargs(problem_definition) -> dict[str, dict]:
-    gen_kwargs = {}
-    for split_name, ids in problem_definition.get_split().items():
-        mid = len(ids) // 2
-        gen_kwargs[split_name] = {"shards_ids": [ids[:mid], ids[mid:]]}
-    return gen_kwargs
-
-
-@pytest.fixture()
 def generator_split(dataset, problem_definition) -> dict[str, Callable]:
     generators_ = {}
 
@@ -214,16 +187,6 @@ def generator_split(dataset, problem_definition) -> dict[str, Callable]:
                 yield dataset[id]
 
         generators_[split_name] = partial(generator_, ids)
-
-    return generators_
-
-
-@pytest.fixture()
-def generator_split_with_kwargs(dataset, gen_kwargs) -> dict[str, Callable]:
-    generators_ = {}
-
-    for split_name in gen_kwargs.keys():
-        generators_[split_name] = partial(_yield_samples_from_shards_ids, dataset)
 
     return generators_
 
@@ -246,25 +209,10 @@ class Test_Storage:
         dataset,
         tmp_path,
         generator_split,
-        generator_split_with_kwargs,
         infos,
         problem_definition,
-        gen_kwargs,
     ):
         test_dir = tmp_path / "test_hf"
-        legacy_kwargs_test_dir = tmp_path / "test_hf_legacy_kwargs"
-
-        save_to_disk(
-            output_folder=legacy_kwargs_test_dir,
-            generators=generator_split_with_kwargs,
-            backend="hf_datasets",
-            infos=infos,
-            pb_defs={"pb_def": problem_definition},
-            gen_kwargs=gen_kwargs,
-            num_proc=2,
-            overwrite=True,
-            verbose=True,
-        )
 
         save_to_disk(
             output_folder=test_dir,
@@ -489,40 +437,11 @@ class Test_Storage:
 
     def test_split_list_single_split(self):
         """Cover _split_list early return path (`n_splits <= 1`)."""
-        ids = cast(list[IndexType], [0, 1, 2])
-        assert _split_list(ids, 1) == [[0, 1, 2]]
+        assert _split_list([0, 1, 2], 1) == [[0, 1, 2]]
 
     # --------------------------------------------------------------------------
-    #     New partial-based API tests
+    #     Partial-based API tests
     # --------------------------------------------------------------------------
-
-    def test_extract_partial_data_with_partial(self):
-        """_extract_partial_data returns the first arg of a functools.partial."""
-        data = [1, 2, 3]
-        gen = partial(lambda ids: (x for x in ids), data)
-        result = _extract_partial_data(gen)
-        assert result == data
-
-    def test_extract_partial_data_with_non_partial(self):
-        """_extract_partial_data returns None for a plain function."""
-
-        def gen(ids):
-            yield from ids
-
-        result = _extract_partial_data(gen)
-        assert result is None
-
-    def test_extract_partial_data_with_partial_no_args(self):
-        """_extract_partial_data returns None for a partial with no positional args."""
-        gen = partial(lambda: None)
-        result = _extract_partial_data(gen)
-        assert result is None
-
-    def test_extract_partial_data_with_non_sliceable(self):
-        """_extract_partial_data returns None when first arg is not sliceable."""
-        gen = partial(lambda _x: None, 42)  # int has no __getitem__
-        result = _extract_partial_data(gen)
-        assert result is None
 
     def test_build_gen_kwargs_from_partials(self):
         """_build_gen_kwargs_from_partials shards data and creates shard generators."""
@@ -642,12 +561,12 @@ class Test_Storage:
         infos,
         problem_definition,
     ):
-        """save_to_disk raises TypeError when partial has no positional arguments."""
+        """save_to_disk raises TypeError when partial has no identifiable ids."""
         generators = {
             "train": partial(lambda: None),
         }
 
-        with pytest.raises(TypeError, match="no positional arguments"):
+        with pytest.raises(TypeError, match="no identifiable ids argument"):
             save_to_disk(
                 output_folder=tmp_path / "test_partial_no_args",
                 generators=generators,
@@ -677,3 +596,92 @@ class Test_Storage:
                 pb_defs={"pb_def": problem_definition},
                 overwrite=True,
             )
+
+    # --------------------------------------------------------------------------
+    #     Keyword-arg partial support
+    # --------------------------------------------------------------------------
+
+    def test_extract_ids_from_partial_positional(self):
+        """_extract_ids_from_partial extracts ids from positional arg."""
+        data = [1, 2, 3]
+
+        def my_gen(ids):
+            yield from ids
+
+        gen = partial(my_gen, data)
+        result_data, base_func, extra_args, extra_kwargs = _extract_ids_from_partial(
+            gen, "train"
+        )
+        assert result_data == data
+        assert base_func is my_gen
+        assert extra_args == ()
+        assert extra_kwargs == {}
+
+    def test_extract_ids_from_partial_keyword(self):
+        """_extract_ids_from_partial extracts ids from keyword arg matching first param."""
+        data = [1, 2, 3]
+
+        def my_gen(ids):
+            yield from ids
+
+        gen = partial(my_gen, ids=data)
+        result_data, base_func, extra_args, extra_kwargs = _extract_ids_from_partial(
+            gen, "train"
+        )
+        assert result_data == data
+        assert base_func is my_gen
+        assert extra_args == ()
+        assert extra_kwargs == {}
+
+    def test_extract_ids_from_partial_keyword_with_extra_kwargs(self):
+        """_extract_ids_from_partial strips ids from kwargs and keeps the rest."""
+        data = [1, 2, 3]
+
+        def my_gen(ids, _extra_param=10):
+            yield from ids
+
+        gen = partial(my_gen, ids=data, _extra_param=42)
+        result_data, base_func, extra_args, extra_kwargs = _extract_ids_from_partial(
+            gen, "train"
+        )
+        assert result_data == data
+        assert base_func is my_gen
+        assert extra_args == ()
+        assert extra_kwargs == {"_extra_param": 42}
+
+    def test_save_to_disk_with_keyword_partial(
+        self,
+        dataset,
+        tmp_path,
+        infos,
+        problem_definition,
+    ):
+        """save_to_disk works with keyword-arg partial syntax."""
+
+        def generator_(ids):
+            for id in ids:
+                yield dataset[id]
+
+        main_splits = problem_definition.get_split()
+        generators = {
+            split_name: partial(generator_, ids=ids)
+            for split_name, ids in main_splits.items()
+        }
+
+        test_dir = tmp_path / "test_hf_keyword_partial"
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generators,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+        assert "train" in datasetdict
+        assert "test" in datasetdict
+
+        converter = converterdict["train"]
+        plaid_sample = converter.to_plaid(datasetdict["train"], 0)
+        self.assert_sample(plaid_sample)
