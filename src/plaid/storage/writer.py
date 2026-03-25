@@ -21,7 +21,7 @@ Key features:
 import logging
 import shutil
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Sequence, Union
+from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Union
 
 from packaging.version import Version
 
@@ -79,7 +79,7 @@ class _SampleFuncGenerator:
 
 
 def _build_gen_kwargs(
-    ids: dict[str, Sequence],
+    ids: Mapping[str, Sequence],
     num_proc: int,
 ) -> dict[str, dict[str, Any]]:
     """Build ``gen_kwargs`` by sharding the ids for each split.
@@ -125,7 +125,7 @@ def _check_folder(output_folder: Path, overwrite: bool) -> None:
 def save_to_disk(
     output_folder: Union[str, Path],
     make_sample: Callable[[Any], Sample],
-    ids: dict[str, Sequence],
+    ids: Mapping[str, Sequence],
     backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
     pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
