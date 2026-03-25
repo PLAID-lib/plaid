@@ -58,8 +58,11 @@ import Muscat.MeshContainers.ElementsDescription as ED
 tmp_cache_dir = "hf_tmp_cache"
 config.HF_DATASETS_CACHE = tmp_cache_dir
 
+
 # Choose to execute the parallel of sequential version
+VERSION = "PARALLEL"
 N_PROC = 6 # number of parallel processes
+# VERSION = "SEQUENTIAL"
 
 # raw data dowloaded from https://zenodo.org/records/13993629
 # set the folder where the raw data has been downloaded:
@@ -140,70 +143,135 @@ pb_def.set_test_split({"test":"all"})
 
 #---------------------------------------------------------------
 
-def _generator(ids):
-    for i in ids:
-        folder = tri_folders[i]
+if VERSION == "PARALLEL":
 
-        plydata = PlyData.read(folder / "tri_mesh.ply")
-        tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
+    # IMPORTANT CONTRACT:
+    # - with split_n_samples, PLAID calls generators with local split indices
+    #   ids in [0, ..., split_n_samples[split]-1]
+    # - in parallel mode, PLAID internally shards these ids and each call gets a subset
 
-        vertex_data = plydata['vertex'].data
-        x = vertex_data['x']
-        y = vertex_data['y']
-        z = vertex_data['z']
+    split_global_ids = {"train": curated_train_ids,
+                        "test": curated_test_ids}
 
-        nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
+    def _generator(split_name, ids):
+        global_ids = split_global_ids[split_name]
+        for i in ids:
+            # ids are local indices in [0, ..., split_n_samples[split_name]-1]
+            # map them back to global indices in tri_folders
+            folder = tri_folders[global_ids[i]]
 
-        mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
+            plydata = PlyData.read(folder / "tri_mesh.ply")
+            tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
 
-        press = np.load(folder / "press.npy")
-        offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
-        mesh.nodeFields["pressure"] = press[offset:]
+            vertex_data = plydata['vertex'].data
+            x = vertex_data['x']
+            y = vertex_data['y']
+            z = vertex_data['z']
 
-        tree = MeshToCGNS(mesh, exportOriginalIDs=False)
+            nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
 
-        sample = Sample()
-        sample.add_tree(tree)
+            mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
 
-        yield sample
+            press = np.load(folder / "press.npy")
+            offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
+            mesh.nodeFields["pressure"] = press[offset:]
 
-generators = {"train": partial(_generator, ids=curated_train_ids),
-            "test": partial(_generator, ids=curated_test_ids)}
+            tree = MeshToCGNS(mesh, exportOriginalIDs=False)
 
-split_n_samples = {"train": len(curated_train_ids),
-                    "test": len(curated_test_ids)}
+            sample = Sample()
+            sample.add_tree(tree)
 
-for backend in all_backends:
+            yield sample
 
-    print("--------------------------------------")
-    print(f"Backend: {backend}, parallel version")
 
-    repo_id = f"{BASE_REPO_ID}_{backend}"
-    local_folder = f"{BASE_GENERATED_DATA_FOLDER}/{backend}_dataset"
+    split_n_samples = {"train": len(curated_train_ids),
+                       "test": len(curated_test_ids)}
 
-    # DISK
-    start = time.time()
-    save_to_disk(output_folder = local_folder,
-                generators = generators,
-                backend = backend,
-                infos = infos,
-                pb_defs = pb_def,
-                split_n_samples = split_n_samples,
-                num_proc = N_PROC,
-                overwrite = True,
-                verbose = True)
-    print(f"duration generate with N_PROC={N_PROC} is {time.time()-start} s")
+    generators = {"train": partial(_generator, "train"),
+                "test": partial(_generator, "test")}
 
-    # HUB
-    start = time.time()
-    push_to_hub(repo_id = repo_id,
-                local_dir = local_folder,
-                num_workers = N_PROC,
-                viewer = backend == "hf_datasets",
-                illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
-    print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
+
+    for backend in all_backends:
+
+        print("--------------------------------------")
+        print(f"Backend: {backend}, parallel version")
+
+        repo_id = f"{BASE_REPO_ID}_{backend}"
+        local_folder = f"{BASE_GENERATED_DATA_FOLDER}/{backend}_dataset"
+
+        # DISK
+        start = time.time()
+        save_to_disk(output_folder = local_folder,
+                    generators = generators,
+                    backend = backend,
+                    infos = infos,
+                    pb_defs = pb_def,
+                    split_n_samples = split_n_samples,
+                    num_proc = N_PROC,
+                    overwrite = True,
+                    verbose = True)
+        print(f"duration generate with N_PROC={N_PROC} is {time.time()-start} s")
+
+        # HUB
+        start = time.time()
+        push_to_hub(repo_id = repo_id,
+                    local_dir = local_folder,
+                    num_workers = N_PROC,
+                    viewer = backend == "hf_datasets",
+                    illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
+        print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
 
 #---------------------------------------------------------------
+
+if VERSION == "SEQUENTIAL":
+
+    def _generator(ids):
+        for i in ids:
+            folder = tri_folders[i]
+
+            plydata = PlyData.read(folder / "tri_mesh.ply")
+            tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
+
+            vertex_data = plydata['vertex'].data
+            x = vertex_data['x']
+            y = vertex_data['y']
+            z = vertex_data['z']
+
+            nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
+
+            mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
+
+            press = np.load(folder / "press.npy")
+            offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
+            mesh.nodeFields["pressure"] = press[offset:]
+
+            tree = MeshToCGNS(mesh, exportOriginalIDs=False)
+
+            sample = Sample()
+            sample.add_tree(tree)
+
+            yield sample
+
+    generators = {"train": partial(_generator, curated_train_ids),
+                "test": partial(_generator, curated_test_ids)}
+
+    for backend in all_backends:
+
+        print("--------------------------------------")
+        print(f"Backend: {backend}, sequential version")
+
+        local_folder = f"{BASE_GENERATED_DATA_FOLDER}/{backend}_dataset"
+        # DISK
+        start = time.time()
+        save_to_disk(output_folder=local_folder,
+                    generators = generators,
+                    backend = backend,
+                    infos = infos,
+                    pb_defs = pb_def,
+                    overwrite=True,
+                    verbose=True)
+
+        print(f"duration generate in sequential mode is {time.time()-start} s")
 
 if Path(tmp_cache_dir).exists():
     shutil.rmtree(Path(tmp_cache_dir))
