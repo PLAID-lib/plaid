@@ -17,7 +17,7 @@ Key features:
 # file 'LICENSE.txt', which is part of this source code package.
 #
 #
-
+import gc
 import logging
 import tempfile
 from pathlib import Path
@@ -126,6 +126,8 @@ def generate_datasetdict_to_disk(
             processes_number=num_proc,
         )
         save_datasetdict_to_disk(output_folder, hf_datasetdict, num_proc=num_proc)
+        del hf_datasetdict
+        gc.collect()
 
 
 def push_datasetdict_to_hub(
