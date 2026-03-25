@@ -189,13 +189,13 @@ def problem_definition(main_splits) -> ProblemDefinition:
 
 
 @pytest.fixture()
-def make_sample(dataset):
+def sample_constructor(dataset):
     """A simple function that takes an id and returns a Sample."""
 
-    def _make_sample(id):
+    def _sample_constructor(id):
         return dataset[id]
 
-    return _make_sample
+    return _sample_constructor
 
 
 @pytest.fixture()
@@ -219,7 +219,7 @@ class Test_Storage:
     def test_hf_datasets(
         self,
         tmp_path,
-        make_sample,
+        sample_constructor,
         split_ids,
         infos,
         problem_definition,
@@ -228,7 +228,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            make_sample=make_sample,
+            sample_constructor=sample_constructor,
             ids=split_ids,
             backend="hf_datasets",
             infos=infos,
@@ -238,7 +238,7 @@ class Test_Storage:
         with pytest.raises(ValueError):
             save_to_disk(
                 output_folder=test_dir,
-                make_sample=make_sample,
+                sample_constructor=sample_constructor,
                 ids=split_ids,
                 backend="hf_datasets",
                 infos=infos,
@@ -250,7 +250,7 @@ class Test_Storage:
             problem_definition.set_name(None)
             save_to_disk(
                 output_folder=test_dir,
-                make_sample=make_sample,
+                sample_constructor=sample_constructor,
                 ids=split_ids,
                 backend="hf_datasets",
                 infos=infos,
@@ -260,7 +260,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            make_sample=make_sample,
+            sample_constructor=sample_constructor,
             ids=split_ids,
             backend="hf_datasets",
             infos=infos,
@@ -324,12 +324,14 @@ class Test_Storage:
         with pytest.raises(KeyError):
             converter.to_dict(hf_dataset, 0, features=["dummy"])
 
-    def test_zarr(self, tmp_path, make_sample, split_ids, infos, problem_definition):
+    def test_zarr(
+        self, tmp_path, sample_constructor, split_ids, infos, problem_definition
+    ):
         test_dir = tmp_path / "test_zarr"
 
         save_to_disk(
             output_folder=test_dir,
-            make_sample=make_sample,
+            sample_constructor=sample_constructor,
             ids=split_ids,
             backend="zarr",
             infos=infos,
@@ -387,12 +389,14 @@ class Test_Storage:
         with pytest.raises(KeyError):
             converter.to_dict(zarr_dataset, 0, features=["dummy"])
 
-    def test_cgns(self, tmp_path, make_sample, split_ids, infos, problem_definition):
+    def test_cgns(
+        self, tmp_path, sample_constructor, split_ids, infos, problem_definition
+    ):
         test_dir = tmp_path / "test_cgns"
 
         save_to_disk(
             output_folder=test_dir,
-            make_sample=make_sample,
+            sample_constructor=sample_constructor,
             ids=split_ids,
             backend="cgns",
             infos=infos,
@@ -458,7 +462,7 @@ class Test_Storage:
         assert _split_list([0, 1, 2], 1) == [[0, 1, 2]]
 
     # --------------------------------------------------------------------------
-    #     New make_sample + ids API tests
+    #     New sample_constructor + ids API tests
     # --------------------------------------------------------------------------
 
     def test_build_gen_kwargs(self):
@@ -488,7 +492,7 @@ class Test_Storage:
         all_test_ids = [i for shard in test_shards for i in shard]
         assert sorted(all_test_ids) == [10, 11]
 
-    def test_make_sample_generator(self):
+    def test_sample_constructor_generator(self):
         """_SampleFuncGenerator wraps a function into a generator."""
         collected = []
 
@@ -503,7 +507,7 @@ class Test_Storage:
         assert results == [0, 1, 2, 3]
         assert collected == [0, 1, 2, 3]
 
-    def test_make_sample_generator_default_none(self):
+    def test_sample_constructor_generator_default_none(self):
         """_SampleFuncGenerator.__call__ with shards_ids=None uses default [[]] path."""
         collected = []
 
@@ -517,20 +521,20 @@ class Test_Storage:
         assert results == []
         assert collected == []
 
-    def test_save_to_disk_with_make_sample(
+    def test_save_to_disk_with_sample_constructor(
         self,
         tmp_path,
-        make_sample,
+        sample_constructor,
         split_ids,
         infos,
         problem_definition,
     ):
-        """The new make_sample + ids API works with sequential execution."""
-        test_dir = tmp_path / "test_hf_make_sample"
+        """The new sample_constructor + ids API works with sequential execution."""
+        test_dir = tmp_path / "test_hf_sample_constructor"
 
         save_to_disk(
             output_folder=test_dir,
-            make_sample=make_sample,
+            sample_constructor=sample_constructor,
             ids=split_ids,
             backend="hf_datasets",
             infos=infos,
@@ -563,7 +567,7 @@ class Test_Storage:
         with pytest.raises(TypeError, match="must be a sliceable sequence"):
             save_to_disk(
                 output_folder=tmp_path / "test_non_sliceable",
-                make_sample=my_func,
+                sample_constructor=my_func,
                 ids={"train": iter([1, 2, 3])},  # iterator is not sliceable
                 backend="hf_datasets",
                 infos=infos,
@@ -581,12 +585,12 @@ class Test_Storage:
         """save_to_disk works with non-integer ids (strings mapped to indices)."""
         id_map = {"sample_a": 0, "sample_b": 2, "sample_c": 1, "sample_d": 3}
 
-        def make_sample(str_id):
+        def sample_constructor(str_id):
             return dataset[id_map[str_id]]
 
         save_to_disk(
             output_folder=tmp_path / "test_string_ids",
-            make_sample=make_sample,
+            sample_constructor=sample_constructor,
             ids={
                 "train": ["sample_a", "sample_b"],
                 "test": ["sample_c", "sample_d"],
@@ -604,7 +608,7 @@ class Test_Storage:
     def test_save_to_disk_parallel_auto_sharding(
         self,
         tmp_path,
-        make_sample,
+        sample_constructor,
         split_ids,
         infos,
         problem_definition,
@@ -650,7 +654,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            make_sample=make_sample,
+            sample_constructor=sample_constructor,
             ids=split_ids,
             backend="hf_datasets",
             infos=infos,
@@ -686,14 +690,14 @@ class Test_Storage:
         assert written[1] == "sample_000000001"
 
     def test_zarr_generate_no_gen_kwargs(
-        self, tmp_path, make_sample, split_ids, infos, problem_definition
+        self, tmp_path, sample_constructor, split_ids, infos, problem_definition
     ):
         """Cover zarr writer else branch: gen_func() called without batch_ids_list."""
         # First, save a dataset normally to get the variable_schema
         ref_dir = tmp_path / "ref_zarr"
         save_to_disk(
             output_folder=ref_dir,
-            make_sample=make_sample,
+            sample_constructor=sample_constructor,
             ids=split_ids,
             backend="zarr",
             infos=infos,
@@ -709,8 +713,8 @@ class Test_Storage:
         # Now call zarr generate_datasetdict_to_disk directly without gen_kwargs
         test_dir = tmp_path / "test_zarr_no_kwargs"
         samples_to_yield = [
-            make_sample(split_ids["train"][0]),
-            make_sample(split_ids["train"][1]),
+            sample_constructor(split_ids["train"][0]),
+            sample_constructor(split_ids["train"][1]),
         ]
 
         def my_generator():
@@ -746,7 +750,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            make_sample=gen,
+            sample_constructor=gen,
             ids=split_ids,
             backend="cgns",
             infos=infos,
@@ -771,7 +775,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            make_sample=gen,
+            sample_constructor=gen,
             ids=split_ids,
             backend="zarr",
             infos=infos,

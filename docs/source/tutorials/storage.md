@@ -8,7 +8,7 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 
 ## Key concepts
 
-- **`make_sample`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
+- **`sample_constructor`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
 - **`ids`** is a dictionary mapping split names to **sliceable sequences** of identifiers — anything with `__getitem__` and `__len__` (list, tuple, numpy array, …). PLAID handles iteration, generator creation, and parallel sharding internally.
 - **`save_to_disk`** writes a dataset locally; **`push_to_hub`** uploads it to Hugging Face Hub.
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
@@ -130,7 +130,7 @@ pb_def.set_test_split({"test":"all"})
 # PLAID handles iteration, generator creation, and parallel sharding internally.
 # When num_proc > 1, PLAID automatically shards the ids across workers.
 
-def make_sample(i):
+def sample_constructor(i):
     folder = tri_folders[i]
 
     plydata = PlyData.read(folder / "tri_mesh.ply")
@@ -170,7 +170,7 @@ for backend in all_backends:
     # DISK
     start = time.time()
     save_to_disk(output_folder=local_folder,
-                make_sample=make_sample,
+                sample_constructor=sample_constructor,
                 ids=ids,
                 backend=backend,
                 infos=infos,
