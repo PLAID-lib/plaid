@@ -8,7 +8,8 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 
 ## Key concepts
 
-- **Generators** are `functools.partial` objects whose first argument (positional **or** keyword) is a **sliceable sequence** of sample identifiers or data references — anything with `__getitem__` and `__len__` (list of ints, file paths, strings, pre-loaded data objects, numpy arrays, …). Both `partial(my_gen, my_ids)` and `partial(my_gen, ids=my_ids)` are supported. PLAID calls the underlying function with the full sequence for sequential execution and with sub-sequences (shards) for parallel execution — user code is identical in both cases, only `num_proc` changes.
+- **`sample_func`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
+- **`ids`** is a dictionary mapping split names to **sliceable sequences** of identifiers — anything with `__getitem__` and `__len__` (list, tuple, numpy array, …). PLAID handles iteration, generator creation, and parallel sharding internally.
 - **`save_to_disk`** writes a dataset locally; **`push_to_hub`** uploads it to Hugging Face Hub.
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
 - Backend converters turn raw backend samples into PLAID `Sample` objects.
@@ -26,7 +27,6 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 import time
 from pathlib import Path
 import shutil
-from functools import partial
 
 import numpy as np
 
@@ -126,42 +126,38 @@ pb_def.set_train_split({"train":"all"})
 pb_def.set_test_split({"test":"all"})
 
 #---------------------------------------------------------------
-# Define the generator once — it works for both sequential and parallel modes.
-# Generators must be functools.partial objects whose first argument (positional
-# or keyword) is a sliceable sequence of sample identifiers or data references
-# (list of ints, file paths, strings, pre-loaded objects, numpy arrays, …).
-# Both partial(gen, ids) and partial(gen, ids=ids) are supported.
-# When num_proc > 1, PLAID automatically shards the sequence across workers.
+# Define a simple function that takes a single identifier and returns a Sample.
+# PLAID handles iteration, generator creation, and parallel sharding internally.
+# When num_proc > 1, PLAID automatically shards the ids across workers.
 
-def _generator(ids):
-    for i in ids:
-        folder = tri_folders[i]
+def make_sample(i):
+    folder = tri_folders[i]
 
-        plydata = PlyData.read(folder / "tri_mesh.ply")
-        tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
+    plydata = PlyData.read(folder / "tri_mesh.ply")
+    tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
 
-        vertex_data = plydata['vertex'].data
-        x = vertex_data['x']
-        y = vertex_data['y']
-        z = vertex_data['z']
+    vertex_data = plydata['vertex'].data
+    x = vertex_data['x']
+    y = vertex_data['y']
+    z = vertex_data['z']
 
-        nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
+    nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
 
-        mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
+    mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
 
-        press = np.load(folder / "press.npy")
-        offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
-        mesh.nodeFields["pressure"] = press[offset:]
+    press = np.load(folder / "press.npy")
+    offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
+    mesh.nodeFields["pressure"] = press[offset:]
 
-        tree = MeshToCGNS(mesh, exportOriginalIDs=False)
+    tree = MeshToCGNS(mesh, exportOriginalIDs=False)
 
-        sample = Sample()
-        sample.add_tree(tree)
+    sample = Sample()
+    sample.add_tree(tree)
 
-        yield sample
+    return sample
 
-generators = {"train": partial(_generator, curated_train_ids),
-              "test": partial(_generator, curated_test_ids)}
+ids = {"train": curated_train_ids,
+       "test": curated_test_ids}
 
 for backend in all_backends:
 
@@ -174,7 +170,8 @@ for backend in all_backends:
     # DISK
     start = time.time()
     save_to_disk(output_folder=local_folder,
-                generators=generators,
+                sample_func=make_sample,
+                ids=ids,
                 backend=backend,
                 infos=infos,
                 pb_defs=pb_def,

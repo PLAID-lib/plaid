@@ -531,14 +531,6 @@ def preprocess(
     Returns:
         tuple: (split_flat_cst, variable_schema, constant_schema, split_n_samples, global_cgns_types)
     """
-    assert (gen_kwargs is None and num_proc == 1) or (
-        gen_kwargs is not None and num_proc > 1
-    ), (
-        "Invalid configuration: either provide only `generators` with "
-        "`num_proc == 1`, or provide `gen_kwargs` with "
-        "`num_proc > 1`."
-    )
-
     (
         split_all_paths,
         split_flat_cst,

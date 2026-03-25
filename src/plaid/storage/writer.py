@@ -18,12 +18,10 @@ Key features:
 #
 #
 
-import inspect
 import logging
 import shutil
-from functools import partial
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Any, Callable, Generator, Optional, Sequence, Union
 
 from packaging.version import Version
 
@@ -58,90 +56,16 @@ def _split_list(lst: list, n_splits: int) -> list[list]:
     ]
 
 
-def _extract_ids_from_partial(
-    gen: partial,
-    split_name: str,
-) -> tuple[Any, Callable, tuple, dict]:
-    """Extract the ids sequence from a ``functools.partial``.
+class _SampleFuncGenerator:
+    """Picklable generator callable that wraps a user-provided sample function.
 
-    Supports both positional and keyword syntax::
-
-        partial(my_gen, my_ids)              # positional
-        partial(my_gen, my_ids=my_ids)       # keyword (first param name)
-
-    Returns:
-        tuple of (data, base_func, extra_args, extra_kwargs) where *data* is the
-        sliceable ids sequence, *base_func* is the unwrapped generator function,
-        and *extra_args*/*extra_kwargs* are the remaining partial arguments
-        (with the ids removed).
-
-    Raises:
-        TypeError: If the ids cannot be found or are not sliceable.
-    """
-    # --- Try positional first -------------------------------------------------
-    if gen.args:
-        data = gen.args[0]
-        if hasattr(data, "__getitem__") and hasattr(data, "__len__"):
-            return data, gen.func, gen.args[1:], gen.keywords
-        raise TypeError(
-            f"Generator for split '{split_name}': the first positional argument "
-            f"must be a sliceable sequence (with __getitem__ and __len__), "
-            f"got {type(data).__name__}. "
-            f"Use a list, tuple, or numpy array of sample identifiers."
-        )
-
-    # --- Try keyword: look up the first parameter of the underlying function --
-    try:
-        sig = inspect.signature(gen.func)
-        first_param = next(iter(sig.parameters))
-    except (ValueError, StopIteration):
-        first_param = None
-
-    if first_param and first_param in gen.keywords:
-        data = gen.keywords[first_param]
-        if hasattr(data, "__getitem__") and hasattr(data, "__len__"):
-            remaining_kwargs = {
-                k: v for k, v in gen.keywords.items() if k != first_param
-            }
-            return data, gen.func, (), remaining_kwargs
-        raise TypeError(
-            f"Generator for split '{split_name}': keyword argument '{first_param}' "
-            f"must be a sliceable sequence (with __getitem__ and __len__), "
-            f"got {type(data).__name__}. "
-            f"Use a list, tuple, or numpy array of sample identifiers."
-        )
-
-    # --- Nothing found --------------------------------------------------------
-    hint = (
-        f"partial(my_gen, {first_param}=my_ids)"
-        if first_param
-        else "partial(my_gen, my_ids)"
-    )
-    raise TypeError(
-        f"Generator for split '{split_name}' is a functools.partial but has "
-        f"no identifiable ids argument. Pass them as the first positional arg "
-        f"or as a keyword matching the first parameter name: {hint}."
-    )
-
-
-class _ShardGenerator:
-    """Picklable shard generator callable.
-
-    This replaces the local closure that was previously defined inside
-    ``_build_gen_kwargs_from_partials``.  Because ``multiprocessing`` needs to
-    pickle the generator function sent to worker processes, it **must** be
-    defined at module level (local / nested functions are not picklable).
+    This class turns a simple ``sample_func(id) -> Sample`` into a generator
+    compatible with the backend ``generate_to_disk`` interface.  It is defined
+    at module level so that ``multiprocessing`` can pickle it.
     """
 
-    def __init__(
-        self,
-        base_func: Callable,
-        extra_args: tuple = (),
-        extra_kwargs: Optional[dict] = None,
-    ) -> None:
-        self._base_func = base_func
-        self._extra_args = extra_args
-        self._extra_kwargs = extra_kwargs or {}
+    def __init__(self, sample_func: Callable[[Any], Sample]) -> None:
+        self._func = sample_func
 
     def __call__(
         self,
@@ -150,55 +74,31 @@ class _ShardGenerator:
         if shards_ids is None:
             shards_ids = [[]]
         for shard in shards_ids:
-            yield from self._base_func(shard, *self._extra_args, **self._extra_kwargs)
+            for id_ in shard:
+                yield self._func(id_)
 
 
-def _build_gen_kwargs_from_partials(
-    generators: dict[str, Callable[..., Generator[Sample, None, None]]],
+def _build_gen_kwargs(
+    ids: dict[str, Sequence],
     num_proc: int,
-) -> tuple[
-    dict[str, Callable[..., Generator[Sample, None, None]]],
-    dict[str, dict[str, Any]],
-]:
-    """Build ``gen_kwargs`` by sharding the data closed over in each ``partial``.
-
-    For each split the first positional argument of the ``partial`` is extracted,
-    sliced into ``num_proc`` shards, and new ``partial`` generators are created
-    that accept a single ``shard`` keyword argument.
+) -> dict[str, dict[str, Any]]:
+    """Build ``gen_kwargs`` by sharding the ids for each split.
 
     Returns:
     -------
-    wrapped_generators : dict
-        New generators (one per split) that accept ``shard=<list>`` and yield
-        samples for that shard.
     gen_kwargs : dict
-        Per-split kwargs suitable for the backend ``generate_to_disk`` calls,
-        with ``shards_ids`` containing the shard lists.
+        Per-split kwargs with ``shards_ids`` containing the shard lists.
     """
-    wrapped_generators: dict[str, Callable[..., Generator[Sample, None, None]]] = {}
     gen_kwargs: dict[str, dict[str, Any]] = {}
 
-    for split_name, gen in generators.items():
-        if not isinstance(gen, partial):
-            raise TypeError(
-                f"Generator for split '{split_name}' must be a functools.partial, "
-                f"got {type(gen).__name__}."
-            )
-        data, base_func, extra_args, extra_kwargs = _extract_ids_from_partial(
-            gen, split_name
-        )
-
-        n_shards = min(max(1, num_proc), max(1, len(data)))
+    for split_name, split_ids in ids.items():
+        n_shards = min(max(1, num_proc), max(1, len(split_ids)))
         shards = [
-            chunk for chunk in _split_list(list(data), n_shards) if len(chunk) > 0
+            chunk for chunk in _split_list(list(split_ids), n_shards) if len(chunk) > 0
         ]
-
-        wrapped_generators[split_name] = _ShardGenerator(
-            base_func, extra_args, extra_kwargs
-        )
         gen_kwargs[split_name] = {"shards_ids": shards}
 
-    return wrapped_generators, gen_kwargs
+    return gen_kwargs
 
 
 def _check_folder(output_folder: Path, overwrite: bool) -> None:
@@ -224,60 +124,56 @@ def _check_folder(output_folder: Path, overwrite: bool) -> None:
 
 def save_to_disk(
     output_folder: Union[str, Path],
-    generators: dict[str, Callable[..., Generator[Sample, None, None]]],
+    sample_func: Callable[[Any], Sample],
+    ids: dict[str, Sequence],
     backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
     pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
     num_proc: int = 1,
     verbose: bool = False,
     overwrite: bool = False,
-    # --- advanced ---------------------------------------------------------------
-    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
 ) -> None:
     """Save a PLAID dataset to local disk using the specified backend.
 
-    This function preprocesses the dataset generators, extracts schemas, and saves
+    This function preprocesses the dataset, extracts schemas, and saves
     the dataset to disk using the chosen backend.  It also saves metadata, infos,
     and problem definitions.
 
-    Generators must be ``functools.partial`` objects whose first argument
-    (positional **or** keyword) is a **sliceable sequence** of sample
-    identifiers or data references — anything with ``__getitem__`` and
-    ``__len__``.  This can be a list of integers, file paths, strings,
-    pre-loaded data objects, a numpy array, etc.
+    The user provides a simple function ``sample_func`` that takes a single
+    identifier and returns a :class:`~plaid.Sample`, together with a dictionary
+    ``ids`` mapping split names to sliceable sequences of identifiers.
+    PLAID handles iteration, generator creation, and parallel sharding
+    internally.
 
-    Both positional and keyword syntax are supported::
+    Example::
 
-        from functools import partial
+        from plaid import Sample
+        from plaid.storage import save_to_disk
 
-        def my_generator(ids):
-            for i in ids:
-                yield make_sample(i)
+        def make_sample(file_path):
+            sample = Sample()
+            sample.add_tree(load_my_data(file_path))
+            return sample
 
-        # Positional (recommended)
-        generators = {
-            "train": partial(my_generator, train_ids),
-            "test":  partial(my_generator, test_ids),
-        }
-
-        # Keyword — also works (matched by first parameter name)
-        generators = {
-            "train": partial(my_generator, ids=train_ids),
-            "test":  partial(my_generator, ids=test_ids),
-        }
-
-        # Sequential
-        save_to_disk("out", generators)
-
-        # Parallel — same generators, only num_proc changes
-        save_to_disk("out", generators, num_proc=6)
+        save_to_disk(
+            "output/",
+            sample_func=make_sample,
+            ids={
+                "train": train_file_paths,
+                "test":  test_file_paths,
+            },
+            num_proc=6,
+        )
 
     Args:
         output_folder: Path to the output directory where the dataset will be saved.
-        generators: Dictionary mapping split names to ``functools.partial``
-            generator callables.  Each underlying function must accept a
-            sequence of sample identifiers as its first argument and yield
-            the corresponding ``Sample`` objects.
+        sample_func: A callable that takes a single identifier (of any type)
+            and returns a :class:`~plaid.Sample`.
+        ids: Dictionary mapping split names (e.g. ``"train"``, ``"test"``) to
+            sliceable sequences of sample identifiers.  Each sequence must
+            support ``__getitem__`` and ``__len__`` (list, tuple, numpy array,
+            …).  The identifiers can be of any type: integers, file paths,
+            strings, tuples, etc.
         backend: Storage backend to use (``'cgns'``, ``'hf_datasets'``, or
             ``'zarr'``).
         infos: Optional additional information to save with the dataset.
@@ -287,9 +183,6 @@ def save_to_disk(
             sequences and distributes work across workers.
         verbose: If True, enables verbose output during processing.
         overwrite: If True, overwrites existing output directory.
-        gen_kwargs: *Advanced* — explicit per-split generator keyword
-            arguments.  When provided PLAID skips automatic sharding and
-            forwards these kwargs directly to the backend.
     """
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
@@ -297,20 +190,31 @@ def save_to_disk(
     if infos:
         validate_required_infos(infos)
 
-    # ---- validate generators: must be partial with sliceable ids arg ---------
-    for split_name, gen in generators.items():
-        if not isinstance(gen, partial):
+    # ---- validate ids: must be sliceable sequences ---------------------------
+    for split_name, split_ids in ids.items():
+        if not (hasattr(split_ids, "__getitem__") and hasattr(split_ids, "__len__")):
             raise TypeError(
-                f"Generator for split '{split_name}' must be a functools.partial, "
-                f"got {type(gen).__name__}. "
-                f"Wrap your generator function: partial(my_generator, my_ids)."
+                f"ids for split '{split_name}' must be a sliceable sequence "
+                f"(with __getitem__ and __len__), got {type(split_ids).__name__}. "
+                f"Use a list, tuple, or numpy array of sample identifiers."
             )
-        # _extract_ids_from_partial validates that ids exist and are sliceable
-        _extract_ids_from_partial(gen, split_name)
 
-    # ---- auto-shard from partial when running in parallel --------------------
-    if gen_kwargs is None and num_proc > 1:
-        generators, gen_kwargs = _build_gen_kwargs_from_partials(generators, num_proc)
+    # ---- build generators from sample_func -----------------------------------
+    generators: dict[str, Callable[..., Generator[Sample, None, None]]] = {}
+    for split_name in ids:
+        generators[split_name] = _SampleFuncGenerator(sample_func)
+
+    # ---- auto-shard when running in parallel ---------------------------------
+    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None
+    if num_proc > 1:
+        gen_kwargs = _build_gen_kwargs(ids, num_proc)
+    else:
+        # For sequential execution, wrap ids into a single shard so the
+        # generator receives them via shards_ids
+        gen_kwargs = {
+            split_name: {"shards_ids": [list(split_ids)]}
+            for split_name, split_ids in ids.items()
+        }
 
     output_folder = Path(output_folder)
     _check_folder(output_folder, overwrite)

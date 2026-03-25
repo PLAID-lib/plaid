@@ -10,9 +10,7 @@
 import json
 import shutil
 from copy import deepcopy
-from functools import partial
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 import pytest
@@ -30,9 +28,8 @@ from plaid.storage.hf_datasets.bridge import (
     to_var_sample_dict,
 )
 from plaid.storage.writer import (
-    _build_gen_kwargs_from_partials,
-    _extract_ids_from_partial,
-    _ShardGenerator,
+    _build_gen_kwargs,
+    _SampleFuncGenerator,
     _split_list,
 )
 
@@ -176,20 +173,18 @@ def problem_definition(main_splits) -> ProblemDefinition:
 
 
 @pytest.fixture()
-def generator_split(dataset, problem_definition) -> dict[str, Callable]:
-    generators_ = {}
+def sample_func(dataset):
+    """A simple function that takes an id and returns a Sample."""
 
-    main_splits = problem_definition.get_split()
+    def _make_sample(id):
+        return dataset[id]
 
-    for split_name, ids in main_splits.items():
+    return _make_sample
 
-        def generator_(ids):
-            for id in ids:
-                yield dataset[id]
 
-        generators_[split_name] = partial(generator_, ids)
-
-    return generators_
+@pytest.fixture()
+def split_ids(problem_definition) -> dict:
+    return problem_definition.get_split()
 
 
 class Test_Storage:
@@ -207,9 +202,9 @@ class Test_Storage:
 
     def test_hf_datasets(
         self,
-        dataset,
         tmp_path,
-        generator_split,
+        sample_func,
+        split_ids,
         infos,
         problem_definition,
     ):
@@ -217,7 +212,8 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            generators=generator_split,
+            sample_func=sample_func,
+            ids=split_ids,
             backend="hf_datasets",
             infos=infos,
             pb_defs={"pb_def": problem_definition},
@@ -226,7 +222,8 @@ class Test_Storage:
         with pytest.raises(ValueError):
             save_to_disk(
                 output_folder=test_dir,
-                generators=generator_split,
+                sample_func=sample_func,
+                ids=split_ids,
                 backend="hf_datasets",
                 infos=infos,
                 pb_defs={"pb_def": problem_definition},
@@ -237,7 +234,8 @@ class Test_Storage:
             problem_definition.set_name(None)
             save_to_disk(
                 output_folder=test_dir,
-                generators=generator_split,
+                sample_func=sample_func,
+                ids=split_ids,
                 backend="hf_datasets",
                 infos=infos,
                 pb_defs=problem_definition,
@@ -246,7 +244,8 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            generators=generator_split,
+            sample_func=sample_func,
+            ids=split_ids,
             backend="hf_datasets",
             infos=infos,
             pb_defs={"pb_def": problem_definition},
@@ -261,27 +260,27 @@ class Test_Storage:
         datasetdict, converterdict = init_from_disk(test_dir, splits=["train"])
         datasetdict, converterdict = init_from_disk(test_dir)
 
-        dataset = datasetdict["train"]
+        hf_dataset = datasetdict["train"]
         converter = converterdict["train"]
 
         print(converter)
 
         plaid_sample = converter.to_plaid(
-            dataset,
+            hf_dataset,
             0,
             features=[
                 "Base_Name/Zone_Name/VertexFields/test_field_same_size",
                 "Global/global_0",
             ],
         )
-        plaid_sample = converter.to_plaid(dataset, 0)
+        plaid_sample = converter.to_plaid(hf_dataset, 0)
         self.assert_sample(plaid_sample)
-        plaid_sample = converter.sample_to_plaid(dataset[0])
+        plaid_sample = converter.sample_to_plaid(hf_dataset[0])
         self.assert_sample(plaid_sample)
 
         converter.plaid_to_dict(plaid_sample)
 
-        to_var_sample_dict(dataset, 0, enforce_shapes=False)
+        to_var_sample_dict(hf_dataset, 0, enforce_shapes=False)
 
         for t in plaid_sample.get_all_time_values():
             for path in problem_definition.get_in_features_identifiers():
@@ -289,11 +288,11 @@ class Test_Storage:
             for path in problem_definition.get_out_features_identifiers():
                 plaid_sample.get_feature_by_path(path=path, time=t)
 
-        converter.to_dict(dataset, 0)
-        converter.sample_to_dict(dataset[0])
+        converter.to_dict(hf_dataset, 0)
+        converter.sample_to_dict(hf_dataset[0])
 
         converter.to_dict(
-            dataset,
+            hf_dataset,
             0,
             features=[
                 "Base_Name/Zone_Name/VertexFields/test_field_same_size",
@@ -301,20 +300,21 @@ class Test_Storage:
             ],
         )
         converter.to_dict(
-            dataset,
+            hf_dataset,
             0,
             features=["Base_Name/Zone_Name/VertexFields/test_field_same_size"],
         )
-        converter.to_dict(dataset, 0, features=["Global/global_0"])
+        converter.to_dict(hf_dataset, 0, features=["Global/global_0"])
         with pytest.raises(KeyError):
-            converter.to_dict(dataset, 0, features=["dummy"])
+            converter.to_dict(hf_dataset, 0, features=["dummy"])
 
-    def test_zarr(self, tmp_path, generator_split, infos, problem_definition):
+    def test_zarr(self, tmp_path, sample_func, split_ids, infos, problem_definition):
         test_dir = tmp_path / "test_zarr"
 
         save_to_disk(
             output_folder=test_dir,
-            generators=generator_split,
+            sample_func=sample_func,
+            ids=split_ids,
             backend="zarr",
             infos=infos,
             pb_defs={"pb_def": problem_definition},
@@ -325,31 +325,31 @@ class Test_Storage:
         datasetdict, converterdict = init_from_disk(test_dir, splits=["train"])
         datasetdict, converterdict = init_from_disk(test_dir)
 
-        dataset = datasetdict["train"]
+        zarr_dataset = datasetdict["train"]
         converter = converterdict["train"]
 
         plaid_sample = converter.to_plaid(
-            dataset,
+            zarr_dataset,
             0,
             features=[
                 "Base_Name/Zone_Name/VertexFields/test_field_same_size",
                 "Global/global_0",
             ],
         )
-        plaid_sample = converter.to_plaid(dataset, 0)
+        plaid_sample = converter.to_plaid(zarr_dataset, 0)
         self.assert_sample(plaid_sample)
-        plaid_sample = converter.sample_to_plaid(dataset[0])
+        plaid_sample = converter.sample_to_plaid(zarr_dataset[0])
         self.assert_sample(plaid_sample)
 
         converter.plaid_to_dict(plaid_sample)
 
         # coverage of ZarrDataset classe
-        for sample in dataset:
+        for sample in zarr_dataset:
             sample
-        len(dataset)
-        dataset.zarr_group
-        dataset.toto = 1.0
-        print(dataset)
+        len(zarr_dataset)
+        zarr_dataset.zarr_group
+        zarr_dataset.toto = 1.0
+        print(zarr_dataset)
 
         for t in plaid_sample.get_all_time_values():
             for path in problem_definition.get_in_features_identifiers():
@@ -357,11 +357,11 @@ class Test_Storage:
             for path in problem_definition.get_out_features_identifiers():
                 plaid_sample.get_feature_by_path(path=path, time=t)
 
-        converter.to_dict(dataset, 0)
-        converter.sample_to_dict(dataset[0])
+        converter.to_dict(zarr_dataset, 0)
+        converter.sample_to_dict(zarr_dataset[0])
 
         converter.to_dict(
-            dataset,
+            zarr_dataset,
             0,
             features=[
                 "Base_Name/Zone_Name/VertexFields/test_field_same_size",
@@ -369,14 +369,15 @@ class Test_Storage:
             ],
         )
         with pytest.raises(KeyError):
-            converter.to_dict(dataset, 0, features=["dummy"])
+            converter.to_dict(zarr_dataset, 0, features=["dummy"])
 
-    def test_cgns(self, tmp_path, generator_split, infos, problem_definition):
+    def test_cgns(self, tmp_path, sample_func, split_ids, infos, problem_definition):
         test_dir = tmp_path / "test_cgns"
 
         save_to_disk(
             output_folder=test_dir,
-            generators=generator_split,
+            sample_func=sample_func,
+            ids=split_ids,
             backend="cgns",
             infos=infos,
             pb_defs={"pb_def": problem_definition},
@@ -387,20 +388,20 @@ class Test_Storage:
         datasetdict, converterdict = init_from_disk(test_dir, splits=["train"])
         datasetdict, converterdict = init_from_disk(test_dir)
 
-        dataset = datasetdict["train"]
+        cgns_dataset = datasetdict["train"]
         converter = converterdict["train"]
 
         # coverage of CGNSDataset classe
-        for sample in dataset:
+        for sample in cgns_dataset:
             sample
-        len(dataset)
-        dataset.ids
-        dataset.toto = 1.0
-        print(dataset)
+        len(cgns_dataset)
+        cgns_dataset.ids
+        cgns_dataset.toto = 1.0
+        print(cgns_dataset)
 
-        plaid_sample = converter.to_plaid(dataset, 0)
+        plaid_sample = converter.to_plaid(cgns_dataset, 0)
         self.assert_sample(plaid_sample)
-        plaid_sample = converter.sample_to_plaid(dataset[0])
+        plaid_sample = converter.sample_to_plaid(cgns_dataset[0])
         self.assert_sample(plaid_sample)
 
         converter.plaid_to_dict(plaid_sample)
@@ -412,9 +413,9 @@ class Test_Storage:
                 plaid_sample.get_feature_by_path(path=path, time=t)
 
         with pytest.raises(ValueError):
-            converter.to_dict(dataset, 0)
+            converter.to_dict(cgns_dataset, 0)
         with pytest.raises(ValueError):
-            converter.sample_to_dict(dataset[0])
+            converter.sample_to_dict(cgns_dataset[0])
 
     def test_registry(self):
         from plaid.storage import registry
@@ -441,26 +442,17 @@ class Test_Storage:
         assert _split_list([0, 1, 2], 1) == [[0, 1, 2]]
 
     # --------------------------------------------------------------------------
-    #     Partial-based API tests
+    #     New sample_func + ids API tests
     # --------------------------------------------------------------------------
 
-    def test_build_gen_kwargs_from_partials(self):
-        """_build_gen_kwargs_from_partials shards data and creates shard generators."""
-        collected = []
-
-        def my_gen(ids):
-            for i in ids:
-                collected.append(i)
-                yield i
-
-        generators = {
-            "train": partial(my_gen, [0, 1, 2, 3]),
-            "test": partial(my_gen, [10, 11]),
+    def test_build_gen_kwargs(self):
+        """_build_gen_kwargs shards ids for each split."""
+        ids = {
+            "train": [0, 1, 2, 3],
+            "test": [10, 11],
         }
 
-        wrapped_gens, gen_kwargs = _build_gen_kwargs_from_partials(
-            generators, num_proc=2
-        )
+        gen_kwargs = _build_gen_kwargs(ids, num_proc=2)
 
         # Check gen_kwargs structure
         assert "train" in gen_kwargs
@@ -471,7 +463,6 @@ class Test_Storage:
         # Train should be split into 2 shards
         train_shards = gen_kwargs["train"]["shards_ids"]
         assert len(train_shards) == 2
-        # All original ids should be present across shards
         all_train_ids = [i for shard in train_shards for i in shard]
         assert sorted(all_train_ids) == [0, 1, 2, 3]
 
@@ -481,37 +472,50 @@ class Test_Storage:
         all_test_ids = [i for shard in test_shards for i in shard]
         assert sorted(all_test_ids) == [10, 11]
 
-        # Wrapped generators should be callable with shards_ids kwarg
-        collected.clear()
-        results = list(wrapped_gens["train"](shards_ids=train_shards))
-        assert sorted(results) == [0, 1, 2, 3]
-        assert sorted(collected) == [0, 1, 2, 3]
+    def test_sample_func_generator(self):
+        """_SampleFuncGenerator wraps a function into a generator."""
+        collected = []
 
-    def test_build_gen_kwargs_from_partials_raises_on_non_partial(self):
-        """_build_gen_kwargs_from_partials raises TypeError for non-partial generators."""
+        def my_func(id_):
+            collected.append(id_)
+            return id_
 
-        def plain_gen(ids):
-            yield from ids
+        gen = _SampleFuncGenerator(my_func)
 
-        generators = {"train": plain_gen}
+        # Test with shards_ids
+        results = list(gen(shards_ids=[[0, 1], [2, 3]]))
+        assert results == [0, 1, 2, 3]
+        assert collected == [0, 1, 2, 3]
 
-        with pytest.raises(TypeError, match="must be a functools.partial"):
-            _build_gen_kwargs_from_partials(generators, num_proc=2)
+    def test_sample_func_generator_default_none(self):
+        """_SampleFuncGenerator.__call__ with shards_ids=None uses default [[]] path."""
+        collected = []
 
-    def test_hf_datasets_sequential_with_partial_generators(
+        def my_func(id_):
+            collected.append(id_)
+            return id_
+
+        gen = _SampleFuncGenerator(my_func)
+        # Call with no arguments — shards_ids defaults to None
+        results = list(gen())
+        assert results == []
+        assert collected == []
+
+    def test_save_to_disk_with_sample_func(
         self,
         tmp_path,
-        generator_split,
+        sample_func,
+        split_ids,
         infos,
         problem_definition,
     ):
-        """The new partial-based API works with sequential execution (num_proc=1)."""
-        test_dir = tmp_path / "test_hf_partial_sequential"
+        """The new sample_func + ids API works with sequential execution."""
+        test_dir = tmp_path / "test_hf_sample_func"
 
-        # Sequential: no auto-sharding triggered, partial generators used directly
         save_to_disk(
             output_folder=test_dir,
-            generators=generator_split,
+            sample_func=sample_func,
+            ids=split_ids,
             backend="hf_datasets",
             infos=infos,
             pb_defs={"pb_def": problem_definition},
@@ -529,187 +533,81 @@ class Test_Storage:
         plaid_sample = converter.to_plaid(datasetdict["train"], 0)
         self.assert_sample(plaid_sample)
 
-    def test_save_to_disk_raises_on_non_partial(
+    def test_save_to_disk_raises_on_non_sliceable_ids(
         self,
         tmp_path,
         infos,
         problem_definition,
     ):
-        """save_to_disk raises TypeError when generators are not functools.partial."""
+        """save_to_disk raises TypeError when ids are not sliceable."""
 
-        def plain_gen(ids):
-            yield from ids
-
-        generators = {
-            "train": plain_gen,
-            "test": plain_gen,
-        }
-
-        with pytest.raises(TypeError, match="must be a functools.partial"):
-            save_to_disk(
-                output_folder=tmp_path / "test_non_partial",
-                generators=generators,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                num_proc=1,
-                overwrite=True,
-            )
-
-    def test_save_to_disk_raises_on_partial_no_args(
-        self,
-        tmp_path,
-        infos,
-        problem_definition,
-    ):
-        """save_to_disk raises TypeError when partial has no identifiable ids."""
-        generators = {
-            "train": partial(lambda: None),
-        }
-
-        with pytest.raises(TypeError, match="no identifiable ids argument"):
-            save_to_disk(
-                output_folder=tmp_path / "test_partial_no_args",
-                generators=generators,
-                backend="hf_datasets",
-                infos=infos,
-                pb_defs={"pb_def": problem_definition},
-                overwrite=True,
-            )
-
-    def test_save_to_disk_raises_on_non_sliceable_first_arg(
-        self,
-        tmp_path,
-        infos,
-        problem_definition,
-    ):
-        """save_to_disk raises TypeError when first arg of partial is not sliceable."""
-        generators = {
-            "train": partial(lambda _x: None, 42),  # int is not sliceable
-        }
+        def my_func(id_):
+            return id_
 
         with pytest.raises(TypeError, match="must be a sliceable sequence"):
             save_to_disk(
                 output_folder=tmp_path / "test_non_sliceable",
-                generators=generators,
+                sample_func=my_func,
+                ids={"train": iter([1, 2, 3])},  # iterator is not sliceable
                 backend="hf_datasets",
                 infos=infos,
                 pb_defs={"pb_def": problem_definition},
                 overwrite=True,
             )
 
-    # --------------------------------------------------------------------------
-    #     Keyword-arg partial support
-    # --------------------------------------------------------------------------
+    def test_save_to_disk_with_string_ids(
+        self,
+        dataset,
+        tmp_path,
+        infos,
+        problem_definition,
+    ):
+        """save_to_disk works with non-integer ids (strings mapped to indices)."""
+        id_map = {"sample_a": 0, "sample_b": 2, "sample_c": 1, "sample_d": 3}
 
-    def test_extract_ids_from_partial_positional(self):
-        """_extract_ids_from_partial extracts ids from positional arg."""
-        data = [1, 2, 3]
+        def make_sample(str_id):
+            return dataset[id_map[str_id]]
 
-        def my_gen(ids):
-            yield from ids
-
-        gen = partial(my_gen, data)
-        result_data, base_func, extra_args, extra_kwargs = _extract_ids_from_partial(
-            gen, "train"
+        save_to_disk(
+            output_folder=tmp_path / "test_string_ids",
+            sample_func=make_sample,
+            ids={
+                "train": ["sample_a", "sample_b"],
+                "test": ["sample_c", "sample_d"],
+            },
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
         )
-        assert result_data == data
-        assert base_func is my_gen
-        assert extra_args == ()
-        assert extra_kwargs == {}
 
-    def test_extract_ids_from_partial_keyword(self):
-        """_extract_ids_from_partial extracts ids from keyword arg matching first param."""
-        data = [1, 2, 3]
-
-        def my_gen(ids):
-            yield from ids
-
-        gen = partial(my_gen, ids=data)
-        result_data, base_func, extra_args, extra_kwargs = _extract_ids_from_partial(
-            gen, "train"
-        )
-        assert result_data == data
-        assert base_func is my_gen
-        assert extra_args == ()
-        assert extra_kwargs == {}
-
-    def test_extract_ids_from_partial_keyword_with_extra_kwargs(self):
-        """_extract_ids_from_partial strips ids from kwargs and keeps the rest."""
-        data = [1, 2, 3]
-
-        def my_gen(ids, _extra_param=10):
-            yield from ids
-
-        gen = partial(my_gen, ids=data, _extra_param=42)
-        result_data, base_func, extra_args, extra_kwargs = _extract_ids_from_partial(
-            gen, "train"
-        )
-        assert result_data == data
-        assert base_func is my_gen
-        assert extra_args == ()
-        assert extra_kwargs == {"_extra_param": 42}
-
-    def test_extract_ids_from_partial_keyword_non_sliceable(self):
-        """_extract_ids_from_partial raises TypeError when keyword arg is not sliceable.
-
-        Covers line 107 of writer.py.
-        """
-
-        def my_gen(ids):
-            yield from ids
-
-        # Pass an int as keyword arg — has no __getitem__/__len__
-        gen = partial(my_gen, ids=42)
-        with pytest.raises(TypeError, match="must be a sliceable sequence"):
-            _extract_ids_from_partial(gen, "train")
-
-    def test_shard_generator_default_shards_ids_none(self):
-        """_ShardGenerator.__call__ with shards_ids=None uses default [[]] path.
-
-        Covers line 151 of writer.py.
-        """
-        collected = []
-
-        def my_gen(ids):
-            for i in ids:
-                collected.append(i)
-                yield i
-
-        shard_gen = _ShardGenerator(my_gen)
-        # Call with no arguments — shards_ids defaults to None, triggering line 151
-        results = list(shard_gen())
-        # With shards_ids=[[]], the base_func is called once with an empty list
-        assert results == []
-        assert collected == []
+        datasetdict, converterdict = init_from_disk(tmp_path / "test_string_ids")
+        assert "train" in datasetdict
+        assert "test" in datasetdict
 
     def test_save_to_disk_parallel_auto_sharding(
         self,
         tmp_path,
-        generator_split,
+        sample_func,
+        split_ids,
         infos,
         problem_definition,
         monkeypatch,
     ):
-        """save_to_disk with num_proc > 1 triggers auto-sharding from partials.
-
-        Covers line 313 of writer.py.
-        """
+        """save_to_disk with num_proc > 1 triggers auto-sharding."""
         from unittest.mock import MagicMock
 
         import plaid.storage.writer as writer_mod
 
-        # Track whether _build_gen_kwargs_from_partials was called
-        original_build = writer_mod._build_gen_kwargs_from_partials
+        # Track whether _build_gen_kwargs was called
+        original_build = writer_mod._build_gen_kwargs
         build_called = []
 
-        def tracked_build(generators, num_proc):
+        def tracked_build(ids, num_proc):
             build_called.append(True)
-            return original_build(generators, num_proc)
+            return original_build(ids, num_proc)
 
-        monkeypatch.setattr(
-            writer_mod, "_build_gen_kwargs_from_partials", tracked_build
-        )
+        monkeypatch.setattr(writer_mod, "_build_gen_kwargs", tracked_build)
 
         # Mock preprocess and backend to avoid multiprocessing pickling issues
         monkeypatch.setattr(
@@ -736,7 +634,8 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            generators=generator_split,
+            sample_func=sample_func,
+            ids=split_ids,
             backend="hf_datasets",
             infos=infos,
             pb_defs={"pb_def": problem_definition},
@@ -744,42 +643,5 @@ class Test_Storage:
             overwrite=True,
         )
 
-        # Verify auto-sharding was triggered (line 313)
+        # Verify auto-sharding was triggered
         assert len(build_called) == 1
-
-    def test_save_to_disk_with_keyword_partial(
-        self,
-        dataset,
-        tmp_path,
-        infos,
-        problem_definition,
-    ):
-        """save_to_disk works with keyword-arg partial syntax."""
-
-        def generator_(ids):
-            for id in ids:
-                yield dataset[id]
-
-        main_splits = problem_definition.get_split()
-        generators = {
-            split_name: partial(generator_, ids=ids)
-            for split_name, ids in main_splits.items()
-        }
-
-        test_dir = tmp_path / "test_hf_keyword_partial"
-        save_to_disk(
-            output_folder=test_dir,
-            generators=generators,
-            backend="hf_datasets",
-            infos=infos,
-            pb_defs={"pb_def": problem_definition},
-            overwrite=True,
-        )
-
-        datasetdict, converterdict = init_from_disk(test_dir)
-        assert "train" in datasetdict
-        assert "test" in datasetdict
-
-        converter = converterdict["train"]
-        plaid_sample = converter.to_plaid(datasetdict["train"], 0)
-        self.assert_sample(plaid_sample)

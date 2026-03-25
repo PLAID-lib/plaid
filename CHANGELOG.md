@@ -7,24 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- (storage/writer) `save_to_disk` now validates upfront that every generator is a `functools.partial` whose first argument (positional or keyword) is a sliceable sequence (`__getitem__` + `__len__`), with explicit error messages for each failure case.
-- (storage/writer) support keyword-arg syntax for partials: `partial(my_gen, ids=my_ids)` now works in addition to `partial(my_gen, my_ids)`. PLAID uses `inspect.signature` to match the first parameter name.
-
 ### Changed
 
-- (storage/writer) **Breaking**: remove deprecated `split_n_samples` parameter and all associated backward-compatibility code (`_build_parallel_gen_kwargs`, `_generator_from_split_ids`, `_wrap_generators_with_split_ids`). Use `functools.partial` generators instead — the first argument (positional or keyword) can be any sliceable sequence (list of ints, file paths, strings, pre-loaded data objects, numpy arrays, …).
-- (storage/writer) refactor: replace `_extract_partial_data` with `_extract_ids_from_partial` that supports both positional and keyword syntax; inline into `_build_gen_kwargs_from_partials`.
-- (tutorials/storage) rewrite tutorial to use the simplified `functools.partial` API; remove parallel/sequential branching and stale `VERSION` toggle.
+- (storage/writer) **Breaking**: simplify `save_to_disk` API — replace `generators` (dict of `functools.partial`) with two explicit parameters: `sample_func` (a callable taking a single identifier and returning a `Sample`) and `ids` (a dict mapping split names to sliceable sequences of identifiers of any type). PLAID now handles iteration, generator creation, and parallel sharding internally.
 
 ### Fixes
 
 - (storage/writer) generate_datasetdict_to_disk: free DatasetDict memory after saving to disk to release for tempfile
-
-### Removed
-
-- (storage/writer) `split_n_samples` parameter and legacy helpers.
 
 ## [0.1.14] - 2026-03-23
 
