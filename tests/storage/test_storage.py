@@ -24,6 +24,9 @@ from plaid.storage import (
     load_problem_definitions_from_disk,
     save_to_disk,
 )
+from plaid.storage.cgns.writer import (
+    generate_datasetdict_to_disk as cgns_generate_datasetdict_to_disk,
+)
 from plaid.storage.hf_datasets.bridge import (
     to_var_sample_dict,
 )
@@ -31,6 +34,9 @@ from plaid.storage.writer import (
     _build_gen_kwargs,
     _SampleFuncGenerator,
     _split_list,
+)
+from plaid.storage.zarr.writer import (
+    generate_datasetdict_to_disk as zarr_generate_datasetdict_to_disk,
 )
 
 
@@ -645,3 +651,75 @@ class Test_Storage:
 
         # Verify auto-sharding was triggered
         assert len(build_called) == 1
+
+    def test_cgns_generate_no_gen_kwargs(self, tmp_path, dataset):
+        """Cover cgns writer else branch: gen_func() called without batch_ids_list."""
+        test_dir = tmp_path / "test_cgns_no_kwargs"
+        samples_to_yield = [dataset[0], dataset[1]]
+
+        def my_generator():
+            yield from samples_to_yield
+
+        generators = {"train": my_generator}
+
+        cgns_generate_datasetdict_to_disk(
+            output_folder=test_dir,
+            generators=generators,
+            gen_kwargs=None,
+        )
+
+        data_dir = test_dir / "data" / "train"
+        assert data_dir.exists()
+        written = sorted(p.name for p in data_dir.iterdir() if p.is_dir())
+        assert len(written) == 2
+        assert written[0] == "sample_000000000"
+        assert written[1] == "sample_000000001"
+
+    def test_zarr_generate_no_gen_kwargs(
+        self, tmp_path, make_sample, split_ids, infos, problem_definition
+    ):
+        """Cover zarr writer else branch: gen_func() called without batch_ids_list."""
+        # First, save a dataset normally to get the variable_schema
+        ref_dir = tmp_path / "ref_zarr"
+        save_to_disk(
+            output_folder=ref_dir,
+            make_sample=make_sample,
+            ids=split_ids,
+            backend="zarr",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        # Load the variable_schema from the saved metadata
+        variable_schema_path = ref_dir / "variable_schema.yaml"
+        with open(variable_schema_path) as f:
+            variable_schema = yaml.safe_load(f)
+
+        # Now call zarr generate_datasetdict_to_disk directly without gen_kwargs
+        test_dir = tmp_path / "test_zarr_no_kwargs"
+        samples_to_yield = [
+            make_sample(split_ids["train"][0]),
+            make_sample(split_ids["train"][1]),
+        ]
+
+        def my_generator():
+            yield from samples_to_yield
+
+        generators = {"train": my_generator}
+
+        zarr_generate_datasetdict_to_disk(
+            output_folder=test_dir,
+            generators=generators,
+            variable_schema=variable_schema,
+            gen_kwargs=None,
+        )
+
+        import zarr
+
+        data_dir = test_dir / "data" / "train"
+        root = zarr.open_group(str(data_dir), mode="r")
+        sample_groups = sorted(root.keys())
+        assert len(sample_groups) == 2
+        assert sample_groups[0] == "sample_000000000"
+        assert sample_groups[1] == "sample_000000001"
