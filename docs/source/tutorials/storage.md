@@ -8,7 +8,7 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 
 ## Key concepts
 
-- **`sample_func`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
+- **`make_sample`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
 - **`ids`** is a dictionary mapping split names to **sliceable sequences** of identifiers — anything with `__getitem__` and `__len__` (list, tuple, numpy array, …). PLAID handles iteration, generator creation, and parallel sharding internally.
 - **`save_to_disk`** writes a dataset locally; **`push_to_hub`** uploads it to Hugging Face Hub.
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
@@ -170,7 +170,7 @@ for backend in all_backends:
     # DISK
     start = time.time()
     save_to_disk(output_folder=local_folder,
-                sample_func=make_sample,
+                make_sample=make_sample,
                 ids=ids,
                 backend=backend,
                 infos=infos,

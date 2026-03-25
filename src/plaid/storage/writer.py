@@ -59,13 +59,13 @@ def _split_list(lst: list, n_splits: int) -> list[list]:
 class _SampleFuncGenerator:
     """Picklable generator callable that wraps a user-provided sample function.
 
-    This class turns a simple ``sample_func(id) -> Sample`` into a generator
+    This class turns a simple ``make_sample(id) -> Sample`` into a generator
     compatible with the backend ``generate_to_disk`` interface.  It is defined
     at module level so that ``multiprocessing`` can pickle it.
     """
 
-    def __init__(self, sample_func: Callable[[Any], Sample]) -> None:
-        self._func = sample_func
+    def __init__(self, make_sample: Callable[[Any], Sample]) -> None:
+        self._func = make_sample
 
     def __call__(
         self,
@@ -124,7 +124,7 @@ def _check_folder(output_folder: Path, overwrite: bool) -> None:
 
 def save_to_disk(
     output_folder: Union[str, Path],
-    sample_func: Callable[[Any], Sample],
+    make_sample: Callable[[Any], Sample],
     ids: dict[str, Sequence],
     backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
@@ -139,7 +139,7 @@ def save_to_disk(
     the dataset to disk using the chosen backend.  It also saves metadata, infos,
     and problem definitions.
 
-    The user provides a simple function ``sample_func`` that takes a single
+    The user provides a simple function ``make_sample`` that takes a single
     identifier and returns a :class:`~plaid.Sample`, together with a dictionary
     ``ids`` mapping split names to sliceable sequences of identifiers.
     PLAID handles iteration, generator creation, and parallel sharding
@@ -157,7 +157,7 @@ def save_to_disk(
 
         save_to_disk(
             "output/",
-            sample_func=make_sample,
+            make_sample=make_sample,
             ids={
                 "train": train_file_paths,
                 "test":  test_file_paths,
@@ -167,7 +167,7 @@ def save_to_disk(
 
     Args:
         output_folder: Path to the output directory where the dataset will be saved.
-        sample_func: A callable that takes a single identifier (of any type)
+        make_sample: A callable that takes a single identifier (of any type)
             and returns a :class:`~plaid.Sample`.
         ids: Dictionary mapping split names (e.g. ``"train"``, ``"test"``) to
             sliceable sequences of sample identifiers.  Each sequence must
@@ -199,10 +199,10 @@ def save_to_disk(
                 f"Use a list, tuple, or numpy array of sample identifiers."
             )
 
-    # ---- build generators from sample_func -----------------------------------
+    # ---- build generators from make_sample -----------------------------------
     generators: dict[str, Callable[..., Generator[Sample, None, None]]] = {}
     for split_name in ids:
-        generators[split_name] = _SampleFuncGenerator(sample_func)
+        generators[split_name] = _SampleFuncGenerator(make_sample)
 
     # ---- auto-shard when running in parallel ---------------------------------
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None

@@ -173,7 +173,7 @@ def problem_definition(main_splits) -> ProblemDefinition:
 
 
 @pytest.fixture()
-def sample_func(dataset):
+def make_sample(dataset):
     """A simple function that takes an id and returns a Sample."""
 
     def _make_sample(id):
@@ -203,7 +203,7 @@ class Test_Storage:
     def test_hf_datasets(
         self,
         tmp_path,
-        sample_func,
+        make_sample,
         split_ids,
         infos,
         problem_definition,
@@ -212,7 +212,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            sample_func=sample_func,
+            make_sample=make_sample,
             ids=split_ids,
             backend="hf_datasets",
             infos=infos,
@@ -222,7 +222,7 @@ class Test_Storage:
         with pytest.raises(ValueError):
             save_to_disk(
                 output_folder=test_dir,
-                sample_func=sample_func,
+                make_sample=make_sample,
                 ids=split_ids,
                 backend="hf_datasets",
                 infos=infos,
@@ -234,7 +234,7 @@ class Test_Storage:
             problem_definition.set_name(None)
             save_to_disk(
                 output_folder=test_dir,
-                sample_func=sample_func,
+                make_sample=make_sample,
                 ids=split_ids,
                 backend="hf_datasets",
                 infos=infos,
@@ -244,7 +244,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            sample_func=sample_func,
+            make_sample=make_sample,
             ids=split_ids,
             backend="hf_datasets",
             infos=infos,
@@ -308,12 +308,12 @@ class Test_Storage:
         with pytest.raises(KeyError):
             converter.to_dict(hf_dataset, 0, features=["dummy"])
 
-    def test_zarr(self, tmp_path, sample_func, split_ids, infos, problem_definition):
+    def test_zarr(self, tmp_path, make_sample, split_ids, infos, problem_definition):
         test_dir = tmp_path / "test_zarr"
 
         save_to_disk(
             output_folder=test_dir,
-            sample_func=sample_func,
+            make_sample=make_sample,
             ids=split_ids,
             backend="zarr",
             infos=infos,
@@ -371,12 +371,12 @@ class Test_Storage:
         with pytest.raises(KeyError):
             converter.to_dict(zarr_dataset, 0, features=["dummy"])
 
-    def test_cgns(self, tmp_path, sample_func, split_ids, infos, problem_definition):
+    def test_cgns(self, tmp_path, make_sample, split_ids, infos, problem_definition):
         test_dir = tmp_path / "test_cgns"
 
         save_to_disk(
             output_folder=test_dir,
-            sample_func=sample_func,
+            make_sample=make_sample,
             ids=split_ids,
             backend="cgns",
             infos=infos,
@@ -442,7 +442,7 @@ class Test_Storage:
         assert _split_list([0, 1, 2], 1) == [[0, 1, 2]]
 
     # --------------------------------------------------------------------------
-    #     New sample_func + ids API tests
+    #     New make_sample + ids API tests
     # --------------------------------------------------------------------------
 
     def test_build_gen_kwargs(self):
@@ -472,7 +472,7 @@ class Test_Storage:
         all_test_ids = [i for shard in test_shards for i in shard]
         assert sorted(all_test_ids) == [10, 11]
 
-    def test_sample_func_generator(self):
+    def test_make_sample_generator(self):
         """_SampleFuncGenerator wraps a function into a generator."""
         collected = []
 
@@ -487,7 +487,7 @@ class Test_Storage:
         assert results == [0, 1, 2, 3]
         assert collected == [0, 1, 2, 3]
 
-    def test_sample_func_generator_default_none(self):
+    def test_make_sample_generator_default_none(self):
         """_SampleFuncGenerator.__call__ with shards_ids=None uses default [[]] path."""
         collected = []
 
@@ -501,20 +501,20 @@ class Test_Storage:
         assert results == []
         assert collected == []
 
-    def test_save_to_disk_with_sample_func(
+    def test_save_to_disk_with_make_sample(
         self,
         tmp_path,
-        sample_func,
+        make_sample,
         split_ids,
         infos,
         problem_definition,
     ):
-        """The new sample_func + ids API works with sequential execution."""
-        test_dir = tmp_path / "test_hf_sample_func"
+        """The new make_sample + ids API works with sequential execution."""
+        test_dir = tmp_path / "test_hf_make_sample"
 
         save_to_disk(
             output_folder=test_dir,
-            sample_func=sample_func,
+            make_sample=make_sample,
             ids=split_ids,
             backend="hf_datasets",
             infos=infos,
@@ -547,7 +547,7 @@ class Test_Storage:
         with pytest.raises(TypeError, match="must be a sliceable sequence"):
             save_to_disk(
                 output_folder=tmp_path / "test_non_sliceable",
-                sample_func=my_func,
+                make_sample=my_func,
                 ids={"train": iter([1, 2, 3])},  # iterator is not sliceable
                 backend="hf_datasets",
                 infos=infos,
@@ -570,7 +570,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=tmp_path / "test_string_ids",
-            sample_func=make_sample,
+            make_sample=make_sample,
             ids={
                 "train": ["sample_a", "sample_b"],
                 "test": ["sample_c", "sample_d"],
@@ -588,7 +588,7 @@ class Test_Storage:
     def test_save_to_disk_parallel_auto_sharding(
         self,
         tmp_path,
-        sample_func,
+        make_sample,
         split_ids,
         infos,
         problem_definition,
@@ -634,7 +634,7 @@ class Test_Storage:
 
         save_to_disk(
             output_folder=test_dir,
-            sample_func=sample_func,
+            make_sample=make_sample,
             ids=split_ids,
             backend="hf_datasets",
             infos=infos,

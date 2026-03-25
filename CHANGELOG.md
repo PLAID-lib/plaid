@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- (storage/writer) **Breaking**: simplify `save_to_disk` API — replace `generators` (dict of `functools.partial`) with two explicit parameters: `sample_func` (a callable taking a single identifier and returning a `Sample`) and `ids` (a dict mapping split names to sliceable sequences of identifiers of any type). PLAID now handles iteration, generator creation, and parallel sharding internally.
+- (storage/writer) **Breaking**: simplify `save_to_disk` API — replace `generators` (dict of `functools.partial`) with two explicit parameters: `make_sample` (a callable taking a single identifier and returning a `Sample`) and `ids` (a dict mapping split names to sliceable sequences of identifiers of any type). PLAID now handles iteration, generator creation, and parallel sharding internally.
 
 ### Fixes
 
