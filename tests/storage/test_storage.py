@@ -40,6 +40,16 @@ from plaid.storage.zarr.writer import (
 )
 
 
+class _PicklableSampleLookup:
+    """Module-level picklable callable that returns pre-built samples by index."""
+
+    def __init__(self, samples: list):
+        self._samples = samples
+
+    def __call__(self, idx):
+        return self._samples[idx]
+
+
 def test_load_metadata_from_hub_materializes_memmaps(tmp_path, monkeypatch):
     """Hub metadata loader must return arrays independent from temp files."""
     from plaid.storage.common import reader as common_reader
@@ -723,3 +733,56 @@ class Test_Storage:
         assert len(sample_groups) == 2
         assert sample_groups[0] == "sample_000000000"
         assert sample_groups[1] == "sample_000000001"
+
+    def test_cgns_generate_parallel(
+        self, tmp_path, dataset, split_ids, infos, problem_definition
+    ):
+        """Cover cgns writer parallel branch with num_proc=2."""
+        test_dir = tmp_path / "test_cgns_parallel"
+
+        # Pre-build samples list so the picklable generator can index into it
+        all_samples = [dataset[i] for i in range(len(dataset))]
+        gen = _PicklableSampleLookup(all_samples)
+
+        save_to_disk(
+            output_folder=test_dir,
+            make_sample=gen,
+            ids=split_ids,
+            backend="cgns",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            num_proc=2,
+            overwrite=True,
+        )
+
+        data_dir = test_dir / "data" / "train"
+        assert data_dir.exists()
+        written = sorted(p.name for p in data_dir.iterdir() if p.is_dir())
+        assert len(written) == 2
+
+    def test_zarr_generate_parallel(
+        self, tmp_path, dataset, split_ids, infos, problem_definition
+    ):
+        """Cover zarr writer parallel branch with num_proc=2."""
+        test_dir = tmp_path / "test_zarr_parallel"
+
+        all_samples = [dataset[i] for i in range(len(dataset))]
+        gen = _PicklableSampleLookup(all_samples)
+
+        save_to_disk(
+            output_folder=test_dir,
+            make_sample=gen,
+            ids=split_ids,
+            backend="zarr",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            num_proc=2,
+            overwrite=True,
+        )
+
+        import zarr
+
+        data_dir = test_dir / "data" / "train"
+        root = zarr.open_group(str(data_dir), mode="r")
+        sample_groups = sorted(root.keys())
+        assert len(sample_groups) == 2
