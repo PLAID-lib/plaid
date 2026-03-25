@@ -226,9 +226,8 @@ print("----------------------------------------------------")
 
 # download datasets
 for backend in all_backends:
-    BACKEND = all_backends[0]
-    repo_id = f"{BASE_REPO_ID}_{BACKEND}"
-    download_folder = f"{BASE_DOWNLOADED_DATA_FOLDER}/downloaded_{BACKEND}_dataset"
+    repo_id = f"{BASE_REPO_ID}_{backend}"
+    download_folder = f"{BASE_DOWNLOADED_DATA_FOLDER}/downloaded_{backend}_dataset"
 
     # depending on the backends, one can download a subset of the samples and features. We keep them all here
     split_ids_ = None
