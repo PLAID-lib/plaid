@@ -159,7 +159,6 @@ def _generator(ids):
 
         yield sample
 
-# Same generators for both modes — only num_proc changes
 generators = {"train": partial(_generator, curated_train_ids),
               "test": partial(_generator, curated_test_ids)}
 
