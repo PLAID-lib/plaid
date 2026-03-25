@@ -32,6 +32,7 @@ from plaid.storage.hf_datasets.bridge import (
 from plaid.storage.writer import (
     _build_gen_kwargs_from_partials,
     _extract_ids_from_partial,
+    _ShardGenerator,
     _split_list,
 )
 
@@ -648,6 +649,103 @@ class Test_Storage:
         assert base_func is my_gen
         assert extra_args == ()
         assert extra_kwargs == {"_extra_param": 42}
+
+    def test_extract_ids_from_partial_keyword_non_sliceable(self):
+        """_extract_ids_from_partial raises TypeError when keyword arg is not sliceable.
+
+        Covers line 107 of writer.py.
+        """
+
+        def my_gen(ids):
+            yield from ids
+
+        # Pass an int as keyword arg — has no __getitem__/__len__
+        gen = partial(my_gen, ids=42)
+        with pytest.raises(TypeError, match="must be a sliceable sequence"):
+            _extract_ids_from_partial(gen, "train")
+
+    def test_shard_generator_default_shards_ids_none(self):
+        """_ShardGenerator.__call__ with shards_ids=None uses default [[]] path.
+
+        Covers line 151 of writer.py.
+        """
+        collected = []
+
+        def my_gen(ids):
+            for i in ids:
+                collected.append(i)
+                yield i
+
+        shard_gen = _ShardGenerator(my_gen)
+        # Call with no arguments — shards_ids defaults to None, triggering line 151
+        results = list(shard_gen())
+        # With shards_ids=[[]], the base_func is called once with an empty list
+        assert results == []
+        assert collected == []
+
+    def test_save_to_disk_parallel_auto_sharding(
+        self,
+        tmp_path,
+        generator_split,
+        infos,
+        problem_definition,
+        monkeypatch,
+    ):
+        """save_to_disk with num_proc > 1 triggers auto-sharding from partials.
+
+        Covers line 313 of writer.py.
+        """
+        from unittest.mock import MagicMock
+
+        import plaid.storage.writer as writer_mod
+
+        # Track whether _build_gen_kwargs_from_partials was called
+        original_build = writer_mod._build_gen_kwargs_from_partials
+        build_called = []
+
+        def tracked_build(generators, num_proc):
+            build_called.append(True)
+            return original_build(generators, num_proc)
+
+        monkeypatch.setattr(
+            writer_mod, "_build_gen_kwargs_from_partials", tracked_build
+        )
+
+        # Mock preprocess and backend to avoid multiprocessing pickling issues
+        monkeypatch.setattr(
+            writer_mod,
+            "preprocess",
+            MagicMock(
+                return_value=(
+                    {},  # flat_cst
+                    {},  # variable_schema
+                    {},  # constant_schema
+                    {"train": 2, "test": 2},  # num_samples
+                    {},  # cgns_types
+                )
+            ),
+        )
+        monkeypatch.setattr(writer_mod, "save_metadata_to_disk", MagicMock())
+        monkeypatch.setattr(writer_mod, "save_infos_to_disk", MagicMock())
+        monkeypatch.setattr(writer_mod, "save_problem_definitions_to_disk", MagicMock())
+
+        backend_mock = MagicMock()
+        monkeypatch.setattr(writer_mod, "get_backend", lambda _name: backend_mock)
+
+        test_dir = tmp_path / "test_hf_parallel_auto_shard"
+
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            num_proc=2,
+            overwrite=True,
+        )
+
+        # Verify auto-sharding was triggered (line 313)
+        assert len(build_called) == 1
 
     def test_save_to_disk_with_keyword_partial(
         self,
