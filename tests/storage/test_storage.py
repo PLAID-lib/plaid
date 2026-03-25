@@ -9,6 +9,7 @@
 
 import json
 import shutil
+import warnings
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
@@ -29,7 +30,11 @@ from plaid.storage import (
 from plaid.storage.hf_datasets.bridge import (
     to_var_sample_dict,
 )
-from plaid.storage.writer import _split_list
+from plaid.storage.writer import (
+    _build_gen_kwargs_from_partials,
+    _extract_partial_data,
+    _split_list,
+)
 from plaid.types import IndexType
 
 
@@ -524,17 +529,19 @@ class Test_Storage:
         test_dir = tmp_path / "test_hf_split_n_samples"
         invalid_args_test_dir = tmp_path / "test_hf_split_n_samples_invalid_args"
 
-        save_to_disk(
-            output_folder=test_dir,
-            generators=generator_split_from_local_ids,
-            backend="hf_datasets",
-            infos=infos,
-            pb_defs={"pb_def": problem_definition},
-            split_n_samples=split_n_samples,
-            num_proc=2,
-            overwrite=True,
-            verbose=True,
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            save_to_disk(
+                output_folder=test_dir,
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples=split_n_samples,
+                num_proc=2,
+                overwrite=True,
+                verbose=True,
+            )
 
         datasetdict, _ = init_from_disk(test_dir)
         assert len(datasetdict["train"]) == split_n_samples["train"]
@@ -564,17 +571,19 @@ class Test_Storage:
         test_dir = tmp_path / "test_hf_split_n_samples_seq"
 
         # Sequential path (`num_proc=1`) covers internal no-sharding flow.
-        save_to_disk(
-            output_folder=test_dir,
-            generators=generator_split_from_local_ids,
-            backend="hf_datasets",
-            infos=infos,
-            pb_defs={"pb_def": problem_definition},
-            split_n_samples=split_n_samples,
-            num_proc=1,
-            overwrite=True,
-            verbose=True,
-        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            save_to_disk(
+                output_folder=test_dir,
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples=split_n_samples,
+                num_proc=1,
+                overwrite=True,
+                verbose=True,
+            )
 
         datasetdict, _ = init_from_disk(test_dir)
         assert len(datasetdict["train"]) == split_n_samples["train"]
@@ -613,7 +622,173 @@ class Test_Storage:
                 overwrite=True,
             )
 
+    def test_split_n_samples_emits_deprecation_warning(
+        self,
+        tmp_path,
+        infos,
+        problem_definition,
+        split_n_samples,
+        generator_split_from_local_ids,
+    ):
+        """Using split_n_samples must emit a DeprecationWarning."""
+        test_dir = tmp_path / "test_deprecation_warning"
+        with pytest.warns(DeprecationWarning, match="split_n_samples is deprecated"):
+            save_to_disk(
+                output_folder=test_dir,
+                generators=generator_split_from_local_ids,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                split_n_samples=split_n_samples,
+                num_proc=1,
+                overwrite=True,
+            )
+
     def test_split_list_single_split(self):
         """Cover _split_list early return path (`n_splits <= 1`)."""
         ids = cast(list[IndexType], [0, 1, 2])
         assert _split_list(ids, 1) == [[0, 1, 2]]
+
+    # --------------------------------------------------------------------------
+    #     New partial-based API tests
+    # --------------------------------------------------------------------------
+
+    def test_extract_partial_data_with_partial(self):
+        """_extract_partial_data returns the first arg of a functools.partial."""
+        data = [1, 2, 3]
+        gen = partial(lambda ids: (x for x in ids), data)
+        result = _extract_partial_data(gen)
+        assert result == data
+
+    def test_extract_partial_data_with_non_partial(self):
+        """_extract_partial_data returns None for a plain function."""
+
+        def gen(ids):
+            yield from ids
+
+        result = _extract_partial_data(gen)
+        assert result is None
+
+    def test_extract_partial_data_with_partial_no_args(self):
+        """_extract_partial_data returns None for a partial with no positional args."""
+        gen = partial(lambda: None)
+        result = _extract_partial_data(gen)
+        assert result is None
+
+    def test_extract_partial_data_with_non_sliceable(self):
+        """_extract_partial_data returns None when first arg is not sliceable."""
+        gen = partial(lambda _x: None, 42)  # int has no __getitem__
+        result = _extract_partial_data(gen)
+        assert result is None
+
+    def test_build_gen_kwargs_from_partials(self):
+        """_build_gen_kwargs_from_partials shards data and creates shard generators."""
+        collected = []
+
+        def my_gen(ids):
+            for i in ids:
+                collected.append(i)
+                yield i
+
+        generators = {
+            "train": partial(my_gen, [0, 1, 2, 3]),
+            "test": partial(my_gen, [10, 11]),
+        }
+
+        wrapped_gens, gen_kwargs = _build_gen_kwargs_from_partials(
+            generators, num_proc=2
+        )
+
+        # Check gen_kwargs structure
+        assert "train" in gen_kwargs
+        assert "test" in gen_kwargs
+        assert "shards_ids" in gen_kwargs["train"]
+        assert "shards_ids" in gen_kwargs["test"]
+
+        # Train should be split into 2 shards
+        train_shards = gen_kwargs["train"]["shards_ids"]
+        assert len(train_shards) == 2
+        # All original ids should be present across shards
+        all_train_ids = [i for shard in train_shards for i in shard]
+        assert sorted(all_train_ids) == [0, 1, 2, 3]
+
+        # Test should be split into 2 shards (2 items, 2 procs)
+        test_shards = gen_kwargs["test"]["shards_ids"]
+        assert len(test_shards) == 2
+        all_test_ids = [i for shard in test_shards for i in shard]
+        assert sorted(all_test_ids) == [10, 11]
+
+        # Wrapped generators should be callable with shards_ids kwarg
+        collected.clear()
+        results = list(wrapped_gens["train"](shards_ids=train_shards))
+        assert sorted(results) == [0, 1, 2, 3]
+        assert sorted(collected) == [0, 1, 2, 3]
+
+    def test_build_gen_kwargs_from_partials_raises_on_non_partial(self):
+        """_build_gen_kwargs_from_partials raises TypeError for non-partial generators."""
+
+        def plain_gen(ids):
+            yield from ids
+
+        generators = {"train": plain_gen}
+
+        with pytest.raises(TypeError, match="must be a functools.partial"):
+            _build_gen_kwargs_from_partials(generators, num_proc=2)
+
+    def test_hf_datasets_sequential_with_partial_generators(
+        self,
+        tmp_path,
+        generator_split,
+        infos,
+        problem_definition,
+    ):
+        """The new partial-based API works with sequential execution (num_proc=1)."""
+        test_dir = tmp_path / "test_hf_partial_sequential"
+
+        # Sequential: no auto-sharding triggered, partial generators used directly
+        save_to_disk(
+            output_folder=test_dir,
+            generators=generator_split,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            num_proc=1,
+            overwrite=True,
+            verbose=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+        assert "train" in datasetdict
+        assert "test" in datasetdict
+
+        # Verify samples are readable
+        converter = converterdict["train"]
+        plaid_sample = converter.to_plaid(datasetdict["train"], 0)
+        self.assert_sample(plaid_sample)
+
+    def test_save_to_disk_raises_on_non_partial_with_multiproc(
+        self,
+        tmp_path,
+        infos,
+        problem_definition,
+    ):
+        """save_to_disk raises TypeError when non-partial generators are used with num_proc > 1."""
+
+        def plain_gen(ids):
+            yield from ids
+
+        generators = {
+            "train": plain_gen,
+            "test": plain_gen,
+        }
+
+        with pytest.raises(TypeError, match="must be a functools.partial"):
+            save_to_disk(
+                output_folder=tmp_path / "test_non_partial",
+                generators=generators,
+                backend="hf_datasets",
+                infos=infos,
+                pb_defs={"pb_def": problem_definition},
+                num_proc=2,
+                overwrite=True,
+            )

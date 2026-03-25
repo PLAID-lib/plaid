@@ -4,33 +4,20 @@ title: Storage backends
 
 # Storage tutorial
 
-This tutorial demonstrates end‑to‑end workflows for creating, saving, and loading PLAID datasets using the three storage backends implemented in PLAID:
-- hf_datasets (Hugging Face Datasets),
-- cgns (plain CGNS files),
-- zarr (chunked array storage).
+End‑to‑end workflows for creating, saving, and loading PLAID datasets with the three storage backends: **hf_datasets**, **cgns**, and **zarr**.
 
-The examples show:
-- Preparing dataset metadata (infos) and a ProblemDefinition (features, task, splits).
-- Building samples from raw data (ShapeNet‑Car in the example) and yielding them via generator functions.
-- Two generation modes: PARALLEL (multiprocess, sharded) and SEQUENTIAL.
-- Writing datasets locally with save_to_disk for each backend, and pushing to the Hugging Face Hub with push_to_hub.
-- Downloading and instantiating datasets back into PLAID with download_from_hub, init_from_disk and streaming with init_streaming_from_hub.
-- Converting raw backend samples to Plaid Sample objects via backend converters and using them efficiently in a PyTorch DataLoader.
+## Key concepts
 
-Notes and requirements:
-- The example uses external tools (plyfile, Muscat) to construct meshes; these are not part of PLAID runtime dependencies.
-- Configure a dedicated HF cache (datasets.config.HF_DATASETS_CACHE) when running the Hugging Face backend.
-- Parallel mode demonstrates `num_proc` controls; PLAID can build internal shards from split sample counts (`split_n_samples`) so users do not need to manually manage shard lists.
-- The tutorial includes utilities to inspect CGNS trees and to save single Plaid samples to disk for visualization (e.g., Paraview).
+- **Generators** are `functools.partial` objects whose first positional argument is a sliceable sequence of sample identifiers (list of ints, paths, …). PLAID calls the underlying function with the full sequence for sequential execution and with sub-sequences (shards) for parallel execution — user code is identical in both cases, only `num_proc` changes.
+- **`save_to_disk`** writes a dataset locally; **`push_to_hub`** uploads it to Hugging Face Hub.
+- **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
+- Backend converters turn raw backend samples into PLAID `Sample` objects.
 
-Constants loading policy (metadata):
-- Loading metadata from **local disk** keeps numeric constants as file-backed `np.memmap` for memory efficiency on large datasets.
-- Loading metadata from the **Hub** materializes numeric constants into in-memory arrays before returning them, to avoid lifetime issues with temporary download folders.
+## Notes
 
-Use these examples as templates to:
-- Adapt generators to your raw data format,
-- Choose the backend that fits your workflow (hf_datasets for hub integration, cgns for native CGNS interchange, zarr for efficient chunked numeric storage),
-- Tune parallelism and sharding to match dataset size and available compute.
+- The example uses external tools (`plyfile`, `Muscat`) to build meshes — these are not PLAID runtime dependencies.
+- Set `datasets.config.HF_DATASETS_CACHE` to a dedicated folder when using the HF backend.
+- Loading metadata from **local disk** keeps numeric constants as `np.memmap` for memory efficiency; loading from the **Hub** materializes them into in-memory arrays to avoid lifetime issues with temporary download folders.
 
 
 ## How to create data and save to disk/push to hub
@@ -59,10 +46,7 @@ tmp_cache_dir = "hf_tmp_cache"
 config.HF_DATASETS_CACHE = tmp_cache_dir
 
 
-# Choose to execute the parallel of sequential version
-VERSION = "PARALLEL"
-N_PROC = 6 # number of parallel processes
-# VERSION = "SEQUENTIAL"
+N_PROC = 6 # number of parallel processes (set to 1 for sequential execution)
 
 # raw data dowloaded from https://zenodo.org/records/13993629
 # set the folder where the raw data has been downloaded:
@@ -142,136 +126,70 @@ pb_def.set_train_split({"train":"all"})
 pb_def.set_test_split({"test":"all"})
 
 #---------------------------------------------------------------
+# Define the generator once — it works for both sequential and parallel modes.
+# Generators must be functools.partial objects whose first positional argument
+# is a sliceable sequence of sample identifiers. When num_proc > 1, PLAID
+# automatically shards the identifier sequence across workers.
 
-if VERSION == "PARALLEL":
+def _generator(ids):
+    for i in ids:
+        folder = tri_folders[i]
 
-    # IMPORTANT CONTRACT:
-    # - with split_n_samples, PLAID calls generators with local split indices
-    #   ids in [0, ..., split_n_samples[split]-1]
-    # - in parallel mode, PLAID internally shards these ids and each call gets a subset
+        plydata = PlyData.read(folder / "tri_mesh.ply")
+        tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
 
-    split_global_ids = {"train": curated_train_ids,
-                        "test": curated_test_ids}
+        vertex_data = plydata['vertex'].data
+        x = vertex_data['x']
+        y = vertex_data['y']
+        z = vertex_data['z']
 
-    def _generator(split_name, ids):
-        global_ids = split_global_ids[split_name]
-        for i in ids:
-            # ids are local indices in [0, ..., split_n_samples[split_name]-1]
-            # map them back to global indices in tri_folders
-            folder = tri_folders[global_ids[i]]
+        nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
 
-            plydata = PlyData.read(folder / "tri_mesh.ply")
-            tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
+        mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
 
-            vertex_data = plydata['vertex'].data
-            x = vertex_data['x']
-            y = vertex_data['y']
-            z = vertex_data['z']
+        press = np.load(folder / "press.npy")
+        offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
+        mesh.nodeFields["pressure"] = press[offset:]
 
-            nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
+        tree = MeshToCGNS(mesh, exportOriginalIDs=False)
 
-            mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
+        sample = Sample()
+        sample.add_tree(tree)
 
-            press = np.load(folder / "press.npy")
-            offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
-            mesh.nodeFields["pressure"] = press[offset:]
+        yield sample
 
-            tree = MeshToCGNS(mesh, exportOriginalIDs=False)
+# Same generators for both modes — only num_proc changes
+generators = {"train": partial(_generator, curated_train_ids),
+              "test": partial(_generator, curated_test_ids)}
 
-            sample = Sample()
-            sample.add_tree(tree)
+for backend in all_backends:
 
-            yield sample
+    print("--------------------------------------")
+    print(f"Backend: {backend}, N_PROC: {N_PROC}")
 
+    repo_id = f"{BASE_REPO_ID}_{backend}"
+    local_folder = f"{BASE_GENERATED_DATA_FOLDER}/{backend}_dataset"
 
-    split_n_samples = {"train": len(curated_train_ids),
-                       "test": len(curated_test_ids)}
+    # DISK
+    start = time.time()
+    save_to_disk(output_folder=local_folder,
+                generators=generators,
+                backend=backend,
+                infos=infos,
+                pb_defs=pb_def,
+                num_proc=N_PROC,
+                overwrite=True,
+                verbose=True)
+    print(f"duration generate with num_proc={N_PROC} is {time.time()-start} s")
 
-    generators = {"train": partial(_generator, "train"),
-                "test": partial(_generator, "test")}
-
-
-    for backend in all_backends:
-
-        print("--------------------------------------")
-        print(f"Backend: {backend}, parallel version")
-
-        repo_id = f"{BASE_REPO_ID}_{backend}"
-        local_folder = f"{BASE_GENERATED_DATA_FOLDER}/{backend}_dataset"
-
-        # DISK
-        start = time.time()
-        save_to_disk(output_folder = local_folder,
-                    generators = generators,
-                    backend = backend,
-                    infos = infos,
-                    pb_defs = pb_def,
-                    split_n_samples = split_n_samples,
-                    num_proc = N_PROC,
-                    overwrite = True,
-                    verbose = True)
-        print(f"duration generate with N_PROC={N_PROC} is {time.time()-start} s")
-
-        # HUB
-        start = time.time()
-        push_to_hub(repo_id = repo_id,
-                    local_dir = local_folder,
-                    num_workers = N_PROC,
-                    viewer = backend == "hf_datasets",
-                    illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
-        print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
-
-#---------------------------------------------------------------
-
-if VERSION == "SEQUENTIAL":
-
-    def _generator(ids):
-        for i in ids:
-            folder = tri_folders[i]
-
-            plydata = PlyData.read(folder / "tri_mesh.ply")
-            tris = np.ascontiguousarray(np.stack(plydata['face'].data['vertex_indices']))
-
-            vertex_data = plydata['vertex'].data
-            x = vertex_data['x']
-            y = vertex_data['y']
-            z = vertex_data['z']
-
-            nodes = np.ascontiguousarray(np.stack((x, y, z)).T)
-
-            mesh = CreateMeshOf(nodes, tris, elemName=ED.Triangle_3)
-
-            press = np.load(folder / "press.npy")
-            offset = np.abs(press.shape[0]-mesh.nodes.shape[0])
-            mesh.nodeFields["pressure"] = press[offset:]
-
-            tree = MeshToCGNS(mesh, exportOriginalIDs=False)
-
-            sample = Sample()
-            sample.add_tree(tree)
-
-            yield sample
-
-    generators = {"train": partial(_generator, curated_train_ids),
-                "test": partial(_generator, curated_test_ids)}
-
-    for backend in all_backends:
-
-        print("--------------------------------------")
-        print(f"Backend: {backend}, sequential version")
-
-        local_folder = f"{BASE_GENERATED_DATA_FOLDER}/{backend}_dataset"
-        # DISK
-        start = time.time()
-        save_to_disk(output_folder=local_folder,
-                    generators = generators,
-                    backend = backend,
-                    infos = infos,
-                    pb_defs = pb_def,
-                    overwrite=True,
-                    verbose=True)
-
-        print(f"duration generate in sequential mode is {time.time()-start} s")
+    # HUB
+    start = time.time()
+    push_to_hub(repo_id=repo_id,
+                local_dir=local_folder,
+                num_workers=N_PROC,
+                viewer=backend == "hf_datasets",
+                illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
+    print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
 
 if Path(tmp_cache_dir).exists():
     shutil.rmtree(Path(tmp_cache_dir))
