@@ -187,7 +187,7 @@ These guidelines help keep PLAID users' code and datasets working across release
   - Update links at the end of the file
 - Create a pull request and request reviews
 - Once approved, merge the pull request
-- Tag the release (e.g., `git tag 0.1.10`)
+- Tag the release (e.g., `git tag 0.1.10`). Important: pull the recently updated `main` branch before creating the tag.
 - Create a new release on GitHub
   - Click `Generate release notes`
   - Include a link to the CHANGELOG file at the release tag, e.g.: `https://github.com/PLAID-lib/plaid/blob/0.1.10/CHANGELOG.md`
