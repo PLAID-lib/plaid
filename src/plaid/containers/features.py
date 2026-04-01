@@ -1189,11 +1189,11 @@ class SampleFeatures:
         n_nodes, n_elems, n_boundary_nodes = zone_node[1][0]
         if location == "Vertex" and field.shape[0] != n_nodes:
             raise ValueError(
-                f"field has {field.shape[0]} nodes but zone has {n_nodes} nodes"
+                f"field has {field.shape[0]} nodes but zone has {n_nodes} nodes (based on the zone node metadata)"
             )
         elif location == "CellCenter" and field.shape[0] != n_elems:
             raise ValueError(
-                f"field has {field.shape[0]} nodes but zone has {n_elems} elements"
+                f"field has {field.shape[0]} nodes but zone has {n_elems} elements (based on the zone node metadata)"
             )
 
         if field.dtype in (np.int32, np.int64):
