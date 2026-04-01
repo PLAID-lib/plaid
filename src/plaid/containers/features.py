@@ -1190,8 +1190,6 @@ class SampleFeatures:
             raise ValueError(
                 f"field has {field.shape[0]} nodes but zone has {n_elems} elements"
             )
-        else:
-            raise NotImplementedError(f"Field size consistency check not implemented for location {location}.")
 
         if zone_node is None:
             raise KeyError(
