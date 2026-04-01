@@ -760,10 +760,15 @@ class Test_Dataset:
     ):
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
         dataset_with_samples_with_tree_[0].add_field(
-            "test_node_field_1", np.array([0, 1, 2, 3, 4], dtype=np.float32), warning_overwrite=False
+            "test_node_field_1",
+            np.array([0, 1, 2, 3, 4], dtype=np.float32),
+            warning_overwrite=False,
         )
         dataset_with_samples_with_tree_[0].add_field(
-            "OriginalIds", np.array([0, 1, 2], dtype=np.float32), location="CellCenter", warning_overwrite=False
+            "OriginalIds",
+            np.array([0, 1, 2], dtype=np.float32),
+            location="CellCenter",
+            warning_overwrite=False,
         )
         with pytest.raises(AssertionError):
             a = dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
