@@ -771,13 +771,12 @@ class Test_Dataset:
             warning_overwrite=False,
         )
         with pytest.raises(AssertionError):
-            a = dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
+            dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
                 feature_identifiers=[
                     FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
                     FeatureIdentifier({"type": "field", "name": "test_elem_field_1"}),
                 ],
             )
-            print(a)
 
     def test_add_features_from_tabular_restrict_to_features_True(
         self, dataset_with_samples_with_tree: Dataset
