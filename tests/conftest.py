@@ -28,7 +28,7 @@ def generate_samples_no_string(nb: int, zone_name: str, base_name: str) -> list[
     for i in range(nb):
         sample = Sample()
         sample.init_base(3, 3, base_name)
-        sample.init_zone(np.array([0, 0, 0]), zone_name=zone_name, base_name=base_name)
+        sample.init_zone(np.array([[17, 10, 0]]), zone_name=zone_name, base_name=base_name)
         sample.add_scalar("test_scalar", float(i))
         sample.add_scalar("test_scalar_2", float(i**2))
         sample.add_global("global_0", 0.5 + np.ones((2, 3)))
@@ -41,9 +41,10 @@ def generate_samples_no_string(nb: int, zone_name: str, base_name: str) -> list[
         )
         sample.add_field(
             name="test_field_2785",
-            field=float(i**5) * np.ones(3 * (i + 1)),
+            field=float(i**5) * np.ones(10),
             zone_name=zone_name,
             base_name=base_name,
+            location="CellCenter"
         )
         sample_list.append(sample)
     return sample_list
@@ -150,7 +151,7 @@ def muscat_mesh(nodes, triangles, vertex_field, cell_center_field, nodal_tags):
     muscat_mesh = MCT.CreateMeshOfTriangles(nodes, triangles)
     muscat_mesh.GetNodalTag("tag").AddToTag(nodal_tags)
     muscat_mesh.nodeFields["test_node_field_1"] = vertex_field
-    muscat_mesh.nodeFields["big_node_field"] = np.random.randn(50)
+    muscat_mesh.nodeFields["big_node_field"] = np.random.randn(5)
     muscat_mesh.elemFields["test_elem_field_1"] = cell_center_field
     return muscat_mesh
 

@@ -344,7 +344,7 @@ class Test_Dataset:
         ) == sorted(["test_field_2785", "test_field_same_size"])
         assert sorted(
             dataset_with_samples.get_field_names(location="Vertex")
-        ) == sorted(["test_field_2785", "test_field_same_size"])
+        ) == sorted(["test_field_same_size"])
         assert sorted(
             dataset_with_samples.get_field_names(zone_name="Zone_Name")
         ) == sorted(["test_field_2785", "test_field_same_size"])
@@ -745,13 +745,13 @@ class Test_Dataset:
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
         for sample in dataset_with_samples_with_tree_:
             sample.add_field(
-                "test_node_field_1", np.array([0, 1]), warning_overwrite=False
+                "test_node_field_1", np.array([0, 1, 2, 3, 4]), warning_overwrite=False
             )
         with pytest.raises(AssertionError):
             dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
                 feature_identifiers=[
                     FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
-                    FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
+                    FeatureIdentifier({"type": "field", "name": "test_elem_field_1"}),
                 ],
             )
 
@@ -760,18 +760,19 @@ class Test_Dataset:
     ):
         dataset_with_samples_with_tree_ = copy.deepcopy(dataset_with_samples_with_tree)
         dataset_with_samples_with_tree_[0].add_field(
-            "test_node_field_1", np.array([0, 1]), warning_overwrite=False
+            "test_node_field_1", np.array([0, 1, 2, 3, 4], dtype=np.float32), warning_overwrite=False
         )
         dataset_with_samples_with_tree_[0].add_field(
-            "OriginalIds", np.array([0, 1]), warning_overwrite=False
+            "OriginalIds", np.array([0, 1, 2], dtype=np.float32), location="CellCenter", warning_overwrite=False
         )
         with pytest.raises(AssertionError):
-            dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
+            a = dataset_with_samples_with_tree_.get_tabular_from_homogeneous_identifiers(
                 feature_identifiers=[
                     FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
-                    FeatureIdentifier({"type": "field", "name": "OriginalIds"}),
+                    FeatureIdentifier({"type": "field", "name": "test_elem_field_1"}),
                 ],
             )
+            print(a)
 
     def test_add_features_from_tabular_restrict_to_features_True(
         self, dataset_with_samples_with_tree: Dataset
