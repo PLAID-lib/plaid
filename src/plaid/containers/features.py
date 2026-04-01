@@ -1186,7 +1186,7 @@ class SampleFeatures:
             )
 
         # Check field size consistency with its geometrical support
-        n_nodes, n_elems, n_boundary_nodes = zone_node[1][0]
+        n_nodes, n_elems, _ = zone_node[1][0]
         if location == "Vertex" and field.shape[0] != n_nodes:
             raise ValueError(
                 f"field has {field.shape[0]} nodes but zone has {n_nodes} nodes (based on the zone node metadata)"

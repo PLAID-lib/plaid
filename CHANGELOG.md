@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (sample/features) add_field: check field size consistency with geometrical support.
+
 ### Changed
 
 ### Fixes
