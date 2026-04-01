@@ -1174,6 +1174,10 @@ class SampleFeatures:
             KeyError: Raised if the specified zone does not exist in the given base.
         """
         assert isinstance(field, np.ndarray)
+        if field.ndim != 1:
+            raise ValueError(
+                f"field has {field.ndim} dimensions, but must be a 1D array."
+            )
         _check_names([name])
         # init_tree will look for default time
         self.init_tree(time)

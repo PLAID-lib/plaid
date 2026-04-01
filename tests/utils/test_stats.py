@@ -44,7 +44,7 @@ def np_samples_5():
 
 @pytest.fixture()
 def np_samples_6():
-    return np.random.randn(50, 1)
+    return np.random.randn(50)
 
 
 @pytest.fixture()

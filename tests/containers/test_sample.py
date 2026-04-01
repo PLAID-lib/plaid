@@ -1016,6 +1016,13 @@ class Test_Sample:
                 zone_name=zone_name,
                 base_name=base_name,
             )
+        with pytest.raises(ValueError):
+            sample.add_field(
+                name="test_node_field_2",
+                field=np.zeros((5, 2)),
+                zone_name=zone_name,
+                base_name=base_name,
+            )
         sample.init_zone(
             np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
         )
