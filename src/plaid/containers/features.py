@@ -1180,6 +1180,19 @@ class SampleFeatures:
         # get_zone will look for default zone_name, base_name and time
         zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
 
+        # Check field size consistency with its geometrical support
+        n_nodes, n_elems, n_boundary_nodes = zone_node[1][0]
+        if location == "Vertex" and field.shape[0] != n_nodes:
+            raise ValueError(
+                f"field has {field.shape[0]} nodes but zone has {n_nodes} nodes"
+            )
+        elif location == "CellCenter" and field.shape[0] != n_elems:
+            raise ValueError(
+                f"field has {field.shape[0]} nodes but zone has {n_elems} elements"
+            )
+        else:
+            raise NotImplementedError(f"Field size consistency check not implemented for location {location}.")
+
         if zone_node is None:
             raise KeyError(
                 f"there is no Zone with name {zone_name} in base {base_name}. Did you check topological and physical dimensions ?"
