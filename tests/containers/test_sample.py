@@ -1032,6 +1032,13 @@ class Test_Sample:
             zone_name=zone_name,
             base_name=base_name,
         )
+        with pytest.raises(ValueError):
+            sample.add_field(
+                name="test_node_field_2",
+                field=np.zeros((13)),
+                zone_name=zone_name,
+                base_name=base_name,
+            )
 
     def test_add_field_cell_center(
         self, sample: Sample, cell_center_field, zone_name, base_name
@@ -1055,6 +1062,14 @@ class Test_Sample:
             zone_name=zone_name,
             base_name=base_name,
         )
+        with pytest.raises(ValueError):
+            sample.add_field(
+                name="test_elem_field_2",
+                location="CellCenter",
+                field=np.zeros((13)),
+                zone_name=zone_name,
+                base_name=base_name,
+            )
 
     def test_add_field_vertex_already_present(
         self, sample_with_tree: Sample, vertex_field
