@@ -99,10 +99,10 @@ def full_sample(sample_with_tree_and_scalar: Sample, tree3d):
     sample_with_tree_and_scalar.add_scalar("r", np.random.randn())
     sample_with_tree_and_scalar.add_scalar("test_scalar_1", np.random.randn())
     sample_with_tree_and_scalar.add_field(
-        name="test_field_1", field=np.random.randn(5, 3), location="CellCenter"
+        name="test_field_1", field=np.random.randn(3), location="CellCenter"
     )
     sample_with_tree_and_scalar.init_zone(
-        zone_shape=np.array([5, 3]), zone_name="test_field_1"
+        zone_shape=np.array([[5, 3, 0]]), zone_name="test_field_1"
     )
     sample_with_tree_and_scalar.init_base(
         topological_dim=2, physical_dim=3, base_name="test_base_1"
@@ -575,7 +575,7 @@ class Test_Sample:
     def test_has_zone(self, sample, base_name, zone_name):
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
         )
         sample.show_tree()
         assert sample.features.has_zone(zone_name, base_name)
@@ -588,12 +588,12 @@ class Test_Sample:
     def test_get_zone_names(self, sample: Sample, base_name):
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            np.random.randint(0, 10, size=3),
+            np.array([[5, 3, 0]]),
             zone_name="zone_name_1",
             base_name=base_name,
         )
         sample.init_zone(
-            np.random.randint(0, 10, size=3),
+            np.array([[5, 3, 0]]),
             zone_name="zone_name_2",
             base_name=base_name,
         )
@@ -619,7 +619,7 @@ class Test_Sample:
         with pytest.raises(KeyError):
             sample.features.get_zone_type(zone_name, base_name)
         sample.init_zone(
-            np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
         )
         assert sample.features.get_zone_type(zone_name, base_name) == CGK.Unstructured_s
 
@@ -628,12 +628,12 @@ class Test_Sample:
         sample.init_base(3, 3, base_name)
         assert sample.features.get_zone(zone_name, base_name) is None
         sample.init_zone(
-            np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
         )
         assert sample.features.get_zone() is not None
         assert sample.features.get_zone(zone_name, base_name) is not None
         sample.init_zone(
-            np.random.randint(0, 10, size=3),
+            np.array([[5, 3, 0]]),
             zone_name="other_zone_name",
             base_name=base_name,
         )
@@ -790,56 +790,56 @@ class Test_Sample:
             topological_dim=3, physical_dim=3, base_name="Base_3_3", time=1.0
         )
         sample.init_zone(
-            zone_shape=np.array([0, 0, 0]),
+            zone_shape=np.array([[5, 3, 0]]),
             zone_name="Zone_1",
             base_name="Base_1_2",
             time=-0.1,
         )
         sample.init_zone(
-            zone_shape=np.array([0, 0, 0]),
+            zone_shape=np.array([[5, 3, 0]]),
             zone_name="Zone_2",
             base_name="Base_1_2",
             time=-0.1,
         )
         sample.init_zone(
-            zone_shape=np.array([0, 0, 0]),
+            zone_shape=np.array([[5, 3, 0]]),
             zone_name="Zone_1",
             base_name="Base_2_2",
             time=-0.1,
         )
         sample.init_zone(
-            zone_shape=np.array([0, 0, 0]),
+            zone_shape=np.array([[5, 3, 0]]),
             zone_name="Zone_2",
             base_name="Base_2_2",
             time=-0.1,
         )
         sample.init_zone(
-            zone_shape=np.array([0, 0, 0]),
+            zone_shape=np.array([[5, 3, 0]]),
             zone_name="Zone_1",
             base_name="Base_1_3",
             time=1.0,
         )
         sample.init_zone(
-            zone_shape=np.array([0, 0, 0]),
+            zone_shape=np.array([[5, 3, 0]]),
             zone_name="Zone_2",
             base_name="Base_1_3",
             time=1.0,
         )
         sample.init_zone(
-            zone_shape=np.array([0, 0, 0]),
+            zone_shape=np.array([[5, 3, 0]]),
             zone_name="Zone_1",
             base_name="Base_3_3",
             time=1.0,
         )
         sample.init_zone(
-            zone_shape=np.array([0, 0, 0]),
+            zone_shape=np.array([[5, 3, 0]]),
             zone_name="Zone_2",
             base_name="Base_3_3",
             time=1.0,
         )
         sample.add_field(
             name="vertex_Zone_1_Base_1_2_t_m0.1",
-            field=np.random.randn(10),
+            field=np.random.randn(5),
             location="Vertex",
             zone_name="Zone_1",
             base_name="Base_1_2",
@@ -847,7 +847,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="cell_Zone_1_Base_1_2_t_m0.1",
-            field=np.random.randn(10),
+            field=np.random.randn(3),
             location="CellCenter",
             zone_name="Zone_1",
             base_name="Base_1_2",
@@ -855,7 +855,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="vertex_Zone_2_Base_1_2_t_m0.1",
-            field=np.random.randn(10),
+            field=np.random.randn(5),
             location="Vertex",
             zone_name="Zone_2",
             base_name="Base_1_2",
@@ -863,7 +863,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="cell_Zone_2_Base_1_2_t_m0.1",
-            field=np.random.randn(10),
+            field=np.random.randn(3),
             location="CellCenter",
             zone_name="Zone_2",
             base_name="Base_1_2",
@@ -871,7 +871,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="vertex_Zone_1_Base_2_2_t_m0.1",
-            field=np.random.randn(10),
+            field=np.random.randn(5),
             location="Vertex",
             zone_name="Zone_1",
             base_name="Base_2_2",
@@ -879,7 +879,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="cell_Zone_1_Base_2_2_t_m0.1",
-            field=np.random.randn(10),
+            field=np.random.randn(3),
             location="CellCenter",
             zone_name="Zone_1",
             base_name="Base_2_2",
@@ -887,7 +887,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="vertex_Zone_2_Base_2_2_t_m0.1",
-            field=np.random.randn(10),
+            field=np.random.randn(5),
             location="Vertex",
             zone_name="Zone_2",
             base_name="Base_2_2",
@@ -895,7 +895,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="cell_Zone_2_Base_2_2_t_m0.1",
-            field=np.random.randn(10),
+            field=np.random.randn(3),
             location="CellCenter",
             zone_name="Zone_2",
             base_name="Base_2_2",
@@ -903,7 +903,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="vertex_Zone_1_Base_1_3_t_1.0",
-            field=np.random.randn(10),
+            field=np.random.randn(5),
             location="Vertex",
             zone_name="Zone_1",
             base_name="Base_1_3",
@@ -911,7 +911,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="cell_Zone_1_Base_1_3_t_1.0",
-            field=np.random.randn(10),
+            field=np.random.randn(3),
             location="CellCenter",
             zone_name="Zone_1",
             base_name="Base_1_3",
@@ -919,7 +919,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="vertex_Zone_2_Base_1_3_t_1.0",
-            field=np.random.randn(10),
+            field=np.random.randn(5),
             location="Vertex",
             zone_name="Zone_2",
             base_name="Base_1_3",
@@ -927,7 +927,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="cell_Zone_2_Base_1_3_t_1.0",
-            field=np.random.randn(10),
+            field=np.random.randn(3),
             location="CellCenter",
             zone_name="Zone_2",
             base_name="Base_1_3",
@@ -935,7 +935,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="vertex_Zone_1_Base_3_3_t_1.0",
-            field=np.random.randn(10),
+            field=np.random.randn(5),
             location="Vertex",
             zone_name="Zone_1",
             base_name="Base_3_3",
@@ -943,7 +943,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="cell_Zone_1_Base_3_3_t_1.0",
-            field=np.random.randn(10),
+            field=np.random.randn(3),
             location="CellCenter",
             zone_name="Zone_1",
             base_name="Base_3_3",
@@ -951,7 +951,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="vertex_Zone_2_Base_3_3_t_1.0",
-            field=np.random.randn(10),
+            field=np.random.randn(5),
             location="Vertex",
             zone_name="Zone_2",
             base_name="Base_3_3",
@@ -959,7 +959,7 @@ class Test_Sample:
         )
         sample.add_field(
             name="cell_Zone_2_Base_3_3_t_1.0",
-            field=np.random.randn(10),
+            field=np.random.randn(3),
             location="CellCenter",
             zone_name="Zone_2",
             base_name="Base_3_3",
@@ -986,7 +986,7 @@ class Test_Sample:
         assert sample.get_field_names() == sorted(set(expected_field_names))
         sample.add_field(
             name="field_of_ints",
-            field=np.arange(10),
+            field=np.arange(5),
             zone_name="Zone_2",
             base_name="Base_3_3",
             time=1.0,
@@ -1016,8 +1016,15 @@ class Test_Sample:
                 zone_name=zone_name,
                 base_name=base_name,
             )
+        with pytest.raises(ValueError):
+            sample.add_field(
+                name="test_node_field_2",
+                field=np.zeros((5, 2)),
+                zone_name=zone_name,
+                base_name=base_name,
+            )
         sample.init_zone(
-            np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
         )
         sample.add_field(
             name="test_node_field_2",
@@ -1025,6 +1032,13 @@ class Test_Sample:
             zone_name=zone_name,
             base_name=base_name,
         )
+        with pytest.raises(ValueError):
+            sample.add_field(
+                name="test_node_field_2",
+                field=np.zeros((13)),
+                zone_name=zone_name,
+                base_name=base_name,
+            )
 
     def test_add_field_cell_center(
         self, sample: Sample, cell_center_field, zone_name, base_name
@@ -1039,7 +1053,7 @@ class Test_Sample:
                 base_name=base_name,
             )
         sample.init_zone(
-            np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
         )
         sample.add_field(
             name="test_elem_field_2",
@@ -1048,6 +1062,14 @@ class Test_Sample:
             zone_name=zone_name,
             base_name=base_name,
         )
+        with pytest.raises(ValueError):
+            sample.add_field(
+                name="test_elem_field_2",
+                location="CellCenter",
+                field=np.zeros((13)),
+                zone_name=zone_name,
+                base_name=base_name,
+            )
 
     def test_add_field_vertex_already_present(
         self, sample_with_tree: Sample, vertex_field
@@ -1105,7 +1127,7 @@ class Test_Sample:
         sample = Sample()
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            np.random.randint(0, 10, size=3), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
         )
         sample.add_field(
             name="test_elem_field_1",

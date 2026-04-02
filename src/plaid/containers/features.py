@@ -1174,6 +1174,10 @@ class SampleFeatures:
             KeyError: Raised if the specified zone does not exist in the given base.
         """
         assert isinstance(field, np.ndarray)
+        if field.ndim != 1:
+            raise ValueError(
+                f"field has {field.ndim} dimensions, but must be a 1D array."
+            )
         _check_names([name])
         # init_tree will look for default time
         self.init_tree(time)
@@ -1183,6 +1187,17 @@ class SampleFeatures:
         if zone_node is None:
             raise KeyError(
                 f"there is no Zone with name {zone_name} in base {base_name}. Did you check topological and physical dimensions ?"
+            )
+
+        # Check field size consistency with its geometrical support
+        n_nodes, n_elems, _ = zone_node[1][0]
+        if location == "Vertex" and field.shape[0] != n_nodes:
+            raise ValueError(
+                f"field has {field.shape[0]} nodes but zone has {n_nodes} nodes (based on the zone node metadata)"
+            )
+        elif location == "CellCenter" and field.shape[0] != n_elems:
+            raise ValueError(
+                f"field has {field.shape[0]} nodes but zone has {n_elems} elements (based on the zone node metadata)"
             )
 
         if field.dtype in (np.int32, np.int64):

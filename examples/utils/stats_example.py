@@ -130,8 +130,9 @@ spatial_shape_max = 20
 for sample in samples:
     sample.add_scalar("test_scalar", np.random.randn())
     sample.init_base(2, 3, "test_base")
-    zone_shape = np.array([0, 0, 0])
+    zone_shape = np.array([[spatial_shape_max, 0, 0]])
     sample.init_zone(zone_shape, zone_name="test_zone")
+    sample.set_nodes(np.zeros((spatial_shape_max, 3)))
     sample.add_field("test_field", np.random.randn(spatial_shape_max))
 
 stats.add_samples(samples)
@@ -154,12 +155,13 @@ samples = [Sample() for _ in range(nb_samples)]
 for sample in samples:
     sample.add_scalar("test_scalar", np.random.randn())
     sample.init_base(2, 3, "test_base")
-    zone_shape = np.array([0, 0, 0])
+    zone_shape = np.array([[spatial_shape_max, 0, 0]])
     sample.init_zone(zone_shape, zone_name="test_zone")
-    sample.add_field("test_field_same_size", np.random.randn(7))
+    sample.set_nodes(np.zeros((spatial_shape_max, 3)))
+    sample.add_field("test_field_same_size", np.random.randn(spatial_shape_max))
     sample.add_field(
         "test_field",
-        np.random.randn(np.random.randint(spatial_shape_max // 2, spatial_shape_max)),
+        np.random.randn(spatial_shape_max),
     )
 
 stats.add_samples(samples)

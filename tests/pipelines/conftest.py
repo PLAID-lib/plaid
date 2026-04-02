@@ -82,6 +82,10 @@ def wrapped_sklearn_transformer_2(sklearn_pca):
     return WrappedSklearnTransformer(
         sklearn_block=sklearn_pca,
         in_features_identifiers=[{"type": "field", "name": "test_field_same_size"}],
+        out_features_identifiers=[
+            {"type": "scalar", "name": "pca_component_0"},
+            {"type": "scalar", "name": "pca_component_1"},
+        ],
     )
 
 

@@ -78,7 +78,8 @@ if __name__ == "__main__":
             # ---# Add some random data
             smp.add_scalar("id", i)
             smp.add_scalar("s0", np.random.randn())
-            smp.add_field("f0", np.random.randn(100))
+            n_nodes = smp.get_nodes().shape[0]
+            smp.add_field("f0", np.random.randn(n_nodes))
 
             dset.add_sample(smp)
 

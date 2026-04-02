@@ -169,7 +169,7 @@ for cgns_tree in CGNS_meshes:
 
     # Add random field values to the sample
     for j, sname in enumerate(out_fields_names):
-        sample.add_field(sname, np.random.rand(1, len(nodes_3D)))
+        sample.add_field(sname, np.random.rand(len(nodes_3D)))
 
     samples.append(sample)
 

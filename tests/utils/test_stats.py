@@ -44,7 +44,7 @@ def np_samples_5():
 
 @pytest.fixture()
 def np_samples_6():
-    return np.random.randn(50, 1)
+    return np.random.randn(50)
 
 
 @pytest.fixture()
@@ -71,7 +71,7 @@ def sample_with_field(np_samples_6):
     s.features.init_tree()
     # 2. Create a base and a zone
     s.init_base(topological_dim=3, physical_dim=3)
-    s.init_zone(zone_shape=np.array([np_samples_6.shape[0], 0, 0]))
+    s.init_zone(zone_shape=np.array([[np_samples_6.shape[0], 0, 0]]))
     # 3. Set node coordinates (required for a valid zone)
     s.set_nodes(np.zeros((np_samples_6.shape[0], 3)))
     # 4. Add a field named "bar"
