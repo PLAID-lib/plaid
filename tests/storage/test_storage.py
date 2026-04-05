@@ -27,9 +27,6 @@ from plaid.storage import (
 from plaid.storage.cgns.writer import (
     generate_datasetdict_to_disk as cgns_generate_datasetdict_to_disk,
 )
-from plaid.storage.hf_datasets.bridge import (
-    to_var_sample_dict,
-)
 from plaid.storage.writer import (
     _build_gen_kwargs,
     _SampleFuncGenerator,
@@ -224,6 +221,8 @@ class Test_Storage:
         infos,
         problem_definition,
     ):
+        import plaid.storage.hf_datasets.bridge as hf_bridge
+
         test_dir = tmp_path / "test_hf"
 
         save_to_disk(
@@ -296,7 +295,7 @@ class Test_Storage:
 
         converter.plaid_to_dict(plaid_sample)
 
-        to_var_sample_dict(hf_dataset, 0, enforce_shapes=False)
+        hf_bridge.to_var_sample_dict(hf_dataset, 0, enforce_shapes=False)
 
         for t in plaid_sample.get_all_time_values():
             for path in problem_definition.get_in_features_identifiers():
