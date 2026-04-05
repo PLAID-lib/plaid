@@ -389,6 +389,100 @@ class Test_Storage:
         with pytest.raises(KeyError):
             converter.to_dict(zarr_dataset, 0, features=["dummy"])
 
+    def test_hf_datasets_indexers(
+        self,
+        tmp_path,
+        sample_constructor,
+        split_ids,
+        infos,
+        problem_definition,
+    ):
+        test_dir = tmp_path / "test_hf_indexers"
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+        hf_dataset = datasetdict["train"]
+        converter = converterdict["train"]
+
+        field_path = "Base_Name/Zone_Name/VertexFields/test_field_same_size"
+        selected_idx = [1, 3, 7, 11]
+
+        sampled = converter.to_plaid(
+            hf_dataset,
+            0,
+            features=[field_path],
+            indexers={field_path: selected_idx},
+        )
+        full = converter.to_plaid(hf_dataset, 0, features=[field_path])
+
+        expected = full.get_field("test_field_same_size")[selected_idx]
+        got = sampled.get_field("test_field_same_size")
+        assert np.array_equal(got, expected)
+
+        with pytest.raises(KeyError):
+            converter.to_dict(
+                hf_dataset,
+                0,
+                features=[field_path],
+                indexers={"dummy": selected_idx},
+            )
+
+    def test_zarr_indexers(
+        self,
+        tmp_path,
+        sample_constructor,
+        split_ids,
+        infos,
+        problem_definition,
+    ):
+        test_dir = tmp_path / "test_zarr_indexers"
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="zarr",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+        zarr_dataset = datasetdict["train"]
+        converter = converterdict["train"]
+
+        field_path = "Base_Name/Zone_Name/VertexFields/test_field_same_size"
+        selected_idx = [0, 2, 4, 8, 16]
+
+        sampled = converter.to_plaid(
+            zarr_dataset,
+            0,
+            features=[field_path],
+            indexers={field_path: selected_idx},
+        )
+        full = converter.to_plaid(zarr_dataset, 0, features=[field_path])
+
+        expected = full.get_field("test_field_same_size")[selected_idx]
+        got = sampled.get_field("test_field_same_size")
+        assert np.array_equal(got, expected)
+
+        with pytest.raises(IndexError):
+            converter.to_dict(
+                zarr_dataset,
+                0,
+                features=[field_path],
+                indexers={field_path: [999]},
+            )
+
     def test_cgns(
         self, tmp_path, sample_constructor, split_ids, infos, problem_definition
     ):
