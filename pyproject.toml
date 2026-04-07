@@ -56,6 +56,9 @@ files=["LICENSE.txt"]
 file="README.md"
 content-type = "text/markdown"
 
+[project.scripts]
+plaid-build-dataset = "plaid.cli.build_dataset:main"
+
 [tool.setuptools]
 platforms = [
     "Linux",
