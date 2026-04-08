@@ -1482,15 +1482,6 @@ class Dataset(object):
         sample_dname = samples_dir / f"sample_{i_sample:09d}"
         sample.save_to_dir(sample_dname)
 
-    @deprecated(
-        "`Dataset._save_to_dir_(path)` is deprecated, use instead `Dataset.save_to_dir(path)`",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _save_to_dir_(self, path: Union[str, Path], verbose: bool = False) -> None:
-        """DEPRECATED: use :meth:`Dataset.save_to_dir` instead."""
-        self.save_to_dir(path, verbose=verbose)
-
     def _load_from_dir_(
         self,
         path: Union[str, Path],

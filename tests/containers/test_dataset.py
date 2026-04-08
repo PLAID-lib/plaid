@@ -1068,7 +1068,7 @@ class Test_Dataset:
 
     def test_load_from_dir(self, dataset_with_samples, tmp_path):
         dname = tmp_path / "test_dname"
-        dataset_with_samples._save_to_dir_(dname)
+        dataset_with_samples.save_to_dir(dname)
         loaded_dataset = Dataset.load_from_dir(dname)
         assert len(loaded_dataset) == len(dataset_with_samples)
 
@@ -1117,14 +1117,14 @@ class Test_Dataset:
     # -------------------------------------------------------------------------#
     def test__save_to_dir_(self, dataset_with_samples, tmp_path):
         savedir = tmp_path / "testdir"
-        dataset_with_samples._save_to_dir_(savedir)
+        dataset_with_samples.save_to_dir(savedir)
         assert plaid.get_number_of_samples(savedir) == len(dataset_with_samples)
         assert savedir.is_dir()
         assert (savedir / "infos.yaml").is_file()
 
     def test__load_from_dir_(self, dataset_with_samples, infos, tmp_path):
         savedir = tmp_path / "testdir"
-        dataset_with_samples._save_to_dir_(savedir)
+        dataset_with_samples.save_to_dir(savedir)
         new_dataset = Dataset()
         new_dataset._load_from_dir_(savedir)
         assert len(new_dataset) == len(dataset_with_samples)
@@ -1224,131 +1224,3 @@ class Test_Dataset:
         print(dataset)
         print(dataset_with_samples)
 
-    # #-------------------------------------------------------------------------#
-    # #-------------------------------------------------------------------------#
-    # #-------------------------------------------------------------------------#
-    # def test__init__(self, dataset):
-    #     pass
-
-    # #---#
-    # def test_get_samples(self, dataset_with_samples, nb_samples):
-    #     samples = dataset_with_samples.get_samples()
-    #     assert(isinstance(samples,dict))
-    #     for samp in samples.values():
-    #         assert(isinstance(samp,Sample))
-    #     assert(len(samples)==nb_samples)
-    # def test_get_samples_with_ids(self, dataset_with_samples, nb_samples):
-    #     ids = [np.random.randint(0,nb_samples)]
-    #     samples = dataset_with_samples.get_samples(ids)
-    #     assert(isinstance(samples,dict))
-    #     for samp in samples.values():
-    #         assert(isinstance(samp,Sample))
-    #     assert(len(samples)==len(ids))
-
-    # def test_set_samples(self, dataset, samples):
-    #     dataset.set_samples({id:sample for id,sample in enumerate(samples)})
-    # def test_set_samples_fail_type(self, dataset):
-    #     with pytest.raises(TypeError):
-    #         dataset.set_samples(1)
-    # def test_set_samples_fail_type_input(self, dataset):
-    #     with pytest.raises(TypeError):
-    #         dataset.set_samples(1)
-    # def test_set_samples_fail_type_key(self, dataset):
-    #     with pytest.raises(TypeError):
-    #         dataset.set_samples({'test':'test'})
-    # def test_set_samples_fail_negative_key(self, dataset):
-    #     with pytest.raises(ValueError):
-    #         dataset.set_samples({-1:'test'})
-    # def test_set_samples_fail_type_value(self, dataset):
-    #     with pytest.raises(TypeError):
-    #         dataset.set_samples({0:'test'})
-
-    # def test_set_sample(self, dataset, sample):
-    #     dataset.set_sample(id=0,sample=sample)
-    # def test_set_sample_already_present(self, dataset_with_samples, sample):
-    #     dataset_with_samples.set_sample(id=0,sample=sample)
-    # def test_set_sample_fail_id_type(self, dataset, sample):
-    #     with pytest.raises(TypeError):
-    #         dataset.set_sample(id='0',sample=sample)
-    # def test_set_sample_fail_negative_id(self, dataset, sample):
-    #     with pytest.raises(ValueError):
-    #         dataset.set_sample(id=-1,sample=sample)
-    # def test_set_sample_fail_sample_type(self, dataset):
-    #     with pytest.raises(TypeError):
-    #         dataset.set_sample(id=1,sample='sample')
-
-    # def test_add_sample(self, dataset, sample):
-    #     dataset.add_sample(sample)
-    # def test_add_sample_fail_type(self, dataset):
-    #     with pytest.raises(TypeError):
-    #         dataset.add_sample(1)
-
-    # def test_add_samples(self, dataset,samples):
-    #     dataset.add_samples(samples)
-    # def test_add_samples_fail_type(self, dataset):
-    #     with pytest.raises(TypeError):
-    #         dataset.add_samples(1)
-    # def test_add_samples_fail_sample_type(self, dataset):
-    #     with pytest.raises(TypeError):
-    #         dataset.add_samples([1])
-
-    # #---#
-    # def test_get_sample_ids(self, dataset):
-    #     dataset.get_sample_ids()
-    # def test_get_sample_ids_type(self, dataset):
-    #     dataset.get_sample_ids(feature_type='scalar')
-    # def test_get_sample_ids_name(self, dataset):
-    #     dataset.get_sample_ids(feature_name='test_scalar2')
-
-    # #---#
-    # def test_get_feature_types(self, dataset):
-    #     assert(dataset.get_feature_types()==set())
-    #     assert(dataset.get_feature_types(feature_name='missing_name')==set())
-    # def test_get_feature_names(self, dataset):
-    #     assert(dataset.get_feature_names()==set())
-    #     assert(dataset.get_feature_names(feature_type='missing_type')==set())
-
-    # #---#
-    # def test_get_scalars_to_tabular(self, dataset_with_samples):
-    #     dataset_with_samples.get_scalars_to_tabular(feature_names=['test_scalar'])
-    # def test_get_scalars_to_tabular_all(self, dataset_with_samples):
-    #     dataset_with_samples.get_scalars_to_tabular()
-    # def test_get_scalars_to_tabular_dict(self, dataset_with_samples):
-    #     dataset_with_samples.get_scalars_to_tabular(feature_names=['test_scalar'])
-    # def test_get_scalars_to_tabular_all_dict(self, dataset_with_samples):
-    #     dataset_with_samples.get_scalars_to_tabular()
-    # def test_get_scalars_to_tabular_missing_name(self, dataset_with_samples):
-    #     with pytest.raises(ValueError):
-    #         dataset_with_samples.get_scalars_to_tabular(feature_names=['missing_scalar_name'])
-
-    # def test_merge_dataset(self, dataset_with_samples, other_dataset_with_samples):
-    #     dataset_with_samples.merge_dataset(other_dataset_with_samples)
-
-    # # def test_save(self, dataset):
-    # #     dataset.save()
-
-    # # def test_load(self, dataset):
-    # #     dataset.load()
-
-    # # def test__save_to_dir_(self, dataset):
-    # #     dataset._save_to_dir_()
-
-    # # def test__load_from_dir_(self, dataset):
-    # #     dataset._load_from_dir_()
-
-    # def test___len__(self, dataset):
-    #     assert(len(dataset)==0)
-    # def test___len__with_samples(self, dataset_with_samples, nb_samples):
-    #     assert(len(dataset_with_samples)==nb_samples)
-
-    # def test___getitem__(self, dataset_with_samples):
-    #     dataset_with_samples[0]
-    # def test___getitem__no_id(self, dataset_with_samples, nb_samples):
-    #     with pytest.raises(IndexError):
-    #         dataset_with_samples[nb_samples + 1]
-
-    # def test___call__(self, dataset_with_samples):
-    #     dataset_with_samples(0)
-
-    # def test___repr__(self, dataset_with_samples):
-    #     print(dataset_with_samples)
