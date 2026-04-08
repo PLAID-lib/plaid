@@ -42,13 +42,14 @@ from datasets import Features, Sequence, Value, load_dataset, load_from_disk
 from huggingface_hub import HfApi, hf_hub_download, snapshot_download
 from pydantic import ValidationError
 
-from plaid import Dataset, ProblemDefinition, Sample
+from plaid import Dataset, ProblemDefinition, Sample, problem_definition
 from plaid.containers.features import SampleFeatures
 from plaid.types import IndexType
 from plaid.utils.cgns_helper import (
     flatten_cgns_tree,
     unflatten_cgns_tree,
 )
+from plaid.containers import FeatureIdentifier
 
 # ------------------------------------------------------------------------------
 
@@ -696,18 +697,29 @@ def huggingface_description_to_problem_definition(
     """
     description = {} if description == "" else description
     problem_definition = ProblemDefinition()
+    #todo
     for func, key in [
         (problem_definition.set_task, "task"),
         (problem_definition.set_split, "split"),
-        (problem_definition.add_input_scalars_names, "in_scalars_names"),
-        (problem_definition.add_output_scalars_names, "out_scalars_names"),
-        (problem_definition.add_input_fields_names, "in_fields_names"),
-        (problem_definition.add_output_fields_names, "out_fields_names"),
-        (problem_definition.add_input_meshes_names, "in_meshes_names"),
-        (problem_definition.add_output_meshes_names, "out_meshes_names"),
     ]:
         try:
-            func(description[key])
+            func([  description[key] ])
+        except KeyError:
+            logger.error(f"Could not retrieve key:'{key}' from description")
+            pass
+        
+
+    for func, ftype, key in [
+        (problem_definition.add_in_features_identifiers, "scalar","in_scalars_names"),
+        (problem_definition.add_out_feature_identifier, "scalar","out_scalars_names"),
+        (problem_definition.add_in_features_identifiers, "field","in_fields_names"),
+        (problem_definition.add_out_feature_identifier, "field","out_fields_names"),
+        (problem_definition.add_in_features_identifiers, "mesh","in_meshes_names"),
+        (problem_definition.add_out_feature_identifier, "mesh","out_meshes_names"),
+
+    ]:
+        try:
+            func([ FeatureIdentifier({"type":ftype, "name":name }) for name in  description[key] ])
         except KeyError:
             logger.error(f"Could not retrieve key:'{key}' from description")
             pass
