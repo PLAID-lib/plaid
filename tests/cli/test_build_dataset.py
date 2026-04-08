@@ -153,6 +153,27 @@ def test_build_dataset_from_raw_invalid_location(tmp_path: Path) -> None:
         )
 
 
+def test_build_dataset_from_raw_field_size_mismatch(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    out = tmp_path / "out"
+
+    _write_csv(
+        raw / "input_scalars" / "scalars_00000.csv",
+        "in_a",
+        "1.0",
+    )
+    _write_csv(
+        raw / "output_scalars" / "scalars_00000.csv",
+        "out_y",
+        "2.0",
+    )
+    _write_field(raw / "field_1" / "scalars_00000.csv", [1.0, 2.0, 3.0])
+    _write_field(raw / "field_2" / "scalars_00000.csv", [4.0, 5.0])
+
+    with pytest.raises(ValueError, match="share the same number"):
+        build_dataset_from_raw(input_dir=raw, output_dir=out)
+
+
 def test_build_dataset_from_raw_overwrite(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     out = tmp_path / "out"
