@@ -37,7 +37,7 @@ from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
 from plaid.types import Array, Feature
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
-from plaid.utils.deprecation import deprecated, deprecated_argument
+from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -1332,7 +1332,6 @@ class Dataset(object):
         return report
 
     @classmethod
-    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load_from_file(
         cls, path: Union[str, Path], verbose: bool = False, processes_number: int = 0
     ) -> Self:
@@ -1352,7 +1351,6 @@ class Dataset(object):
         return instance
 
     @classmethod
-    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load_from_dir(
         cls,
         path: Union[str, Path],
@@ -1378,7 +1376,6 @@ class Dataset(object):
         )
         return instance
 
-    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load(
         self, path: Union[str, Path], verbose: bool = False, processes_number: int = 0
     ) -> None:
@@ -1427,7 +1424,6 @@ class Dataset(object):
             )
 
     # -------------------------------------------------------------------------#
-    @deprecated_argument("save_dir", "path", version="0.1.8", removal="0.2.0")
     def add_to_dir(
         self,
         sample: Sample,

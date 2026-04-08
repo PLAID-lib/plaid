@@ -1114,15 +1114,6 @@ class Test_Dataset:
         save_dir = tmp_path / "my_dataset_dir"
         empty_dataset.add_to_dir(sample, path=save_dir)
 
-    def test__add_to_dir__save_dir(self, empty_dataset, sample, tmp_path):
-        save_dir = tmp_path / "my_dataset_dir"
-        empty_dataset.add_to_dir(sample, save_dir=save_dir)
-
-    def test__add_to_dir__both_path_and_save_dir(self, empty_dataset, sample, tmp_path):
-        save_dir = tmp_path / "my_dataset_dir"
-        with pytest.raises(ValueError):
-            empty_dataset.add_to_dir(sample, path=save_dir, save_dir=save_dir)
-
     # -------------------------------------------------------------------------#
     def test__save_to_dir_(self, dataset_with_samples, tmp_path):
         savedir = tmp_path / "testdir"
