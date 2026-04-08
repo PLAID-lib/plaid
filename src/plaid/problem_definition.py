@@ -48,7 +48,6 @@ class ProblemDefinition(object):
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
-        directory_path: Optional[Union[str, Path]] = None,
     ) -> None:
         """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`.
 
@@ -56,7 +55,6 @@ class ProblemDefinition(object):
 
         Args:
             path (Union[str,Path], optional): The path from which to load PLAID problem definition files.
-            directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
 
         Example:
             .. code-block:: python
@@ -91,17 +89,6 @@ class ProblemDefinition(object):
         self._split: Optional[dict[str, IndexType]] = None
         self._train_split: Optional[dict[str, dict[str, IndexType]]] = None
         self._test_split: Optional[dict[str, dict[str, IndexType]]] = None
-
-        if directory_path is not None:
-            if path is not None:
-                raise ValueError(
-                    "Arguments `path` and `directory_path` cannot be both set. Use only `path` as `directory_path` is deprecated."
-                )
-            else:
-                path = directory_path
-                logger.warning(
-                    "DeprecationWarning: 'directory_path' is deprecated, use 'path' instead."
-                )
 
         if path is not None:
             path = Path(path)

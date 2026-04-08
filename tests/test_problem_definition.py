@@ -127,15 +127,6 @@ class Test_ProblemDefinition:
         d_path = current_directory / "problem_definition"
         ProblemDefinition(path=d_path)
 
-    def test__init__directory_path(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        ProblemDefinition(directory_path=d_path)
-
-    def test__init__both_path_and_directory_path(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        with pytest.raises(ValueError):
-            ProblemDefinition(path=d_path, directory_path=d_path)
-
     # -------------------------------------------------------------------------#
     def test_version(self, problem_definition):
         # Unauthorized version
