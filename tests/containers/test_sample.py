@@ -1587,16 +1587,16 @@ class Test_Sample:
     # -------------------------------------------------------------------------#
     def test_save(self, sample_with_tree_and_scalar, tmp_path):
         save_dir = tmp_path / "test_dir"
-        sample_with_tree_and_scalar.save(save_dir)
+        sample_with_tree_and_scalar.save_to_dir(save_dir)
         assert save_dir.is_dir()
         with pytest.raises(ValueError):
-            sample_with_tree_and_scalar.save(save_dir, memory_safe=False)
-        sample_with_tree_and_scalar.save(save_dir, overwrite=True)
-        sample_with_tree_and_scalar.save(save_dir, overwrite=True, memory_safe=True)
+            sample_with_tree_and_scalar.save_to_dir(save_dir, memory_safe=False)
+        sample_with_tree_and_scalar.save_to_dir(save_dir, overwrite=True)
+        sample_with_tree_and_scalar.save_to_dir(save_dir, overwrite=True, memory_safe=True)
 
     def test_load_from_saved_file(self, sample_with_tree_and_scalar, tmp_path):
         save_dir = tmp_path / "test_dir"
-        sample_with_tree_and_scalar.save(save_dir)
+        sample_with_tree_and_scalar.save_to_dir(save_dir)
         new_sample = Sample()
         new_sample.load(save_dir)
         assert CGU.checkSameTree(
@@ -1606,7 +1606,7 @@ class Test_Sample:
 
     def test_load_from_dir(self, sample_with_tree_and_scalar, tmp_path):
         save_dir = tmp_path / "test_dir"
-        sample_with_tree_and_scalar.save(save_dir)
+        sample_with_tree_and_scalar.save_to_dir(save_dir)
         new_sample = Sample.load_from_dir(save_dir)
         assert CGU.checkSameTree(
             sample_with_tree_and_scalar.get_tree(),

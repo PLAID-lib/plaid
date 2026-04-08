@@ -626,18 +626,6 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "`Sample.save(...)` is deprecated, use instead `Sample.save_to_dir(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def save(
-        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
-    ) -> None:
-        """DEPRECATED: use :meth:`Sample.save_to_dir` instead."""
-        self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
-
-    # -------------------------------------------------------------------------#
     def save_to_dir(
         self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
     ) -> None:
