@@ -65,7 +65,6 @@ def _process_sample(path: Union[str, Path]) -> tuple:  # pragma: no cover
 class Dataset(object):
     """A set of samples, and optionnaly some other informations about the Dataset."""
 
-    @deprecated_argument("directory_path", "path", version="0.1.8", removal="0.2.0")
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
@@ -1085,7 +1084,6 @@ class Dataset(object):
             merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
         return merged_dataset
 
-    @deprecated_argument("directory_path", "path", version="0.1.8", removal="0.2.0")
     @deprecated(
         "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_file(...)`",
         version="0.1.10",

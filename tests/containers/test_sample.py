@@ -190,15 +190,6 @@ class Test_Sample:
         sample_path = current_directory / "dataset" / "samples" / "sample_000000000"
         Sample(path=sample_path)
 
-    # def test__init__directory_path(self, current_directory):
-    #     sample_path = current_directory / "dataset" / "samples" / "sample_000000000"
-    #     Sample(directory_path=sample_path)
-
-    # def test__init__both_path_and_directory_path(self, current_directory):
-    #     sample_path = current_directory / "dataset" / "samples" / "sample_000000000"
-    #     with pytest.raises(ValueError):
-    #         Sample(path=sample_path, directory_path=sample_path)
-
     def test_copy(self, sample_with_tree_and_scalar):
         sample_with_tree_and_scalar.copy()
 

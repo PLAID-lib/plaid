@@ -86,15 +86,6 @@ class Test_Dataset:
         dataset_path = current_directory / "dataset"
         Dataset(path=dataset_path)
 
-    def test__init__directory_path(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        Dataset(directory_path=dataset_path)
-
-    def test__init__both_path_and_directory_path(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        with pytest.raises(ValueError):
-            Dataset(path=dataset_path, directory_path=dataset_path)
-
     # -------------------------------------------------------------------------#
     def test_get_samples(self, dataset_with_samples, nb_samples):
         dataset_with_samples.get_samples()
