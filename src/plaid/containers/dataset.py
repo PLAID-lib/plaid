@@ -1586,13 +1586,6 @@ class Dataset(object):
         if len(self) == 0:  # pragma: no cover
             print("Warning: dataset contains no sample")
 
-    @staticmethod
-    def _load_number_of_samples_(_path: Union[str, Path]) -> int:
-        """DEPRECATED: use :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>` instead."""
-        raise DeprecatedError(
-            'use instead: plaid.get_number_of_samples("path-to-my-dataset")'
-        )
-
     # -------------------------------------------------------------------------#
     def set_samples(self, samples: dict[int, Sample]) -> None:
         """Set the samples of the data set, overwriting the existing ones.

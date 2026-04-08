@@ -1139,11 +1139,6 @@ class Test_Dataset:
         assert len(new_dataset) == 2
 
     # -------------------------------------------------------------------------#
-    def test__load_number_of_samples_(self, tmp_path):
-        with pytest.raises(DeprecatedError):
-            Dataset._load_number_of_samples_(tmp_path)
-
-    # -------------------------------------------------------------------------#
     def test_set_samples(self, dataset, samples):
         dataset.set_samples({i: samp for i, samp in enumerate(samples)})
         dataset.set_samples({i: samp for i, samp in enumerate(samples)})
