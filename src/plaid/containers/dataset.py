@@ -1332,18 +1332,6 @@ class Dataset(object):
         return report
 
     @classmethod
-    @deprecated(
-        "`Dataset.from_list_of_samples(samples)` is deprecated, use instead `Dataset(samples=samples)`",
-        version="0.1.8",
-        removal="0.2.0",
-    )
-    def from_list_of_samples(
-        cls, list_of_samples: list[Sample], ids: Optional[list[int]] = None
-    ) -> Self:
-        """DEPRECATED: use `Dataset(samples=..., sample_ids=...)` instead."""
-        return cls(samples=list_of_samples, sample_ids=ids)
-
-    @classmethod
     @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load_from_file(
         cls, path: Union[str, Path], verbose: bool = False, processes_number: int = 0

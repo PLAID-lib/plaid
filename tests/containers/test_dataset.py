@@ -977,11 +977,6 @@ class Test_Dataset:
 
     # -------------------------------------------------------------------------#
 
-    def test_from_list_of_samples_deprecated(self, samples):
-        with pytest.warns(DeprecationWarning):
-            loaded_dataset = Dataset.from_list_of_samples(samples)
-        assert len(loaded_dataset) == len(samples)
-
     def test___init___samples(self, samples):
         loaded_dataset = Dataset(samples=samples)
         assert len(loaded_dataset) == len(samples)
