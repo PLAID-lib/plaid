@@ -45,7 +45,6 @@ from plaid.types import (
 )
 from plaid.utils import cgns_helper as CGH
 from plaid.utils.base import delegate_methods, safe_len
-from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -734,28 +733,6 @@ class Sample(BaseModel):
 
                 (self.features.data[time],) = (tree,)
 
-        old_time_series_files = list(path.glob("time_series_*.csv"))
-        if len(old_time_series_files) > 0:
-            self._load_old_time_series(old_time_series_files)
-
-    @deprecated(
-        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _load_old_time_series(self, time_series_files: list[Path]):
-        for ts_fname in time_series_files:
-            names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
-                (-1,)
-            )
-            assert names[0] == "t"
-            times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
-            for i in range(times_and_val.shape[0]):
-                self.add_global(
-                    name=names[1],
-                    global_array=times_and_val[i, 1],
-                    time=times_and_val[i, 0],
-                )
 
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:
