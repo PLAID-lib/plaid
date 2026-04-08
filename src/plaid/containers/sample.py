@@ -734,28 +734,9 @@ class Sample(BaseModel):
 
                 (self.features.data[time],) = (tree,)
 
-        old_scalars_file = path / "scalars.csv"
-        if old_scalars_file.is_file():
-            self._load_old_scalars(old_scalars_file)
-
         old_time_series_files = list(path.glob("time_series_*.csv"))
         if len(old_time_series_files) > 0:
             self._load_old_time_series(old_time_series_files)
-
-    @deprecated(
-        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _load_old_scalars(self, scalars_file: Path):
-        names = np.loadtxt(scalars_file, dtype=str, max_rows=1, delimiter=",").reshape(
-            (-1,)
-        )
-        scalars = np.loadtxt(
-            scalars_file, dtype=float, skiprows=1, delimiter=","
-        ).reshape((-1,))
-        for name, value in zip(names, scalars):
-            self.add_scalar(name, value)
 
     @deprecated(
         reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
