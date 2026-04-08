@@ -1055,15 +1055,6 @@ class Dataset(object):
             merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
         return merged_dataset
 
-    #@deprecated(
-    #"    "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_file(...)`",
-    #    version="0.1.10",
-    #    removal="0.2.0",
-    #)
-    #def save(self, path: Union[str, Path]) -> None:
-    #    """DEPRECATED: use :meth:`Dataset.save_to_file` instead."""
-    #    self.save_to_file(path)
-
     def save_to_file(self, path: Union[str, Path]) -> None:
         """Saves the data set to a TAR (Tape Archive) file.
 

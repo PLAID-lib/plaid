@@ -1002,7 +1002,7 @@ class Test_Dataset:
 
     def test_save(self, dataset_with_samples, tmp_path):
         fname = tmp_path / "test.plaid"
-        dataset_with_samples.save(fname)
+        dataset_with_samples.save_to_file(fname)
         assert fname.is_file()
 
     def test_load_file(self, dataset_with_samples, tmp_path):
@@ -1035,7 +1035,7 @@ class Test_Dataset:
 
     def test_load_multiprocessing(self, dataset_with_samples, tmp_path):
         fname = tmp_path / "test.plaid"
-        dataset_with_samples.save(fname)
+        dataset_with_samples.save_to_file(fname)
 
         new_dataset = Dataset()
         new_dataset.load(fname)
@@ -1061,13 +1061,13 @@ class Test_Dataset:
 
     def test_load_process_eror(self, dataset_with_samples, tmp_path):
         fname = tmp_path / "test.plaid"
-        dataset_with_samples.save(fname)
+        dataset_with_samples.save_to_file(fname)
         with pytest.raises(ValueError):
             Dataset(str(fname), processes_number=-3)
 
     def test_load_from_file(self, dataset_with_samples, tmp_path):
         fname = tmp_path / "test_fname.plaid"
-        dataset_with_samples.save(fname)
+        dataset_with_samples.save_to_file(fname)
         loaded_dataset = Dataset.load_from_file(fname)
         assert len(loaded_dataset) == len(dataset_with_samples)
 
