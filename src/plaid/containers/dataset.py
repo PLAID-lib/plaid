@@ -704,19 +704,6 @@ class Dataset(object):
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
 
-    @deprecated(
-        "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_dataset_from_identifier(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def from_features_identifier(
-        self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-    ) -> Self:
-        """DEPRECATED: Use :meth:`Dataset.extract_dataset_from_identifier` instead."""
-        return self.extract_dataset_from_identifier(
-            feature_identifiers
-        )  # pragma: no cover
 
     def get_tabular_from_homogeneous_identifiers(
         self,
@@ -827,22 +814,6 @@ class Dataset(object):
             )
 
         return dataset
-
-    @deprecated(
-        "`Dataset.from_tabular(...)` is deprecated, use instead `Dataset.add_features_from_tabular(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def from_tabular(
-        self,
-        tabular: Array,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-        restrict_to_features: bool = True,
-    ) -> Self:
-        """DEPRECATED: Use :meth:`Dataset.add_features_from_tabular` instead."""
-        return self.add_features_from_tabular(
-            tabular, feature_identifiers, restrict_to_features
-        )  # pragma: no cover
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
@@ -1084,14 +1055,14 @@ class Dataset(object):
             merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
         return merged_dataset
 
-    @deprecated(
-        "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_file(...)`",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def save(self, path: Union[str, Path]) -> None:
-        """DEPRECATED: use :meth:`Dataset.save_to_file` instead."""
-        self.save_to_file(path)
+    #@deprecated(
+    #"    "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_file(...)`",
+    #    version="0.1.10",
+    #    removal="0.2.0",
+    #)
+    #def save(self, path: Union[str, Path]) -> None:
+    #    """DEPRECATED: use :meth:`Dataset.save_to_file` instead."""
+    #    self.save_to_file(path)
 
     def save_to_file(self, path: Union[str, Path]) -> None:
         """Saves the data set to a TAR (Tape Archive) file.
