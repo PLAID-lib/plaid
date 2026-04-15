@@ -11,7 +11,7 @@ storage formats, including flattening/unflattening and sample reconstruction.
 #
 #
 
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 import numpy as np
 
@@ -219,7 +219,9 @@ def to_plaid_sample(
 
 
 def plaid_to_sample_dict(
-    sample: Sample, variable_features: list[str], constant_features: list[str]
+    sample: Sample,
+    variable_features: Iterable[str],
+    constant_features: Iterable[str],
 ) -> dict[str, Any]:
     """Convert PLAID Sample to sample dict.
 

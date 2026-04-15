@@ -83,6 +83,7 @@ class Converter:
         dataset: Any,
         idx: int,
         features: Optional[list[str]] = None,
+        indexers: Optional[dict[str, Any]] = None,
     ) -> dict[float, dict[str, Any]]:
         """Convert a dataset sample to dictionary format.
 
@@ -91,6 +92,9 @@ class Converter:
             idx: Index of the sample to convert.
             features: Optional list of feature names to include from the variable fields.
                 If None, all variable features available for the backend are included.
+            indexers: Optional mapping ``feature_path -> indexer`` used to extract only
+                selected indices inside variable features. Indexing semantics are
+                backend-dependent and ignored for non-requested features.
 
         Returns:
             dict: Sample data in dictionary format.
@@ -105,14 +109,30 @@ class Converter:
 
         if features:
             features = update_features_for_CGNS_compatibility(
-                features, self.constant_features, self.variable_features
+                features,
+                self.constant_features,
+                self.variable_features,
             )
             req_var_feat = [f for f in features if f in self.variable_features]
         else:
             req_var_feat = None
 
+        if indexers is not None:
+            unknown = set(indexers.keys()) - self.variable_features
+            if unknown:
+                raise KeyError(
+                    f"Indexers contain unknown variable features: {sorted(unknown)}"
+                )
+            if req_var_feat is not None:
+                not_requested = set(indexers.keys()) - set(req_var_feat)
+                if not_requested:
+                    raise KeyError(
+                        "Indexers contain features not present in requested variable "
+                        f"features: {sorted(not_requested)}"
+                    )
+
         var_sample_dict = self.backend_spec.to_var_sample_dict(
-            dataset, idx, features=req_var_feat
+            dataset, idx, features=req_var_feat, indexers=indexers
         )
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types, features)
 
@@ -121,6 +141,7 @@ class Converter:
         dataset: Any,
         idx: int,
         features: Optional[list[str]] = None,
+        indexers: Optional[dict[str, Any]] = None,
     ) -> Sample:
         """Convert a dataset sample to PLAID Sample object.
 
@@ -130,16 +151,20 @@ class Converter:
             features: Optional list of feature names to include from the variable fields.
                 If None, all variable features available for the backend are included.
                 Features are retreated based on self.constant_features and self.variable_features to satisfy the CGNS conventions.
+            indexers: Optional mapping ``feature_path -> indexer`` used to extract only
+                selected indices inside variable features.
 
         Returns:
             Sample: A PLAID Sample object.
         """
         if features:
             features = update_features_for_CGNS_compatibility(
-                features, self.constant_features, self.variable_features
+                features,
+                self.constant_features,
+                self.variable_features,
             )
         if self.backend != "cgns":
-            sample_dict = self.to_dict(dataset, idx, features)
+            sample_dict = self.to_dict(dataset, idx, features, indexers=indexers)
             return to_plaid_sample(sample_dict, self.cgns_types)
         else:
             return dataset[idx]
@@ -188,7 +213,9 @@ class Converter:
             dict: Sample data in dictionary format suitable for storage.
         """
         return plaid_to_sample_dict(
-            plaid_sample, self.variable_features, self.constant_features
+            plaid_sample,
+            self.variable_features,
+            self.constant_features,
         )
 
     def __repr__(self) -> str:
