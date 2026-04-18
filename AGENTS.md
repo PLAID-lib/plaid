@@ -36,6 +36,11 @@ Never mention private repository names, internal project names, or confidential 
 in any public-facing content (code comments, docstrings, commit messages, PR descriptions,
 issues, or documentation).
 
+### Communication rules
+
+- All interactions on this repository (issues, PRs, reviews, comments) must be in **English**.
+- Be direct and concise. Avoid compliments, flattery, or filler sentences.
+
 ## Tech stack
 
 - **Language**: Python 3.11--3.13
