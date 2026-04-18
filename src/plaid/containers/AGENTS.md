@@ -21,7 +21,7 @@ This module defines the core data containers of the PLAID data model.
 
 ## Downstream impact
 
-These classes are the public API surface consumed by `maestro` and end users. Any signature change is a **breaking change** that requires a major version bump.
+These classes are the public API surface consumed by downstream libraries and end users. Any signature change is a **breaking change** that requires a major version bump.
 
 ## Testing
 
