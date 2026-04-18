@@ -7,7 +7,7 @@ Published on PyPI as `pyplaid`, it provides a structured format for representing
 simulation data (meshes, fields, boundary conditions) and abstracts storage backends
 (zarr, HuggingFace datasets, CGNS).
 
-Every other library in the ecosystem depends on plaid.
+Other libraries in the ecosystem depend on plaid.
 
 ## Expected agent behavior
 
@@ -26,8 +26,15 @@ and open-source library design. You prioritize backward compatibility and clean 
 
 - Do not change public API signatures without explicit approval
 - Prefer adding new optional parameters with sensible defaults
-- Check if the change impacts `scimm` or `maestro` (downstream consumers)
+- Check if the change impacts downstream consumers of plaid
 - Run the full test suite before proposing changes
+
+### Confidentiality
+
+plaid is a **public** repository. Some downstream libraries in the PLAID ecosystem are private.
+Never mention private repository names, internal project names, or confidential details
+in any public-facing content (code comments, docstrings, commit messages, PR descriptions,
+issues, or documentation).
 
 ## Tech stack
 
@@ -82,20 +89,6 @@ Storage uses a **Registry pattern** (`storage/registry.py`) to dispatch read/wri
 operations to the correct backend (zarr, hf_datasets, cgns). Each backend implements
 a `reader.py` and `writer.py` following a common interface defined in `storage/common/`.
 
-### Dependency graph (ecosystem)
-
-```
-plaid (pyplaid)          scimm
-  ^                        ^
-  |  pyplaid>=0.1.13       |  scimm>=0.2.0
-  |                        |
-  +----------+-------------+
-             |
-        maestro (glue layer)
-```
-
-plaid has **no dependency** on scimm or maestro. Changes here propagate downstream.
-
 ## Code conventions
 
 ### Formatting and linting
@@ -144,6 +137,26 @@ Guidelines:
 - Use descriptive test names that explain the scenario
 - Mock external dependencies (file I/O, network) to keep tests fast
 - Do not test trivial code or third-party libraries
+
+## Pull request rules
+
+PR titles **must start with one of the following emojis** to indicate the type of change:
+
+| Emoji | Type |
+|-------|------|
+| 🐛 | Bug fix |
+| 📄 | Documentation |
+| 🎉 | New feature or initial commit |
+| 🚀 | Performance or deployment |
+| ♻️ | Refactor or cleanup |
+| 📦 | Packaging or dependency management |
+
+PR checklist (from `.github/pull_request_template.md`):
+- Typing enforced
+- Documentation updated
+- Changelog updated
+- Tests and example updates
+- Coverage should be 100%
 
 ## Commands
 
