@@ -18,7 +18,8 @@ from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
 from plaid.containers import FeatureIdentifier
-from plaid.containers.sample import Sample
+from plaid.containers.features import SampleFeatures
+from plaid.containers.sample import FEATURES_METHODS, Sample
 from plaid.containers.utils import (
     _check_names,
     _read_index,
@@ -1663,3 +1664,76 @@ class Test_Sample:
 
     def test_check_completeness_with_tree_and_scalar(self, sample_with_tree_and_scalar):
         print(sample_with_tree_and_scalar.check_completeness())
+
+
+# %% Tests for delegated methods proxy
+
+
+class TestSampleFeaturesDelegation:
+    """Tests for the ``@delegate_methods("features", FEATURES_METHODS)`` proxy.
+
+    These tests ensure that every method listed in ``FEATURES_METHODS`` is
+    actually exposed on ``Sample`` as a delegate to the corresponding method on
+    ``SampleFeatures``. Any method added to ``FEATURES_METHODS`` is picked up
+    automatically, so these tests also guard against future regressions (e.g.
+    forgetting to add a new method name, or renaming a method on
+    ``SampleFeatures`` without updating the proxy list).
+    """
+
+    @pytest.mark.parametrize("method_name", FEATURES_METHODS)
+    def test_proxy_exposes_sample_features_method(self, method_name: str):
+        """Each delegated method exists on both ``Sample`` and ``SampleFeatures``."""
+        assert hasattr(SampleFeatures, method_name), (
+            f"'{method_name}' is listed in FEATURES_METHODS but not defined on "
+            f"SampleFeatures."
+        )
+        assert hasattr(Sample, method_name), (
+            f"'{method_name}' is listed in FEATURES_METHODS but not proxied on Sample."
+        )
+        assert callable(getattr(Sample, method_name)), (
+            f"Sample.{method_name} exists but is not callable."
+        )
+
+    @pytest.mark.parametrize("method_name", FEATURES_METHODS)
+    def test_proxy_forwards_call_to_sample_features(
+        self, sample: Sample, method_name: str
+    ):
+        """Calling ``sample.<method>`` delegates to ``sample.features.<method>``.
+
+        We patch the method on the ``features`` instance and verify that the
+        proxy forwards the call with the same positional and keyword arguments,
+        and returns the value produced by the underlying method.
+        """
+        sentinel = object()
+        calls: list[tuple[tuple, dict]] = []
+
+        def fake(*args, **kwargs):
+            calls.append((args, kwargs))
+            return sentinel
+
+        # Bind the fake on the instance so only this ``sample`` is affected.
+        setattr(sample.features, method_name, fake)
+
+        result = getattr(sample, method_name)(1, 2, key="value")
+
+        assert result is sentinel, (
+            f"Sample.{method_name} did not return the value produced by "
+            f"SampleFeatures.{method_name}."
+        )
+        assert calls == [((1, 2), {"key": "value"})], (
+            f"Sample.{method_name} did not forward args/kwargs to "
+            f"SampleFeatures.{method_name} as-is."
+        )
+
+    def test_set_trees_proxy_end_to_end(self, sample: Sample, tree):
+        """``sample.set_trees`` actually stores trees on the underlying features.
+
+        This is a functional sanity check for the specific method added in
+        this change set: calling the proxy without going through ``.features``
+        must produce the same observable state as calling the underlying
+        method directly.
+        """
+        sample.set_trees({0.0: tree})
+
+        assert sample.features.get_all_mesh_times() == [0.0]
+        assert sample.features.get_tree(time=0.0) is tree
