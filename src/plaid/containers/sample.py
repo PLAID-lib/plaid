@@ -81,6 +81,7 @@ FEATURES_METHODS = [
     "init_tree",
     "add_tree",
     "del_tree",
+    "set_trees",
 ]
 
 
@@ -293,9 +294,9 @@ class Sample(BaseModel):
             "<feature_type>::<detail1>/<detail2>/.../<detailN>"
 
         Supported feature types:
-            - "scalar": expects 1 detail → `scalars.get(name)`
-            - "field": up to 5 details → `get_field(name, base_name, zone_name, location, time)`
-            - "nodes": up to 3 details → `get_nodes(base_name, zone_name, time)`
+            - "scalar": expects 1 detail -> `scalars.get(name)`
+            - "field": up to 5 details -> `get_field(name, base_name, zone_name, location, time)`
+            - "nodes": up to 3 details -> `get_nodes(base_name, zone_name, time)`
 
         Args:
             feature_string_identifier (str): Structured identifier of the feature.
@@ -351,9 +352,9 @@ class Sample(BaseModel):
         """Retrieve a feature object based on a structured identifier dictionary.
 
         The `feature_identifier` must include a `"type"` key specifying the feature kind:
-            - `"scalar"`       → calls `scalars.get(name)`
-            - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
-            - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
+            - `"scalar"`       -> calls `scalars.get(name)`
+            - `"field"`        -> calls `get_field(name, base_name, zone_name, location, time)`
+            - `"nodes"`        -> calls `get_nodes(base_name, zone_name, time)`
 
         Required keys:
             - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
@@ -388,9 +389,9 @@ class Sample(BaseModel):
         """Retrieve features based on a list of structured identifier dictionaries.
 
         Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
-            - `"scalar"`       → calls `scalars.get(name)`
-            - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
-            - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
+            - `"scalar"`       -> calls `scalars.get(name)`
+            - `"field"`        -> calls `get_field(name, base_name, zone_name, location, time)`
+            - `"nodes"`        -> calls `get_nodes(base_name, zone_name, time)`
 
         Required keys:
             - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
