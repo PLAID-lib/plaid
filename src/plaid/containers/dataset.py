@@ -37,7 +37,7 @@ from plaid.containers.sample import Sample
 from plaid.containers.utils import check_features_size_homogeneity
 from plaid.types import Array, Feature
 from plaid.utils.base import DeprecatedError, ShapeError, generate_random_ASCII
-from plaid.utils.deprecation import deprecated, deprecated_argument
+from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,6 @@ def _process_sample(path: Union[str, Path]) -> tuple:  # pragma: no cover
 class Dataset(object):
     """A set of samples, and optionnaly some other informations about the Dataset."""
 
-    @deprecated_argument("directory_path", "path", version="0.1.8", removal="0.2.0")
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
@@ -705,19 +704,6 @@ class Dataset(object):
             dataset.add_sample(sample=extracted_sample, id=id)
         return dataset
 
-    @deprecated(
-        "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_dataset_from_identifier(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def from_features_identifier(
-        self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-    ) -> Self:
-        """DEPRECATED: Use :meth:`Dataset.extract_dataset_from_identifier` instead."""
-        return self.extract_dataset_from_identifier(
-            feature_identifiers
-        )  # pragma: no cover
 
     def get_tabular_from_homogeneous_identifiers(
         self,
@@ -828,22 +814,6 @@ class Dataset(object):
             )
 
         return dataset
-
-    @deprecated(
-        "`Dataset.from_tabular(...)` is deprecated, use instead `Dataset.add_features_from_tabular(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def from_tabular(
-        self,
-        tabular: Array,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-        restrict_to_features: bool = True,
-    ) -> Self:
-        """DEPRECATED: Use :meth:`Dataset.add_features_from_tabular` instead."""
-        return self.add_features_from_tabular(
-            tabular, feature_identifiers, restrict_to_features
-        )  # pragma: no cover
 
     # -------------------------------------------------------------------------#
     def add_info(self, cat_key: str, info_key: str, info: str) -> None:
@@ -1084,16 +1054,6 @@ class Dataset(object):
         for dataset in datasets_list[1:]:
             merged_dataset = merged_dataset.merge_features(dataset, in_place=False)
         return merged_dataset
-
-    @deprecated_argument("directory_path", "path", version="0.1.8", removal="0.2.0")
-    @deprecated(
-        "`Dataset.save(...)` is deprecated, use instead `Dataset.save_to_file(...)`",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def save(self, path: Union[str, Path]) -> None:
-        """DEPRECATED: use :meth:`Dataset.save_to_file` instead."""
-        self.save_to_file(path)
 
     def save_to_file(self, path: Union[str, Path]) -> None:
         """Saves the data set to a TAR (Tape Archive) file.
@@ -1372,19 +1332,6 @@ class Dataset(object):
         return report
 
     @classmethod
-    @deprecated(
-        "`Dataset.from_list_of_samples(samples)` is deprecated, use instead `Dataset(samples=samples)`",
-        version="0.1.8",
-        removal="0.2.0",
-    )
-    def from_list_of_samples(
-        cls, list_of_samples: list[Sample], ids: Optional[list[int]] = None
-    ) -> Self:
-        """DEPRECATED: use `Dataset(samples=..., sample_ids=...)` instead."""
-        return cls(samples=list_of_samples, sample_ids=ids)
-
-    @classmethod
-    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load_from_file(
         cls, path: Union[str, Path], verbose: bool = False, processes_number: int = 0
     ) -> Self:
@@ -1404,7 +1351,6 @@ class Dataset(object):
         return instance
 
     @classmethod
-    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load_from_dir(
         cls,
         path: Union[str, Path],
@@ -1430,7 +1376,6 @@ class Dataset(object):
         )
         return instance
 
-    @deprecated_argument("fname", "path", version="0.1.8", removal="0.2.0")
     def load(
         self, path: Union[str, Path], verbose: bool = False, processes_number: int = 0
     ) -> None:
@@ -1479,7 +1424,6 @@ class Dataset(object):
             )
 
     # -------------------------------------------------------------------------#
-    @deprecated_argument("save_dir", "path", version="0.1.8", removal="0.2.0")
     def add_to_dir(
         self,
         sample: Sample,
@@ -1537,15 +1481,6 @@ class Dataset(object):
 
         sample_dname = samples_dir / f"sample_{i_sample:09d}"
         sample.save_to_dir(sample_dname)
-
-    @deprecated(
-        "`Dataset._save_to_dir_(path)` is deprecated, use instead `Dataset.save_to_dir(path)`",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _save_to_dir_(self, path: Union[str, Path], verbose: bool = False) -> None:
-        """DEPRECATED: use :meth:`Dataset.save_to_dir` instead."""
-        self.save_to_dir(path, verbose=verbose)
 
     def _load_from_dir_(
         self,
@@ -1650,13 +1585,6 @@ class Dataset(object):
 
         if len(self) == 0:  # pragma: no cover
             print("Warning: dataset contains no sample")
-
-    @staticmethod
-    def _load_number_of_samples_(_path: Union[str, Path]) -> int:
-        """DEPRECATED: use :meth:`plaid.get_number_of_samples <plaid.containers.utils.get_number_of_samples>` instead."""
-        raise DeprecatedError(
-            'use instead: plaid.get_number_of_samples("path-to-my-dataset")'
-        )
 
     # -------------------------------------------------------------------------#
     def set_samples(self, samples: dict[int, Sample]) -> None:

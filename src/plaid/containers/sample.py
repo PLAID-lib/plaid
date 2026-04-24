@@ -45,7 +45,6 @@ from plaid.types import (
 )
 from plaid.utils import cgns_helper as CGH
 from plaid.utils.base import delegate_methods, safe_len
-from plaid.utils.deprecation import deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -582,20 +581,6 @@ class Sample(BaseModel):
 
         return sample
 
-    @deprecated(
-        "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_sample_from_identifier(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def from_features_identifier(
-        self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-    ) -> Self:
-        """DEPRECATED: Use :meth:`Dataset.extract_sample_from_identifier` instead."""
-        return self.extract_sample_from_identifier(
-            feature_identifiers
-        )  # pragma: no cover
-
     def merge_features(self, sample: Self, in_place: bool = False) -> Self:
         """Merge features from another sample into the current sample.
 
@@ -639,18 +624,6 @@ class Sample(BaseModel):
             features=all_features,
             in_place=in_place,
         )
-
-    # -------------------------------------------------------------------------#
-    @deprecated(
-        "`Sample.save(...)` is deprecated, use instead `Sample.save_to_dir(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def save(
-        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
-    ) -> None:
-        """DEPRECATED: use :meth:`Sample.save_to_dir` instead."""
-        self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
 
     # -------------------------------------------------------------------------#
     def save_to_dir(
@@ -761,47 +734,6 @@ class Sample(BaseModel):
 
                 (self.features.data[time],) = (tree,)
 
-        old_scalars_file = path / "scalars.csv"
-        if old_scalars_file.is_file():
-            self._load_old_scalars(old_scalars_file)
-
-        old_time_series_files = list(path.glob("time_series_*.csv"))
-        if len(old_time_series_files) > 0:
-            self._load_old_time_series(old_time_series_files)
-
-    @deprecated(
-        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _load_old_scalars(self, scalars_file: Path):
-        names = np.loadtxt(scalars_file, dtype=str, max_rows=1, delimiter=",").reshape(
-            (-1,)
-        )
-        scalars = np.loadtxt(
-            scalars_file, dtype=float, skiprows=1, delimiter=","
-        ).reshape((-1,))
-        for name, value in zip(names, scalars):
-            self.add_scalar(name, value)
-
-    @deprecated(
-        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _load_old_time_series(self, time_series_files: list[Path]):
-        for ts_fname in time_series_files:
-            names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
-                (-1,)
-            )
-            assert names[0] == "t"
-            times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
-            for i in range(times_and_val.shape[0]):
-                self.add_global(
-                    name=names[1],
-                    global_array=times_and_val[i, 1],
-                    time=times_and_val[i, 0],
-                )
 
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:

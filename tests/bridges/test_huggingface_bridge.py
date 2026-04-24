@@ -15,7 +15,7 @@ import pytest
 from plaid.bridges import huggingface_bridge
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
-from plaid.problem_definition import ProblemDefinition
+from plaid.problem_definition import ProblemDefinition, FeatureIdentifier
 from plaid.utils import cgns_helper
 
 
@@ -37,7 +37,10 @@ def dataset(samples, infos) -> Dataset:
 def problem_definition() -> ProblemDefinition:
     problem_definition = ProblemDefinition()
     problem_definition.set_task("regression")
-    problem_definition.add_input_scalars_names(["feature_name_1", "feature_name_2"])
+    scalar_1_feat_id = FeatureIdentifier({"type":"scalar", "name":"feature_name_1"})
+    scalar_2_feat_id = FeatureIdentifier({"type":"scalar", "name":"feature_name_2"})
+
+    problem_definition.add_in_features_identifiers([scalar_1_feat_id, scalar_2_feat_id])
     problem_definition.set_split({"train": [0, 2], "test": [1, 3]})
     return problem_definition
 
