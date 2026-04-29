@@ -141,6 +141,8 @@ def _install_vtk_log_router() -> None:
         try:
             vtk.vtkLogger.SetStderrVerbosity(vtk.vtkLogger.VERBOSITY_OFF)
         except AttributeError:
+            # Some VTK builds expose ``vtkLogger`` but not this verbosity API.
+            # Ignore to keep compatibility and continue without hard failure.
             pass
     _VTK_LOG_ROUTER_INSTALLED = True
 
