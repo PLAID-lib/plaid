@@ -1316,7 +1316,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 fps = max(1, int(state.play_fps or 1))
                 await asyncio.sleep(1.0 / fps)
         except asyncio.CancelledError:
-            pass
+            # Expected when playback is stopped or restarted: allow task to exit silently.
+            return
 
     @state.change("playing")
     def _on_playing(**_: object) -> None:
