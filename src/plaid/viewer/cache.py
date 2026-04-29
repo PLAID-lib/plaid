@@ -164,5 +164,6 @@ class CacheRoot:
 
             try:
                 signal.signal(sig, handler)
-            except (ValueError, OSError):
-                pass
+            except (ValueError, OSError) as exc:
+                logger.debug("Unable to install handler for signal %s: %s", sig, exc)
+                continue

@@ -188,8 +188,5 @@ def test_cache_signal_handler_install_ignores_signal_errors(
 
     monkeypatch.setattr(cache_mod.signal, "getsignal", flaky_getsignal)
     monkeypatch.setattr(cache_mod.signal, "signal", broken_signal)
-    cache = CacheRoot(install_signal_handlers=True, run_orphan_sweep=False)
-    try:
+    with CacheRoot(install_signal_handlers=True, run_orphan_sweep=False):
         assert calls == {"getsignal": 2, "signal": 1}
-    finally:
-        cache.close()
