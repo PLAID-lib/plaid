@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -37,7 +38,10 @@ def test_context_manager_removes_ephemeral_dir(tmp_path: Path, monkeypatch) -> N
     assert not path.exists()
 
 
-def test_sweep_orphans_removes_dead_pid_dir(tmp_path: Path) -> None:
+def test_sweep_orphans_removes_dead_pid_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cache_mod, "_process_is_alive", lambda _pid: False)
     victim = tmp_path / "plaid-viewer-999999-deadbeefcafe"
     victim.mkdir()
     removed = sweep_orphans(tmp_path)
@@ -96,6 +100,7 @@ def test_cache_runs_orphan_sweep_and_close_is_idempotent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr(cache_mod.tempfile, "gettempdir", lambda: str(tmp_path))
+    monkeypatch.setattr(cache_mod, "_process_is_alive", lambda _pid: False)
     victim = tmp_path / "plaid-viewer-999999-deadbeef"
     victim.mkdir()
     cache = CacheRoot(install_signal_handlers=False, run_orphan_sweep=True)
@@ -111,7 +116,7 @@ def test_cache_signal_handler_cleans_then_delegates(
 ) -> None:
     monkeypatch.setattr(cache_mod.tempfile, "gettempdir", lambda: str(tmp_path))
     calls: list[tuple[str, object]] = []
-    handlers: dict[int, object] = {}
+    handlers: dict[int, Callable[[int, object], None]] = {}
 
     def previous(signum, _frame):
         calls.append(("previous", signum))
@@ -119,7 +124,7 @@ def test_cache_signal_handler_cleans_then_delegates(
     def fake_getsignal(_sig):
         return previous
 
-    def fake_signal(sig, handler):
+    def fake_signal(sig, handler: Callable[[int, object], None]):
         handlers[sig] = handler
         calls.append(("signal", sig))
 
