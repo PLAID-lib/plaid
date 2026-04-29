@@ -15,6 +15,11 @@ import pytest
 from plaid.viewer.config import ViewerConfig
 from plaid.viewer.models import SampleRef
 from plaid.viewer.services import PlaidDatasetService
+from plaid.viewer.services.plaid_dataset_service import (
+    _array_preview,
+    _cached_service,
+    _safe_list_dir,
+)
 
 
 class _FakeDataset(list):
@@ -33,6 +38,24 @@ def _make_dataset_dir(root: Path, name: str) -> Path:
     base = root / name
     (base / "data").mkdir(parents=True, exist_ok=True)
     return base
+
+
+def test_small_helpers_cover_edge_cases(tmp_path: Path) -> None:
+    import numpy as np
+
+    assert _safe_list_dir(tmp_path / "missing") == []
+    (tmp_path / "b").mkdir()
+    (tmp_path / "a").mkdir()
+    assert [p.name for p in _safe_list_dir(tmp_path)] == ["a", "b"]
+    assert _array_preview(None) is None
+    assert _array_preview([]) == "[]"
+    assert "total 8 values" in (_array_preview(np.arange(8), max_items=3) or "")
+
+    class BadArray:
+        def __array__(self, *_args):
+            raise RuntimeError("bad")
+
+    assert _array_preview(BadArray()) is None
 
 
 def _install_fake_init_from_disk(
@@ -57,6 +80,22 @@ def test_list_datasets_returns_all_subdirectories_with_data(tmp_path: Path) -> N
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     ids = {d.dataset_id for d in service.list_datasets()}
     assert ids == {"ds_a", "ds_b"}
+
+
+def test_service_properties_and_dataset_listing_metadata(tmp_path: Path) -> None:
+    ds = _make_dataset_dir(tmp_path, "ds")
+    (tmp_path / "file").write_text("x")
+    (ds / "infos.json").write_text("{}")
+    (ds / "problem_definitions").mkdir()
+    service = PlaidDatasetService(
+        ViewerConfig(datasets_root=tmp_path, browse_roots=(tmp_path,))
+    )
+    assert service.datasets_root == tmp_path
+    assert service.browse_roots == (tmp_path.resolve(),)
+    info = service.list_datasets()[0]
+    assert info.has_infos is True
+    assert info.has_problem_definitions is True
+    assert service.hub_repos == ()
 
 
 def test_list_samples_uses_converter_to_plaid_indices(
@@ -167,6 +206,28 @@ def test_describe_non_visual_bases_lists_zoneless_bases_only(
     assert "1.5" in entry["preview"]
 
 
+def test_describe_non_visual_bases_returns_empty_for_sample_without_times(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import types
+
+    _make_dataset_dir(tmp_path, "ds")
+    sample = types.SimpleNamespace(features=types.SimpleNamespace(data={}))
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"train": _FakeDataset(range(1))},
+                {"train": _FakeConverter({0: sample})},
+            )
+        },
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    assert service.describe_non_visual_bases(ref) == {}
+
+
 def test_load_sample_rejects_non_integer_sample_id(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -208,6 +269,16 @@ def test_set_datasets_root_updates_config(tmp_path: Path) -> None:
     assert service.datasets_root == sub.resolve()
 
 
+def test_set_datasets_root_clear_and_rejects_non_directory(tmp_path: Path) -> None:
+    service = PlaidDatasetService(
+        ViewerConfig(datasets_root=tmp_path, browse_roots=(tmp_path,))
+    )
+    assert service.set_datasets_root(None) is None
+    assert service.datasets_root is None
+    with pytest.raises(ValueError):
+        service.set_datasets_root(tmp_path / "missing")
+
+
 def test_list_subdirs_returns_entries(tmp_path: Path) -> None:
     sandbox = tmp_path / "sandbox"
     sandbox.mkdir()
@@ -223,6 +294,35 @@ def test_list_subdirs_returns_entries(tmp_path: Path) -> None:
     assert names == {"a", "b"}
     plaid_entry = next(e for e in listing["entries"] if e["name"] == "b")
     assert plaid_entry["is_plaid_candidate"] is True
+
+
+def test_list_subdirs_default_hidden_files_and_parent(tmp_path: Path) -> None:
+    sandbox = tmp_path / "sandbox"
+    nested = sandbox / "nested"
+    nested.mkdir(parents=True)
+    (nested / ".hidden").mkdir()
+    (nested / "file.txt").write_text("x")
+    service = PlaidDatasetService(
+        ViewerConfig(datasets_root=sandbox, browse_roots=(sandbox,))
+    )
+    root_listing = service.list_subdirs(None)
+    assert root_listing["path"] == str(sandbox.resolve())
+    nested_listing = service.list_subdirs(nested)
+    assert nested_listing["parent"] == str(sandbox.resolve())
+    assert nested_listing["entries"] == []
+    with pytest.raises(ValueError):
+        service.list_subdirs(nested / "missing")
+
+
+def test_list_subdirs_parent_when_browse_roots_overlap(tmp_path: Path) -> None:
+    outer = tmp_path / "outer"
+    inner = outer / "inner"
+    inner.mkdir(parents=True)
+    service = PlaidDatasetService(
+        ViewerConfig(datasets_root=inner, browse_roots=(outer, inner))
+    )
+    listing = service.list_subdirs(inner)
+    assert listing["parent"] == str(outer.resolve())
 
 
 def test_list_subdirs_rejects_outside_sandbox(tmp_path: Path) -> None:
@@ -376,6 +476,19 @@ def test_streaming_dataset_is_detected_as_streaming(
     assert detail.splits == {"train": None}
 
 
+def test_is_streaming_returns_true_when_hub_open_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset("org/broken")
+
+    def broken(_dataset_id: str):
+        raise RuntimeError("network")
+
+    monkeypatch.setattr(service, "_open", broken)
+    assert service.is_streaming("org/broken") is True
+
+
 def test_list_samples_emits_single_cursor_ref_for_streaming(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -446,6 +559,34 @@ def test_reset_stream_cursor_rewinds_to_first_record(
     assert service.stream_cursor_position(repo_id, "train") == -1
     ref = service.advance_stream_cursor(repo_id, "train")
     assert service.load_sample(ref) is mapping[records[0]]
+
+
+def test_build_cursor_split_alias_and_missing_split(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo_id = "org/stream"
+    records = [object()]
+    _install_fake_init_streaming_from_hub(
+        monkeypatch,
+        {
+            repo_id: (
+                {"only": _FakeIterableDataset(records)},
+                {"only": _FakeStreamingConverter({records[0]: object()})},
+            )
+        },
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset(repo_id)
+
+    cursor = service._build_cursor(repo_id, None)  # noqa: SLF001
+    assert next(cursor.iterator) is records[0]
+
+    service._store_cache[repo_id] = (  # noqa: SLF001
+        {"a": _FakeIterableDataset([]), "b": _FakeIterableDataset([])},
+        {"a": object(), "b": object()},
+    )
+    with pytest.raises(KeyError):
+        service._build_cursor(repo_id, "missing")  # noqa: SLF001
 
 
 # ---------------------------------------------------------------------------
@@ -526,7 +667,7 @@ def test_set_features_rejects_unknown_path(
     _make_dataset_dir(tmp_path, "ds")
     _install_fake_metadata(
         monkeypatch,
-        variable_schema={"Base/Zone/VertexFields/pressure": None},
+        variable_schema={"Base_2_2/Zone/VertexFields/pressure": None},
         constant_schema={"train": {}},
     )
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
@@ -539,12 +680,12 @@ def test_load_sample_forwards_selected_features_on_disk(
 ) -> None:
     """Disk path: ``to_plaid`` receives the filtered feature list."""
     _make_dataset_dir(tmp_path, "ds")
-    variable = {"Base/Zone/VertexFields/pressure": None}
+    variable = {"Base_2_2/Zone/VertexFields/pressure": None}
     constant = {
         "train": {
             "Base": None,
-            "Base/Zone": None,
-            "Base/Zone/VertexFields": None,
+            "Base_2_2/Zone": None,
+            "Base_2_2/Zone/VertexFields": None,
         }
     }
     _install_fake_metadata(
@@ -561,7 +702,7 @@ def test_load_sample_forwards_selected_features_on_disk(
     _install_fake_init_from_disk(monkeypatch, {"ds": (dataset_dict, converter_dict)})
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    service.set_features("ds", ["Base/Zone/VertexFields/pressure"])
+    service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
     ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
     assert service.load_sample(ref) is target
     # The user-selected field is forwarded, but the split's constant
@@ -569,7 +710,7 @@ def test_load_sample_forwards_selected_features_on_disk(
     # rendered sample keeps its scalars/globals on top of the
     # user-selected variable fields.
     assert converter.last_features is not None
-    assert "Base/Zone/VertexFields/pressure" in converter.last_features
+    assert "Base_2_2/Zone/VertexFields/pressure" in converter.last_features
     for path in constant["train"]:
         assert path in converter.last_features
 
@@ -601,8 +742,8 @@ def test_streaming_open_expands_features_via_cgns_helper(
     hands the stub's output through.
     """
     repo_id = "org/stream_filter"
-    variable = {"Base/Zone/VertexFields/pressure": None}
-    constant = {"train": {"Base": None, "Base/Zone": None}}
+    variable = {"Base_2_2/Zone/VertexFields/pressure": None}
+    constant = {"train": {"Base": None, "Base_2_2/Zone": None}}
     _install_fake_metadata(
         monkeypatch, variable_schema=variable, constant_schema=constant
     )
@@ -641,10 +782,10 @@ def test_streaming_open_expands_features_via_cgns_helper(
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     service.add_hub_dataset(repo_id)
-    service.set_features(repo_id, ["Base/Zone/VertexFields/pressure"])
+    service.set_features(repo_id, ["Base_2_2/Zone/VertexFields/pressure"])
     service.list_samples(repo_id)  # triggers ``_open``
     assert captured["features"] == [
-        "Base/Zone/VertexFields/pressure",
+        "Base_2_2/Zone/VertexFields/pressure",
         "__expanded__",
     ]
 
@@ -654,7 +795,7 @@ def test_set_features_invalidates_store_cache(
 ) -> None:
     """Changing the feature selection must force a reload of the dataset."""
     _make_dataset_dir(tmp_path, "ds")
-    variable = {"Base/Zone/VertexFields/pressure": None}
+    variable = {"Base_2_2/Zone/VertexFields/pressure": None}
     _install_fake_metadata(
         monkeypatch,
         variable_schema=variable,
@@ -671,8 +812,337 @@ def test_set_features_invalidates_store_cache(
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     service.list_samples("ds")  # populates cache
     assert "ds" in service._store_cache  # noqa: SLF001
-    service.set_features("ds", ["Base/Zone/VertexFields/pressure"])
+    service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
     assert "ds" not in service._store_cache  # noqa: SLF001
+
+
+def test_get_and_clear_features(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _make_dataset_dir(tmp_path, "ds")
+    _install_fake_metadata(
+        monkeypatch,
+        variable_schema={"Base_2_2/Zone/VertexFields/pressure": None},
+        constant_schema={"train": {}},
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    assert service.get_features("ds") is None
+    assert service.set_features("ds", None) is None
+    assert service.get_features("ds") is None
+
+
+def test_split_feature_keys_falls_back_to_dataset_union(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _make_dataset_dir(tmp_path, "ds")
+    _install_fake_metadata(
+        monkeypatch,
+        variable_schema={"var": None},
+        constant_schema={"train": {"const": None}},
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    assert service._split_feature_keys("ds", "train") == {"var", "const"}  # noqa: SLF001
+    assert service._split_feature_keys("ds", "missing") == {"var", "const"}  # noqa: SLF001
+
+
+def test_open_raises_for_empty_dataset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _make_dataset_dir(tmp_path, "ds")
+    _install_fake_init_from_disk(monkeypatch, {"ds": ({}, {})})
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    with pytest.raises(RuntimeError, match="empty"):
+        service.list_samples("ds")
+
+
+def test_open_hub_feature_keyerror_falls_back_unfiltered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo_id = "org/fallback"
+    _install_fake_metadata(
+        monkeypatch,
+        variable_schema={"Base_2_2/Zone/VertexFields/pressure": None},
+        constant_schema={"train": {"Base_2_2": None, "Base_2_2/Zone": None}},
+    )
+    calls: list[object] = []
+
+    def fake_init(_repo: str, features=None):
+        calls.append(features)
+        if features is not None:
+            raise KeyError("missing")
+        return {"train": _FakeDataset(range(1))}, {
+            "train": _FakeConverter({0: object()})
+        }
+
+    import plaid.storage as storage  # noqa: PLC0415
+
+    monkeypatch.setattr(storage, "init_streaming_from_hub", fake_init, raising=False)
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset(repo_id)
+    service.set_features(repo_id, ["Base_2_2/Zone/VertexFields/pressure"])
+    service.list_samples(repo_id)
+    assert calls[0] is not None
+    assert calls[-1] is None
+
+
+def test_load_sample_default_split_fallback_and_missing_split(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _make_dataset_dir(tmp_path, "ds")
+    target = object()
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"only": _FakeDataset(range(1))},
+                {"only": _FakeConverter({0: target})},
+            )
+        },
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    assert service.load_sample(SampleRef("disk", "ds", "missing", "0")) is target
+
+    _make_dataset_dir(tmp_path, "ds2")
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"only": _FakeDataset(range(1))},
+                {"only": _FakeConverter({0: target})},
+            ),
+            "ds2": (
+                {"a": _FakeDataset(range(1)), "b": _FakeDataset(range(1))},
+                {
+                    "a": _FakeConverter({0: object()}),
+                    "b": _FakeConverter({0: object()}),
+                },
+            ),
+        },
+    )
+    service2 = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    with pytest.raises(KeyError):
+        service2.load_sample(SampleRef("disk", "ds2", "missing", "0"))
+
+
+def test_load_sample_empty_augmented_falls_back_unfiltered(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _make_dataset_dir(tmp_path, "ds")
+    _install_fake_metadata(
+        monkeypatch,
+        variable_schema={"Base_2_2/Zone/VertexFields/pressure": None},
+        constant_schema={"train": {}},
+    )
+    target = object()
+    dataset_dict = {"train": _FakeDataset(range(1))}
+    converter = _FeatureAwareConverter({0: target})
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
+    assert service.load_sample(SampleRef("disk", "ds", "train", "0")) is target
+    assert converter.last_features is None
+
+
+class _SummarySample:
+    def __init__(self, report: str = "warning") -> None:
+        import types
+
+        self.features = types.SimpleNamespace(
+            data={}, get_all_time_values=lambda: [2, 1]
+        )
+        self._report = report
+
+    def get_scalar_names(self):
+        return ["s"]
+
+    def get_scalar(self, _name: str):
+        return 3
+
+    def get_global_names(self, **_kwargs):
+        return ["IterationValues", "TimeValues", "g", "bad"]
+
+    def get_global(self, name: str, **_kwargs):
+        if name == "bad":
+            raise RuntimeError("skip")
+        return 4
+
+    def check_completeness(self):
+        return self._report
+
+
+def test_summary_time_globals_and_validation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _make_dataset_dir(tmp_path, "ds")
+    sample = _SummarySample()
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"train": _FakeDataset(range(1))},
+                {"train": _FakeConverter({0: sample})},
+            )
+        },
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef("disk", "ds", "train", "0")
+    summary = service.get_sample_summary(ref)
+    assert summary.globals == {"s": "3"}
+    assert service.list_time_values(ref) == [1.0, 2.0]
+    assert service.describe_globals(ref) == [
+        {"name": "g", "shape": [], "dtype": "int", "preview": "4"}
+    ]
+    validation = service.get_sample_validation(ref)
+    assert validation.ok is True
+    assert validation.warnings == ["warning"]
+
+
+def test_time_globals_and_validation_error_branches(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _make_dataset_dir(tmp_path, "ds")
+
+    class BadTimes(_SummarySample):
+        def __init__(self):
+            super().__init__("error: bad")
+            self.features.get_all_time_values = lambda: (_ for _ in ()).throw(
+                RuntimeError("bad")
+            )
+
+        def get_global_names(self, **_kwargs):
+            raise TypeError
+
+        def get_global(self, _name: str, **_kwargs):
+            raise TypeError
+
+    sample = BadTimes()
+    sample.get_global_names = lambda: ["g"]
+    sample.get_global = lambda _name: 5
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"train": _FakeDataset(range(1))},
+                {"train": _FakeConverter({0: sample})},
+            )
+        },
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef("disk", "ds", "train", "0")
+    assert service.list_time_values(ref) == []
+    assert service.describe_globals(ref, time=1.0)[0]["name"] == "g"
+    assert service.get_sample_validation(ref).errors == ["error: bad"]
+
+    class RaisingService(PlaidDatasetService):
+        def load_sample(self, ref):  # noqa: ARG002
+            raise RuntimeError("load")
+
+    assert RaisingService(ViewerConfig()).get_sample_validation(ref).ok is False
+
+    class BadCheck(_SummarySample):
+        def check_completeness(self):
+            raise RuntimeError("check")
+
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"train": _FakeDataset(range(1))},
+                {"train": _FakeConverter({0: BadCheck()})},
+            )
+        },
+    )
+    assert (
+        PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+        .get_sample_validation(ref)
+        .ok
+        is False
+    )
+
+
+def test_dataset_dir_and_infos_helpers(tmp_path: Path) -> None:
+    service = PlaidDatasetService(ViewerConfig())
+    with pytest.raises(FileNotFoundError):
+        service._dataset_dir("ds")  # noqa: SLF001
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    with pytest.raises(FileNotFoundError):
+        service._dataset_dir("missing")  # noqa: SLF001
+    base = _make_dataset_dir(tmp_path, "ds")
+    assert PlaidDatasetService._load_infos(base) is None  # noqa: SLF001
+    (base / "infos.json").write_text("bad")
+    assert PlaidDatasetService._load_infos(base) is None  # noqa: SLF001
+    (base / "infos.json").write_text('{"a": 1}')
+    assert PlaidDatasetService._load_infos(base) == {"a": 1}  # noqa: SLF001
+    (base / "infos.json").unlink()
+    (base / "infos.yaml").write_text("a: 2")
+    assert PlaidDatasetService._load_infos(base) == {"a": 2}  # noqa: SLF001
+    (base / "infos.yaml").write_text("a: [")
+    assert PlaidDatasetService._load_infos(base) is None  # noqa: SLF001
+
+
+def test_load_infos_handles_read_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = _make_dataset_dir(tmp_path, "ds")
+    (base / "infos.json").write_text('{"a": 1}')
+
+    original_read_text = Path.read_text
+
+    def broken_read_text(self: Path, *args, **kwargs):  # noqa: ANN002, ANN003
+        if self.name == "infos.json":
+            raise OSError("boom")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", broken_read_text)
+    assert PlaidDatasetService._load_infos(base) is None  # noqa: SLF001
+
+
+def test_time_keys_describe_tree_empty_and_cached_service(tmp_path: Path) -> None:
+    import types
+
+    from CGNS.PAT import cgnskeywords as CK
+
+    sample = types.SimpleNamespace(features=types.SimpleNamespace(data={}))
+    assert PlaidDatasetService._time_keys(sample) == []  # noqa: SLF001
+    assert PlaidDatasetService._describe_tree(sample, []) == (
+        {},
+        {},
+        {},
+    ) or PlaidDatasetService._describe_tree(sample, []) == ([], {}, {})  # noqa: SLF001
+
+    visual_base = [
+        "Base",
+        None,
+        [
+            [
+                "Zone",
+                None,
+                [
+                    [
+                        "FlowSolution",
+                        None,
+                        [["Pressure", None, [], CK.DataArray_ts]],
+                        CK.FlowSolution_ts,
+                    ]
+                ],
+                CK.Zone_ts,
+            ]
+        ],
+        CK.CGNSBase_ts,
+    ]
+    tree = ["CGNSTree", None, [visual_base], "CGNSTree_t"]
+    sample = types.SimpleNamespace(features=types.SimpleNamespace(data={0.0: tree}))
+    assert PlaidDatasetService._describe_tree(sample, [0.0]) == (  # noqa: SLF001
+        ["Base"],
+        {"Base": ["Zone"]},
+        {"Base": ["Pressure"]},
+    )
+    _cached_service.cache_clear()
+    assert _cached_service(str(tmp_path), "disk") is _cached_service(
+        str(tmp_path), "disk"
+    )
 
 
 def test_load_sample_auto_advances_cursor_on_first_access(
@@ -739,8 +1209,8 @@ def test_load_sample_falls_back_when_empty_filter_triggers_missing_features(
     degrade to an unfiltered load so the user still sees the mesh.
     """
     _make_dataset_dir(tmp_path, "ds")
-    variable = {"Base/Zone/VertexFields/pressure": None}
-    constant = {"train": {"Base": None, "Base/Zone": None}}
+    variable = {"Base_2_2/Zone/VertexFields/pressure": None}
+    constant = {"train": {"Base": None, "Base_2_2/Zone": None}}
     _install_fake_metadata(
         monkeypatch, variable_schema=variable, constant_schema=constant
     )
@@ -757,7 +1227,7 @@ def test_load_sample_falls_back_when_empty_filter_triggers_missing_features(
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     # Emulate the UI: the user selected a field that exists elsewhere in
     # the dataset metadata but not in this split.
-    service.set_features("ds", ["Base/Zone/VertexFields/pressure"])
+    service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
     ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
 
     assert service.load_sample(ref) is target

@@ -8,6 +8,7 @@ CGNS files, so the tests do not depend on pyCGNS or a concrete PLAID sample.
 from __future__ import annotations
 
 import json
+import types
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,9 @@ from plaid.viewer.models import SampleRef
 from plaid.viewer.services.paraview_artifact_service import (
     ParaviewArtifactService,
     _build_cache_key,
+    _collect_time_values,
+    _plaid_version,
+    ensure_paraview_artifact,
 )
 
 
@@ -104,9 +108,66 @@ def test_cache_key_is_deterministic(ref: SampleRef) -> None:
     assert key_a == key_b
     key_c = _build_cache_key(ref, export_version="2")
     assert key_c != key_a
+    key_d = _build_cache_key(ref, export_version="1", extra={"preset": "a"})
+    assert key_d != key_a
 
 
 def test_get_unknown_artifact_raises(tmp_path: Path) -> None:
     service = ParaviewArtifactService(_FakeDatasetService(), tmp_path)
     with pytest.raises(KeyError):
         service.get("unknown")
+
+
+def test_get_returns_created_artifact(tmp_path: Path, ref: SampleRef) -> None:
+    service = ParaviewArtifactService(_FakeDatasetService(), tmp_path)
+    artifact = service.ensure_artifact(ref)
+    assert service.get(artifact.artifact_id) is artifact
+
+
+def test_collect_time_values_empty() -> None:
+    assert (
+        _collect_time_values(
+            types.SimpleNamespace(features=types.SimpleNamespace(data={}))
+        )
+        == []
+    )
+    assert _collect_time_values(
+        types.SimpleNamespace(features=types.SimpleNamespace(data={2: None, 1: None}))
+    ) == [1.0, 2.0]
+
+
+def test_ensure_artifact_raises_when_sample_writes_no_cgns(
+    tmp_path: Path, ref: SampleRef
+) -> None:
+    class EmptySample:
+        features = types.SimpleNamespace(data={0.0: None})
+
+        def save_to_dir(self, path: Path, overwrite: bool = False) -> None:  # noqa: ARG002
+            (Path(path) / "meshes").mkdir(parents=True, exist_ok=True)
+
+    class EmptyService:
+        def load_sample(self, _ref: SampleRef):
+            return EmptySample()
+
+    service = ParaviewArtifactService(EmptyService(), tmp_path)  # type: ignore[arg-type]
+    with pytest.raises(RuntimeError, match="produced no CGNS"):
+        service.ensure_artifact(ref)
+
+
+def test_functional_wrapper_creates_artifact(tmp_path: Path, ref: SampleRef) -> None:
+    artifact = ensure_paraview_artifact(
+        ref,
+        cache_dir=tmp_path,
+        dataset_service=_FakeDatasetService(),  # type: ignore[arg-type]
+    )
+    assert artifact.cgns_path.exists()
+
+
+def test_plaid_version_unknown(monkeypatch: pytest.MonkeyPatch) -> None:
+    import importlib.metadata
+
+    def raise_not_found(_name: str) -> str:
+        raise importlib.metadata.PackageNotFoundError
+
+    monkeypatch.setattr(importlib.metadata, "version", raise_not_found)
+    assert _plaid_version() == "unknown"

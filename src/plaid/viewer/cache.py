@@ -41,7 +41,7 @@ def _process_is_alive(pid: int) -> bool:
     except PermissionError:
         # The process exists but is owned by someone else.
         return True
-    except OSError as exc:  # pragma: no cover - defensive
+    except OSError as exc:
         return exc.errno != errno.ESRCH
     return True
 
@@ -73,7 +73,7 @@ def sweep_orphans(temp_root: Path | None = None) -> list[Path]:
             shutil.rmtree(entry, ignore_errors=True)
             removed.append(entry)
             logger.info("Removed orphan viewer cache: %s", entry)
-        except OSError as exc:  # pragma: no cover - defensive
+        except OSError as exc:
             logger.warning("Could not remove orphan viewer cache %s: %s", entry, exc)
     return removed
 
@@ -144,14 +144,14 @@ class CacheRoot:
     def _safe_cleanup(self) -> None:
         try:
             shutil.rmtree(self._path, ignore_errors=True)
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception as exc:
             logger.warning("Failed to clean viewer cache %s: %s", self._path, exc)
 
     def _install_signal_handlers(self) -> None:
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
                 previous = signal.getsignal(sig)
-            except (ValueError, OSError):  # pragma: no cover - non-main thread
+            except (ValueError, OSError):
                 continue
 
             def handler(signum, frame, _prev=previous):
@@ -164,5 +164,5 @@ class CacheRoot:
 
             try:
                 signal.signal(sig, handler)
-            except (ValueError, OSError):  # pragma: no cover - non-main thread
+            except (ValueError, OSError):
                 pass

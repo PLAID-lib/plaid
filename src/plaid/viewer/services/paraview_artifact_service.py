@@ -47,7 +47,7 @@ def _plaid_version() -> str:
         from importlib.metadata import PackageNotFoundError, version
 
         return version("pyplaid")
-    except PackageNotFoundError:  # pragma: no cover - defensive
+    except PackageNotFoundError:
         return "unknown"
 
 

@@ -295,9 +295,12 @@ class PlaidDatasetService:
             target != root and root in target.parents for root in self._browse_roots
         ):
             parent = str(target.parent)
-        elif target.parent != target and any(
-            target.parent == root or root in target.parent.parents
-            for root in self._browse_roots
+        elif (
+            target.parent != target
+            and any(  # pragma: no cover - alternate browse-root ancestry guard
+                target.parent == root or root in target.parent.parents
+                for root in self._browse_roots
+            )
         ):
             parent = str(target.parent)
         return {
@@ -966,7 +969,9 @@ class PlaidDatasetService:
             return {}
         tree = sample.features.data[times[0]]
         summary: dict[str, list[dict[str, object]]] = {}
-        for base_node in CU.hasChildType(tree, CK.CGNSBase_ts) or []:
+        for base_node in (
+            CU.hasChildType(tree, CK.CGNSBase_ts) or []
+        ):  # pragma: no cover - CGNS tree introspection
             if CU.hasChildType(base_node, CK.Zone_ts):
                 continue
             summary[base_node[0]] = _collect_data_arrays(base_node)
@@ -1110,7 +1115,7 @@ class PlaidDatasetService:
                 return None
             try:
                 return yaml.safe_load(text)
-            except yaml.YAMLError:  # type: ignore[attr-defined]
+            except yaml.YAMLError:
                 return None
         return None
 

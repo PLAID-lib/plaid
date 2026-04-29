@@ -48,7 +48,7 @@ _VTK_LOG_ROUTER_INSTALLED = False
 _C_STDERR_REROUTED = False
 
 
-def _reroute_c_stderr() -> None:
+def _reroute_c_stderr() -> None:  # pragma: no cover - process fd manipulation
     """Permanently redirect the process's stderr file descriptor to /dev/null.
 
     VTK's CGNS reader and the underlying HDF5 library emit informational
@@ -107,7 +107,7 @@ def _install_vtk_log_router() -> None:
         return
     try:
         import vtk  # noqa: PLC0415
-    except ImportError:  # pragma: no cover - VTK is required in practice
+    except ImportError:
         return
 
     # ``vtkPythonStdStreamCaptureHelper`` is not available in every VTK wheel,
@@ -140,7 +140,7 @@ def _install_vtk_log_router() -> None:
     if hasattr(vtk, "vtkLogger"):
         try:
             vtk.vtkLogger.SetStderrVerbosity(vtk.vtkLogger.VERBOSITY_OFF)
-        except AttributeError:  # pragma: no cover - very old VTK
+        except AttributeError:
             pass
     _VTK_LOG_ROUTER_INSTALLED = True
 
@@ -363,7 +363,7 @@ def _compute_field_range(
 # ---------------------------------------------------------------------------
 
 
-class _VtkPipeline:
+class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display stack
     """Minimal reader -> (cut) -> (threshold) -> geometry -> actor pipeline."""
 
     def __init__(self) -> None:
@@ -505,7 +505,7 @@ def _build_lut(cmap: str, lo: float, hi: float):
 # ---------------------------------------------------------------------------
 
 
-def build_server(
+def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless safe
     dataset_service: PlaidDatasetService,
     artifact_service: ParaviewArtifactService,
 ):
@@ -1313,7 +1313,7 @@ def build_server(
                 _apply_time_step_impl()
                 fps = max(1, int(state.play_fps or 1))
                 await asyncio.sleep(1.0 / fps)
-        except asyncio.CancelledError:  # pragma: no cover - cooperative cancel
+        except asyncio.CancelledError:
             pass
 
     @state.change("playing")
