@@ -87,6 +87,14 @@ def test_process_is_alive_branches(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _process_is_alive(123) is False
 
 
+def test_process_is_alive_uses_windows_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cache_mod.os, "name", "nt")
+    monkeypatch.setattr(cache_mod, "_windows_process_is_alive", lambda pid: pid == 123)
+
+    assert _process_is_alive(123) is True
+    assert _process_is_alive(456) is False
+
+
 def test_sweep_orphans_ignores_non_dirs_and_non_matching_names(tmp_path: Path) -> None:
     (tmp_path / "plain-file").write_text("x")
     keep = tmp_path / "not-plaid-viewer"

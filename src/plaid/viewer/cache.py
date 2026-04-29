@@ -7,7 +7,7 @@ removed at shutdown. Four cleanup layers cover all practical failure modes:
 2. Signal handlers for ``SIGINT`` / ``SIGTERM``.
 3. A FastAPI lifespan context (provided by callers).
 4. An orphan sweep at startup that removes directories left behind by
-   previously-crashed processes (detected via ``os.kill(pid, 0)``).
+   previously-crashed processes.
 """
 
 from __future__ import annotations
@@ -30,10 +30,36 @@ _EPHEMERAL_PREFIX = "plaid-viewer-"
 _EPHEMERAL_PATTERN = re.compile(r"^plaid-viewer-(?P<pid>\d+)-(?P<token>[0-9a-f]+)$")
 
 
+def _windows_process_is_alive(pid: int) -> bool:  # pragma: no cover
+    """Return process liveness on Windows without sending a signal."""
+    import ctypes  # noqa: PLC0415
+
+    error_access_denied = 5
+    process_query_limited_information = 0x1000
+    still_active = 259
+
+    windll = getattr(ctypes, "WinDLL")
+    get_last_error = getattr(ctypes, "get_last_error")
+    kernel32 = windll("kernel32", use_last_error=True)
+    handle = kernel32.OpenProcess(process_query_limited_information, False, pid)
+    if not handle:
+        return get_last_error() == error_access_denied
+
+    try:
+        exit_code = ctypes.c_ulong()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == still_active
+    finally:
+        kernel32.CloseHandle(handle)
+
+
 def _process_is_alive(pid: int) -> bool:
     """Return ``True`` if a process with the given pid is still running."""
     if pid <= 0:
         return False
+    if os.name == "nt":
+        return _windows_process_is_alive(pid)
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -109,6 +135,7 @@ class CacheRoot:
             if install_signal_handlers:
                 self._install_signal_handlers()
         else:
+            assert persistent_dir is not None
             self._path = Path(persistent_dir)
             self._path.mkdir(parents=True, exist_ok=True)
         self._closed = False
