@@ -85,9 +85,18 @@ dev = [
     "sphinx-tabs>=3.4.7",
     "sphinxcontrib-bibtex>=2.6.5",
 ]
+viewer = [
+    "trame>=3.6,<4.0",
+    "trame-vtk>=2.8,<3.0",
+    "trame-vuetify>=2.7,<3.0",
+    "vtk>=9.6.1",
+]
 
 [tool.coverage.run]
 omit = ["src/plaid/examples/*"]
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"
+
+[project.scripts]
+plaid-viewer = "plaid.viewer.cli:main"
