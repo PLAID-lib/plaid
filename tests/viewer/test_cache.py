@@ -60,6 +60,9 @@ def test_sweep_orphans_keeps_live_pid_dir(tmp_path: Path) -> None:
 
 
 def test_process_is_alive_branches(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Force the POSIX-style branch; Windows delegation is tested separately below.
+    monkeypatch.setattr(cache_mod.os, "name", "posix")
+
     assert _process_is_alive(0) is False
 
     def missing(_pid: int, _sig: int) -> None:
