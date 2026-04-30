@@ -2485,6 +2485,14 @@ dependencies = [
     { name = "zarr" },
 ]
 
+[package.optional-dependencies]
+viewer = [
+    { name = "trame" },
+    { name = "trame-vtk" },
+    { name = "trame-vuetify" },
+    { name = "vtk" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "furo" },
@@ -2504,12 +2512,6 @@ dev = [
     { name = "sphinx-tabs" },
     { name = "sphinxcontrib-bibtex" },
 ]
-viewer = [
-    { name = "trame" },
-    { name = "trame-vtk" },
-    { name = "trame-vuetify" },
-    { name = "vtk" },
-]
 
 [package.metadata]
 requires-dist = [
@@ -2521,8 +2523,13 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "scikit-learn", specifier = ">=1.4,<2" },
     { name = "tqdm", specifier = ">=4.60,<5" },
+    { name = "trame", marker = "extra == 'viewer'", specifier = ">=3.6,<4.0" },
+    { name = "trame-vtk", marker = "extra == 'viewer'", specifier = ">=2.8,<3.0" },
+    { name = "trame-vuetify", marker = "extra == 'viewer'", specifier = ">=2.7,<3.0" },
+    { name = "vtk", marker = "extra == 'viewer'", specifier = ">=9.6.1" },
     { name = "zarr", specifier = ">=3.1,<4" },
 ]
+provides-extras = ["viewer"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2541,12 +2548,6 @@ dev = [
     { name = "sphinx-autoapi", specifier = ">=3.7.0" },
     { name = "sphinx-tabs", specifier = ">=3.4.7" },
     { name = "sphinxcontrib-bibtex", specifier = ">=2.6.5" },
-]
-viewer = [
-    { name = "trame", specifier = ">=3.6,<4.0" },
-    { name = "trame-vtk", specifier = ">=2.8,<3.0" },
-    { name = "trame-vuetify", specifier = ">=2.7,<3.0" },
-    { name = "vtk", specifier = ">=9.6.1" },
 ]
 
 [[package]]
