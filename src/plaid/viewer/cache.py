@@ -1,0 +1,179 @@
+"""Ephemeral artifact cache for the dataset viewer.
+
+The cache lives under a per-process temporary directory and is removed at
+shutdown. Four cleanup layers cover all practical failure modes:
+
+1. ``atexit.register`` for normal Python exit.
+2. Signal handlers for ``SIGINT`` / ``SIGTERM``.
+3. A context manager (``with CacheRoot() as cache:`` in the CLI).
+4. An orphan sweep at startup that removes directories left behind by
+   previously-crashed processes.
+"""
+
+from __future__ import annotations
+
+import atexit
+import errno
+import logging
+import os
+import re
+import shutil
+import signal
+import tempfile
+import uuid
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Ephemeral tempdir naming: ``plaid-viewer-{pid}-{uuid4.hex}``.
+_EPHEMERAL_PREFIX = "plaid-viewer-"
+_EPHEMERAL_PATTERN = re.compile(r"^plaid-viewer-(?P<pid>\d+)-(?P<token>[0-9a-f]+)$")
+
+
+def _windows_process_is_alive(pid: int) -> bool:  # pragma: no cover
+    """Return process liveness on Windows without sending a signal."""
+    import ctypes  # noqa: PLC0415
+
+    error_access_denied = 5
+    process_query_limited_information = 0x1000
+    still_active = 259
+
+    windll = getattr(ctypes, "WinDLL")
+    get_last_error = getattr(ctypes, "get_last_error")
+    kernel32 = windll("kernel32", use_last_error=True)
+    handle = kernel32.OpenProcess(process_query_limited_information, False, pid)
+    if not handle:
+        return get_last_error() == error_access_denied
+
+    try:
+        exit_code = ctypes.c_ulong()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == still_active
+    finally:
+        kernel32.CloseHandle(handle)
+
+
+def _process_is_alive(pid: int) -> bool:
+    """Return ``True`` if a process with the given pid is still running."""
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        return _windows_process_is_alive(pid)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # The process exists but is owned by someone else.
+        return True
+    except OSError as exc:
+        return exc.errno != errno.ESRCH
+    return True
+
+
+def sweep_orphans(temp_root: Path | None = None) -> list[Path]:
+    """Remove viewer tempdirs whose owning process is no longer running.
+
+    Args:
+        temp_root: Base temp directory to scan. Defaults to
+            :func:`tempfile.gettempdir`.
+
+    Returns:
+        List of directories that were removed.
+    """
+    root = Path(temp_root) if temp_root is not None else Path(tempfile.gettempdir())
+    removed: list[Path] = []
+    if not root.is_dir():
+        return removed
+    for entry in root.iterdir():
+        if not entry.is_dir():
+            continue
+        match = _EPHEMERAL_PATTERN.match(entry.name)
+        if match is None:
+            continue
+        pid = int(match.group("pid"))
+        if _process_is_alive(pid):
+            continue
+        try:
+            shutil.rmtree(entry, ignore_errors=True)
+            removed.append(entry)
+            logger.info("Removed orphan viewer cache: %s", entry)
+        except OSError as exc:
+            logger.warning("Could not remove orphan viewer cache %s: %s", entry, exc)
+    return removed
+
+
+class CacheRoot:
+    """Context-manager-friendly ephemeral artifact cache directory.
+
+    Creates a new tempdir named ``plaid-viewer-{pid}-{token}`` under the OS
+    temp root. The directory is removed at process exit (``atexit``), on
+    ``SIGINT`` / ``SIGTERM``, and when the context manager is closed.
+    """
+
+    def __init__(
+        self,
+        *,
+        install_signal_handlers: bool = True,
+        run_orphan_sweep: bool = True,
+    ) -> None:
+        if run_orphan_sweep:
+            sweep_orphans()
+        token = uuid.uuid4().hex[:12]
+        base = Path(tempfile.gettempdir())
+        self._path = base / f"{_EPHEMERAL_PREFIX}{os.getpid()}-{token}"
+        self._path.mkdir(parents=True, exist_ok=False)
+        atexit.register(self._safe_cleanup)
+        if install_signal_handlers:
+            self._install_signal_handlers()
+        self._closed = False
+
+    # ------------------------------------------------------------------ API
+
+    @property
+    def path(self) -> Path:
+        """Root directory of the cache."""
+        return self._path
+
+    def close(self) -> None:
+        """Remove the cache directory."""
+        if self._closed:
+            return
+        self._closed = True
+        self._safe_cleanup()
+
+    def __enter__(self) -> "CacheRoot":  # noqa: D105
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:  # noqa: D105
+        self.close()
+
+    # -------------------------------------------------------------- Internals
+
+    def _safe_cleanup(self) -> None:
+        try:
+            shutil.rmtree(self._path, ignore_errors=True)
+        except Exception as exc:
+            logger.warning("Failed to clean viewer cache %s: %s", self._path, exc)
+
+    def _install_signal_handlers(self) -> None:
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            try:
+                previous = signal.getsignal(sig)
+            except (ValueError, OSError):
+                continue
+
+            def handler(signum, frame, _prev=previous):
+                self._safe_cleanup()
+                if callable(_prev) and _prev not in (signal.SIG_DFL, signal.SIG_IGN):
+                    _prev(signum, frame)
+                # Re-raise the default behaviour to keep expected exit codes.
+                signal.signal(signum, signal.SIG_DFL)
+                os.kill(os.getpid(), signum)
+
+            try:
+                signal.signal(sig, handler)
+            except (ValueError, OSError) as exc:
+                logger.debug("Unable to install handler for signal %s: %s", sig, exc)
+                continue

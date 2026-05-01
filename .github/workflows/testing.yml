@@ -60,7 +60,7 @@ jobs:
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
-          uv sync --dev
+          uv sync --dev --extra viewer
 
       - name: Run tests (Linux)
         if: runner.os == 'Linux'
