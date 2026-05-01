@@ -3,6 +3,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
+import gc
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -98,6 +99,8 @@ if __name__ == "__main__":
                 new_dset.load(out_dir) #, processes_number=nb_cores)
                 t1 = time.perf_counter()
                 durations.append(t1 - t0)
+                del new_dset
+
 
             all_durations.append(durations)
             # rich.print(f'<{nb_cores=:2d}> load took: {np.min(durations):.3f} s | {np.mean(durations):.3f} s | {np.max(durations):.3f} s | {np.std(durations):.3f} s')
@@ -120,5 +123,6 @@ if __name__ == "__main__":
         plt.savefig(
             f"bench_{args.number_of_samples}_{args.number_of_tests}_{NB_CORES}.png"
         )
+        gc.collect()
 
     os.remove("bench_100_5_2.png")
