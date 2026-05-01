@@ -1,6 +1,5 @@
 # %% Imports
 
-import copy
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -12,7 +11,6 @@ import plaid
 import plaid.containers.dataset as dataset_module
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
-from plaid.utils.base import DeprecatedError, ShapeError
 
 # %% Fixtures
 

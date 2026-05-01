@@ -26,16 +26,14 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic import Field as PydanticField
 
 from ..constants import (
-    AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
     AUTHORIZED_FEATURE_TYPES_T,
     CGNS_FIELD_LOCATIONS,
 )
-from ..types import Array, ArrayDType
+from ..types import ArrayDType
 from ..utils import cgns_helper as CGH
 from ..utils.base import delegate_methods, safe_len
 from .features import SampleFeatures
-from .utils import get_feature_details_from_path
 
 logger = logging.getLogger(__name__)
 
