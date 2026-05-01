@@ -13,7 +13,6 @@ import numpy as np
 import pytest
 
 from plaid.containers.utils import (
-    decode_cgns_url_details,
     get_feature_details_from_path,
     get_number_of_samples,
     get_sample_ids,
@@ -147,16 +146,9 @@ class Test_Container_Utils:
             ),
         ],
     )
-    def test_decode_cgns_url_details(self, url, expected):
-        assert decode_cgns_url_details(url) == expected
+    def test_get_feature_details_from_path(self, url, expected):
+        assert get_feature_details_from_path(url) == expected
 
-    def test_decode_cgns_url_details_invalid_base(self):
-        with pytest.raises(AssertionError, match="path not recognized"):
-            decode_cgns_url_details("Dummy")
-
-    def test_decode_cgns_url_details_zone_bc_current_behavior(self):
-        with pytest.raises(NameError):
-            decode_cgns_url_details("Base_2_2/Zone/ZoneBC/BottomLeft")
 
     # def test_check_features_type_homogeneity(self):
     #     check_features_type_homogeneity(
@@ -259,19 +251,19 @@ class Test_Container_Utils:
     #     with pytest.raises(AssertionError):
     #         get_feature_details_from_path("Dummy/Dummy/Dummy/Dummy/Dummy/Dummy/Dummy")
 
-    # def test_validate_required_infos(self):
-    #     infos = {
-    #         "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
-    #     }
-    #     validate_required_infos(infos)
+    def test_validate_required_infos(self):
+        infos = {
+            "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
+        }
+        validate_required_infos(infos)
 
-    #     infos_missing_license = {
-    #         "legal": {
-    #             "owner": "Joh Doe",
-    #         },
-    #     }
-    #     with pytest.raises(ValueError):
-    #         validate_required_infos(infos_missing_license)
+        infos_missing_license = {
+            "legal": {
+                "owner": "Joh Doe",
+            },
+        }
+        with pytest.raises(ValueError):
+            validate_required_infos(infos_missing_license)
 
     #     infos_dummy = {"dummy": "toto"}
     #     with pytest.raises(AssertionError):

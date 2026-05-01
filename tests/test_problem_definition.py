@@ -30,9 +30,9 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
     problem_definition.name = "regression_1"
 
     # ----
-    feature_identifier = "feature"
-    predict_feature_identifier = "predict_feature"
-    test_feature_identifier = "test_feature"
+    feature_identifier = "Global/feature"
+    predict_feature_identifier = "Global/predict_feature"
+    test_feature_identifier = "Global/test_feature"
 
     problem_definition.add_in_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
@@ -81,8 +81,8 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
 
     #new_split = {"train": [0, 1, 2], "test": [3, 4]}
     #problem_definition.set_split(new_split)
-    problem_definition.train_split = {"train_1": [0, 1, 2], "train_2": "all"}
-    problem_definition.test_split = {"test_1": "all", "test_2": [0, 2]}
+    problem_definition.train_split = {"train_1": [0, 1, 2]}
+    problem_definition.test_split = {"test_1": "all"}
 
     #new_split = {"train_1": [0, 1, 2], "train_2": "all"}
     #problem_definition.train_split = (new_split)
@@ -805,21 +805,30 @@ class Test_ProblemDefinition:
     #     all_split = problem.get_split()
     #     assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
 
-    # def test__load_from_file_(
-    #     self, problem_definition_full: ProblemDefinition, tmp_path: Path
-    # ):
-    #     path = tmp_path / "pb_def"
-    #     problem_definition_full.save_to_file(path)
+    def test__load_from_file_(
+        self, problem_definition_full: ProblemDefinition, tmp_path: Path
+    ):
+
+        path = tmp_path / "pb_def"
+        problem_definition_full.save_to_file(path)
     #     #
-    #     problem = ProblemDefinition()
-    #     problem._load_from_file_(path)
-    #     assert problem.get_task() == "regression"
-    #     assert set(problem.get_input_scalars_names()) == set(
-    #         ["predict_scalar", "scalar", "test_scalar"]
-    #     )
-    #     assert set(problem.get_output_scalars_names()) == set(
-    #         ["predict_scalar", "scalar", "test_scalar"]
-    #     )
+        problem = ProblemDefinition()
+        problem._load_from_file_(path)
+        assert problem.task == "regression"
+        assert set(problem.input_features) == set(['Base_2_2/Zone/PointData/sig12',
+         'Base_2_2/Zone/PointData/U1',
+         'Base_2_2/Zone/PointData/U2',
+         'Global/predict_feature',
+         'Global/test_feature',
+         'Global/feature']
+        )
+        assert set(problem.output_features) == set(
+            ['Global/predict_feature',
+         'Base_2_2/Zone/PointData/sig12',
+         'Global/feature',
+         'Base_2_2/Zone/PointData/U2',
+         'Global/test_feature']
+        )
 
     # def test_load(self, problem_definition_full: ProblemDefinition, tmp_path: Path):
     #     d_path = tmp_path / "problem_definition"
@@ -855,10 +864,10 @@ class Test_ProblemDefinition:
     #     problem = ProblemDefinition.load(d_path)
     #     assert problem.get_version() == Version("0.1.7")
 
-    # def test__load_from_dir__empty_dir(self, tmp_path):
-    #     problem = ProblemDefinition()
-    #     with pytest.raises(FileNotFoundError):
-    #         problem._load_from_dir_(tmp_path)
+    #def test__load_from_dir__empty_dir(self, tmp_path):
+    #    problem = ProblemDefinition()
+    #    with pytest.raises(FileNotFoundError):
+    #        problem._load_from_dir_(tmp_path)
 
     # def test__load_from_dir__non_existing_dir(self):
     #     problem = ProblemDefinition()
@@ -866,11 +875,11 @@ class Test_ProblemDefinition:
     #     with pytest.raises(FileNotFoundError):
     #         problem._load_from_dir_(non_existing_dir)
 
-    # def test__load_from_file__non_existing_file(self):
-    #     problem = ProblemDefinition()
-    #     non_existing_path = Path("non_existing_path")
-    #     with pytest.raises(FileNotFoundError):
-    #         problem._load_from_file_(non_existing_path)
+    def test__load_from_file__non_existing_file(self):
+        problem = ProblemDefinition()
+        non_existing_path = Path("non_existing_path")
+        with pytest.raises(FileNotFoundError):
+            problem._load_from_file_(non_existing_path)
 
     # def test__load_from_dir__path_is_file(self, tmp_path):
     #     problem = ProblemDefinition()
