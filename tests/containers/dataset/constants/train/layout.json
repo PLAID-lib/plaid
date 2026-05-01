@@ -1,0 +1,142 @@
+{
+  "Base_2_3": {
+    "offset": 0,
+    "shape": [
+      2
+    ],
+    "dtype": "<i4"
+  },
+  "Base_2_3/2D": null,
+  "Base_2_3/2D_times": null,
+  "Base_2_3/Zone": {
+    "offset": 8,
+    "shape": [
+      1,
+      3
+    ],
+    "dtype": "<i8"
+  },
+  "Base_2_3/Zone/Elements_TRI_3": {
+    "offset": 32,
+    "shape": [
+      2
+    ],
+    "dtype": "<i4"
+  },
+  "Base_2_3/Zone/Elements_TRI_3/ElementConnectivity_times": {
+    "offset": 40,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/Elements_TRI_3/ElementRange": {
+    "offset": 64,
+    "shape": [
+      2
+    ],
+    "dtype": "<i8"
+  },
+  "Base_2_3/Zone/Elements_TRI_3/ElementRange_times": {
+    "offset": 80,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/Elements_TRI_3_times": {
+    "offset": 104,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/FamilyName": {
+    "offset": 128,
+    "shape": [
+      2
+    ],
+    "dtype": "|S1"
+  },
+  "Base_2_3/Zone/FamilyName_times": {
+    "offset": 130,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/GridCoordinates": null,
+  "Base_2_3/Zone/GridCoordinates/CoordinateX_times": {
+    "offset": 154,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/GridCoordinates/CoordinateY_times": {
+    "offset": 178,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/GridCoordinates/CoordinateZ_times": {
+    "offset": 202,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/GridCoordinates_times": null,
+  "Base_2_3/Zone/VertexFields": null,
+  "Base_2_3/Zone/VertexFields/GridLocation": {
+    "offset": 226,
+    "shape": [
+      6
+    ],
+    "dtype": "|S1"
+  },
+  "Base_2_3/Zone/VertexFields/GridLocation_times": {
+    "offset": 232,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/VertexFields/pressure_times": {
+    "offset": 256,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone/VertexFields_times": null,
+  "Base_2_3/Zone/ZoneType": {
+    "offset": 280,
+    "shape": [
+      12
+    ],
+    "dtype": "|S1"
+  },
+  "Base_2_3/Zone/ZoneType_times": {
+    "offset": 292,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3/Zone_times": {
+    "offset": 316,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  },
+  "Base_2_3_times": {
+    "offset": 340,
+    "shape": [
+      3
+    ],
+    "dtype": "<f8"
+  }
+}
