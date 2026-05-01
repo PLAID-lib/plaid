@@ -1,7 +1,6 @@
 """Implementation of the `ProblemDefinition` class."""
 # %% Imports
 
-from os import name, path
 import sys
 
 if sys.version_info >= (3, 11):
@@ -11,22 +10,17 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
-import csv
-import json
 import logging
 from pathlib import Path
-from typing import Optional, Sequence, Union
+from typing import Any, Literal, Optional, Sequence, Union
 
 import yaml
-from packaging.version import Version
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .constants import (
-    AUTHORIZED_SCORE_FUNCTIONS,
-    AUTHORIZED_TASKS,
-    AUTHORIZED_TASKS_T,
     AUTHORIZED_SCORE_FUNCTIONS_T,
+    AUTHORIZED_TASKS_T,
 )
-
 from .types import IndexType
 
 # %% Globals
@@ -37,11 +31,9 @@ logger = logging.getLogger(__name__)
 
 # %% Classes
 
-from collections.abc import Mapping, Sequence
-from pathlib import Path
-from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
+
+
 
 
 def _normalize_list(v):
@@ -73,11 +65,26 @@ class ProblemDefinition(BaseModel):
     def from_path(
         path: str | Path, name: str | None = None, **overrides
     ) -> "ProblemDefinition":
+        """Load a problem definition from a YAML file located at the specified path.
 
+        The YAML file should contain one or more problem definitions, and the desired definition can be selected by its name.
+
+        Args:
+            path (str | Path): The file path to the YAML file containing problem definitions.
+            name (str | None, optional): The name of the problem definition to load. If None, it will attempt to load the
+            only problem definition available in the file. Defaults to None.
+            **overrides: Additional keyword arguments to override specific fields in the loaded problem definition.
+
+        Raises:
+            ValueError: If the specified name is not found in the YAML file or if multiple problem definitions are present
+            without a specified name.
+
+        Returns:
+            ProblemDefinition: The loaded problem definition.
+        """
         from plaid.storage import load_problem_definitions_from_disk
 
         all_pb_def = load_problem_definitions_from_disk(path=Path(path))
-        name = overrides.get("name", name)
         available = ", ".join(sorted(all_pb_def))
         if name is not None:
             if name not in all_pb_def:
@@ -104,6 +111,7 @@ class ProblemDefinition(BaseModel):
     @field_validator("input_features", mode="before")
     @classmethod
     def normalize_in_features_identifiers(cls, v):
+        """Normalize input features identifiers by ensuring they are unique and sorted."""
         if len(set(v)) != len(v):
             raise ValueError("duplicated values in input_features")
         return _normalize_list(v)
@@ -111,6 +119,7 @@ class ProblemDefinition(BaseModel):
     @field_validator("train_split", "test_split", mode="after")
     @classmethod
     def check_split_has_only_one_obj(cls, v):
+        """Ensure that the split dictionaries contain only one key-value pair."""
         if len(v) > 1:
             raise ValueError(
                 "Splits only support one element (dict with only one object)"
@@ -120,11 +129,13 @@ class ProblemDefinition(BaseModel):
     @field_validator("output_features", mode="before")
     @classmethod
     def normalize_out_features_identifiers(cls, v):
+        """Normalize output features identifiers by ensuring they are unique and sorted."""
         if len(set(v)) != len(v):
             raise ValueError("duplicated values in output_features")
         return _normalize_list(v)
 
     def __setattr__(self, name: str, value: Any) -> None:
+        """Override the default attribute setting behavior to enforce immutability for certain fields and log warnings for others."""
         # to set the name, task, score_function only once and oly once
         if name in ["name", "task", "score_function"]:
             current_value = getattr(self, name, None)
@@ -182,6 +193,10 @@ class ProblemDefinition(BaseModel):
         """
         if indices_name is not None:
             if indices_name == "train":
+                if self.train_split == "all":
+                    return "all"
+                elif self.train_split is None:
+                    return "all"
                 return next(iter(self.train_split.values()))
             elif indices_name == "test":
                 return next(iter(self.test_split.values()))
@@ -191,12 +206,12 @@ class ProblemDefinition(BaseModel):
                 )
         res = {}
 
-        if self.train_split != None:
+        if self.train_split is not None:
             assert len(self.train_split) == 1
             train_split_ids = next(iter(self.train_split.values()))
             res["train"] = train_split_ids
 
-        if self.test_split != None:
+        if self.test_split is not None:
             assert len(self.test_split) == 1
             test_split_ids = next(iter(self.test_split.values()))
             res["test"] = test_split_ids
@@ -225,7 +240,6 @@ class ProblemDefinition(BaseModel):
 
                 problem.add_in_features_identifiers("angle")
         """
-
         if isinstance(inputs, str):
             input_feature = inputs
             if input_feature in self.input_features:
@@ -264,7 +278,6 @@ class ProblemDefinition(BaseModel):
 
                 problem.add_out_features_identifiers("angle")
         """
-
         if isinstance(outputs, str):
             output_feature = outputs
             if output_feature in self.output_features:
@@ -282,7 +295,7 @@ class ProblemDefinition(BaseModel):
         for output_feature in outputs:
             self.add_out_features_identifiers(output_feature)
 
-    def _generate_problem_infos_dict(self) -> dict[str, Union[str, list]]:
+    def _generate_problem_infos_dict(self) -> dict[str, Union[str, list[str|int]]]:
         """Generate a dictionary containing all relevant problem definition data.
 
         Returns:
@@ -291,15 +304,9 @@ class ProblemDefinition(BaseModel):
         data = {
             "task": self.task,
             "score_function": self.score_function,
-            "input_features": [],
-            "output_features": [],
+            "input_features": self.input_features.copy(),
+            "output_features": self.output_features.copy(),
         }
-        for tup in self.input_features:
-            data["input_features"].append(tup)
-
-        for tup in self.output_features:
-            data["output_features"].append(tup)
-
 
         if self.train_split is not None:
             data["train_split"] = self.train_split
