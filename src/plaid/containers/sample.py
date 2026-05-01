@@ -197,7 +197,7 @@ class Sample(BaseModel):
 
     def add_feature(
         self,
-        feature_url: str,
+        feature_path: str,
         feature: ArrayDType,
     ) -> Self:
         """Add a feature to current sample.
@@ -219,8 +219,8 @@ class Sample(BaseModel):
         #    feature_identifier
         #)
 
-        from .utils import decode_cgns_url_details
-        feature_details = decode_cgns_url_details(feature_url)
+        from .utils import get_feature_details_from_path
+        feature_details = get_feature_details_from_path(feature_path)
 
         feature_type = feature_details.pop("type")
         feature_subtype = feature_details.pop("sub_type",None)
@@ -247,7 +247,7 @@ class Sample(BaseModel):
 
     def del_feature(
         self,
-        feature_url: str,
+        feature_path: str,
     ) -> Self:
         """Remove a feature from current sample.
 
@@ -263,8 +263,8 @@ class Sample(BaseModel):
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
 
-        from .utils import decode_cgns_url_details
-        feature_details = decode_cgns_url_details(feature_url)
+        from .utils import get_feature_details_from_path
+        feature_details = get_feature_details_from_path(feature_path)
 
         feature_type = feature_details.pop("type")
         feature_subtype = feature_details.pop("sub_type",None)
