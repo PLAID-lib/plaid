@@ -149,29 +149,47 @@ class ParaviewArtifactService:
         self._export_version = export_version
         self._extra = dict(extra_cache_key_fields or {})
         self._by_id: dict[str, ParaviewArtifact] = {}
+        # Path of the most recently ensured artifact. The cache keeps at most
+        # one artifact on disk at any time: once VTK has read the CGNS file
+        # into memory (``vtkCGNSReader.Update()`` in the trame pipeline), the
+        # on-disk copy is no longer needed, so we delete it as soon as the
+        # user asks for another sample.
+        self._current_root: Path | None = None
 
     # ------------------------------------------------------------ Public API
 
     def ensure_artifact(
         self, ref: SampleRef, *, force: bool = False
     ) -> ParaviewArtifact:
-        """Return a :class:`ParaviewArtifact` for ``ref``, creating it if needed."""
+        """Return a :class:`ParaviewArtifact` for ``ref``, creating it if needed.
+
+        The cache holds at most one artifact: any previously-ensured artifact
+        whose layout root differs from ``ref``'s is removed from disk.
+        """
         cache_key = _build_cache_key(
             ref, export_version=self._export_version, extra=self._extra
         )
         layout = _artifact_layout(self._cache_root, ref, cache_key)
 
+        # Evict the previous artifact (if any) as soon as the user requests
+        # a different one. ``force`` always rebuilds the current one.
+        if (
+            self._current_root is not None
+            and self._current_root != layout.root
+            and self._current_root.exists()
+        ):
+            shutil.rmtree(self._current_root, ignore_errors=True)
+            self._by_id.clear()
         if force and layout.root.exists():
             shutil.rmtree(layout.root)
 
         if layout.metadata_path.is_file() and not force:
             artifact = self._load_existing(layout, cache_key)
-            self._by_id[artifact.artifact_id] = artifact
-            return artifact
-
-        layout.root.mkdir(parents=True, exist_ok=True)
-        artifact = self._create(ref, layout, cache_key)
-        self._by_id[artifact.artifact_id] = artifact
+        else:
+            layout.root.mkdir(parents=True, exist_ok=True)
+            artifact = self._create(ref, layout, cache_key)
+        self._by_id = {artifact.artifact_id: artifact}
+        self._current_root = layout.root
         return artifact
 
     def get(self, artifact_id: str) -> ParaviewArtifact:

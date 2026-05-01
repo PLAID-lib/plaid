@@ -16,9 +16,6 @@ class ViewerConfig:
             (or the root may itself be such a folder). When ``None``, the
             viewer starts without a root and the user is expected to pick one
             interactively (when ``allow_root_change`` is True).
-        cache_dir: Root directory for ParaView artifacts. When ``None``, an
-            ephemeral per-process directory is created under the OS temp root
-            and cleaned up at shutdown.
         backend_id: PLAID backend identifier embedded in :class:`SampleRef`
             objects and in the artifact cache key.
         export_version: Opaque string mixed into the artifact cache key. Bump
@@ -41,7 +38,6 @@ class ViewerConfig:
     """
 
     datasets_root: Path | None = None
-    cache_dir: Path | None = None
     backend_id: str = "disk"
     export_version: str = "1"
     extra_cache_key_fields: dict[str, str] = field(default_factory=dict)

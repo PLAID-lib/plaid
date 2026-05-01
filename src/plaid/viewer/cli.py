@@ -71,15 +71,6 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
-    parser.add_argument(
-        "--cache-dir",
-        type=Path,
-        default=None,
-        help=(
-            "Persistent artifact cache directory. When omitted, an ephemeral "
-            "per-process temp directory is used and cleaned up at shutdown."
-        ),
-    )
     parser.add_argument("--host", default="127.0.0.1", help="Trame server host.")
     parser.add_argument("--port", type=int, default=8080, help="Trame server port.")
     parser.add_argument(
@@ -141,7 +132,6 @@ def main(argv: list[str] | None = None) -> int:
     browse_roots = tuple(args.browse_roots) if args.browse_roots else ()
     config = ViewerConfig(
         datasets_root=effective_datasets_root,
-        cache_dir=args.cache_dir,
         backend_id=args.backend_id,
         browse_roots=browse_roots,
         allow_root_change=not args.disable_root_change,
@@ -149,7 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         allow_dataset_change=not args.disable_dataset_change,
     )
 
-    with CacheRoot(persistent_dir=config.cache_dir) as cache:
+    with CacheRoot() as cache:
         dataset_service = PlaidDatasetService(config)
         for repo_id in args.hub_repo or []:
             try:

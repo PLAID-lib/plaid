@@ -16,18 +16,8 @@ def test_ephemeral_cache_is_cleaned_up_on_close(tmp_path: Path, monkeypatch) -> 
     cache = CacheRoot(install_signal_handlers=False, run_orphan_sweep=False)
     path = cache.path
     assert path.exists()
-    assert cache.is_ephemeral is True
     cache.close()
     assert not path.exists()
-
-
-def test_persistent_cache_is_preserved(tmp_path: Path) -> None:
-    target = tmp_path / "persistent"
-    cache = CacheRoot(persistent_dir=target, install_signal_handlers=False)
-    assert cache.path == target
-    assert cache.is_ephemeral is False
-    cache.close()
-    assert target.exists()
 
 
 def test_context_manager_removes_ephemeral_dir(tmp_path: Path, monkeypatch) -> None:

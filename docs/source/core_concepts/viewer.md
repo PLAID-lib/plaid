@@ -40,7 +40,6 @@ Useful options:
 | Option            | Default     | Description                                                                                      |
 | ----------------- | ----------- | ------------------------------------------------------------------------------------------------ |
 | `--datasets-root` | *required*  | Directory containing one sub-directory per PLAID dataset. A single-dataset directory also works. |
-| `--cache-dir`     | `None`      | Persistent artifact cache. When omitted, an ephemeral temp dir is used and cleaned at shutdown.  |
 | `--host`          | `127.0.0.1` | Bind address for the trame HTTP server.                                                          |
 | `--port`          | `8080`      | Port exposed by the trame HTTP server.                                                           |
 | `--backend-id`    | `disk`      | PLAID backend identifier embedded in sample references and the cache key.                        |
@@ -145,7 +144,9 @@ error.
 
 ## Cache layout
 
-Artifacts are written under:
+Artifacts are written under an **ephemeral** per-process temp directory
+created by `plaid.viewer.cache.CacheRoot` (named
+`plaid-viewer-{pid}-{token}` under `tempfile.gettempdir()`):
 
 ```
 <cache_root>/datasets/<dataset_id>/<split>/<sample_id>/<key_prefix>/
@@ -155,10 +156,18 @@ Artifacts are written under:
     metadata.json             # cache key, sample ref, export version, ...
 ```
 
+The cache holds **at most one artifact at a time**: once VTK has loaded
+a sample's CGNS into memory the on-disk copy is no longer needed, so
+the next `ensure_artifact` call removes the previous folder before
+writing the new one.
+
+The whole cache root is deleted at shutdown through four complementary
+layers: `atexit`, `SIGINT` / `SIGTERM` handlers, the `with CacheRoot()`
+context manager used by the CLI, and an orphan sweep at startup that
+removes directories left behind by previously-crashed processes.
+
 The cache key is a SHA-256 of the sample reference, backend id, PLAID
-version and `ViewerConfig.export_version`. Re-running the viewer with
-the same inputs reuses existing artifacts; bumping `export_version`
-invalidates them.
+version and `ViewerConfig.export_version`.
 
 ## Programmatic usage
 
@@ -170,7 +179,7 @@ from plaid.viewer.services import ParaviewArtifactService, PlaidDatasetService
 from plaid.viewer.trame_app.server import build_server
 
 config = ViewerConfig(datasets_root=Path("/path/to/datasets"))
-with CacheRoot(persistent_dir=config.cache_dir) as cache:
+with CacheRoot() as cache:
     datasets = PlaidDatasetService(config)
     artifacts = ParaviewArtifactService(datasets, cache.path)
     server = build_server(datasets, artifacts)

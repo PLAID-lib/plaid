@@ -1,11 +1,11 @@
-"""Ephemeral-by-default artifact cache for the dataset viewer.
+"""Ephemeral artifact cache for the dataset viewer.
 
-The cache lives under a per-process temporary directory by default and is
-removed at shutdown. Four cleanup layers cover all practical failure modes:
+The cache lives under a per-process temporary directory and is removed at
+shutdown. Four cleanup layers cover all practical failure modes:
 
 1. ``atexit.register`` for normal Python exit.
 2. Signal handlers for ``SIGINT`` / ``SIGTERM``.
-3. A FastAPI lifespan context (provided by callers).
+3. A context manager (``with CacheRoot() as cache:`` in the CLI).
 4. An orphan sweep at startup that removes directories left behind by
    previously-crashed processes.
 """
@@ -105,39 +105,28 @@ def sweep_orphans(temp_root: Path | None = None) -> list[Path]:
 
 
 class CacheRoot:
-    """Context-manager-friendly artifact cache directory.
+    """Context-manager-friendly ephemeral artifact cache directory.
 
-    When ``persistent_dir`` is ``None`` (the default), a new ephemeral tempdir
-    named ``plaid-viewer-{pid}-{token}`` is created. The directory is
-    removed at process exit (``atexit``), on ``SIGINT`` / ``SIGTERM``, and
-    when the context manager is closed.
-
-    When ``persistent_dir`` is provided, that directory is used as-is and is
-    **not** removed. Callers wanting persistence pass this.
+    Creates a new tempdir named ``plaid-viewer-{pid}-{token}`` under the OS
+    temp root. The directory is removed at process exit (``atexit``), on
+    ``SIGINT`` / ``SIGTERM``, and when the context manager is closed.
     """
 
     def __init__(
         self,
-        persistent_dir: Path | None = None,
         *,
         install_signal_handlers: bool = True,
         run_orphan_sweep: bool = True,
     ) -> None:
-        self._ephemeral = persistent_dir is None
-        if self._ephemeral:
-            if run_orphan_sweep:
-                sweep_orphans()
-            token = uuid.uuid4().hex[:12]
-            base = Path(tempfile.gettempdir())
-            self._path = base / f"{_EPHEMERAL_PREFIX}{os.getpid()}-{token}"
-            self._path.mkdir(parents=True, exist_ok=False)
-            atexit.register(self._safe_cleanup)
-            if install_signal_handlers:
-                self._install_signal_handlers()
-        else:
-            assert persistent_dir is not None
-            self._path = Path(persistent_dir)
-            self._path.mkdir(parents=True, exist_ok=True)
+        if run_orphan_sweep:
+            sweep_orphans()
+        token = uuid.uuid4().hex[:12]
+        base = Path(tempfile.gettempdir())
+        self._path = base / f"{_EPHEMERAL_PREFIX}{os.getpid()}-{token}"
+        self._path.mkdir(parents=True, exist_ok=False)
+        atexit.register(self._safe_cleanup)
+        if install_signal_handlers:
+            self._install_signal_handlers()
         self._closed = False
 
     # ------------------------------------------------------------------ API
@@ -147,18 +136,12 @@ class CacheRoot:
         """Root directory of the cache."""
         return self._path
 
-    @property
-    def is_ephemeral(self) -> bool:
-        """Whether the cache directory is automatically cleaned up."""
-        return self._ephemeral
-
     def close(self) -> None:
-        """Remove the cache directory if it is ephemeral."""
+        """Remove the cache directory."""
         if self._closed:
             return
         self._closed = True
-        if self._ephemeral:
-            self._safe_cleanup()
+        self._safe_cleanup()
 
     def __enter__(self) -> "CacheRoot":  # noqa: D105
         return self

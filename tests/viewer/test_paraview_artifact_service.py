@@ -102,6 +102,26 @@ def test_force_recreates_artifact(tmp_path: Path, ref: SampleRef) -> None:
     assert second.artifact_id == first.artifact_id  # cache key is deterministic
 
 
+def test_ensure_artifact_evicts_previous_artifact(tmp_path: Path) -> None:
+    """The cache keeps at most one artifact on disk."""
+    service = ParaviewArtifactService(_FakeDatasetService(), tmp_path)
+    ref_a = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    ref_b = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="1")
+
+    first = service.ensure_artifact(ref_a)
+    first_root = first.cgns_path.parent
+    assert first_root.exists()
+
+    second = service.ensure_artifact(ref_b)
+    second_root = second.cgns_path.parent
+    assert second_root.exists()
+    assert not first_root.exists()
+    # The by-id lookup only exposes the current artifact.
+    with pytest.raises(KeyError):
+        service.get(first.artifact_id)
+    assert service.get(second.artifact_id) is second
+
+
 def test_cache_key_is_deterministic(ref: SampleRef) -> None:
     key_a = _build_cache_key(ref, export_version="1")
     key_b = _build_cache_key(ref, export_version="1")

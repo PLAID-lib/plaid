@@ -18,7 +18,6 @@ def test_build_parser_defaults() -> None:
     assert args.disable_root_change is False
     assert args.dataset_id is None
     assert args.disable_dataset_change is False
-    assert args.cache_dir is None
     assert args.host == "127.0.0.1"
     assert args.port == 8080
     assert args.backend_id == "disk"
@@ -27,7 +26,6 @@ def test_build_parser_defaults() -> None:
 
 def test_build_parser_accepts_all_options(tmp_path: Path) -> None:
     datasets_root = tmp_path / "datasets"
-    cache_dir = tmp_path / "cache"
     browse_a = tmp_path / "a"
     browse_b = tmp_path / "b"
 
@@ -42,8 +40,6 @@ def test_build_parser_accepts_all_options(tmp_path: Path) -> None:
             "--dataset-id",
             "dataset-b",
             "--disable-dataset-change",
-            "--cache-dir",
-            str(cache_dir),
             "--host",
             "0.0.0.0",
             "--port",
@@ -62,7 +58,6 @@ def test_build_parser_accepts_all_options(tmp_path: Path) -> None:
     assert args.disable_root_change is True
     assert args.dataset_id == "dataset-b"
     assert args.disable_dataset_change is True
-    assert args.cache_dir == cache_dir
     assert args.host == "0.0.0.0"
     assert args.port == 9000
     assert args.backend_id == "zarr"
@@ -75,8 +70,8 @@ def test_main_wires_services_without_starting_real_runtime(
     calls: list[tuple[str, object]] = []
 
     class FakeCache:
-        def __init__(self, persistent_dir=None):
-            calls.append(("cache", persistent_dir))
+        def __init__(self):
+            calls.append(("cache", None))
             self.path = tmp_path / "cache-root"
 
         def __enter__(self):
@@ -132,8 +127,6 @@ def test_main_wires_services_without_starting_real_runtime(
     assert (
         cli_mod.main(
             [
-                "--cache-dir",
-                str(tmp_path / "cache"),
                 "--host",
                 "0.0.0.0",
                 "--port",
