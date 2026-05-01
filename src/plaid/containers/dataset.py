@@ -42,19 +42,19 @@ class Dataset(BaseModel):
     label : str = Field(default="")
 
 
-    # to set the name, task only once 
+    # to set the name, task only once
     def __setattr__(self, name: str, value: Any) -> None:
         if name in ["split", "path" ]:
             current_value = getattr(self, name, None)
             if current_value is not None and value is not None and current_value != value:
                 raise AttributeError(f"'{name}' is already set and cannot be changed.")
             if current_value == value:
-                return 
+                return
         super().__setattr__(name, value)
 
     def get_backend(self) -> BackendModule:
         return self._backend
-    
+
     @staticmethod
     def from_path(
         path: str | Path,
@@ -119,7 +119,7 @@ class Dataset(BaseModel):
             self.infos["plaid"]["version"] = Version(__version__)
 
 
-    # load data from disk if path and split are given 
+    # load data from disk if path and split are given
     def model_post_init(self, __context):
         if self.path is not None and self.split is not None:
             self.load()
@@ -128,20 +128,23 @@ class Dataset(BaseModel):
 
         if path is None:
             path = self.path
+        if path is None:
+            raise RuntimeError("must suply a path ")
 
         if split is None:
             split = self.split
-        if split is None:
-            raise RuntimeError("Need a split name to be loaded")
-        
-        self.split = split
+
+        if self.split is not None:
+            split = self.split
+        else:
+            split = "train"
 
         path = Path(path)
         if path.is_file():
             #inputdir = path.parent / f"tmploaddir_{generate_random_ASCII()}"
             import tempfile
             inputdir = Path(tempfile.mkdtemp(prefix="temp_plaid_load"))
-       
+
             try:
                 # First : untar file <path> to a directory <inputdir>
                 # TODO: avoid using subprocess by using a lib tarfile
@@ -151,12 +154,12 @@ class Dataset(BaseModel):
                 subprocess.call(arguments)
 
                 # Then : load data from directory <inputdir>
-                from plaid.storage import init_from_disk    
+                from plaid.storage import init_from_disk
                 datasetdict, converterdict = init_from_disk(inputdir)
                 self._ds = datasetdict[split]
                 self._conv = converterdict[split]
                 self.indices = np.arange(len(self._ds))
-            finally: 
+            finally:
                 #shutil.rmtree(inputdir)
                 #register deletion at exit
                 import atexit
@@ -164,7 +167,7 @@ class Dataset(BaseModel):
                 atexit.register(shutil.rmtree, inputdir)
 
         elif path.is_dir():
-            from plaid.storage import init_from_disk    
+            from plaid.storage import init_from_disk
             datasetdict, converterdict = init_from_disk(path)
             print(f"{split=}")
             print(list(datasetdict.keys()))
@@ -226,7 +229,7 @@ class Dataset(BaseModel):
 #             "self.init_feats not initialized, did you call set_transform_stage(transform_stage) ?"
 #         )
         return self._backend[idx]
-    
+
         return self._conv.to_plaid(self._ds, self._ids[idx], features=self.init_feats)
 
     def __len__(self):
@@ -240,7 +243,7 @@ class Dataset(BaseModel):
                 return len(self._backend)
             else:
                 raise RuntimeError(f"'{self.indices}' not a valid value")
-            
+
         return len(self.indices)
 
 
@@ -255,16 +258,38 @@ class Dataset(BaseModel):
         """
         if ids is None:
             if self.indices == "all":
-                return [self[i] for i in range(len(self))]    
+                return [self[i] for i in range(len(self))]
             else:
                 return [self[i] for i in self.indices]
         else:
             return [self[i] for i in ids]
 
-        
+
     def get_sample_ids(self):
         if self.indices == "all":
             return range(len(self))
         else:
             return self.indices
 
+
+    def save_to_dir(self, output_folder: Union[str, Path], verbose: bool = False  ):
+        from plaid.storage import save_to_disk
+
+        if self.split is not None:
+            split = self.split
+        else:
+            split = "train"
+
+        save_to_disk(
+            output_folder=output_folder,
+            sample_constructor=lambda x: self[x],
+            ids={
+                split: self.get_sample_ids()
+            },
+            backend="cgns" if self._backend.name not in ["zarr"] else "zarr",   # or "cgns" / "zarr"
+            #infos=infos,
+            #pb_defs=pb_def,
+            num_proc=1,
+            overwrite=True,
+            verbose = verbose
+        )
