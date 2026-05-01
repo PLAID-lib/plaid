@@ -4,7 +4,6 @@ This module provides common utilities for reading dataset metadata, problem defi
 and other auxiliary files from disk or downloading them from Hugging Face Hub.
 """
 
-# -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.

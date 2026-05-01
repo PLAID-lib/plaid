@@ -5,7 +5,6 @@ and Hugging Face Datasets format. It includes utilities for feature type convers
 dataset generation from PLAID objects, and sample reconstruction.
 """
 
-# -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.

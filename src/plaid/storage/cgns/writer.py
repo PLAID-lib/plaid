@@ -5,7 +5,6 @@ It includes utilities for generating datasets from sample generators, saving to 
 uploading to Hugging Face Hub, and configuring dataset cards.
 """
 
-# -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.

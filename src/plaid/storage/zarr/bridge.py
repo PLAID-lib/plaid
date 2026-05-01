@@ -4,7 +4,6 @@ This module provides utility functions for bridging between PLAID samples and Za
 It includes functions for key transformation and sample data conversion.
 """
 
-# -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.

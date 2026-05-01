@@ -5,7 +5,6 @@ and other auxiliary files to disk or uploading them to Hugging Face Hub. It hand
 serialization of infos, problem definitions, and dataset tree structures.
 """
 
-# -*- coding: utf-8 -*-
 #
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE.txt', which is part of this source code package.
