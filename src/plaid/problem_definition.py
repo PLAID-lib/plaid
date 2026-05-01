@@ -84,7 +84,7 @@ class ProblemDefinition(BaseModel):
             data2 =  all_pb_def[name].model_dump()
             data2.update(overrides)
             data = data2
-        else: 
+        else:
             if len(all_pb_def) > 1:
                 raise RuntimeError(f"Non name specified, but more than one Problem definition. Available definitions: {available}")
             else:
@@ -102,7 +102,7 @@ class ProblemDefinition(BaseModel):
     #     if path is not None:
     #         data = self.from_path(path, **data)
     #     super().__init__(**data)
-        
+
 
     @field_validator('input_features',  mode='before')
     @classmethod
@@ -110,7 +110,7 @@ class ProblemDefinition(BaseModel):
         if len(set(v)) != len(v):
             raise ValueError("duplicated values in input_features")
         return _normalize_list(v)
-    
+
     @field_validator('train_split', 'test_split', mode='after')
     @classmethod
     def check_split_has_only_one_obj(cls, v):
@@ -126,14 +126,14 @@ class ProblemDefinition(BaseModel):
             raise ValueError("duplicated values in output_features")
         return _normalize_list(v)
 
-    
+
     def __setattr__(self, name: str, value: Any) -> None:
         # to set the name, task, score_function only once and oly once
         if name in ["name", "task", "score_function"] :
             current_value = getattr(self, name, None)
             if current_value is not None and value is not None and current_value != value:
                 raise AttributeError(f"'{name}' is already set and cannot be changed.")
-        # waring if set 
+        # waring if set
         if name in ["train_split", "test_split"] :
             current_value = getattr(self, name, None)
             if current_value is not None and value is not None and current_value != value:
@@ -196,9 +196,9 @@ class ProblemDefinition(BaseModel):
             assert len(self.test_split) == 1
             test_split_ids = next(iter(self.test_split.values()))
             res['test'] = test_split_ids
-        
+
         return  res
-    
+
 
 #         else:
 #             assert indices_name in self._split, (
@@ -326,7 +326,7 @@ class ProblemDefinition(BaseModel):
                 in_features_identifiers = ['omega', 'pressure']
                 problem.add_in_features_identifiers(in_features_identifiers)
 
-                # or for a single feature 
+                # or for a single feature
 
                 problem.add_in_features_identifiers("angle")
         """
@@ -338,11 +338,11 @@ class ProblemDefinition(BaseModel):
 
             self.input_features.append(input)
             self.input_features.sort()
-            return 
+            return
 
         if not (len(set(inputs)) == len(inputs)):
             raise ValueError("Some inputs have same identifiers")
-        
+
         for input in inputs:
             self.add_in_features_identifiers(input)
 
@@ -363,7 +363,7 @@ class ProblemDefinition(BaseModel):
                 out_features_identifiers = ['omega', 'pressure']
                 problem.add_out_features_identifiers(out_features_identifiers)
 
-                # or for a single feature 
+                # or for a single feature
 
                 problem.add_out_features_identifiers("angle")
         """
@@ -375,11 +375,11 @@ class ProblemDefinition(BaseModel):
 
             self.output_features.append(output)
             self.output_features.sort()
-            return 
+            return
 
         if not (len(set(outputs)) == len(outputs)):
             raise ValueError("Some outputs have same identifiers")
-        
+
         for output in outputs:
             self.add_out_features_identifiers(output)
 
@@ -1460,7 +1460,7 @@ class ProblemDefinition(BaseModel):
 
         if self.train_split is not None:
             data["train_split"] = self.train_split
-            
+
         if self.test_split is not None:
             data["test_split"] = self.test_split
         if self.name is not None:
@@ -1698,152 +1698,3 @@ class ProblemDefinition(BaseModel):
 #         str_repr += ")"
 #         return str_repr
 
-
-class ProblemDefinitionMaestro(ProblemDefinition):
-    """Defines the input and output features for a machine learning problem."""
-
-    model_config = ConfigDict(frozen=True)
-
-    @staticmethod
-    def _normalize_training_split(
-        train_split: Mapping[str, Any],
-    ) -> tuple[str, Sequence[int] | Literal["all"]]:
-        if train_split:
-            assert len(train_split) == 1
-            split_name, split_value = next(iter(train_split.items()))
-            if split_value == "all":
-                normalized = (split_name, "all")
-            else:
-                normalized = (split_name, list(split_value))
-            return normalized
-
-    @staticmethod
-    def _normalize_evaluating_split(
-        test_split: Mapping[str, Any],
-    ) -> tuple[str, Sequence[int] | Literal["all"]]:
-        if test_split:
-            assert len(test_split) == 1
-            split_name, split_value = next(iter(test_split.items()))
-            if split_value == "all":
-                normalized = (split_name, "all")
-            else:
-                normalized = (split_name, list(split_value))
-            return normalized
-
-    @model_validator(mode="before")
-    @classmethod
-    def load_class_from_disk(cls, data: Any) -> Any:
-        """Populate problem definition fields from disk.
-
-        Args:
-            data: Raw pydantic input payload.
-
-        Returns:
-            The enriched payload with normalized feature and split metadata.
-
-        Raises:
-            ValueError: If only one of ``name``/``path`` is provided, or when
-                the problem definition cannot be found on disk.
-        """
-        if not isinstance(data, dict):
-            return data
-        enriched = dict(data)
-
-        name = enriched.get("name")
-        path = enriched.get("path")
-
-        # Empty initialization path: no disk loading, start with empty/specified features.
-        if name is None and path is None:
-            return enriched
-
-        # Enforce coherent disk-backed initialization.
-        if name is None or path is None:
-            raise ValueError(
-                "ProblemDefinition requires both 'name' and 'path' to load from disk, "
-                "or both set to None for empty initialization."
-            )
-        
-        from plaid.storage import load_problem_definitions_from_disk
-
-        all_pb_def = load_problem_definitions_from_disk(path=Path(sys.pathpath))
-        if name not in all_pb_def:
-            available = ", ".join(sorted(all_pb_def))
-            raise ValueError(
-                f"Problem definition '{name}' not found in {sys.path}. "
-                f"Available definitions: {available}"
-            )
-
-        pb_def = all_pb_def[name]
-        enriched.setdefault("input_features",pb_def.input_features)
-        enriched.setdefault("output_features",pb_def.output_features)
-
-        enriched.setdefault(
-            "training_split",
-            cls._normalize_training_split(pb_def.get_train_split()),
-        )
-        enriched.setdefault(
-            "test_split",
-            cls._normalize_evaluating_split(pb_def.get_test_split()),
-        )
-
-        if "input_features" in enriched:
-            enriched["input_features"] = cls._normalize_features(
-                enriched["input_features"]
-            )
-        if "output_features" in enriched:
-            enriched["output_features"] = cls._normalize_features(
-                enriched["output_features"]
-            )
-
-        return enriched
-
-    @model_validator(mode="after")
-    def validate_disjoint_features(self) -> "ProblemDefinition":
-        """Ensure input and output features are disjoint."""
-        overlap = set(self.get_input_features()).intersection(
-            set(self.get_output_features())
-        )
-        if overlap:
-            raise ValueError(
-                f"Input and output features must be disjoint. "
-                f"Found overlapping features: {overlap}"
-            )
-        return self
-
-    def get_input_features(self) -> list[str]:
-        """Return input feature identifiers."""
-        return self._normalize_features(self.input_features)
-
-    def get_output_features(self) -> list[str]:
-        """Return output feature identifiers."""
-        return self._normalize_features(self.output_features)
-
-
-
-    def get_all_features(self) -> list[str]:
-        """Return output feature identifiers."""
-        return self._normalize_features(
-            list(self.input_features) + list(self.output_features)
-        )
-
-    def set_input_features(self, features: Sequence[Any]) -> None:
-        """Set input feature identifiers (normalized + sorted)."""
-        normalized = self._normalize_features(features)
-        overlap = set(normalized).intersection(set(self.get_output_features()))
-        if overlap:
-            raise ValueError(
-                f"Input and output features must be disjoint. "
-                f"Found overlapping features: {overlap}"
-            )
-        object.__setattr__(self, "input_features", normalized)
-
-    def set_output_features(self, features: Sequence[Any]) -> None:
-        """Set output feature identifiers (normalized + sorted)."""
-        normalized = self._normalize_features(features)
-        overlap = set(normalized).intersection(set(self.get_input_features()))
-        if overlap:
-            raise ValueError(
-                f"Input and output features must be disjoint. "
-                f"Found overlapping features: {overlap}"
-            )
-        object.__setattr__(self, "output_features", normalized)
