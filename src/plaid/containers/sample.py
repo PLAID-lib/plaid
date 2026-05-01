@@ -44,7 +44,6 @@ from ..constants import (
 )
 
 from .features import SampleFeatures
-from .utils import get_feature_type_and_details_from
 from ..utils import cgns_helper as CGH
 from ..utils.base import delegate_methods, safe_len
 
