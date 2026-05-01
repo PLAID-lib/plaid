@@ -39,7 +39,9 @@ class _LazyDatasets:
             return self._cache[ex_name]
 
         try:
-            ds_stream = load_dataset_from_hub(hf_repo, split="all_samples", streaming=True)
+            from plaid.storage import init_streaming_from_hub
+            ds_stream = init_streaming_from_hub(hf_repo)
+            #ds_stream = load_dataset_from_hub(hf_repo, split="all_samples", streaming=True)
             samples = []
             for _ in range(2):
                 hf_sample = next(iter(ds_stream))
