@@ -1142,8 +1142,8 @@ class SampleFeatures:
         name: str,
         field: np.ndarray,
         location: str = "Vertex",
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
         warning_overwrite: bool = True,
     ) -> None:
@@ -1173,11 +1173,11 @@ class SampleFeatures:
         # init_tree will look for default time
         self.init_tree(time)
         # get_zone will look for default zone_name, base_name and time
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        zone_node = self.get_zone(zone_name=zone, base_name=base, time=time)
 
         if zone_node is None:
             raise KeyError(
-                f"there is no Zone with name {zone_name} in base {base_name}. Did you check topological and physical dimensions ?"
+                f"there is no Zone with name {zone} in base {base}. Did you check topological and physical dimensions ?"
             )
 
         # Check field size consistency with its geometrical support

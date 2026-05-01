@@ -33,7 +33,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic import Field as PydanticField
 
 from ..types import Array, ArrayDType
-
+from .utils import get_feature_details_from_path
 
 from ..constants import (
     AUTHORIZED_FEATURE_INFOS,
@@ -107,8 +107,8 @@ class Sample(BaseModel):
         description="Path to the folder containing the sample data. If provided, the sample will be loaded from this path during initialization. Defaults to None.",
     )
 
-    features: Optional[SampleFeatures] = PydanticField(
-        default_factory=lambda _: SampleFeatures(data=None),
+    features: SampleFeatures = PydanticField(
+        default_factory=lambda : SampleFeatures(data=None),
         description="An instance of SampleFeatures containing mesh data. Defaults to an empty `SampleFeatures` object.",
     )
 
@@ -202,19 +202,17 @@ class Sample(BaseModel):
     #     return self
 
     # -------------------------------------------------------------------------#
-    def get_all_features_identifiers():
-        raise NotImplementedError("  v1 cleaning")
-    # def get_all_features_identifiers(
-    #     self,
-    # ) -> list[FeatureIdentifier]:
-    #     """Get all features identifiers from the sample.
+    def get_all_features_identifiers(self) -> list[str]:
+        """Get all features identifiers from the sample.
 
-    #     Returns:
-    #         list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
-    #     """
-    #     all_features_identifiers = []
-    #     for sn in self.get_scalar_names():
-    #         all_features_identifiers.append({"type": "scalar", "name": sn})
+        Returns:
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
+        """
+        all_features_identifiers = []
+        all_features_identifiers.extend(map( lambda x: "Global/"+x,self.get_scalar_names()))
+
+        #for sn in self.get_scalar_names():
+        #    all_features_identifiers.append({"type": "scalar", "name": sn})
     #     for t in self.features.get_all_time_values():
     #         for bn in self.features.get_base_names(time=t):
     #             for zn in self.features.get_zone_names(base_name=bn, time=t):
@@ -244,29 +242,28 @@ class Sample(BaseModel):
     #                                 "time": t,
     #                             }
     #                         )
-    #     return all_features_identifiers
+        return all_features_identifiers
 
-    def get_all_features_identifiers_by_type(self, feature_type: str):
-        raise NotImplementedError("  v1 cleaning")
+    def get_all_features_identifiers_by_type(self, feature_type: str) -> list[str]:
 
-    # def get_all_features_identifiers_by_type(
-    #     self, feature_type: str
-    # ) -> list[FeatureIdentifier]:
-    #     """Get all features identifiers of a given type from the sample.
+        """Get all features identifiers of a given type from the sample.
 
-    #     Args:
-    #         feature_type (str): Type of features to return
+        Args:
+            feature_type (str): Type of features to return
 
-    #     Returns:
-    #         list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
-    #     """
-    #     assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
-    #     all_features_identifiers = self.get_all_features_identifiers()
-    #     return [
-    #         feat_id
-    #         for feat_id in all_features_identifiers
-    #         if feat_id["type"] == feature_type
-    #     ]
+        Returns:
+            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
+        """
+        
+        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
+        if feature_type ==  "scalar":
+            return self.get_scalar_names()  
+        elif feature_type ==  "field":
+            return self.get_field_names()       
+        elif feature_type ==  "nodes":
+            return self.get_nodes_names()
+        
+
 
     def get_feature_by_path(self, path: str, time: Optional[int] = None) -> np.number | np.ndarray | None:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style path.
@@ -377,15 +374,17 @@ class Sample(BaseModel):
         Returns:
             Feature: The corresponding feature instance retrieved via the appropriate accessor.
         """
-        feature_type, feature_details = get_feature_type_and_details_from(
-            feature_identifier
-        )
+        #feature_type, feature_details = get_feature_type_and_details_from(
+        #    feature_identifier
+        #)
 
-        if feature_type == "scalar":
+        feature_details = get_feature_details_from_path(feature_identifier)
+
+        if feature_identifier == "scalar":
             return self.get_scalar(**feature_details)
-        elif feature_type == "field":
+        elif feature_identifier == "field":
             return self.get_field(**feature_details)
-        elif feature_type == "nodes":
+        elif feature_identifier == "nodes":
             return self.get_nodes(**feature_details).flatten()
 
     def get_features_from_identifiers(
@@ -449,9 +448,12 @@ class Sample(BaseModel):
         Raises:
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
-        feature_type, feature_details = get_feature_type_and_details_from(
-            feature_identifier
-        )
+        #feature_type, feature_details = get_feature_type_and_details_from(
+        #    feature_identifier
+        #)
+
+        feature_details = get_feature_details_from_path(feature_identifier)
+        feature_type = feature_details.pop("type")
 
         if feature_type == "scalar":
             if safe_len(feature) == 1:

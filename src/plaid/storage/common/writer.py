@@ -271,6 +271,7 @@ def push_local_problem_definitions_to_hub(
     ``HfApi.upload_folder``.
 
     Expected local layout:
+
         <path>/
             problem_definitions/
                 <name_1>
@@ -337,7 +338,8 @@ def push_local_metadata_to_hub(
     (e.g. via ``save_metadata_to_disk``). This function performs no validation,
     transformation, or serialization; it strictly uploads existing files.
 
-    Expected local layout:
+    Expected local layout::
+
         <path>/
             constants/
                 <split>/

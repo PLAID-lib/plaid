@@ -7,7 +7,7 @@
 #
 #
 
-from typing import Any, Union
+from typing import Any, Union, Optional
 from pathlib import Path
 
 from .bridge import (
@@ -33,8 +33,12 @@ class HFBackend():
         return init_datasetdict_from_disk(path=path)
     
     @staticmethod
-    def download_from_hub (repo_id: str, local_dir: Union[str, Path]) -> str: 
-        return  download_datasetdict_from_hub(repo_id=repo_id, local_dir=local_dir)
+    def download_from_hub (repo_id: str,
+    local_dir: Union[str, Path],
+    split_ids: Optional[dict[str, int]] = None,  # noqa: ARG001
+    features: Optional[list[str]] = None,  # noqa: ARG001
+    overwrite: bool = False) -> str: 
+        return  download_datasetdict_from_hub(repo_id=repo_id, local_dir=local_dir, split_ids=split_ids, features=features, overwrite=overwrite)
     
     @staticmethod
     def init_datasetdict_streaming_from_hub(repo_id: str) -> dict[str, Any]:

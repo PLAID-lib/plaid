@@ -593,28 +593,14 @@ class Test_ProblemDefinition:
     # -------------------------------------------------------------------------#
     def test_split(self, problem_definition):
         new_split = {"train_0": [0, 1, 2], "test-1": [3, 4]}
-        problem_definition.train_split = ({"train_0": [0, 1, 2]})
-        problem_definition.test_split = ({"test-1": [3, 4]})
+        problem_definition.train_split = {"train_0": [0, 1, 2]}
+        problem_definition.test_split = {"test-1": [3, 4]}
         assert problem_definition.train_split == {"train_0": [0, 1, 2]}
         assert problem_definition.test_split == {"test-1": [3, 4]}
 
         # all_split = problem_definition.get_split()
         # assert all_split["train"] == {"train_0": [0, 1, 2]} and all_split["test"] == {"test-1": [3, 4]}
         # assert problem_definition.get_all_indices() == [0, 1, 2, 3, 4]
-
-    def test_train_split(self, problem_definition):
-        train_split = {"train1": [0, 1, 2], "train2": [3, 4]}
-        problem_definition.train_split = (train_split)
-        #problem_definition.get_train_split()
-        assert problem_definition.train_split["train1"] == [0, 1, 2]
-        assert problem_definition.train_split["train2"] == [3, 4]
-
-    def test_test_split(self, problem_definition):
-        test_split = {"test1": [0, 1, 2], "test2": [3, 4]}
-        problem_definition.test_split = (test_split)
-        #problem_definition.get_test_split()
-        assert problem_definition.test_split["test1"] == [0, 1, 2]
-        assert problem_definition.test_split["test2"] == [3, 4]
 
     # -------------------------------------------------------------------------#
     # def test__save_to_dir_(

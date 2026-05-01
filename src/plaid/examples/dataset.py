@@ -7,7 +7,6 @@
 #
 #
 from plaid import Dataset
-from plaid.bridges.huggingface_bridge import load_dataset_from_hub, binary_to_plaid_sample
 from plaid.examples.config import _HF_REPOS
 
 

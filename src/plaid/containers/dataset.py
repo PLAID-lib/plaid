@@ -7,10 +7,14 @@
 
 from typing import Optional, Sequence, Union, Literal, Any
 from pathlib import Path
+import copy
+from packaging.version import Version
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator, PrivateAttr
 import numpy as np
 
+from plaid.constants import AUTHORIZED_INFO_KEYS
+from ..version import __version__
 from ..problem_definition import ProblemDefinition
 from .sample import Sample
 from ..types.common import NDArrayInt
@@ -21,51 +25,22 @@ from ..storage.registry import get_backend
 class Dataset(BaseModel):
     """A lazy-loading dataset that reads samples from disk on demand.
 
-    Args:
-        path: Path to the PLAID dataset directory on disk.
-        stage: Dataset stage ("training" or "evaluating").
-        split: Dataset split key to load from disk (for example, "train" or "eval").
-        problem_definition: Problem definition for this dataset.
-        indices: Optional array of sample indices to restrict the dataset view.
-            Can be "all" to include all samples, a sequence of indices, or None
-            to use all samples from the split.
-        label: Optional semantic label for the dataset. If not provided, defaults
-            to the split name. This can be used to give a custom name to a dataset
-            view (e.g., "train" or "eval" for train_eval_split results).
-
-    Attributes:
-        path: Path to the dataset directory.
-        stage: Stage associated with this dataset instance.
-        split: Actual data source split (immutable after construction).
-        label: Semantic label for this dataset (can be changed).
-        problem_definition: Problem definition for this dataset.
-        init_feats: Optional feature subset requested at sample retrieval.
     """
     model_config = ConfigDict(revalidate_instances = 'always', validate_assignment = True, extra='forbid')
 
-    path: Optional[Union[str, Path]] = Field(default=None)
-    stage: Optional[Literal["training", "evaluating"]] = Field(default=None)
-    split: Optional[Any] = Field(default=None)
-    problem_definition: ProblemDefinition =  Field(default_factory=ProblemDefinition)
-    indices: NDArrayInt | Literal["all"]  = Field(default="all")
-
-    #ids : NDArrayInt = Field(default_factory=lambda: np.empty(0, dtype=int))
-    conv: Any = Field(default=None)
-    
-    #self._ds = None
-    # self._conv = None
-#   #      self._ids = []
-    #backend_type : str = Field(default="in_memory")
+    path: Optional[Union[str, Path]] = Field(default=None, description="Path to the PLAID dataset directory on disk.")
+    stage: Optional[Literal["training", "evaluating"]] = Field(default=None, description="Dataset stage ('training' or 'evaluating')")
+    split: Optional[str] = Field(default=None, description="Actual data source split (immutable after construction).")
+    problem_definition: ProblemDefinition =  Field(default_factory=ProblemDefinition, description="Problem definition for this dataset.")
+    indices: NDArrayInt | Literal["all"]  = Field(default="all", description="""Optional array of sample indices to restrict the dataset view.
+            Can be "all" to include all samples, a sequence of indices, or None
+            to use all samples from the split.""")
+    infos : dict[str, dict[str, str]] = Field(default_factory=dict)
+    _conv: Any = PrivateAttr(default=None)
+    _ids : Any = PrivateAttr(default=None)
     _backend : BackendModule = PrivateAttr(default_factory=lambda: get_backend("in_memory")())
+    label : str = Field(default="")
 
-
-    # def __init__(self, **data):
-    #     super().__init__(**data)
-    #     path = data.get("path",None)
-    #     if path is not None:
-    #         split = data.get("split",None)
-    #         self.load(path= path, split=split)
-        
 
     # to set the name, task only once 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -98,6 +73,50 @@ class Dataset(BaseModel):
         )
         dataset.load(path=path, split=split)
         return dataset
+
+    def set_infos(self, infos: dict[str, dict[str, str]], warn: bool = True) -> None:
+        """Set information to the :class:`Dataset <plaid.containers.dataset.Dataset>`, overwriting the existing one.
+
+        Args:
+            infos (dict[str,dict[str,str]]): Information to associate with this data set (Dataset).
+            warn (bool, optional): If True, warns when replacing existing infos. Defaults to True.
+
+        Raises:
+            KeyError: Invalid category key format in provided infos.
+            KeyError: Invalid info key format in provided infos.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import Dataset
+                dataset = Dataset()
+                infos = {"legal":{"owner":"CompX", "license":"li_X"}}
+                dataset.set_infos(infos)
+                print(dataset.get_infos())
+                >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}}
+        """
+        for cat_key in infos.keys():  # Format checking on "infos"
+            if cat_key != "plaid":
+                if cat_key not in AUTHORIZED_INFO_KEYS:
+                    raise KeyError(
+                        f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
+                    )
+                for info_key in infos[cat_key].keys():
+                    if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
+                        raise KeyError(
+                            f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
+                        )
+
+        # Check if there are any non-plaid infos being replaced
+        has_user_infos = any(key != "plaid" for key in self.infos.keys())
+        if has_user_infos and warn:
+            logger.warning("infos not empty, replacing it anyway")
+        self.infos = copy.deepcopy(infos)
+
+        if "plaid" not in self.infos:
+            self.infos["plaid"] = {}
+        if "version" not in self.infos["plaid"]:
+            self.infos["plaid"]["version"] = Version(__version__)
 
 
     # load data from disk if path and split are given 
@@ -171,7 +190,7 @@ class Dataset(BaseModel):
         Returns:
             Dataset instance loaded from the training split.
         """
-        problem_definition = ProblemDefinition(path=path, name=pb_def_name)
+        problem_definition = ProblemDefinition.from_path(path=path, name=pb_def_name)
         split, indices = next(iter(problem_definition.train_split.items()))
 
         # Convert indices to numpy array if needed
@@ -187,7 +206,7 @@ class Dataset(BaseModel):
             path=path,
             stage="training",
             split=split,
-            problem_definition=problem_definition,
+            #problem_definition=problem_definition,
             indices=indices_array,
         )
 

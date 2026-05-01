@@ -113,23 +113,22 @@ def load_problem_definitions_from_disk(
 def load_constants_from_disk(path):
     """Load constant features stored under a dataset's "constants" directory.
 
-    The function expects the following layout under <path>/constants/:
-      - one folder per split (e.g. "train", "test", ...)
-        each containing:
-          * layout.json            : mapping constant_name -> {'offset': int, 'shape': [..]} or None
-          * constant_schema.yaml   : YAML describing dtype for each constant (dtype string or "string")
-          * data.mmap              : raw bytes memory-mapped file containing packed constant data
+    The function expects the following layout under <path>/constants/. One folder per split (e.g. "train", "test", ...)
+    each containing:
+    - layout.json            : mapping constant_name -> {'offset': int, 'shape': [..]} or None
+    - constant_schema.yaml   : YAML describing dtype for each constant (dtype string or "string")
+    - data.mmap              : raw bytes memory-mapped file containing packed constant data
 
     Args:
         path (str | Path): Root dataset directory that contains the "constants" folder.
 
     Returns:
         tuple:
-            flat_cst (dict[str, dict[str, Any]]): Mapping split -> {constant_name: numpy array | None}.
-                - Numeric constants are returned as ``np.memmap`` arrays backed by
-                  ``data.mmap`` in the dataset directory.
-                - String constants are returned as 1-element numpy arrays of Python str decoded using ASCII.
-                - If layout entry for a key is None, the value is returned as None.
+            flat_cst (dict[str, dict[str, Any]]): Mapping from split names to dictionaries of constant
+            values. Numeric constants are returned as
+            ``np.memmap`` arrays backed by ``data.mmap``. String constants are
+            returned as 1-element numpy arrays of Python strings decoded using
+            ASCII. If a layout entry is ``None``, the returned value is ``None``
             constant_schema (dict[str, dict[str, Any]]): Mapping split -> loaded constant schema (from YAML).
 
     Raises:

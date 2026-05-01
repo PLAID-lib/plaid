@@ -38,14 +38,14 @@ def generate_samples_no_string(nb: int, zone_name: str, base_name: str) -> list[
         sample.add_field(
             name="test_field_same_size",
             field=float(i**4) * np.ones(17),
-            zone_name=zone_name,
-            base_name=base_name,
+            zone=zone_name,
+            base=base_name,
         )
         sample.add_field(
             name="test_field_2785",
             field=float(i**5) * np.ones(10),
-            zone_name=zone_name,
-            base_name=base_name,
+            zone=zone_name,
+            base=base_name,
             location="CellCenter",
         )
         sample_list.append(sample)

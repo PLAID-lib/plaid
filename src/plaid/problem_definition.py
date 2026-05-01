@@ -73,7 +73,7 @@ class ProblemDefinition(BaseModel):
         from plaid.storage import load_problem_definitions_from_disk
         all_pb_def = load_problem_definitions_from_disk(path=Path(path))
         print(list(all_pb_def.values()))
-        name = overrides.get("name",None)
+        name = overrides.get("name",name)
         available = ", ".join(sorted(all_pb_def))
         if name is not None:
             if name not in all_pb_def :
@@ -111,6 +111,14 @@ class ProblemDefinition(BaseModel):
             raise ValueError("duplicated values in input_features")
         return _normalize_list(v)
     
+    @field_validator('train_split', 'test_split', mode='after')
+    @classmethod
+    def check_split_has_only_one_obj(cls, v):
+        if len(v) > 1:
+            raise ValueError("Splits only support one element (dict with only one object)")
+        return v
+
+
     @field_validator('output_features', mode='before')
     @classmethod
     def normalize_out_features_identifiers(cls, v):
@@ -169,7 +177,7 @@ class ProblemDefinition(BaseModel):
                 print(test_indices)
                 >>> [100, 101, ...]
         """
-        if indices_name is not  None:
+        if indices_name is not None:
             raise NotImplementedError()
         res = {}
 
@@ -1580,7 +1588,10 @@ class ProblemDefinition(BaseModel):
             data = yaml.safe_load(file)
 
         for key, value in data.items():
-            setattr(self, key, value)
+            if key in type(self).model_fields.keys():
+                setattr(self, key, value)
+            else:
+                logger.warning(f" Data ignored! : {key}: {value}")
 
 
 

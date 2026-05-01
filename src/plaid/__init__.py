@@ -7,11 +7,8 @@
 #
 #
 
-try:
-    from ._version import __version__
-except ImportError:  # pragma: no cover
-    __version__ = "None"
 
+from .version import __version__
 from .containers.sample import Sample
 from .problem_definition import ProblemDefinition
 from .containers.dataset import Dataset
