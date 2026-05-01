@@ -96,7 +96,7 @@ class Sample(BaseModel):
     """
 
     # Pydantic configuration
-    #TODO(FB) check why arbitrary_types_allowed is needed, and if it can be removed 
+    #TODO(FB) check why arbitrary_types_allowed is needed, and if it can be removed
     model_config = ConfigDict(
         arbitrary_types_allowed=True, revalidate_instances="always", extra="forbid"
     )
@@ -178,28 +178,6 @@ class Sample(BaseModel):
         """
         return self.features.get_global_names()
 
-    # -------------------------------------------------------------------------#
-
-    # def del_all_fields(
-    #     self,
-    # ) -> Self:
-    #     """Delete alls field from sample, while keeping geometrical info.
-
-    #     Returns:
-    #         Sample: The sample with deleted fields
-    #     """
-    #     all_features_identifiers = self.get_all_features_identifiers()
-    #     # Delete all fields in the sample
-    #     for feat_id in all_features_identifiers:
-    #         if feat_id["type"] == "field":
-    #             self.del_field(
-    #                 name=feat_id["name"],
-    #                 location=feat_id["location"],
-    #                 zone_name=feat_id["zone_name"],
-    #                 base_name=feat_id["base_name"],
-    #                 time=feat_id["time"],
-    #             )
-    #     return self
 
     # -------------------------------------------------------------------------#
     def get_all_features_identifiers(self) -> list[str]:
@@ -254,15 +232,15 @@ class Sample(BaseModel):
         Returns:
             list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
         """
-        
+
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
         if feature_type ==  "scalar":
-            return self.get_scalar_names()  
+            return self.get_scalar_names()
         elif feature_type ==  "field":
-            return self.get_field_names()       
+            return self.get_field_names()
         elif feature_type ==  "nodes":
             return self.get_nodes_names()
-        
+
 
 
     def get_feature_by_path(self, path: str, time: Optional[int] = None) -> np.number | np.ndarray | None:
@@ -648,18 +626,6 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    # @deprecated(
-    #     "`Sample.save(...)` is deprecated, use instead `Sample.save_to_dir(...)`",
-    #     version="0.1.8",
-    #     removal="0.2",
-    # )
-    # def save(
-    #     self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
-    # ) -> None:
-    #     """DEPRECATED: use :meth:`Sample.save_to_dir` instead."""
-    #     self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
-
-    # -------------------------------------------------------------------------#
     def save_to_dir(
         self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
     ) -> None:
@@ -775,40 +741,6 @@ class Sample(BaseModel):
         old_time_series_files = list(path.glob("time_series_*.csv"))
         if len(old_time_series_files) > 0:
             self._load_old_time_series(old_time_series_files)
-
-    # @deprecated(
-    #     reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-    #     version="0.1.10",
-    #     removal="0.2.0",
-    # )
-    # def _load_old_scalars(self, scalars_file: Path):
-    #     names = np.loadtxt(scalars_file, dtype=str, max_rows=1, delimiter=",").reshape(
-    #         (-1,)
-    #     )
-    #     scalars = np.loadtxt(
-    #         scalars_file, dtype=float, skiprows=1, delimiter=","
-    #     ).reshape((-1,))
-    #     for name, value in zip(names, scalars):
-    #         self.add_scalar(name, value)
-
-    # @deprecated(
-    #     reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-    #     version="0.1.10",
-    #     removal="0.2.0",
-    # )
-    # def _load_old_time_series(self, time_series_files: list[Path]):
-    #     for ts_fname in time_series_files:
-    #         names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
-    #             (-1,)
-    #         )
-    #         assert names[0] == "t"
-    #         times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
-    #         for i in range(times_and_val.shape[0]):
-    #             self.add_global(
-    #                 name=names[1],
-    #                 global_array=times_and_val[i, 1],
-    #                 time=times_and_val[i, 0],
-    #             )
 
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:
@@ -1000,8 +932,8 @@ class Sample(BaseModel):
                 report += f"Field names: {', '.join(sorted(total_fields))}\n"
 
         return report
-    
+
 if TYPE_CHECKING:
-    # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING 
+    # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING
     # automatically adds all its methods to Sample's autocomplete.
     class Sample(Sample, SampleFeatures): ...
