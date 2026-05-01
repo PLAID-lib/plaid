@@ -893,7 +893,7 @@ class SampleFeatures:
                 return CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateX")
             elif name == "CoordinateY":
                 return CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateY")
-            elif name == "CoordinateY":
+            elif name == "CoordinateZ":
                 return CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateZ")
             elif name != None:
                 raise ValueError(f"Unkonwn coordiate name : {name}")

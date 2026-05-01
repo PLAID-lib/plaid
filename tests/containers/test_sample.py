@@ -166,9 +166,15 @@ def current_directory() -> Path:
 class Test_Sample:
     # -------------------------------------------------------------------------#
     def test___init__(self, current_directory):
-        sample_path_1 = current_directory / "dataset" / "data" / "test" / "sample_000000000"
-        sample_path_2 = current_directory / "dataset" / "data" / "test" / "sample_000000001"
-        sample_path_3 = current_directory / "dataset" / "data" / "test" / "sample_000000002"
+        sample_path_1 = (
+            current_directory / "dataset" / "data" / "test" / "sample_000000000"
+        )
+        sample_path_2 = (
+            current_directory / "dataset" / "data" / "test" / "sample_000000001"
+        )
+        sample_path_3 = (
+            current_directory / "dataset" / "data" / "test" / "sample_000000002"
+        )
         sample_already_filled_1 = Sample(path=sample_path_1)
         sample_already_filled_2 = Sample(path=sample_path_2)
         sample_already_filled_3 = Sample(path=sample_path_3)
@@ -182,12 +188,22 @@ class Test_Sample:
             Sample(path=sample_path)
 
     def test__init__file_provided(self, current_directory):
-        sample_path = current_directory / "dataset" / "data" / "test" / "sample_000000000" / "meshes" / "mesh_000000000.cgns"
+        sample_path = (
+            current_directory
+            / "dataset"
+            / "data"
+            / "test"
+            / "sample_000000000"
+            / "meshes"
+            / "mesh_000000000.cgns"
+        )
         with pytest.raises(FileExistsError):
             Sample(path=sample_path)
 
     def test__init__path(self, current_directory):
-        sample_path = current_directory / "dataset" / "data" / "test" / "sample_000000000"
+        sample_path = (
+            current_directory / "dataset" / "data" / "test" / "sample_000000000"
+        )
         Sample(path=sample_path)
 
     def test_copy(self, sample_with_tree_and_scalar):
@@ -636,6 +652,13 @@ class Test_Sample:
     def test_get_scalar_names(self, sample: Sample):
         assert sample.get_global_names() == []
 
+    def test_get_global_names_at_specific_time(self, sample: Sample):
+        sample.add_global("g_t0", np.array([1.0]), time=0.0)
+        sample.add_global("g_t1", np.array([2.0]), time=1.0)
+
+        assert sample.get_global_names(time=0.0) == ["g_t0"]
+        assert sample.get_global_names(time=1.0) == ["g_t1"]
+
     def test_get_scalar_empty(self, sample):
         assert sample.get_global("missing_scalar_name") is None
 
@@ -688,14 +711,11 @@ class Test_Sample:
 
         sample_with_tree3d.add_feature(
             feature_path="Base_2_3/Zone/GridCoordinates",
-            feature=np.zeros((5,3)),
+            feature=np.zeros((5, 3)),
         )
-
 
     def test_del_feature(self, sample_with_scalar: Sample, sample_with_tree3d: Sample):
-        sample_with_scalar.del_feature(
-            feature_path="Global/test_scalar_1"
-        )
+        sample_with_scalar.del_feature(feature_path="Global/test_scalar_1")
         assert sample_with_scalar.get_all_features_identifiers_by_type("scalar") == []
         sample_with_tree3d.del_feature("Base_2_3/Zone/VertexFields/test_node_field_1")
 
@@ -720,6 +740,15 @@ class Test_Sample:
 
     def test_get_nodes3d(self, sample_with_tree3d, nodes3d):
         assert np.all(sample_with_tree3d.get_nodes() == nodes3d)
+
+    def test_get_nodes_by_coordinate_name(self, sample_with_tree, nodes):
+        assert np.all(sample_with_tree.get_nodes(name="CoordinateX") == nodes[:, 0])
+        assert np.all(sample_with_tree.get_nodes(name="CoordinateY") == nodes[:, 1])
+        sample_with_tree.get_nodes(name="CoordinateZ")
+
+    def test_get_nodes_unknown_coordinate_name(self, sample_with_tree):
+        with pytest.raises(ValueError):
+            sample_with_tree.get_nodes(name="UnknownCoordinate")
 
     def test_set_nodes(self, sample, nodes, zone_name, base_name):
         sample.init_base(3, 3, base_name)
@@ -1192,13 +1221,21 @@ class Test_Sample:
             "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity", 0.0
         )
 
-
     def test_get_feature_from_identifier(self, sample_with_tree_and_scalar):
-        sample_with_tree_and_scalar.get_feature_by_path("Base_2_2/Zone/GridCoordinates/CoordinateX") is not None
+        sample_with_tree_and_scalar.get_feature_by_path(
+            "Base_2_2/Zone/GridCoordinates/CoordinateX"
+        ) is not None
         print(sample_with_tree_and_scalar.show_tree())
-        assert sample_with_tree_and_scalar.get_feature_by_path("Base_2_2/Zone/VertexFields/test_node_field_1") is not None
-        assert sample_with_tree_and_scalar.get_feature_by_path("Global/test_scalar_1") is not None
-
+        assert (
+            sample_with_tree_and_scalar.get_feature_by_path(
+                "Base_2_2/Zone/VertexFields/test_node_field_1"
+            )
+            is not None
+        )
+        assert (
+            sample_with_tree_and_scalar.get_feature_by_path("Global/test_scalar_1")
+            is not None
+        )
 
     def test_update_features_by_path(self, sample_with_tree_and_scalar):
         before = sample_with_tree_and_scalar.get_global("test_scalar_1")
@@ -1207,7 +1244,6 @@ class Test_Sample:
             features=3.141592,
             in_place=False,
         )
-
 
     def test_get_all_features_identifiers_by_type(self, sample_with_tree_and_scalar):
         feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
@@ -1227,7 +1263,6 @@ class Test_Sample:
         )
         assert len(feat_ids) == 2
 
-
     # -------------------------------------------------------------------------#
     def test_save(self, sample_with_tree_and_scalar, tmp_path):
         save_dir = tmp_path / "test_dir"
@@ -1236,8 +1271,9 @@ class Test_Sample:
         with pytest.raises(ValueError):
             sample_with_tree_and_scalar.save_to_dir(save_dir, memory_safe=False)
         sample_with_tree_and_scalar.save_to_dir(save_dir, overwrite=True)
-        sample_with_tree_and_scalar.save_to_dir(save_dir, overwrite=True, memory_safe=True)
-
+        sample_with_tree_and_scalar.save_to_dir(
+            save_dir, overwrite=True, memory_safe=True
+        )
 
     def test_load_from_dir(self, sample_with_tree_and_scalar, tmp_path):
         save_dir = tmp_path / "test_dir"
