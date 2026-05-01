@@ -6,8 +6,8 @@ from typing import Any, Protocol, Union, Iterable, Optional, Callable, Generator
 import numpy as np
 
 from datasets import IterableDataset
-from ..containers.dataset import Dataset
-from ..containers.sample import Sample
+#from ..containers.dataset import Dataset
+#from ..containers.sample import Sample
 from ..types import IndexType
 
 
@@ -43,7 +43,7 @@ class BackendModule(Protocol):
     def generate_datasetdict_to_disk(
         self,
         output_folder: Union[str, Path],
-        generators: dict[str, Callable[..., Generator[Sample, None, None]]],
+        generators: dict[str, Callable[..., Generator['Sample', None, None]]],
         variable_schema: Optional[dict[str, dict]] = None,  # noqa: ARG001
         gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
         num_proc: int = 1,
@@ -72,7 +72,7 @@ class BackendModule(Protocol):
 
     def to_var_sample_dict(
         self,
-        ds: Dataset,
+        ds: 'Dataset',
         i: int,
         features: Optional[list[str]] = None,
         enforce_shapes: bool = True,
