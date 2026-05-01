@@ -168,7 +168,6 @@ def dataset(samples) -> Dataset:
 
     dataset = Dataset()
     dataset.get_backend().add_sample(samples=samples_)
-    #dataset.set_infos(infos)
     return dataset
 
 
@@ -299,12 +298,6 @@ class Test_Storage:
 
         hf_bridge.to_var_sample_dict(hf_dataset, 0, enforce_shapes=False)
 
-        # for t in plaid_sample.get_all_time_values():
-        #     for path in problem_definition.get_in_features_identifiers():
-        #         plaid_sample.get_feature_by_path(path=path, time=t)
-        #     for path in problem_definition.get_out_features_identifiers():
-        #         plaid_sample.get_feature_by_path(path=path, time=t)
-
         converter.to_dict(hf_dataset, 0)
         converter.sample_to_dict(hf_dataset[0])
 
@@ -370,11 +363,6 @@ class Test_Storage:
         zarr_dataset.toto = 1.0
         print(zarr_dataset)
 
-        # for t in plaid_sample.get_all_time_values():
-        #     for path in problem_definition.get_in_features_identifiers():
-        #         plaid_sample.get_feature_by_path(path=path, time=t)
-        #     for path in problem_definition.get_out_features_identifiers():
-        #         plaid_sample.get_feature_by_path(path=path, time=t)
 
         converter.to_dict(zarr_dataset, 0)
         converter.sample_to_dict(zarr_dataset[0])
@@ -638,11 +626,6 @@ class Test_Storage:
 
         converter.plaid_to_dict(plaid_sample)
 
-        # for t in plaid_sample.get_all_time_values():
-        #     for path in problem_definition.get_in_features_identifiers():
-        #         plaid_sample.get_feature_by_path(path=path, time=t)
-        #     for path in problem_definition.get_out_features_identifiers():
-        #         plaid_sample.get_feature_by_path(path=path, time=t)
 
         with pytest.raises(ValueError):
             converter.to_dict(cgns_dataset, 0)
