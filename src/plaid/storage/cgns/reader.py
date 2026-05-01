@@ -46,11 +46,11 @@ class CGNSDataset:
         Args:
             path: Path to the dataset directory.
         """
-        self.path = path
+        self.path = Path(path)
 
         ids = sorted(
             int(p.name.removeprefix("sample_"))
-            for p in path.iterdir()
+            for p in self.path.iterdir()
             if p.is_dir() and p.name.startswith("sample_")
         )
         self.ids = np.asarray(ids, dtype=int)
@@ -214,7 +214,7 @@ def download_datasetdict_from_hub(
         if overwrite:
             shutil.rmtree(local_dir)
             logger.warning(f"Existing {local_dir} directory has been reset.")
-        elif any(local_dir.iterdir()):
+        elif any(output_folder.iterdir()):
             raise ValueError(
                 f"directory {local_dir} already exists and is not empty. Set `overwrite` to True if needed."
             )
