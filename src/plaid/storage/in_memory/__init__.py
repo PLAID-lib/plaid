@@ -9,7 +9,8 @@ from ...containers.sample import Sample
 class InMemoryBackend():
     name= "in_memory"
 
-    def init_from_disk(self, path: Union[str, Path]) -> Any: 
+    @staticmethod
+    def init_from_disk(path: Union[str, Path]) -> Any: 
         raise NotImplementedError("inMemoryBackend does not support inint from disk")
     
     def download_from_hub (self, repo_id: str, local_dir: Union[str, Path]) -> str: 
@@ -20,6 +21,7 @@ class InMemoryBackend():
         raise NotImplementedError("InMemoryBackend init_datasetdict_streaming_from_hub not implemented")
         #return generate_datasetdict_to_disk(self, output_folder)
     
+   
     def generate_datasetdict_to_disk(self, output_folder: Union[str, Path]) -> None:
         raise NotImplementedError("InMemoryBackend generate_datasetdict_to_disk not implemented")
         #return generate_datasetdict_to_disk(self, output_folder: Union[str, Path])
@@ -39,6 +41,8 @@ class InMemoryBackend():
         return len(self._samples)
     
     def __getitem__(self, key):
+        if isinstance(key, (slice, Sequence)):
+            return [self._samples[k] for k in (range(*key.indices(len(self))) if isinstance(key, slice) else key)]
         return self._samples[key]
     
     def add_sample(self, samples:  Union[Sample,Sequence[Sample]], id: Optional[Union[int,Sequence[int]]] = None):

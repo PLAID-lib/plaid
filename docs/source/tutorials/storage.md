@@ -119,11 +119,11 @@ pb_def = ProblemDefinition()
 pb_def.add_in_features_identifiers(input_features)
 pb_def.add_out_features_identifiers(output_features)
 pb_def.add_constant_features_identifiers(constant_features)
-pb_def.set_task("regression")
+pb_def.task = "regression"
 pb_def.set_name("regression_1")
 pb_def.set_score_function("RRMSE")
-pb_def.set_train_split({"train":"all"})
-pb_def.set_test_split({"test":"all"})
+pb_def.train_split = {"train":"all"}
+pb_def.test_split = {"test":"all"}
 
 #---------------------------------------------------------------
 # Define a simple function that takes a single identifier and returns a Sample.

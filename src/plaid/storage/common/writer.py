@@ -58,7 +58,7 @@ def save_problem_definitions_to_disk(
         pb_defs (Union[dict[str, ProblemDefinition], ProblemDefinition]): The problem definitions to save.
     """
     if isinstance(pb_defs, ProblemDefinition):
-        pb_defs = {pb_defs.get_name(): pb_defs}
+        pb_defs = {pb_defs.name: pb_defs}
 
     target_dir = Path(path) / "problem_definitions"
     target_dir.mkdir(parents=True, exist_ok=True)

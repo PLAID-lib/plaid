@@ -29,6 +29,7 @@ from packaging.version import Version
 from ..containers.sample import Sample
 from ..problem_definition import ProblemDefinition
 
+from plaid import __version__
 from ..containers.utils import validate_required_infos
 from .common.preprocessor import preprocess
 from .common.reader import (
@@ -232,7 +233,7 @@ def save_to_disk(
     infos = infos.copy() if infos else {}
     infos.setdefault("num_samples", num_samples)
     infos.setdefault("storage_backend", backend)
-    infos.setdefault("plaid", {"version": str(Version(plaid.__version__))})
+    infos.setdefault("plaid", {"version": str(Version(__version__))})
 
     save_infos_to_disk(output_folder, infos)
 

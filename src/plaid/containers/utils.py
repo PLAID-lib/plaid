@@ -163,7 +163,7 @@ def get_number_of_samples(savedir: Union[str, Path]) -> int:
     return len(get_sample_ids(savedir))
 
 
-def get_feature_type_and_details_from():
+def get_feature_type_and_details_from(feature_identifier: str):
     raise NotImplementedError("  v1 cleaning")
 # def get_feature_type_and_details_from(
 #     feature_identifier: FeatureIdentifier,

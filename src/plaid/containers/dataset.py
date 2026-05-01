@@ -15,7 +15,7 @@ from ..problem_definition import ProblemDefinition
 from .sample import Sample
 from ..types.common import NDArrayInt
 from ..storage.registry import BackendModule
-from ..storage.registry import get_backend, get_backend_class
+from ..storage.registry import get_backend
 
 
 class Dataset(BaseModel):
@@ -56,41 +56,16 @@ class Dataset(BaseModel):
     # self._conv = None
 #   #      self._ids = []
     #backend_type : str = Field(default="in_memory")
-    _backend = PrivateAttr(default_factory=lambda: get_backend("in_memory") )
-    _backend_new = PrivateAttr(default_factory=lambda: get_backend_class("in_memory")() )
+    _backend : BackendModule = PrivateAttr(default_factory=lambda: get_backend("in_memory")())
 
 
-    def __init__(self, **data):
-#        path: Optional[Union[str, Path]] = None,
-#         stage: Literal["training", "evaluating"] = "training",
-#         split: str | None = None,  # Internal use only, not part of the public API
-#         problem_definition: ProblemDefinition | None = None,
-#         indices: np.ndarray | Literal["all"] | None = None,
-#         label: str | None = None,
-#     ):
-#         self.path = path
-#         self.stage = stage
-#         self._split = split  # Immutable data source identifier
-#         self.label = label if label is not None else "default"  # Semantic label
-#         self.problem_definition = problem_definition
-#         self.init_feats = None
-#         self._ds = None
-#         self._conv = None
-#         self._ids = []
-
-        path = data.get("path",None)
+    # def __init__(self, **data):
+    #     super().__init__(**data)
+    #     path = data.get("path",None)
+    #     if path is not None:
+    #         split = data.get("split",None)
+    #         self.load(path= path, split=split)
         
-        
-        if path is not None:
-            split = data.get("split",None)
-            self.load(path= path, split=split)
-        else:
-            # init for in memory storage
-            self._backend_new = get_backend_class("in_memory")()
-            
-
-        super().__init__(**data)
-
 
     # to set the name, task only once 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -100,10 +75,32 @@ class Dataset(BaseModel):
                 raise AttributeError(f"'{name}' is already set and cannot be changed.")
         super().__setattr__(name, value)
 
-    def get_backend_new(self) -> BackendModule:
-        return self._backend_new
+    def get_backend(self) -> BackendModule:
+        return self._backend
     
-    def load(self, path: Union[str, Path], split: Optional[Any]= None):
+    @staticmethod
+    def from_path(
+        path: str | Path,
+        *,
+        split: Any = None,
+        stage: Literal["training", "evaluating"] | None = None,
+        problem_definition: ProblemDefinition | None = None,
+        indices: NDArrayInt | Literal["all"] = "all",
+    ) -> "Dataset":
+        dataset = Dataset(
+            path=path,
+            split=split,
+            stage=stage,
+            problem_definition=problem_definition or ProblemDefinition(),
+            indices=indices,
+        )
+        dataset.load(path=path, split=split)
+        return dataset
+
+
+    def load(self, path: Optional[Union[str, Path]] = None, split: Optional[Any]= None):
+        if path is None:
+            path = self.path
         path = Path(path)
         if path.is_file():
             #inputdir = path.parent / f"tmploaddir_{generate_random_ASCII()}"
@@ -144,7 +141,7 @@ class Dataset(BaseModel):
 
 
     @classmethod
-    def from_training_split(
+    def from_train_split(
         cls,
         path: Path,
         pb_def_name: str = "PLAID_benchmark",
@@ -159,7 +156,7 @@ class Dataset(BaseModel):
             Dataset instance loaded from the training split.
         """
         problem_definition = ProblemDefinition(path=path, name=pb_def_name)
-        split, indices = next(iter(problem_definition.training_split.items()))
+        split, indices = next(iter(problem_definition.train_split.items()))
 
         # Convert indices to numpy array if needed
         indices_array: np.ndarray | Literal["all"] | None
@@ -193,7 +190,7 @@ class Dataset(BaseModel):
 #        assert self.init_feats is not None, (
 #             "self.init_feats not initialized, did you call set_transform_stage(transform_stage) ?"
 #         )
-        return self.get_backend_new()[idx]
+        return self._backend[idx]
     
         return self._conv.to_plaid(self._ds, self._ids[idx], features=self.init_feats)
 
@@ -205,7 +202,7 @@ class Dataset(BaseModel):
         """
         if isinstance(self.indices, str):
             if self.indices == "all":
-                return len(self.get_backend_new())
+                return len(self._backend)
             else:
                 raise RuntimeError(f"'{self.indices}' not a valid value")
             

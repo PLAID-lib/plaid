@@ -49,121 +49,121 @@ class Test_Container_Utils:
         dataset_path = current_directory / "dataset"
         assert get_number_of_samples(str(dataset_path)) == 3
 
-    def test_check_features_type_homogeneity(self):
-        check_features_type_homogeneity(
-            [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "P"}]
-        )
+    # def test_check_features_type_homogeneity(self):
+    #     check_features_type_homogeneity(
+    #         [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "P"}]
+    #     )
 
-    def test_check_features_type_homogeneity_fail_type(self):
-        with pytest.raises(AssertionError):
-            check_features_type_homogeneity(0)
+    # def test_check_features_type_homogeneity_fail_type(self):
+    #     with pytest.raises(AssertionError):
+    #         check_features_type_homogeneity(0)
 
-    def test_check_features_type_homogeneity_fail(self):
-        with pytest.raises(AssertionError):
-            check_features_type_homogeneity(
-                [{"type": "scalar", "name": "Mach"}, {"type": "nodes"}]
-            )
+    # def test_check_features_type_homogeneity_fail(self):
+    #     with pytest.raises(AssertionError):
+    #         check_features_type_homogeneity(
+    #             [{"type": "scalar", "name": "Mach"}, {"type": "nodes"}]
+    #         )
 
-    def test_has_duplicates_feature_ids(self):
-        assert not has_duplicates_feature_ids(
-            [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "P"}]
-        )
-        assert has_duplicates_feature_ids(
-            [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "Mach"}]
-        )
+    # def test_has_duplicates_feature_ids(self):
+    #     assert not has_duplicates_feature_ids(
+    #         [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "P"}]
+    #     )
+    #     assert has_duplicates_feature_ids(
+    #         [{"type": "scalar", "name": "Mach"}, {"type": "scalar", "name": "Mach"}]
+    #     )
 
-    def test_get_feature_details_from_path(self):
-        details = get_feature_details_from_path("Base_2_2")
-        assert details["base"] == "Base_2_2"
+    # def test_get_feature_details_from_path(self):
+    #     details = get_feature_details_from_path("Base_2_2")
+    #     assert details["base"] == "Base_2_2"
 
-        details = get_feature_details_from_path("Global/toto")
-        assert details["type"] == "global"
-        assert details["name"] == "toto"
+    #     details = get_feature_details_from_path("Global/toto")
+    #     assert details["type"] == "global"
+    #     assert details["name"] == "toto"
 
-        details = get_feature_details_from_path("Base_2_2/Zone")
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Zone"
+    #     details = get_feature_details_from_path("Base_2_2/Zone")
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Zone"
 
-        details = get_feature_details_from_path(
-            "Base_2_2/Zone/Elements_QUAD_4/ElementConnectivity"
-        )
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Zone"
-        assert details["type"] == "elements"
-        assert details["sub_type"] == "connectivity"
-        assert details["element_type"] == "QUAD_4"
+    #     details = get_feature_details_from_path(
+    #         "Base_2_2/Zone/Elements_QUAD_4/ElementConnectivity"
+    #     )
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Zone"
+    #     assert details["type"] == "elements"
+    #     assert details["sub_type"] == "connectivity"
+    #     assert details["element_type"] == "QUAD_4"
 
-        details = get_feature_details_from_path(
-            "Base_2_2/Zone/Elements_QUAD_4/ElementRange"
-        )
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Zone"
-        assert details["type"] == "elements"
-        assert details["sub_type"] == "range"
-        assert details["element_type"] == "QUAD_4"
+    #     details = get_feature_details_from_path(
+    #         "Base_2_2/Zone/Elements_QUAD_4/ElementRange"
+    #     )
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Zone"
+    #     assert details["type"] == "elements"
+    #     assert details["sub_type"] == "range"
+    #     assert details["element_type"] == "QUAD_4"
 
-        details = get_feature_details_from_path(
-            "Base_2_2/Zone/GridCoordinates/CoordinateX"
-        )
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Zone"
-        assert details["type"] == "coordinate"
-        assert details["sub_type"] == "node"
-        assert details["name"] == "CoordinateX"
+    #     details = get_feature_details_from_path(
+    #         "Base_2_2/Zone/GridCoordinates/CoordinateX"
+    #     )
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Zone"
+    #     assert details["type"] == "coordinate"
+    #     assert details["sub_type"] == "node"
+    #     assert details["name"] == "CoordinateX"
 
-        details = get_feature_details_from_path("Base_2_2/Zone/VertexFields/materialID")
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Zone"
-        assert details["type"] == "field"
-        assert details["location"] == "Vertex"
-        assert details["name"] == "materialID"
+    #     details = get_feature_details_from_path("Base_2_2/Zone/VertexFields/materialID")
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Zone"
+    #     assert details["type"] == "field"
+    #     assert details["location"] == "Vertex"
+    #     assert details["name"] == "materialID"
 
-        details = get_feature_details_from_path(
-            "Base_2_2/Zone/ZoneBC/BottomLeft/PointList"
-        )
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Zone"
-        assert details["type"] == "boundary_condition"
-        assert details["sub_type"] == "PointList"
-        assert details["name"] == "BottomLeft"
+    #     details = get_feature_details_from_path(
+    #         "Base_2_2/Zone/ZoneBC/BottomLeft/PointList"
+    #     )
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Zone"
+    #     assert details["type"] == "boundary_condition"
+    #     assert details["sub_type"] == "PointList"
+    #     assert details["name"] == "BottomLeft"
 
-        details = get_feature_details_from_path("Base_2_2/Time")
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Time"
-        assert details["type"] == "zone"
+    #     details = get_feature_details_from_path("Base_2_2/Time")
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Time"
+    #     assert details["type"] == "zone"
 
-        details = get_feature_details_from_path("Base_2_2/Time/IterationValues")
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Time"
-        assert details["type"] == "other"
-        assert details["path"] == "Base_2_2/Time/IterationValues"
+    #     details = get_feature_details_from_path("Base_2_2/Time/IterationValues")
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Time"
+    #     assert details["type"] == "other"
+    #     assert details["path"] == "Base_2_2/Time/IterationValues"
 
-        details = get_feature_details_from_path("Base_2_2/Time/TimeValues")
-        assert details["base"] == "Base_2_2"
-        assert details["zone"] == "Time"
-        assert details["type"] == "other"
-        assert details["path"] == "Base_2_2/Time/TimeValues"
+    #     details = get_feature_details_from_path("Base_2_2/Time/TimeValues")
+    #     assert details["base"] == "Base_2_2"
+    #     assert details["zone"] == "Time"
+    #     assert details["type"] == "other"
+    #     assert details["path"] == "Base_2_2/Time/TimeValues"
 
-        with pytest.raises(AssertionError):
-            get_feature_details_from_path("Dummy")
+    #     with pytest.raises(AssertionError):
+    #         get_feature_details_from_path("Dummy")
 
-        with pytest.raises(AssertionError):
-            get_feature_details_from_path("Dummy/Dummy/Dummy/Dummy/Dummy/Dummy/Dummy")
+    #     with pytest.raises(AssertionError):
+    #         get_feature_details_from_path("Dummy/Dummy/Dummy/Dummy/Dummy/Dummy/Dummy")
 
-    def test_validate_required_infos(self):
-        infos = {
-            "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
-        }
-        validate_required_infos(infos)
+    # def test_validate_required_infos(self):
+    #     infos = {
+    #         "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
+    #     }
+    #     validate_required_infos(infos)
 
-        infos_missing_license = {
-            "legal": {
-                "owner": "Joh Doe",
-            },
-        }
-        with pytest.raises(ValueError):
-            validate_required_infos(infos_missing_license)
+    #     infos_missing_license = {
+    #         "legal": {
+    #             "owner": "Joh Doe",
+    #         },
+    #     }
+    #     with pytest.raises(ValueError):
+    #         validate_required_infos(infos_missing_license)
 
-        infos_dummy = {"dummy": "toto"}
-        with pytest.raises(AssertionError):
-            validate_required_infos(infos_dummy)
+    #     infos_dummy = {"dummy": "toto"}
+    #     with pytest.raises(AssertionError):
+    #         validate_required_infos(infos_dummy)

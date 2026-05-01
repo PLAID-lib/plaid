@@ -180,26 +180,26 @@ class Sample(BaseModel):
 
     # -------------------------------------------------------------------------#
 
-    def del_all_fields(
-        self,
-    ) -> Self:
-        """Delete alls field from sample, while keeping geometrical info.
+    # def del_all_fields(
+    #     self,
+    # ) -> Self:
+    #     """Delete alls field from sample, while keeping geometrical info.
 
-        Returns:
-            Sample: The sample with deleted fields
-        """
-        all_features_identifiers = self.get_all_features_identifiers()
-        # Delete all fields in the sample
-        for feat_id in all_features_identifiers:
-            if feat_id["type"] == "field":
-                self.del_field(
-                    name=feat_id["name"],
-                    location=feat_id["location"],
-                    zone_name=feat_id["zone_name"],
-                    base_name=feat_id["base_name"],
-                    time=feat_id["time"],
-                )
-        return self
+    #     Returns:
+    #         Sample: The sample with deleted fields
+    #     """
+    #     all_features_identifiers = self.get_all_features_identifiers()
+    #     # Delete all fields in the sample
+    #     for feat_id in all_features_identifiers:
+    #         if feat_id["type"] == "field":
+    #             self.del_field(
+    #                 name=feat_id["name"],
+    #                 location=feat_id["location"],
+    #                 zone_name=feat_id["zone_name"],
+    #                 base_name=feat_id["base_name"],
+    #                 time=feat_id["time"],
+    #             )
+    #     return self
 
     # -------------------------------------------------------------------------#
     def get_all_features_identifiers():

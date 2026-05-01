@@ -253,8 +253,8 @@ def init_from_disk(
     backend = infos["storage_backend"]
     num_samples = infos["num_samples"]
 
-    backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_from_disk(local_dir)
+    
+    datasetdict = get_backend(backend).init_from_disk(path=local_dir)
 
     if splits is None:
         splits = list(datasetdict.keys())

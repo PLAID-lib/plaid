@@ -61,38 +61,47 @@ class ProblemDefinition(BaseModel):
     input_features: list[str] = Field(default_factory=list)
     output_features: list[str] = Field(default_factory=list)
     score_function: Optional[AUTHORIZED_SCORE_FUNCTIONS_T] = Field(default=None)
-    training_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(default=None)
-    evaluating_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(default=None)
+    train_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(default=None)
+    test_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(default=None)
 
 
+#verifier que tab autotocopleate marche bien dans vscode
 
-    def __init__(self, **data):
-        # Perform logic before validation
-        path = data.pop("path", None)
-        if path is not None:
-            from plaid.storage import load_problem_definitions_from_disk
-            all_pb_def = load_problem_definitions_from_disk(path=Path(path))
-            print(list(all_pb_def.values()))
-            name = data.get("name",None)
-            available = ", ".join(sorted(all_pb_def))
-            if name is not None:
-                if name not in all_pb_def :
-                    raise ValueError(
-                        f"Problem definition '{name}' not found in {path}. "
-                        f"Available definitions: {available}"
-                    )
-                data2 =  all_pb_def[name].model_dump()
-                data2.update(data)
+    @staticmethod
+    def from_path( path: str | Path, name: str | None = None, **overrides) -> "ProblemDefinition":
+
+        from plaid.storage import load_problem_definitions_from_disk
+        all_pb_def = load_problem_definitions_from_disk(path=Path(path))
+        print(list(all_pb_def.values()))
+        name = overrides.get("name",None)
+        available = ", ".join(sorted(all_pb_def))
+        if name is not None:
+            if name not in all_pb_def :
+                raise ValueError(
+                    f"Problem definition '{name}' not found in {path}. "
+                    f"Available definitions: {available}"
+                )
+            data2 =  all_pb_def[name].model_dump()
+            data2.update(overrides)
+            data = data2
+        else: 
+            if len(all_pb_def) > 1:
+                raise RuntimeError(f"Non name specified, but more than one Problem definition. Available definitions: {available}")
+            else:
+                data2 = next(iter(all_pb_def.values())).model_dump()
+                data2.update(overrides)
                 data = data2
-            else: 
-                if len(all_pb_def) > 1:
-                    raise RuntimeError(f"Non name specified, but more than one Problem definition. Available definitions: {available}")
-                else:
-                    data2 = next(iter(all_pb_def.values())).model_dump()
-                    data2.update(data)
-                    data = data2
-                                     
-        super().__init__(**data)
+
+        #return data
+        return ProblemDefinition(**data)
+
+
+
+    # def __init__(self, **data):
+    #     path = data.pop("path", None)
+    #     if path is not None:
+    #         data = self.from_path(path, **data)
+    #     super().__init__(**data)
         
 
     @field_validator('input_features',  mode='before')
@@ -109,12 +118,19 @@ class ProblemDefinition(BaseModel):
             raise ValueError("duplicated values in output_features")
         return _normalize_list(v)
 
-    # to set the name, task only once 
+    
     def __setattr__(self, name: str, value: Any) -> None:
+        # to set the name, task, score_function only once and oly once
         if name in ["name", "task", "score_function"] :
             current_value = getattr(self, name, None)
-            if current_value is not None and value is not None:
+            if current_value is not None and value is not None and current_value != value:
                 raise AttributeError(f"'{name}' is already set and cannot be changed.")
+        # waring if set 
+        if name in ["train_split", "test_split"] :
+            current_value = getattr(self, name, None)
+            if current_value is not None and value is not None and current_value != value:
+                logger.warning("'{name}' already exists -> data will be replaced")
+
         super().__setattr__(name, value)
 
 
@@ -124,39 +140,53 @@ class ProblemDefinition(BaseModel):
 
 #     # -------------------------------------------------------------------------#
 
-#     def get_split(
-#         self, indices_name: Optional[str] = None
-#     ) -> Union[IndexType, dict[str, IndexType]]:
-#         """Get the split indices. This function returns the split indices, either for a specific split with the provided `indices_name` or all split indices if `indices_name` is not specified.
+    def get_split(self, indices_name: Optional[str] = None) -> dict[str, IndexType]:
+        """Get the split indices. This function returns the split indices, either for a specific split with the provided `indices_name` or all split indices if `indices_name` is not specified.
 
-#         Args:
-#             indices_name (str, optional): The name of the split for which indices are requested. Defaults to None.
+        Args:
+            indices_name (str, optional): The name of the split for which indices are requested. Defaults to None.
 
-#         Raises:
-#             KeyError: If `indices_name` is specified but not found among split names.
+        Raises:
+            KeyError: If `indices_name` is specified but not found among split names.
 
-#         Returns:
-#             Union[IndexType,dict[str,IndexType]]: If `indices_name` is provided, it returns
-#             the indices for that split (IndexType). If `indices_name` is not provided, it
-#             returns a dictionary mapping split names (str) to their respective indices
-#             (IndexType).
+        Returns:
+            Union[IndexType,dict[str,IndexType]]: If `indices_name` is provided, it returns
+            the indices for that split (IndexType). If `indices_name` is not provided, it
+            returns a dictionary mapping split names (str) to their respective indices
+            (IndexType).
 
-#         Example:
-#             .. code-block:: python
+        Example:
+            .. code-block:: python
 
-#                 from plaid import ProblemDefinition
-#                 problem = ProblemDefinition()
-#                 # [...]
-#                 split_indices = problem.get_split()
-#                 print(split_indices)
-#                 >>> {'train': [0, 1, 2, ...], 'test': [100, 101, ...]}
+                from plaid import ProblemDefinition
+                problem = ProblemDefinition()
+                # [...]
+                split_indices = problem.get_split()
+                print(split_indices)
+                >>> {'train': [0, 1, 2, ...], 'test': [100, 101, ...]}
 
-#                 test_indices = problem.get_split('test')
-#                 print(test_indices)
-#                 >>> [100, 101, ...]
-#         """
-#         if indices_name is None:
-#             return self._split
+                test_indices = problem.get_split('test')
+                print(test_indices)
+                >>> [100, 101, ...]
+        """
+        if indices_name is not  None:
+            raise NotImplementedError()
+        res = {}
+
+        if self.train_split != None:
+            assert len(self.train_split) == 1
+            train_split_ids = next(iter(self.train_split.values()))
+            res['train'] = train_split_ids
+
+
+        if self.test_split != None:
+            assert len(self.test_split) == 1
+            test_split_ids = next(iter(self.test_split.values()))
+            res['test'] = test_split_ids
+        
+        return  res
+    
+
 #         else:
 #             assert indices_name in self._split, (
 #                 indices_name + " not among split indices names"
@@ -208,20 +238,20 @@ class ProblemDefinition(BaseModel):
 #             )
 #             return self._train_split[indices_name]
 
-    def set_training_split(self, split: dict[str, Union[str, IndexType]]) -> None:
-        """Set the train split dictionary containing subsets and their indices.
+    # def set_train_split(self, split: dict[str, Union[str, IndexType]]) -> None:
+    #     """Set the train split dictionary containing subsets and their indices.
 
-        Args:
-            split (dict[str, Union[str, IndexType]]): Dictionary mapping train subset names
-                to their split dictionaries. Each split dictionary maps split names (e.g., 'train', 'val')
-                to their indices (or 'all' to use all the indices).
+    #     Args:
+    #         split (dict[str, Union[str, IndexType]]): Dictionary mapping train subset names
+    #             to their split dictionaries. Each split dictionary maps split names (e.g., 'train', 'val')
+    #             to their indices (or 'all' to use all the indices).
 
-        Note:
-            If a train split already exists, it will be replaced and a warning will be logged.
-        """
-        if self.training_split is not None:  # pragma: no cover
-            logger.warning("split already exists -> data will be replaced")
-        self.training_split = split
+    #     Note:
+    #         If a train split already exists, it will be replaced and a warning will be logged.
+    #     """
+    #     if self.train_split is not None:  # pragma: no cover
+    #         logger.warning("split already exists -> data will be replaced")
+    #     self.train_split = split
 
 #     def get_test_split(
 #         self, indices_name: Optional[str] = None
@@ -250,20 +280,21 @@ class ProblemDefinition(BaseModel):
 #             )
 #             return self._test_split[indices_name]
 
-    def set_evaluating_split(self, split: tuple[str, Union[str, IndexType]]) -> None:
-        """Set the test split dictionary containing subsets and their indices.
+    # # removed
+    # def set_test_split(self, split: tuple[str, Union[str, IndexType]]) -> None:
+    #     """Set the test split dictionary containing subsets and their indices.
 
-        Args:
-            split (dict[str, dict[str, IndexType]]): Dictionary mapping test subset names
-                to their split dictionaries. Each split dictionary maps split names (e.g., 'test', 'test_ood')
-                to their indices.
+    #     Args:
+    #         split (dict[str, dict[str, IndexType]]): Dictionary mapping test subset names
+    #             to their split dictionaries. Each split dictionary maps split names (e.g., 'test', 'test_ood')
+    #             to their indices.
 
-        Note:
-            If a test split already exists, it will be replaced and a warning will be logged.
-        """
-        if self.evaluating_split is not None:  # pragma: no cover
-            logger.warning("split already exists -> data will be replaced")
-        self.evaluating_split = split
+    #     Note:
+    #         If a test split already exists, it will be replaced and a warning will be logged.
+    #     """
+    #     if self.test_split is not None:  # pragma: no cover
+    #         logger.warning("split already exists -> data will be replaced")
+    #     self.test_split = split
 
     def add_in_features_identifiers(self, inputs: Union[str, Sequence[str]]) -> None:
         """Add input features identifiers to the problem.
@@ -1414,53 +1445,16 @@ class ProblemDefinition(BaseModel):
         #for tup in self.constant_features_identifiers:
         #    data["constant_features"].append(tup)
 
-        if self.training_split is not None:
-            data["train_split"] = self.training_split
+        if self.train_split is not None:
+            data["train_split"] = self.train_split
             
-        if self._test_split is not None:
-            data["test_split"] = self._test_split
+        if self.test_split is not None:
+            data["test_split"] = self.test_split
         if self.name is not None:
             data["name"] = self.name
 
         # Handle version
         return data
-
-
-    def save_to_file(self, path: Union[str, Path]) -> None:
-        """Save problem information, inputs, outputs, and split to the specified file in YAML format.
-
-        Args:
-            path (Union[str,Path]): The filepath where the problem information will be saved.
-
-        Example:
-            .. code-block:: python
-
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                problem.save_to_file("/path/to/save_file")
-        """
-        problem_infos_dict = self._generate_problem_infos_dict()
-
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        if path.suffix  != ".yaml":
-            path = path.with_suffix(".yaml")
-
-        # Save infos
-        with path.open("w") as file:
-            yaml.dump(
-                problem_infos_dict, file, default_flow_style=False, sort_keys=True
-            )
-
-#     @deprecated(
-#         "`ProblemDefinition._save_to_dir_(...)` is deprecated. Use `ProblemDefinition.save_to_dir(...)` instead.",
-#         version="0.1.10",
-#         removal="0.2.0",
-#     )
-#     def _save_to_dir_(self, path: Union[str, Path]) -> None:
-#         """DEPRECATED: use :meth:`ProblemDefinition.save_to_dir` instead."""
-#         self.save_to_dir(path)
 
 #     def save_to_dir(self, path: Union[str, Path]) -> None:
 #         """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.
@@ -1505,6 +1499,43 @@ class ProblemDefinition(BaseModel):
 #         # if self.get_test_split() is not None:
 #         #     with split_fname.open("w") as file:
 #         #         json.dump(self.get_test_split(), file)
+
+    def save_to_file(self, path: Union[str, Path]) -> None:
+        """Save problem information, inputs, outputs, and split to the specified file in YAML format.
+
+        Args:
+            path (Union[str,Path]): The filepath where the problem information will be saved.
+
+        Example:
+            .. code-block:: python
+
+                from plaid import ProblemDefinition
+                problem = ProblemDefinition()
+                problem.save_to_file("/path/to/save_file")
+        """
+        problem_infos_dict = self._generate_problem_infos_dict()
+
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        if path.suffix  != ".yaml":
+            path = path.with_suffix(".yaml")
+
+        # Save infos
+        with path.open("w") as file:
+            yaml.dump(
+                problem_infos_dict, file, default_flow_style=False, sort_keys=True
+            )
+
+#     @deprecated(
+#         "`ProblemDefinition._save_to_dir_(...)` is deprecated. Use `ProblemDefinition.save_to_dir(...)` instead.",
+#         version="0.1.10",
+#         removal="0.2.0",
+#     )
+#     def _save_to_dir_(self, path: Union[str, Path]) -> None:
+#         """DEPRECATED: use :meth:`ProblemDefinition.save_to_dir` instead."""
+#         self.save_to_dir(path)
+
 
 #     @classmethod
 #     def load(cls, path: Union[str, Path]) -> Self:  # pragma: no cover
@@ -1735,7 +1766,7 @@ class ProblemDefinitionMaestro(ProblemDefinition):
             cls._normalize_training_split(pb_def.get_train_split()),
         )
         enriched.setdefault(
-            "evaluating_split",
+            "test_split",
             cls._normalize_evaluating_split(pb_def.get_test_split()),
         )
 

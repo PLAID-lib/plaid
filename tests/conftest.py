@@ -208,7 +208,7 @@ def empty_dataset():
 
 @pytest.fixture()
 def dataset_with_samples(dataset, samples, infos):
-    dataset.get_backend_new().add_sample(samples, list(range(len(samples)) ))
+    dataset.get_backend().add_sample(samples, list(range(len(samples)) ))
     #dataset.set_infos(infos)
     return dataset
 
@@ -216,27 +216,27 @@ def dataset_with_samples(dataset, samples, infos):
 @pytest.fixture()
 def dataset_with_samples_with_tree(samples_with_tree, infos):
     dataset = Dataset()
-    dataset.add_samples(samples_with_tree)
-    dataset.set_infos(infos)
+    dataset.get_backend_new().add_sample(samples_with_tree)
+    #dataset.set_infos(infos)
     return dataset
 
 
 @pytest.fixture()
 def other_dataset_with_samples(other_samples):
     other_dataset = Dataset()
-    other_dataset.add_samples(other_samples)
+    other_dataset.get_backend_new().add_sample(other_samples)
     return other_dataset
 
 
 @pytest.fixture()
 def heterogeneous_dataset(dataset_with_samples_with_tree):
     dataset = dataset_with_samples_with_tree.copy()
-    dataset.add_sample(Sample())
+    dataset.get_backend_new().add_sample(Sample())
     sample_with_scalar = Sample()
     sample_with_scalar.add_scalar("scalar", 1.0)
-    dataset.add_sample(sample_with_scalar)
+    dataset.get_backend_new().add_sample(sample_with_scalar)
     sample_with_ts = Sample()
-    dataset.add_sample(sample_with_ts)
+    dataset.get_backend_new().add_sample(sample_with_ts)
     return dataset
 
 
@@ -245,9 +245,9 @@ def scalar_dataset():
     dataset = Dataset()
     sample = Sample()
     sample.add_scalar("test_scalar", 0.0)
-    dataset.add_sample(sample)
+    dataset.get_backend_new().add_sample(sample)
     sample2 = Sample()
     for i in range(8):
         sample2.add_scalar(f"scalar_{i}", float(i))
-    dataset.add_sample(sample2)
+    dataset.get_backend_new().add_sample(sample2)
     return dataset
