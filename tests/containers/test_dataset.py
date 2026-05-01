@@ -137,7 +137,7 @@ class Test_Dataset:
         assert dataset.get_backend().add_sample(samples, [1, 2, 3]) == [1, 2, 3]
         assert size_before + len([1, 2, 3]) == len(dataset)
 
-    def test_add_sample(self, dataset_with_samples, other_samples):
+    def test_add_sample_multiple(self, dataset_with_samples, other_samples):
         size_before = len(dataset_with_samples)
         assert (
             dataset_with_samples.get_backend().add_sample(other_samples)
