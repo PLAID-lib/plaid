@@ -10,6 +10,7 @@
 # %% Imports
 import sys
 from ..types.common import ArrayDType
+from typing import TYPE_CHECKING
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -82,7 +83,6 @@ FEATURES_METHODS = [
     "del_tree",
     "set_trees",
 ]
-
 
 @delegate_methods("features", FEATURES_METHODS)
 class Sample(BaseModel):
@@ -1000,3 +1000,8 @@ class Sample(BaseModel):
                 report += f"Field names: {', '.join(sorted(total_fields))}\n"
 
         return report
+    
+if TYPE_CHECKING:
+    # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING 
+    # automatically adds all its methods to Sample's autocomplete.
+    class Sample(Sample, SampleFeatures): ...
