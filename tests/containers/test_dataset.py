@@ -9,12 +9,14 @@
 
 import copy
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
 from packaging.version import Version
 
 import plaid
+import plaid.containers.dataset as dataset_module
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.utils.base import DeprecatedError, ShapeError
@@ -1223,6 +1225,161 @@ class Test_Dataset:
     def test___repr__(self, dataset, dataset_with_samples):
         print(dataset)
         print(dataset_with_samples)
+
+    def test_setattr_path_split_immutability(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        dataset = Dataset(path=dataset_path, split="train")
+
+        # same value should be accepted (early return branch)
+        dataset.path = dataset_path
+        dataset.split = "train"
+
+        with pytest.raises(AttributeError):
+            dataset.path = current_directory
+
+        with pytest.raises(AttributeError):
+            dataset.split = "test"
+
+    def test_from_path(self, current_directory, monkeypatch):
+        calls = []
+
+        def fake_load(self, path=None, split=None):
+            calls.append((path, split))
+
+        monkeypatch.setattr(Dataset, "load", fake_load)
+
+        dataset_path = current_directory / "dataset"
+        pb_def = dataset_module.ProblemDefinition(
+            train_split={"train": "all"},
+            test_split={"test": "all"},
+        )
+        ds = Dataset.from_path(path=dataset_path, problem_definition=pb_def)
+
+        assert isinstance(ds, Dataset)
+        assert ds.path == dataset_path
+        assert calls == [(dataset_path, None)]
+
+    def test_set_infos_validation_and_metadata(self, dataset):
+        infos = {
+            "legal": {"owner": "PLAID2", "license": "BSD-3"},
+            "data_production": {"type": "simulation", "simulator": "Z-set"},
+        }
+        dataset.set_infos(infos, warn=False)
+        assert "plaid" in dataset.infos
+        assert isinstance(dataset.infos["plaid"]["version"], Version)
+
+    def test_set_infos_invalid_category(self, dataset):
+        with pytest.raises(KeyError):
+            dataset.set_infos({"unknown_category": {"owner": "x"}}, warn=False)
+
+    def test_set_infos_invalid_info_key(self, dataset):
+        with pytest.raises(KeyError):
+            dataset.set_infos({"legal": {"not_allowed": "x"}}, warn=False)
+
+    def test_set_infos_warn_branch(self, dataset, monkeypatch):
+        warnings = []
+
+        class _Logger:
+            def warning(self, msg):
+                warnings.append(msg)
+
+        monkeypatch.setattr(dataset_module, "logger", _Logger(), raising=False)
+        dataset.infos = {"legal": {"owner": "old", "license": "old"}}
+        dataset.set_infos({"legal": {"owner": "new", "license": "new"}}, warn=True)
+        assert warnings == ["infos not empty, replacing it anyway"]
+
+    def test_load_without_path_raises(self, dataset):
+        with pytest.raises(RuntimeError):
+            dataset.load()
+
+    def test_load_from_file_branch(self, tmp_path, monkeypatch):
+        archive = tmp_path / "dataset.tar"
+        archive.write_text("dummy")
+
+        extracted = tmp_path / "extracted"
+        extracted.mkdir()
+        registered = []
+
+        monkeypatch.setattr("tempfile.mkdtemp", lambda prefix: str(extracted))
+        monkeypatch.setattr("subprocess.call", lambda _args: 0)
+        monkeypatch.setattr("atexit.register", lambda *args: registered.append(args))
+
+        sample = Sample()
+        monkeypatch.setattr(
+            "plaid.storage.init_from_disk",
+            lambda _path: (
+                {"train": [sample, sample]},
+                {"train": "converter"},
+            ),
+        )
+
+        ds = Dataset()
+        ds.load(path=archive)
+
+        assert (ds.indices == np.arange(2)).all()
+        assert len(registered) == 1
+
+    @pytest.mark.parametrize(
+        "train_split, expected_indices, should_raise",
+        [
+            ({"train": "all"}, "all", False),
+            ({"train": [0, 2]}, np.array([0, 2]), False),
+            ({"train": None}, None, True),
+        ],
+    )
+    def test_from_train_split_indices_branches(
+        self, tmp_path, monkeypatch, train_split, expected_indices, should_raise
+    ):
+        monkeypatch.setattr(Dataset, "load", lambda self, path=None, split=None: None)
+        fake_pb_def = SimpleNamespace(train_split=train_split)
+        monkeypatch.setattr(
+            dataset_module.ProblemDefinition,
+            "from_path",
+            lambda path, name: fake_pb_def,
+        )
+
+        if should_raise:
+            with pytest.raises(TypeError):
+                Dataset.from_train_split(path=tmp_path)
+            return
+
+        ds = Dataset.from_train_split(path=tmp_path)
+        assert ds.stage == "training"
+        assert ds.split == "train"
+        if isinstance(expected_indices, np.ndarray):
+            assert np.array_equal(ds.indices, expected_indices)
+        else:
+            assert ds.indices == expected_indices
+
+    def test_len_invalid_indices_string(self, dataset):
+        object.__setattr__(dataset, "indices", "invalid")
+        with pytest.raises(RuntimeError):
+            len(dataset)
+
+    def test_get_samples_and_ids_with_explicit_indices(self, dataset_with_samples):
+        object.__setattr__(dataset_with_samples, "indices", [0, 2])
+        samples = dataset_with_samples.get_samples()
+        assert len(samples) == 2
+        assert dataset_with_samples.get_sample_ids() == [0, 2]
+
+    def test_save_to_dir(self, dataset_with_samples, tmp_path, monkeypatch):
+        saved_calls = []
+
+        def fake_save_to_disk(**kwargs):
+            saved_calls.append(kwargs)
+
+        monkeypatch.setattr("plaid.storage.save_to_disk", fake_save_to_disk)
+
+        dataset_with_samples.split = "train"
+        dataset_with_samples.save_to_dir(tmp_path, verbose=True)
+
+        dataset_without_split = Dataset()
+        dataset_without_split.get_backend().add_sample(Sample())
+        dataset_without_split.save_to_dir(tmp_path / "default_split")
+
+        assert len(saved_calls) == 2
+        assert "train" in saved_calls[0]["ids"]
+        assert "train" in saved_calls[1]["ids"]
 
     # #-------------------------------------------------------------------------#
     # #-------------------------------------------------------------------------#
