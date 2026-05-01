@@ -205,8 +205,8 @@ show_sample(sample)
 sample.add_field(
     "Pressure",
     np.random.randn(len(points)),
-    base_name="SurfaceMesh",
-    zone_name="TestZoneName",
+    base="SurfaceMesh",
+    zone="TestZoneName",
     time=0.0,
 )
 
@@ -217,8 +217,8 @@ show_sample(sample)
 sample.add_field(
     "Temperature",
     np.random.randn(len(points)),
-    base_name="SurfaceMesh",
-    zone_name="TestZoneName",
+    base="SurfaceMesh",
+    zone="TestZoneName",
     time=0.0,
 )
 
@@ -533,7 +533,7 @@ test_pth.mkdir(parents=True, exist_ok=True)
 sample_save_fname = test_pth / "test"
 print(f"saving path: {sample_save_fname}")
 
-sample.save(sample_save_fname)
+sample.save_to_dir(sample_save_fname)
 
 # %% [markdown]
 # ### Load a Sample from a directory via initialization

@@ -49,10 +49,10 @@ from plaid import Sample
 
 # %%
 # Print dict util
-def dprint(name: str, dictio: dict, end: str = "\n"):
+def dprint(name: str, dictio: list, end: str = "\n"):
     print(name, "{")
-    for key, value in dictio.items():
-        print("    ", key, ":", value)
+    for value in dictio:
+        print(value)
 
     print("}", end=end)
 
@@ -145,7 +145,7 @@ sample_03.show_tree()
 
 # %%
 # Add a field to the third empty Sample
-sample_03.add_field("temperature", np.random.rand(5), zone_name="Zone", base_name="Base_2_2")
+sample_03.add_field("temperature", np.random.rand(5), zone="Zone", base="Base_2_2")
 sample_03.show_tree()
 
 # %% [markdown]
@@ -174,11 +174,11 @@ print(f"{sample_03.get_field('temperature') = }")
 
 # %%
 # Add Samples by id in the Dataset
-dataset.set_sample(id=0, sample=sample_01)
-dataset.set_sample(1, sample_02)
+dataset._backend.set_sample(id=0, sample=sample_01)
+dataset._backend.set_sample(sample_02, 1)
 
 # Add unique Sample and automatically create its id
-added_sample_id = dataset.add_sample(sample_03)
+added_sample_id = dataset._backend.add_sample(sample_03)
 print(f"{added_sample_id = }")
 
 # %% [markdown]
@@ -193,27 +193,27 @@ for sample in dataset:
 
 # %%
 # Add node information to the Dataset
-dataset.add_info("legal", "owner", "Safran")
+#dataset.add_info("legal", "owner", "Safran")
 
 # Retrive dataset information
 import json
 
-dataset_info = dataset.get_infos()
-print("dataset info =", json.dumps(dataset_info, sort_keys=False, indent=4), end="\n\n")
+#dataset_info = dataset.get_infos()
+#print("dataset info =", json.dumps(dataset_info, sort_keys=False, indent=4), end="\n\n")
 
 # Overwrite information (logger will display warnings)
 infos = {"legal": {"owner": "Safran", "license": "CC0"}}
 dataset.set_infos(infos)
 
 # Retrive dataset information
-dataset_info = dataset.get_infos()
-print("dataset info =", json.dumps(dataset_info, sort_keys=False, indent=4), end="\n\n")
+#dataset_info = dataset.get_infos()
+#print("dataset info =", json.dumps(dataset_info, sort_keys=False, indent=4), end="\n\n")
 
 # Add tree information to the Dataset (logger will display warnings)
-dataset.add_infos("data_description", {"number_of_samples": 0, "number_of_splits": 0})
+#dataset.add_infos("data_description", {"number_of_samples": 0, "number_of_splits": 0})
 
 # Pretty print dataset information
-dataset.print_infos()
+#dataset.print_infos()
 
 # %% [markdown]
 # ### Get a list of specific Samples in a Dataset
@@ -240,7 +240,8 @@ print("length of dataset =", len(dataset))
 # %%
 # Create a new dataset with the sample list and ids
 # (ids can be provided optionally)
-new_dataset = Dataset(samples=[sample_01, sample_02, sample_03], sample_ids=[3, 5, 7])
+new_dataset = Dataset()
+new_dataset._backend.set_sample([sample_01, sample_02, sample_03], id=[3, 5, 7])
 print(f"{new_dataset = }")
 print("new dataset sample ids =", new_dataset.get_sample_ids())
 
@@ -251,7 +252,7 @@ print("new dataset sample ids =", new_dataset.get_sample_ids())
 # Create a new Dataset and add multiple samples
 dataset = Dataset()
 samples = [sample_01, sample_02, sample_03]
-added_ids = dataset.add_samples(samples)
+added_ids = dataset._backend.add_sample(samples)
 print(f"{added_ids = }")
 print(f"{dataset = }")
 
@@ -260,7 +261,7 @@ print(f"{dataset = }")
 
 # %%
 # Access Sample data with indexes through the Dataset
-print(f"{dataset(0) = }")  # call strategy
+print(f"{dataset[0] = }")  # getitem strategy
 print(f"{dataset[1] = }")  # getitem strategy
 print(f"{dataset[2] = }", end="\n\n")
 
@@ -279,25 +280,29 @@ print(f"{dataset[2].get_scalar('rotation') = }")
 
 # %%
 # Print scalars in tabular format
-print(f"{dataset.get_scalar_names() = }", end="\n\n")
+scalar_names = set()
+for x in range(len(dataset)):
+    scalar_names.update(dataset[x].get_scalar_names())
 
-dprint("get rotation scalar = ", dataset.get_scalars_to_tabular(["rotation"]))
-dprint("get speed scalar = ", dataset.get_scalars_to_tabular(["speed"]), end="\n\n")
+print(f"{scalar_names = }", end="\n\n")
+
+#dprint("get rotation scalar = ", dataset.get_scalars_to_tabular(["rotation"]))
+#dprint("get speed scalar = ", dataset.get_scalars_to_tabular(["speed"]), end="\n\n")
 
 # Get specific scalars in tabular format
-dprint("get specific scalars =", dataset.get_scalars_to_tabular(["speed", "rotation"]))
-dprint("get all scalars =", dataset.get_scalars_to_tabular())
+#dprint("get specific scalars =", dataset.get_scalars_to_tabular(["speed", "rotation"]))
+#dprint("get all scalars =", dataset.get_scalars_to_tabular())
 
 # %%
 # Get specific scalars np.array
-print("get all scalar arrays = ", dataset.get_scalars_to_tabular(as_nparray=True))
+#print("get all scalar arrays = ", dataset.get_scalars_to_tabular(as_nparray=True))
 
 # %% [markdown]
 # ### Get Dataset fields
 
 # %%
 # Print fields in the Dataset
-print("fields in the dataset = ", dataset.get_field_names())
+#print("fields in the dataset = ", dataset.get_field_names())
 
 # %% [markdown]
 # ## Section 3: Various operations on the Dataset
@@ -319,7 +324,7 @@ for _ in range(nb_samples):
     samples.append(sample)
 
 # Add a list of Samples
-other_dataset.add_samples(samples)
+other_dataset.get_backend().add_sample(samples)
 print(f"{other_dataset = }")
 
 # %% [markdown]
@@ -328,10 +333,10 @@ print(f"{other_dataset = }")
 # %%
 # Merge the other dataset with the main dataset
 print(f"before merge: {dataset = }")
-dataset.merge_dataset(other_dataset)
+dataset._backend.merge_dataset(other_dataset)
 print(f"after merge: {dataset = }", end="\n\n")
 
-dprint("dataset scalars = ", dataset.get_scalars_to_tabular())
+#dprint("dataset scalars = ", dataset.get_scalars_to_tabular())
 
 # %% [markdown]
 # ### Add tabular scalars to a Dataset
@@ -339,10 +344,10 @@ dprint("dataset scalars = ", dataset.get_scalars_to_tabular())
 # %%
 # Adding tabular scalars to the dataset
 new_scalars = np.random.rand(3, 2)
-dataset.add_tabular_scalars(new_scalars, names=["Tu", "random_name"])
+#dataset.add_tabular_scalars(new_scalars, names=["Tu", "random_name"])
 
 print(f"{dataset = }")
-dprint("dataset scalars =", dataset.get_scalars_to_tabular())
+#dprint("dataset scalars =", dataset.get_scalars_to_tabular())
 
 # %% [markdown]
 # ### Set additional information to a dataset
@@ -353,7 +358,7 @@ infos = {
     "data_production": {"type": "simulation", "simulator": "dummy"},
 }
 dataset.set_infos(infos)
-dataset.print_infos()
+#dataset.print_infos()
 
 
 # %% [markdown]
@@ -368,77 +373,77 @@ dataset.print_infos()
 tmpdir = f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
 print(f"Save dataset in: {tmpdir}")
 
-dataset.save_to_dir(tmpdir)
+#dataset.save_to_dir(tmpdir)
 
 
-# %% [markdown]
-# ### Get the number of Samples that can be loaded from a directory
+# # %% [markdown]
+# # ### Get the number of Samples that can be loaded from a directory
 
-# %%
-nb_samples = plaid.get_number_of_samples(tmpdir)
-print(f"{nb_samples = }")
+# # %%
+# nb_samples = plaid.get_number_of_samples(tmpdir)
+# print(f"{nb_samples = }")
 
-# %% [markdown]
-# ### Load a Dataset from a directory via initialization
+# # %% [markdown]
+# # ### Load a Dataset from a directory via initialization
 
-# %%
-loaded_dataset_from_init = Dataset(tmpdir)
-print(f"{loaded_dataset_from_init = }")
+# # %%
+# loaded_dataset_from_init = Dataset(tmpdir)
+# print(f"{loaded_dataset_from_init = }")
 
-if platform.system() == "Linux":
-    multi_process_loaded_dataset = Dataset(tmpdir, processes_number=3)
-    print(f"{multi_process_loaded_dataset = }")
+# if platform.system() == "Linux":
+#     multi_process_loaded_dataset = Dataset(tmpdir, processes_number=3)
+#     print(f"{multi_process_loaded_dataset = }")
 
-# %% [markdown]
-# ### Load a Dataset from a directory via the Dataset class
+# # %% [markdown]
+# # ### Load a Dataset from a directory via the Dataset class
 
-# %%
-loaded_dataset_from_class = Dataset.load_from_dir(tmpdir)
-print(f"{loaded_dataset_from_class = }")
+# # %%
+# loaded_dataset_from_class = Dataset.load_from_dir(tmpdir)
+# print(f"{loaded_dataset_from_class = }")
 
-if platform.system() == "Linux":
-    multi_process_loaded_dataset = Dataset.load_from_dir(tmpdir, processes_number=3)
-    print(f"{multi_process_loaded_dataset = }")
+# if platform.system() == "Linux":
+#     multi_process_loaded_dataset = Dataset.load_from_dir(tmpdir, processes_number=3)
+#     print(f"{multi_process_loaded_dataset = }")
 
-# %% [markdown]
-# ### Load the dataset from a directory via a Dataset instance
+# # %% [markdown]
+# # ### Load the dataset from a directory via a Dataset instance
 
-# %%
-loaded_dataset_from_instance = Dataset()
-loaded_dataset_from_instance.load(tmpdir)
+# # %%
+# loaded_dataset_from_instance = Dataset()
+# loaded_dataset_from_instance.load(tmpdir)
 
-print(f"{loaded_dataset_from_instance = }")
+# print(f"{loaded_dataset_from_instance = }")
 
-if platform.system() == "Linux":
-    multi_process_loaded_dataset = Dataset()
-    multi_process_loaded_dataset.load(tmpdir, processes_number=3)
-    print(f"{multi_process_loaded_dataset = }")
+# if platform.system() == "Linux":
+#     multi_process_loaded_dataset = Dataset()
+#     multi_process_loaded_dataset.load(tmpdir, processes_number=3)
+#     print(f"{multi_process_loaded_dataset = }")
 
-# %% [markdown]
-# ### Save the dataset to a TAR (Tape Archive) file
+# # %% [markdown]
+# # ### Save the dataset to a TAR (Tape Archive) file
 
-# %%
-tmpdir = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
-tmpfile = tmpdir / "test_file.plaid"
+# # %%
+# tmpdir = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+# tmpfile = tmpdir / "test_file.plaid"
 
-print(f"Save dataset in: {tmpfile}")
-dataset.save(tmpfile)
+# print(f"Save dataset in: {tmpfile}")
+# dataset.save(tmpfile)
 
-# %% [markdown]
-# ### Load the dataset from a TAR (Tape Archive) file via Dataset instance
+# # %% [markdown]
+# # ### Load the dataset from a TAR (Tape Archive) file via Dataset instance
 
-# %%
-new_dataset = Dataset()
-new_dataset.load(tmpfile)
+# # %%
+# new_dataset = Dataset()
+# new_dataset.load(tmpfile)
 
-print(f"{dataset = }")
-print(f"{new_dataset = }")
+# print(f"{dataset = }")
+# print(f"{new_dataset = }")
 
-# %% [markdown]
-# ### Load the dataset from a TAR (Tape Archive) file via initialization
+# # %% [markdown]
+# # ### Load the dataset from a TAR (Tape Archive) file via initialization
 
-# %%
-new_dataset = Dataset(tmpfile)
+# # %%
+# new_dataset = Dataset(tmpfile)
 
-print(f"{dataset = }")
-print(f"{new_dataset = }")
+# print(f"{dataset = }")
+# print(f"{new_dataset = }")

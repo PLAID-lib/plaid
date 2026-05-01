@@ -1,15 +1,29 @@
 """This files serves to check if the main retrieval command in the PLAID Benchmarks
 is not returning an error."""
 
-from plaid.bridges import huggingface_bridge
+from datasets import load_dataset
 
-hf_dataset = huggingface_bridge.load_dataset_from_hub(
-    f"PLAID-datasets/Tensile2d", split="all_samples[:5]", num_proc=1
-)
+from plaid import Dataset
+from plaid.storage.common.bridge import to_plaid_sample, to_sample_dict
+from plaid.storage.common.reader import load_metadata_from_hub, load_problem_definitions_from_hub
+from plaid.storage.hf_datasets.bridge import sample_to_var_sample_dict
 
-plaid_dataset, pb_def = huggingface_bridge.huggingface_dataset_to_plaid(
-    hf_dataset, processes_number=1, verbose=True
-)
+repo_id = "PLAID-datasets/Tensile2d"
+split_name = "train_500"
+
+hf_dataset = load_dataset(repo_id, split=f"{split_name}[:5]", num_proc=1)
+
+flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(repo_id)
+
+plaid_dataset = Dataset()
+for hf_sample in hf_dataset:
+    var_sample_dict = sample_to_var_sample_dict(hf_sample)
+    sample_dict = to_sample_dict(var_sample_dict, flat_cst[split_name], cgns_types)
+    sample = to_plaid_sample(sample_dict, cgns_types)
+    plaid_dataset.get_backend().add_sample(sample)
+
+pb_defs = load_problem_definitions_from_hub(repo_id)
+pb_def = next(iter(pb_defs.values()))
 
 ids_train = pb_def.get_split('train_500')
-sample_train_0 = plaid_dataset[ids_train[0]]
+sample_train_0 = plaid_dataset[0]

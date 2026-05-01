@@ -189,10 +189,10 @@ dataset = Dataset()
 
 # Set information for the PLAID dataset
 dataset.set_infos(infos)
-dataset.print_infos()
+#dataset.print_infos()
 
 # %%
 # Add PLAID samples to the dataset
-sample_ids = dataset.add_samples(samples)
+sample_ids = dataset.get_backend().add_sample(samples)
 print(sample_ids)
 print(dataset)

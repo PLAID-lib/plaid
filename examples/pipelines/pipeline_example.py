@@ -45,6 +45,7 @@ from pathlib import Path
 import yaml
 import numpy as np
 import optuna
+from datasets import load_dataset
 
 from datasets.utils.logging import disable_progress_bar
 
@@ -59,9 +60,10 @@ from sklearn.multioutput import MultiOutputRegressor
 
 from sklearn.model_selection import KFold, GridSearchCV
 
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid, load_dataset_from_hub
-from plaid.pipelines.sklearn_block_wrappers import WrappedSklearnTransformer, WrappedSklearnRegressor
-from plaid.pipelines.plaid_blocks import TransformedTargetRegressor, ColumnTransformer
+from plaid import Dataset
+from plaid.storage.common.bridge import to_plaid_sample, to_sample_dict
+from plaid.storage.common.reader import load_metadata_from_hub
+from plaid.storage.hf_datasets.bridge import sample_to_var_sample_dict
 
 
 disable_progress_bar()
@@ -73,8 +75,20 @@ n_processes = min(max(1, os.cpu_count()), 6)
 # We load the `VKI-LS59` dataset from Hugging Face and restrict ourselves to the first 24 samples of the training set.
 
 # %%
-hf_dataset = load_dataset_from_hub("PLAID-datasets/VKI-LS59", split="all_samples[:24]")
-dataset_train, pb_def = huggingface_dataset_to_plaid(hf_dataset, processes_number = n_processes, verbose = False)
+repo_id = "PLAID-datasets/VKI-LS59"
+hf_dataset = load_dataset(repo_id, split="all_samples[:24]")
+
+flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(repo_id)
+split_name = "all_samples"
+if split_name not in flat_cst:
+    split_name = next(iter(flat_cst.keys()))
+
+dataset_train = Dataset()
+for hf_sample in hf_dataset:
+    var_sample_dict = sample_to_var_sample_dict(hf_sample)
+    sample_dict = to_sample_dict(var_sample_dict, flat_cst[split_name], cgns_types)
+    sample = to_plaid_sample(sample_dict, cgns_types)
+    dataset_train.get_backend().add_sample(sample)
 
 
 # %% [markdown]

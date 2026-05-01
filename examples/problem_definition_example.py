@@ -34,15 +34,13 @@ import numpy as np
 
 # %%
 # Import necessary libraries and functions
-from plaid import Dataset, Sample
 from plaid import ProblemDefinition
-from plaid.utils.split import split_dataset
-from plaid.types import FeatureIdentifier
 
 # %% [markdown]
 # ## Section 1: Initializing an Empty ProblemDefinition
 #
-# This section demonstrates how to initialize a Problem Definition and add inputs / outputs.
+# This section demonstrates how to initialize a ProblemDefinition and add
+# input/output feature identifiers with the current API.
 
 # %% [markdown]
 # ### Initialize and print ProblemDefinition
@@ -54,27 +52,27 @@ print(f"{problem = }")
 
 # %%
 # ### Initialize some feature identifiers
-scalar_1_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_1"})
-scalar_2_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_2"})
-scalar_3_feat_id = FeatureIdentifier({"type":"scalar", "name":"scalar_3"})
-field_1_feat_id = FeatureIdentifier({"type":"field", "name":"field_1", "base_name":"Base_2_2"})
-field_2_feat_id = FeatureIdentifier({"type":"field", "name":"field_2", "base_name":"Base_2_2", "location":"Vertex"})
+scalar_1_feat_id = "Global/scalar_1"
+scalar_2_feat_id = "Global/scalar_2"
+scalar_3_feat_id = "Global/scalar_3"
+field_1_feat_id = "Base_2_2/Zone/CellCenterFields/field_1"
+field_2_feat_id = "Base_2_2/Zone/VertexFields/field_2"
 
 # %% [markdown]
 # ### Add inputs / outputs to a Problem Definition
 
 # %%
 # Add unique input and output feature identifiers
-problem.add_in_feature_identifier(scalar_1_feat_id)
-problem.add_out_feature_identifier(scalar_2_feat_id)
+problem.add_in_features_identifiers(scalar_1_feat_id)
+problem.add_out_features_identifiers(scalar_2_feat_id)
 
 # Add list of input and output feature identifiers
 problem.add_in_features_identifiers([scalar_3_feat_id, field_1_feat_id])
 problem.add_out_features_identifiers([field_2_feat_id])
 
-print(f"{problem.get_in_features_identifiers() = }")
+print(f"{problem.input_features = }")
 print(
-    f"{problem.get_out_features_identifiers() = }",
+    f"{problem.output_features = }",
 )
 
 # %% [markdown]
@@ -87,52 +85,29 @@ print(
 
 # %%
 # Set the task type (e.g., regression)
-problem.set_task("regression")
-print(f"{problem.get_task() = }")
+problem.task = "regression"
+print(f"{problem.task = }")
 
 # %% [markdown]
 # ### Set Problem Definition split
 
 # %%
-# Init an empty Dataset
-dataset = Dataset()
-print(f"{dataset = }")
-
-# Add Samples
-dataset.add_samples([Sample(), Sample(), Sample(), Sample()])
-print(f"{dataset = }")
-
-# %%
-# Set startegy options for the split
-options = {
-    "shuffle": False,
-    "split_sizes": {
-        "train": 2,
-        "val": 1,
-    },
-}
-
-split = split_dataset(dataset, options)
-print(f"{split = }")
+# Current API uses `train_split` and `test_split` fields.
+# Note: each split field currently expects a dictionary with a single entry.
+problem.train_split = {"train": [0, 1]}
+problem.test_split = {"test": [2, 3]}
+print(f"{problem.train_split = }")
+print(f"{problem.test_split = }")
 
 # %%
-problem.set_split(split)
 print(f"{problem.get_split() = }")
 
 # %% [markdown]
-# ### Retrieves Problem Definition split indices
+# ### Show inputs / outputs
 
 # %%
-# Get all split indices
-print(f"{problem.get_all_indices() = }")
-
-# %% [markdown]
-# ### Filter Problem Definition inputs / outputs by feature identifiers
-
-# %%
-all_feature_ids = [scalar_1_feat_id, scalar_2_feat_id, scalar_3_feat_id, field_1_feat_id, field_2_feat_id]
-print(f"{problem.filter_in_features_identifiers(all_feature_ids) = }")
-print(f"{problem.filter_out_features_identifiers(all_feature_ids) = }")
+print(f"{problem.input_features = }")
+print(f"{problem.output_features = }")
 
 # %% [markdown]
 # ## Section 3: Saving and Loading Problem Definitions
@@ -140,34 +115,20 @@ print(f"{problem.filter_out_features_identifiers(all_feature_ids) = }")
 # This section demonstrates how to save and load a Problem Definition from a directory.
 
 # %% [markdown]
-# ### Save a Problem Definition to a directory
+# ### Save a Problem Definition to a YAML file
 
 # %%
 test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
-pb_def_save_fname = test_pth / "test"
+pb_def_save_fname = test_pth / "test_problem_definition.yaml"
 test_pth.mkdir(parents=True, exist_ok=True)
 print(f"saving path: {pb_def_save_fname}")
 
-problem.save_to_dir(pb_def_save_fname)
+problem.save_to_file(pb_def_save_fname)
 
 # %% [markdown]
-# ### Load a ProblemDefinition from a directory via initialization
-
-# %%
-problem = ProblemDefinition(pb_def_save_fname)
-print(problem)
-
-# %% [markdown]
-# ### Load from a directory via the ProblemDefinition class
-
-# %%
-problem = ProblemDefinition.load(pb_def_save_fname)
-print(problem)
-
-# %% [markdown]
-# ### Load from a directory via a Dataset instance
+# ### Load a ProblemDefinition from a YAML file
 
 # %%
 problem = ProblemDefinition()
-problem.load(pb_def_save_fname)
+problem._load_from_file_(pb_def_save_fname)
 print(problem)
