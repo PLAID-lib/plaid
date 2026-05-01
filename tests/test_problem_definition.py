@@ -8,15 +8,12 @@
 # %% Imports
 
 import os
-import subprocess
 from pathlib import Path
-
-import pytest
-from packaging.version import Version
+import subprocess
 
 from pydantic import ValidationError
+import pytest
 
-import plaid
 from plaid.problem_definition import ProblemDefinition
 
 # %% Fixtures
@@ -36,7 +33,7 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
     feature_identifier = "feature"
     predict_feature_identifier = "predict_feature"
     test_feature_identifier = "test_feature"
-    
+
     problem_definition.add_in_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
@@ -137,11 +134,6 @@ class Test_ProblemDefinition:
             ProblemDefinition(path=d_path, directory_path=d_path)
 
     # -------------------------------------------------------------------------#
-    # def test_version(self, problem_definition):
-    #     # Unauthorized version
-    #     assert problem_definition.get_version() == Version(plaid.__version__)
-
-    # -------------------------------------------------------------------------#
     def test_task(self, problem_definition):
         # Unauthorized task
         with pytest.raises(ValidationError):
@@ -156,7 +148,7 @@ class Test_ProblemDefinition:
         with pytest.raises(ValidationError):
             problem_definition.score_function = "ighyurgv"
         problem_definition.score_function = "RRMSE"
-        # can be set again to the same value 
+        # can be set again to the same value
         problem_definition.score_function = "RRMSE"
         assert problem_definition.score_function == "RRMSE"
         print(problem_definition)
@@ -592,7 +584,6 @@ class Test_ProblemDefinition:
 
     # -------------------------------------------------------------------------#
     def test_split(self, problem_definition):
-        new_split = {"train_0": [0, 1, 2], "test-1": [3, 4]}
         problem_definition.train_split = {"train_0": [0, 1, 2]}
         problem_definition.test_split = {"test-1": [3, 4]}
         assert problem_definition.train_split == {"train_0": [0, 1, 2]}

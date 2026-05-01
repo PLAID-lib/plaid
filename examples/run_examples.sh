@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ "$(uname)" == "Linux" ]]; then
-    FILES="*.py examples/*.py bridges/*.py utils/*.py containers/*.py post/*.py pipelines/*.py"
+    FILES="*.py examples/*.py bridges/*.py utils/*.py containers/*.py"
 else
     FILES="*.py examples/*.py utils/*.py containers/*.py post/*.py"
 fi

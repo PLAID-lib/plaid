@@ -67,10 +67,10 @@ if __name__ == "__main__":
         dset = Dataset()
         for i in tqdm(range(args.number_of_samples), desc="Generate samples"):
             # ---# Read a sample provided in tests
-            sample_path = Path("../tests/containers/dataset/samples/sample_000000000")
+            sample_path = Path("../tests/containers/dataset/data/test/sample_000000000")
             if not (sample_path.is_dir()):
                 sample_path = Path(
-                    "../../tests/containers/dataset/samples/sample_000000000"
+                    "../../tests/containers/dataset/data/test/sample_000000000"
                 )
             tmpsmp = Sample(path=sample_path)
             smp = tmpsmp
@@ -81,20 +81,21 @@ if __name__ == "__main__":
             n_nodes = smp.get_nodes().shape[0]
             smp.add_field("f0", np.random.randn(n_nodes))
 
-            dset.add_sample(smp)
+            dset._backend.add_sample(smp)
 
         dset.save_to_dir(out_dir, verbose=True)
         rich.print(f"create and save dataset took: {time.perf_counter() - t0:.3f} s")
         print()
 
         # ---# Measure loading durations depending on number of cores
-        all_durations = []
+        all_durations: list[list[float]] = []
         for nb_cores in tqdm(range(NB_CORES + 1), desc="Loop on nb_cores"):
-            durations = []
+            durations: list[float] = []
             for _ in tqdm(range(args.number_of_tests), desc="   Loop on nb_tests"):
                 new_dset = Dataset()
                 t0 = time.perf_counter()
-                new_dset.load(out_dir, processes_number=nb_cores)
+                print(out_dir)
+                new_dset.load(out_dir) #, processes_number=nb_cores)
                 t1 = time.perf_counter()
                 durations.append(t1 - t0)
 
