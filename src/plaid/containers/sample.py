@@ -237,7 +237,7 @@ class Sample(BaseModel):
             if feature_details.get("name", None) is not None:  # pragma: no cover
                 raise ValueError("Must set the 3 coordinate at the same time")
             physical_dim_arg = {
-                k: v for k, v in feature_details.items() if k in ["base_name", "time"]
+                k: v for k, v in feature_details.items() if k in ["base", "time"]
             }
             phys_dim = self.features.get_physical_dim(**physical_dim_arg)
             self.set_nodes(**feature_details, nodes=feature.reshape((-1, phys_dim)))
@@ -553,7 +553,7 @@ class Sample(BaseModel):
                     for location in CGNS_FIELD_LOCATIONS:
                         field_names = field_names.union(
                             self.features.get_field_names(
-                                location=location, zone_name=zn, base_name=bn, time=time
+                                location=location, zone=zn, base=bn, time=time
                             )
                         )
         nb_fields = len(field_names)
@@ -647,8 +647,8 @@ class Sample(BaseModel):
                         for location in CGNS_FIELD_LOCATIONS:
                             field_names = self.get_field_names(
                                 location=location,
-                                zone_name=zone_name,
-                                base_name=base_name,
+                                zone=zone_name,
+                                base=base_name,
                                 time=time,
                             )
                             if field_names:
@@ -656,7 +656,7 @@ class Sample(BaseModel):
 
                         # Elements and fields at elements
                         elements = self.features.get_elements(
-                            zone_name=zone_name, base_name=base_name, time=time
+                            zone=zone_name, base=base_name, time=time
                         )
                         summary += f"                Elements ({sum([v.shape[0] for v in elements.values()])})\n"
                         if len(elements) > 0:
@@ -703,8 +703,8 @@ class Sample(BaseModel):
                         for location in CGNS_FIELD_LOCATIONS:
                             field_names = self.get_field_names(
                                 location=location,
-                                zone_name=zone_name,
-                                base_name=base_name,
+                                zone=zone_name,
+                                base=base_name,
                                 time=time,
                             )
                             total_fields.update(field_names)

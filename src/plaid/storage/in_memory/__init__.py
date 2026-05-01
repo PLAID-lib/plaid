@@ -92,73 +92,86 @@ class InMemoryBackend:
 
     def add_sample(
         self,
-        samples: Union[Sample, Sequence[Sample]],
+        sample: Union[Sample, Sequence[Sample]],
+        sample_id: Optional[Union[int, Sequence[int]]] = None,
+        *,
         id: Optional[Union[int, Sequence[int]]] = None,
     ) -> Union[int, list[int]]:
-        if isinstance(samples, Sample):
-            if id is None:
-                id = len(self)
-            elif not isinstance(id, int):
-                raise TypeError("id must be a int if the sample is of type Sample")
+        if sample_id is None:
+            sample_id = id
 
-            self.set_sample(sample=samples, id=id)
-            return id
-        elif isinstance(samples, Sequence):
-            if id is None:
-                id = list(range(len(self), len(self) + len(samples)))
-            elif not isinstance(id, Sequence):
+        if isinstance(sample, Sample):
+            if sample_id is None:
+                sample_id = len(self)
+            elif not isinstance(sample_id, int):
+                raise TypeError("sample_id must be an int when samples is a Sample")
+
+            self.set_sample(sample=sample, sample_id=sample_id)
+            return sample_id
+        elif isinstance(sample, Sequence):
+            if sample_id is None:
+                sample_id = list(range(len(self), len(self) + len(sample)))
+            elif not isinstance(sample_id, Sequence):
                 raise TypeError(
-                    "id must be a sequence if the sample is of type sequence"
+                    "sample_id must be a sequence when samples is a sequence"
                 )
             else:
-                if len(id) != len(np.unique(id)):
-                    raise ValueError("the ids must be differents")
+                if len(sample_id) != len(np.unique(sample_id)):
+                    raise ValueError("sample_ids must be unique")
 
-            if len(samples) != len(id):
+            if len(sample) != len(sample_id):
                 raise ValueError(
                     "The length of the list of samples to add and the list of IDs are different"
                 )
 
-            return [self.add_sample(samples=s, id=i) for i, s in zip(id, samples)]
+            return [
+                self.add_sample(sample=s, sample_id=i)
+                for i, s in zip(sample_id, sample)
+            ]
         else:
             raise TypeError(
-                f"sample must be a Sample of sequence[Samples], not : {type(samples)}"
+                f"sample must be a Sample of sequence[Samples], not : {type(sample)}"
             )
 
     @overload
-    def set_sample(self, sample: Sample, id: Optional[int] = None) -> int: ...
+    def set_sample(self, sample: Sample, sample_id: Optional[int] = None) -> int: ...
 
     @overload
     def set_sample(
-        self, sample: Sequence[Sample], id: Optional[Sequence[int]]
+        self, sample: Sequence[Sample], sample_id: Optional[Sequence[int]]
     ) -> list[int]: ...
 
     def set_sample(
         self,
         sample: Union[Sample, Sequence[Sample]],
+        sample_id: Optional[Union[int, Sequence[int]]] = None,
+        *,
         id: Optional[Union[int, Sequence[int]]] = None,
     ) -> Union[int, list[int]]:
         """Set the samples of the data set, overwriting the existing ones.
 
         Args:
             sample: A single sample or a sequence of samples to set.
-            id: Optional single id or sequence of ids matching ``sample``.
+            sample_id: Optional single id or sequence of ids matching ``sample``.
 
         Raises:
             TypeError: If ``sample`` is not a :class:`Sample` or sequence of samples.
-            TypeError: If ``id`` type does not match the ``sample`` kind.
-            ValueError: If a provided integer id is negative.
+            TypeError: If ``sample_id`` type does not match the ``sample`` kind.
+            ValueError: If a provided integer sample_id is negative.
         """
+        if sample_id is None:
+            sample_id = id
+
         if isinstance(sample, Sequence) and not isinstance(sample, Sample):
-            if id is None:
+            if sample_id is None:
                 return [self.set_sample(s) for s in sample]
-            if not isinstance(id, Sequence):  # pragma: no cover
+            if not isinstance(sample_id, Sequence):  # pragma: no cover
                 raise TypeError(
-                    "id should be a sequence when sample is a sequence"
+                    "sample_id should be a sequence when sample is a sequence"
                 )
             added_ids: list[int] = []
-            for i, s in zip(id, sample):
-                added_id = self.set_sample(sample=s, id=i)
+            for i, s in zip(sample_id, sample):
+                added_id = self.set_sample(sample=s, sample_id=i)
                 if not isinstance(added_id, int):  # pragma: no cover
                     raise TypeError("expected integer id when adding one sample")
                 added_ids.append(added_id)
@@ -167,17 +180,19 @@ class InMemoryBackend:
         if not (isinstance(sample, Sample)):
             raise TypeError(f"sample should be of type Sample but is {type(sample)=}")
 
-        if id is None:
-            id = _find_first_missing(self._samples)
-        elif not (isinstance(id, int)):
-            raise TypeError(f"id should be of type {int.__class__} but {type(id)=}")
+        if sample_id is None:
+            sample_id = _find_first_missing(self._samples)
+        elif not (isinstance(sample_id, int)):
+            raise TypeError(
+                f"sample_id should be of type {int.__class__} but {type(sample_id)=}"
+            )
 
-        if id < 0:
-            raise ValueError(f"id should be positive (id>=0) but {id=}")
+        if sample_id < 0:
+            raise ValueError(f"sample_id should be positive (sample_id>=0) but {sample_id=}")
 
-        self._samples[id] = sample
+        self._samples[sample_id] = sample
 
-        return id
+        return sample_id
 
     def merge_dataset(self, dataset: Any) -> Optional[list[int]]:
         """Merges samples of another dataset into this one.

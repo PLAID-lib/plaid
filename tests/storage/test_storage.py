@@ -160,7 +160,7 @@ def dataset(samples) -> Dataset:
         samples_.append(sample_)
 
     dataset = Dataset()
-    dataset.get_backend().add_sample(samples=samples_)
+    dataset.get_backend().add_sample(sample=samples_)
     return dataset
 
 

@@ -220,7 +220,7 @@ class ProblemDefinition(BaseModel):
             inputs (Sequence[str] or str ): A list of or a single input feature identifier to add.
 
         Raises:
-            ValueError: If some :code:`inputs` are redondant.
+            ValueError: If some :code:`inputs` are duplicated.
 
         Example:
             .. code-block:: python
@@ -236,19 +236,21 @@ class ProblemDefinition(BaseModel):
         """
 
         if isinstance(inputs, str):
-            input = inputs
-            if input in self.input_features:
-                raise ValueError(f"{input} is already in self.in_features_identifiers")
+            input_feature = inputs
+            if input_feature in self.input_features:
+                raise ValueError(
+                    f"{input_feature} is already in self.input_features"
+                )
 
-            self.input_features.append(input)
+            self.input_features.append(input_feature)
             self.input_features.sort()
             return
 
         if not (len(set(inputs)) == len(inputs)):
-            raise ValueError("Some inputs have same identifiers")
+            raise ValueError("Some input features share the same identifier")
 
-        for input in inputs:
-            self.add_in_features_identifiers(input)
+        for input_feature in inputs:
+            self.add_in_features_identifiers(input_feature)
 
     def add_out_features_identifiers(self, outputs: Union[str, Sequence[str]]) -> None:
         """Add output features identifiers to the problem.
@@ -257,7 +259,7 @@ class ProblemDefinition(BaseModel):
             outputs (Sequence[str] or str ): A list of or a single input feature identifier to add.
 
         Raises:
-            ValueError: If some :code:`inputs` are redondant.
+            ValueError: If some :code:`outputs` are duplicated.
 
         Example:
             .. code-block:: python
@@ -273,102 +275,22 @@ class ProblemDefinition(BaseModel):
         """
 
         if isinstance(outputs, str):
-            output = outputs
-            if output in self.output_features:
+            output_feature = outputs
+            if output_feature in self.output_features:
                 raise ValueError(
-                    f"{output} is already in self.out_features_identifiers"
+                    f"{output_feature} is already in self.output_features"
                 )
 
-            self.output_features.append(output)
+            self.output_features.append(output_feature)
             self.output_features.sort()
             return
 
         if not (len(set(outputs)) == len(outputs)):
-            raise ValueError("Some outputs have same identifiers")
+            raise ValueError("Some output features share the same identifier")
 
-        for output in outputs:
-            self.add_out_features_identifiers(output)
+        for output_feature in outputs:
+            self.add_out_features_identifiers(output_feature)
 
-    #     def add_constant_features_identifiers(self, inputs: list[str]) -> None:
-    #         """Add input features identifiers to the problem.
-
-    #         Args:
-    #             inputs (list[str]): A list of constant feature identifiers to add.
-
-    #         Raises:
-    #             ValueError: If some :code:`inputs` are redondant.
-
-    #         Example:
-    #             .. code-block:: python
-
-    #                 from plaid.problem_definition import ProblemDefinition
-    #                 problem = ProblemDefinition()
-    #                 constant_features_identifiers = ['Global/P', 'Base_2_2/Zone/GridCoordinates']
-    #                 problem.add_constant_features_identifiers(constant_features_identifiers)
-    #         """
-    #         if not (len(set(inputs)) == len(inputs)):
-    #             raise ValueError("Some inputs have same identifiers")
-    #         for input in inputs:
-    #             self.add_constant_feature_identifier(input)
-
-    #     def filter_in_features_identifiers(
-    #         self, identifiers: Sequence[Union[str, FeatureIdentifier]]
-    #     ) -> Sequence[Union[str, FeatureIdentifier]]:
-    #         """Filter and get input features features corresponding to a sorted list of identifiers.
-
-    #         Args:
-    #             identifiers (Sequence[Union[str, FeatureIdentifier]]): A list of identifiers for which to retrieve corresponding input features.
-
-    #         Returns:
-    #             Sequence[Union[str, FeatureIdentifier]]: A sorted list of input feature identifiers or categories corresponding to the provided identifiers.
-
-    #         Example:
-    #             .. code-block:: python
-
-    #                 from plaid.problem_definition import ProblemDefinition
-    #                 problem = ProblemDefinition()
-    #                 # [...]
-    #                 features_identifiers = ['omega', 'pressure', 'temperature']
-    #                 input_features = problem.filter_in_features_identifiers(features_identifiers)
-    #                 print(input_features)
-    #                 >>> ['omega', 'pressure']
-    #         """
-    #         return sorted(set(identifiers).intersection(self.get_in_features_identifiers()))
-
-    #     # -------------------------------------------------------------------------#
-    #     def get_out_features_identifiers(self) -> Sequence[Union[str, FeatureIdentifier]]:
-    #         """Get the output features identifiers of the problem.
-
-    #         Returns:
-    #             Sequence[Union[str, FeatureIdentifier]]: A list of output feature identifiers.
-
-    #         Example:
-    #             .. code-block:: python
-
-    #                 from plaid.problem_definition import ProblemDefinition
-    #                 problem = ProblemDefinition()
-    #                 # [...]
-    #                 outputs_identifiers = problem.get_out_features_identifiers()
-    #                 print(outputs_identifiers)
-    #                 >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-    #         """
-    #         return self.out_features_identifiers
-
-    #     def set_out_features_identifiers(
-    #         self, features_identifiers: Sequence[Union[str, FeatureIdentifier]]
-    #     ) -> None:
-    #         """Set the output features identifiers of the problem.
-
-    #         Example:
-    #             .. code-block:: python
-
-    #                 from plaid.problem_definition import ProblemDefinition
-    #                 problem = ProblemDefinition()
-    #                 # [...]
-    #                 problem.set_out_features_identifiers(out_features_identifiers)
-    #         """
-    #         self.out_features_identifiers = features_identifiers
-    # -------------------------------------------------------------------------#
     def _generate_problem_infos_dict(self) -> dict[str, Union[str, list]]:
         """Generate a dictionary containing all relevant problem definition data.
 

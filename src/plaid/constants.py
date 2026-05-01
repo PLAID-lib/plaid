@@ -26,8 +26,8 @@ AUTHORIZED_FEATURE_TYPES = get_args(AUTHORIZED_FEATURE_TYPES_T)
 
 AUTHORIZED_FEATURE_INFOS = {
     "scalar": ["name"],
-    "field": ["name", "location", "zone_name", "base_name", "time"],
-    "nodes": ["zone_name", "base_name", "time"],
+    "field": ["name", "location", "zone", "base", "time"],
+    "nodes": ["zone", "base", "time"],
 }
 
 # Information keys for dataset metadata

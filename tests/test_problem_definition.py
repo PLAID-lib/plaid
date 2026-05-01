@@ -257,13 +257,13 @@ class Test_ProblemDefinition:
         problem_definition.add_in_features_identifiers(["in_1", "in_2"])
         with pytest.raises(ValueError, match="in_1 is already in"):
             problem_definition.add_in_features_identifiers("in_1")
-        with pytest.raises(ValueError, match="Some inputs have same identifiers"):
+        with pytest.raises(ValueError, match="Some input features share the same identifier"):
             problem_definition.add_in_features_identifiers(["x", "x"])
 
         problem_definition.add_out_features_identifiers(["out_1", "out_2"])
         with pytest.raises(ValueError, match="out_1 is already in"):
             problem_definition.add_out_features_identifiers("out_1")
-        with pytest.raises(ValueError, match="Some outputs have same identifiers"):
+        with pytest.raises(ValueError, match="Some output features share the same identifier"):
             problem_definition.add_out_features_identifiers(["y", "y"])
 
 
