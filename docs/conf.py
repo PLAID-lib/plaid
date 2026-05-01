@@ -1,9 +1,3 @@
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
