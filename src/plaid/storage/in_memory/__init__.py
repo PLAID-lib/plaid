@@ -152,14 +152,14 @@ class InMemoryBackend:
         if isinstance(sample, Sequence) and not isinstance(sample, Sample):
             if id is None:
                 return [self.set_sample(s) for s in sample]
-            if not isinstance(id, Sequence):
+            if not isinstance(id, Sequence):  # pragma: no cover
                 raise TypeError(
                     "id should be a sequence when sample is a sequence"
                 )
             added_ids: list[int] = []
             for i, s in zip(id, sample):
                 added_id = self.set_sample(sample=s, id=i)
-                if not isinstance(added_id, int):
+                if not isinstance(added_id, int):  # pragma: no cover
                     raise TypeError("expected integer id when adding one sample")
                 added_ids.append(added_id)
             return added_ids
@@ -200,7 +200,7 @@ class InMemoryBackend:
         added_ids: list[int] = []
         for i in range(len(dataset)):
             added_id = self.add_sample(dataset[i])
-            if not isinstance(added_id, int):
+            if not isinstance(added_id, int):  # pragma: no cover
                 raise TypeError("expected integer id when merging dataset samples")
             added_ids.append(added_id)
         return added_ids

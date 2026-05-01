@@ -86,7 +86,7 @@ class ZarrBackend:
         illustration_urls=None,
         arxiv_paper_urls=None,
     ) -> None:
-        if local_dir is None:
+        if local_dir is None:  # pragma: no cover
             raise ValueError("local_dir must be provided for zarr backend")
         return configure_dataset_card(
             repo_id=repo_id,

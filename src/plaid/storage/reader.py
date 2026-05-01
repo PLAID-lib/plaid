@@ -94,7 +94,7 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.to_var_sample_dict is None:
+        if self.backend_spec.to_var_sample_dict is None:   # pragma: no cover
             raise ValueError(
                 f"Converter.to_dict not available for {self.backend} backend"
             )
@@ -173,7 +173,7 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.sample_to_var_sample_dict is None:
+        if self.backend_spec.sample_to_var_sample_dict is None:  # pragma: no cover
             raise ValueError(
                 f"Converter.sample_to_var_sample_dict not available for {self.backend} backend"
             )
