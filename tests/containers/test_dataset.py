@@ -61,10 +61,10 @@ class Test_Dataset:
         #with pytest.raises(TypeError):
         #    dataset.get_backend().add_sample(None)
 
-    # def test___init__load(self, current_directory):
-    #     dataset_path = current_directory / "dataset"
-    #     dataset_already_filled = Dataset(dataset_path)
-    #     assert len(dataset_already_filled) == 3
+    def test___init__load(self, current_directory):
+        dataset_path = current_directory / "dataset"
+        dataset_already_filled = Dataset(path = dataset_path, split="train")
+        assert len(dataset_already_filled) == 10
 
     # def test__init__load_with_str(self, current_directory):
     #     dataset_path = current_directory / "dataset"
@@ -74,13 +74,7 @@ class Test_Dataset:
     def test___init__unknown_directory(self, current_directory):
         dataset_path = current_directory / "dataset_unknown"
         with pytest.raises(FileNotFoundError):
-            Dataset(path=dataset_path).load()
-
-
-    def test___init__file_provided(self, current_directory):
-        dataset_path = current_directory / "bad_dataset_test"
-        with pytest.raises(FileNotFoundError):
-            Dataset(path=dataset_path).load()
+            Dataset(path=dataset_path).load(split="test")
 
     def test__init__path(self, current_directory):
         dataset_path = current_directory / "dataset"

@@ -69,10 +69,12 @@ class Dataset(BaseModel):
 
     # to set the name, task only once 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name in ["split"]:
+        if name in ["split", "path" ]:
             current_value = getattr(self, name, None)
-            if current_value is not None and value is not None:
+            if current_value is not None and value is not None and current_value != value:
                 raise AttributeError(f"'{name}' is already set and cannot be changed.")
+            if current_value == value:
+                return 
         super().__setattr__(name, value)
 
     def get_backend(self) -> BackendModule:
@@ -98,9 +100,23 @@ class Dataset(BaseModel):
         return dataset
 
 
+    # load data from disk if path and split are given 
+    def model_post_init(self, __context):
+        if self.path is not None and self.split is not None:
+            self.load()
+
     def load(self, path: Optional[Union[str, Path]] = None, split: Optional[Any]= None):
+
         if path is None:
             path = self.path
+
+        if split is None:
+            split = self.split
+        if split is None:
+            raise RuntimeError("Need a split name to be loaded")
+        
+        self.split = split
+
         path = Path(path)
         if path.is_file():
             #inputdir = path.parent / f"tmploaddir_{generate_random_ASCII()}"
@@ -120,7 +136,7 @@ class Dataset(BaseModel):
                 datasetdict, converterdict = init_from_disk(inputdir)
                 self._ds = datasetdict[split]
                 self._conv = converterdict[split]
-                self._ids = np.arange(len(self._ds))
+                self.indices = np.arange(len(self._ds))
             finally: 
                 #shutil.rmtree(inputdir)
                 #register deletion at exit
@@ -135,7 +151,7 @@ class Dataset(BaseModel):
             print(list(datasetdict.keys()))
             self._ds = datasetdict[split]
             self._conv = converterdict[split]
-            self._ids = np.arange(len(self._ds))
+            self.indices = np.arange(len(self._ds))
         else:
             raise FileNotFoundError(f"Error! path '{path}' does not exist")
 
