@@ -1,6 +1,11 @@
 """Package for Zarr storage."""
+from collections.abc import Iterable, Mapping
 from typing import Any, Optional, Union
 from pathlib import Path
+
+import numpy as np
+from datasets import IterableDataset
+import zarr
 
 from .bridge import (
     sample_to_var_sample_dict,
@@ -22,15 +27,15 @@ class ZarrBackend:
     name = "zarr"
 
     @staticmethod
-    def init_from_disk(path: Union[str, Path]) -> Any:
+    def init_from_disk(path: Union[str, Path]) -> Mapping[str, Any]:
         return init_datasetdict_from_disk(path=path)
 
     @staticmethod
     def download_from_hub(
         repo_id: str,
         local_dir: Union[str, Path],
-        split_ids=None,
-        features=None,
+        split_ids: Optional[dict[str, Iterable[int]]] = None,
+        features: Optional[list[str]] = None,
         overwrite: bool = False,
     ) -> str:
         return download_datasetdict_from_hub(
@@ -43,8 +48,10 @@ class ZarrBackend:
 
     @staticmethod
     def init_datasetdict_streaming_from_hub(
-        repo_id: str, split_ids=None, features=None
-    ) -> dict[str, Any]:
+        repo_id: str,
+        split_ids: Optional[dict[str, Iterable[int]]] = None,
+        features: Optional[list[str]] = None,
+    ) -> dict[str, IterableDataset]:
         return init_datasetdict_streaming_from_hub(
             repo_id=repo_id, split_ids=split_ids, features=features
         )
@@ -52,11 +59,11 @@ class ZarrBackend:
     @staticmethod
     def generate_to_disk(
         output_folder: Union[str, Path],
-        generators,
-        variable_schema,
-        gen_kwargs,
-        num_proc,
-        verbose,
+        generators: dict,
+        variable_schema: dict[str, dict],
+        gen_kwargs: Optional[dict[str, dict[str, list]]] = None,
+        num_proc: int = 1,
+        verbose: bool = False,
     ) -> None:
         return generate_datasetdict_to_disk(
             output_folder=output_folder,
@@ -81,10 +88,10 @@ class ZarrBackend:
         infos: dict,
         local_dir: Optional[Union[str, Path]] = None,
         viewer: bool = False,
-        pretty_name=None,
-        dataset_long_description=None,
-        illustration_urls=None,
-        arxiv_paper_urls=None,
+        pretty_name: Optional[str] = None,
+        dataset_long_description: Optional[str] = None,
+        illustration_urls: Optional[list[str]] = None,
+        arxiv_paper_urls: Optional[list[str]] = None,
     ) -> None:
         if local_dir is None:  # pragma: no cover
             raise ValueError("local_dir must be provided for zarr backend")
@@ -100,11 +107,16 @@ class ZarrBackend:
         )
 
     @staticmethod
-    def to_var_sample_dict(dataset, idx, features):
+    def to_var_sample_dict(
+        dataset: zarr.Group,
+        idx: int,
+        features: Optional[list[str]] = None,
+        enforce_shapes: bool = True,  # noqa: ARG001
+    ) -> dict[str, Optional[np.ndarray]]:
         return to_var_sample_dict(zarr_dataset=dataset, idx=idx, features=features)
 
     @staticmethod
-    def sample_to_var_sample_dict(sample):
+    def sample_to_var_sample_dict(sample: dict[str, Any]) -> dict[str, Any]:
         return sample_to_var_sample_dict(zarr_sample=sample)
 
 

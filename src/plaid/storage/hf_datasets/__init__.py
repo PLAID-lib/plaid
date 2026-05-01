@@ -1,6 +1,10 @@
 """Package for HF_datasets storage."""
-from typing import Any, Union, Optional
+from collections.abc import Iterable, Mapping
+from typing import Any, Optional, Union
 from pathlib import Path
+
+import numpy as np
+from datasets import Dataset, IterableDatasetDict
 
 from .bridge import (
     sample_to_var_sample_dict,
@@ -22,14 +26,14 @@ class HFBackend:
     name = "hf_datasets"
 
     @staticmethod
-    def init_from_disk(path: Union[str, Path]) -> Any:
+    def init_from_disk(path: Union[str, Path]) -> Mapping[str, Any]:
         return init_datasetdict_from_disk(path=path)
 
     @staticmethod
     def download_from_hub(
         repo_id: str,
         local_dir: Union[str, Path],
-        split_ids: Optional[dict[str, int]] = None,  # noqa: ARG001
+        split_ids: Optional[dict[str, Iterable[int]]] = None,
         features: Optional[list[str]] = None,  # noqa: ARG001
         overwrite: bool = False,
     ) -> str:
@@ -43,8 +47,10 @@ class HFBackend:
 
     @staticmethod
     def init_datasetdict_streaming_from_hub(
-        repo_id: str, split_ids=None, features=None
-    ) -> Any:
+        repo_id: str,
+        split_ids: Optional[dict[str, Iterable[int]]] = None,
+        features: Optional[list[str]] = None,
+    ) -> IterableDatasetDict:
         return init_datasetdict_streaming_from_hub(
             repo_id=repo_id, split_ids=split_ids, features=features
         )
@@ -52,11 +58,11 @@ class HFBackend:
     @staticmethod
     def generate_to_disk(
         output_folder: Union[str, Path],
-        generators,
-        variable_schema,
-        gen_kwargs,
-        num_proc,
-        verbose,
+        generators: dict,
+        variable_schema: dict[str, dict],
+        gen_kwargs: Optional[dict[str, dict[str, list]]] = None,
+        num_proc: int = 1,
+        verbose: bool = False,
     ) -> None:
         return generate_datasetdict_to_disk(
             output_folder=output_folder,
@@ -98,11 +104,21 @@ class HFBackend:
         )
 
     @staticmethod
-    def to_var_sample_dict(dataset, idx, features):
-        return to_var_sample_dict(ds=dataset, i=idx, features=features)
+    def to_var_sample_dict(
+        dataset: Dataset,
+        idx: int,
+        features: Optional[list[str]] = None,
+        enforce_shapes: bool = True,
+    ) -> dict[str, Optional[np.ndarray]]:
+        _ = enforce_shapes
+        return to_var_sample_dict(
+            ds=dataset,
+            i=idx,
+            features=features,
+        )
 
     @staticmethod
-    def sample_to_var_sample_dict(sample):
+    def sample_to_var_sample_dict(sample: dict[str, Any]) -> dict[str, Any]:
         return sample_to_var_sample_dict(hf_sample=sample)
 
 

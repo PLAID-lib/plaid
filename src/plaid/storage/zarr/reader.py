@@ -97,14 +97,14 @@ class ZarrDataset:
 
 def _zarr_patterns(
     repo_id: str,
-    split_ids: Optional[dict[str, list[int]]] = None,
+    split_ids: Optional[dict[str, Iterable[int]]] = None,
     features: Optional[list[str]] = None,
 ):  # pragma: no cover
     """Generates allow and ignore patterns for Zarr dataset downloading.
 
     Args:
         repo_id (str): The Hugging Face repository ID.
-        split_ids (Optional[dict[str, list[int]]]): Optional split IDs for selective loading.
+        split_ids (Optional[dict[str, Iterable[int]]]): Optional split IDs for selective loading.
         features (Optional[list[str]]): Optional features for selective loading.
 
     Returns:
@@ -236,7 +236,7 @@ def init_datasetdict_from_disk(
 def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
-    split_ids: Optional[dict[str, list[int]]] = None,
+    split_ids: Optional[dict[str, Iterable[int]]] = None,
     features: Optional[list[str]] = None,
     overwrite: bool = False,
 ) -> str:  # pragma: no cover
@@ -245,7 +245,7 @@ def download_datasetdict_from_hub(
     Args:
         repo_id (str): The Hugging Face repository ID.
         local_dir (Union[str, Path]): Local directory to download to.
-        split_ids (Optional[dict[str, list[int]]]): Optional split IDs for selective download.
+        split_ids (Optional[dict[str, Iterable[int]]]): Optional split IDs for selective download.
         features (Optional[list[str]]): Optional features for selective download.
         overwrite (bool): Whether to overwrite existing directory.
 
@@ -276,7 +276,7 @@ def download_datasetdict_from_hub(
 
 def init_datasetdict_streaming_from_hub(
     repo_id: str,
-    split_ids: Optional[dict[str, list[int]]] = None,
+    split_ids: Optional[dict[str, Iterable[int]]] = None,
     features: Optional[list[str]] = None,
 ) -> dict[str, IterableDataset]:  # pragma: no cover
     """Initializes streaming dataset dictionaries from Hugging Face Hub.
@@ -288,7 +288,7 @@ def init_datasetdict_streaming_from_hub(
 
     Args:
         repo_id (str): The Hugging Face repository ID (e.g., "username/dataset_name").
-        split_ids (Optional[dict[str, list[int]]]): Optional dictionary mapping split names
+        split_ids (Optional[dict[str, Iterable[int]]]): Optional dictionary mapping split names
             to lists of sample IDs to include. If None, all samples from all splits
             are included.
         features (Optional[list[str]]): Optional list of feature names to include.

@@ -1,7 +1,17 @@
 """Protocol definition for storage backend modules."""
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Generator, Iterable, Optional, Protocol, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Generator,
+    Iterable,
+    Mapping,
+    Optional,
+    Protocol,
+    Union,
+)
 
 import numpy as np
 
@@ -20,7 +30,7 @@ class BackendModule(Protocol):
     name: str
 
     @staticmethod
-    def init_from_disk(path: Union[str, Path]) -> Any:
+    def init_from_disk(path: Union[str, Path]) -> Mapping[str, Any]:
         """Load a dataset dictionary from local storage."""
         ...
 
@@ -84,12 +94,12 @@ class BackendModule(Protocol):
         features: Optional[list[str]] = None,
         enforce_shapes: bool = True,
     ) -> dict[str, Optional[np.ndarray]]:
-        """"""
+        """Convert a backend sample to PLAID variable-sample dictionary representation."""
         ...
 
     @staticmethod
     def sample_to_var_sample_dict(
         sample: dict[str, Any],
     ) -> dict[str, Any]:
-        """"""
+        """Convert a backend-native sample object to a variable-sample dictionary."""
         ...
