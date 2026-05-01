@@ -179,7 +179,8 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
 
                 offset += nbytes
 
-        json.dump(layout, open(cst_path / "layout.json", "w"), indent=2)
+        with open(cst_path / "layout.json", "w") as f:
+            json.dump(layout, f , indent=2)
 
         with open(cst_path / "constant_schema.yaml", "w", encoding="utf-8") as f:
             yaml.dump(constant_schema[split], f, sort_keys=False)
