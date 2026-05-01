@@ -36,7 +36,6 @@ To use the library, the simplest way is to install it from the packages availabl
 - {doc}`core_concepts/sample` → API: {py:class}`plaid.containers.sample.Sample`
 - {doc}`core_concepts/dataset` → API: {py:class}`plaid.containers.dataset.Dataset`
 - {doc}`core_concepts/problem_definition` → API: {py:class}`plaid.problem_definition.ProblemDefinition`
-- {doc}`core_concepts/feature_identifiers` → API: {py:class}`plaid.types.feature_types.FeatureIdentifier`
 - {doc}`core_concepts/defaults`
 - {doc}`core_concepts/disk_format`
 - {doc}`core_concepts/interoperability`

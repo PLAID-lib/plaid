@@ -4,7 +4,7 @@ title: Sample
 
 # Sample
 
-{py:class}`~plaid.containers.sample.Sample` represents one observation. It contains {doc}`feature_identifiers` among (all optional):
+{py:class}`~plaid.containers.sample.Sample` represents one observation. It contains:
 - scalars: name → value
 - meshes containing:
   - nodes: mesh node coordinates, that can be located:

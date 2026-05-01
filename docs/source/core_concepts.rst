@@ -3,7 +3,7 @@ Core concepts
 
 PLAID is a datamodel and library for organizing physics datasets and defining learning problems on these datasets.
 
-It provides high-level classes such as :py:class:`~plaid.containers.dataset.Dataset`, :py:class:`~plaid.containers.sample.Sample`, and :py:class:`~plaid.problem_definition.ProblemDefinition`, with features addressed via :doc:`core_concepts/feature_identifiers`.
+It provides high-level classes such as :py:class:`~plaid.containers.dataset.Dataset`, :py:class:`~plaid.containers.sample.Sample`, and :py:class:`~plaid.problem_definition.ProblemDefinition`..
 
 PLAID relies on the CGNS standard for representing complex physics meshes and uses human-readable formats like `.yaml`, `.csv` for other features.
 
