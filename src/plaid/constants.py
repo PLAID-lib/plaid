@@ -16,10 +16,15 @@ It includes:
 
 These constants help standardize metadata, task types, and mesh element references across the PLAID codebase.
 """
+from typing import Literal, get_args
 
-AUTHORIZED_TASKS = ["regression", "classification"]
 
-AUTHORIZED_SCORE_FUNCTIONS = ["RRMSE"]
+AUTHORIZED_TASKS_T = Literal["regression", "classification"] 
+AUTHORIZED_TASKS = get_args(AUTHORIZED_TASKS_T)
+
+
+AUTHORIZED_SCORE_FUNCTIONS_T = Literal["RRMSE"] 
+AUTHORIZED_SCORE_FUNCTIONS = get_args(AUTHORIZED_SCORE_FUNCTIONS_T)
 
 AUTHORIZED_FEATURE_TYPES = ["scalar", "field", "nodes"]
 

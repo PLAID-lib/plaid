@@ -21,7 +21,7 @@ Key features:
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
-from plaid import Sample
+from ..containers.sample import Sample
 from plaid.storage.common.bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,
@@ -167,6 +167,7 @@ class Converter:
             sample_dict = self.to_dict(dataset, idx, features, indexers=indexers)
             return to_plaid_sample(sample_dict, self.cgns_types)
         else:
+            print("D")
             return dataset[idx]
 
     def sample_to_dict(self, sample: Sample) -> dict[float, dict[str, Any]]:

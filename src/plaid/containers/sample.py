@@ -9,6 +9,7 @@
 
 # %% Imports
 import sys
+from ..types.common import ArrayDType
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -31,21 +32,19 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic import Field as PydanticField
 
-from plaid.constants import (
+from ..types import Array, ArrayDType
+
+
+from ..constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.feature_identifier import FeatureIdentifier
-from plaid.containers.features import SampleFeatures
-from plaid.containers.utils import get_feature_type_and_details_from
-from plaid.types import (
-    Feature,
-    Scalar,
-)
-from plaid.utils import cgns_helper as CGH
-from plaid.utils.base import delegate_methods, safe_len
-from plaid.utils.deprecation import deprecated
+
+from .features import SampleFeatures
+from .utils import get_feature_type_and_details_from
+from ..utils import cgns_helper as CGH
+from ..utils.base import delegate_methods, safe_len
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +96,7 @@ class Sample(BaseModel):
     """
 
     # Pydantic configuration
+    #TODO(FB) check why arbitrary_types_allowed is needed, and if it can be removed 
     model_config = ConfigDict(
         arbitrary_types_allowed=True, revalidate_instances="always", extra="forbid"
     )
@@ -136,7 +136,7 @@ class Sample(BaseModel):
         """
         return self.model_copy(deep=True)
 
-    def get_scalar(self, name: str) -> Optional[Scalar]:
+    def get_scalar(self, name: str) -> Optional[Array]:
         """Retrieve a scalar value associated with the given name.
 
         Args:
@@ -147,7 +147,7 @@ class Sample(BaseModel):
         """
         return self.features.get_global(name)
 
-    def add_scalar(self, name: str, value: Scalar) -> None:
+    def add_scalar(self, name: str, value: np.number) -> None:
         """Add a scalar value to a dictionary.
 
         Args:
@@ -156,7 +156,7 @@ class Sample(BaseModel):
         """
         self.features.add_global(name, value)
 
-    def del_scalar(self, name: str) -> Scalar:
+    def del_scalar(self, name: str) -> np.number:
         """Delete a scalar value from the dictionary.
 
         Args:
@@ -202,68 +202,73 @@ class Sample(BaseModel):
         return self
 
     # -------------------------------------------------------------------------#
-    def get_all_features_identifiers(
-        self,
-    ) -> list[FeatureIdentifier]:
-        """Get all features identifiers from the sample.
+    def get_all_features_identifiers():
+        raise NotImplementedError("  v1 cleaning")
+    # def get_all_features_identifiers(
+    #     self,
+    # ) -> list[FeatureIdentifier]:
+    #     """Get all features identifiers from the sample.
 
-        Returns:
-            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
-        """
-        all_features_identifiers = []
-        for sn in self.get_scalar_names():
-            all_features_identifiers.append({"type": "scalar", "name": sn})
-        for t in self.features.get_all_time_values():
-            for bn in self.features.get_base_names(time=t):
-                for zn in self.features.get_zone_names(base_name=bn, time=t):
-                    if (
-                        self.features.get_nodes(base_name=bn, zone_name=zn, time=t)
-                        is not None
-                    ):
-                        all_features_identifiers.append(
-                            {
-                                "type": "nodes",
-                                "base_name": bn,
-                                "zone_name": zn,
-                                "time": t,
-                            }
-                        )
-                    for loc in CGNS_FIELD_LOCATIONS:
-                        for fn in self.features.get_field_names(
-                            location=loc, zone_name=zn, base_name=bn, time=t
-                        ):
-                            all_features_identifiers.append(
-                                {
-                                    "type": "field",
-                                    "name": fn,
-                                    "base_name": bn,
-                                    "zone_name": zn,
-                                    "location": loc,
-                                    "time": t,
-                                }
-                            )
-        return all_features_identifiers
+    #     Returns:
+    #         list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
+    #     """
+    #     all_features_identifiers = []
+    #     for sn in self.get_scalar_names():
+    #         all_features_identifiers.append({"type": "scalar", "name": sn})
+    #     for t in self.features.get_all_time_values():
+    #         for bn in self.features.get_base_names(time=t):
+    #             for zn in self.features.get_zone_names(base_name=bn, time=t):
+    #                 if (
+    #                     self.features.get_nodes(base_name=bn, zone_name=zn, time=t)
+    #                     is not None
+    #                 ):
+    #                     all_features_identifiers.append(
+    #                         {
+    #                             "type": "nodes",
+    #                             "base_name": bn,
+    #                             "zone_name": zn,
+    #                             "time": t,
+    #                         }
+    #                     )
+    #                 for loc in CGNS_FIELD_LOCATIONS:
+    #                     for fn in self.features.get_field_names(
+    #                         location=loc, zone_name=zn, base_name=bn, time=t
+    #                     ):
+    #                         all_features_identifiers.append(
+    #                             {
+    #                                 "type": "field",
+    #                                 "name": fn,
+    #                                 "base_name": bn,
+    #                                 "zone_name": zn,
+    #                                 "location": loc,
+    #                                 "time": t,
+    #                             }
+    #                         )
+    #     return all_features_identifiers
 
-    def get_all_features_identifiers_by_type(
-        self, feature_type: str
-    ) -> list[FeatureIdentifier]:
-        """Get all features identifiers of a given type from the sample.
+    def get_all_features_identifiers_by_type(self, feature_type: str):
+        raise NotImplementedError("  v1 cleaning")
 
-        Args:
-            feature_type (str): Type of features to return
+    # def get_all_features_identifiers_by_type(
+    #     self, feature_type: str
+    # ) -> list[FeatureIdentifier]:
+    #     """Get all features identifiers of a given type from the sample.
 
-        Returns:
-            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
-        """
-        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
-        all_features_identifiers = self.get_all_features_identifiers()
-        return [
-            feat_id
-            for feat_id in all_features_identifiers
-            if feat_id["type"] == feature_type
-        ]
+    #     Args:
+    #         feature_type (str): Type of features to return
 
-    def get_feature_by_path(self, path: str, time: Optional[int] = None) -> Feature:
+    #     Returns:
+    #         list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
+    #     """
+    #     assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
+    #     all_features_identifiers = self.get_all_features_identifiers()
+    #     return [
+    #         feat_id
+    #         for feat_id in all_features_identifiers
+    #         if feat_id["type"] == feature_type
+    #     ]
+
+    def get_feature_by_path(self, path: str, time: Optional[int] = None) -> np.number | np.ndarray | None:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style path.
 
         Args:
@@ -287,7 +292,7 @@ class Sample(BaseModel):
 
     def get_feature_from_string_identifier(
         self, feature_string_identifier: str
-    ) -> Feature:
+    ) -> np.number | np.ndarray | None:
         """Retrieve a specific feature from its encoded string identifier.
 
         The `feature_string_identifier` must follow the format:
@@ -347,8 +352,8 @@ class Sample(BaseModel):
             return self.get_nodes(**kwargs).flatten()
 
     def get_feature_from_identifier(
-        self, feature_identifier: FeatureIdentifier
-    ) -> Feature:
+        self, feature_identifier: str
+    ) -> ArrayDType:
         """Retrieve a feature object based on a structured identifier dictionary.
 
         The `feature_identifier` must include a `"type"` key specifying the feature kind:
@@ -384,8 +389,8 @@ class Sample(BaseModel):
             return self.get_nodes(**feature_details).flatten()
 
     def get_features_from_identifiers(
-        self, feature_identifiers: list[FeatureIdentifier]
-    ) -> list[Feature]:
+        self, feature_identifiers: list[str]
+    ) -> list[ArrayDType]:
         """Retrieve features based on a list of structured identifier dictionaries.
 
         Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
@@ -426,8 +431,8 @@ class Sample(BaseModel):
 
     def add_feature(
         self,
-        feature_identifier: FeatureIdentifier,
-        feature: Feature,
+        feature_identifier: str,
+        feature: ArrayDType,
     ) -> Self:
         """Add a feature to current sample.
 
@@ -465,7 +470,7 @@ class Sample(BaseModel):
 
     def del_feature(
         self,
-        feature_identifier: FeatureIdentifier,
+        feature_identifier: str,
     ) -> Self:
         """Remove a feature from current sample.
 
@@ -496,9 +501,9 @@ class Sample(BaseModel):
     def update_features_from_identifier(
         self,
         feature_identifiers: dict[
-            int, Union[FeatureIdentifier, list[FeatureIdentifier]]
+            int, Union[str, list[str]]
         ],
-        features: Union[Feature, list[Feature]],
+        features: Union[ArrayDType, list[ArrayDType]],
         in_place: bool = False,
     ) -> Self:
         """Update one or several features of the sample by their identifier(s).
@@ -525,7 +530,7 @@ class Sample(BaseModel):
             features = [features]
         assert len(feature_identifiers) == len(features)
         for i_id, feat_id in enumerate(feature_identifiers):
-            feature_identifiers[i_id] = FeatureIdentifier(feat_id)
+            feature_identifiers[i_id] = str(feat_id)
 
         sample = self if in_place else self.copy()
 
@@ -536,7 +541,7 @@ class Sample(BaseModel):
 
     def extract_sample_from_identifier(
         self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
+        feature_identifiers: Union[str, list[str]],
     ) -> Self:
         """Extract features of the sample by their identifier(s) and return a new sample containing these features.
 
@@ -582,19 +587,19 @@ class Sample(BaseModel):
 
         return sample
 
-    @deprecated(
-        "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_sample_from_identifier(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def from_features_identifier(
-        self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-    ) -> Self:
-        """DEPRECATED: Use :meth:`Dataset.extract_sample_from_identifier` instead."""
-        return self.extract_sample_from_identifier(
-            feature_identifiers
-        )  # pragma: no cover
+    # @deprecated(
+    #     "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_sample_from_identifier(...)`",
+    #     version="0.1.8",
+    #     removal="0.2",
+    # )
+    # def from_features_identifier(
+    #     self,
+    #     feature_identifiers: Union[str, list[str]],
+    # ) -> Self:
+    #     """DEPRECATED: Use :meth:`Dataset.extract_sample_from_identifier` instead."""
+    #     return self.extract_sample_from_identifier(
+    #         feature_identifiers
+    #     )  # pragma: no cover
 
     def merge_features(self, sample: Self, in_place: bool = False) -> Self:
         """Merge features from another sample into the current sample.
@@ -641,16 +646,16 @@ class Sample(BaseModel):
         )
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "`Sample.save(...)` is deprecated, use instead `Sample.save_to_dir(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def save(
-        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
-    ) -> None:
-        """DEPRECATED: use :meth:`Sample.save_to_dir` instead."""
-        self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
+    # @deprecated(
+    #     "`Sample.save(...)` is deprecated, use instead `Sample.save_to_dir(...)`",
+    #     version="0.1.8",
+    #     removal="0.2",
+    # )
+    # def save(
+    #     self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
+    # ) -> None:
+    #     """DEPRECATED: use :meth:`Sample.save_to_dir` instead."""
+    #     self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
 
     # -------------------------------------------------------------------------#
     def save_to_dir(
@@ -769,39 +774,39 @@ class Sample(BaseModel):
         if len(old_time_series_files) > 0:
             self._load_old_time_series(old_time_series_files)
 
-    @deprecated(
-        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _load_old_scalars(self, scalars_file: Path):
-        names = np.loadtxt(scalars_file, dtype=str, max_rows=1, delimiter=",").reshape(
-            (-1,)
-        )
-        scalars = np.loadtxt(
-            scalars_file, dtype=float, skiprows=1, delimiter=","
-        ).reshape((-1,))
-        for name, value in zip(names, scalars):
-            self.add_scalar(name, value)
+    # @deprecated(
+    #     reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
+    #     version="0.1.10",
+    #     removal="0.2.0",
+    # )
+    # def _load_old_scalars(self, scalars_file: Path):
+    #     names = np.loadtxt(scalars_file, dtype=str, max_rows=1, delimiter=",").reshape(
+    #         (-1,)
+    #     )
+    #     scalars = np.loadtxt(
+    #         scalars_file, dtype=float, skiprows=1, delimiter=","
+    #     ).reshape((-1,))
+    #     for name, value in zip(names, scalars):
+    #         self.add_scalar(name, value)
 
-    @deprecated(
-        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _load_old_time_series(self, time_series_files: list[Path]):
-        for ts_fname in time_series_files:
-            names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
-                (-1,)
-            )
-            assert names[0] == "t"
-            times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
-            for i in range(times_and_val.shape[0]):
-                self.add_global(
-                    name=names[1],
-                    global_array=times_and_val[i, 1],
-                    time=times_and_val[i, 0],
-                )
+    # @deprecated(
+    #     reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
+    #     version="0.1.10",
+    #     removal="0.2.0",
+    # )
+    # def _load_old_time_series(self, time_series_files: list[Path]):
+    #     for ts_fname in time_series_files:
+    #         names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
+    #             (-1,)
+    #         )
+    #         assert names[0] == "t"
+    #         times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
+    #         for i in range(times_and_val.shape[0]):
+    #             self.add_global(
+    #                 name=names[1],
+    #                 global_array=times_and_val[i, 1],
+    #                 time=times_and_val[i, 0],
+    #             )
 
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:

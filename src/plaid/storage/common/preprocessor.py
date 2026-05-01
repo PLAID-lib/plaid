@@ -22,7 +22,7 @@ from typing import Any, Callable, Generator, Optional, Union
 import numpy as np
 from tqdm import tqdm
 
-from plaid import Sample
+from ...containers import Sample
 from plaid.types import IndexType
 from plaid.utils.cgns_helper import flatten_cgns_tree
 

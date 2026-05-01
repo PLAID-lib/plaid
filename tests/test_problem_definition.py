@@ -15,7 +15,6 @@ import pytest
 from packaging.version import Version
 
 import plaid
-from plaid.containers import FeatureIdentifier
 from plaid.problem_definition import ProblemDefinition
 
 # %% Fixtures
@@ -741,29 +740,4 @@ class Test_ProblemDefinition:
         with pytest.raises(FileExistsError):
             problem._load_from_dir_(file_path)
 
-    def test_extract_problem_definition_from_identifiers(self, problem_definition):
-        in_id_1 = FeatureIdentifier({"type": "scalar", "name": "in_1"})
-        in_id_2 = FeatureIdentifier({"type": "scalar", "name": "in_2"})
-        out_id_1 = FeatureIdentifier({"type": "scalar", "name": "out_1"})
-        out_id_2 = FeatureIdentifier({"type": "scalar", "name": "out_2"})
 
-        problem_definition.add_in_features_identifiers([in_id_1, in_id_2])
-        problem_definition.add_out_features_identifiers([out_id_1, out_id_2])
-        problem_definition.set_task("regression")
-        problem_definition.set_name("regression_1")
-        with pytest.raises(ValueError):
-            problem_definition.set_name("regression_2")
-        problem_definition.set_split({"train": [0, 1], "test": [2, 3]})
-
-        sub_problem_definition = (
-            problem_definition.extract_problem_definition_from_identifiers(
-                [in_id_1, out_id_1]
-            )
-        )
-
-        assert sub_problem_definition.get_in_features_identifiers() == [in_id_1]
-        assert sub_problem_definition.get_out_features_identifiers() == [out_id_1]
-        assert sub_problem_definition.get_version() == problem_definition.get_version()
-        assert sub_problem_definition.get_task() == "regression"
-        assert sub_problem_definition.get_name() == "regression_1"
-        assert sub_problem_definition.get_split() == {"train": [0, 1], "test": [2, 3]}

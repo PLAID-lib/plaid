@@ -21,7 +21,7 @@ import numpy as np
 import yaml
 from huggingface_hub import hf_hub_download, snapshot_download
 
-from plaid import ProblemDefinition
+from ...problem_definition import ProblemDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ def load_problem_definitions_from_disk(
         ValueError:
             If the ``problem_definitions/`` directory does not exist.
     """
-    pb_def_dir = Path(path) / Path("problem_definitions")
+    pb_def_dir = Path(path).absolute() / Path("problem_definitions")
 
     if pb_def_dir.is_dir():
         pb_defs = {}
@@ -101,10 +101,10 @@ def load_problem_definitions_from_disk(
             if p.is_file():
                 pb_def = ProblemDefinition()
                 pb_def._load_from_file_(pb_def_dir / Path(p.name))
-                pb_defs[pb_def.get_name()] = pb_def
+                pb_defs[pb_def.name] = pb_def
         return pb_defs
     else:
-        raise ValueError("No problem definitions found on disk.")  # pragma: no cover
+        raise ValueError(f"No problem definitions found on disk. path '{pb_def_dir}'")  # pragma: no cover
 
 
 def load_constants_from_disk(path):

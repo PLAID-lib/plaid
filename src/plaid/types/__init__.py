@@ -7,18 +7,11 @@
 #
 #
 
-from plaid.types.cgns_types import (
+from .cgns_types import (
     CGNSNode,
     CGNSTree,
 )
-from plaid.types.common import Array, ArrayDType, IndexType
-from plaid.types.feature_types import (
-    Feature,
-    Field,
-    Scalar,
-    TimeSequence,
-)
-from plaid.types.sklearn_types import SklearnBlock
+from .common import Array, ArrayDType, IndexType
 
 __all__ = [
     "Array",
@@ -26,14 +19,5 @@ __all__ = [
     "IndexType",
     "CGNSNode",
     "CGNSTree",
-    "Scalar",
-    "Field",
-    "TimeSequence",
-    "Feature",
-    "FeatureIdentifier",
-    "SklearnBlock",
 ]
 
-# Re-export FeatureIdentifier from containers to maintain backwards compatibility
-# Import is done at the bottom to avoid circular import issues
-from plaid.containers.feature_identifier import FeatureIdentifier

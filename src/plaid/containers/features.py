@@ -10,19 +10,18 @@ import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
 
-from plaid.constants import (
+from ..constants import (
     CGNS_ELEMENT_NAMES,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.managers.default_manager import DefaultManager
-from plaid.containers.utils import (
+from ..containers.managers.default_manager import DefaultManager
+from ..containers.utils import (
     _check_names,
     _read_index,
     get_feature_details_from_path,
 )
-from plaid.types import Array, CGNSNode, CGNSTree, Field
-from plaid.utils import cgns_helper as CGH
-from plaid.utils.deprecation import deprecated
+from ..types import Array, CGNSNode, CGNSTree
+from ..utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
 
@@ -129,14 +128,6 @@ class SampleFeatures:
         """
         return list(self.data.keys())
 
-    @deprecated(
-        "`get_all_mesh_times()` is deprecated, use instead `get_all_time_values()`",
-        version="0.1.11",
-        removal="0.2.0",
-    )
-    def get_all_mesh_times(self) -> list[float]:
-        """DEPRECATED: Use :meth:`get_all_time_values` instead."""
-        return self.get_all_time_values()  # pragma: no cover
 
     def init_tree(self, time: Optional[float] = None) -> CGNSTree:
         """Initialize a CGNS tree structure at a specified time step or create a new one if it doesn't exist.
@@ -1107,7 +1098,7 @@ class SampleFeatures:
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,
         time: Optional[float] = None,
-    ) -> Field:
+    ) -> np.ndarray:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
 
         Args:
@@ -1149,7 +1140,7 @@ class SampleFeatures:
     def add_field(
         self,
         name: str,
-        field: Field,
+        field: np.ndarray,
         location: str = "Vertex",
         zone_name: Optional[str] = None,
         base_name: Optional[str] = None,

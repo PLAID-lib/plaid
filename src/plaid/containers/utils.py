@@ -15,15 +15,15 @@ from typing import Any, Optional, Union
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 
-from plaid.constants import (
+from ..constants import (
     AUTHORIZED_FEATURE_INFOS,
     AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
     REQUIRED_INFOS_KEYS,
 )
-from plaid.containers.feature_identifier import FeatureIdentifier
-from plaid.types import Feature
-from plaid.utils.base import safe_len
+
+from ..types.common import ArrayDType
+from ..utils.base import safe_len
 
 path_to_location = {f"{loc}Fields": loc for loc in CGNS_FIELD_LOCATIONS}
 retrocompatibility = {
@@ -163,142 +163,153 @@ def get_number_of_samples(savedir: Union[str, Path]) -> int:
     return len(get_sample_ids(savedir))
 
 
-def get_feature_type_and_details_from(
-    feature_identifier: FeatureIdentifier,
-) -> tuple[str, FeatureIdentifier]:
-    """Extract and validate the feature type and its associated metadata from a feature identifier.
+def get_feature_type_and_details_from():
+    raise NotImplementedError("  v1 cleaning")
+# def get_feature_type_and_details_from(
+#     feature_identifier: FeatureIdentifier,
+# ) -> tuple[str, FeatureIdentifier]:
+#     """Extract and validate the feature type and its associated metadata from a feature identifier.
 
-    This utility function ensures that the `feature_identifier` dictionary contains a valid
-    "type" key (e.g., "scalar", "field", "node") and returns the type along
-    with the remaining identifier keys, which are specific to the feature type.
+#     This utility function ensures that the `feature_identifier` dictionary contains a valid
+#     "type" key (e.g., "scalar", "field", "node") and returns the type along
+#     with the remaining identifier keys, which are specific to the feature type.
 
-    Args:
-        feature_identifier (dict): A dictionary with a "type" key, and
-            other keys (some optional) depending on the feature type. For example:
-            - {"type": "scalar", "name": "Mach"}
-            - {"type": "field", "name": "pressure"}
-            - {"type": "field", "name": "pressure", "time":0.}
-            - {"type": "nodes", "base_name": "Base_2_2"}
+#     Args:
+#         feature_identifier (dict): A dictionary with a "type" key, and
+#             other keys (some optional) depending on the feature type. For example:
+#             - {"type": "scalar", "name": "Mach"}
+#             - {"type": "field", "name": "pressure"}
+#             - {"type": "field", "name": "pressure", "time":0.}
+#             - {"type": "nodes", "base_name": "Base_2_2"}
 
-    Returns:
-        tuple[str, dict]: A tuple `(feature_type, feature_details)` where:
-            - `feature_type` is the value of the "type" key (e.g., "scalar").
-            - `feature_details` is a dictionary of the remaining keys.
+#     Returns:
+#         tuple[str, dict]: A tuple `(feature_type, feature_details)` where:
+#             - `feature_type` is the value of the "type" key (e.g., "scalar").
+#             - `feature_details` is a dictionary of the remaining keys.
 
-    Raises:
-        AssertionError:
-            - If "type" is missing.
-            - If the type is not in `AUTHORIZED_FEATURE_TYPES`.
-            - If any unexpected keys are present for the given type.
-    """
-    assert "type" in feature_identifier, (
-        "feature type not specified in feature_identifier"
-    )
-    feature_type = feature_identifier["type"]
-    feature_details = feature_identifier.copy()
-    feature_type = feature_details.pop("type")
+#     Raises:
+#         AssertionError:
+#             - If "type" is missing.
+#             - If the type is not in `AUTHORIZED_FEATURE_TYPES`.
+#             - If any unexpected keys are present for the given type.
+#     """
+#     assert "type" in feature_identifier, (
+#         "feature type not specified in feature_identifier"
+#     )
+#     feature_type = feature_identifier["type"]
+#     feature_details = feature_identifier.copy()
+#     feature_type = feature_details.pop("type")
 
-    assert feature_type in AUTHORIZED_FEATURE_TYPES, (
-        f"feature type {feature_type} not known"
-    )
+#     assert feature_type in AUTHORIZED_FEATURE_TYPES, (
+#         f"feature type {feature_type} not known"
+#     )
 
-    assert all(
-        key in AUTHORIZED_FEATURE_INFOS[feature_type] for key in feature_details
-    ), (
-        f"Unexpected key(s) in feature_identifier {feature_details=} | {feature_type=} -> {AUTHORIZED_FEATURE_INFOS[feature_type]}"
-    )
+#     assert all(
+#         key in AUTHORIZED_FEATURE_INFOS[feature_type] for key in feature_details
+#     ), (
+#         f"Unexpected key(s) in feature_identifier {feature_details=} | {feature_type=} -> {AUTHORIZED_FEATURE_INFOS[feature_type]}"
+#     )
 
-    return feature_type, feature_details
+#     return feature_type, feature_details
 
+def check_features_type_homogeneity():
+    raise NotImplementedError("V1 cleaning")
+# def check_features_type_homogeneity(
+#     feature_identifiers: list[FeatureIdentifier],
+# ) -> None:
+#     """Check type homogeneity of features, for tabular conversion.
 
-def check_features_type_homogeneity(
-    feature_identifiers: list[FeatureIdentifier],
-) -> None:
-    """Check type homogeneity of features, for tabular conversion.
+#     Args:
+#         feature_identifiers (list[dict]): dict with a "type" key, and
+#             other keys (some optional) depending on the feature type. For example:
+#             - {"type": "scalar", "name": "Mach"}
+#             - {"type": "field", "name": "pressure"}
 
-    Args:
-        feature_identifiers (list[dict]): dict with a "type" key, and
-            other keys (some optional) depending on the feature type. For example:
-            - {"type": "scalar", "name": "Mach"}
-            - {"type": "field", "name": "pressure"}
-
-    Raises:
-        AssertionError: if types are not consistent
-    """
-    assert feature_identifiers and isinstance(feature_identifiers, list), (
-        "feature_identifiers must be a non-empty list"
-    )
-    feat_type = feature_identifiers[0]["type"]
-    for i, feat_id in enumerate(feature_identifiers):
-        assert feat_id["type"] in AUTHORIZED_FEATURE_TYPES, "feature type not known"
-        assert feat_id["type"] == feat_type, (
-            f"Inconsistent feature types: {i}-th feature type is {feat_id['type']}, while the first one is {feat_type}"
-        )
+#     Raises:
+#         AssertionError: if types are not consistent
+#     """
+#     assert feature_identifiers and isinstance(feature_identifiers, list), (
+#         "feature_identifiers must be a non-empty list"
+#     )
+#     feat_type = feature_identifiers[0]["type"]
+#     for i, feat_id in enumerate(feature_identifiers):
+#         assert feat_id["type"] in AUTHORIZED_FEATURE_TYPES, "feature type not known"
+#         assert feat_id["type"] == feat_type, (
+#             f"Inconsistent feature types: {i}-th feature type is {feat_id['type']}, while the first one is {feat_type}"
+#         )
 
 
 def check_features_size_homogeneity(
-    feature_identifiers: list[FeatureIdentifier],
-    features: dict[int, list[Feature]],
+    feature_identifiers: list[str],
+    features: dict[int, list[ArrayDType]],
 ) -> int:
-    """Check size homogeneity of features, for tabular conversion.
-
-    Size homogeneity is check through samples for each feature, and through features for each sample.
-    To be converted to tabular data, each sample must have the same number of features and each feature
-    must have the same dimension
-
-    Args:
-        feature_identifiers (list[dict]): dict with a "type" key, and
-            other keys (some optional) depending on the feature type. For example:
-            - {"type": "scalar", "name": "Mach"}
-            - {"type": "field", "name": "pressure"}
-        features (dict): dict with sample index as keys and one or more features as values.
-
-    Returns:
-        int: the common feature dimension
-
-    Raises:
-        AssertionError: if sizes are not consistent
-    """
-    features_values = list(features.values())
-    nb_samples = len(features_values)
-    nb_features = len(feature_identifiers)
-    for i in range(nb_features):
-        name_feature = feature_identifiers[i].get("name", "nodes")
-        size = safe_len(features_values[0][i])
-        for j in range(nb_samples):
-            size_j = safe_len(features_values[j][i])
-            assert size_j == size, (
-                f"Inconsistent feature sizes for feature {i} (name {name_feature}): has size {size_j} in sample {j}, while having size {size} in sample 0"
-            )
-
-    for j in range(nb_samples):
-        size = safe_len(features_values[j][0])
-        for i in range(nb_features):
-            name_feature = feature_identifiers[i].get("name", "nodes")
-            size_i = safe_len(features_values[j][i])
-            assert size_i == size, (
-                f"Inconsistent feature sizes in sample {j}: feature {i} (name {name_feature}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) is of size {size}"
-            )
-    return size
+    raise NotImplementedError("V1 cleaning")
 
 
-def has_duplicates_feature_ids(feature_identifiers: list[FeatureIdentifier]):
-    """Check whether a list of feature identifier contains duplicates.
+# def check_features_size_homogeneity(
+#     feature_identifiers: list[FeatureIdentifier],
+#     features: dict[int, list[Feature]],
+# ) -> int:
+#     """Check size homogeneity of features, for tabular conversion.
 
-    Args:
-        feature_identifiers (list[FeatureIdentifier]):
-            A list of dictionaries representing feature identifiers.
+#     Size homogeneity is check through samples for each feature, and through features for each sample.
+#     To be converted to tabular data, each sample must have the same number of features and each feature
+#     must have the same dimension
 
-    Returns:
-        bool: True if a duplicate is found in the list, False otherwise.
-    """
-    seen = set()
-    for d in feature_identifiers:
-        frozen = frozenset(d.items())
-        if frozen in seen:
-            return True
-        seen.add(frozen)
-    return False
+#     Args:
+#         feature_identifiers (list[dict]): dict with a "type" key, and
+#             other keys (some optional) depending on the feature type. For example:
+#             - {"type": "scalar", "name": "Mach"}
+#             - {"type": "field", "name": "pressure"}
+#         features (dict): dict with sample index as keys and one or more features as values.
+
+#     Returns:
+#         int: the common feature dimension
+
+#     Raises:
+#         AssertionError: if sizes are not consistent
+#     """
+#     features_values = list(features.values())
+#     nb_samples = len(features_values)
+#     nb_features = len(feature_identifiers)
+#     for i in range(nb_features):
+#         name_feature = feature_identifiers[i].get("name", "nodes")
+#         size = safe_len(features_values[0][i])
+#         for j in range(nb_samples):
+#             size_j = safe_len(features_values[j][i])
+#             assert size_j == size, (
+#                 f"Inconsistent feature sizes for feature {i} (name {name_feature}): has size {size_j} in sample {j}, while having size {size} in sample 0"
+#             )
+
+#     for j in range(nb_samples):
+#         size = safe_len(features_values[j][0])
+#         for i in range(nb_features):
+#             name_feature = feature_identifiers[i].get("name", "nodes")
+#             size_i = safe_len(features_values[j][i])
+#             assert size_i == size, (
+#                 f"Inconsistent feature sizes in sample {j}: feature {i} (name {name_feature}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) is of size {size}"
+#             )
+#     return size
+
+def has_duplicates_feature_ids(feature_identifiers: list[str]):
+    raise NotImplementedError("V1 cleaning")
+# def has_duplicates_feature_ids(feature_identifiers: list[FeatureIdentifier]):
+#     """Check whether a list of feature identifier contains duplicates.
+
+#     Args:
+#         feature_identifiers (list[FeatureIdentifier]):
+#             A list of dictionaries representing feature identifiers.
+
+#     Returns:
+#         bool: True if a duplicate is found in the list, False otherwise.
+#     """
+#     seen = set()
+#     for d in feature_identifiers:
+#         frozen = frozenset(d.items())
+#         if frozen in seen:
+#             return True
+#         seen.add(frozen)
+#     return False
 
 
 def get_feature_details_from_path(path: str) -> dict[str, str]:

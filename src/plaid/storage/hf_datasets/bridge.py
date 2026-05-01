@@ -20,7 +20,7 @@ import numpy as np
 import pyarrow as pa
 from datasets import Features, Sequence, Value
 
-from plaid import Sample
+from ...containers.sample import Sample
 from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
 

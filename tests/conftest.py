@@ -208,8 +208,8 @@ def empty_dataset():
 
 @pytest.fixture()
 def dataset_with_samples(dataset, samples, infos):
-    dataset.add_samples(samples)
-    dataset.set_infos(infos)
+    dataset.get_backend_new().add_sample(samples, list(range(len(samples)) ))
+    #dataset.set_infos(infos)
     return dataset
 
 

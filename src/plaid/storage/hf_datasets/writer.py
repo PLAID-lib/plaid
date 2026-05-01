@@ -27,7 +27,7 @@ import datasets
 import yaml
 from huggingface_hub import DatasetCard, hf_hub_download
 
-from plaid import Sample
+from ...containers.sample import Sample
 from plaid.storage.hf_datasets.bridge import generator_to_datasetdict
 from plaid.storage.hf_datasets.reader import init_datasetdict_from_disk
 from plaid.types import IndexType

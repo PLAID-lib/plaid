@@ -25,11 +25,13 @@ from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Union
 
 from packaging.version import Version
 
-import plaid
-from plaid import ProblemDefinition, Sample
-from plaid.containers.utils import validate_required_infos
-from plaid.storage.common.preprocessor import preprocess
-from plaid.storage.common.reader import (
+
+from ..containers.sample import Sample
+from ..problem_definition import ProblemDefinition
+
+from ..containers.utils import validate_required_infos
+from .common.preprocessor import preprocess
+from .common.reader import (
     load_infos_from_disk,
 )
 from plaid.storage.common.writer import (

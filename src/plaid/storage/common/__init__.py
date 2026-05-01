@@ -7,13 +7,13 @@
 #
 #
 
-from plaid.storage.common.bridge import (
+from .bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,
     to_sample_dict,
 )
-from plaid.storage.common.preprocessor import preprocess
-from plaid.storage.common.reader import (
+from .preprocessor import preprocess
+from .reader import (
     load_infos_from_disk,
     load_infos_from_hub,
     load_metadata_from_disk,
@@ -21,7 +21,7 @@ from plaid.storage.common.reader import (
     load_problem_definitions_from_disk,
     load_problem_definitions_from_hub,
 )
-from plaid.storage.common.writer import (
+from .writer import (
     push_infos_to_hub,
     save_infos_to_disk,
     save_metadata_to_disk,

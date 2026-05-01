@@ -31,7 +31,7 @@ from datasets import IterableDataset
 from datasets.splits import NamedSplit
 from huggingface_hub import hf_hub_download, snapshot_download
 
-from plaid import Sample
+from ...containers.sample import Sample
 
 logger = logging.getLogger(__name__)
 

@@ -7,12 +7,10 @@
 #
 #
 
-from .dataset import Dataset
-from .feature_identifier import FeatureIdentifier
 from .sample import Sample
+from .dataset import Dataset
 
 __all__ = [
     "Dataset",
-    "FeatureIdentifier",
     "Sample",
 ]

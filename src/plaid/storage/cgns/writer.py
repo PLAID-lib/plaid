@@ -21,8 +21,8 @@ import yaml
 from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
-from plaid import Sample
-from plaid.types import IndexType
+from ...containers.sample import Sample
+from ...types import IndexType
 
 logger = logging.getLogger(__name__)
 

@@ -30,7 +30,7 @@ import zarr
 from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
-from plaid import Sample
+from ...containers.sample import Sample
 from plaid.storage.common.bridge import flatten_path
 from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType

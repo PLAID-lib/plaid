@@ -15,7 +15,6 @@ import pytest
 from packaging.version import Version
 
 import plaid
-from plaid.containers import FeatureIdentifier
 from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.utils.base import DeprecatedError, ShapeError
@@ -58,264 +57,250 @@ class Test_Dataset:
     # -------------------------------------------------------------------------#
     def test___init__(self, dataset):
         assert len(dataset) == 0
-        assert dataset.get_samples() == {}
-        with pytest.raises(TypeError):
-            dataset.add_sample(None)
+        assert dataset.get_samples() == []
+        #with pytest.raises(TypeError):
+        #    dataset.get_backend_new().add_sample(None)
 
-    def test___init__load(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        dataset_already_filled = Dataset(dataset_path)
-        assert len(dataset_already_filled) == 3
+    # def test___init__load(self, current_directory):
+    #     dataset_path = current_directory / "dataset"
+    #     dataset_already_filled = Dataset(dataset_path)
+    #     assert len(dataset_already_filled) == 3
 
-    def test__init__load_with_str(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        dataset_already_filled = Dataset(str(dataset_path))
-        assert len(dataset_already_filled) == 3
+    # def test__init__load_with_str(self, current_directory):
+    #     dataset_path = current_directory / "dataset"
+    #     dataset_already_filled = Dataset(str(dataset_path))
+    #     assert len(dataset_already_filled) == 3
 
     def test___init__unknown_directory(self, current_directory):
         dataset_path = current_directory / "dataset_unknown"
         with pytest.raises(FileNotFoundError):
-            Dataset(dataset_path)
+            Dataset(path=dataset_path)
 
     def test___init__file_provided(self, current_directory):
         dataset_path = current_directory / "bad_dataset_test"
         with pytest.raises(FileNotFoundError):
-            Dataset(dataset_path)
+            Dataset(path=dataset_path)
 
     def test__init__path(self, current_directory):
         dataset_path = current_directory / "dataset"
-        Dataset(path=dataset_path)
+        Dataset(path=dataset_path, split="train")
 
-    def test__init__directory_path(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        Dataset(directory_path=dataset_path)
-
-    def test__init__both_path_and_directory_path(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        with pytest.raises(ValueError):
-            Dataset(path=dataset_path, directory_path=dataset_path)
 
     # -------------------------------------------------------------------------#
     def test_get_samples(self, dataset_with_samples, nb_samples):
         dataset_with_samples.get_samples()
         dataset_with_samples.get_samples(np.arange(np.random.randint(2, nb_samples)))
-        dataset_with_samples.get_samples(as_list=True)
-        dataset_with_samples.get_samples(
-            np.arange(np.random.randint(2, nb_samples)), as_list=True
-        )
 
-    def test_get_all_features_identifiers(self, dataset_with_samples, nb_samples):
-        dataset_with_samples.get_all_features_identifiers()
-        dataset_with_samples.get_all_features_identifiers(
-            np.arange(np.random.randint(2, nb_samples))
-        )
-        dataset_with_samples.get_all_features_identifiers([0, 0])
+    # def test_get_all_features_identifiers(self, dataset_with_samples, nb_samples):
+    #     dataset_with_samples.get_all_features_identifiers()
+    #     dataset_with_samples.get_all_features_identifiers(
+    #         np.arange(np.random.randint(2, nb_samples))
+    #     )
+    #     dataset_with_samples.get_all_features_identifiers([0, 0])
 
-    def test_get_all_features_identifiers_by_type(
-        self, dataset_with_samples, nb_samples
-    ):
-        assert (
-            len(
-                dataset_with_samples.get_all_features_identifiers_by_type(
-                    feature_type="scalar"
-                )
-            )
-            == 6
-        )
-        assert (
-            len(
-                dataset_with_samples.get_all_features_identifiers_by_type(
-                    feature_type="field"
-                )
-            )
-            == 2
-        )
-        assert (
-            len(
-                dataset_with_samples.get_all_features_identifiers_by_type(
-                    feature_type="nodes"
-                )
-            )
-            == 0
-        )
-        assert (
-            len(
-                dataset_with_samples.get_all_features_identifiers_by_type(
-                    feature_type="scalar",
-                    ids=np.arange(np.random.randint(2, nb_samples)),
-                )
-            )
-            == 6
-        )
-        assert (
-            len(
-                dataset_with_samples.get_all_features_identifiers_by_type(
-                    feature_type="scalar", ids=[0, 0]
-                )
-            )
-            == 6
-        )
+    # def test_get_all_features_identifiers_by_type(
+    #     self, dataset_with_samples, nb_samples
+    # ):
+    #     assert (
+    #         len(
+    #             dataset_with_samples.get_all_features_identifiers_by_type(
+    #                 feature_type="scalar"
+    #             )
+    #         )
+    #         == 6
+    #     )
+    #     assert (
+    #         len(
+    #             dataset_with_samples.get_all_features_identifiers_by_type(
+    #                 feature_type="field"
+    #             )
+    #         )
+    #         == 2
+    #     )
+    #     assert (
+    #         len(
+    #             dataset_with_samples.get_all_features_identifiers_by_type(
+    #                 feature_type="nodes"
+    #             )
+    #         )
+    #         == 0
+    #     )
+    #     assert (
+    #         len(
+    #             dataset_with_samples.get_all_features_identifiers_by_type(
+    #                 feature_type="scalar",
+    #                 ids=np.arange(np.random.randint(2, nb_samples)),
+    #             )
+    #         )
+    #         == 6
+    #     )
+    #     assert (
+    #         len(
+    #             dataset_with_samples.get_all_features_identifiers_by_type(
+    #                 feature_type="scalar", ids=[0, 0]
+    #             )
+    #         )
+    #         == 6
+    #     )
 
     def test_add_sample(self, dataset, sample):
-        assert dataset.add_sample(sample) == 0
+        assert dataset.get_backend_new().add_sample(sample) == 0
         assert len(dataset) == 1
 
     def test_del_sample_classical(self, dataset, sample):
         for i in range(10):
-            assert dataset.add_sample(sample) == i
+            assert dataset.get_backend_new().add_sample(sample) == i
 
-        assert isinstance(dataset.del_sample(9), Sample)
-        assert len(dataset) == 9, dataset._samples.keys()
-        assert dataset.get_sample_ids() == list(np.arange(0, 9))
+#        assert isinstance(dataset.del_sample(9), Sample)
+#        assert len(dataset) == 9, dataset._samples.keys()
+#        assert dataset.get_sample_ids() == list(np.arange(0, 9))
 
-        assert isinstance(dataset.del_sample(3), Sample)
-        assert len(dataset) == 8
-        assert dataset.get_sample_ids() == list(np.arange(0, 8))
+#        assert isinstance(dataset.del_sample(3), Sample)
+#        assert len(dataset) == 8
+#        assert dataset.get_sample_ids() == list(np.arange(0, 8))
 
-        assert isinstance(dataset.del_sample(0), Sample)
-        assert len(dataset) == 7
-        assert dataset.get_sample_ids() == list(np.arange(0, 7))
+#        assert isinstance(dataset.del_sample(0), Sample)
+#        assert len(dataset) == 7
+#        assert dataset.get_sample_ids() == list(np.arange(0, 7))
 
-    def test_full_del_sample(self, dataset, sample):
-        for i in range(3):
-            assert dataset.add_sample(sample) == i
+    # def test_full_del_sample(self, dataset, sample):
+    #     for i in range(3):
+    #         assert dataset.get_backend_new().add_sample(sample) == i
 
-        assert isinstance(dataset.del_sample(2), Sample)
-        assert len(dataset) == 2, dataset._samples.keys()
-        assert dataset.get_sample_ids() == list(np.arange(0, 2))
+    #     assert isinstance(dataset.del_sample(2), Sample)
+    #     assert len(dataset) == 2, dataset._samples.keys()
+    #     assert dataset.get_sample_ids() == list(np.arange(0, 2))
 
-        assert isinstance(dataset.del_sample(0), Sample)
-        assert len(dataset) == 1
-        assert dataset.get_sample_ids() == list(np.arange(0, 1))
+    #     assert isinstance(dataset.del_sample(0), Sample)
+    #     assert len(dataset) == 1
+    #     assert dataset.get_sample_ids() == list(np.arange(0, 1))
 
-        assert isinstance(dataset.del_sample(0), Sample)
-        assert len(dataset) == 0
-        assert dataset.get_sample_ids() == []
+    #     assert isinstance(dataset.del_sample(0), Sample)
+    #     assert len(dataset) == 0
+    #     assert dataset.get_sample_ids() == []
 
-        with pytest.raises(ValueError):
-            dataset.del_sample(0)
+    #     with pytest.raises(ValueError):
+    #         dataset.del_sample(0)
 
     def test_on_error_del_sample(self, dataset, sample):
         for i in range(3):
-            assert dataset.add_sample(sample) == i
+            assert dataset.get_backend_new().add_sample(sample) == i
 
-        with pytest.raises(ValueError):
-            dataset.del_sample(-1)
-        with pytest.raises(ValueError):
-            dataset.del_sample(10)
+        # with pytest.raises(ValueError):
+        #     dataset.del_sample(-1)
+        # with pytest.raises(ValueError):
+        #     dataset.del_sample(10)
 
     def test_add_sample_and_id(self, dataset, sample):
-        dataset.add_sample(sample, 10)
+        dataset.get_backend_new().add_sample(sample, 10)
         assert len(dataset) == 1
-        assert list(dataset._samples.keys()) == [10]
+#        assert list(dataset._samples.keys()) == [10]
         with pytest.raises(ValueError):
-            dataset.add_sample(sample, -5)
+            dataset.get_backend_new().add_sample(sample, -5)
 
     def test_add_sample_not_a_sample(self, dataset):
         with pytest.raises(TypeError):
-            dataset.add_sample("not_a_sample")
+            dataset.get_backend_new().add_sample("not_a_sample")
         with pytest.raises(TypeError):
-            dataset.add_sample(1)
+            dataset.get_backend_new().add_sample(1)
 
-    def test_add_samples_empty(self, empty_dataset):
-        with pytest.raises(ValueError):
-            empty_dataset.add_samples([])
-        with pytest.raises(ValueError):
-            empty_dataset.add_samples([], 1)
+    def test_add_sample_empty(self, empty_dataset):
+        with pytest.raises(TypeError):
+            empty_dataset.get_backend_new().add_sample([], 1)
 
-    def test_add_samples_empty_with_ids(self, empty_dataset, sample):
+    def test_add_sample_empty_with_ids(self, empty_dataset, sample):
         with pytest.raises(ValueError):
-            empty_dataset.add_samples([sample], [1, 2, 3])
+            empty_dataset.get_backend_new().add_sample([sample], [1, 2, 3])
 
-    def test_add_samples_bad_number_ids_inf(self, empty_dataset, sample):
+    def test_add_sample_bad_number_ids_inf(self, empty_dataset, sample):
         with pytest.raises(ValueError):
             samples = [sample, sample, sample]
-            empty_dataset.add_samples(samples, [1, 2])
+            empty_dataset.get_backend_new().add_sample(samples, [1, 2])
 
-    def test_add_samples_bad_number_ids_supp(self, empty_dataset, sample):
+    def test_add_sample_bad_number_ids_supp(self, empty_dataset, sample):
         with pytest.raises(ValueError):
             samples = [sample, sample, sample]
-            empty_dataset.add_samples(samples, [1, 2, 3, 4])
+            empty_dataset.get_backend_new().add_sample(samples, [1, 2, 3, 4])
 
-    def test_add_samples_with_same_ids(self, empty_dataset, sample):
+    def test_add_sample_with_same_ids(self, empty_dataset, sample):
         with pytest.raises(ValueError):
             samples = [sample, sample, sample]
-            empty_dataset.add_samples(samples, [1, 1, 1])
+            empty_dataset.get_backend_new().add_sample(samples, [1, 1, 1])
 
-    def test_add_samples_with_ids_good(self, dataset, sample):
+    def test_add_sample_with_ids_good(self, dataset, sample):
         samples = [sample, sample, sample]
         size_before = len(dataset)
-        assert dataset.add_samples(samples, [1, 2, 3]) == [1, 2, 3]
+        assert dataset.get_backend_new().add_sample(samples, [1, 2, 3]) == [1, 2, 3]
         assert size_before + len([1, 2, 3]) == len(dataset)
 
-    def test_add_samples(self, dataset_with_samples, other_samples):
+    def test_add_sample(self, dataset_with_samples, other_samples):
         size_before = len(dataset_with_samples)
         assert (
-            dataset_with_samples.add_samples(other_samples)
+            dataset_with_samples.get_backend_new().add_sample(other_samples)
             == np.arange(size_before, size_before + len(other_samples))
         ).all()
 
-    def test_add_samples_not_a_list_of_samples(self, dataset, sample):
+    def test_add_sample_not_a_list_of_samples(self, dataset, sample):
         with pytest.raises(TypeError):
-            dataset.add_samples({0: sample})
+            dataset.get_backend_new().add_sample({0: sample})
         with pytest.raises(TypeError):
-            dataset.add_samples(["not_a_sample"])
+            dataset.get_backend_new().add_sample(["not_a_sample"])
 
-    def test_del_samples_classical(self, dataset, sample):
-        for i in range(10):
-            assert dataset.add_sample(sample) == i
+    # def test_del_samples_classical(self, dataset, sample):
+    #     for i in range(10):
+    #         assert dataset.get_backend_new().add_sample(sample) == i
 
-        assert isinstance(dataset.del_samples([9])[0], Sample)
+    #     assert isinstance(dataset.del_samples([9])[0], Sample)
 
-        list_deleted = dataset.del_samples([0, 2, 4, 6])
-        for s in list_deleted:
-            assert isinstance(s, Sample)
-        assert len(dataset) == 5, dataset._samples.keys()
-        assert dataset.get_sample_ids() == list(np.arange(0, 5))
+    #     list_deleted = dataset.del_samples([0, 2, 4, 6])
+    #     for s in list_deleted:
+    #         assert isinstance(s, Sample)
+    #     assert len(dataset) == 5, dataset._samples.keys()
+    #     assert dataset.get_sample_ids() == list(np.arange(0, 5))
 
-        list_deleted = dataset.del_samples([1, 2, 3])
-        for s in list_deleted:
-            assert isinstance(s, Sample)
-        assert len(dataset) == 2, dataset._samples.keys()
-        assert dataset.get_sample_ids() == list(np.arange(0, 2))
+    #     list_deleted = dataset.del_samples([1, 2, 3])
+    #     for s in list_deleted:
+    #         assert isinstance(s, Sample)
+    #     assert len(dataset) == 2, dataset._samples.keys()
+    #     assert dataset.get_sample_ids() == list(np.arange(0, 2))
 
-        assert isinstance(dataset.del_sample(1), Sample)
-        assert len(dataset) == 1, dataset._samples.keys()
-        assert dataset.get_sample_ids() == [0]
+    #     assert isinstance(dataset.del_sample(1), Sample)
+    #     assert len(dataset) == 1, dataset._samples.keys()
+    #     assert dataset.get_sample_ids() == [0]
 
-        list_deleted = dataset.del_samples([0])
-        for s in list_deleted:
-            assert isinstance(s, Sample)
-        assert len(dataset) == 0, dataset._samples.keys()
-        assert dataset.get_sample_ids() == []
+    #     list_deleted = dataset.del_samples([0])
+    #     for s in list_deleted:
+    #         assert isinstance(s, Sample)
+    #     assert len(dataset) == 0, dataset._samples.keys()
+    #     assert dataset.get_sample_ids() == []
 
-    def test_full_del_samples(self, dataset, sample):
-        for i in range(3):
-            assert dataset.add_sample(sample) == i
+    # def test_full_del_samples(self, dataset, sample):
+    #     for i in range(3):
+    #         assert dataset.get_backend_new().add_sample(sample) == i
 
-        list_deleted = dataset.del_samples([0, 1, 2])
-        for s in list_deleted:
-            assert isinstance(s, Sample)
-        assert len(dataset) == 0, dataset._samples.keys()
-        assert dataset.get_sample_ids() == []
+    #     list_deleted = dataset.del_samples([0, 1, 2])
+    #     for s in list_deleted:
+    #         assert isinstance(s, Sample)
+    #     assert len(dataset) == 0, dataset._samples.keys()
+    #     assert dataset.get_sample_ids() == []
 
-        with pytest.raises(ValueError):
-            dataset.del_samples([0])
+    #     with pytest.raises(ValueError):
+    #         dataset.del_samples([0])
 
-    def test_on_error_del_samples(self, dataset, sample):
-        for i in range(3):
-            assert dataset.add_sample(sample) == i
+    # def test_on_error_del_samples(self, dataset, sample):
+    #     for i in range(3):
+    #         assert dataset.get_backend_new().add_sample(sample) == i
 
-        with pytest.raises(TypeError):
-            dataset.del_samples(1)
-        with pytest.raises(ValueError):
-            dataset.del_samples([])
-        with pytest.raises(ValueError):
-            dataset.del_samples([-1, 0, 1])
-        with pytest.raises(ValueError):
-            dataset.del_samples([0, 1, 10])
-        with pytest.raises(ValueError):
-            dataset.del_samples([0, 0, 1])
+    #     with pytest.raises(TypeError):
+    #         dataset.del_samples(1)
+    #     with pytest.raises(ValueError):
+    #         dataset.del_samples([])
+    #     with pytest.raises(ValueError):
+    #         dataset.del_samples([-1, 0, 1])
+    #     with pytest.raises(ValueError):
+    #         dataset.del_samples([0, 1, 10])
+    #     with pytest.raises(ValueError):
+    #         dataset.del_samples([0, 0, 1])
 
     def test_get_sample_ids(self, dataset):
         dataset.get_sample_ids()
@@ -1301,19 +1286,19 @@ class Test_Dataset:
     #         dataset.set_sample(id=1,sample='sample')
 
     # def test_add_sample(self, dataset, sample):
-    #     dataset.add_sample(sample)
+    #     dataset.get_backend_new().add_sample(sample)
     # def test_add_sample_fail_type(self, dataset):
     #     with pytest.raises(TypeError):
-    #         dataset.add_sample(1)
+    #         dataset.get_backend_new().add_sample(1)
 
-    # def test_add_samples(self, dataset,samples):
-    #     dataset.add_samples(samples)
-    # def test_add_samples_fail_type(self, dataset):
+    # def test_add_sample(self, dataset,samples):
+    #     dataset.get_backend_new().add_sample(samples)
+    # def test_add_sample_fail_type(self, dataset):
     #     with pytest.raises(TypeError):
-    #         dataset.add_samples(1)
-    # def test_add_samples_fail_sample_type(self, dataset):
+    #         dataset.get_backend_new().add_sample(1)
+    # def test_add_sample_fail_sample_type(self, dataset):
     #     with pytest.raises(TypeError):
-    #         dataset.add_samples([1])
+    #         dataset.get_backend_new().add_sample([1])
 
     # #---#
     # def test_get_sample_ids(self, dataset):

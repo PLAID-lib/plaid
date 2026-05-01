@@ -22,7 +22,7 @@ import numpy as np
 import yaml
 from huggingface_hub import HfApi
 
-from plaid import ProblemDefinition
+from ...problem_definition import ProblemDefinition
 
 logger = logging.getLogger(__name__)
 

@@ -8,7 +8,8 @@
 #
 
 import sys
-from typing import Union
+from typing import Union, Annotated, Any
+from pydantic import BeforeValidator, PlainSerializer
 
 if sys.version_info >= (3, 11):
     from typing import TypeAlias
@@ -24,4 +25,11 @@ ArrayDType = Union[np.int32, np.int64, np.float32, np.float64]
 Array: TypeAlias = NDArray[ArrayDType]
 
 # Types used in indexing operations
-IndexType = Union[list[int], NDArray[Union[np.int32, np.int64]], str]
+IndexType = Union[list[int], NDArray[Union[np.int32, np.int64]]]
+
+# Define a reusable custom type
+NDArrayInt = Annotated[
+    Any,
+    BeforeValidator(lambda v: np.asarray(v, dtype=int)), # Convert input to numpy array
+    PlainSerializer(lambda v: v.tolist(), return_type=list) # Serialize back to list for JSON
+]

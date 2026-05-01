@@ -15,14 +15,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional, Union
 
-import datasets
+from . import cgns, hf_datasets, zarr, in_memory
+from .backend_api import BackendModule
 
+BACKENDS_II = { "in_memory": in_memory.InMemoryBackend, 
+                "cgns":cgns.CgnsBackend,
+                "hf_datasets": None,
+                "zarr": None
+            }
+
+def get_backend_class(name: str) -> type[BackendModule]:
+    return BACKENDS_II[name]
+
+
+import datasets
 from plaid.storage.cgns.reader import CGNSDatasetDict
 from plaid.storage.hf_datasets.reader import HFDatasetDict
 from plaid.storage.zarr.reader import ZarrDatasetDict
-
-from . import cgns, hf_datasets, zarr
-
 
 @dataclass(frozen=True)
 class BackendSpec:
@@ -44,6 +53,18 @@ class BackendSpec:
 
 
 BACKENDS = {
+    "in_memory": BackendSpec(
+        name="cgns",
+        init_from_disk=cgns.init_datasetdict_from_disk,
+        download_from_hub=cgns.download_datasetdict_from_hub,
+        init_streaming_from_hub=cgns.init_datasetdict_streaming_from_hub,
+        generate_to_disk=cgns.generate_datasetdict_to_disk,
+        push_local_to_hub=cgns.push_local_datasetdict_to_hub,
+        configure_dataset_card=cgns.configure_dataset_card,
+        to_var_sample_dict=None,
+        sample_to_var_sample_dict=None,
+    ),
+
     "cgns": BackendSpec(
         name="cgns",
         init_from_disk=cgns.init_datasetdict_from_disk,

@@ -17,7 +17,7 @@ import numpy as np
 
 from plaid.containers.features import SampleFeatures
 from plaid.containers.sample import Sample
-from plaid.storage.common.preprocessor import build_sample_dict
+from .preprocessor import build_sample_dict
 from plaid.utils.cgns_helper import unflatten_cgns_tree
 
 
