@@ -155,7 +155,7 @@ class Dataset(BaseModel):
         if path is None:
             path = self.path
         if path is None:
-            raise RuntimeError("must suply a path ")
+            raise RuntimeError("must supply a path ")
 
         if split is None:
             split = self.split

@@ -60,7 +60,7 @@ class BackendModule(Protocol):
         ...
 
     def configure_dataset_card(
-        sefl, repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
+        self, repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
     ) -> None:  # pragma: no cover
         """Configure metadata for a dataset card associated with a repository."""
         ...

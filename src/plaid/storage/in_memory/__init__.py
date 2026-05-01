@@ -18,7 +18,7 @@ class InMemoryBackend:
 
     @staticmethod
     def init_from_disk(path: Union[str, Path]) -> Any:
-        raise NotImplementedError("inMemoryBackend does not support inint from disk")
+        raise NotImplementedError("inMemoryBackend does not support init from disk")
 
     def download_from_hub(self, repo_id: str, local_dir: Union[str, Path]) -> str:
         raise NotImplementedError("InMemoryBackend download_from_hub not implemented")
