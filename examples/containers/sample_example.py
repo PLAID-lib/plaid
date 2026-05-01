@@ -192,7 +192,7 @@ points = np.array(
 )
 
 # Set the coordinates of nodes for a specified base and zone at a given time.
-# set_points == set_nodes == set_vertices
+# set node coordinates
 sample.set_nodes(points, base="SurfaceMesh", zone="TestZoneName", time=0.0)
 
 show_sample(sample)
@@ -248,8 +248,7 @@ print(f"{sample.get_field('Temperature') = }")
 # %%
 # It will look for a default base if no base and zone are given
 print(f"{sample.get_nodes() = }")
-print(f"{sample.features.get_points() = }")  # same as get_nodes
-print(f"{sample.features.get_vertices() = }")  # same as get_nodes
+print(f"{sample.features.get_nodes() = }")
 
 # %% [markdown]
 # ### Retrieve element connectivity data

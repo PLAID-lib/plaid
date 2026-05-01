@@ -875,9 +875,6 @@ class SampleFeatures:
         Returns:
             Optional[Array]: A NumPy array containing the grid node coordinates.
             If no matching zone or grid coordinates are found, None is returned.
-
-        Seealso:
-            This function can also be called using `get_points()` or `get_vertices()`.
         """
         # get_zone will look for default base_name, zone_name and time
         search_node = self.get_zone(zone=zone, base=base, time=time)
@@ -920,8 +917,6 @@ class SampleFeatures:
                 f"Found {len(grid_paths)} <GridCoordinates> nodes, should find only one"
             )
 
-    get_points = get_nodes
-    get_vertices = get_nodes
 
     def set_nodes(
         self,
@@ -941,9 +936,6 @@ class SampleFeatures:
         Raises:
             KeyError: Raised if the specified base or zone do not exist. You should first
             create the base and zone using the `Sample.init_zone(zone_name,base_name)` method.
-
-        Seealso:
-            This function can also be called using `set_points()` or `set_vertices()`
         """
         # get_zone will look for default base_name, zone_name and time
         zone_node = self.get_zone(zone=zone, base=base, time=time)
@@ -972,9 +964,6 @@ class SampleFeatures:
 
             # Create new coordinate
             CGL.newCoordinates(zone_node, name, np.asfortranarray(nodes[..., i_dim]))
-
-    set_points = set_nodes
-    set_vertices = set_nodes
 
     # -------------------------------------------------------------------------#
     def get_elements(
