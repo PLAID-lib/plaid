@@ -557,11 +557,11 @@ class Test_Dataset:
     #         ]
     #     )
 
-    # def test_update_features_from_identifier(
+    # def test_update_features_by_url(
     #     self, dataset_with_samples: Dataset, dataset_with_samples_with_tree: Dataset
     # ):
     #     indices = dataset_with_samples.get_sample_ids()
-    #     dataset_with_samples.update_features_from_identifier(
+    #     dataset_with_samples.update_features_by_url(
     #         feature_identifiers=FeatureIdentifier(
     #             {"type": "scalar", "name": "test_scalar_1"}
     #         ),
@@ -578,7 +578,7 @@ class Test_Dataset:
     #         time=0.0,
     #     )
 
-    #     dataset_with_samples_with_tree.update_features_from_identifier(
+    #     dataset_with_samples_with_tree.update_features_by_url(
     #         feature_identifiers=FeatureIdentifier(
     #             {
     #                 "type": "field",
@@ -596,7 +596,7 @@ class Test_Dataset:
     #     before = dataset_with_samples_with_tree[0].get_nodes(
     #         zone_name="Zone", base_name="Base_2_2", time=0.0
     #     )
-    #     dataset_with_samples_with_tree.update_features_from_identifier(
+    #     dataset_with_samples_with_tree.update_features_by_url(
     #         feature_identifiers=FeatureIdentifier(
     #             {
     #                 "type": "nodes",
@@ -611,7 +611,7 @@ class Test_Dataset:
 
     #     before_1 = dataset_with_samples_with_tree[0].get_field("test_node_field_1")
     #     before_2 = dataset_with_samples_with_tree[0].get_nodes()
-    #     dataset_with_samples_with_tree.update_features_from_identifier(
+    #     dataset_with_samples_with_tree.update_features_by_url(
     #         feature_identifiers=[
     #             FeatureIdentifier({"type": "field", "name": "test_node_field_1"}),
     #             FeatureIdentifier({"type": "nodes"}),
@@ -626,7 +626,7 @@ class Test_Dataset:
     #         in_place=False,
     #     )
 
-    #     dataset_with_samples_with_tree.update_features_from_identifier(
+    #     dataset_with_samples_with_tree.update_features_by_url(
     #         feature_identifiers=[
     #             FeatureIdentifier({"type": "field", "name": "test_node_field_1"})
     #         ],

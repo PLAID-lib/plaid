@@ -102,13 +102,13 @@ for _ in range(3):
 
     sample.add_tree(MeshToCGNS(mesh, exportOriginalIDs=False))
 
-    sample.update_features_from_identifier(
+    sample.update_features_by_url(
         scalar_feat_id, np.random.randn(), in_place=True
     )
-    sample.update_features_from_identifier(
+    sample.update_features_by_url(
         node_field_feat_id, np.random.rand(len(points)), in_place=True
     )
-    sample.update_features_from_identifier(
+    sample.update_features_by_url(
         cell_field_feat_id, np.random.rand(len(triangles)), in_place=True
     )
 

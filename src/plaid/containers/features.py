@@ -930,8 +930,8 @@ class SampleFeatures:
     def set_nodes(
         self,
         nodes: Array,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> None:
         """Set the coordinates of nodes for a specified base and zone at a given time.
@@ -950,11 +950,11 @@ class SampleFeatures:
             This function can also be called using `set_points()` or `set_vertices()`
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone=zone_name, base=base_name, time=time)
+        zone_node = self.get_zone(zone=zone, base=base, time=time)
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`"
+                f"there is no base/zone <{base}/{zone}>, you should first create one with `Sample.init_zone({zone=},{base=})`"
             )
 
         # Check if GridCoordinates_t node exists
@@ -1260,8 +1260,8 @@ class SampleFeatures:
         self,
         name: str,
         location: str = "Vertex",
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> CGNSTree:
         """Delete a field with specified name in the mesh.
@@ -1270,8 +1270,8 @@ class SampleFeatures:
             name (str): The name of the field to be deleted.
             location (str, optional): The grid location where the field is stored. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
-            zone_name (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
-            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
+            zone (str, optional): The name of the zone from which the field will be deleted. Defaults to None.
+            base (str, optional): The name of the base where the zone is located. Defaults to None.
             time (float, optional): The time associated with the field. Defaults to None.
 
         Raises:
@@ -1281,13 +1281,13 @@ class SampleFeatures:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         # get_zone will look for default zone_name, base_name, and time
-        zone_node = self.get_zone(zone=zone_name, base=base_name, time=time)
+        zone_node = self.get_zone(zone=zone, base=base, time=time)
         time = self.resolve_time(time)
         mesh_tree = self.data[time]
 
         if zone_node is None:
             raise KeyError(
-                f"There is no Zone with name {zone_name} in base {base_name}."
+                f"There is no Zone with name {zone} in base {base}."
             )
 
         solution_paths = CGU.getPathsByTypeSet(zone_node, [CGK.FlowSolution_t])

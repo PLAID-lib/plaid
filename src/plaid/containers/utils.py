@@ -369,10 +369,11 @@ def decode_cgns_url_details(url: str):
     # ----------------------
     # Grid coordinates
     # ----------------------
-    if node == "GridCoordinates"  and len(split_url) == 4:
+    if node == "GridCoordinates"  and len(split_url) >= 3 and len(split_url) <= 4:
         feat["type"] = "coordinate"
         feat["sub_type"] = "node"
-        feat["name"] = split_url[3]
+        if len(split_url) == 4:
+            feat["name"] = split_url[3]
         return feat
 
     # ----------------------

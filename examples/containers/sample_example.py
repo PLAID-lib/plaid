@@ -193,7 +193,7 @@ points = np.array(
 
 # Set the coordinates of nodes for a specified base and zone at a given time.
 # set_points == set_nodes == set_vertices
-sample.set_nodes(points, base_name="SurfaceMesh", zone_name="TestZoneName", time=0.0)
+sample.set_nodes(points, base="SurfaceMesh", zone="TestZoneName", time=0.0)
 
 show_sample(sample)
 
