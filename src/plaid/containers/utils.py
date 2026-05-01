@@ -15,10 +15,7 @@ import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 
 from ..constants import (
-    AUTHORIZED_FEATURE_INFOS,
-    AUTHORIZED_FEATURE_TYPES,
     CGNS_FIELD_LOCATIONS,
-    REQUIRED_INFOS_KEYS,
 )
 
 from ..types.common import ArrayDType
@@ -269,30 +266,3 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     return feat
 
 
-def validate_required_infos(infos: dict[str, Any]) -> None:
-    """Validate that required infos categories and keys are present.
-
-    Args:
-        infos: Dataset infos dictionary loaded from disk.
-
-    Raises:
-        ValueError: If a required infos category or key is missing.
-    """
-    assert isinstance(infos, dict)
-
-    missing_entries = []
-
-    for category, required_keys in REQUIRED_INFOS_KEYS.items():
-        category_infos = infos.get(category)
-        assert isinstance(category_infos, dict)
-
-        for key in required_keys:
-            if key not in category_infos:
-                missing_entries.append(f"{category}.{key}")
-
-    if missing_entries:
-        raise ValueError(
-            "Missing required infos entries: "
-            + ", ".join(sorted(missing_entries))
-            + f". Required entries are defined by {REQUIRED_INFOS_KEYS!r}."
-        )

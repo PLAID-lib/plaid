@@ -29,7 +29,7 @@ from ..containers.sample import Sample
 from ..problem_definition import ProblemDefinition
 
 from plaid import __version__
-from ..containers.utils import validate_required_infos
+from ..utils.info import validate_required_infos
 from .common.preprocessor import preprocess
 from .common.reader import (
     load_infos_from_disk,

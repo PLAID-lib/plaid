@@ -6,7 +6,7 @@
 
 from typing import Optional, Sequence, Union, Literal, Any
 from pathlib import Path
-import copy
+import logging
 from packaging.version import Version
 
 from pydantic import (
@@ -19,13 +19,16 @@ from pydantic import (
 )
 import numpy as np
 
-from ..constants import AUTHORIZED_INFO_KEYS
+from ..utils.info import normalize_infos
 from ..version import __version__
 from ..problem_definition import ProblemDefinition
 from .sample import Sample
 from ..types.common import NDArrayInt
 from ..storage.registry import BackendModule
 from ..storage.registry import get_backend
+
+
+logger = logging.getLogger(__name__)
 
 
 class Dataset(BaseModel):
@@ -120,26 +123,12 @@ class Dataset(BaseModel):
                 print(dataset.get_infos())
                 >>> {'legal': {'owner': 'CompX', 'license': 'li_X'}}
         """
-        for cat_key in infos.keys():  # Format checking on "infos"
-            if cat_key != "plaid":
-                if cat_key not in AUTHORIZED_INFO_KEYS:
-                    raise KeyError(
-                        f"{cat_key=} not among authorized keys. Maybe you want to try among these keys {list(AUTHORIZED_INFO_KEYS.keys())}"
-                    )
-                for info_key in infos[cat_key].keys():
-                    if info_key not in AUTHORIZED_INFO_KEYS[cat_key]:
-                        raise KeyError(
-                            f"{info_key=} not among authorized keys. Maybe you want to try among these keys {AUTHORIZED_INFO_KEYS[cat_key]}"
-                        )
-
         # Check if there are any non-plaid infos being replaced
         has_user_infos = any(key != "plaid" for key in self.infos.keys())
         if has_user_infos and warn:
             logger.warning("infos not empty, replacing it anyway")
-        self.infos = copy.deepcopy(infos)
 
-        if "plaid" not in self.infos:
-            self.infos["plaid"] = {}
+        self.infos = normalize_infos(infos)
         if "version" not in self.infos["plaid"]:
             self.infos["plaid"]["version"] = Version(__version__)
 

@@ -11,11 +11,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from plaid.utils.info import validate_required_infos
+
+
 from plaid.containers.utils import (
     get_feature_details_from_path,
     get_number_of_samples,
     get_sample_ids,
-    validate_required_infos,
 )
 
 # %% Fixtures
