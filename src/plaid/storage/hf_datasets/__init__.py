@@ -108,11 +108,14 @@ class HFBackend:
         dataset: Dataset,
         idx: int,
         features: Optional[list[str]] = None,
+        indexers: Optional[dict[str, Any]] = None
     ) -> dict[str, Optional[np.ndarray]]:
         return to_var_sample_dict(
             ds=dataset,
             i=idx,
             features=features,
+            indexers= indexers
+
         )
 
     @staticmethod

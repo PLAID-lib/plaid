@@ -102,8 +102,12 @@ class CgnsBackend:
 
     @staticmethod
     def to_var_sample_dict(
-        dataset: object, idx: int, features: Optional[list[str]] = None
+        dataset: object,
+        idx: int,
+        features: Optional[list[str]] = None,
+        indexers: Optional[dict[str, Any]] = None,
     ) -> dict:
+        _ = dataset, idx, features, indexers
         raise ValueError(f"to_dict not available for 'cgns' backend")
 
     @staticmethod

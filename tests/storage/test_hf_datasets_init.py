@@ -208,10 +208,11 @@ def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
 def test_hf_backend_to_var_sample_dict_delegates(monkeypatch):
     call = {}
 
-    def fake_to_var_sample_dict(ds, i, features):
+    def fake_to_var_sample_dict(ds, i, features, indexers=None):
         call["ds"] = ds
         call["i"] = i
         call["features"] = features
+        call["indexers"] = indexers
         return {"field": [1, 2, 3]}
 
     monkeypatch.setattr(hf_datasets, "to_var_sample_dict", fake_to_var_sample_dict)
@@ -221,7 +222,12 @@ def test_hf_backend_to_var_sample_dict_delegates(monkeypatch):
     result = HFBackend.to_var_sample_dict(dataset=dataset, idx=3, features=features)
 
     assert result == {"field": [1, 2, 3]}
-    assert call == {"ds": dataset, "i": 3, "features": features}
+    assert call == {
+        "ds": dataset,
+        "i": 3,
+        "features": features,
+        "indexers": None,
+    }
 
 
 def test_hf_backend_sample_to_var_sample_dict_delegates(monkeypatch):

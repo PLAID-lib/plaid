@@ -548,13 +548,12 @@ class Test_Storage:
 
         field_path = "Base_Name/Zone_Name/VertexFields/test_field_same_size"
 
-        # cover enforce_shapes=False + indexed branch
+        # cover indexed branch
         out = hf_bridge.to_var_sample_dict(
             hf_dataset,
             0,
             features=[field_path],
             indexers={field_path: [0, 2, 4]},
-            enforce_shapes=False,
         )
         assert out[field_path].shape == (3,)
 

@@ -509,7 +509,7 @@ show_sample(plaid_sample)
 #         cgns_types,
 #         enforce_shapes=False,
 #     )
-#     for t in sample.get_all_mesh_times():
+#     for t in sample.get_all_time_values():
 #         for path in pb_def.get_in_features_identifiers():
 #             sample.get_feature_by_path(path=path, time=t)
 #         for path in pb_def.get_out_features_identifiers():

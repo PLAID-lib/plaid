@@ -91,6 +91,7 @@ class BackendModule(Protocol):
         dataset: "Dataset",
         idx: int,
         features: Optional[list[str]] = None,
+        indexers: Optional[dict[str, Any]] = None,
     ) -> dict[str, Optional[np.ndarray]]:
         """Convert a backend sample to PLAID variable-sample dictionary representation."""
         ...

@@ -176,8 +176,6 @@ def to_var_sample_dict(
             raise KeyError(f"Missing features in hf_dataset: {sorted(missing)}")
         selected_features = features
 
-    assert features is not None
-
     var_sample_dict = {}
     indexers = indexers or {}
 

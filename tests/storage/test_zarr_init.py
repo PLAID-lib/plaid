@@ -179,10 +179,11 @@ def test_zarr_backend_configure_dataset_card_delegates(monkeypatch):
 def test_zarr_backend_to_var_sample_dict_delegates(monkeypatch):
     call = {}
 
-    def fake_to_var_sample_dict(zarr_dataset, idx, features):
+    def fake_to_var_sample_dict(zarr_dataset, idx, features, indexers=None):
         call["zarr_dataset"] = zarr_dataset
         call["idx"] = idx
         call["features"] = features
+        call["indexers"] = indexers
         return {"field": [1, 2, 3]}
 
     monkeypatch.setattr(zarr, "to_var_sample_dict", fake_to_var_sample_dict)
@@ -192,7 +193,12 @@ def test_zarr_backend_to_var_sample_dict_delegates(monkeypatch):
     result = ZarrBackend.to_var_sample_dict(dataset=dataset, idx=3, features=features)
 
     assert result == {"field": [1, 2, 3]}
-    assert call == {"zarr_dataset": dataset, "idx": 3, "features": features}
+    assert call == {
+        "zarr_dataset": dataset,
+        "idx": 3,
+        "features": features,
+        "indexers": None,
+    }
 
 
 def test_zarr_backend_sample_to_var_sample_dict_delegates(monkeypatch):

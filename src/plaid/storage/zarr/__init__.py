@@ -111,8 +111,14 @@ class ZarrBackend:
         dataset: zarr.Group,
         idx: int,
         features: Optional[list[str]] = None,
+        indexers: Optional[dict[str, Any]] = None,
     ) -> dict[str, Optional[np.ndarray]]:
-        return to_var_sample_dict(zarr_dataset=dataset, idx=idx, features=features)
+        return to_var_sample_dict(
+            zarr_dataset=dataset,
+            idx=idx,
+            features=features,
+            indexers=indexers,
+        )
 
     @staticmethod
     def sample_to_var_sample_dict(sample: dict[str, Any]) -> dict[str, Any]:

@@ -45,7 +45,6 @@ FEATURES_METHODS = [
     "resolve_zone",
     "set_default_time",
     "get_all_time_values",
-    "get_all_mesh_times",
     "get_tree",
     "get_base_names",
     "get_zone_names",

@@ -329,7 +329,7 @@ for backend in all_backends:
             # efficient plaid sample reconstruction
             plaid_sample = converter.to_plaid(dataset, idx)
             # generic way of retrieving features and send them to GPU
-            for time_ in plaid_sample.get_all_mesh_times():
+            for time_ in plaid_sample.get_all_time_values():
                 torch_sample = {}
                 for path in features:
                     value = plaid_sample.get_feature_by_path(path=path, time=time_)

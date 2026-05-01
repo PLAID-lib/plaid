@@ -10,7 +10,6 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
-from plaid.containers import FeatureIdentifier
 from plaid.containers.features import SampleFeatures
 from plaid.containers.sample import FEATURES_METHODS, Sample
 from plaid.containers.utils import (
@@ -1381,5 +1380,5 @@ class TestSampleFeaturesDelegation:
         """
         sample.set_trees({0.0: tree})
 
-        assert sample.features.get_all_mesh_times() == [0.0]
+        assert sample.features.get_all_time_values() == [0.0]
         assert sample.features.get_tree(time=0.0) is tree
