@@ -29,6 +29,7 @@ class InMemoryBackend:
 
     @staticmethod
     def init_from_disk(path: Union[str, Path]) -> Any:
+        """Raise because the in-memory backend cannot be initialized from disk."""
         raise NotImplementedError("inMemoryBackend does not support init from disk")
 
     def download_from_hub(
@@ -39,6 +40,7 @@ class InMemoryBackend:
         features: Optional[list[str]] = None,
         overwrite: bool = False,
     ) -> str:
+        """Raise because hub download is not implemented for the in-memory backend."""
         raise NotImplementedError("InMemoryBackend download_from_hub not implemented")
 
     def init_datasetdict_streaming_from_hub(
@@ -47,6 +49,7 @@ class InMemoryBackend:
         split_ids: Optional[dict[str, Iterable[int]]] = None,
         features: Optional[list[str]] = None,
     ) -> dict[str, Any]:
+        """Raise because streaming from hub is not implemented for this backend."""
         raise NotImplementedError(
             "InMemoryBackend init_datasetdict_streaming_from_hub not implemented"
         )
@@ -60,11 +63,13 @@ class InMemoryBackend:
         num_proc: int = 1,
         verbose: bool = False,
     ) -> None:
+        """Raise because writing to disk is not implemented for the in-memory backend."""
         raise NotImplementedError("InMemoryBackend generate_to_disk not implemented")
 
     def push_local_to_hub(
         self, repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
     ) -> None:
+        """Raise because pushing to hub is not implemented for this backend."""
         raise NotImplementedError("InMemoryBackend push_local_to_hub not implemented")
 
     def configure_dataset_card(
@@ -78,6 +83,7 @@ class InMemoryBackend:
         illustration_urls: Optional[list[str]] = None,
         arxiv_paper_urls: Optional[list[str]] = None,
     ) -> None:
+        """Raise because dataset-card configuration is not implemented for this backend."""
         raise NotImplementedError(
             "InMemoryBackend configure_dataset_card not implemented"
         )
@@ -107,6 +113,16 @@ class InMemoryBackend:
         *,
         id: Optional[Union[int, Sequence[int]]] = None,
     ) -> Union[int, list[int]]:
+        """Add one sample or a sequence of samples to the in-memory backend.
+
+        Args:
+            sample: One :class:`Sample` or a sequence of samples.
+            sample_id: Optional id(s) associated with ``sample``.
+            id: Alias of ``sample_id`` for backward compatibility.
+
+        Returns:
+            Added sample id or list of added ids.
+        """
         if sample_id is None:
             sample_id = id
 

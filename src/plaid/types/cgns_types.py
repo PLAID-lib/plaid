@@ -38,6 +38,17 @@ class CGNSPath(RootModel):
     @field_validator("root")
     @classmethod
     def validate_path(cls, v: str) -> str:
+        """Validate CGNS path format.
+
+        Args:
+            v: Candidate CGNS path.
+
+        Returns:
+            The validated path.
+
+        Raises:
+            ValueError: If the path does not match the expected CGNS pattern.
+        """
         if not CGNS_PATTERN.match(v):
             raise ValueError(
                 "Invalid CGNS variable format. Need to be in the form of 'Base_X_Y/ZoneName/VariableName'"
@@ -46,13 +57,16 @@ class CGNSPath(RootModel):
 
     @property
     def path(self) -> str:
+        """Return the full CGNS path."""
         return self.root
 
     @property
     def base(self) -> str:
+        """Return the base component of the CGNS path."""
         return self.root.split("/")[0]
 
     def zone(self) -> str:
+        """Return the zone component of the CGNS path."""
         return self.root.split("/")[1]
 
 

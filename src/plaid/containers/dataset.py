@@ -72,6 +72,7 @@ class Dataset(BaseModel):
         super().__setattr__(name, value)
 
     def get_backend(self) -> BackendModule:
+        """Return the backend instance used to store and retrieve samples."""
         return self._backend
 
     @staticmethod
@@ -83,6 +84,18 @@ class Dataset(BaseModel):
         problem_definition: ProblemDefinition | None = None,
         indices: NDArrayInt | Literal["all"] = "all",
     ) -> "Dataset":
+        """Create and load a dataset from a local path.
+
+        Args:
+            path: Dataset path on disk.
+            split: Optional split name to load.
+            stage: Optional stage label.
+            problem_definition: Optional problem definition to attach.
+            indices: Optional subset indices or ``"all"``.
+
+        Returns:
+            A loaded :class:`Dataset` instance.
+        """
         dataset = Dataset(
             path=path,
             split=split,
@@ -125,12 +138,23 @@ class Dataset(BaseModel):
 
     # load data from disk if path and split are given
     def model_post_init(self, __context):
+        """Automatically load data when both ``path`` and ``split`` are set."""
         if self.path is not None and self.split is not None:
             self.load()
 
     def load(
         self, path: Optional[Union[str, Path]] = None, split: Optional[Any] = None
     ):
+        """Load dataset content from a directory or archive.
+
+        Args:
+            path: Directory or archive path. If ``None``, uses ``self.path``.
+            split: Split name to load. If ``None``, uses ``self.split`` or ``"train"``.
+
+        Raises:
+            RuntimeError: If no path is provided.
+            FileNotFoundError: If the path does not exist.
+        """
 
         if path is None:
             path = self.path
@@ -263,12 +287,19 @@ class Dataset(BaseModel):
             return [self[i] for i in ids]
 
     def get_sample_ids(self):
+        """Return the effective sample identifiers for the current dataset view."""
         if self.indices == "all":
             return range(len(self))
         else:
             return self.indices
 
     def save_to_dir(self, output_folder: Union[str, Path], verbose: bool = False):
+        """Save the current dataset view to disk.
+
+        Args:
+            output_folder: Destination folder.
+            verbose: If ``True``, enables verbose storage output.
+        """
         from plaid.storage import save_to_disk
 
         if self.split is not None:
