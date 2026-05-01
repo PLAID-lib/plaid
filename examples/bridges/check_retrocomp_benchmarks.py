@@ -25,5 +25,5 @@ for hf_sample in hf_dataset:
 pb_defs = load_problem_definitions_from_hub(repo_id)
 pb_def = next(iter(pb_defs.values()))
 
-ids_train = pb_def.get_split('train')
+ids_train = pb_def.get_train_split_indices()
 sample_train_0 = plaid_dataset[0]

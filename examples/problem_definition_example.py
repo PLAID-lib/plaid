@@ -100,7 +100,13 @@ print(f"{problem.train_split = }")
 print(f"{problem.test_split = }")
 
 # %%
-print(f"{problem.get_split() = }")
+split_names = [problem.get_train_split_name(), problem.get_test_split_name()]
+split_indices = {
+    problem.get_train_split_name(): problem.get_train_split_indices(),
+    problem.get_test_split_name(): problem.get_test_split_indices(),
+}
+print(f"{split_names = }")
+print(f"{split_indices = }")
 
 # %% [markdown]
 # ### Show inputs / outputs
@@ -118,7 +124,9 @@ print(f"{problem.output_features = }")
 # ### Save a Problem Definition to a YAML file
 
 # %%
-test_pth = Path(f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}")
+test_pth = Path(
+    f"/tmp/test_safe_to_delete_{np.random.randint(low=1, high=2_000_000_000)}"
+)
 pb_def_save_fname = test_pth / "test_problem_definition.yaml"
 test_pth.mkdir(parents=True, exist_ok=True)
 print(f"saving path: {pb_def_save_fname}")

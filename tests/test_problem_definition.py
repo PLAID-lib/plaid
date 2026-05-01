@@ -127,7 +127,10 @@ class Test_ProblemDefinition:
         assert loaded.task == "regression"
         assert loaded.input_features == ["in_a"]
         assert loaded.output_features == ["out_a"]
-        assert loaded.get_split() == {"train": [0, 1], "test": [2]}
+        assert loaded.get_train_split_name() == "train_0"
+        assert loaded.get_test_split_name() == "test_0"
+        assert loaded.get_train_split_indices() == [0, 1]
+        assert loaded.get_test_split_indices() == [2]
 
     def test_from_path_named_definition_and_override(self, monkeypatch, tmp_path):
         pb_1 = ProblemDefinition(
@@ -209,7 +212,9 @@ class Test_ProblemDefinition:
             ProblemDefinition.from_path(tmp_path)
 
     def test_feature_validators_reject_duplicates(self):
-        with pytest.raises(ValidationError, match="duplicated values in input_features"):
+        with pytest.raises(
+            ValidationError, match="duplicated values in input_features"
+        ):
             ProblemDefinition(input_features=["a", "a"])
 
         with pytest.raises(
@@ -245,28 +250,27 @@ class Test_ProblemDefinition:
         problem_definition.train_split = {"train_0": [0, 1, 2]}
         problem_definition.test_split = {"test_0": [3, 4]}
 
-        all_splits = problem_definition.get_split()
-        assert all_splits == {"train": [0, 1, 2], "test": [3, 4]}
-        assert problem_definition.get_split("train") == [0, 1, 2]
-        assert problem_definition.get_split("test") == [3, 4]
-
-        with pytest.raises(ValueError, match='indices_name can be None, "train" or "test"'):
-            problem_definition.get_split("validation")
+        assert problem_definition.get_train_split_name() == "train_0"
+        assert problem_definition.get_test_split_name() == "test_0"
+        assert problem_definition.get_train_split_indices() == [0, 1, 2]
+        assert problem_definition.get_test_split_indices() == [3, 4]
 
     def test_add_feature_identifiers_duplicate_checks(self, problem_definition):
         problem_definition.add_in_features_identifiers(["in_1", "in_2"])
         with pytest.raises(ValueError, match="in_1 is already in"):
             problem_definition.add_in_features_identifiers("in_1")
-        with pytest.raises(ValueError, match="Some input features share the same identifier"):
+        with pytest.raises(
+            ValueError, match="Some input features share the same identifier"
+        ):
             problem_definition.add_in_features_identifiers(["x", "x"])
 
         problem_definition.add_out_features_identifiers(["out_1", "out_2"])
         with pytest.raises(ValueError, match="out_1 is already in"):
             problem_definition.add_out_features_identifiers("out_1")
-        with pytest.raises(ValueError, match="Some output features share the same identifier"):
+        with pytest.raises(
+            ValueError, match="Some output features share the same identifier"
+        ):
             problem_definition.add_out_features_identifiers(["y", "y"])
-
-
 
     # -------------------------------------------------------------------------#
     def test_split(self, problem_definition):
@@ -284,19 +288,24 @@ class Test_ProblemDefinition:
         problem = ProblemDefinition()
         problem._load_from_file_(path)
         assert problem.task == "regression"
-        assert set(problem.input_features) == set(['Base_2_2/Zone/PointData/sig12',
-         'Base_2_2/Zone/PointData/U1',
-         'Base_2_2/Zone/PointData/U2',
-         'Global/predict_feature',
-         'Global/test_feature',
-         'Global/feature']
+        assert set(problem.input_features) == set(
+            [
+                "Base_2_2/Zone/PointData/sig12",
+                "Base_2_2/Zone/PointData/U1",
+                "Base_2_2/Zone/PointData/U2",
+                "Global/predict_feature",
+                "Global/test_feature",
+                "Global/feature",
+            ]
         )
         assert set(problem.output_features) == set(
-            ['Global/predict_feature',
-         'Base_2_2/Zone/PointData/sig12',
-         'Global/feature',
-         'Base_2_2/Zone/PointData/U2',
-         'Global/test_feature']
+            [
+                "Global/predict_feature",
+                "Base_2_2/Zone/PointData/sig12",
+                "Global/feature",
+                "Base_2_2/Zone/PointData/U2",
+                "Global/test_feature",
+            ]
         )
 
     def test__load_from_file__non_existing_file(self):
@@ -304,4 +313,3 @@ class Test_ProblemDefinition:
         non_existing_path = Path("non_existing_path")
         with pytest.raises(FileNotFoundError):
             problem._load_from_file_(non_existing_path)
-

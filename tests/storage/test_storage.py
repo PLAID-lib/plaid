@@ -174,8 +174,8 @@ def problem_definition(main_splits) -> ProblemDefinition:
     problem_definition = ProblemDefinition()
     problem_definition.task = "regression"
     problem_definition.add_in_features_identifiers(["feature_name_1", "feature_name_2"])
-    problem_definition.train_split = {"train":main_splits["train"]}
-    problem_definition.test_split = {"test":main_splits["test"]}
+    problem_definition.train_split = {"train": main_splits["train"]}
+    problem_definition.test_split = {"test": main_splits["test"]}
     return problem_definition
 
 
@@ -191,7 +191,10 @@ def sample_constructor(dataset):
 
 @pytest.fixture()
 def split_ids(problem_definition) -> dict:
-    return problem_definition.get_split()
+    return {
+        "train": problem_definition.get_train_split_indices(),
+        "test": problem_definition.get_test_split_indices(),
+    }
 
 
 class Test_Storage:
@@ -355,7 +358,6 @@ class Test_Storage:
         zarr_dataset.zarr_group
         zarr_dataset.toto = 1.0
         print(zarr_dataset)
-
 
         converter.to_dict(zarr_dataset, 0)
         converter.sample_to_dict(zarr_dataset[0])
@@ -618,7 +620,6 @@ class Test_Storage:
         self.assert_sample(plaid_sample)
 
         converter.plaid_to_dict(plaid_sample)
-
 
         with pytest.raises(ValueError):
             converter.to_dict(cgns_dataset, 0)

@@ -12,7 +12,7 @@ else:  # pragma: no cover
 
 import logging
 from pathlib import Path
-from typing import Any, Literal, Optional, Sequence, Union
+from typing import Any, Literal, Optional, Sequence, Union, cast
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -30,10 +30,6 @@ logger = logging.getLogger(__name__)
 # %% Functions
 
 # %% Classes
-
-
-
-
 
 
 def _normalize_list(v):
@@ -161,63 +157,43 @@ class ProblemDefinition(BaseModel):
     #    return self.name
 
     #     # -------------------------------------------------------------------------#
+    def get_train_split_name(self) -> str:
+        """Return the name of the train split."""
+        if self.train_split is None:
+            raise ValueError("train_split is not defined.")
+        return list(self.train_split.keys())[0]
 
-    def get_split(self, indices_name: Optional[str] = None) -> dict[str, IndexType]:
-        """Get the split indices. This function returns the split indices, either for a specific split with the provided `indices_name` or all split indices if `indices_name` is not specified.
-
-        Args:
-            indices_name (str, optional): The name of the split for which indices are requested. Defaults to None.
+    def get_train_split_indices(self) -> IndexType | Literal["all"]:
+        """Return the indices associated with the train split.
 
         Raises:
-            KeyError: If `indices_name` is specified but not found among split names.
+            ValueError: If `train_split` is not defined.
 
         Returns:
-            Union[IndexType,dict[str,IndexType]]: If `indices_name` is provided, it returns
-            the indices for that split (IndexType). If `indices_name` is not provided, it
-            returns a dictionary mapping split names (str) to their respective indices
-            (IndexType).
-
-        Example:
-            .. code-block:: python
-
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                split_indices = problem.get_split()
-                print(split_indices)
-                >>> {'train': [0, 1, 2, ...], 'test': [100, 101, ...]}
-
-                test_indices = problem.get_split('test')
-                print(test_indices)
-                >>> [100, 101, ...]
+            IndexType | Literal["all"]: The indices associated with the train split.
         """
-        if indices_name is not None:
-            if indices_name == "train":
-                if self.train_split == "all":
-                    return "all"
-                elif self.train_split is None:
-                    return "all"
-                return next(iter(self.train_split.values()))
-            elif indices_name == "test":
-                return next(iter(self.test_split.values()))
-            else:
-                raise ValueError(
-                    f'indices_name can be None, "train" or "test". given "{indices_name}"'
-                )
-        res = {}
+        if self.train_split is None:
+            raise ValueError("train_split is not defined.")
+        return cast(IndexType | Literal["all"], next(iter(self.train_split.values())))
 
-        if self.train_split is not None:
-            assert len(self.train_split) == 1
-            train_split_ids = next(iter(self.train_split.values()))
-            res["train"] = train_split_ids
+    def get_test_split_name(self) -> str:
+        """Return the name of the test split."""
+        if self.test_split is None:
+            raise ValueError("test_split is not defined.")
+        return list(self.test_split.keys())[0]
 
-        if self.test_split is not None:
-            assert len(self.test_split) == 1
-            test_split_ids = next(iter(self.test_split.values()))
-            res["test"] = test_split_ids
+    def get_test_split_indices(self) -> IndexType | Literal["all"]:
+        """Return the indices associated with the test split.
 
-        return res
+        Raises:
+            ValueError: If `test_split` is not defined.
 
+        Returns:
+            IndexType | Literal["all"]: The indices associated with the test split.
+        """
+        if self.test_split is None:
+            raise ValueError("test_split is not defined.")
+        return cast(IndexType | Literal["all"], next(iter(self.test_split.values())))
 
     def add_in_features_identifiers(self, inputs: Union[str, Sequence[str]]) -> None:
         """Add input features identifiers to the problem.
