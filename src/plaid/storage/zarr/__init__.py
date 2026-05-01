@@ -111,7 +111,6 @@ class ZarrBackend:
         dataset: zarr.Group,
         idx: int,
         features: Optional[list[str]] = None,
-        enforce_shapes: bool = True,  # noqa: ARG001
     ) -> dict[str, Optional[np.ndarray]]:
         return to_var_sample_dict(zarr_dataset=dataset, idx=idx, features=features)
 

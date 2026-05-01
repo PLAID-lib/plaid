@@ -108,9 +108,7 @@ class HFBackend:
         dataset: Dataset,
         idx: int,
         features: Optional[list[str]] = None,
-        enforce_shapes: bool = True,
     ) -> dict[str, Optional[np.ndarray]]:
-        _ = enforce_shapes
         return to_var_sample_dict(
             ds=dataset,
             i=idx,

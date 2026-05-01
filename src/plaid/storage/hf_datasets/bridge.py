@@ -153,7 +153,6 @@ def to_var_sample_dict(
     i: int,
     features: Optional[list[str]] = None,
     indexers: Optional[dict[str, Any]] = None,
-    enforce_shapes: bool = True,
 ) -> dict[str, Optional[np.ndarray]]:
     """Convert a Hugging Face dataset row to a variable sample dict containing the features that vary in the dataset.
 
@@ -163,7 +162,6 @@ def to_var_sample_dict(
         features: Iterable of feature names (keys) to extract from the dataset.
         indexers: Optional mapping ``feature_path -> indexer`` used to select
             feature values along the last axis.
-        enforce_shapes (bool): Whether to enforce consistent shapes.
 
     Returns:
         dict[str, Optional[np.ndarray]]: The variable sample dictionary.
@@ -178,39 +176,31 @@ def to_var_sample_dict(
             raise KeyError(f"Missing features in hf_dataset: {sorted(missing)}")
         selected_features = features
 
+    assert features is not None
+
     var_sample_dict = {}
     indexers = indexers or {}
-    if not enforce_shapes:
-        for name in selected_features:
+
+    for name in selected_features:
+        if isinstance(table[name][i], pa.NullScalar):
+            var_sample_dict[name] = None  # pragma: no cover
+        else:
             value = table[name][i].values
             if value is None:
                 var_sample_dict[name] = None  # pragma: no cover
             else:
-                arr = value.to_numpy(zero_copy_only=False)
                 if name in indexers:
-                    arr = _apply_indexer(arr, indexers[name], name)
-                var_sample_dict[name] = arr
-    else:
-        for name in selected_features:
-            if isinstance(table[name][i], pa.NullScalar):
-                var_sample_dict[name] = None  # pragma: no cover
-            else:
-                value = table[name][i].values
-                if value is None:
-                    var_sample_dict[name] = None  # pragma: no cover
+                    var_sample_dict[name] = _extract_indexed_arrow(
+                        value, indexers[name], name
+                    )
+                elif isinstance(value, pa.ListArray):
+                    var_sample_dict[name] = np.stack(
+                        value.to_numpy(zero_copy_only=False)
+                    )
+                elif isinstance(value, pa.StringArray):  # pragma: no cover
+                    var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
                 else:
-                    if name in indexers:
-                        var_sample_dict[name] = _extract_indexed_arrow(
-                            value, indexers[name], name
-                        )
-                    elif isinstance(value, pa.ListArray):
-                        var_sample_dict[name] = np.stack(
-                            value.to_numpy(zero_copy_only=False)
-                        )
-                    elif isinstance(value, pa.StringArray):  # pragma: no cover
-                        var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
-                    else:
-                        var_sample_dict[name] = value.to_numpy(zero_copy_only=True)
+                    var_sample_dict[name] = value.to_numpy(zero_copy_only=True)
 
     return var_sample_dict
 

@@ -292,7 +292,7 @@ class Test_Storage:
 
         converter.plaid_to_dict(plaid_sample)
 
-        hf_bridge.to_var_sample_dict(hf_dataset, 0, enforce_shapes=False)
+        hf_bridge.to_var_sample_dict(hf_dataset, 0)
 
         converter.to_dict(hf_dataset, 0)
         converter.sample_to_dict(hf_dataset[0])
