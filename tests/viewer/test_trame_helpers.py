@@ -172,6 +172,34 @@ def test_dataset_field_helpers() -> None:
     assert srv._compute_field_range(_Blocks([NoData()]), "p", "point") == (0.0, 1.0)
 
 
+def test_scalar_bar_helpers() -> None:
+    class ScalarBar:
+        def __init__(self) -> None:
+            self.lut = None
+            self.title = None
+            self.visible = None
+
+        def SetLookupTable(self, lut) -> None:  # noqa: N802, ANN001
+            self.lut = lut
+
+        def SetTitle(self, title: str) -> None:  # noqa: N802
+            self.title = title
+
+        def SetVisibility(self, visible: bool) -> None:  # noqa: N802, FBT001
+            self.visible = visible
+
+    scalar_bar = ScalarBar()
+    lut = object()
+
+    srv._show_scalar_bar_for_field(scalar_bar, lut, "pressure", "point")
+    assert scalar_bar.lut is lut
+    assert scalar_bar.title == "pressure (point)"
+    assert scalar_bar.visible is True
+
+    srv._hide_scalar_bar(scalar_bar)
+    assert scalar_bar.visible is False
+
+
 def test_load_reader_plain_and_build_lut(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

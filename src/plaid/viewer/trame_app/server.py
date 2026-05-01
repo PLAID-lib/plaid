@@ -378,6 +378,20 @@ def _compute_field_range(
     return lo, hi
 
 
+def _show_scalar_bar_for_field(
+    scalar_bar, lut, field_name: str, association: str
+) -> None:
+    """Display ``scalar_bar`` as the legend for the active coloured field."""
+    scalar_bar.SetLookupTable(lut)
+    scalar_bar.SetTitle(f"{field_name} ({association})")
+    scalar_bar.SetVisibility(True)
+
+
+def _hide_scalar_bar(scalar_bar) -> None:
+    """Hide ``scalar_bar`` when no scalar field is currently coloured."""
+    scalar_bar.SetVisibility(False)
+
+
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
@@ -411,6 +425,17 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         self.interactor.Initialize()
         self._interactor_style = interactor_style  # keep a reference alive
 
+        # ParaView-like orientation marker anchored in the bottom-left corner.
+        # The widget is attached to the server-side interactor so it is rendered
+        # directly into the frames streamed by ``VtkRemoteView``.
+        self.axes_actor = vtk.vtkAxesActor()
+        self.orientation_marker = vtk.vtkOrientationMarkerWidget()
+        self.orientation_marker.SetOrientationMarker(self.axes_actor)
+        self.orientation_marker.SetInteractor(self.interactor)
+        self.orientation_marker.SetViewport(0.0, 0.0, 0.18, 0.18)
+        self.orientation_marker.SetEnabled(1)
+        self.orientation_marker.InteractiveOff()
+
         self.reader = None
         self.actor = vtk.vtkActor()
         # Gouraud shading (per-vertex normals interpolated across the
@@ -426,6 +451,19 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         self.lut = vtk.vtkLookupTable()
         self.lut.SetHueRange(0.667, 0.0)  # blue -> red
         self.lut.Build()
+
+        # Colour legend for the selected point/cell field. It stays hidden
+        # until scalar colouring is enabled by the field dropdown.
+        self.scalar_bar = vtk.vtkScalarBarActor()
+        self.scalar_bar.SetLookupTable(self.lut)
+        self.scalar_bar.SetNumberOfLabels(5)
+        self.scalar_bar.SetPosition(0.88, 0.08)
+        self.scalar_bar.SetWidth(0.1)
+        self.scalar_bar.SetHeight(0.35)
+        self.scalar_bar.GetTitleTextProperty().SetColor(1.0, 1.0, 1.0)
+        self.scalar_bar.GetLabelTextProperty().SetColor(1.0, 1.0, 1.0)
+        _hide_scalar_bar(self.scalar_bar)
+        self.renderer.AddActor2D(self.scalar_bar)
 
         self._current_dataset = None
 
@@ -468,8 +506,10 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
             self.lut = _build_lut(cmap, lo, hi)
             self.mapper.SetLookupTable(self.lut)
             self.mapper.SetScalarRange(lo, hi)
+            _show_scalar_bar_for_field(self.scalar_bar, self.lut, field, association)
         else:
             self.mapper.ScalarVisibilityOff()
+            _hide_scalar_bar(self.scalar_bar)
 
         self.actor.GetProperty().SetEdgeVisibility(bool(show_edges))
         self.actor.GetProperty().SetLineWidth(1.0)
@@ -737,6 +777,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         pipeline.reader = None
         pipeline.mapper.RemoveAllInputConnections(0)
         pipeline.mapper.ScalarVisibilityOff()
+        _hide_scalar_bar(pipeline.scalar_bar)
         state.base_options = []
         state.active_base = None
         state.field_options = []
@@ -807,6 +848,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             pipeline.reader = None
             pipeline.mapper.RemoveAllInputConnections(0)
             pipeline.mapper.ScalarVisibilityOff()
+            _hide_scalar_bar(pipeline.scalar_bar)
             state.base_options = []
             state.active_base = None
             state.field_options = []
@@ -934,6 +976,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             with _silence_stderr():
                 artifact = artifact_service.ensure_artifact(ref, force=force)
             pipeline.load(artifact.cgns_path)
+            if pipeline.reader is None:
+                raise RuntimeError("VTK reader was not initialised")
             # Disable zone-less bases *before* the reader's first Update()
             # so ``vtkCGNSReader`` does not log ``No zones in base ...``
             # warnings for auxiliary bases like ``Global``.
