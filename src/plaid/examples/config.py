@@ -1,11 +1,4 @@
 """Config for PLAID examples."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 _HF_REPOS = {
 'vki_ls59':'PhysArena/VKI-LS59',
 'elastoplastodynamics':'PhysArena/2D_ElastoPlastoDynamics',

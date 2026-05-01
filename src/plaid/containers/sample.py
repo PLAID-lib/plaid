@@ -1,11 +1,4 @@
 """Implementation of the `Sample` container."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # %% Imports
 import sys
 from ..types.common import ArrayDType

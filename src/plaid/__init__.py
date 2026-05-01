@@ -1,11 +1,4 @@
 """PLAID package public API."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from .version import __version__
 from .containers.sample import Sample
 from .problem_definition import ProblemDefinition

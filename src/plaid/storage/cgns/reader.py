@@ -10,13 +10,6 @@ Key features:
 - Selective loading of splits and sample IDs
 - Integration with PLAID Sample objects
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import os
 import shutil

@@ -4,13 +4,6 @@ This module provides bridge functions for converting between PLAID datasets/samp
 and Hugging Face Datasets format. It includes utilities for feature type conversion,
 dataset generation from PLAID objects, and sample reconstruction.
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from functools import partial
 from typing import Any, Callable, Generator, Optional
 

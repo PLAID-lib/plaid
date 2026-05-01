@@ -1,11 +1,4 @@
 """Examples for PLAID objects."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from plaid.examples.config import _HF_REPOS
 
 AVAILABLE_EXAMPLES = list(_HF_REPOS.keys())

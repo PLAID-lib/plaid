@@ -1,8 +1,3 @@
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
 """This module defines common constants used throughout the PLAID library.
 
 It includes:

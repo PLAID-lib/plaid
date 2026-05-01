@@ -3,13 +3,6 @@
 This module provides bridge functions for converting between PLAID samples and
 storage formats, including flattening/unflattening and sample reconstruction.
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from typing import Any, Iterable, Optional
 
 import numpy as np

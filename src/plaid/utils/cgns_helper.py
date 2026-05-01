@@ -1,11 +1,4 @@
 """Utility functions for working with CGNS trees and nodes."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from copy import copy
 from typing import Any, Iterable, Optional
 

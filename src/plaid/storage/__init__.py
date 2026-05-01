@@ -1,11 +1,4 @@
 """Public API for plaid.storage."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from .common.reader import (
     load_problem_definitions_from_disk,
     load_problem_definitions_from_hub,

@@ -3,13 +3,6 @@
 This module provides common utilities for reading dataset metadata, problem definitions,
 and other auxiliary files from disk or downloading them from Hugging Face Hub.
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import json
 import logging
 import tempfile

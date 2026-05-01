@@ -11,13 +11,6 @@ Key features:
 - Integration with Hugging Face Hub for dataset sharing
 - Dataset card generation with splits, features, and documentation
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import gc
 import multiprocessing as mp
 from pathlib import Path

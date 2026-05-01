@@ -4,13 +4,6 @@ This module provides functionality for writing datasets in CGNS format for the P
 It includes utilities for generating datasets from sample generators, saving to disk,
 uploading to Hugging Face Hub, and configuring dataset cards.
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import multiprocessing as mp
 from pathlib import Path

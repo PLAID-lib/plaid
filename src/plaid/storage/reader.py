@@ -10,13 +10,6 @@ Key features:
 - Automatic backend detection and converter creation
 - Sample conversion between storage formats and PLAID objects
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 

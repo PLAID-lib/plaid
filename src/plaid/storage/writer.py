@@ -10,13 +10,6 @@ Key features:
 - Metadata and problem definition handling
 - Hub integration with dataset cards and metadata
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import shutil
 from pathlib import Path

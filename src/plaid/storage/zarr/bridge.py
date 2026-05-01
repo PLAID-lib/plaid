@@ -3,13 +3,6 @@
 This module provides utility functions for bridging between PLAID samples and Zarr storage format.
 It includes functions for key transformation and sample data conversion.
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from typing import Any, Optional
 
 import numpy as np

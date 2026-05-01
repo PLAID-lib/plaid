@@ -1,11 +1,4 @@
 """Utility function to save a pickled CGNS tree in a subprocess."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import os
 import pickle

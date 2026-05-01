@@ -4,13 +4,6 @@ This module provides common utilities for writing dataset metadata, problem defi
 and other auxiliary files to disk or uploading them to Hugging Face Hub. It handles
 serialization of infos, problem definitions, and dataset tree structures.
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import io
 import json
 import logging

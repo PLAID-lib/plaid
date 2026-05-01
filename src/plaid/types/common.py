@@ -1,11 +1,4 @@
 """Common types used across the PLAID library."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import sys
 from typing import Union, Annotated, Any
 from pydantic import BeforeValidator, PlainSerializer

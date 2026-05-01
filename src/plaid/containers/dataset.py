@@ -1,9 +1,3 @@
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from typing import Optional, Sequence, Union, Literal, Any
 from pathlib import Path
 import logging

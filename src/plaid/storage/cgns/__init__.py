@@ -1,11 +1,4 @@
 """Package for CGNS storage."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from .reader import (
     download_datasetdict_from_hub,
     init_datasetdict_from_disk,

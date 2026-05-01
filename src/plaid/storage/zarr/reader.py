@@ -11,12 +11,6 @@ Key features:
 - Selective loading of splits and features
 - ZarrDataset class for convenient data access
 """
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
 import logging
 import os
 import shutil

@@ -1,11 +1,4 @@
 """Package for common functions of the storage backends."""
-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from .bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,
