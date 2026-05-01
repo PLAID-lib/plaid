@@ -14,15 +14,16 @@ from .common.writer import (
     push_local_problem_definitions_to_hub,
     save_problem_definitions_to_disk,
 )
-from ..storage.reader import (
+from .reader import (
     download_from_hub,
     init_from_disk,
     init_streaming_from_hub,
 )
-from ..storage.writer import (
+from .writer import (
     push_to_hub,
     save_to_disk,
 )
+from .registry import get_backend
 
 __all__ = [
     "download_from_hub",
@@ -34,4 +35,5 @@ __all__ = [
     "load_problem_definitions_from_hub",
     "push_local_problem_definitions_to_hub",
     "save_problem_definitions_to_disk",
+    "get_backend",
 ]
