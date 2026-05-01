@@ -1229,8 +1229,7 @@ class Test_Sample:
         )
 
     def test_update_features_by_path(self, sample_with_tree_and_scalar):
-        before = sample_with_tree_and_scalar.get_global("test_scalar_1")
-        sample_ = sample_with_tree_and_scalar.update_features_by_path(
+        sample_with_tree_and_scalar.update_features_by_path(
             "Global/test_scalar_1",
             features=3.141592,
             in_place=False,

@@ -220,7 +220,7 @@ class Sample(BaseModel):
         feature_details = get_feature_details_from_path(feature_path)
 
         feature_type = feature_details.pop("type")
-        feature_subtype = feature_details.pop("sub_type", None)
+        _ = feature_details.pop("sub_type", None)
 
         if feature_type == "global":
             if safe_len(feature) == 1:
@@ -259,13 +259,12 @@ class Sample(BaseModel):
         Raises:
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
-
         from .utils import get_feature_details_from_path
 
         feature_details = get_feature_details_from_path(feature_path)
 
         feature_type = feature_details.pop("type")
-        feature_subtype = feature_details.pop("sub_type", None)
+        _ = feature_details.pop("sub_type", None)
 
         if feature_type == "global":
             self.del_global(**feature_details)
