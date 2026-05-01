@@ -63,10 +63,31 @@ def test_cgns_backend_download_from_hub_delegates(monkeypatch):
     }
 
 
-def test_cgns_backend_streaming_from_hub_current_behavior_raises_name_error():
-    backend = CgnsBackend()
+def test_cgns_backend_streaming_from_hub_delegates(monkeypatch):
+    call = {}
 
-    backend.init_datasetdict_streaming_from_hub("PhysArena/Rotor37")
+    def fake_init_datasetdict_streaming_from_hub(repo_id, split_ids=None, features=None):
+        call["repo_id"] = repo_id
+        call["split_ids"] = split_ids
+        call["features"] = features
+        return {"train": "stream"}
+
+    monkeypatch.setattr(
+        cgns,
+        "init_datasetdict_streaming_from_hub",
+        fake_init_datasetdict_streaming_from_hub,
+    )
+
+    result = CgnsBackend.init_datasetdict_streaming_from_hub(
+        "PhysArena/Rotor37", split_ids=["train"], features={"a": "b"}
+    )
+
+    assert result == {"train": "stream"}
+    assert call == {
+        "repo_id": "PhysArena/Rotor37",
+        "split_ids": ["train"],
+        "features": {"a": "b"},
+    }
 
 
 def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
@@ -120,6 +141,44 @@ def test_cgns_backend_push_local_to_hub_delegates(monkeypatch):
         "repo_id": "dummy/repo",
         "local_dir": "/tmp/local",
         "num_workers": 1,
+    }
+
+
+def test_cgns_backend_configure_dataset_card_requires_local_dir():
+    with pytest.raises(ValueError, match="local_dir must be provided for cgns backend"):
+        CgnsBackend.configure_dataset_card(repo_id="dummy/repo", infos={})
+
+
+def test_cgns_backend_configure_dataset_card_delegates(monkeypatch):
+    call = {}
+
+    def fake_configure_dataset_card(**kwargs):
+        call.update(kwargs)
+        return "configured"
+
+    monkeypatch.setattr(cgns, "configure_dataset_card", fake_configure_dataset_card)
+
+    result = CgnsBackend.configure_dataset_card(
+        repo_id="dummy/repo",
+        infos={"source": "synthetic"},
+        local_dir="/tmp/local",
+        viewer=True,
+        pretty_name="My Dataset",
+        dataset_long_description="Long description",
+        illustration_urls=["https://example.com/img.png"],
+        arxiv_paper_urls=["https://arxiv.org/abs/1234.5678"],
+    )
+
+    assert result == "configured"
+    assert call == {
+        "repo_id": "dummy/repo",
+        "infos": {"source": "synthetic"},
+        "local_dir": "/tmp/local",
+        "viewer": True,
+        "pretty_name": "My Dataset",
+        "dataset_long_description": "Long description",
+        "illustration_urls": ["https://example.com/img.png"],
+        "arxiv_paper_urls": ["https://arxiv.org/abs/1234.5678"],
     }
 
 
