@@ -38,6 +38,7 @@ import re
 
 CGNS_PATTERN = re.compile(r"^Base_\d+_\d+/[^/]+/[^/]+$")
 
+
 class CGNSPath(RootModel):
     root: str
 
@@ -45,20 +46,22 @@ class CGNSPath(RootModel):
     @classmethod
     def validate_path(cls, v: str) -> str:
         if not CGNS_PATTERN.match(v):
-            raise ValueError("Invalid CGNS variable format. Need to be in the form of 'Base_X_Y/ZoneName/VariableName'")
+            raise ValueError(
+                "Invalid CGNS variable format. Need to be in the form of 'Base_X_Y/ZoneName/VariableName'"
+            )
         return v
 
     @property
     def path(self) -> str:
         return self.root
-    
+
     @property
     def base(self) -> str:
         return self.root.split("/")[0]
-    
+
     def zone(self) -> str:
         return self.root.split("/")[1]
-    
+
 
 # Example usage of CGNSPath
 if __name__ == "__main__":
@@ -75,4 +78,3 @@ if __name__ == "__main__":
         invalid_path = CGNSPath("InvalidPath")
     except Exception as e:
         print(f"Invalid path error: {e}")
-

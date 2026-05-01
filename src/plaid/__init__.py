@@ -6,7 +6,6 @@
 #
 #
 
-
 from .version import __version__
 from .containers.sample import Sample
 from .problem_definition import ProblemDefinition

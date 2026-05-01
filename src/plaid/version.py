@@ -8,6 +8,4 @@ try:
 except ImportError:  # pragma: no cover
     __version__ = "None"
 
-__all__ = [
-    "__version__"
-]
+__all__ = ["__version__"]

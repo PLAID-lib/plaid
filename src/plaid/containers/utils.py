@@ -142,11 +142,7 @@ def get_sample_ids(savedir: Union[str, Path]) -> list[int]:
     """
     savedir = Path(savedir)
     return sorted(
-        [
-            int(d.stem.split("_")[-1])
-            for d in (savedir ).glob("sample_*")
-            if d.is_dir()
-        ]
+        [int(d.stem.split("_")[-1]) for d in (savedir).glob("sample_*") if d.is_dir()]
     )
 
 
@@ -160,6 +156,7 @@ def get_number_of_samples(savedir: Union[str, Path]) -> int:
         int: number of samples.
     """
     return len(get_sample_ids(savedir))
+
 
 def get_feature_details_from_path(path: str) -> dict[str, str]:
     """Retrieve semantic details from a CGNS-style path."""
@@ -216,7 +213,7 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     # ----------------------
     # Grid coordinates
     # ----------------------
-    if node == "GridCoordinates"  and len(split_path) >= 3 and len(split_path) <= 4:
+    if node == "GridCoordinates" and len(split_path) >= 3 and len(split_path) <= 4:
         feat["type"] = "coordinate"
         feat["sub_type"] = "node"
         if len(split_path) == 4:

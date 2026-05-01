@@ -83,6 +83,7 @@ FEATURES_METHODS = [
     "set_trees",
 ]
 
+
 @delegate_methods("features", FEATURES_METHODS)
 class Sample(BaseModel):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
@@ -95,7 +96,7 @@ class Sample(BaseModel):
     """
 
     # Pydantic configuration
-    #TODO(FB) check why arbitrary_types_allowed is needed, and if it can be removed
+    # TODO(FB) check why arbitrary_types_allowed is needed, and if it can be removed
     model_config = ConfigDict(
         arbitrary_types_allowed=True, revalidate_instances="always", extra="forbid"
     )
@@ -107,7 +108,7 @@ class Sample(BaseModel):
     )
 
     features: SampleFeatures = PydanticField(
-        default_factory=lambda : SampleFeatures(data=None),
+        default_factory=lambda: SampleFeatures(data=None),
         description="An instance of SampleFeatures containing mesh data. Defaults to an empty `SampleFeatures` object.",
     )
 
@@ -135,8 +136,9 @@ class Sample(BaseModel):
         """
         return self.model_copy(deep=True)
 
-    def get_all_features_identifiers_by_type(self, feature_type: AUTHORIZED_FEATURE_TYPES_T) -> list[str]:
-
+    def get_all_features_identifiers_by_type(
+        self, feature_type: AUTHORIZED_FEATURE_TYPES_T
+    ) -> list[str]:
         """Get all features identifiers of a given type from the sample.
 
         Args:
@@ -147,14 +149,21 @@ class Sample(BaseModel):
         """
 
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
-        if feature_type ==  "scalar":
+        if feature_type == "scalar":
             return self.get_global_names()
-        elif feature_type ==  "field":
+        elif feature_type == "field":
             return self.get_field_names()
-        elif feature_type ==  "nodes":
-            return ["Coordinate" + n for _,n in  zip(range(self.features.get_physical_dim()), ["X","Y","Z"]) ]
+        elif feature_type == "nodes":
+            return [
+                "Coordinate" + n
+                for _, n in zip(
+                    range(self.features.get_physical_dim()), ["X", "Y", "Z"]
+                )
+            ]
 
-    def get_feature_by_path(self, path: str, time: Optional[int] = None) -> np.number | np.ndarray | None:
+    def get_feature_by_path(
+        self, path: str, time: Optional[int] = None
+    ) -> np.number | np.ndarray | None:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
 
         Args:
@@ -214,15 +223,16 @@ class Sample(BaseModel):
         Raises:
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
-        #feature_type, feature_details = get_feature_type_and_details_from(
+        # feature_type, feature_details = get_feature_type_and_details_from(
         #    feature_identifier
-        #)
+        # )
 
         from .utils import get_feature_details_from_path
+
         feature_details = get_feature_details_from_path(feature_path)
 
         feature_type = feature_details.pop("type")
-        feature_subtype = feature_details.pop("sub_type",None)
+        feature_subtype = feature_details.pop("sub_type", None)
 
         if feature_type == "global":
             if safe_len(feature) == 1:
@@ -231,14 +241,14 @@ class Sample(BaseModel):
         elif feature_type == "field":
             self.add_field(**feature_details, field=feature, warning_overwrite=False)
         elif feature_type == "coordinate":
-            if feature_details.get("name", None) is not None:   # pragma: no cover
+            if feature_details.get("name", None) is not None:  # pragma: no cover
                 raise ValueError("Must set the 3 coordinate at the same time")
             physical_dim_arg = {
                 k: v for k, v in feature_details.items() if k in ["base_name", "time"]
             }
             phys_dim = self.features.get_physical_dim(**physical_dim_arg)
             self.set_nodes(**feature_details, nodes=feature.reshape((-1, phys_dim)))
-        else:   # pragma: no cover
+        else:  # pragma: no cover
             print(feature_details)
             raise RuntimeError(f"feature_type not allowed : {feature_type}")
 
@@ -263,11 +273,11 @@ class Sample(BaseModel):
         """
 
         from .utils import get_feature_details_from_path
+
         feature_details = get_feature_details_from_path(feature_path)
 
         feature_type = feature_details.pop("type")
-        feature_subtype = feature_details.pop("sub_type",None)
-
+        feature_subtype = feature_details.pop("sub_type", None)
 
         if feature_type == "global":
             self.del_global(**feature_details)
@@ -275,7 +285,7 @@ class Sample(BaseModel):
             self.del_field(**feature_details)
         elif feature_type == "coordinate":
             raise NotImplementedError("Deleting node features is not implemented.")
-        else:   # pragma: no cover
+        else:  # pragma: no cover
             print(feature_details)
             raise RuntimeError(f"feature_type not allowed : {feature_type}")
 
@@ -283,9 +293,7 @@ class Sample(BaseModel):
 
     def update_features_by_path(
         self,
-        feature_identifiers: dict[
-            int, Union[str, list[str]]
-        ],
+        feature_identifiers: dict[int, Union[str, list[str]]],
         features: Union[ArrayDType, list[ArrayDType]],
         in_place: bool = False,
     ) -> Self:
@@ -713,6 +721,7 @@ class Sample(BaseModel):
                 report += f"Field names: {', '.join(sorted(total_fields))}\n"
 
         return report
+
 
 if TYPE_CHECKING:
     # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING

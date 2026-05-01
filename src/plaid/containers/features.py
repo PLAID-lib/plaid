@@ -128,7 +128,6 @@ class SampleFeatures:
         """
         return list(self.data.keys())
 
-
     def init_tree(self, time: Optional[float] = None) -> CGNSTree:
         """Initialize a CGNS tree structure at a specified time step or create a new one if it doesn't exist.
 
@@ -904,10 +903,7 @@ class SampleFeatures:
             array_z = CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateZ")
             if array_z is None:
                 array = np.concatenate(
-                    (
-                        array_x.reshape((-1, 1)),
-                        array_y.reshape((-1, 1))),
-                        axis=1
+                    (array_x.reshape((-1, 1)), array_y.reshape((-1, 1))), axis=1
                 )
             else:
                 array = np.concatenate(
@@ -1052,9 +1048,7 @@ class SampleFeatures:
             location: str, zone_name: str, base_name: str, time: float
         ) -> list[str]:
             # get_zone will look for default zone_name, base_name, time
-            search_node = self.get_zone(
-                zone=zone_name, base=base_name, time=time
-            )
+            search_node = self.get_zone(zone=zone_name, base=base_name, time=time)
             if search_node is None:  # pragma: no cover
                 return []
 
@@ -1286,9 +1280,7 @@ class SampleFeatures:
         mesh_tree = self.data[time]
 
         if zone_node is None:
-            raise KeyError(
-                f"There is no Zone with name {zone} in base {base}."
-            )
+            raise KeyError(f"There is no Zone with name {zone} in base {base}.")
 
         solution_paths = CGU.getPathsByTypeSet(zone_node, [CGK.FlowSolution_t])
 

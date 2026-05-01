@@ -6,8 +6,9 @@ from typing import Any, Protocol, Union, Iterable, Optional, Callable, Generator
 import numpy as np
 
 from datasets import IterableDataset
-#from ..containers.dataset import Dataset
-#from ..containers.sample import Sample
+
+# from ..containers.dataset import Dataset
+# from ..containers.sample import Sample
 from ..types import IndexType
 
 
@@ -43,7 +44,7 @@ class BackendModule(Protocol):
     def generate_datasetdict_to_disk(
         self,
         output_folder: Union[str, Path],
-        generators: dict[str, Callable[..., Generator['Sample', None, None]]],
+        generators: dict[str, Callable[..., Generator["Sample", None, None]]],
         variable_schema: Optional[dict[str, dict]] = None,  # noqa: ARG001
         gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
         num_proc: int = 1,
@@ -53,26 +54,20 @@ class BackendModule(Protocol):
         ...
 
     def push_local_datasetdict_to_hub(
-        self,
-        repo_id: str,
-        local_dir: Union[str, Path],
-        num_workers: int = 1
+        self, repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
     ) -> None:
         """Push a local dataset dictionary to a remote hub repository."""
         ...
 
     def configure_dataset_card(
-        sefl,
-        repo_id: str,
-        local_dir: Union[str, Path],
-        num_workers: int = 1
+        sefl, repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
     ) -> None:  # pragma: no cover
         """Configure metadata for a dataset card associated with a repository."""
         ...
 
     def to_var_sample_dict(
         self,
-        ds: 'Dataset',
+        ds: "Dataset",
         i: int,
         features: Optional[list[str]] = None,
         enforce_shapes: bool = True,

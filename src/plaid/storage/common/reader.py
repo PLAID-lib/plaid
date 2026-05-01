@@ -92,10 +92,10 @@ def load_problem_definitions_from_disk(
         ValueError:
             If the ``problem_definitions/`` directory does not exist.
     """
-    
-    pb_def_dir = Path(path).absolute() 
+
+    pb_def_dir = Path(path).absolute()
     if pb_def_dir.name != "problem_definitions":
-         pb_def_dir /= Path("problem_definitions")
+        pb_def_dir /= Path("problem_definitions")
 
     if pb_def_dir.is_dir():
         pb_defs = {}
@@ -106,7 +106,9 @@ def load_problem_definitions_from_disk(
                 pb_defs[pb_def.name] = pb_def
         return pb_defs
     else:
-        raise ValueError(f"No problem definitions found on disk. path '{pb_def_dir}'")  # pragma: no cover
+        raise ValueError(
+            f"No problem definitions found on disk. path '{pb_def_dir}'"
+        )  # pragma: no cover
 
 
 def load_constants_from_disk(path):

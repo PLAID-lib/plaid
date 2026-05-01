@@ -17,16 +17,21 @@ from typing import Any, Callable, Optional, Union
 from . import cgns, hf_datasets, zarr, in_memory
 from .backend_api import BackendModule
 
-BACKENDS_II = { "in_memory": in_memory.InMemoryBackend, 
-                "cgns":cgns.CgnsBackend,
-                "hf_datasets": hf_datasets.HFBackend,
-                "zarr": zarr.ZarrBackend
-            }
+BACKENDS_II = {
+    "in_memory": in_memory.InMemoryBackend,
+    "cgns": cgns.CgnsBackend,
+    "hf_datasets": hf_datasets.HFBackend,
+    "zarr": zarr.ZarrBackend,
+}
 
-def get_backend(name: str) -> type[BackendModule] :
+
+def get_backend(name: str) -> type[BackendModule]:
     if name not in BACKENDS_II:
-        raise ValueError(f"Error! backend '{name}' not available, option are: {list(BACKENDS_II.keys())}")
+        raise ValueError(
+            f"Error! backend '{name}' not available, option are: {list(BACKENDS_II.keys())}"
+        )
     return BACKENDS_II[name]
+
 
 import datasets
 from plaid.storage.cgns.reader import CGNSDatasetDict

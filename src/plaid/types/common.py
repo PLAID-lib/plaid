@@ -29,6 +29,8 @@ IndexType = Union[list[int], NDArray[Union[np.int32, np.int64]]]
 # Define a reusable custom type
 NDArrayInt = Annotated[
     Any,
-    BeforeValidator(lambda v: np.asarray(v, dtype=int)), # Convert input to numpy array
-    PlainSerializer(lambda v: v.tolist(), return_type=list) # Serialize back to list for JSON
+    BeforeValidator(lambda v: np.asarray(v, dtype=int)),  # Convert input to numpy array
+    PlainSerializer(
+        lambda v: v.tolist(), return_type=list
+    ),  # Serialize back to list for JSON
 ]
