@@ -133,13 +133,27 @@ def test_merge_dataset_and_unsupported_operations():
         backend.download_from_hub("repo/id", "/tmp/dummy")
 
     with pytest.raises(NotImplementedError):
+        backend.download_from_hub(
+            "repo/id",
+            "/tmp/dummy",
+            split_ids={"train": [0]},
+            features=["Base/Zone/Field"],
+            overwrite=True,
+        )
+
+    with pytest.raises(NotImplementedError):
         backend.init_datasetdict_streaming_from_hub("repo/id")
 
     with pytest.raises(NotImplementedError):
-        backend.generate_datasetdict_to_disk("/tmp/out")
+        backend.init_datasetdict_streaming_from_hub(
+            "repo/id", split_ids={"train": [0]}, features=["Base/Zone/Field"]
+        )
 
     with pytest.raises(NotImplementedError):
-        backend.push_local_datasetdict_to_hub("repo/id", "/tmp/out")
+        backend.generate_to_disk("/tmp/out", generators={})
+
+    with pytest.raises(NotImplementedError):
+        backend.push_local_to_hub("repo/id", "/tmp/out")
 
     with pytest.raises(NotImplementedError):
         backend.configure_dataset_card("repo/id", cast(dict[str, Any], {"a": 1}))

@@ -100,6 +100,31 @@ def test_hf_backend_streaming_from_hub_delegates(monkeypatch):
     }
 
 
+def test_hf_backend_streaming_from_hub_default_args(monkeypatch):
+    call = {}
+
+    def fake_init_datasetdict_streaming_from_hub(repo_id, split_ids=None, features=None):
+        call["repo_id"] = repo_id
+        call["split_ids"] = split_ids
+        call["features"] = features
+        return {"train": "streaming_dataset"}
+
+    monkeypatch.setattr(
+        hf_datasets,
+        "init_datasetdict_streaming_from_hub",
+        fake_init_datasetdict_streaming_from_hub,
+    )
+
+    result = HFBackend.init_datasetdict_streaming_from_hub("PhysArena/Rotor37")
+
+    assert result == {"train": "streaming_dataset"}
+    assert call == {
+        "repo_id": "PhysArena/Rotor37",
+        "split_ids": None,
+        "features": None,
+    }
+
+
 def test_hf_backend_generate_to_disk_delegates(monkeypatch):
     call = {}
 
@@ -133,12 +158,13 @@ def test_hf_backend_generate_to_disk_delegates(monkeypatch):
     }
 
 
-def test_hf_backend_push_local_datasetdict_to_hub_delegates(monkeypatch):
+def test_hf_backend_push_local_to_hub_delegates(monkeypatch):
     call = {}
 
-    def fake_push_local_datasetdict_to_hub(repo_id, local_dir):
+    def fake_push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
         call["repo_id"] = repo_id
         call["local_dir"] = local_dir
+        call["num_workers"] = num_workers
         return "pushed"
 
     monkeypatch.setattr(
@@ -147,18 +173,32 @@ def test_hf_backend_push_local_datasetdict_to_hub_delegates(monkeypatch):
         fake_push_local_datasetdict_to_hub,
     )
 
-    result = HFBackend.push_local_datasetdict_to_hub("dummy/repo", "/tmp/local")
+    result = HFBackend.push_local_to_hub("dummy/repo", "/tmp/local")
 
     assert result == "pushed"
-    assert call == {"repo_id": "dummy/repo", "local_dir": "/tmp/local"}
+    assert call == {
+        "repo_id": "dummy/repo",
+        "local_dir": "/tmp/local",
+        "num_workers": 1,
+    }
 
 
 def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
     call = {}
 
-    def fake_configure_dataset_card(repo_id, infos):
+    def fake_configure_dataset_card(
+        repo_id,
+        infos,
+        local_dir=None,
+        viewer=False,
+        pretty_name=None,
+        dataset_long_description=None,
+        illustration_urls=None,
+        arxiv_paper_urls=None,
+    ):
         call["repo_id"] = repo_id
         call["infos"] = infos
+        call["local_dir"] = local_dir
         return "configured"
 
     monkeypatch.setattr(hf_datasets, "configure_dataset_card", fake_configure_dataset_card)
@@ -167,7 +207,7 @@ def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
     result = HFBackend.configure_dataset_card("dummy/repo", infos)
 
     assert result == "configured"
-    assert call == {"repo_id": "dummy/repo", "infos": infos}
+    assert call == {"repo_id": "dummy/repo", "infos": infos, "local_dir": None}
 
 
 def test_hf_backend_to_var_sample_dict_delegates(monkeypatch):

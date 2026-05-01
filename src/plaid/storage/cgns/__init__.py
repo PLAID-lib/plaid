@@ -17,7 +17,7 @@ from .writer import (
     push_local_datasetdict_to_hub,
 )
 
-from typing import Any, Union
+from typing import Any, Optional, Union
 from pathlib import Path
 
 
@@ -28,11 +28,29 @@ class CgnsBackend:
     def init_from_disk(path: Union[str, Path]) -> Any:
         return init_datasetdict_from_disk(path=path)
 
-    def download_from_hub(self, repo_id: str, local_dir: Union[str, Path]) -> str:
-        return download_datasetdict_from_hub(repo_id, local_dir)
+    @staticmethod
+    def download_from_hub(
+        repo_id: str,
+        local_dir: Union[str, Path],
+        split_ids=None,
+        features=None,
+        overwrite: bool = False,
+    ) -> str:
+        return download_datasetdict_from_hub(
+            repo_id=repo_id,
+            local_dir=local_dir,
+            split_ids=split_ids,
+            features=features,
+            overwrite=overwrite,
+        )
 
-    def init_datasetdict_streaming_from_hub(self, repo_id: str) -> dict[str, Any]:
-        return init_datasetdict_streaming_from_hub(repo_id=repo_id)
+    @staticmethod
+    def init_datasetdict_streaming_from_hub(
+        repo_id: str, split_ids=None, features=None
+    ) -> dict[str, Any]:
+        return init_datasetdict_streaming_from_hub(
+            repo_id=repo_id, split_ids=split_ids, features=features
+        )
 
     @staticmethod
     def generate_to_disk(
@@ -52,11 +70,37 @@ class CgnsBackend:
             verbose=verbose,
         )
 
-    def push_local_to_hub(self, repo_id: str, local_dir: Union[str, Path]) -> None:
-        return push_local_datasetdict_to_hub(self, repo_id, local_dir=local_dir)
+    @staticmethod
+    def push_local_to_hub(
+        repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
+    ) -> None:
+        return push_local_datasetdict_to_hub(
+            repo_id=repo_id, local_dir=local_dir, num_workers=num_workers
+        )
 
-    def get_configure_dataset_card(self) -> None:
-        return configure_dataset_card
+    @staticmethod
+    def configure_dataset_card(
+        repo_id: str,
+        infos: dict,
+        local_dir: Optional[Union[str, Path]] = None,
+        viewer: bool = False,
+        pretty_name=None,
+        dataset_long_description=None,
+        illustration_urls=None,
+        arxiv_paper_urls=None,
+    ) -> None:
+        if local_dir is None:
+            raise ValueError("local_dir must be provided for cgns backend")
+        return configure_dataset_card(
+            repo_id=repo_id,
+            infos=infos,
+            local_dir=local_dir,
+            viewer=viewer,
+            pretty_name=pretty_name,
+            dataset_long_description=dataset_long_description,
+            illustration_urls=illustration_urls,
+            arxiv_paper_urls=arxiv_paper_urls,
+        )
 
     @staticmethod
     def to_var_sample_dict(dataset, idx, features):

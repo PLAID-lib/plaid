@@ -166,7 +166,6 @@ class Converter:
             sample_dict = self.to_dict(dataset, idx, features, indexers=indexers)
             return to_plaid_sample(sample_dict, self.cgns_types)
         else:
-            print("D")
             return dataset[idx]
 
     def sample_to_dict(self, sample: Sample) -> dict[float, dict[str, Any]]:

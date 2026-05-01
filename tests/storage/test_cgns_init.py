@@ -43,9 +43,14 @@ def test_cgns_backend_init_from_disk_delegates(monkeypatch):
 def test_cgns_backend_download_from_hub_delegates(monkeypatch):
     call = {}
 
-    def fake_download_datasetdict_from_hub(repo_id, local_dir):
+    def fake_download_datasetdict_from_hub(
+        repo_id, local_dir, split_ids=None, features=None, overwrite=False
+    ):
         call["repo_id"] = repo_id
         call["local_dir"] = local_dir
+        call["split_ids"] = split_ids
+        call["features"] = features
+        call["overwrite"] = overwrite
         return "downloaded_path"
 
     monkeypatch.setattr(cgns, "download_datasetdict_from_hub", fake_download_datasetdict_from_hub)
@@ -54,7 +59,13 @@ def test_cgns_backend_download_from_hub_delegates(monkeypatch):
     result = backend.download_from_hub("dummy/repo", "/tmp/local")
 
     assert result == "downloaded_path"
-    assert call == {"repo_id": "dummy/repo", "local_dir": "/tmp/local"}
+    assert call == {
+        "repo_id": "dummy/repo",
+        "local_dir": "/tmp/local",
+        "split_ids": None,
+        "features": None,
+        "overwrite": False,
+    }
 
 
 def test_cgns_backend_streaming_from_hub_current_behavior_raises_name_error():
@@ -96,28 +107,25 @@ def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
     }
 
 
-def test_cgns_backend_push_local_to_hub_current_behavior(monkeypatch):
+def test_cgns_backend_push_local_to_hub_delegates(monkeypatch):
     call = {}
 
-    def fake_push_local_datasetdict_to_hub(*args, **kwargs):
-        call["args"] = args
-        call["kwargs"] = kwargs
+    def fake_push_local_datasetdict_to_hub(repo_id, local_dir, num_workers=1):
+        call["repo_id"] = repo_id
+        call["local_dir"] = local_dir
+        call["num_workers"] = num_workers
         return "pushed"
 
     monkeypatch.setattr(cgns, "push_local_datasetdict_to_hub", fake_push_local_datasetdict_to_hub)
 
-    backend = CgnsBackend()
-    result = backend.push_local_to_hub("dummy/repo", "/tmp/local")
+    result = CgnsBackend.push_local_to_hub("dummy/repo", "/tmp/local")
 
     assert result == "pushed"
-    assert call["args"][0] is backend
-    assert call["args"][1] == "dummy/repo"
-    assert call["kwargs"] == {"local_dir": "/tmp/local"}
-
-
-def test_cgns_backend_get_configure_dataset_card():
-    backend = CgnsBackend()
-    assert backend.get_configure_dataset_card() is cgns.configure_dataset_card
+    assert call == {
+        "repo_id": "dummy/repo",
+        "local_dir": "/tmp/local",
+        "num_workers": 1,
+    }
 
 
 def test_cgns_backend_to_var_sample_dict_raises_value_error():

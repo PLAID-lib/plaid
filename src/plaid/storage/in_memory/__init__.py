@@ -1,9 +1,10 @@
-from typing import Any, Union, Sequence, Optional, Dict, Iterable, overload
+from typing import Any, Callable, Dict, Generator, Iterable, Optional, Sequence, Union, overload
 from pathlib import Path
 
 import numpy as np
 
 from ...containers.sample import Sample
+from ...types import IndexType
 
 
 def _find_first_missing(d: Iterable[int]) -> int:
@@ -20,31 +21,61 @@ class InMemoryBackend:
     def init_from_disk(path: Union[str, Path]) -> Any:
         raise NotImplementedError("inMemoryBackend does not support init from disk")
 
-    def download_from_hub(self, repo_id: str, local_dir: Union[str, Path]) -> str:
+    def download_from_hub(
+        self,
+        repo_id: str,
+        local_dir: Union[str, Path],
+        split_ids: Optional[dict[str, Iterable[int]]] = None,
+        features: Optional[list[str]] = None,
+        overwrite: bool = False,
+    ) -> str:
         raise NotImplementedError("InMemoryBackend download_from_hub not implemented")
         # return
 
-    def init_datasetdict_streaming_from_hub(self, repo_id: str) -> dict[str, Any]:
+    def init_datasetdict_streaming_from_hub(
+        self,
+        repo_id: str,
+        split_ids: Optional[dict[str, Iterable[int]]] = None,
+        features: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
         raise NotImplementedError(
             "InMemoryBackend init_datasetdict_streaming_from_hub not implemented"
         )
         # return generate_datasetdict_to_disk(self, output_folder)
 
-    def generate_datasetdict_to_disk(self, output_folder: Union[str, Path]) -> None:
+    def generate_to_disk(
+        self,
+        output_folder: Union[str, Path],
+        generators: dict[str, Callable[..., Generator[Sample, None, None]]],
+        variable_schema: Optional[dict[str, dict]] = None,
+        gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+        num_proc: int = 1,
+        verbose: bool = False,
+    ) -> None:
         raise NotImplementedError(
             "InMemoryBackend generate_datasetdict_to_disk not implemented"
         )
         # return generate_datasetdict_to_disk(self, output_folder: Union[str, Path])
 
-    def push_local_datasetdict_to_hub(
-        self, repo_id: str, local_dir: Union[str, Path]
+    def push_local_to_hub(
+        self, repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
     ) -> None:
         raise NotImplementedError(
             "InMemoryBackend push_local_datasetdict_to_hub not implemented"
         )
         # return push_local_datasetdict_to_hub(self, repo_id, local_dir: Union[str, Path])
 
-    def configure_dataset_card(self, repo_id: str, infos: dict) -> None:
+    def configure_dataset_card(
+        self,
+        repo_id: str,
+        infos: dict,
+        local_dir: Optional[Union[str, Path]] = None,
+        viewer: bool = False,
+        pretty_name: Optional[str] = None,
+        dataset_long_description: Optional[str] = None,
+        illustration_urls: Optional[list[str]] = None,
+        arxiv_paper_urls: Optional[list[str]] = None,
+    ) -> None:
         raise NotImplementedError(
             "InMemoryBackend configure_dataset_card not implemented"
         )

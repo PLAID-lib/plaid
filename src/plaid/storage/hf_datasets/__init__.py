@@ -50,8 +50,8 @@ class HFBackend:
 
     @staticmethod
     def init_datasetdict_streaming_from_hub(
-        repo_id: str, split_ids, features
-    ) -> dict[str, Any]:
+        repo_id: str, split_ids=None, features=None
+    ) -> Any:
         return init_datasetdict_streaming_from_hub(
             repo_id=repo_id, split_ids=split_ids, features=features
         )
@@ -75,14 +75,34 @@ class HFBackend:
         )
 
     @staticmethod
-    def push_local_datasetdict_to_hub(
-        repo_id: str, local_dir: Union[str, Path]
+    def push_local_to_hub(
+        repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
     ) -> None:
-        return push_local_datasetdict_to_hub(repo_id=repo_id, local_dir=local_dir)
+        return push_local_datasetdict_to_hub(
+            repo_id=repo_id, local_dir=local_dir, num_workers=num_workers
+        )
 
     @staticmethod
-    def configure_dataset_card(repo_id: str, infos: dict) -> None:
-        return configure_dataset_card(repo_id=repo_id, infos=infos)
+    def configure_dataset_card(
+        repo_id: str,
+        infos: dict,
+        local_dir: Optional[Union[str, Path]] = None,
+        viewer: bool = False,
+        pretty_name: Optional[str] = None,
+        dataset_long_description: Optional[str] = None,
+        illustration_urls: Optional[list[str]] = None,
+        arxiv_paper_urls: Optional[list[str]] = None,
+    ) -> None:
+        return configure_dataset_card(
+            repo_id=repo_id,
+            infos=infos,
+            local_dir=local_dir,
+            viewer=viewer,
+            pretty_name=pretty_name,
+            dataset_long_description=dataset_long_description,
+            illustration_urls=illustration_urls,
+            arxiv_paper_urls=arxiv_paper_urls,
+        )
 
     @staticmethod
     def to_var_sample_dict(dataset, idx, features):
