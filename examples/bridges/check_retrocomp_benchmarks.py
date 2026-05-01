@@ -9,9 +9,9 @@ from plaid.storage.common.reader import load_metadata_from_hub, load_problem_def
 from plaid.storage.hf_datasets.bridge import sample_to_var_sample_dict
 
 repo_id = "PhysArena/Tensile2d"
-split_name = "train_500"
+split_name = "train"
 
-hf_dataset = load_dataset(repo_id, split=f"{split_name}[:5]", num_proc=1)
+hf_dataset = load_dataset(repo_id, split=split_name, num_proc=1)
 
 flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(repo_id)
 
@@ -25,5 +25,5 @@ for hf_sample in hf_dataset:
 pb_defs = load_problem_definitions_from_hub(repo_id)
 pb_def = next(iter(pb_defs.values()))
 
-ids_train = pb_def.get_split('train_500')
+ids_train = pb_def.get_split('train')
 sample_train_0 = plaid_dataset[0]

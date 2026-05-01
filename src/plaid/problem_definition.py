@@ -178,7 +178,12 @@ class ProblemDefinition(BaseModel):
                 >>> [100, 101, ...]
         """
         if indices_name is not None:
-            raise NotImplementedError()
+            if indices_name == 'train':
+                return next(iter(self.train_split.values()))
+            elif indices_name == 'test':
+                return next(iter(self.test_split.values()))
+            else:
+                raise ValueError(f'indices_name can be None, "train" or "test". given "{indices_name}"')
         res = {}
 
         if self.train_split != None:
