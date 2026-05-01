@@ -1,5 +1,15 @@
-from typing import Any, Callable, Dict, Generator, Iterable, Optional, Sequence, Union, overload
 from pathlib import Path
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    Optional,
+    Sequence,
+    Union,
+    overload,
+)
 
 import numpy as np
 

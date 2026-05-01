@@ -2,8 +2,8 @@ from plaid import Dataset
 from plaid import ProblemDefinition
 from Muscat.Bridges.CGNSBridge import CGNSToMesh
 import numpy as np
-from Muscat.Containers.Filters.FilterObjects import ElementFilter
-from Muscat.Containers.MeshFieldOperations import GetFieldTransferOp
+from Muscat.MeshContainers.Filters.FilterObjects import ElementFilter
+from Muscat.MeshTools.MeshFieldOperations import GetFieldTransferOp
 from Muscat.FE.Fields.FEField import FEField
 from Muscat.Bridges.CGNSBridge import CGNSToMesh
 from Muscat.FE.FETools import PrepareFEComputation

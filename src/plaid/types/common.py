@@ -1,6 +1,7 @@
 """Common types used across the PLAID library."""
 import sys
-from typing import Union, Annotated, Any
+from typing import Annotated, Any, Union
+
 from pydantic import BeforeValidator, PlainSerializer
 
 if sys.version_info >= (3, 11):

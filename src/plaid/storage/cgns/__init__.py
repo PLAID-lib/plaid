@@ -1,4 +1,10 @@
 """Package for CGNS storage."""
+from collections.abc import Iterable
+from pathlib import Path
+from typing import Any, Mapping, Optional, Union
+
+from datasets import IterableDataset
+
 from .reader import (
     download_datasetdict_from_hub,
     init_datasetdict_from_disk,
@@ -9,12 +15,6 @@ from .writer import (
     generate_datasetdict_to_disk,
     push_local_datasetdict_to_hub,
 )
-
-from typing import Optional, Union, Mapping, Any
-from pathlib import Path
-from collections.abc import Iterable
-
-from datasets import IterableDataset
 
 
 class CgnsBackend:

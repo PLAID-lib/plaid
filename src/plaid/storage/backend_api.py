@@ -14,7 +14,6 @@ from typing import (
 )
 
 import numpy as np
-
 from datasets import IterableDataset
 
 from ..types import IndexType

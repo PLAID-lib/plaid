@@ -1,8 +1,9 @@
 """Implementation of the `Sample` container."""
 # %% Imports
 import sys
-from ..types.common import ArrayDType
 from typing import TYPE_CHECKING
+
+from ..types.common import ArrayDType
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -11,7 +12,6 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
-import copy
 import logging
 import pickle
 import shutil
@@ -25,19 +25,17 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic import Field as PydanticField
 
-from ..types import Array, ArrayDType
-from .utils import get_feature_details_from_path
-
 from ..constants import (
     AUTHORIZED_FEATURE_INFOS,
-    AUTHORIZED_FEATURE_TYPES_T,
     AUTHORIZED_FEATURE_TYPES,
+    AUTHORIZED_FEATURE_TYPES_T,
     CGNS_FIELD_LOCATIONS,
 )
-
-from .features import SampleFeatures
+from ..types import Array, ArrayDType
 from ..utils import cgns_helper as CGH
 from ..utils.base import delegate_methods, safe_len
+from .features import SampleFeatures
+from .utils import get_feature_details_from_path
 
 logger = logging.getLogger(__name__)
 

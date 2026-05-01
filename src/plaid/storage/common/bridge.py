@@ -9,8 +9,9 @@ import numpy as np
 
 from plaid.containers.features import SampleFeatures
 from plaid.containers.sample import Sample
-from .preprocessor import build_sample_dict
 from plaid.utils.cgns_helper import unflatten_cgns_tree
+
+from .preprocessor import build_sample_dict
 
 
 def unflatten_path(key: str) -> str:

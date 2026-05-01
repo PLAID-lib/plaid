@@ -1,26 +1,23 @@
-from typing import Optional, Sequence, Union, Literal, Any
-from pathlib import Path
+"""Dataset container for PLAID."""
 import logging
-from packaging.version import Version
+from pathlib import Path
+from typing import Any, Literal, Optional, Union
 
+import numpy as np
+from packaging.version import Version
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    model_validator,
-    field_validator,
     PrivateAttr,
 )
-import numpy as np
 
+from ..problem_definition import ProblemDefinition
+from ..storage.registry import BackendModule, get_backend
+from ..types.common import NDArrayInt
 from ..utils.info import normalize_infos
 from ..version import __version__
-from ..problem_definition import ProblemDefinition
 from .sample import Sample
-from ..types.common import NDArrayInt
-from ..storage.registry import BackendModule
-from ..storage.registry import get_backend
-
 
 logger = logging.getLogger(__name__)
 

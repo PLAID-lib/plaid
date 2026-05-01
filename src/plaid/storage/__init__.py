@@ -12,11 +12,11 @@ from .reader import (
     init_from_disk,
     init_streaming_from_hub,
 )
+from .registry import get_backend
 from .writer import (
     push_to_hub,
     save_to_disk,
 )
-from .registry import get_backend
 
 __all__ = [
     "download_from_hub",

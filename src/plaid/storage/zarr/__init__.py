@@ -1,11 +1,11 @@
 """Package for Zarr storage."""
 from collections.abc import Iterable, Mapping
-from typing import Any, Optional, Union
 from pathlib import Path
+from typing import Any, Optional, Union
 
 import numpy as np
-from datasets import IterableDataset
 import zarr
+from datasets import IterableDataset
 
 from .bridge import (
     sample_to_var_sample_dict,

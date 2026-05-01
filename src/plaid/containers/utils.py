@@ -2,7 +2,7 @@
 # %% Imports
 
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
@@ -10,9 +10,6 @@ import numpy as np
 from ..constants import (
     CGNS_FIELD_LOCATIONS,
 )
-
-from ..types.common import ArrayDType
-from ..utils.base import safe_len
 
 path_to_location = {f"{loc}Fields": loc for loc in CGNS_FIELD_LOCATIONS}
 retrocompatibility = {

@@ -4,7 +4,7 @@ This module centralizes backend wiring so reader/writer code can use a single
 source of truth for backend capabilities.
 """
 
-from . import cgns, hf_datasets, zarr, in_memory
+from . import cgns, hf_datasets, in_memory, zarr
 from .backend_api import BackendModule
 
 BACKENDS = {

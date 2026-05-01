@@ -13,7 +13,6 @@ Key features:
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
-from ..containers.sample import Sample
 from plaid.storage.common.bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,
@@ -33,6 +32,8 @@ from plaid.storage.common.writer import (
 )
 from plaid.storage.registry import get_backend
 from plaid.utils.cgns_helper import update_features_for_CGNS_compatibility
+
+from ..containers.sample import Sample
 
 
 class Converter:

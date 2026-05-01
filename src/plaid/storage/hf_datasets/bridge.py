@@ -12,9 +12,10 @@ import numpy as np
 import pyarrow as pa
 from datasets import Features, Sequence, Value
 
-from ...containers.sample import Sample
 from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
+
+from ...containers.sample import Sample
 
 
 def convert_dtype_to_hf_feature(feature_type: dict[str, Any]):

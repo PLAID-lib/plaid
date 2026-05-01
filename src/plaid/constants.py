@@ -13,7 +13,6 @@ These constants help standardize metadata, task types, and mesh element referenc
 
 from typing import Literal, get_args
 
-
 AUTHORIZED_TASKS_T = Literal["regression", "classification"]
 AUTHORIZED_TASKS = get_args(AUTHORIZED_TASKS_T)
 
