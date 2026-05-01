@@ -19,14 +19,15 @@ These constants help standardize metadata, task types, and mesh element referenc
 from typing import Literal, get_args
 
 
-AUTHORIZED_TASKS_T = Literal["regression", "classification"] 
+AUTHORIZED_TASKS_T = Literal["regression", "classification"]
 AUTHORIZED_TASKS = get_args(AUTHORIZED_TASKS_T)
 
 
-AUTHORIZED_SCORE_FUNCTIONS_T = Literal["RRMSE"] 
+AUTHORIZED_SCORE_FUNCTIONS_T = Literal["RRMSE"]
 AUTHORIZED_SCORE_FUNCTIONS = get_args(AUTHORIZED_SCORE_FUNCTIONS_T)
 
-AUTHORIZED_FEATURE_TYPES = ["scalar", "field", "nodes"]
+AUTHORIZED_FEATURE_TYPES_T = Literal["scalar", "field", "nodes"]
+AUTHORIZED_FEATURE_TYPES = get_args(AUTHORIZED_FEATURE_TYPES_T)
 
 AUTHORIZED_FEATURE_INFOS = {
     "scalar": ["name"],
