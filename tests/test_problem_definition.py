@@ -153,6 +153,168 @@ class Test_ProblemDefinition:
         assert problem_definition.score_function == "RRMSE"
         print(problem_definition)
 
+    def test_from_path_single_definition(self, monkeypatch, tmp_path):
+        expected = ProblemDefinition(
+            name="pb_single",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
+        )
+
+        def fake_loader(path):
+            assert path == tmp_path
+            return {"pb_single": expected}
+
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk", fake_loader
+        )
+
+        loaded = ProblemDefinition.from_path(tmp_path)
+        assert loaded.name == "pb_single"
+        assert loaded.task == "regression"
+        assert loaded.input_features == ["in_a"]
+        assert loaded.output_features == ["out_a"]
+        assert loaded.get_split() == {"train": [0, 1], "test": [2]}
+
+    def test_from_path_named_definition_and_override(self, monkeypatch, tmp_path):
+        pb_1 = ProblemDefinition(
+            name="pb_1",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
+        )
+        pb_2 = ProblemDefinition(
+            name="pb_2",
+            task="classification",
+            input_features=["in_b"],
+            output_features=["out_b"],
+            train_split={"train_1": [3, 4]},
+            test_split={"test_1": [5]},
+        )
+
+        def fake_loader(path):
+            assert path == tmp_path
+            return {"pb_1": pb_1, "pb_2": pb_2}
+
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk", fake_loader
+        )
+
+        loaded = ProblemDefinition.from_path(
+            tmp_path,
+            name="pb_2",
+            score_function="RRMSE",
+        )
+        assert loaded.name == "pb_2"
+        assert loaded.task == "classification"
+        assert loaded.score_function == "RRMSE"
+
+    def test_from_path_unknown_name_raises(self, monkeypatch, tmp_path):
+        pb = ProblemDefinition(
+            name="existing",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
+        )
+
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk",
+            lambda path: {"existing": pb},
+        )
+
+        with pytest.raises(ValueError, match="Problem definition 'missing' not found"):
+            ProblemDefinition.from_path(tmp_path, name="missing")
+
+    def test_from_path_requires_name_when_multiple(self, monkeypatch, tmp_path):
+        pb_1 = ProblemDefinition(
+            name="pb_1",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
+        )
+        pb_2 = ProblemDefinition(
+            name="pb_2",
+            task="classification",
+            input_features=["in_b"],
+            output_features=["out_b"],
+            train_split={"train_1": [3, 4]},
+            test_split={"test_1": [5]},
+        )
+
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk",
+            lambda path: {"pb_1": pb_1, "pb_2": pb_2},
+        )
+
+        with pytest.raises(RuntimeError, match="more than one Problem definition"):
+            ProblemDefinition.from_path(tmp_path)
+
+    def test_feature_validators_reject_duplicates(self):
+        with pytest.raises(ValidationError, match="duplicated values in input_features"):
+            ProblemDefinition(input_features=["a", "a"])
+
+        with pytest.raises(
+            ValidationError, match="duplicated values in output_features"
+        ):
+            ProblemDefinition(output_features=["a", "a"])
+
+    def test_split_validator_rejects_more_than_one_key(self):
+        with pytest.raises(ValidationError, match="Splits only support one element"):
+            ProblemDefinition(train_split={"train_1": [0], "train_2": [1]})
+
+    def test_non_overwritable_attributes_raise(self, problem_definition):
+        problem_definition.name = "problem_a"
+        with pytest.raises(AttributeError, match="'name' is already set"):
+            problem_definition.name = "problem_b"
+
+        problem_definition.task = "regression"
+        with pytest.raises(AttributeError, match="'task' is already set"):
+            problem_definition.task = "classification"
+
+        problem_definition.score_function = "RRMSE"
+        with pytest.raises(AttributeError, match="'score_function' is already set"):
+            problem_definition.score_function = "MSE"
+
+    def test_split_replacement_logs_warning(self, problem_definition, caplog):
+        problem_definition.train_split = {"train_0": [0, 1]}
+        with caplog.at_level("WARNING"):
+            problem_definition.train_split = {"train_1": [2, 3]}
+
+        assert "already exists -> data will be replaced" in caplog.text
+
+    def test_get_split_paths(self, problem_definition):
+        problem_definition.train_split = {"train_0": [0, 1, 2]}
+        problem_definition.test_split = {"test_0": [3, 4]}
+
+        all_splits = problem_definition.get_split()
+        assert all_splits == {"train": [0, 1, 2], "test": [3, 4]}
+        assert problem_definition.get_split("train") == [0, 1, 2]
+        assert problem_definition.get_split("test") == [3, 4]
+
+        with pytest.raises(ValueError, match='indices_name can be None, "train" or "test"'):
+            problem_definition.get_split("validation")
+
+    def test_add_feature_identifiers_duplicate_checks(self, problem_definition):
+        problem_definition.add_in_features_identifiers(["in_1", "in_2"])
+        with pytest.raises(ValueError, match="in_1 is already in"):
+            problem_definition.add_in_features_identifiers("in_1")
+        with pytest.raises(ValueError, match="Some inputs have same identifiers"):
+            problem_definition.add_in_features_identifiers(["x", "x"])
+
+        problem_definition.add_out_features_identifiers(["out_1", "out_2"])
+        with pytest.raises(ValueError, match="out_1 is already in"):
+            problem_definition.add_out_features_identifiers("out_1")
+        with pytest.raises(ValueError, match="Some outputs have same identifiers"):
+            problem_definition.add_out_features_identifiers(["y", "y"])
+
     # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
     # -------------------------------------------------------------------------#
     # def test_get_in_features_identifiers(self, problem_definition):
