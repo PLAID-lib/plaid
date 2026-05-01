@@ -36,7 +36,7 @@ def test_backend_basic_len_and_getitem():
 
 
 def test_add_sample_single_and_validation_errors():
-    """Single add_sample path validates id and sample types."""
+    """Single add_sample path validates sample_id and sample types."""
     backend = InMemoryBackend()
     sample = _new_sample()
 
@@ -44,30 +44,30 @@ def test_add_sample_single_and_validation_errors():
     assert new_id == 0
     assert backend[0] is sample
 
-    with pytest.raises(TypeError, match="id must be a int"):
-        backend.add_sample(sample, id=[1])
+    with pytest.raises(TypeError, match="sample_id must be an int"):
+        backend.add_sample(sample, sample_id=[1])
 
     with pytest.raises(TypeError, match="sample must be a Sample"):
         backend.add_sample(123)  # type: ignore[arg-type]
 
 
 def test_add_sample_sequence_and_validation_errors():
-    """Sequence add_sample path checks ids shape/type/uniqueness."""
+    """Sequence add_sample path checks IDs shape/type/uniqueness."""
     backend = InMemoryBackend()
     samples = [_new_sample(), _new_sample()]
 
-    assert backend.add_sample(samples, id=[10, 11]) == [10, 11]
+    assert backend.add_sample(samples, sample_id=[10, 11]) == [10, 11]
     assert backend[10] is samples[0]
     assert backend[11] is samples[1]
 
-    with pytest.raises(TypeError, match="id must be a sequence"):
-        backend.add_sample(samples, id=1)
+    with pytest.raises(TypeError, match="sample_id must be a sequence"):
+        backend.add_sample(samples, sample_id=1)
 
-    with pytest.raises(ValueError, match="ids must be differents"):
-        backend.add_sample(samples, id=[0, 0])
+    with pytest.raises(ValueError, match="sample_ids must be unique"):
+        backend.add_sample(samples, sample_id=[0, 0])
 
     with pytest.raises(ValueError, match="length of the list of samples"):
-        backend.add_sample(samples, id=[0])
+        backend.add_sample(samples, sample_id=[0])
 
 
 def test_set_sample_single_iterable_and_validation_errors():
@@ -78,19 +78,19 @@ def test_set_sample_single_iterable_and_validation_errors():
     s1 = _new_sample()
     s2 = _new_sample()
 
-    assert backend.set_sample(s0, id=None) == 0
-    assert backend.set_sample(s1, id=2) == 2
-    assert backend.set_sample(s2, id=None) == 1
+    assert backend.set_sample(s0, sample_id=None) == 0
+    assert backend.set_sample(s1, sample_id=2) == 2
+    assert backend.set_sample(s2, sample_id=None) == 1
 
     # Overwrite existing id
     replacement = _new_sample()
-    assert backend.set_sample(replacement, id=2) == 2
+    assert backend.set_sample(replacement, sample_id=2) == 2
     assert backend[2] is replacement
 
     # Iterable path with explicit ids
     s3 = _new_sample()
     s4 = _new_sample()
-    ids = backend.set_sample([s3, s4], id=[5, 6])
+    ids = backend.set_sample([s3, s4], sample_id=[5, 6])
     assert ids == [5, 6]
     assert backend[5] is s3
     assert backend[6] is s4
@@ -98,18 +98,18 @@ def test_set_sample_single_iterable_and_validation_errors():
     # Iterable path with inferred ids
     s5 = _new_sample()
     s6 = _new_sample()
-    ids = backend.set_sample([s5, s6], id=None)
+    ids = backend.set_sample([s5, s6], sample_id=None)
     assert len(ids) == 2
     assert all(isinstance(i, int) for i in ids)
 
     with pytest.raises(TypeError, match="sample should be of type Sample"):
-        backend.set_sample(3.14, id=None)  # type: ignore[arg-type]
+        backend.set_sample(3.14, sample_id=None)  # type: ignore[arg-type]
 
-    with pytest.raises(TypeError, match="id should be of type"):
-        backend.set_sample(_new_sample(), id="abc")  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match="sample_id should be of type"):
+        backend.set_sample(_new_sample(), sample_id="abc")  # type: ignore[arg-type]
 
-    with pytest.raises(ValueError, match="id should be positive"):
-        backend.set_sample(_new_sample(), id=-1)
+    with pytest.raises(ValueError, match="sample_id should be positive"):
+        backend.set_sample(_new_sample(), sample_id=-1)
 
 
 def test_merge_dataset_and_unsupported_operations():
