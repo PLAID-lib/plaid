@@ -1175,7 +1175,7 @@ class Test_Sample:
             is None
         )
         fields = new_sample.get_field_names(
-            location="CellCenter", zone_name=zone_name, base_name=base_name
+            location="CellCenter", zone=zone_name, base=base_name
         )
 
         assert "test_elem_field_2" not in fields
@@ -1203,11 +1203,9 @@ class Test_Sample:
             is None
         )
         fields = new_sample.get_field_names(
-            location="CellCenter", zone_name=zone_name, base_name=base_name
+            location="CellCenter", zone=zone_name, base=base_name
         )
         assert len(fields) == 0
-
-    # def test_del_all_fields(self, sample_with_tree):
 
     # -------------------------------------------------------------------------#
     def test_get_feature_by_path(self, sample_with_tree_and_scalar):

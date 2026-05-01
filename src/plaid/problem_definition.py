@@ -142,7 +142,7 @@ class ProblemDefinition(BaseModel):
                 and value is not None
                 and current_value != value
             ):
-                logger.warning(f"'{name}' already exists -> data will be replaced", name)
+                logger.warning("'%s' already exists -> data will be replaced", name)
 
         super().__setattr__(name, value)
 
