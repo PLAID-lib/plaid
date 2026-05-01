@@ -31,8 +31,8 @@ def generate_samples_no_string(nb: int, zone_name: str, base_name: str) -> list[
         sample.init_zone(
             np.array([[17, 10, 0]]), zone_name=zone_name, base_name=base_name
         )
-        sample.add_scalar("test_scalar", float(i))
-        sample.add_scalar("test_scalar_2", float(i**2))
+        sample.add_global("test_scalar", float(i))
+        sample.add_global("test_scalar_2", float(i**2))
         sample.add_global("global_0", 0.5 + np.ones((2, 3)))
         sample.add_global("global_1", 1.5 + i + np.ones((2, 3, 2)))
         sample.add_field(
@@ -233,7 +233,7 @@ def heterogeneous_dataset(dataset_with_samples_with_tree):
     dataset = dataset_with_samples_with_tree.copy()
     dataset.get_backend_new().add_sample(Sample())
     sample_with_scalar = Sample()
-    sample_with_scalar.add_scalar("scalar", 1.0)
+    sample_with_scalar.add_global("scalar", 1.0)
     dataset.get_backend_new().add_sample(sample_with_scalar)
     sample_with_ts = Sample()
     dataset.get_backend_new().add_sample(sample_with_ts)
@@ -244,10 +244,10 @@ def heterogeneous_dataset(dataset_with_samples_with_tree):
 def scalar_dataset():
     dataset = Dataset()
     sample = Sample()
-    sample.add_scalar("test_scalar", 0.0)
+    sample.add_global("test_scalar", 0.0)
     dataset.get_backend_new().add_sample(sample)
     sample2 = Sample()
     for i in range(8):
-        sample2.add_scalar(f"scalar_{i}", float(i))
+        sample2.add_global(f"scalar_{i}", float(i))
     dataset.get_backend_new().add_sample(sample2)
     return dataset
