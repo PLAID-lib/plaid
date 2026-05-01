@@ -135,7 +135,6 @@ class Sample(BaseModel):
         Returns:
             list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
         """
-
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
         if feature_type == "scalar":
             return self.get_global_names()
@@ -242,41 +241,41 @@ class Sample(BaseModel):
 
         return self
 
-    def del_feature(
-        self,
-        feature_path: str,
-    ) -> Self:
-        """Remove a feature from current sample.
-
-        This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
+    def del_feature_by_path(
+        self, path: str, time: Optional[float] = None
+    ) -> np.number | np.ndarray | None:
+        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
 
         Args:
-            feature_identifier (dict): A feature identifier.
+            path (str): CGNS node path relative to the mesh root (for example
+                "BaseName/ZoneName/GridCoordinates/CoordinateX" or
+                "BaseName/ZoneName/Solution/FieldName").
+            time (Optional[int], optional): Time selection for the mesh. If an integer,
+                it is interpreted via the SampleFeatures time-assignment logic
+                (see SampleFeatures.resolve_time). If None, the default time
+                assignment is used. Defaults to None.
 
         Returns:
-            Self: The updated sample
+            Feature: The value stored at the given CGNS path. This may be a numpy array, a scalar, or None if the node has no value.
 
-        Raises:
-            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        Note:
+            - This is a thin wrapper around CGNS.PAT.cgnsutils.getValueByPath and Sample.get_tree(time). Callers should handle a returned None when the path or value does not exist.
+            - For field-like features, prefer using Sample.get_field which applies additional validation and selection logic.
         """
-        from .utils import get_feature_details_from_path
+        time = self.features.resolve_time(time)
+#        return CGU.getValueByPath(self.get_tree(time), path)
 
-        feature_details = get_feature_details_from_path(feature_path)
+        updated_tree = None
+        node = CGU.getNodeByPath(self.get_tree(time), path)
+        if node is not None:
+            updated_tree = CGU.nodeDelete(self.get_tree(time), node)
 
-        feature_type = feature_details.pop("type")
-        _ = feature_details.pop("sub_type", None)
+        # If the function reaches here, the field was not found
+        if updated_tree is None:
+            raise KeyError(f"There is no field with name {name} in the specified zone.")
 
-        if feature_type == "global":
-            self.del_global(**feature_details)
-        elif feature_type == "field":
-            self.del_field(**feature_details)
-        elif feature_type == "coordinate":
-            raise NotImplementedError("Deleting node features is not implemented.")
-        else:  # pragma: no cover
-            print(feature_details)
-            raise RuntimeError(f"feature_type not allowed : {feature_type}")
+        return updated_tree
 
-        return self
 
     def update_features_by_path(
         self,

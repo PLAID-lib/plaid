@@ -708,14 +708,9 @@ class Test_Sample:
         )
 
     def test_del_feature(self, sample_with_scalar: Sample, sample_with_tree3d: Sample):
-        sample_with_scalar.del_feature(feature_path="Global/test_scalar_1")
+        sample_with_scalar.del_feature_by_path(path="Global/test_scalar_1")
         assert sample_with_scalar.get_all_features_identifiers_by_type("scalar") == []
-        sample_with_tree3d.del_feature("Base_2_3/Zone/VertexFields/test_node_field_1")
-
-        with pytest.raises(NotImplementedError):
-            sample_with_tree3d.del_feature(
-                feature_path="Base_2_3/Zone/GridCoordinates",
-            )
+        sample_with_tree3d.del_feature_by_path("Base_2_3/Zone/VertexFields/test_node_field_1")
 
     # -------------------------------------------------------------------------#
     def test_get_nodal_tags_empty(self, sample):
