@@ -5,8 +5,6 @@ from typing import Any, Literal, Optional
 from datasets import load_dataset
 from sklearn.model_selection import KFold
 
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
-
 
 def extract_split_data(
     split: Literal["train", "test", "traintest"],
@@ -23,7 +21,7 @@ def extract_split_data(
         outputs (dict[str, list[Any]]): Keys are selected field/scalar names; values are lists of sample data.
     """
     # 1) Load the HuggingFace dataset from disk
-    hf_dataset = load_dataset("PLAID-datasets/VKI-LS59", split="all_samples")
+    hf_dataset = load_dataset("PhysArena/VKI-LS59", split="all_samples")
 
     # 2) Convert to Plaid and retrieve the problem definition
     plaid_dataset, problem_definition = huggingface_dataset_to_plaid(hf_dataset)

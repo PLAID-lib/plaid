@@ -15,7 +15,7 @@ bridge:
 loader:
   _target_: src.data.loader.hub_loader.HubLoader
   bridge: ${bridge.function}
-  dataset_name: PLAID-datasets/2D_Multiscale_Hyperelasticity
+  dataset_name: PhysArena/2D_Multiscale_Hyperelasticity
   cache_dir: cached_datasets/2D_Multiscale_Hyperelasticity
   task_split:
   - DOE_train

@@ -8,7 +8,7 @@ from plaid.storage.common.bridge import to_plaid_sample, to_sample_dict
 from plaid.storage.common.reader import load_metadata_from_hub, load_problem_definitions_from_hub
 from plaid.storage.hf_datasets.bridge import sample_to_var_sample_dict
 
-repo_id = "PLAID-datasets/Tensile2d"
+repo_id = "PhysArena/Tensile2d"
 split_name = "train_500"
 
 hf_dataset = load_dataset(repo_id, split=f"{split_name}[:5]", num_proc=1)

@@ -12,7 +12,7 @@ bridge:
 loader:
   _target_: src.data.loader.hub_loader.HubLoader
   bridge: ${bridge.function}
-  dataset_name: PLAID-datasets/Tensile2d
+  dataset_name: PhysArena/Tensile2d
   cache_dir: cached_datasets/Tensile2d
   task_split:
   - train_500

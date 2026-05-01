@@ -12,7 +12,7 @@ bridge:
 loader:
   _target_: src.data.loader.hub_loader.HubLoader
   bridge: ${bridge.function}
-  dataset_name: PLAID-datasets/Rotor37
+  dataset_name: PhysArena/Rotor37
   cache_dir: cached_datasets/Rotor37
   task_split:
   - train_1000

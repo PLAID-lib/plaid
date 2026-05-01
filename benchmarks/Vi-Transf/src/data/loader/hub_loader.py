@@ -1,6 +1,5 @@
 from datasets import load_dataset
 
-from plaid.bridges.huggingface_bridge import huggingface_dataset_to_plaid
 from plaid import Dataset as PlaidDataset
 from plaid import ProblemDefinition
 
@@ -36,10 +35,10 @@ class HubLoader(Loader):
         except Exception as e:
             print(f"Error loading dataset from Hugging Face: {e}")
             print(
-                "Please refer to the documentation (https://huggingface.co/PLAID-datasets)"
+                "Please refer to the documentation (https://huggingface.co/PhysArena)"
             )
             print(
-                "Provide a correct dataset_name with format 'PLAID-datasets/DATASET'."
+                "Provide a correct dataset_name with format 'PhysArena/DATASET'."
             )
             raise e
 

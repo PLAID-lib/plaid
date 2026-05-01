@@ -75,7 +75,7 @@ n_processes = min(max(1, os.cpu_count()), 6)
 # We load the `VKI-LS59` dataset from Hugging Face and restrict ourselves to the first 24 samples of the training set.
 
 # %%
-repo_id = "PLAID-datasets/VKI-LS59"
+repo_id = "PhysArena/VKI-LS59"
 hf_dataset = load_dataset(repo_id, split="all_samples[:24]")
 
 flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(repo_id)

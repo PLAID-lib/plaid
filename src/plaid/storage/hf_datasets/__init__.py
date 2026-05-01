@@ -41,8 +41,8 @@ class HFBackend():
         return  download_datasetdict_from_hub(repo_id=repo_id, local_dir=local_dir, split_ids=split_ids, features=features, overwrite=overwrite)
     
     @staticmethod
-    def init_datasetdict_streaming_from_hub(repo_id: str) -> dict[str, Any]:
-        return init_datasetdict_streaming_from_hub(repo_id=repo_id)
+    def init_datasetdict_streaming_from_hub(repo_id: str, split_ids, features) -> dict[str, Any]:
+        return init_datasetdict_streaming_from_hub(repo_id=repo_id, split_ids=split_ids,features=features )
     
     @staticmethod 
     def generate_to_disk(output_folder: Union[str, Path], generators, variable_schema,gen_kwargs,num_proc,verbose) -> None:

@@ -12,7 +12,7 @@ bridge:
 loader:
   _target_: src.data.loader.hub_loader.HubLoader
   bridge: ${bridge.function}
-  dataset_name: PLAID-datasets/VKI-LS59
+  dataset_name: PhysArena/VKI-LS59
   cache_dir: cached_datasets/VKI-LS59
   task_split:
   - train

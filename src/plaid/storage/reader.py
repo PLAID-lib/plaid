@@ -338,7 +338,7 @@ def init_streaming_from_hub(
     num_samples = infos["num_samples"]
 
     backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_streaming_from_hub(repo_id, split_ids, features)
+    datasetdict = backend_spec.init_datasetdict_streaming_from_hub(repo_id, split_ids, features)
 
     converterdict = {}
     for split in datasetdict.keys():

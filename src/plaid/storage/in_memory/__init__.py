@@ -6,7 +6,7 @@ import numpy as np
 
 from ...containers.sample import Sample
 
-def __find_first_missing(d: Iterable[int]) -> int:
+def _find_first_missing(d: Iterable[int]) -> int:
     key = 0  # Or 0, depending on your starting preference
     while key in d:
         key += 1
@@ -81,9 +81,9 @@ class InMemoryBackend():
     def set_sample(self, sample: Sample, id: Optional[int] ) -> int: ...
 
     @overload
-    def set_sample(self, sample: Iterable[Sample], id: Iterable[int] ) -> list[int]: ...
+    def set_sample(self, sample: Iterable[Sample], id: Optional[Iterable[int]] ) -> list[int]: ...
 
-    def set_sample(self, sample: Union[Sample, Iterable[Sample]], id: Union[Optional[int],Iterable[int]] ) -> Union[int,list[int]]:
+    def set_sample(self, sample: Union[Sample, Iterable[Sample]], id: Optional[Union[Optional[int],Iterable[int]]] = None) -> Union[int,list[int]]:
         """Set the samples of the data set, overwriting the existing ones.
 
         Args:
@@ -107,10 +107,11 @@ class InMemoryBackend():
                  f"sample should be of type Sample but is {type(sample)=}"
              )
         
-        if int is None:
-            id = __find_first_missing(self._samples)
+        if id is None:
+            id = _find_first_missing(self._samples)
         elif not (isinstance(id, int)):
             raise TypeError(f"id should be of type {int.__class__} but {type(id)=}")
+        
         if id < 0:
             raise ValueError(f"id should be positive (id>=0) but {id=}")
 

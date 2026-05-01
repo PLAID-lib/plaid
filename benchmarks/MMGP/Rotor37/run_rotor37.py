@@ -13,7 +13,7 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 from plaid import Sample
 
-dataset = load_dataset("PLAID-datasets/Rotor37", split="all_samples")
+dataset = load_dataset("PhysArena/Rotor37", split="all_samples")
 
 ids_train = dataset.description["split"]["train_1000"]
 ids_test = dataset.description["split"]["test"]
