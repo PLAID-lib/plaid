@@ -163,7 +163,7 @@ def dataset(samples) -> Dataset:
     for i, sample in enumerate(samples):
         sample_ = deepcopy(sample)
         if i == 0 or i == 2:
-            sample_.add_scalar("toto", 1.0)
+            sample_.add_global("toto", 1.0)
         samples_.append(sample_)
 
     dataset = Dataset()
@@ -205,7 +205,7 @@ def split_ids(problem_definition) -> dict:
 class Test_Storage:
     def assert_sample(self, sample):
         assert isinstance(sample, Sample)
-        sorted_names = sorted(sample.get_scalar_names())
+        sorted_names = sorted(sample.get_global_names())
         for i in range(4):
             assert sorted_names[i] == f"global_{i}"
         assert "test_field_same_size" in sample.get_field_names()

@@ -311,6 +311,116 @@ def has_duplicates_feature_ids(feature_identifiers: list[str]):
 #         seen.add(frozen)
 #     return False
 
+def decode_cgns_url_details(url: str):
+    """Retrieve semantic details from a CGNS-style url."""
+
+    # ----------------------
+    # CGNS library version
+    # ----------------------
+    if url == "CGNSLibraryVersion":
+        return {
+            "type": "cgns",
+            "sub_type": "library_version",
+        }
+
+    split_url = url.split("/")
+    feat: dict[str, str] = {}
+
+    # ----------------------
+    # Global
+    # ----------------------
+    if split_url[0] in [ "Global", "Global_times"]:
+        feat["type"] = "global"
+
+        if len(split_url) == 1:
+            feat["sub_type"] = "root"
+        elif split_url[1] == "Time":
+            feat["sub_type"] = "time"
+            if len(split_url) == 3:
+                feat["name"] = split_url[2]
+        else:
+            feat["sub_type"] = "scalar"
+            feat["name"] = split_url[-1]
+
+        return feat
+
+
+    feat["base"] = split_url[0]
+
+    # ----------------------
+    # Base / Zone
+    # ----------------------
+
+    assert feat["base"].startswith("Base_"), "path not recognized"
+
+    if len(split_url) == 1:
+        feat["type"] = "base"
+        return feat
+
+    feat["zone"] = split_url[1]
+
+    if len(split_url) == 2:
+        feat["type"] = "zone"
+        return feat
+
+
+    node = split_url[2]
+
+    # ----------------------
+    # Grid coordinates
+    # ----------------------
+    if node == "GridCoordinates"  and len(split_url) == 4:
+        feat["type"] = "coordinate"
+        feat["sub_type"] = "node"
+        feat["name"] = split_url[3]
+        return feat
+
+    # ----------------------
+    # Elements
+    # ----------------------
+    if node.startswith("Elements_") and len(split_url) == 4:
+        feat["type"] = "elements"
+        feat["element_type"] = node[len("Elements_") :]
+
+        leaf = split_url[3]
+        if leaf == "ElementConnectivity":
+            feat["sub_type"] = "connectivity"
+        elif leaf == "ElementRange":
+            feat["sub_type"] = "range"
+
+        return feat
+    # ----------------------
+    # Boundary conditions
+    # ----------------------
+    if node == "ZoneBC" and len(split_url) >= 4:
+        feat["type"] = "boundary_condition"
+        feat["name"] = split_path[3]
+
+        if len(split_url) == 4:
+            feat["sub_type"] = "bc"
+        elif len(split_url) == 5:
+            feat["sub_type"] = split_url[4]  # PointList or GridLocation
+
+        return feat
+
+    # ----------------------
+    # Fields (generic location)
+    # ----------------------
+    if node in path_to_location:
+        feat["type"] = "field"
+        feat["location"] = path_to_location[node]
+
+        if len(split_url) == 4:
+            feat["name"] = split_url[3]
+
+        return feat
+
+    # ----------------------
+    # Fallback
+    # ----------------------
+    feat["type"] = "other"
+    feat["path"] = url
+    return feat
 
 def get_feature_details_from_path(path: str) -> dict[str, str]:
     """Retrieve semantic details from a CGNS-style path."""

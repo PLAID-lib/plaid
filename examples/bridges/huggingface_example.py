@@ -54,7 +54,7 @@ from plaid import Dataset, Sample, ProblemDefinition
 def show_sample(sample: Sample):
     print(f"sample = {sample}")
     sample.show_tree()
-    print(f"{sample.get_scalar_names() = }")
+    print(f"{sample.get_global_names() = }")
     print(f"{sample.get_field_names() = }")
 
 

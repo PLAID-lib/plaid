@@ -53,7 +53,7 @@ def other_sample():
 
 @pytest.fixture()
 def sample_with_scalar(sample):
-    sample.add_scalar("test_scalar_1", np.random.randn())
+    sample.add_global("test_scalar_1", np.random.randn())
     return sample
 
 
@@ -90,15 +90,15 @@ def sample_with_tree3d(sample, tree3d):
 def sample_with_tree_and_scalar(
     sample_with_tree: Sample,
 ):
-    sample_with_tree.add_scalar("r", np.random.randn())
-    sample_with_tree.add_scalar("test_scalar_1", np.random.randn())
+    sample_with_tree.add_global("r", np.random.randn())
+    sample_with_tree.add_global("test_scalar_1", np.random.randn())
     return sample_with_tree
 
 
 @pytest.fixture()
 def full_sample(sample_with_tree_and_scalar: Sample, tree3d):
-    sample_with_tree_and_scalar.add_scalar("r", np.random.randn())
-    sample_with_tree_and_scalar.add_scalar("test_scalar_1", np.random.randn())
+    sample_with_tree_and_scalar.add_global("r", np.random.randn())
+    sample_with_tree_and_scalar.add_global("test_scalar_1", np.random.randn())
     sample_with_tree_and_scalar.add_field(
         name="test_field_1", field=np.random.randn(3), location="CellCenter"
     )
@@ -644,44 +644,44 @@ class Test_Sample:
 
     # -------------------------------------------------------------------------#
     def test_get_scalar_names(self, sample: Sample):
-        assert sample.get_scalar_names() == []
+        assert sample.get_global_names() == []
 
     def test_get_scalar_empty(self, sample):
-        assert sample.get_scalar("missing_scalar_name") is None
+        assert sample.get_global("missing_scalar_name") is None
 
     def test_get_scalar(self, sample_with_scalar):
-        assert sample_with_scalar.get_scalar("missing_scalar_name") is None
-        assert sample_with_scalar.get_scalar("test_scalar_1") is not None
-        assert isinstance(sample_with_scalar.get_scalar("test_scalar_1"), np.float64)
+        assert sample_with_scalar.get_global("missing_scalar_name") is None
+        assert sample_with_scalar.get_global("test_scalar_1") is not None
+        assert isinstance(sample_with_scalar.get_global("test_scalar_1"), np.float64)
 
     def test_scalars_add_empty(self, sample_with_scalar):
-        assert isinstance(sample_with_scalar.get_scalar("test_scalar_1"), float)
+        assert isinstance(sample_with_scalar.get_global("test_scalar_1"), float)
 
     def test_scalars_add(self, sample_with_scalar):
-        sample_with_scalar.add_scalar("test_scalar_2", np.random.randn())
+        sample_with_scalar.add_global("test_scalar_2", np.random.randn())
 
     def test_del_scalar_unknown_scalar(self, sample_with_scalar):
         with pytest.raises(KeyError):
-            sample_with_scalar.del_scalar("non_existent_scalar")
+            sample_with_scalar.del_global("non_existent_scalar")
 
     def test_del_scalar_no_scalar(self):
         sample = Sample()
         with pytest.raises(KeyError):
-            sample.del_scalar("non_existent_scalar")
+            sample.del_global("non_existent_scalar")
 
-    def test_del_scalar(self, sample_with_scalar):
-        assert len(sample_with_scalar.get_scalar_names()) == 1
+    def test_del_global(self, sample_with_scalar):
+        assert len(sample_with_scalar.get_global_names()) == 1
 
-        sample_with_scalar.add_scalar("test_scalar_2", np.random.randn(5))
-        assert len(sample_with_scalar.get_scalar_names()) == 2
+        sample_with_scalar.add_global("test_scalar_2", np.random.randn(5))
+        assert len(sample_with_scalar.get_global_names()) == 2
 
-        scalar = sample_with_scalar.del_scalar("test_scalar_1")
-        assert len(sample_with_scalar.get_scalar_names()) == 1
+        scalar = sample_with_scalar.del_global("test_scalar_1")
+        assert len(sample_with_scalar.get_global_names()) == 1
         assert scalar is not None
         assert isinstance(scalar, float)
 
-        scalar = sample_with_scalar.del_scalar("test_scalar_2")
-        assert len(sample_with_scalar.get_scalar_names()) == 0
+        scalar = sample_with_scalar.del_global("test_scalar_2")
+        assert len(sample_with_scalar.get_global_names()) == 0
         assert scalar is not None
         assert isinstance(scalar, np.ndarray)
 
@@ -993,7 +993,7 @@ class Test_Sample:
             time=1.0,
         )
         field = sample.get_field(
-            "field_of_ints", zone_name="Zone_2", base_name="Base_3_3", time=1.0
+            "field_of_ints", zone="Zone_2", base="Base_3_3", time=1.0
         )
         assert field.dtype == np.float64
 
@@ -1150,8 +1150,8 @@ class Test_Sample:
             sample.get_field(
                 name="test_elem_field_2",
                 location="CellCenter",
-                zone_name=zone_name,
-                base_name=base_name,
+                zone=zone_name,
+                base=base_name,
             ),
             np.ndarray,
         )
@@ -1172,8 +1172,8 @@ class Test_Sample:
             new_sample.get_field(
                 name="test_elem_field_2",
                 location="CellCenter",
-                zone_name=zone_name,
-                base_name=base_name,
+                zone=zone_name,
+                base=base_name,
             )
             is None
         )
@@ -1200,8 +1200,8 @@ class Test_Sample:
             new_sample.get_field(
                 name="test_elem_field_1",
                 location="CellCenter",
-                zone_name=zone_name,
-                base_name=base_name,
+                zone=zone_name,
+                base=base_name,
             )
             is None
         )
@@ -1219,113 +1219,43 @@ class Test_Sample:
             "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity", 0.0
         )
 
-    def test_get_feature_from_string_identifier(self, sample_with_tree_and_scalar):
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "scalar::test_scalar_1"
-        )
-
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "field::test_node_field_1"
-        )
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "field::test_node_field_1///Base_2_2"
-        )
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "field::test_node_field_1//Zone/Base_2_2"
-        )
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "field::test_node_field_1/Vertex/Zone/Base_2_2"
-        )
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "field::test_node_field_1/Vertex/Zone/Base_2_2/0"
-        )
-
-        sample_with_tree_and_scalar.get_feature_from_string_identifier("nodes::")
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "nodes::/Base_2_2"
-        )
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "nodes::Zone/Base_2_2"
-        )
-        sample_with_tree_and_scalar.get_feature_from_string_identifier(
-            "nodes::Zone/Base_2_2/0"
-        )
-
-    # def test_get_feature_from_identifier(self, sample_with_tree_and_scalar):
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "scalar", "name": "test_scalar_1"}
+    # def test_get_feature_from_string_identifier(self, sample_with_tree_and_scalar):
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "scalar::test_scalar_1"
     #     )
 
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "field", "name": "test_node_field_1"}
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "field::test_node_field_1"
     #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "field", "name": "test_node_field_1", "base_name": "Base_2_2"}
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "field::test_node_field_1///Base_2_2"
     #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {
-    #             "type": "field",
-    #             "name": "test_node_field_1",
-    #             "base_name": "Base_2_2",
-    #             "zone_name": "Zone",
-    #         }
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "field::test_node_field_1//Zone/Base_2_2"
     #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {
-    #             "type": "field",
-    #             "name": "test_node_field_1",
-    #             "base_name": "Base_2_2",
-    #             "zone_name": "Zone",
-    #             "location": "Vertex",
-    #         }
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "field::test_node_field_1/Vertex/Zone/Base_2_2"
     #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {
-    #             "type": "field",
-    #             "name": "test_node_field_1",
-    #             "base_name": "Base_2_2",
-    #             "zone_name": "Zone",
-    #             "location": "Vertex",
-    #             "time": 0.0,
-    #         }
-    #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "field", "name": "test_node_field_1", "time": 0.0}
-    #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {
-    #             "type": "field",
-    #             "name": "test_node_field_1",
-    #             "base_name": "Base_2_2",
-    #             "time": 0.0,
-    #         }
-    #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {
-    #             "type": "field",
-    #             "name": "test_node_field_1",
-    #             "zone_name": "Zone",
-    #             "location": "Vertex",
-    #             "time": 0.0,
-    #         }
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "field::test_node_field_1/Vertex/Zone/Base_2_2/0"
     #     )
 
-    #     sample_with_tree_and_scalar.get_feature_from_identifier({"type": "nodes"})
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "nodes", "base_name": "Base_2_2"}
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier("nodes::")
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "nodes::/Base_2_2"
     #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "nodes", "base_name": "Base_2_2", "zone_name": "Zone"}
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "nodes::Zone/Base_2_2"
     #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "nodes", "base_name": "Base_2_2", "zone_name": "Zone", "time": 0.0}
+    #     sample_with_tree_and_scalar.get_feature_from_string_identifier(
+    #         "nodes::Zone/Base_2_2/0"
     #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "nodes", "zone_name": "Zone"}
-    #     )
-    #     sample_with_tree_and_scalar.get_feature_from_identifier(
-    #         {"type": "nodes", "time": 0.0}
-    #     )
+
+    def test_get_feature_from_identifier(self, sample_with_tree_and_scalar):
+        sample_with_tree_and_scalar.get_feature_from_url("Base_2_2/Zone/GridCoordinates/CoordinateX") is not None
+        print(sample_with_tree_and_scalar.show_tree())
+        assert sample_with_tree_and_scalar.get_feature_from_url("Base_2_2/Zone/VertexFields/test_node_field_1") is not None
+        assert sample_with_tree_and_scalar.get_feature_from_url("Global/test_scalar_1") is not None
 
     # def test_get_features_from_identifiers(self, sample_with_tree_and_scalar):
     #     sample_with_tree_and_scalar.get_features_from_identifiers(
@@ -1353,13 +1283,13 @@ class Test_Sample:
     #     )
 
     # def test_update_features_from_identifier(self, sample_with_tree_and_scalar):
-    #     before = sample_with_tree_and_scalar.get_scalar("test_scalar_1")
+    #     before = sample_with_tree_and_scalar.get_global("test_scalar_1")
     #     sample_ = sample_with_tree_and_scalar.update_features_from_identifier(
     #         feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
     #         features=3.141592,
     #         in_place=False,
     #     )
-    #     after = sample_.get_scalar("test_scalar_1")
+    #     after = sample_.get_global("test_scalar_1")
     #     show_cgns_tree(sample_.features.data[0])
     #     assert after != before
 
@@ -1442,7 +1372,7 @@ class Test_Sample:
     #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_from_identifier(
     #         feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
     #     )
-    #     assert sample_.get_scalar_names() == ["test_scalar_1"]
+    #     assert sample_.get_global_names() == ["test_scalar_1"]
     #     assert len(sample_.get_field_names()) == 0
 
     #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_from_identifier(
@@ -1456,7 +1386,7 @@ class Test_Sample:
     #         },
     #     )
     #     show_cgns_tree(sample_with_tree_and_scalar.features.data[0])
-    #     assert len(sample_.get_scalar_names()) == 0
+    #     assert len(sample_.get_global_names()) == 0
     #     assert sample_.get_field_names() == ["test_node_field_1"]
 
     #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_from_identifier(
@@ -1467,7 +1397,7 @@ class Test_Sample:
     #             "time": 0.0,
     #         },
     #     )
-    #     assert len(sample_.get_scalar_names()) == 0
+    #     assert len(sample_.get_global_names()) == 0
     #     assert len(sample_.get_field_names()) == 0
 
     #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_from_identifier(
@@ -1476,7 +1406,7 @@ class Test_Sample:
     #             {"type": "nodes"},
     #         ],
     #     )
-    #     assert len(sample_.get_scalar_names()) == 0
+    #     assert len(sample_.get_global_names()) == 0
     #     assert sample_.get_field_names() == ["test_node_field_1"]
 
     # def test_get_all_features_identifiers(self, sample_with_tree_and_scalar):
@@ -1531,17 +1461,17 @@ class Test_Sample:
     #         "time": 0.0,
     #     } in feat_ids
 
-    # def test_get_all_features_identifiers_by_type(self, sample_with_tree_and_scalar):
-    #     feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
-    #         "scalar"
-    #     )
-    #     assert len(feat_ids) == 2
-    #     assert {"type": "scalar", "name": "r"} in feat_ids
-    #     assert {"type": "scalar", "name": "test_scalar_1"} in feat_ids
+    def test_get_all_features_identifiers_by_type(self, sample_with_tree_and_scalar):
+        feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
+            "scalar"
+        )
+        assert len(feat_ids) == 2
+        assert "r" in feat_ids
+        assert "test_scalar_1" in feat_ids
 
-    #     feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
-    #         "nodes"
-    #     )
+    #    feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
+    #        "nodes"
+    #    )
     #     assert {
     #         "type": "nodes",
     #         "base_name": "Base_2_2",
@@ -1549,18 +1479,15 @@ class Test_Sample:
     #         "time": 0.0,
     #     } in feat_ids
 
-    #     feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
-    #         "field"
-    #     )
-    #     assert len(feat_ids) == 5
-    #     assert {
-    #         "type": "field",
-    #         "name": "big_node_field",
-    #         "base_name": "Base_2_2",
-    #         "zone_name": "Zone",
-    #         "location": "Vertex",
-    #         "time": 0.0,
-    #     } in feat_ids
+        feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
+            "field"
+        )
+        assert len(feat_ids) == 4
+
+        feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
+            "nodes"
+        )
+        assert len(feat_ids) == 2
 
     # def test_merge_features(self, sample_with_tree_and_scalar, sample_with_tree):
     #     feat_id = sample_with_tree_and_scalar.get_all_features_identifiers()

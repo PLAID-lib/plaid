@@ -112,7 +112,7 @@ print(f"{sample_01 = }")
 
 # %%
 # Add a scalar to the Sample
-sample_01.add_scalar("rotation", np.random.randn())
+sample_01.add_global("rotation", np.random.randn())
 print(f"{sample_01 = }")
 
 # %% [markdown]
@@ -126,7 +126,7 @@ print(f"{sample_02 = }")
 
 # %%
 # Add a scalar to the second Sample
-sample_02.add_scalar("rotation", np.random.randn())
+sample_02.add_global("rotation", np.random.randn())
 print(f"{sample_02 = }")
 
 # %% [markdown]
@@ -136,8 +136,8 @@ print(f"{sample_02 = }")
 # Initialize a third empty Sample
 print("#---# Empty Sample")
 sample_03 = Sample()
-sample_03.add_scalar("speed", np.random.randn())
-sample_03.add_scalar("rotation", sample_01.get_scalar("rotation"))
+sample_03.add_global("speed", np.random.randn())
+sample_03.add_global("rotation", sample_01.get_global("rotation"))
 sample_03.features.add_tree(copy.deepcopy(cgns_mesh))
 
 # Show Sample CGNS content
@@ -156,9 +156,9 @@ sample_03.show_tree()
 print(f"{sample_03 = }", end="\n\n")
 
 # Print sample scalar data
-print(f"{sample_03.get_scalar_names() = }")
-print(f"{sample_03.get_scalar('speed') = }")
-print(f"{sample_03.get_scalar('rotation') = }", end="\n\n")
+print(f"{sample_03.get_global_names() = }")
+print(f"{sample_03.get_global('speed') = }")
+print(f"{sample_03.get_global('rotation') = }", end="\n\n")
 
 # Print sample scalar data
 print(f"{sample_03.get_field_names() = }")
@@ -265,15 +265,15 @@ print(f"{dataset[0] = }")  # getitem strategy
 print(f"{dataset[1] = }")  # getitem strategy
 print(f"{dataset[2] = }", end="\n\n")
 
-print("scalar of the first sample = ", dataset[0].get_scalar_names())
-print("scalar of the second sample = ", dataset[1].get_scalar_names())
-print("scalar of the third sample = ", dataset[2].get_scalar_names())
+print("scalar of the first sample = ", dataset[0].get_global_names())
+print("scalar of the second sample = ", dataset[1].get_global_names())
+print("scalar of the third sample = ", dataset[2].get_global_names())
 
 # %%
 # Access dataset information
-print(f"{dataset[0].get_scalar('rotation') = }")
-print(f"{dataset[1].get_scalar('rotation') = }")
-print(f"{dataset[2].get_scalar('rotation') = }")
+print(f"{dataset[0].get_global('rotation') = }")
+print(f"{dataset[1].get_global('rotation') = }")
+print(f"{dataset[2].get_global('rotation') = }")
 
 # %% [markdown]
 # ### Get Dataset scalars to tabular
@@ -282,7 +282,7 @@ print(f"{dataset[2].get_scalar('rotation') = }")
 # Print scalars in tabular format
 scalar_names = set()
 for x in range(len(dataset)):
-    scalar_names.update(dataset[x].get_scalar_names())
+    scalar_names.update(dataset[x].get_global_names())
 
 print(f"{scalar_names = }", end="\n\n")
 
@@ -319,8 +319,8 @@ nb_samples = 3
 samples = []
 for _ in range(nb_samples):
     sample = Sample()
-    sample.add_scalar("rotation", np.random.rand() + 1.0)
-    sample.add_scalar("random_name", np.random.rand() - 1.0)
+    sample.add_global("rotation", np.random.rand() + 1.0)
+    sample.add_global("random_name", np.random.rand() - 1.0)
     samples.append(sample)
 
 # Add a list of Samples

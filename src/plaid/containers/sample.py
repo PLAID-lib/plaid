@@ -136,60 +136,16 @@ class Sample(BaseModel):
         """
         return self.model_copy(deep=True)
 
-    def get_scalar(self, name: str) -> Optional[Array]:
-        """Retrieve a scalar value associated with the given name.
+    # def get_all_features_identifiers(self) -> list[str]:
+    #     """Get all features identifiers from the sample.
 
-        Args:
-            name (str): The name of the scalar value to retrieve.
-
-        Returns:
-            Scalar or None: The scalar value associated with the given name, or None if the name is not found.
-        """
-        return self.features.get_global(name)
-
-    def add_scalar(self, name: str, value: np.number) -> None:
-        """Add a scalar value to a dictionary.
-
-        Args:
-            name (str): The name of the scalar value.
-            value (Scalar): The scalar value to add or update in the dictionary.
-        """
-        self.features.add_global(name, value)
-
-    def del_scalar(self, name: str) -> np.number:
-        """Delete a scalar value from the dictionary.
-
-        Args:
-            name (str): The name of the scalar value to be deleted.
-
-        Raises:
-            KeyError: Raised when there is no scalar / there is no scalar with the provided name.
-
-        Returns:
-            Scalar: The value of the deleted scalar.
-        """
-        return self.features.del_global(name)
-
-    def get_scalar_names(self) -> list[str]:
-        """Get a set of scalar names available in the object.
-
-        Returns:
-            list[str]: A set containing the names of the available scalars.
-        """
-        return self.features.get_global_names()
-
-
-    # -------------------------------------------------------------------------#
-    def get_all_features_identifiers(self) -> list[str]:
-        """Get all features identifiers from the sample.
-
-        Returns:
-            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
-        """
-        all_features_identifiers = []
-        all_features_identifiers.extend(map( lambda x: "Global/"+x,self.get_scalar_names()))
-
-        #for sn in self.get_scalar_names():
+    #     Returns:
+    #         list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
+    #     """
+    #     all_features_identifiers = []
+    #     all_features_identifiers.extend(map( lambda x: "Global/"+x,self.get_global_names()))
+    #     raise
+        #for sn in self.get_global_names():
         #    all_features_identifiers.append({"type": "scalar", "name": sn})
     #     for t in self.features.get_all_time_values():
     #         for bn in self.features.get_base_names(time=t):
@@ -235,13 +191,11 @@ class Sample(BaseModel):
 
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
         if feature_type ==  "scalar":
-            return self.get_scalar_names()
+            return self.get_global_names()
         elif feature_type ==  "field":
             return self.get_field_names()
         elif feature_type ==  "nodes":
-            return self.get_nodes_names()
-
-
+            return ["Coordinate" + n for _,n in  zip(range(self.features.get_physical_dim()), ["X","Y","Z"]) ]
 
     def get_feature_by_path(self, path: str, time: Optional[int] = None) -> np.number | np.ndarray | None:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style path.
@@ -303,7 +257,7 @@ class Sample(BaseModel):
         assert len(arg_names) >= len(feature_details), "Too much details provided"
 
         if feature_type == "scalar":
-            val = self.get_scalar(feature_details[0])
+            val = self.get_global(feature_details[0])
             if val is None:
                 raise KeyError(
                     f"Unknown scalar {feature_details[0]}"
@@ -326,85 +280,109 @@ class Sample(BaseModel):
                 kwargs["time"] = float(kwargs["time"])
             return self.get_nodes(**kwargs).flatten()
 
-    def get_feature_from_identifier(
-        self, feature_identifier: str
-    ) -> ArrayDType:
-        """Retrieve a feature object based on a structured identifier dictionary.
-
-        The `feature_identifier` must include a `"type"` key specifying the feature kind:
-            - `"scalar"`       -> calls `scalars.get(name)`
-            - `"field"`        -> calls `get_field(name, base_name, zone_name, location, time)`
-            - `"nodes"`        -> calls `get_nodes(base_name, zone_name, time)`
-
-        Required keys:
-            - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
-            - `"name"`: required for all types except `"nodes"`
-
-        Optional keys depending on type:
-            - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
-
-        Any omitted optional keys will rely on the default values mechanics of the class.
-
-        Args:
-            feature_identifier ( dict[str:Union[str, float]]):
-                A dictionary encoding the feature type and its relevant parameters.
-
-        Returns:
-            Feature: The corresponding feature instance retrieved via the appropriate accessor.
+    def get_feature_from_url(self, feature_url: str):
+        """Retrieve a feature object based on a cgns url.
         """
-        #feature_type, feature_details = get_feature_type_and_details_from(
-        #    feature_identifier
-        #)
+        from .utils import decode_cgns_url_details
+        return self.get_feature_from_details(decode_cgns_url_details(feature_url))
 
-        feature_details = get_feature_details_from_path(feature_identifier)
+    def get_feature_from_details(self, feature_details):
 
-        if feature_identifier == "scalar":
-            return self.get_scalar(**feature_details)
-        elif feature_identifier == "field":
-            return self.get_field(**feature_details)
-        elif feature_identifier == "nodes":
+        my_type = feature_details.pop("type", None)
+        my_sub_type = feature_details.pop("sub_type", None)
+        if my_type == 'coordinate':
+            print(feature_details)
             return self.get_nodes(**feature_details).flatten()
+        elif my_type == 'field':
+            print(feature_details)
+            return self.get_field(**feature_details)
+        elif my_type == 'global':
+            return self.get_global(**feature_details)
 
-    def get_features_from_identifiers(
-        self, feature_identifiers: list[str]
-    ) -> list[ArrayDType]:
-        """Retrieve features based on a list of structured identifier dictionaries.
+        print(feature_details)
+        print(my_type)
+        raise RuntimeError(f"Cant find a featurn for the given details")
 
-        Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
-            - `"scalar"`       -> calls `scalars.get(name)`
-            - `"field"`        -> calls `get_field(name, base_name, zone_name, location, time)`
-            - `"nodes"`        -> calls `get_nodes(base_name, zone_name, time)`
+    # def get_feature_from_identifier(
+    #     self, feature_identifier: str
+    # ) -> ArrayDType:
+    #     """Retrieve a feature object based on a structured identifier dictionary.
 
-        Required keys:
-            - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
-            - `"name"`: required for all types except `"nodes"`
+    #     The `feature_identifier` must include a `"type"` key specifying the feature kind:
+    #         - `"scalar"`       → calls `scalars.get(name)`
+    #         - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
+    #         - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
 
-        Optional keys depending on type:
-            - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
+    #     Required keys:
+    #         - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
+    #         - `"name"`: required for all types except `"nodes"`
 
-        Any omitted optional keys will rely on the default values mechanics of the class.
+    #     Optional keys depending on type:
+    #         - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
 
-        Args:
-            feature_identifiers (list[FeatureIdentifier]):
-                A dictionary encoding the feature type and its relevant parameters.
+    #     Any omitted optional keys will rely on the default values mechanics of the class.
 
-        Returns:
-            list[Feature]: List of corresponding feature instance retrieved via the appropriate accessor.
-        """
-        all_features_info = [
-            get_feature_type_and_details_from(feat_id)
-            for feat_id in feature_identifiers
-        ]
+    #     Args:
+    #         feature_identifier ( dict[str:Union[str, float]]):
+    #             A dictionary encoding the feature type and its relevant parameters.
 
-        features = []
-        for feature_type, feature_details in all_features_info:
-            if feature_type == "scalar":
-                features.append(self.get_scalar(**feature_details))
-            elif feature_type == "field":
-                features.append(self.get_field(**feature_details))
-            elif feature_type == "nodes":
-                features.append(self.get_nodes(**feature_details).flatten())
-        return features
+    #     Returns:
+    #         Feature: The corresponding feature instance retrieved via the appropriate accessor.
+    #     """
+    #     #feature_type, feature_details = get_feature_type_and_details_from(
+    #     #    feature_identifier
+    #     #)
+
+    #     feature_details = get_feature_details_from_path(feature_identifier)
+
+    #     print(feature_details)
+    #     if feature_identifier == "scalar":
+    #         return self.get_global(**feature_details)
+    #     elif feature_details["type"] == "field":
+    #         return self.get_field(**feature_details)
+    #     elif feature_identifier == "nodes":
+    #         return self.get_nodes(**feature_details).flatten()
+
+    # def get_features_from_identifiers(
+    #     self, feature_identifiers: list[str]
+    # ) -> list[ArrayDType]:
+    #     """Retrieve features based on a list of structured identifier dictionaries.
+
+    #     Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
+    #         - `"scalar"`       → calls `scalars.get(name)`
+    #         - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
+    #         - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
+
+    #     Required keys:
+    #         - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
+    #         - `"name"`: required for all types except `"nodes"`
+
+    #     Optional keys depending on type:
+    #         - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
+
+    #     Any omitted optional keys will rely on the default values mechanics of the class.
+
+    #     Args:
+    #         feature_identifiers (list[FeatureIdentifier]):
+    #             A dictionary encoding the feature type and its relevant parameters.
+
+    #     Returns:
+    #         list[Feature]: List of corresponding feature instance retrieved via the appropriate accessor.
+    #     """
+    #     all_features_info = [
+    #         get_feature_type_and_details_from(feat_id)
+    #         for feat_id in feature_identifiers
+    #     ]
+
+    #     features = []
+    #     for feature_type, feature_details in all_features_info:
+    #         if feature_type == "scalar":
+    #             features.append(self.get_global(**feature_details))
+    #         elif feature_type == "field":
+    #             features.append(self.get_field(**feature_details))
+    #         elif feature_type == "nodes":
+    #             features.append(self.get_nodes(**feature_details).flatten())
+    #     return features
 
     def add_feature(
         self,
@@ -436,7 +414,7 @@ class Sample(BaseModel):
         if feature_type == "scalar":
             if safe_len(feature) == 1:
                 feature = feature[0]
-            self.add_scalar(**feature_details, value=feature)
+            self.add_global(**feature_details, value=feature)
         elif feature_type == "field":
             self.add_field(**feature_details, field=feature, warning_overwrite=False)
         elif feature_type == "nodes":
@@ -470,7 +448,7 @@ class Sample(BaseModel):
         )
 
         if feature_type == "scalar":
-            self.del_scalar(**feature_details)
+            self.del_global(**feature_details)
         elif feature_type == "field":
             self.del_field(**feature_details)
         elif feature_type == "nodes":
@@ -566,20 +544,6 @@ class Sample(BaseModel):
         sample._extra_data = copy.deepcopy(self._extra_data)
 
         return sample
-
-    # @deprecated(
-    #     "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_sample_from_identifier(...)`",
-    #     version="0.1.8",
-    #     removal="0.2",
-    # )
-    # def from_features_identifier(
-    #     self,
-    #     feature_identifiers: Union[str, list[str]],
-    # ) -> Self:
-    #     """DEPRECATED: Use :meth:`Dataset.extract_sample_from_identifier` instead."""
-    #     return self.extract_sample_from_identifier(
-    #         feature_identifiers
-    #     )  # pragma: no cover
 
     def merge_features(self, sample: Self, in_place: bool = False) -> Self:
         """Merge features from another sample into the current sample.
@@ -827,11 +791,11 @@ class Sample(BaseModel):
         summary += "=" * 50 + "\n"
 
         # Scalars with names
-        scalar_names = self.get_scalar_names()
+        scalar_names = self.get_global_names()
         if scalar_names:
             summary += f"Scalars ({len(scalar_names)}):\n"
             for name in scalar_names:
-                value = self.get_scalar(name)
+                value = self.get_global(name)
                 summary += f"  - {name}: {value}\n"
             summary += "\n"
 
@@ -851,12 +815,12 @@ class Sample(BaseModel):
                         summary += f"            Zone: {zone_name}\n"
                         # Nodes, nodal tags and fields at verticies
                         nodes = self.get_nodes(
-                            zone_name=zone_name, base_name=base_name, time=time
+                            zone=zone_name, base=base_name, time=time
                         )
                         if nodes is not None:
                             nb_nodes = nodes.shape[0]
                             nodal_tags = self.features.get_nodal_tags(
-                                zone_name=zone_name, base_name=base_name, time=time
+                                zone=zone_name, base=base_name, time=time
                             )
                             summary += f"                Nodes ({nb_nodes})\n"
                             if len(nodal_tags) > 0:
@@ -902,7 +866,7 @@ class Sample(BaseModel):
         report += "=" * 30 + "\n"
 
         # Check if sample has basic features
-        has_scalars = len(self.get_scalar_names()) > 0
+        has_scalars = len(self.get_global_names()) > 0
         has_meshes = len(self.features.get_all_time_values()) > 0
 
         report += f"Has scalars: {has_scalars}\n"

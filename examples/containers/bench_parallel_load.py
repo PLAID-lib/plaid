@@ -77,8 +77,8 @@ if __name__ == "__main__":
             smp = tmpsmp
 
             # ---# Add some random data
-            smp.add_scalar("id", i)
-            smp.add_scalar("s0", np.random.randn())
+            smp.add_global("id", i)
+            smp.add_global("s0", np.random.randn())
             n_nodes = smp.get_nodes().shape[0]
             smp.add_field("f0", np.random.randn(n_nodes))
 

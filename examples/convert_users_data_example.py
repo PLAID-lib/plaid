@@ -162,10 +162,10 @@ for cgns_tree in CGNS_meshes:
 
     # Add random scalar values to the sample
     for sname in in_scalars_names:
-        sample.add_scalar(sname, np.random.randn())
+        sample.add_global(sname, np.random.randn())
 
     for sname in out_scalars_names:
-        sample.add_scalar(sname, np.random.randn())
+        sample.add_global(sname, np.random.randn())
 
     # Add random field values to the sample
     for j, sname in enumerate(out_fields_names):

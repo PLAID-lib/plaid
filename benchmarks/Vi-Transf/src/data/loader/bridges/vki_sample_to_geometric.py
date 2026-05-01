@@ -37,9 +37,9 @@ def vki_sample_to_geometric(
     input_scalars = []
     output_scalars = []
     for name in input_scalars_names:
-        input_scalars.append(sample.get_scalar(name))
+        input_scalars.append(sample.get_global(name))
     for name in output_scalars_names:
-        output_scalars.append(sample.get_scalar(name))
+        output_scalars.append(sample.get_global(name))
 
     if len(input_fields_names) >= 1:
         input_fields = []
@@ -68,7 +68,7 @@ def vki_sample_to_geometric(
 
     # Extracting special nodal tags
     nodal_tags = {}
-    for k, v in sample.get_nodal_tags(base_name="Base_2_2").items():
+    for k, v in sample.get_nodal_tags(base="Base_2_2").items():
         nodal_tags[k + "_id"] = torch.tensor(v, dtype=torch.long)
 
     if None not in output_scalars and None not in output_fields:

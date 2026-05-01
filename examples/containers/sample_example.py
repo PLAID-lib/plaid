@@ -49,7 +49,7 @@ from plaid.utils import cgns_helper as CGH
 def show_sample(sample: Sample):
     print(f"sample = {sample}")
     sample.show_tree()
-    print(f"{sample.get_scalar_names() = }")
+    print(f"{sample.get_global_names() = }")
     print(f"{sample.get_field_names() = }")
 
 
@@ -112,14 +112,14 @@ show_sample(sample)
 
 # %%
 # Add a rotation scalar to this Sample
-sample.add_scalar("rotation", np.random.randn())
+sample.add_global("rotation", np.random.randn())
 
 show_sample(sample)
 
 # %%
 # Add a more scalars to this Sample
-sample.add_scalar("speed", np.random.randn())
-sample.add_scalar("other", np.random.randn())
+sample.add_global("speed", np.random.randn())
+sample.add_global("other", np.random.randn())
 
 show_sample(sample)
 
@@ -229,9 +229,9 @@ show_sample(sample)
 
 # %%
 # It will look for a default base if no base and zone are given
-print(f"{sample.get_scalar_names() = }")
-print(f"{sample.get_scalar('omega') = }")
-print(f"{sample.get_scalar('rotation') = }")
+print(f"{sample.get_global_names() = }")
+print(f"{sample.get_global('omega') = }")
+print(f"{sample.get_global('rotation') = }")
 
 # %% [markdown]
 # ### Access fields data in Sample

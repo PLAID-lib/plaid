@@ -545,7 +545,7 @@ class SampleFeatures:
         if time not in self.data:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        zone_node = self.get_zone(zone=zone_name, base=base_name, time=time)
         mesh_tree = self.data[time]
 
         if zone_node is None:
@@ -614,8 +614,8 @@ class SampleFeatures:
 
     def get_zone(
         self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> CGNSNode:
         """Retrieve a CGNS Zone node by its name within a specific Base and time.
@@ -629,23 +629,23 @@ class SampleFeatures:
             CGNSNode: Returns a CGNS Zone node if found; otherwise, returns None.
         """
         # get_base will look for default base_name and time
-        base_node = self.get_base(base_name, time)
+        base_node = self.get_base(base, time)
         if base_node is None:
             # logger.warning(f"No base with name {base_name} in this tree")
             return None
 
         # _zone_attribution will look for default base_name
-        zone_name = self.resolve_zone(zone_name, base_name, time)
-        if zone_name is None:
+        zone = self.resolve_zone(zone, base, time)
+        if zone is None:
             # logger.warning(f"No zone with name {zone_name} in this base ({base_name})")
             return None
 
-        return CGU.getNodeByPath(base_node, zone_name)
+        return CGU.getNodeByPath(base_node, zone)
 
     def get_zone_type(
         self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> str:
         """Get the type of a specific zone at a specified time.
@@ -662,19 +662,19 @@ class SampleFeatures:
             str: The type of the specified zone as a string.
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        zone_node = self.get_zone(zone=zone, base=base, time=time)
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base_name}/{zone_name}>, you should first create one with `Sample.init_zone({zone_name=},{base_name=})`"
+                f"there is no base/zone <{base}/{zone}>, you should first create one with `Sample.init_zone({zone=},{base=})`"
             )
         return CGU.getValueByPath(zone_node, "ZoneType").tobytes().decode()
 
     # -------------------------------------------------------------------------#
     def get_nodal_tags(
         self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> dict[str, Array]:
         """Get the nodal tags for a specified base and zone at a given time.
@@ -689,7 +689,7 @@ class SampleFeatures:
             The NumPy arrays have shape (num_nodal_tags).
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        zone_node = self.get_zone(zone=zone, base=base, time=time)
 
         if zone_node is None:
             return {}
@@ -858,9 +858,10 @@ class SampleFeatures:
     # -------------------------------------------------------------------------#
     def get_nodes(
         self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
+        name: Optional[str] = None,
     ) -> Optional[Array]:
         """Get grid node coordinates from a specified base, zone, and time.
 
@@ -880,7 +881,7 @@ class SampleFeatures:
             This function can also be called using `get_points()` or `get_vertices()`.
         """
         # get_zone will look for default base_name, zone_name and time
-        search_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        search_node = self.get_zone(zone=zone, base=base, time=time)
 
         if search_node is None:
             return None
@@ -888,12 +889,25 @@ class SampleFeatures:
         grid_paths = CGU.getAllNodesByTypeSet(search_node, ["GridCoordinates_t"])
         if len(grid_paths) == 1:
             grid_node = CGU.getNodeByPath(search_node, grid_paths[0])
+
+            if name == "CoordinateX":
+                return CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateX")
+            elif name == "CoordinateY":
+                return CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateY")
+            elif name == "CoordinateY":
+                return CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateZ")
+            elif name != None:
+                raise ValueError(f"Unkonwn coordiate name : {name}")
+
             array_x = CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateX")
             array_y = CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateY")
             array_z = CGU.getValueByPath(grid_node, "GridCoordinates/CoordinateZ")
             if array_z is None:
                 array = np.concatenate(
-                    (array_x.reshape((-1, 1)), array_y.reshape((-1, 1))), axis=1
+                    (
+                        array_x.reshape((-1, 1)),
+                        array_y.reshape((-1, 1))),
+                        axis=1
                 )
             else:
                 array = np.concatenate(
@@ -936,7 +950,7 @@ class SampleFeatures:
             This function can also be called using `set_points()` or `set_vertices()`
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        zone_node = self.get_zone(zone=zone_name, base=base_name, time=time)
 
         if zone_node is None:
             raise KeyError(
@@ -985,7 +999,7 @@ class SampleFeatures:
             The NumPy arrays have shape (num_elements, num_nodes_per_element), and element indices are 0-based.
         """
         # get_zone will look for default base_name, zone_name and time
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        zone_node = self.get_zone(zone=zone_name, base=base_name, time=time)
 
         if zone_node is None:
             return {}
@@ -1039,7 +1053,7 @@ class SampleFeatures:
         ) -> list[str]:
             # get_zone will look for default zone_name, base_name, time
             search_node = self.get_zone(
-                zone_name=zone_name, base_name=base_name, time=time
+                zone=zone_name, base=base_name, time=time
             )
             if search_node is None:  # pragma: no cover
                 return []
@@ -1095,8 +1109,8 @@ class SampleFeatures:
         self,
         name: str,
         location: str = "Vertex",
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> np.ndarray:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
@@ -1113,7 +1127,7 @@ class SampleFeatures:
             Field: A set containing the names of the fields that match the specified criteria.
         """
         # get_zone will look for default time
-        search_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        search_node = self.get_zone(zone=zone, base=base, time=time)
         if search_node is None:
             return None
 
@@ -1173,7 +1187,7 @@ class SampleFeatures:
         # init_tree will look for default time
         self.init_tree(time)
         # get_zone will look for default zone_name, base_name and time
-        zone_node = self.get_zone(zone_name=zone, base_name=base, time=time)
+        zone_node = self.get_zone(zone=zone, base=base, time=time)
 
         if zone_node is None:
             raise KeyError(
@@ -1267,7 +1281,7 @@ class SampleFeatures:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
         # get_zone will look for default zone_name, base_name, and time
-        zone_node = self.get_zone(zone_name=zone_name, base_name=base_name, time=time)
+        zone_node = self.get_zone(zone=zone_name, base=base_name, time=time)
         time = self.resolve_time(time)
         mesh_tree = self.data[time]
 
