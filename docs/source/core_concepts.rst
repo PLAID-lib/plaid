@@ -16,7 +16,6 @@ For more details and examples, see the :doc:`core_concepts` and :doc:`examples_t
    core_concepts/sample
    core_concepts/dataset
    core_concepts/problem_definition
-   core_concepts/feature_identifiers
    core_concepts/defaults
    core_concepts/disk_format
    core_concepts/interoperability
