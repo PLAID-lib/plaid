@@ -27,9 +27,7 @@ from .constants import (
     AUTHORIZED_SCORE_FUNCTIONS_T,
 )
 
-# from plaid.containers import FeatureIdentifier
 from .types import IndexType
-# from plaid.utils.deprecation import deprecated
 
 # %% Globals
 
@@ -79,7 +77,6 @@ class ProblemDefinition(BaseModel):
         from plaid.storage import load_problem_definitions_from_disk
 
         all_pb_def = load_problem_definitions_from_disk(path=Path(path))
-        print(list(all_pb_def.values()))
         name = overrides.get("name", name)
         available = ", ".join(sorted(all_pb_def))
         if name is not None:
@@ -103,12 +100,6 @@ class ProblemDefinition(BaseModel):
 
         # return data
         return ProblemDefinition(**data)
-
-    # def __init__(self, **data):
-    #     path = data.pop("path", None)
-    #     if path is not None:
-    #         data = self.from_path(path, **data)
-    #     super().__init__(**data)
 
     @field_validator("input_features", mode="before")
     @classmethod
@@ -143,7 +134,7 @@ class ProblemDefinition(BaseModel):
                 and current_value != value
             ):
                 raise AttributeError(f"'{name}' is already set and cannot be changed.")
-        # waring if set
+        # warning if set
         if name in ["train_split", "test_split"]:
             current_value = getattr(self, name, None)
             if (
@@ -151,7 +142,7 @@ class ProblemDefinition(BaseModel):
                 and value is not None
                 and current_value != value
             ):
-                logger.warning("'{name}' already exists -> data will be replaced")
+                logger.warning(f"'{name}' already exists -> data will be replaced", name)
 
         super().__setattr__(name, value)
 
@@ -381,73 +372,3 @@ class ProblemDefinition(BaseModel):
                 setattr(self, key, value)
             else:
                 logger.warning(f" Data ignored! : {key}: {value}")
-
-
-
-#     # -------------------------------------------------------------------------#
-#     def __repr__(self) -> str:
-#         """Return a string representation of the problem.
-
-#         Returns:
-#             str: A string representation of the overview of problem content.
-
-#         Example:
-#             .. code-block:: python
-
-#                 from plaid import ProblemDefinition
-#                 problem = ProblemDefinition()
-#                 # [...]
-#                 print(problem)
-#                 >>> ProblemDefinition(input_scalars_names=['s_1'], output_scalars_names=['s_2'], input_meshes_names=['mesh'], task='regression', split_names=['train', 'val'])
-#         """
-#         str_repr = "ProblemDefinition("
-
-#         # ---# features
-#         if len(self.in_features_identifiers) > 0:
-#             in_features_identifiers = self.in_features_identifiers
-#             str_repr += f"{in_features_identifiers=}, "
-#         if len(self.out_features_identifiers) > 0:
-#             out_features_identifiers = self.out_features_identifiers
-#             str_repr += f"{out_features_identifiers=}, "
-
-#         # ---# scalars
-#         if len(self.in_scalars_names) > 0:
-#             input_scalars_names = self.in_scalars_names
-#             str_repr += f"{input_scalars_names=}, "
-#         if len(self.out_scalars_names) > 0:
-#             output_scalars_names = self.out_scalars_names
-#             str_repr += f"{output_scalars_names=}, "
-#         # ---# fields
-#         if len(self.in_fields_names) > 0:
-#             input_fields_names = self.in_fields_names
-#             str_repr += f"{input_fields_names=}, "
-#         if len(self.out_fields_names) > 0:
-#             output_fields_names = self.out_fields_names
-#             str_repr += f"{output_fields_names=}, "
-#         # ---# timeseries
-#         if len(self.in_timeseries_names) > 0:
-#             input_timeseries_names = self.in_timeseries_names
-#             str_repr += f"{input_timeseries_names=}, "
-#         if len(self.out_timeseries_names) > 0:
-#             output_timeseries_names = self.out_timeseries_names
-#             str_repr += f"{output_timeseries_names=}, "
-#         # ---# meshes
-#         if len(self.in_meshes_names) > 0:
-#             input_meshes_names = self.in_meshes_names
-#             str_repr += f"{input_meshes_names=}, "
-#         if len(self.out_meshes_names) > 0:
-#             output_meshes_names = self.out_meshes_names
-#             str_repr += f"{output_meshes_names=}, "
-#         # ---# task
-#         if self._task is not None:
-#             task = self._task
-#             str_repr += f"{task=}, "
-#         # ---# split
-#         if self._split is not None:
-#             split_names = list(self._split.keys())
-#             str_repr += f"{split_names=}, "
-
-#         if str_repr[-2:] == ", ":
-#             str_repr = str_repr[:-2]
-#         str_repr += ")"
-#         return str_repr

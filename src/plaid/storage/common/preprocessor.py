@@ -5,9 +5,8 @@ for storage, including flattening CGNS trees, inferring data types, and handling
 parallel processing of sample shards.
 """
 import hashlib
+import logging
 import multiprocessing as mp
-import sys
-import traceback
 from queue import Empty
 from typing import Any, Callable, Generator, Optional, Union
 
@@ -17,6 +16,9 @@ from tqdm import tqdm
 from ...containers.sample import Sample
 from plaid.types import IndexType
 from plaid.utils.cgns_helper import flatten_cgns_tree
+
+
+logger = logging.getLogger(__name__)
 
 
 def infer_dtype(value: Any) -> dict[str, int | str]:
@@ -306,8 +308,7 @@ def _process_shard_debug(
     try:
         return process_shard(generator_fn, progress_queue, n_proc, shard_ids)
     except Exception as e:
-        print(f"Exception in worker for shards {shard_ids}: {e}", file=sys.stderr)
-        traceback.print_exc()
+        logger.exception("Exception in worker for shards %s: %s", shard_ids, e)
         raise  # re-raise to propagate to main process
 
 

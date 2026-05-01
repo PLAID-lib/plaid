@@ -182,8 +182,6 @@ class Dataset(BaseModel):
             from plaid.storage import init_from_disk
 
             datasetdict, converterdict = init_from_disk(path)
-            print(f"{split=}")
-            print(list(datasetdict.keys()))
             self._ds = datasetdict[split]
             self._conv = converterdict[split]
             self.indices = np.arange(len(self._ds))
@@ -234,15 +232,7 @@ class Dataset(BaseModel):
         Returns:
             Sample converted to PLAID format by the split converter.
         """
-        #        assert self._ds is not None
-        #        assert self.conv is not None
-        #        assert self._ids is not None
-        #        assert self.init_feats is not None, (
-        #             "self.init_feats not initialized, did you call set_transform_stage(transform_stage) ?"
-        #         )
         return self._backend[idx]
-
-        return self._conv.to_plaid(self._ds, self._ids[idx], features=self.init_feats)
 
     def __len__(self):
         """Return the number of samples currently exposed by this dataset.
