@@ -1,3 +1,0 @@
-from .base_sample_to_geometric import base_sample_to_geometric
-
-rotor_sample_to_geometric = base_sample_to_geometric
