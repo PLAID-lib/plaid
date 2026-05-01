@@ -155,7 +155,7 @@ class Sample(BaseModel):
         elif feature_type ==  "nodes":
             return ["Coordinate" + n for _,n in  zip(range(self.features.get_physical_dim()), ["X","Y","Z"]) ]
 
-    def get_feature_by_url(self, path: str, time: Optional[int] = None) -> np.number | np.ndarray | None:
+    def get_feature_by_path(self, path: str, time: Optional[int] = None) -> np.number | np.ndarray | None:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
 
         Args:
@@ -282,7 +282,7 @@ class Sample(BaseModel):
 
         return self
 
-    def update_features_by_url(
+    def update_features_by_path(
         self,
         feature_identifiers: dict[
             int, Union[str, list[str]]
@@ -323,7 +323,7 @@ class Sample(BaseModel):
 
         return sample
 
-    # def extract_sample_by_url(
+    # def extract_sample_by_path(
     #     self,
     #     feature_identifiers: Union[str, list[str]],
     # ) -> Self:
@@ -409,7 +409,7 @@ class Sample(BaseModel):
     #     #         if not merged_dataset.features.get_tree(time):
     #     #             merged_dataset.features.add_tree(source_sample.get_tree(time))
 
-    #     return merged_dataset.update_features_by_url(
+    #     return merged_dataset.update_features_by_path(
     #         feature_identifiers=all_features_identifiers,
     #         features=all_features,
     #         in_place=in_place,

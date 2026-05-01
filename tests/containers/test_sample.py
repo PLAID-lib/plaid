@@ -1218,8 +1218,8 @@ class Test_Sample:
     #     sample_with_tree.del_all_fields()
 
     # -------------------------------------------------------------------------#
-    def test_get_feature_by_url(self, sample_with_tree_and_scalar):
-        sample_with_tree_and_scalar.get_feature_by_url(
+    def test_get_feature_by_path(self, sample_with_tree_and_scalar):
+        sample_with_tree_and_scalar.get_feature_by_path(
             "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity", 0.0
         )
 
@@ -1256,10 +1256,10 @@ class Test_Sample:
     #     )
 
     def test_get_feature_from_identifier(self, sample_with_tree_and_scalar):
-        sample_with_tree_and_scalar.get_feature_by_url("Base_2_2/Zone/GridCoordinates/CoordinateX") is not None
+        sample_with_tree_and_scalar.get_feature_by_path("Base_2_2/Zone/GridCoordinates/CoordinateX") is not None
         print(sample_with_tree_and_scalar.show_tree())
-        assert sample_with_tree_and_scalar.get_feature_by_url("Base_2_2/Zone/VertexFields/test_node_field_1") is not None
-        assert sample_with_tree_and_scalar.get_feature_by_url("Global/test_scalar_1") is not None
+        assert sample_with_tree_and_scalar.get_feature_by_path("Base_2_2/Zone/VertexFields/test_node_field_1") is not None
+        assert sample_with_tree_and_scalar.get_feature_by_path("Global/test_scalar_1") is not None
 
     # def test_get_features_from_identifiers(self, sample_with_tree_and_scalar):
     #     sample_with_tree_and_scalar.get_features_from_identifiers(
@@ -1286,9 +1286,9 @@ class Test_Sample:
     #         ]
     #     )
 
-    def test_update_features_by_url(self, sample_with_tree_and_scalar):
+    def test_update_features_by_path(self, sample_with_tree_and_scalar):
         before = sample_with_tree_and_scalar.get_global("test_scalar_1")
-        sample_ = sample_with_tree_and_scalar.update_features_by_url(
+        sample_ = sample_with_tree_and_scalar.update_features_by_path(
             "Global/test_scalar_1",
             features=3.141592,
             in_place=False,
@@ -1305,7 +1305,7 @@ class Test_Sample:
     #         location="Vertex",
     #         time=0.0,
     #     )
-    #     sample_ = sample_with_tree_and_scalar.update_features_by_url(
+    #     sample_ = sample_with_tree_and_scalar.update_features_by_path(
     #         feature_identifiers=FeatureIdentifier(
     #             {
     #                 "type": "field",
@@ -1331,7 +1331,7 @@ class Test_Sample:
     #     before = sample_with_tree_and_scalar.get_nodes(
     #         zone_name="Zone", base_name="Base_2_2", time=0.0
     #     )
-    #     sample_ = sample_with_tree_and_scalar.update_features_by_url(
+    #     sample_ = sample_with_tree_and_scalar.update_features_by_path(
     #         feature_identifiers=FeatureIdentifier(
     #             {
     #                 "type": "nodes",
@@ -1348,7 +1348,7 @@ class Test_Sample:
 
     #     before_1 = sample_with_tree_and_scalar.get_field("test_node_field_1")
     #     before_2 = sample_with_tree_and_scalar.get_nodes()
-    #     sample_ = sample_with_tree_and_scalar.update_features_by_url(
+    #     sample_ = sample_with_tree_and_scalar.update_features_by_path(
     #         feature_identifiers=[
     #             {"type": "field", "name": "test_node_field_1"},
     #             {"type": "nodes"},
@@ -1364,7 +1364,7 @@ class Test_Sample:
     #     assert np.any(~np.isclose(after_1, before_1))
     #     assert np.any(~np.isclose(after_2, before_2))
 
-    #     sample_ = sample_with_tree_and_scalar.update_features_by_url(
+    #     sample_ = sample_with_tree_and_scalar.update_features_by_path(
     #         feature_identifiers=[{"type": "field", "name": "test_node_field_1"}],
     #         features=[np.random.rand(*before_1.shape)],
     #         in_place=True,
@@ -1373,13 +1373,13 @@ class Test_Sample:
     #     ref_2 = sample_.get_field("test_node_field_1")
     #     assert np.any(np.isclose(ref_1, ref_2))
 
-    # def test_extract_sample_by_url(self, sample_with_tree_and_scalar):
-    #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_by_url(
+    # def test_extract_sample_by_path(self, sample_with_tree_and_scalar):
+    #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_by_path(
     #         feature_identifiers={"type": "scalar", "name": "test_scalar_1"},
     #     )
     #     assert sample_.get_global_names() == ["test_scalar_1"]
     #     assert len(sample_.get_field_names()) == 0
-    #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_by_url(
+    #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_by_path(
     #         feature_identifiers={
     #             "type": "field",
     #             "name": "test_node_field_1",
@@ -1393,7 +1393,7 @@ class Test_Sample:
     #     assert len(sample_.get_global_names()) == 0
     #     assert sample_.get_field_names() == ["test_node_field_1"]
 
-    #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_by_url(
+    #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_by_path(
     #         feature_identifiers={
     #             "type": "nodes",
     #             "base_name": "Base_2_2",
@@ -1404,7 +1404,7 @@ class Test_Sample:
     #     assert len(sample_.get_global_names()) == 0
     #     assert len(sample_.get_field_names()) == 0
 
-    #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_by_url(
+    #     sample_: Sample = sample_with_tree_and_scalar.extract_sample_by_path(
     #         feature_identifiers=[
     #             {"type": "field", "name": "test_node_field_1"},
     #             {"type": "nodes"},
@@ -1496,10 +1496,10 @@ class Test_Sample:
     # def test_merge_features(self, sample_with_tree_and_scalar, sample_with_tree):
     #     feat_id = sample_with_tree_and_scalar.get_all_features_identifiers()
     #     feat_id = [fid for fid in feat_id if fid["type"] not in ["scalar"]]
-    #     sample_1 = sample_with_tree_and_scalar.extract_sample_by_url(feat_id)
+    #     sample_1 = sample_with_tree_and_scalar.extract_sample_by_path(feat_id)
     #     feat_id = sample_with_tree.get_all_features_identifiers()
     #     feat_id = [fid for fid in feat_id if fid["type"] not in ["field"]]
-    #     sample_2 = sample_with_tree.extract_sample_by_url(feat_id)
+    #     sample_2 = sample_with_tree.extract_sample_by_path(feat_id)
     #     sample_merge_1 = sample_1.merge_features(sample_2, in_place=False)
     #     sample_merge_2 = sample_2.merge_features(sample_1, in_place=False)
     #     assert (
@@ -1512,10 +1512,10 @@ class Test_Sample:
     # def test_merge_features2(self, sample_with_tree_and_scalar, sample_with_tree):
     #     feat_id = sample_with_tree_and_scalar.get_all_features_identifiers()
     #     feat_id = [fid for fid in feat_id if fid["type"] not in ["scalar"]]
-    #     sample_1 = sample_with_tree_and_scalar.extract_sample_by_url(feat_id)
+    #     sample_1 = sample_with_tree_and_scalar.extract_sample_by_path(feat_id)
     #     feat_id = sample_with_tree.get_all_features_identifiers()
     #     feat_id = [fid for fid in feat_id if fid["type"] not in ["field", "nodes"]]
-    #     sample_2 = sample_with_tree.extract_sample_by_url(feat_id)
+    #     sample_2 = sample_with_tree.extract_sample_by_path(feat_id)
     #     sample_merge_1 = sample_1.merge_features(sample_2, in_place=False)
     #     sample_merge_2 = sample_2.merge_features(sample_1, in_place=False)
     #     assert (

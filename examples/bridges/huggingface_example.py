@@ -102,13 +102,13 @@ for _ in range(3):
 
     sample.add_tree(MeshToCGNS(mesh, exportOriginalIDs=False))
 
-    sample.update_features_by_url(
+    sample.update_features_by_path(
         scalar_feat_id, np.random.randn(), in_place=True
     )
-    sample.update_features_by_url(
+    sample.update_features_by_path(
         node_field_feat_id, np.random.rand(len(points)), in_place=True
     )
-    sample.update_features_by_url(
+    sample.update_features_by_path(
         cell_field_feat_id, np.random.rand(len(triangles)), in_place=True
     )
 
@@ -391,7 +391,7 @@ plaid_sample = to_plaid_sample(sample_dict, cgns_types)
 print("Variable features:")
 for t in plaid_sample.get_all_time_values():
     for path in variable_schema.keys():
-        print(path, plaid_sample.get_feature_by_url(path=path, time=t))
+        print(path, plaid_sample.get_feature_by_path(path=path, time=t))
 print("-------")
 print("Sample and CGNS tree:")
 show_sample(plaid_sample)
