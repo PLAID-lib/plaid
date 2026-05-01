@@ -13,7 +13,7 @@ from packaging.version import Version
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator, PrivateAttr
 import numpy as np
 
-from plaid.constants import AUTHORIZED_INFO_KEYS
+from ..constants import AUTHORIZED_INFO_KEYS
 from ..version import __version__
 from ..problem_definition import ProblemDefinition
 from .sample import Sample
