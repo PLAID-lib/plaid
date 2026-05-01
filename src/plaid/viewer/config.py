@@ -32,6 +32,12 @@ class ViewerConfig:
             panel to change the datasets root at runtime. Set to ``False`` for
             public deployments (e.g. Hugging Face Spaces) where the root must
             remain fixed to what the operator configured.
+        initial_dataset_id: Dataset selected when the viewer starts. When
+            ``None``, the first discovered local dataset is selected, falling
+            back to the first Hub dataset.
+        allow_dataset_change: When ``True`` (default), the trame UI exposes the
+            dataset dropdown. Set to ``False`` to pin the selection configured
+            by ``initial_dataset_id`` / startup discovery.
     """
 
     datasets_root: Path | None = None
@@ -41,3 +47,5 @@ class ViewerConfig:
     extra_cache_key_fields: dict[str, str] = field(default_factory=dict)
     browse_roots: tuple[Path, ...] = ()
     allow_root_change: bool = True
+    initial_dataset_id: str | None = None
+    allow_dataset_change: bool = True

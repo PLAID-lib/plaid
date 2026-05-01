@@ -48,6 +48,24 @@ _VTK_LOG_ROUTER_INSTALLED = False
 _C_STDERR_REROUTED = False
 
 
+def _select_initial_dataset_id(
+    configured_id: str | None,
+    local_dataset_ids: list[str],
+    hub_dataset_ids: list[str],
+) -> str | None:
+    """Return the startup dataset id for the given discovered datasets.
+
+    A CLI-provided id wins when it exists in either source list. Otherwise the
+    viewer keeps its historical default: first local dataset, then first Hub
+    dataset, then ``None``.
+    """
+    if configured_id in (local_dataset_ids + hub_dataset_ids):
+        return configured_id
+    if local_dataset_ids:
+        return local_dataset_ids[0]
+    return hub_dataset_ids[0] if hub_dataset_ids else None
+
+
 def _reroute_c_stderr() -> None:  # pragma: no cover - process fd manipulation
     """Permanently redirect the process's stderr file descriptor to /dev/null.
 
@@ -584,20 +602,27 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     # is a registered repo id.
     state.setdefault("hub_repos", list(dataset_service.hub_repos))
     state.setdefault("hub_repo_input", "")
-    # Active side-panel tab: "local" drives ``datasets_root_text`` and
-    # directory browsing, "hub" drives the Hugging Face repo input. The
-    # selection only gates which form is rendered; registered datasets
-    # from either source always land in ``dataset_ids`` together.
-    state.setdefault("source_tab", "local")
-
     # Initial ``dataset_id`` follows the default ``source_tab`` ("local"):
     # pick the first local dataset when any is available, otherwise fall
     # back to the first hub dataset (so a viewer launched with only
     # ``--hub-repo`` still has something selected).
-    initial_dataset_id = (
-        local_dataset_ids[0]
-        if local_dataset_ids
-        else (hub_dataset_ids[0] if hub_dataset_ids else None)
+    initial_dataset_id = _select_initial_dataset_id(
+        dataset_service._config.initial_dataset_id,
+        local_dataset_ids,
+        hub_dataset_ids,
+    )
+    if (
+        dataset_service._config.initial_dataset_id is not None
+        and initial_dataset_id != dataset_service._config.initial_dataset_id
+    ):
+        logger.warning(
+            "Configured initial dataset %r was not found; falling back to %r",
+            dataset_service._config.initial_dataset_id,
+            initial_dataset_id,
+        )
+    initial_source_tab = "hub" if initial_dataset_id in hub_dataset_ids else "local"
+    state.setdefault(
+        "allow_dataset_change", dataset_service._config.allow_dataset_change
     )
     state.setdefault("dataset_id", initial_dataset_id)
     # Separate lists per source so the dropdown only shows datasets that
@@ -610,6 +635,11 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     state.setdefault("splits", [])
     state.setdefault("split", None)
+    # Active side-panel tab: "local" drives ``datasets_root_text`` and
+    # directory browsing, "hub" drives the Hugging Face repo input. When an
+    # initial Hub dataset is configured, start on the Hub tab so state and UI
+    # remain coherent.
+    state.setdefault("source_tab", initial_source_tab)
     state.setdefault("sample_ids", [])
     state.setdefault("sample_id", None)
     state.setdefault("sample_index", 0)
@@ -1113,6 +1143,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         proactively pick the first id from the active list (or ``None``
         when empty) so the dropdown always reflects the active tab.
         """
+        if not state.allow_dataset_change:
+            return
         active_ids = (
             list(state.hub_dataset_ids or [])
             if state.source_tab == "hub"
@@ -1392,8 +1424,15 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         # Force ``dataset_id`` to change so ``@state.change('dataset_id')``
         # fires and cascades through splits / samples / view refresh.
         # Pick from the list that matches the active source tab.
-        active_ids = hub_ids if state.source_tab == "hub" else local_ids
-        state.dataset_id = active_ids[0] if active_ids else None
+        if state.allow_dataset_change:
+            active_ids = hub_ids if state.source_tab == "hub" else local_ids
+            state.dataset_id = active_ids[0] if active_ids else None
+        elif state.dataset_id not in new_ids:
+            state.dataset_id = _select_initial_dataset_id(
+                dataset_service._config.initial_dataset_id,
+                local_ids,
+                hub_ids,
+            )
 
         if not new_ids:
             state.splits = []
@@ -1491,8 +1530,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.hub_repos = list(dataset_service.hub_repos)
         state.hub_repo_input = ""
         _reload_dataset_list()
-        # Select the newly added hub dataset to give immediate feedback.
-        if normalised in (state.dataset_ids or []):
+        # Select the newly added hub dataset to give immediate feedback when
+        # dataset selection is user-controlled. Pinned deployments keep their
+        # configured dataset.
+        if state.allow_dataset_change and normalised in (state.dataset_ids or []):
             state.dataset_id = normalised
         state.status = f"Streaming from {normalised}"
 
@@ -1658,14 +1699,15 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 # datasets), Hub tab -> ``hub_dataset_ids``
                 # (``init_streaming_from_hub`` datasets). The user never
                 # sees ids from the inactive source in the same menu.
-                v3.VSelect(
-                    label="Dataset",
-                    v_model=("dataset_id",),
-                    items=(
-                        "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
-                    ),
-                    density="compact",
-                )
+                with html.Div(v_if=("allow_dataset_change",)):
+                    v3.VSelect(
+                        label="Dataset",
+                        v_model=("dataset_id",),
+                        items=(
+                            "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
+                        ),
+                        density="compact",
+                    )
 
                 v3.VSelect(
                     label="Split",

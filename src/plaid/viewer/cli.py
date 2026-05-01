@@ -54,6 +54,22 @@ def _build_parser() -> argparse.ArgumentParser:
             "for public deployments (e.g. Hugging Face Spaces)."
         ),
     )
+    parser.add_argument(
+        "--dataset-id",
+        default=None,
+        help=(
+            "Dataset id selected when the viewer starts. Use together with "
+            "--disable-dataset-change to pin the UI to that dataset."
+        ),
+    )
+    parser.add_argument(
+        "--disable-dataset-change",
+        action="store_true",
+        help=(
+            "Hide the 'Dataset' dropdown; the selected dataset stays fixed "
+            "for the lifetime of the server."
+        ),
+    )
 
     parser.add_argument(
         "--cache-dir",
@@ -129,6 +145,8 @@ def main(argv: list[str] | None = None) -> int:
         backend_id=args.backend_id,
         browse_roots=browse_roots,
         allow_root_change=not args.disable_root_change,
+        initial_dataset_id=args.dataset_id,
+        allow_dataset_change=not args.disable_dataset_change,
     )
 
     with CacheRoot(persistent_dir=config.cache_dir) as cache:

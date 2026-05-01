@@ -100,3 +100,24 @@ def test_load_reader_series_uses_vtk_cgns_file_series_reader(
         "EnableAllPointArrays",
         "EnableAllCellArrays",
     ]
+
+
+def test_select_initial_dataset_id_prefers_configured_dataset() -> None:
+    from plaid.viewer.trame_app.server import (
+        _select_initial_dataset_id,  # noqa: PLC0415
+    )
+
+    assert _select_initial_dataset_id("b", ["a", "b"], ["org/repo"]) == "b"
+    assert (
+        _select_initial_dataset_id("org/repo", ["a", "b"], ["org/repo"]) == "org/repo"
+    )
+
+
+def test_select_initial_dataset_id_falls_back_to_existing_dataset() -> None:
+    from plaid.viewer.trame_app.server import (
+        _select_initial_dataset_id,  # noqa: PLC0415
+    )
+
+    assert _select_initial_dataset_id("missing", ["a", "b"], ["org/repo"]) == "a"
+    assert _select_initial_dataset_id(None, [], ["org/repo"]) == "org/repo"
+    assert _select_initial_dataset_id(None, [], []) is None

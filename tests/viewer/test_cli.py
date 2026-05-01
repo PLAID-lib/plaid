@@ -16,6 +16,8 @@ def test_build_parser_defaults() -> None:
     assert args.datasets_root is None
     assert args.browse_roots is None
     assert args.disable_root_change is False
+    assert args.dataset_id is None
+    assert args.disable_dataset_change is False
     assert args.cache_dir is None
     assert args.host == "127.0.0.1"
     assert args.port == 8080
@@ -37,6 +39,9 @@ def test_build_parser_accepts_all_options(tmp_path: Path) -> None:
             str(browse_a),
             str(browse_b),
             "--disable-root-change",
+            "--dataset-id",
+            "dataset-b",
+            "--disable-dataset-change",
             "--cache-dir",
             str(cache_dir),
             "--host",
@@ -55,6 +60,8 @@ def test_build_parser_accepts_all_options(tmp_path: Path) -> None:
     assert args.datasets_root == datasets_root
     assert args.browse_roots == [browse_a, browse_b]
     assert args.disable_root_change is True
+    assert args.dataset_id == "dataset-b"
+    assert args.disable_dataset_change is True
     assert args.cache_dir == cache_dir
     assert args.host == "0.0.0.0"
     assert args.port == 9000
@@ -83,6 +90,8 @@ def test_main_wires_services_without_starting_real_runtime(
             self.config = config
             calls.append(("dataset-root", config.datasets_root))
             calls.append(("allow-root-change", config.allow_root_change))
+            calls.append(("initial-dataset-id", config.initial_dataset_id))
+            calls.append(("allow-dataset-change", config.allow_dataset_change))
 
         def add_hub_dataset(self, repo_id: str) -> str:
             calls.append(("hub", repo_id))
@@ -130,6 +139,9 @@ def test_main_wires_services_without_starting_real_runtime(
                 "--port",
                 "9001",
                 "--disable-root-change",
+                "--dataset-id",
+                "dataset-b",
+                "--disable-dataset-change",
                 "--hub-repo",
                 "org/repo",
                 "--hub-repo",
@@ -142,6 +154,8 @@ def test_main_wires_services_without_starting_real_runtime(
     assert ("stderr", None) in calls
     assert ("dataset-root", tmp_path / "persisted") in calls
     assert ("allow-root-change", False) in calls
+    assert ("initial-dataset-id", "dataset-b") in calls
+    assert ("allow-dataset-change", False) in calls
     assert ("hub", "org/repo") in calls
     assert ("hub", "bad/repo") in calls
     assert ("artifact-cache", tmp_path / "cache-root") in calls
