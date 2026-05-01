@@ -207,13 +207,13 @@ def empty_dataset():
 
 
 @pytest.fixture()
-def dataset_with_samples(dataset, samples, infos):
+def dataset_with_samples(dataset, samples):
     dataset.get_backend().add_sample(samples, list(range(len(samples)) ))
     return dataset
 
 
 @pytest.fixture()
-def dataset_with_samples_with_tree(samples_with_tree, infos):
+def dataset_with_samples_with_tree(samples_with_tree):
     dataset = Dataset()
     dataset.get_backend_new().add_sample(samples_with_tree)
     return dataset
