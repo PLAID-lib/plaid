@@ -34,20 +34,20 @@ def current_directory():
 
 class Test_Container_Utils:
     def test_get_sample_ids(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        assert get_sample_ids(dataset_path) == list(np.arange(0, 3))
+        dataset_path = current_directory / "dataset" /"data"/"test"
+        assert get_sample_ids(dataset_path) == list(np.arange(0, 10))
 
     def test_get_number_of_samples(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        assert get_number_of_samples(dataset_path) == 3
+        dataset_path = current_directory / "dataset" /"data"/"test"
+        assert get_number_of_samples(dataset_path) == 10
 
     def test_get_sample_ids_with_str(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        assert get_sample_ids(str(dataset_path)) == list(np.arange(0, 3))
+        dataset_path = current_directory / "dataset" /"data"/"test"
+        assert get_sample_ids(str(dataset_path)) == list(np.arange(0, 10))
 
     def test_get_number_of_samples_with_str(self, current_directory):
-        dataset_path = current_directory / "dataset"
-        assert get_number_of_samples(str(dataset_path)) == 3
+        dataset_path = current_directory / "dataset" /"data"/"test"
+        assert get_number_of_samples(str(dataset_path)) == 10
 
     # def test_check_features_type_homogeneity(self):
     #     check_features_type_homogeneity(

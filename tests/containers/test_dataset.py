@@ -301,7 +301,7 @@ class Test_Dataset:
         dataset.get_sample_ids()
 
     def test_get_sample_ids_from_disk(self, current_directory):
-        dataset_path = current_directory / "dataset/data/test"
+        dataset_path = current_directory / "dataset" /  "data" / "test"
         assert plaid.get_number_of_samples(dataset_path) == 10
 
     # -------------------------------------------------------------------------#

@@ -167,9 +167,9 @@ def current_directory() -> Path:
 class Test_Sample:
     # -------------------------------------------------------------------------#
     def test___init__(self, current_directory):
-        sample_path_1 = current_directory / "dataset" / "samples" / "sample_000000000"
-        sample_path_2 = current_directory / "dataset" / "samples" / "sample_000000001"
-        sample_path_3 = current_directory / "dataset" / "samples" / "sample_000000002"
+        sample_path_1 = current_directory / "dataset" / "data" / "test" / "sample_000000000"
+        sample_path_2 = current_directory / "dataset" / "data" / "test" / "sample_000000001"
+        sample_path_3 = current_directory / "dataset" / "data" / "test" / "sample_000000002"
         sample_already_filled_1 = Sample(path=sample_path_1)
         sample_already_filled_2 = Sample(path=sample_path_2)
         sample_already_filled_3 = Sample(path=sample_path_3)
@@ -183,12 +183,12 @@ class Test_Sample:
             Sample(path=sample_path)
 
     def test__init__file_provided(self, current_directory):
-        sample_path = current_directory / "dataset" / "samples" / "sample_000067392"
+        sample_path = current_directory / "dataset" / "data" / "test" / "sample_000000000" / "meshes" / "mesh_000000000.cgns"
         with pytest.raises(FileExistsError):
             Sample(path=sample_path)
 
     def test__init__path(self, current_directory):
-        sample_path = current_directory / "dataset" / "samples" / "sample_000000000"
+        sample_path = current_directory / "dataset" / "data" / "test" / "sample_000000000"
         Sample(path=sample_path)
 
     # def test__init__directory_path(self, current_directory):

@@ -145,7 +145,7 @@ def get_sample_ids(savedir: Union[str, Path]) -> list[int]:
     return sorted(
         [
             int(d.stem.split("_")[-1])
-            for d in (savedir / "samples").glob("sample_*")
+            for d in (savedir ).glob("sample_*")
             if d.is_dir()
         ]
     )
