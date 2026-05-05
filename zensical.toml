@@ -1,0 +1,58 @@
+[project]
+site_name = "plaid"
+site_description = "PLAID documentation"
+site_author = "Safran"
+copyright = "Copyright © Safran"
+
+# Build from the existing Sphinx source folder.
+docs_dir = "docs/source"
+site_dir = "docs/_build/zensical"
+
+# Minimal navigation focused on Markdown pages that already exist in docs/source.
+nav = [
+  { "Quickstart" = "quickstart.md" },
+  { "Citation" = "citation.md" },
+  { "Contributing" = "contributing.md" },
+  { "Core concepts" = [
+      { "Sample" = "core_concepts/sample.md" },
+      { "Dataset" = "core_concepts/dataset.md" },
+      { "Problem definition" = "core_concepts/problem_definition.md" },
+      { "Defaults" = "core_concepts/defaults.md" },
+      { "Disk format" = "core_concepts/disk_format.md" },
+      { "Interoperability" = "core_concepts/interoperability.md" },
+    ]
+  },
+  { "Tutorials" = [
+      { "Storage" = "tutorials/storage.md" },
+    ]
+  },
+]
+
+[project.theme]
+language = "en"
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.def_list]
+[project.markdown_extensions.footnotes]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.tables]
+[project.markdown_extensions.toc]
+permalink = true
+
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.superfences]
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true
+[project.markdown_extensions.pymdownx.tasklist]
+custom_checkbox = true
