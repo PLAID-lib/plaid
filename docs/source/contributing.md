@@ -183,7 +183,7 @@ These guidelines help keep PLAID users' code and datasets working across release
 
 - Create a new release branch from `main` called e.g. `release_0.1.10`
 - Update the CHANGELOG
-  - Rename the section [Unreleased] to the new version number (e.g., [0.1.10]) followed by the release date (YYYY-MM-DD)
+  - Rename the section __Unreleased__ to the new version number (e.g., `0.1.10`) followed by the release date (YYYY-MM-DD)
   - Update links at the end of the file
 - Create a pull request and request reviews
 - Once approved, merge the pull request
