@@ -270,8 +270,8 @@ class Sample(BaseModel):
             updated_tree = CGU.nodeDelete(self.get_tree(time), node)
 
         # If the function reaches here, the field was not found
-        if updated_tree is None:
-            raise KeyError(f"There is no field with name {name} in the specified zone.")
+        if updated_tree is None:  # pragma: no cover
+            raise KeyError(f"There is no field with name {path} in the specified zone.")
 
         return updated_tree
 
