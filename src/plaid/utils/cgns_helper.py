@@ -1,14 +1,6 @@
 """Utility functions for working with CGNS trees and nodes."""
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from copy import copy
-from typing import Any, Optional
+from typing import Any, Iterable, Optional
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
@@ -536,8 +528,8 @@ def unflatten_cgns_tree(
 
 def update_features_for_CGNS_compatibility(
     features: list[str],
-    context_constant_features: list[str],
-    context_variable_features: list[str],
+    context_constant_features: Iterable[str],
+    context_variable_features: Iterable[str],
 ):
     """Expand a list of feature paths to include all CGNS hierarchy nodes and metadata required for compatibility.
 

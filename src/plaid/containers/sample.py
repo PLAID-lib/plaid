@@ -1,14 +1,9 @@
 """Implementation of the `Sample` container."""
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # %% Imports
 import sys
+from typing import TYPE_CHECKING
+
+from ..types.common import ArrayDType
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -17,7 +12,6 @@ else:  # pragma: no cover
 
     Self = TypeVar("Self")
 
-import copy
 import logging
 import pickle
 import shutil
@@ -31,21 +25,14 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 from pydantic import Field as PydanticField
 
-from plaid.constants import (
-    AUTHORIZED_FEATURE_INFOS,
+from ..constants import (
     AUTHORIZED_FEATURE_TYPES,
+    AUTHORIZED_FEATURE_TYPES_T,
     CGNS_FIELD_LOCATIONS,
 )
-from plaid.containers.feature_identifier import FeatureIdentifier
-from plaid.containers.features import SampleFeatures
-from plaid.containers.utils import get_feature_type_and_details_from
-from plaid.types import (
-    Feature,
-    Scalar,
-)
-from plaid.utils import cgns_helper as CGH
-from plaid.utils.base import delegate_methods, safe_len
-from plaid.utils.deprecation import deprecated
+from ..utils import cgns_helper as CGH
+from ..utils.base import delegate_methods, safe_len
+from .features import SampleFeatures
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +45,6 @@ FEATURES_METHODS = [
     "resolve_zone",
     "set_default_time",
     "get_all_time_values",
-    "get_all_mesh_times",
     "get_tree",
     "get_base_names",
     "get_zone_names",
@@ -81,6 +67,7 @@ FEATURES_METHODS = [
     "init_tree",
     "add_tree",
     "del_tree",
+    "set_trees",
 ]
 
 
@@ -96,6 +83,7 @@ class Sample(BaseModel):
     """
 
     # Pydantic configuration
+    # TODO(FB) check why arbitrary_types_allowed is needed, and if it can be removed
     model_config = ConfigDict(
         arbitrary_types_allowed=True, revalidate_instances="always", extra="forbid"
     )
@@ -106,8 +94,8 @@ class Sample(BaseModel):
         description="Path to the folder containing the sample data. If provided, the sample will be loaded from this path during initialization. Defaults to None.",
     )
 
-    features: Optional[SampleFeatures] = PydanticField(
-        default_factory=lambda _: SampleFeatures(data=None),
+    features: SampleFeatures = PydanticField(
+        default_factory=lambda: SampleFeatures(data=None),
         description="An instance of SampleFeatures containing mesh data. Defaults to an empty `SampleFeatures` object.",
     )
 
@@ -135,117 +123,9 @@ class Sample(BaseModel):
         """
         return self.model_copy(deep=True)
 
-    def get_scalar(self, name: str) -> Optional[Scalar]:
-        """Retrieve a scalar value associated with the given name.
-
-        Args:
-            name (str): The name of the scalar value to retrieve.
-
-        Returns:
-            Scalar or None: The scalar value associated with the given name, or None if the name is not found.
-        """
-        return self.features.get_global(name)
-
-    def add_scalar(self, name: str, value: Scalar) -> None:
-        """Add a scalar value to a dictionary.
-
-        Args:
-            name (str): The name of the scalar value.
-            value (Scalar): The scalar value to add or update in the dictionary.
-        """
-        self.features.add_global(name, value)
-
-    def del_scalar(self, name: str) -> Scalar:
-        """Delete a scalar value from the dictionary.
-
-        Args:
-            name (str): The name of the scalar value to be deleted.
-
-        Raises:
-            KeyError: Raised when there is no scalar / there is no scalar with the provided name.
-
-        Returns:
-            Scalar: The value of the deleted scalar.
-        """
-        return self.features.del_global(name)
-
-    def get_scalar_names(self) -> list[str]:
-        """Get a set of scalar names available in the object.
-
-        Returns:
-            list[str]: A set containing the names of the available scalars.
-        """
-        return self.features.get_global_names()
-
-    # -------------------------------------------------------------------------#
-
-    def del_all_fields(
-        self,
-    ) -> Self:
-        """Delete alls field from sample, while keeping geometrical info.
-
-        Returns:
-            Sample: The sample with deleted fields
-        """
-        all_features_identifiers = self.get_all_features_identifiers()
-        # Delete all fields in the sample
-        for feat_id in all_features_identifiers:
-            if feat_id["type"] == "field":
-                self.del_field(
-                    name=feat_id["name"],
-                    location=feat_id["location"],
-                    zone_name=feat_id["zone_name"],
-                    base_name=feat_id["base_name"],
-                    time=feat_id["time"],
-                )
-        return self
-
-    # -------------------------------------------------------------------------#
-    def get_all_features_identifiers(
-        self,
-    ) -> list[FeatureIdentifier]:
-        """Get all features identifiers from the sample.
-
-        Returns:
-            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of all features in the sample.
-        """
-        all_features_identifiers = []
-        for sn in self.get_scalar_names():
-            all_features_identifiers.append({"type": "scalar", "name": sn})
-        for t in self.features.get_all_time_values():
-            for bn in self.features.get_base_names(time=t):
-                for zn in self.features.get_zone_names(base_name=bn, time=t):
-                    if (
-                        self.features.get_nodes(base_name=bn, zone_name=zn, time=t)
-                        is not None
-                    ):
-                        all_features_identifiers.append(
-                            {
-                                "type": "nodes",
-                                "base_name": bn,
-                                "zone_name": zn,
-                                "time": t,
-                            }
-                        )
-                    for loc in CGNS_FIELD_LOCATIONS:
-                        for fn in self.features.get_field_names(
-                            location=loc, zone_name=zn, base_name=bn, time=t
-                        ):
-                            all_features_identifiers.append(
-                                {
-                                    "type": "field",
-                                    "name": fn,
-                                    "base_name": bn,
-                                    "zone_name": zn,
-                                    "location": loc,
-                                    "time": t,
-                                }
-                            )
-        return all_features_identifiers
-
     def get_all_features_identifiers_by_type(
-        self, feature_type: str
-    ) -> list[FeatureIdentifier]:
+        self, feature_type: AUTHORIZED_FEATURE_TYPES_T
+    ) -> list[str]:
         """Get all features identifiers of a given type from the sample.
 
         Args:
@@ -255,15 +135,22 @@ class Sample(BaseModel):
             list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
         """
         assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
-        all_features_identifiers = self.get_all_features_identifiers()
-        return [
-            feat_id
-            for feat_id in all_features_identifiers
-            if feat_id["type"] == feature_type
-        ]
+        if feature_type == "scalar":
+            return self.get_global_names()
+        elif feature_type == "field":
+            return self.get_field_names()
+        elif feature_type == "nodes":
+            return [
+                "Coordinate" + n
+                for _, n in zip(
+                    range(self.features.get_physical_dim()), ["X", "Y", "Z"]
+                )
+            ]
 
-    def get_feature_by_path(self, path: str, time: Optional[int] = None) -> Feature:
-        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style path.
+    def get_feature_by_path(
+        self, path: str, time: Optional[int] = None
+    ) -> np.number | np.ndarray | None:
+        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
 
         Args:
             path (str): CGNS node path relative to the mesh root (for example
@@ -284,149 +171,28 @@ class Sample(BaseModel):
         time = self.features.resolve_time(time)
         return CGU.getValueByPath(self.get_tree(time), path)
 
-    def get_feature_from_string_identifier(
-        self, feature_string_identifier: str
-    ) -> Feature:
-        """Retrieve a specific feature from its encoded string identifier.
+    # def get_feature_from_details(self, feature_details):
+    #     #TODO (FB) dont know if this is useful
 
-        The `feature_string_identifier` must follow the format:
-            "<feature_type>::<detail1>/<detail2>/.../<detailN>"
+    #     my_type = feature_details.pop("type", None)
+    #     my_sub_type = feature_details.pop("sub_type", None)
+    #     if my_type == 'coordinate':
+    #         print(feature_details)
+    #         return self.get_nodes(**feature_details).flatten()
+    #     elif my_type == 'field':
+    #         print(feature_details)
+    #         return self.get_field(**feature_details)
+    #     elif my_type == 'global':
+    #         return self.get_global(**feature_details)
 
-        Supported feature types:
-            - "scalar": expects 1 detail → `scalars.get(name)`
-            - "field": up to 5 details → `get_field(name, base_name, zone_name, location, time)`
-            - "nodes": up to 3 details → `get_nodes(base_name, zone_name, time)`
-
-        Args:
-            feature_string_identifier (str): Structured identifier of the feature.
-
-        Returns:
-            Feature: The retrieved feature object.
-
-        Raises:
-            AssertionError: If `feature_type` is unknown.
-
-        Warnings:
-            - If "time" is present in a field/nodes identifier, it is cast to float.
-            - `name` is required for scalar and field features.
-            - The order of the details must be respected. One cannot specify a detail in the feature_string_identifier string without specified the previous ones.
-        """
-        splitted_identifier = feature_string_identifier.split("::")
-
-        feature_type = splitted_identifier[0]
-        feature_details = [detail for detail in splitted_identifier[1].split("/")]
-
-        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
-
-        arg_names = AUTHORIZED_FEATURE_INFOS[feature_type]
-        assert len(arg_names) >= len(feature_details), "Too much details provided"
-
-        if feature_type == "scalar":
-            val = self.get_scalar(feature_details[0])
-            if val is None:
-                raise KeyError(
-                    f"Unknown scalar {feature_details[0]}"
-                )  # pragma: no cover
-            return val
-        elif feature_type == "field":
-            kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
-            for k in kwargs:
-                if kwargs[k] == "":
-                    kwargs[k] = None
-            if "time" in kwargs:
-                kwargs["time"] = float(kwargs["time"])
-            return self.get_field(**kwargs)
-        elif feature_type == "nodes":
-            kwargs = {arg_names[i]: detail for i, detail in enumerate(feature_details)}
-            for k in kwargs:
-                if kwargs[k] == "":
-                    kwargs[k] = None
-            if "time" in kwargs:
-                kwargs["time"] = float(kwargs["time"])
-            return self.get_nodes(**kwargs).flatten()
-
-    def get_feature_from_identifier(
-        self, feature_identifier: FeatureIdentifier
-    ) -> Feature:
-        """Retrieve a feature object based on a structured identifier dictionary.
-
-        The `feature_identifier` must include a `"type"` key specifying the feature kind:
-            - `"scalar"`       → calls `scalars.get(name)`
-            - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
-            - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
-
-        Required keys:
-            - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
-            - `"name"`: required for all types except `"nodes"`
-
-        Optional keys depending on type:
-            - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
-
-        Any omitted optional keys will rely on the default values mechanics of the class.
-
-        Args:
-            feature_identifier ( dict[str:Union[str, float]]):
-                A dictionary encoding the feature type and its relevant parameters.
-
-        Returns:
-            Feature: The corresponding feature instance retrieved via the appropriate accessor.
-        """
-        feature_type, feature_details = get_feature_type_and_details_from(
-            feature_identifier
-        )
-
-        if feature_type == "scalar":
-            return self.get_scalar(**feature_details)
-        elif feature_type == "field":
-            return self.get_field(**feature_details)
-        elif feature_type == "nodes":
-            return self.get_nodes(**feature_details).flatten()
-
-    def get_features_from_identifiers(
-        self, feature_identifiers: list[FeatureIdentifier]
-    ) -> list[Feature]:
-        """Retrieve features based on a list of structured identifier dictionaries.
-
-        Elements of `feature_identifiers` must include a `"type"` key specifying the feature kind:
-            - `"scalar"`       → calls `scalars.get(name)`
-            - `"field"`        → calls `get_field(name, base_name, zone_name, location, time)`
-            - `"nodes"`        → calls `get_nodes(base_name, zone_name, time)`
-
-        Required keys:
-            - `"type"`: one of `"scalar"`, `"field"`, or `"nodes"`
-            - `"name"`: required for all types except `"nodes"`
-
-        Optional keys depending on type:
-            - `"base_name"`, `"zone_name"`, `"location"`, `"time"`: used in `"field"` and `"nodes"`
-
-        Any omitted optional keys will rely on the default values mechanics of the class.
-
-        Args:
-            feature_identifiers (list[FeatureIdentifier]):
-                A dictionary encoding the feature type and its relevant parameters.
-
-        Returns:
-            list[Feature]: List of corresponding feature instance retrieved via the appropriate accessor.
-        """
-        all_features_info = [
-            get_feature_type_and_details_from(feat_id)
-            for feat_id in feature_identifiers
-        ]
-
-        features = []
-        for feature_type, feature_details in all_features_info:
-            if feature_type == "scalar":
-                features.append(self.get_scalar(**feature_details))
-            elif feature_type == "field":
-                features.append(self.get_field(**feature_details))
-            elif feature_type == "nodes":
-                features.append(self.get_nodes(**feature_details).flatten())
-        return features
+    #     print(feature_details)
+    #     print(my_type)
+    #     raise RuntimeError(f"Cant find a featurn for the given details")
 
     def add_feature(
         self,
-        feature_identifier: FeatureIdentifier,
-        feature: Feature,
+        feature_path: str,
+        feature: ArrayDType,
     ) -> Self:
         """Add a feature to current sample.
 
@@ -443,61 +209,77 @@ class Sample(BaseModel):
         Raises:
             AssertionError: If types are inconsistent or identifiers contain unexpected keys.
         """
-        feature_type, feature_details = get_feature_type_and_details_from(
-            feature_identifier
-        )
+        # feature_type, feature_details = get_feature_type_and_details_from(
+        #    feature_identifier
+        # )
 
-        if feature_type == "scalar":
+        from .utils import get_feature_details_from_path
+
+        feature_details = get_feature_details_from_path(feature_path)
+
+        feature_type = feature_details.pop("type")
+        _ = feature_details.pop("sub_type", None)
+
+        if feature_type == "global":
             if safe_len(feature) == 1:
                 feature = feature[0]
-            self.add_scalar(**feature_details, value=feature)
+            self.add_global(**feature_details, global_array=feature)
         elif feature_type == "field":
             self.add_field(**feature_details, field=feature, warning_overwrite=False)
-        elif feature_type == "nodes":
+        elif feature_type == "coordinate":
+            if feature_details.get("name", None) is not None:  # pragma: no cover
+                raise ValueError("Must set the 3 coordinate at the same time")
             physical_dim_arg = {
-                k: v for k, v in feature_details.items() if k in ["base_name", "time"]
+                k: v for k, v in feature_details.items() if k in ["base", "time"]
             }
             phys_dim = self.features.get_physical_dim(**physical_dim_arg)
             self.set_nodes(**feature_details, nodes=feature.reshape((-1, phys_dim)))
+        else:  # pragma: no cover
+            print(feature_details)
+            raise RuntimeError(f"feature_type not allowed : {feature_type}")
 
         return self
 
-    def del_feature(
-        self,
-        feature_identifier: FeatureIdentifier,
-    ) -> Self:
-        """Remove a feature from current sample.
-
-        This method applies updates to scalars, time series, fields, or nodes using feature identifiers.
+    def del_feature_by_path(
+        self, path: str, time: Optional[float] = None
+    ) -> np.number | np.ndarray | None:
+        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
 
         Args:
-            feature_identifier (dict): A feature identifier.
+            path (str): CGNS node path relative to the mesh root (for example
+                "BaseName/ZoneName/GridCoordinates/CoordinateX" or
+                "BaseName/ZoneName/Solution/FieldName").
+            time (Optional[int], optional): Time selection for the mesh. If an integer,
+                it is interpreted via the SampleFeatures time-assignment logic
+                (see SampleFeatures.resolve_time). If None, the default time
+                assignment is used. Defaults to None.
 
         Returns:
-            Self: The updated sample
+            Feature: The value stored at the given CGNS path. This may be a numpy array, a scalar, or None if the node has no value.
 
-        Raises:
-            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+        Note:
+            - This is a thin wrapper around CGNS.PAT.cgnsutils.getValueByPath and Sample.get_tree(time). Callers should handle a returned None when the path or value does not exist.
+            - For field-like features, prefer using Sample.get_field which applies additional validation and selection logic.
         """
-        feature_type, feature_details = get_feature_type_and_details_from(
-            feature_identifier
-        )
+        time = self.features.resolve_time(time)
+#        return CGU.getValueByPath(self.get_tree(time), path)
 
-        if feature_type == "scalar":
-            self.del_scalar(**feature_details)
-        elif feature_type == "field":
-            self.del_field(**feature_details)
-        elif feature_type == "nodes":
-            raise NotImplementedError("Deleting node features is not implemented.")
+        updated_tree = None
+        node = CGU.getNodeByPath(self.get_tree(time), path)
+        if node is not None:
+            updated_tree = CGU.nodeDelete(self.get_tree(time), node)
 
-        return self
+        # If the function reaches here, the field was not found
+        if updated_tree is None:  # pragma: no cover
+            raise KeyError(f"There is no field with name {path} in the specified zone.")
 
-    def update_features_from_identifier(
+        return updated_tree
+
+
+    def update_features_by_path(
         self,
-        feature_identifiers: dict[
-            int, Union[FeatureIdentifier, list[FeatureIdentifier]]
-        ],
-        features: Union[Feature, list[Feature]],
+        feature_identifiers: dict[int, Union[str, list[str]]],
+        features: Union[ArrayDType, list[ArrayDType]],
         in_place: bool = False,
     ) -> Self:
         """Update one or several features of the sample by their identifier(s).
@@ -524,7 +306,7 @@ class Sample(BaseModel):
             features = [features]
         assert len(feature_identifiers) == len(features)
         for i_id, feat_id in enumerate(feature_identifiers):
-            feature_identifiers[i_id] = FeatureIdentifier(feat_id)
+            feature_identifiers[i_id] = str(feat_id)
 
         sample = self if in_place else self.copy()
 
@@ -533,123 +315,97 @@ class Sample(BaseModel):
 
         return sample
 
-    def extract_sample_from_identifier(
-        self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-    ) -> Self:
-        """Extract features of the sample by their identifier(s) and return a new sample containing these features.
+    # def extract_sample_by_path(
+    #     self,
+    #     feature_identifiers: Union[str, list[str]],
+    # ) -> Self:
+    #     """Extract features of the sample by their identifier(s) and return a new sample containing these features.
 
-        This method applies updates to scalars, fields, or nodes
-        using feature identifiers
+    #     This method applies updates to scalars, fields, or nodes
+    #     using feature identifiers
 
-        Args:
-            feature_identifiers (dict or list of dict): One or more feature identifiers.
+    #     Args:
+    #         feature_identifiers (dict or list of dict): One or more feature identifiers.
 
-        Returns:
-            Self: New sample containing the provided feature identifiers
+    #     Returns:
+    #         Self: New sample containing the provided feature identifiers
 
-        Raises:
-            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
-        """
-        assert isinstance(feature_identifiers, dict) or isinstance(
-            feature_identifiers, list
-        ), "Check types of feature_identifiers argument"
-        if isinstance(feature_identifiers, dict):
-            feature_identifiers = [feature_identifiers]
+    #     Raises:
+    #         AssertionError: If types are inconsistent or identifiers contain unexpected keys.
+    #     """
+    #     assert isinstance(feature_identifiers, dict) or isinstance(
+    #         feature_identifiers, list
+    #     ), "Check types of feature_identifiers argument"
+    #     if isinstance(feature_identifiers, dict):
+    #         feature_identifiers = [feature_identifiers]
 
-        source_sample = self.copy()
-        source_sample.del_all_fields()
+    #     source_sample = self.copy()
+    #     source_sample.del_all_fields()
 
-        sample = Sample()
+    #     sample = Sample()
 
-        for feat_id in feature_identifiers:
-            feature = self.get_feature_from_identifier(feat_id)
+    #     for feat_id in feature_identifiers:
+    #         feature = self.get_feature_from_identifier(feat_id)
 
-            if feature is not None:
-                # get time of current feature
-                time = self.features.resolve_time(time=feat_id.get("time"))
+    #         if feature is not None:
+    #             # get time of current feature
+    #             time = self.features.resolve_time(time=feat_id.get("time"))
 
-                # if the constructed sample does not have a tree, add the one from the source sample, with no field
-                if len(sample.features.get_base_names(time=time)) == 0:
-                    sample.features.add_tree(source_sample.features.get_tree(time))
-                    for name in sample.features.get_global_names(time=time):
-                        sample.features.del_global(name, time)
+    #             # if the constructed sample does not have a tree, add the one from the source sample, with no field
+    #             if len(sample.features.get_base_names(time=time)) == 0:
+    #                 sample.features.add_tree(source_sample.features.get_tree(time))
+    #                 for name in sample.features.get_global_names(time=time):
+    #                     sample.features.del_global(name, time)
 
-                sample.add_feature(feat_id, feature)
+    #             sample.add_feature(feat_id, feature)
 
-        sample._extra_data = copy.deepcopy(self._extra_data)
+    #     sample._extra_data = copy.deepcopy(self._extra_data)
 
-        return sample
+    #     return sample
 
-    @deprecated(
-        "`Dataset.from_features_identifier(...)` is deprecated, use instead `Dataset.extract_sample_from_identifier(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def from_features_identifier(
-        self,
-        feature_identifiers: Union[FeatureIdentifier, list[FeatureIdentifier]],
-    ) -> Self:
-        """DEPRECATED: Use :meth:`Dataset.extract_sample_from_identifier` instead."""
-        return self.extract_sample_from_identifier(
-            feature_identifiers
-        )  # pragma: no cover
+    # def merge_features(self, sample: Self, in_place: bool = False) -> Self:
+    #     """Merge features from another sample into the current sample.
 
-    def merge_features(self, sample: Self, in_place: bool = False) -> Self:
-        """Merge features from another sample into the current sample.
+    #     This method applies updates to scalars, fields, or nodes
+    #     using features from another sample. When `in_place=False`, a deep copy of the sample is created
+    #     before applying updates, ensuring full isolation from the original.
 
-        This method applies updates to scalars, fields, or nodes
-        using features from another sample. When `in_place=False`, a deep copy of the sample is created
-        before applying updates, ensuring full isolation from the original.
+    #     Args:
+    #         sample (Sample): The sample from which features will be merged.
+    #         in_place (bool, optional): If True, modifies the current sample in place.
+    #             If False, returns a deep copy with updated features.
 
-        Args:
-            sample (Sample): The sample from which features will be merged.
-            in_place (bool, optional): If True, modifies the current sample in place.
-                If False, returns a deep copy with updated features.
+    #     Returns:
+    #         Self: The updated sample (either the current instance or a new copy).
+    #     """
+    #     merged_dataset = self if in_place else self.copy()
 
-        Returns:
-            Self: The updated sample (either the current instance or a new copy).
-        """
-        merged_dataset = self if in_place else self.copy()
+    #     all_features_identifiers = sample.get_all_features_identifiers()
+    #     all_features = sample.get_features_from_identifiers(all_features_identifiers)
 
-        all_features_identifiers = sample.get_all_features_identifiers()
-        all_features = sample.get_features_from_identifiers(all_features_identifiers)
+    #     feature_types = set([feat_id["type"] for feat_id in all_features_identifiers])
 
-        feature_types = set([feat_id["type"] for feat_id in all_features_identifiers])
+    #     # if field or node features are to extract, copy the source sample and delete all fields
+    #     if "field" in feature_types or "nodes" in feature_types:
+    #         source_sample = sample.copy()
+    #         source_sample.del_all_fields()
 
-        # if field or node features are to extract, copy the source sample and delete all fields
-        if "field" in feature_types or "nodes" in feature_types:
-            source_sample = sample.copy()
-            source_sample.del_all_fields()
+    #     # DELETE LATER IF CONFIRMED THIS IS NOT NEEDED (WITH GLOBAL, THERE IS ALWAYS A TREE)
+    #     # for feat_id in all_features_identifiers:
+    #     #     # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
+    #     #     if feat_id["type"] in ["field", "nodes"]:
+    #     #         # get time of current feature
+    #     #         time = sample.features.resolve_time(time=feat_id.get("time"))
 
-        # DELETE LATER IF CONFIRMED THIS IS NOT NEEDED (WITH GLOBAL, THERE IS ALWAYS A TREE)
-        # for feat_id in all_features_identifiers:
-        #     # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
-        #     if feat_id["type"] in ["field", "nodes"]:
-        #         # get time of current feature
-        #         time = sample.features.resolve_time(time=feat_id.get("time"))
+    #     #         # if the constructed sample does not have a tree, add the one from the source sample, with no field
+    #     #         if not merged_dataset.features.get_tree(time):
+    #     #             merged_dataset.features.add_tree(source_sample.get_tree(time))
 
-        #         # if the constructed sample does not have a tree, add the one from the source sample, with no field
-        #         if not merged_dataset.features.get_tree(time):
-        #             merged_dataset.features.add_tree(source_sample.get_tree(time))
-
-        return merged_dataset.update_features_from_identifier(
-            feature_identifiers=all_features_identifiers,
-            features=all_features,
-            in_place=in_place,
-        )
-
-    # -------------------------------------------------------------------------#
-    @deprecated(
-        "`Sample.save(...)` is deprecated, use instead `Sample.save_to_dir(...)`",
-        version="0.1.8",
-        removal="0.2",
-    )
-    def save(
-        self, path: Union[str, Path], overwrite: bool = False, memory_safe: bool = False
-    ) -> None:
-        """DEPRECATED: use :meth:`Sample.save_to_dir` instead."""
-        self.save_to_dir(path, overwrite=overwrite, memory_safe=memory_safe)
+    #     return merged_dataset.update_features_by_path(
+    #         feature_identifiers=all_features_identifiers,
+    #         features=all_features,
+    #         in_place=in_place,
+    #     )
 
     # -------------------------------------------------------------------------#
     def save_to_dir(
@@ -760,48 +516,6 @@ class Sample(BaseModel):
 
                 (self.features.data[time],) = (tree,)
 
-        old_scalars_file = path / "scalars.csv"
-        if old_scalars_file.is_file():
-            self._load_old_scalars(old_scalars_file)
-
-        old_time_series_files = list(path.glob("time_series_*.csv"))
-        if len(old_time_series_files) > 0:
-            self._load_old_time_series(old_time_series_files)
-
-    @deprecated(
-        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _load_old_scalars(self, scalars_file: Path):
-        names = np.loadtxt(scalars_file, dtype=str, max_rows=1, delimiter=",").reshape(
-            (-1,)
-        )
-        scalars = np.loadtxt(
-            scalars_file, dtype=float, skiprows=1, delimiter=","
-        ).reshape((-1,))
-        for name, value in zip(names, scalars):
-            self.add_scalar(name, value)
-
-    @deprecated(
-        reason="This Sample was written with plaid<=0.1.9, save it with plaid>=0.1.10 to have all features embedded in the CGNS tree",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _load_old_time_series(self, time_series_files: list[Path]):
-        for ts_fname in time_series_files:
-            names = np.loadtxt(ts_fname, dtype=str, max_rows=1, delimiter=",").reshape(
-                (-1,)
-            )
-            assert names[0] == "t"
-            times_and_val = np.loadtxt(ts_fname, dtype=float, skiprows=1, delimiter=",")
-            for i in range(times_and_val.shape[0]):
-                self.add_global(
-                    name=names[1],
-                    global_array=times_and_val[i, 1],
-                    time=times_and_val[i, 0],
-                )
-
     # # -------------------------------------------------------------------------#
     def __str__(self) -> str:
         """Return a string representation of the sample.
@@ -831,7 +545,7 @@ class Sample(BaseModel):
                     for location in CGNS_FIELD_LOCATIONS:
                         field_names = field_names.union(
                             self.features.get_field_names(
-                                location=location, zone_name=zn, base_name=bn, time=time
+                                location=location, zone=zn, base=bn, time=time
                             )
                         )
         nb_fields = len(field_names)
@@ -887,11 +601,11 @@ class Sample(BaseModel):
         summary += "=" * 50 + "\n"
 
         # Scalars with names
-        scalar_names = self.get_scalar_names()
+        scalar_names = self.get_global_names()
         if scalar_names:
             summary += f"Scalars ({len(scalar_names)}):\n"
             for name in scalar_names:
-                value = self.get_scalar(name)
+                value = self.get_global(name)
                 summary += f"  - {name}: {value}\n"
             summary += "\n"
 
@@ -911,12 +625,12 @@ class Sample(BaseModel):
                         summary += f"            Zone: {zone_name}\n"
                         # Nodes, nodal tags and fields at verticies
                         nodes = self.get_nodes(
-                            zone_name=zone_name, base_name=base_name, time=time
+                            zone=zone_name, base=base_name, time=time
                         )
                         if nodes is not None:
                             nb_nodes = nodes.shape[0]
                             nodal_tags = self.features.get_nodal_tags(
-                                zone_name=zone_name, base_name=base_name, time=time
+                                zone=zone_name, base=base_name, time=time
                             )
                             summary += f"                Nodes ({nb_nodes})\n"
                             if len(nodal_tags) > 0:
@@ -925,8 +639,8 @@ class Sample(BaseModel):
                         for location in CGNS_FIELD_LOCATIONS:
                             field_names = self.get_field_names(
                                 location=location,
-                                zone_name=zone_name,
-                                base_name=base_name,
+                                zone=zone_name,
+                                base=base_name,
                                 time=time,
                             )
                             if field_names:
@@ -934,7 +648,7 @@ class Sample(BaseModel):
 
                         # Elements and fields at elements
                         elements = self.features.get_elements(
-                            zone_name=zone_name, base_name=base_name, time=time
+                            zone=zone_name, base=base_name, time=time
                         )
                         summary += f"                Elements ({sum([v.shape[0] for v in elements.values()])})\n"
                         if len(elements) > 0:
@@ -962,7 +676,7 @@ class Sample(BaseModel):
         report += "=" * 30 + "\n"
 
         # Check if sample has basic features
-        has_scalars = len(self.get_scalar_names()) > 0
+        has_scalars = len(self.get_global_names()) > 0
         has_meshes = len(self.features.get_all_time_values()) > 0
 
         report += f"Has scalars: {has_scalars}\n"
@@ -981,8 +695,8 @@ class Sample(BaseModel):
                         for location in CGNS_FIELD_LOCATIONS:
                             field_names = self.get_field_names(
                                 location=location,
-                                zone_name=zone_name,
-                                base_name=base_name,
+                                zone=zone_name,
+                                base=base_name,
                                 time=time,
                             )
                             total_fields.update(field_names)
@@ -992,3 +706,9 @@ class Sample(BaseModel):
                 report += f"Field names: {', '.join(sorted(total_fields))}\n"
 
         return report
+
+
+if TYPE_CHECKING:
+    # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING
+    # automatically adds all its methods to Sample's autocomplete.
+    class Sample(Sample, SampleFeatures): ...

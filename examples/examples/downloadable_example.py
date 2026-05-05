@@ -63,7 +63,7 @@ print(samples.vki_ls59)
 
 end = time.perf_counter()
 print(f"First sample retrieval duration: {end - start:.6f} seconds")
-assert(len(samples.vki_ls59.get_scalar_names())==8)
+assert(len(samples.vki_ls59.get_global_names())==8)
 
 # %%
 from plaid.examples import samples
@@ -73,4 +73,4 @@ print(samples.tensile2d)
 
 end = time.perf_counter()
 print(f"The tensile2d dataset being already loaded: sample retrieval duration: {end - start:.6f} seconds")
-assert(len(samples.tensile2d.get_scalar_names())==10)
+assert(len(samples.tensile2d.get_global_names())==10)

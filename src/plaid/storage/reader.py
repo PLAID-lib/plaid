@@ -10,18 +10,9 @@ Key features:
 - Automatic backend detection and converter creation
 - Sample conversion between storage formats and PLAID objects
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
-from plaid import Sample
 from plaid.storage.common.bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,
@@ -41,6 +32,8 @@ from plaid.storage.common.writer import (
 )
 from plaid.storage.registry import get_backend
 from plaid.utils.cgns_helper import update_features_for_CGNS_compatibility
+
+from ..containers.sample import Sample
 
 
 class Converter:
@@ -83,6 +76,7 @@ class Converter:
         dataset: Any,
         idx: int,
         features: Optional[list[str]] = None,
+        indexers: Optional[dict[str, Any]] = None,
     ) -> dict[float, dict[str, Any]]:
         """Convert a dataset sample to dictionary format.
 
@@ -91,6 +85,9 @@ class Converter:
             idx: Index of the sample to convert.
             features: Optional list of feature names to include from the variable fields.
                 If None, all variable features available for the backend are included.
+            indexers: Optional mapping ``feature_path -> indexer`` used to extract only
+                selected indices inside variable features. Indexing semantics are
+                backend-dependent and ignored for non-requested features.
 
         Returns:
             dict: Sample data in dictionary format.
@@ -98,21 +95,37 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.to_var_sample_dict is None:
+        if self.backend_spec.to_var_sample_dict is None:   # pragma: no cover
             raise ValueError(
                 f"Converter.to_dict not available for {self.backend} backend"
             )
 
         if features:
             features = update_features_for_CGNS_compatibility(
-                features, self.constant_features, self.variable_features
+                features,
+                self.constant_features,
+                self.variable_features,
             )
             req_var_feat = [f for f in features if f in self.variable_features]
         else:
             req_var_feat = None
 
+        if indexers is not None:
+            unknown = set(indexers.keys()) - self.variable_features
+            if unknown:
+                raise KeyError(
+                    f"Indexers contain unknown variable features: {sorted(unknown)}"
+                )
+            if req_var_feat is not None:
+                not_requested = set(indexers.keys()) - set(req_var_feat)
+                if not_requested:
+                    raise KeyError(
+                        "Indexers contain features not present in requested variable "
+                        f"features: {sorted(not_requested)}"
+                    )
+
         var_sample_dict = self.backend_spec.to_var_sample_dict(
-            dataset, idx, features=req_var_feat
+            dataset, idx, features=req_var_feat, indexers=indexers
         )
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types, features)
 
@@ -121,6 +134,7 @@ class Converter:
         dataset: Any,
         idx: int,
         features: Optional[list[str]] = None,
+        indexers: Optional[dict[str, Any]] = None,
     ) -> Sample:
         """Convert a dataset sample to PLAID Sample object.
 
@@ -130,16 +144,20 @@ class Converter:
             features: Optional list of feature names to include from the variable fields.
                 If None, all variable features available for the backend are included.
                 Features are retreated based on self.constant_features and self.variable_features to satisfy the CGNS conventions.
+            indexers: Optional mapping ``feature_path -> indexer`` used to extract only
+                selected indices inside variable features.
 
         Returns:
             Sample: A PLAID Sample object.
         """
         if features:
             features = update_features_for_CGNS_compatibility(
-                features, self.constant_features, self.variable_features
+                features,
+                self.constant_features,
+                self.variable_features,
             )
         if self.backend != "cgns":
-            sample_dict = self.to_dict(dataset, idx, features)
+            sample_dict = self.to_dict(dataset, idx, features, indexers=indexers)
             return to_plaid_sample(sample_dict, self.cgns_types)
         else:
             return dataset[idx]
@@ -156,7 +174,7 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.sample_to_var_sample_dict is None:
+        if self.backend_spec.sample_to_var_sample_dict is None:  # pragma: no cover
             raise ValueError(
                 f"Converter.sample_to_var_sample_dict not available for {self.backend} backend"
             )
@@ -188,7 +206,9 @@ class Converter:
             dict: Sample data in dictionary format suitable for storage.
         """
         return plaid_to_sample_dict(
-            plaid_sample, self.variable_features, self.constant_features
+            plaid_sample,
+            self.variable_features,
+            self.constant_features,
         )
 
     def __repr__(self) -> str:
@@ -225,8 +245,7 @@ def init_from_disk(
     backend = infos["storage_backend"]
     num_samples = infos["num_samples"]
 
-    backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_from_disk(local_dir)
+    datasetdict = get_backend(backend).init_from_disk(path=local_dir)
 
     if splits is None:
         splits = list(datasetdict.keys())
@@ -310,7 +329,9 @@ def init_streaming_from_hub(
     num_samples = infos["num_samples"]
 
     backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_streaming_from_hub(repo_id, split_ids, features)
+    datasetdict = backend_spec.init_datasetdict_streaming_from_hub(
+        repo_id, split_ids, features
+    )
 
     converterdict = {}
     for split in datasetdict.keys():

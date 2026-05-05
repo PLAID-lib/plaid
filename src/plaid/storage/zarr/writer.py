@@ -11,14 +11,6 @@ Key features:
 - Integration with Hugging Face Hub for dataset sharing
 - Dataset card generation with splits, features, and documentation
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import gc
 import multiprocessing as mp
 from pathlib import Path
@@ -30,10 +22,11 @@ import zarr
 from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
-from plaid import Sample
 from plaid.storage.common.bridge import flatten_path
 from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
+
+from ...containers.sample import Sample
 
 
 def _auto_chunks(shape: tuple[int, ...], target_n: int) -> tuple[int, ...]:

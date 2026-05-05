@@ -49,7 +49,7 @@ from plaid.utils import cgns_helper as CGH
 def show_sample(sample: Sample):
     print(f"sample = {sample}")
     sample.show_tree()
-    print(f"{sample.get_scalar_names() = }")
+    print(f"{sample.get_global_names() = }")
     print(f"{sample.get_field_names() = }")
 
 
@@ -112,14 +112,14 @@ show_sample(sample)
 
 # %%
 # Add a rotation scalar to this Sample
-sample.add_scalar("rotation", np.random.randn())
+sample.add_global("rotation", np.random.randn())
 
 show_sample(sample)
 
 # %%
 # Add a more scalars to this Sample
-sample.add_scalar("speed", np.random.randn())
-sample.add_scalar("other", np.random.randn())
+sample.add_global("speed", np.random.randn())
+sample.add_global("other", np.random.randn())
 
 show_sample(sample)
 
@@ -192,8 +192,8 @@ points = np.array(
 )
 
 # Set the coordinates of nodes for a specified base and zone at a given time.
-# set_points == set_nodes == set_vertices
-sample.set_nodes(points, base_name="SurfaceMesh", zone_name="TestZoneName", time=0.0)
+# set node coordinates
+sample.set_nodes(points, base="SurfaceMesh", zone="TestZoneName", time=0.0)
 
 show_sample(sample)
 
@@ -205,8 +205,8 @@ show_sample(sample)
 sample.add_field(
     "Pressure",
     np.random.randn(len(points)),
-    base_name="SurfaceMesh",
-    zone_name="TestZoneName",
+    base="SurfaceMesh",
+    zone="TestZoneName",
     time=0.0,
 )
 
@@ -217,8 +217,8 @@ show_sample(sample)
 sample.add_field(
     "Temperature",
     np.random.randn(len(points)),
-    base_name="SurfaceMesh",
-    zone_name="TestZoneName",
+    base="SurfaceMesh",
+    zone="TestZoneName",
     time=0.0,
 )
 
@@ -229,9 +229,9 @@ show_sample(sample)
 
 # %%
 # It will look for a default base if no base and zone are given
-print(f"{sample.get_scalar_names() = }")
-print(f"{sample.get_scalar('omega') = }")
-print(f"{sample.get_scalar('rotation') = }")
+print(f"{sample.get_global_names() = }")
+print(f"{sample.get_global('omega') = }")
+print(f"{sample.get_global('rotation') = }")
 
 # %% [markdown]
 # ### Access fields data in Sample
@@ -248,8 +248,7 @@ print(f"{sample.get_field('Temperature') = }")
 # %%
 # It will look for a default base if no base and zone are given
 print(f"{sample.get_nodes() = }")
-print(f"{sample.features.get_points() = }")  # same as get_nodes
-print(f"{sample.features.get_vertices() = }")  # same as get_nodes
+print(f"{sample.features.get_nodes() = }")
 
 # %% [markdown]
 # ### Retrieve element connectivity data
@@ -533,7 +532,7 @@ test_pth.mkdir(parents=True, exist_ok=True)
 sample_save_fname = test_pth / "test"
 print(f"saving path: {sample_save_fname}")
 
-sample.save(sample_save_fname)
+sample.save_to_dir(sample_save_fname)
 
 # %% [markdown]
 # ### Load a Sample from a directory via initialization

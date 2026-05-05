@@ -1,0 +1,14 @@
+input_features:
+- Base_2_3/Zone/Elements_TRI_3/ElementConnectivity
+- Base_2_3/Zone/GridCoordinates/CoordinateX
+- Base_2_3/Zone/GridCoordinates/CoordinateY
+- Base_2_3/Zone/GridCoordinates/CoordinateZ
+name: regression_1
+output_features:
+- Base_2_3/Zone/VertexFields/pressure
+score_function: RRMSE
+task: regression
+test_split:
+  test: all
+training_split:
+  train: all

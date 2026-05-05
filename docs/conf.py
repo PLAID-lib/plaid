@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -36,6 +29,11 @@ shutil.copytree(basedir / "examples", basedir / "docs" / "source" / "notebooks",
 root = basedir / "docs" / "source" / "notebooks"
 for file in root.rglob("*_example.py"):
     print(file)
+    if str(file).split("/")[-1] in ["downloadable_example.py", "pipeline_example.py",
+                                     "bisect_example.py", "metrics_example.py",
+                                     "init_with_tabular_example.py","interpolation_example.py",
+                                     "split_example.py", "stats_example.py" ]:
+        continue
     subprocess.run([
         "jupytext",
         "--to", "ipynb",

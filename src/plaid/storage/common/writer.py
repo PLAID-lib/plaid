@@ -4,14 +4,6 @@ This module provides common utilities for writing dataset metadata, problem defi
 and other auxiliary files to disk or uploading them to Hugging Face Hub. It handles
 serialization of infos, problem definitions, and dataset tree structures.
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import io
 import json
 import logging
@@ -22,7 +14,7 @@ import numpy as np
 import yaml
 from huggingface_hub import HfApi
 
-from plaid import ProblemDefinition
+from ...problem_definition import ProblemDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +50,7 @@ def save_problem_definitions_to_disk(
         pb_defs (Union[dict[str, ProblemDefinition], ProblemDefinition]): The problem definitions to save.
     """
     if isinstance(pb_defs, ProblemDefinition):
-        pb_defs = {pb_defs.get_name(): pb_defs}
+        pb_defs = {pb_defs.name: pb_defs}
 
     target_dir = Path(path) / "problem_definitions"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -179,7 +171,8 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
 
                 offset += nbytes
 
-        json.dump(layout, open(cst_path / "layout.json", "w"), indent=2)
+        with open(cst_path / "layout.json", "w") as f:
+            json.dump(layout, f, indent=2)
 
         with open(cst_path / "constant_schema.yaml", "w", encoding="utf-8") as f:
             yaml.dump(constant_schema[split], f, sort_keys=False)
@@ -271,6 +264,7 @@ def push_local_problem_definitions_to_hub(
     ``HfApi.upload_folder``.
 
     Expected local layout:
+
         <path>/
             problem_definitions/
                 <name_1>
@@ -337,7 +331,8 @@ def push_local_metadata_to_hub(
     (e.g. via ``save_metadata_to_disk``). This function performs no validation,
     transformation, or serialization; it strictly uploads existing files.
 
-    Expected local layout:
+    Expected local layout::
+
         <path>/
             constants/
                 <split>/

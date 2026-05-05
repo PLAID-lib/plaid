@@ -17,7 +17,7 @@ from plaid.problem_definition import ProblemDefinition
 from plaid.types import FeatureIdentifier
 
 pb = ProblemDefinition()
-pb.set_task("regression")
+pb.task = "regression"
 
 pb.add_in_feature_identifier(FeatureIdentifier({"type": "scalar", "name": "Re"}))
 pb.add_out_feature_identifier(FeatureIdentifier({

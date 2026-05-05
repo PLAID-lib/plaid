@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # %% Imports
 
 import json
@@ -26,9 +19,6 @@ from plaid.storage import (
 )
 from plaid.storage.cgns.writer import (
     generate_datasetdict_to_disk as cgns_generate_datasetdict_to_disk,
-)
-from plaid.storage.hf_datasets.bridge import (
-    to_var_sample_dict,
 )
 from plaid.storage.writer import (
     _build_gen_kwargs,
@@ -161,16 +151,16 @@ def current_directory():
 
 # %% Fixtures
 @pytest.fixture()
-def dataset(samples, infos) -> Dataset:
+def dataset(samples) -> Dataset:
     samples_ = []
     for i, sample in enumerate(samples):
         sample_ = deepcopy(sample)
         if i == 0 or i == 2:
-            sample_.add_scalar("toto", 1.0)
+            sample_.add_global("toto", 1.0)
         samples_.append(sample_)
 
-    dataset = Dataset(samples=samples_)
-    dataset.set_infos(infos)
+    dataset = Dataset()
+    dataset.get_backend().add_sample(sample=samples_)
     return dataset
 
 
@@ -182,9 +172,10 @@ def main_splits() -> dict:
 @pytest.fixture()
 def problem_definition(main_splits) -> ProblemDefinition:
     problem_definition = ProblemDefinition()
-    problem_definition.set_task("regression")
-    problem_definition.add_input_scalars_names(["feature_name_1", "feature_name_2"])
-    problem_definition.set_split(main_splits)
+    problem_definition.task = "regression"
+    problem_definition.add_in_features_identifiers(["feature_name_1", "feature_name_2"])
+    problem_definition.train_split = {"train": main_splits["train"]}
+    problem_definition.test_split = {"test": main_splits["test"]}
     return problem_definition
 
 
@@ -200,13 +191,16 @@ def sample_constructor(dataset):
 
 @pytest.fixture()
 def split_ids(problem_definition) -> dict:
-    return problem_definition.get_split()
+    return {
+        "train": problem_definition.get_train_split_indices(),
+        "test": problem_definition.get_test_split_indices(),
+    }
 
 
 class Test_Storage:
     def assert_sample(self, sample):
         assert isinstance(sample, Sample)
-        sorted_names = sorted(sample.get_scalar_names())
+        sorted_names = sorted(sample.get_global_names())
         for i in range(4):
             assert sorted_names[i] == f"global_{i}"
         assert "test_field_same_size" in sample.get_field_names()
@@ -224,6 +218,8 @@ class Test_Storage:
         infos,
         problem_definition,
     ):
+        import plaid.storage.hf_datasets.bridge as hf_bridge
+
         test_dir = tmp_path / "test_hf"
 
         save_to_disk(
@@ -247,7 +243,7 @@ class Test_Storage:
             )
 
         with pytest.raises(ValueError):
-            problem_definition.set_name(None)
+            problem_definition.name = None
             save_to_disk(
                 output_folder=test_dir,
                 sample_constructor=sample_constructor,
@@ -296,13 +292,7 @@ class Test_Storage:
 
         converter.plaid_to_dict(plaid_sample)
 
-        to_var_sample_dict(hf_dataset, 0, enforce_shapes=False)
-
-        for t in plaid_sample.get_all_time_values():
-            for path in problem_definition.get_in_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
-            for path in problem_definition.get_out_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
+        hf_bridge.to_var_sample_dict(hf_dataset, 0)
 
         converter.to_dict(hf_dataset, 0)
         converter.sample_to_dict(hf_dataset[0])
@@ -369,12 +359,6 @@ class Test_Storage:
         zarr_dataset.toto = 1.0
         print(zarr_dataset)
 
-        for t in plaid_sample.get_all_time_values():
-            for path in problem_definition.get_in_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
-            for path in problem_definition.get_out_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
-
         converter.to_dict(zarr_dataset, 0)
         converter.sample_to_dict(zarr_dataset[0])
 
@@ -388,6 +372,216 @@ class Test_Storage:
         )
         with pytest.raises(KeyError):
             converter.to_dict(zarr_dataset, 0, features=["dummy"])
+
+    def test_hf_datasets_indexers(
+        self,
+        tmp_path,
+        sample_constructor,
+        split_ids,
+        infos,
+        problem_definition,
+    ):
+        test_dir = tmp_path / "test_hf_indexers"
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+        hf_dataset = datasetdict["train"]
+        converter = converterdict["train"]
+
+        field_path = "Base_Name/Zone_Name/VertexFields/test_field_same_size"
+        selected_idx = [1, 3, 7, 11]
+
+        sampled = converter.to_plaid(
+            hf_dataset,
+            0,
+            features=[field_path],
+            indexers={field_path: selected_idx},
+        )
+        full = converter.to_plaid(hf_dataset, 0, features=[field_path])
+
+        expected = full.get_field("test_field_same_size")[selected_idx]
+        got = sampled.get_field("test_field_same_size")
+        assert np.array_equal(got, expected)
+
+        with pytest.raises(KeyError):
+            converter.to_dict(
+                hf_dataset,
+                0,
+                features=[field_path],
+                indexers={"dummy": selected_idx},
+            )
+
+        # Valid variable feature key, but not among requested features
+        other_variable_feature = next(
+            f
+            for f in converter.variable_features
+            if f != field_path and not f.endswith("_times")
+        )
+        with pytest.raises(KeyError):
+            converter.to_dict(
+                hf_dataset,
+                0,
+                features=[field_path],
+                indexers={other_variable_feature: [0]},
+            )
+
+    def test_zarr_indexers(
+        self,
+        tmp_path,
+        sample_constructor,
+        split_ids,
+        infos,
+        problem_definition,
+    ):
+        test_dir = tmp_path / "test_zarr_indexers"
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="zarr",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+        zarr_dataset = datasetdict["train"]
+        converter = converterdict["train"]
+
+        field_path = "Base_Name/Zone_Name/VertexFields/test_field_same_size"
+        selected_idx = [0, 2, 4, 8, 16]
+
+        sampled = converter.to_plaid(
+            zarr_dataset,
+            0,
+            features=[field_path],
+            indexers={field_path: selected_idx},
+        )
+        full = converter.to_plaid(zarr_dataset, 0, features=[field_path])
+
+        expected = full.get_field("test_field_same_size")[selected_idx]
+        got = sampled.get_field("test_field_same_size")
+        assert np.array_equal(got, expected)
+
+        with pytest.raises(IndexError):
+            converter.to_dict(
+                zarr_dataset,
+                0,
+                features=[field_path],
+                indexers={field_path: [999]},
+            )
+
+    def test_zarr_bridge_indexer_branches(
+        self,
+        tmp_path,
+        sample_constructor,
+        split_ids,
+        infos,
+        problem_definition,
+    ):
+        import plaid.storage.zarr.bridge as zarr_bridge
+
+        test_dir = tmp_path / "test_zarr_bridge_indexers"
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="zarr",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+        datasetdict, _ = init_from_disk(test_dir)
+        zarr_dataset = datasetdict["train"]
+
+        # cover `continue` on missing feature key
+        out = zarr_bridge.to_var_sample_dict(
+            zarr_dataset, 0, features=["missing/feature/path"]
+        )
+        assert out == {}
+
+        # cover slice branch
+        arr = np.arange(10)
+        sliced = zarr_bridge._apply_indexer(arr, slice(1, 6, 2), "feat")
+        assert np.array_equal(sliced, np.array([1, 3, 5]))
+
+        # cover scalar and invalid-shape indexer branches
+        with pytest.raises(ValueError):
+            zarr_bridge._apply_indexer(np.array(1), [0], "feat")
+        with pytest.raises(ValueError):
+            zarr_bridge._apply_indexer(np.arange(5), [[0, 1]], "feat")
+
+    def test_hf_bridge_indexer_branches(
+        self,
+        tmp_path,
+        sample_constructor,
+        split_ids,
+        infos,
+        problem_definition,
+    ):
+        import pyarrow as pa
+
+        import plaid.storage.hf_datasets.bridge as hf_bridge
+
+        test_dir = tmp_path / "test_hf_bridge_indexers"
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+        datasetdict, _ = init_from_disk(test_dir)
+        hf_dataset = datasetdict["train"]
+
+        field_path = "Base_Name/Zone_Name/VertexFields/test_field_same_size"
+
+        # cover indexed branch
+        out = hf_bridge.to_var_sample_dict(
+            hf_dataset,
+            0,
+            features=[field_path],
+            indexers={field_path: [0, 2, 4]},
+        )
+        assert out[field_path].shape == (3,)
+
+        # cover sample_to_var_sample_dict None branch
+        assert hf_bridge.sample_to_var_sample_dict({"a": None}) == {"a": None}
+
+        # cover _extract_indexed_arrow slice / invalid ndim / oob
+        primitive = pa.array([0, 1, 2, 3, 4], type=pa.int64())
+        assert np.array_equal(
+            hf_bridge._extract_indexed_arrow(primitive, slice(1, 4), "f"),
+            np.array([1, 2, 3]),
+        )
+        with pytest.raises(ValueError):
+            hf_bridge._extract_indexed_arrow(primitive, [[0, 1]], "f")
+        with pytest.raises(IndexError):
+            hf_bridge._extract_indexed_arrow(primitive, [99], "f")
+
+        # cover fallback branch (ListArray -> _to_numpy_arrow + _apply_indexer)
+        list_arr = pa.array([[1, 2, 3], [4, 5, 6]], type=pa.list_(pa.int64()))
+        fallback = hf_bridge._extract_indexed_arrow(list_arr, [0, 2], "f")
+        assert np.array_equal(fallback, np.array([[1, 3], [4, 6]]))
+
+        # cover _to_numpy_arrow default and _apply_indexer scalar guard
+        assert np.array_equal(
+            hf_bridge._to_numpy_arrow(primitive), np.array([0, 1, 2, 3, 4])
+        )
+        with pytest.raises(ValueError):
+            hf_bridge._apply_indexer(np.array(1), [0], "f")
 
     def test_cgns(
         self, tmp_path, sample_constructor, split_ids, infos, problem_definition
@@ -425,12 +619,6 @@ class Test_Storage:
         self.assert_sample(plaid_sample)
 
         converter.plaid_to_dict(plaid_sample)
-
-        for t in plaid_sample.get_all_time_values():
-            for path in problem_definition.get_in_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
-            for path in problem_definition.get_out_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
 
         with pytest.raises(ValueError):
             converter.to_dict(cgns_dataset, 0)

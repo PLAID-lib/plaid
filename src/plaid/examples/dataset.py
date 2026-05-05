@@ -1,13 +1,5 @@
 """Examples for PLAID `Dataset` objects."""
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
 from plaid import Dataset
-from plaid.bridges.huggingface_bridge import load_dataset_from_hub, binary_to_plaid_sample
 from plaid.examples.config import _HF_REPOS
 
 
@@ -40,12 +32,15 @@ class _LazyDatasets:
             return self._cache[ex_name]
 
         try:
-            ds_stream = load_dataset_from_hub(hf_repo, split="all_samples", streaming=True)
+            from plaid.storage import init_streaming_from_hub
+            datasetdict, converterdict = init_streaming_from_hub(hf_repo)
             samples = []
-            for _ in range(2):
-                hf_sample = next(iter(ds_stream))
-                samples.append(binary_to_plaid_sample(hf_sample))
-            dataset = Dataset(samples=samples)
+            for k in converterdict.keys():
+                hf_sample = next(iter(datasetdict[k]))
+                plaid_sample = converterdict[k].sample_to_plaid(hf_sample)
+                samples.append(plaid_sample)
+            dataset = Dataset()
+            dataset.get_backend().set_sample(samples)
             self._cache[ex_name] = dataset
             return dataset
         except Exception as e: # pragma: no cover

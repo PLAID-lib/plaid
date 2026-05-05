@@ -1,29 +1,15 @@
 """Utility functions for PLAID containers."""
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # %% Imports
 
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 
-from plaid.constants import (
-    AUTHORIZED_FEATURE_INFOS,
-    AUTHORIZED_FEATURE_TYPES,
+from ..constants import (
     CGNS_FIELD_LOCATIONS,
-    REQUIRED_INFOS_KEYS,
 )
-from plaid.containers.feature_identifier import FeatureIdentifier
-from plaid.types import Feature
-from plaid.utils.base import safe_len
 
 path_to_location = {f"{loc}Fields": loc for loc in CGNS_FIELD_LOCATIONS}
 retrocompatibility = {
@@ -50,7 +36,7 @@ def _check_names(names: Union[str, list[Optional[str]], None]):
     for name in names:
         if (name is not None) and ("/" in name):
             raise ValueError(
-                f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurence of `/` with something else, for example: `name.replace('/','__')`"
+                f"feature_names containing `/` are not allowed, but {name=}, you should first replace any occurrence of `/` with something else, for example: `name.replace('/','__')`"
             )
         if (name is not None) and (len(name) > 32):
             raise ValueError(
@@ -143,11 +129,7 @@ def get_sample_ids(savedir: Union[str, Path]) -> list[int]:
     """
     savedir = Path(savedir)
     return sorted(
-        [
-            int(d.stem.split("_")[-1])
-            for d in (savedir / "samples").glob("sample_*")
-            if d.is_dir()
-        ]
+        [int(d.stem.split("_")[-1]) for d in (savedir).glob("sample_*") if d.is_dir()]
     )
 
 
@@ -161,144 +143,6 @@ def get_number_of_samples(savedir: Union[str, Path]) -> int:
         int: number of samples.
     """
     return len(get_sample_ids(savedir))
-
-
-def get_feature_type_and_details_from(
-    feature_identifier: FeatureIdentifier,
-) -> tuple[str, FeatureIdentifier]:
-    """Extract and validate the feature type and its associated metadata from a feature identifier.
-
-    This utility function ensures that the `feature_identifier` dictionary contains a valid
-    "type" key (e.g., "scalar", "field", "node") and returns the type along
-    with the remaining identifier keys, which are specific to the feature type.
-
-    Args:
-        feature_identifier (dict): A dictionary with a "type" key, and
-            other keys (some optional) depending on the feature type. For example:
-            - {"type": "scalar", "name": "Mach"}
-            - {"type": "field", "name": "pressure"}
-            - {"type": "field", "name": "pressure", "time":0.}
-            - {"type": "nodes", "base_name": "Base_2_2"}
-
-    Returns:
-        tuple[str, dict]: A tuple `(feature_type, feature_details)` where:
-            - `feature_type` is the value of the "type" key (e.g., "scalar").
-            - `feature_details` is a dictionary of the remaining keys.
-
-    Raises:
-        AssertionError:
-            - If "type" is missing.
-            - If the type is not in `AUTHORIZED_FEATURE_TYPES`.
-            - If any unexpected keys are present for the given type.
-    """
-    assert "type" in feature_identifier, (
-        "feature type not specified in feature_identifier"
-    )
-    feature_type = feature_identifier["type"]
-    feature_details = feature_identifier.copy()
-    feature_type = feature_details.pop("type")
-
-    assert feature_type in AUTHORIZED_FEATURE_TYPES, (
-        f"feature type {feature_type} not known"
-    )
-
-    assert all(
-        key in AUTHORIZED_FEATURE_INFOS[feature_type] for key in feature_details
-    ), (
-        f"Unexpected key(s) in feature_identifier {feature_details=} | {feature_type=} -> {AUTHORIZED_FEATURE_INFOS[feature_type]}"
-    )
-
-    return feature_type, feature_details
-
-
-def check_features_type_homogeneity(
-    feature_identifiers: list[FeatureIdentifier],
-) -> None:
-    """Check type homogeneity of features, for tabular conversion.
-
-    Args:
-        feature_identifiers (list[dict]): dict with a "type" key, and
-            other keys (some optional) depending on the feature type. For example:
-            - {"type": "scalar", "name": "Mach"}
-            - {"type": "field", "name": "pressure"}
-
-    Raises:
-        AssertionError: if types are not consistent
-    """
-    assert feature_identifiers and isinstance(feature_identifiers, list), (
-        "feature_identifiers must be a non-empty list"
-    )
-    feat_type = feature_identifiers[0]["type"]
-    for i, feat_id in enumerate(feature_identifiers):
-        assert feat_id["type"] in AUTHORIZED_FEATURE_TYPES, "feature type not known"
-        assert feat_id["type"] == feat_type, (
-            f"Inconsistent feature types: {i}-th feature type is {feat_id['type']}, while the first one is {feat_type}"
-        )
-
-
-def check_features_size_homogeneity(
-    feature_identifiers: list[FeatureIdentifier],
-    features: dict[int, list[Feature]],
-) -> int:
-    """Check size homogeneity of features, for tabular conversion.
-
-    Size homogeneity is check through samples for each feature, and through features for each sample.
-    To be converted to tabular data, each sample must have the same number of features and each feature
-    must have the same dimension
-
-    Args:
-        feature_identifiers (list[dict]): dict with a "type" key, and
-            other keys (some optional) depending on the feature type. For example:
-            - {"type": "scalar", "name": "Mach"}
-            - {"type": "field", "name": "pressure"}
-        features (dict): dict with sample index as keys and one or more features as values.
-
-    Returns:
-        int: the common feature dimension
-
-    Raises:
-        AssertionError: if sizes are not consistent
-    """
-    features_values = list(features.values())
-    nb_samples = len(features_values)
-    nb_features = len(feature_identifiers)
-    for i in range(nb_features):
-        name_feature = feature_identifiers[i].get("name", "nodes")
-        size = safe_len(features_values[0][i])
-        for j in range(nb_samples):
-            size_j = safe_len(features_values[j][i])
-            assert size_j == size, (
-                f"Inconsistent feature sizes for feature {i} (name {name_feature}): has size {size_j} in sample {j}, while having size {size} in sample 0"
-            )
-
-    for j in range(nb_samples):
-        size = safe_len(features_values[j][0])
-        for i in range(nb_features):
-            name_feature = feature_identifiers[i].get("name", "nodes")
-            size_i = safe_len(features_values[j][i])
-            assert size_i == size, (
-                f"Inconsistent feature sizes in sample {j}: feature {i} (name {name_feature}) size {size_i}, while feature 0 (name {feature_identifiers[0]['name']}) is of size {size}"
-            )
-    return size
-
-
-def has_duplicates_feature_ids(feature_identifiers: list[FeatureIdentifier]):
-    """Check whether a list of feature identifier contains duplicates.
-
-    Args:
-        feature_identifiers (list[FeatureIdentifier]):
-            A list of dictionaries representing feature identifiers.
-
-    Returns:
-        bool: True if a duplicate is found in the list, False otherwise.
-    """
-    seen = set()
-    for d in feature_identifiers:
-        frozen = frozenset(d.items())
-        if frozen in seen:
-            return True
-        seen.add(frozen)
-    return False
 
 
 def get_feature_details_from_path(path: str) -> dict[str, str]:
@@ -356,10 +200,11 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     # ----------------------
     # Grid coordinates
     # ----------------------
-    if node == "GridCoordinates" and len(split_path) == 4:
+    if node == "GridCoordinates" and len(split_path) >= 3 and len(split_path) <= 4:
         feat["type"] = "coordinate"
         feat["sub_type"] = "node"
-        feat["name"] = split_path[3]
+        if len(split_path) == 4:
+            feat["name"] = split_path[3]
         return feat
 
     # ----------------------
@@ -411,30 +256,3 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     return feat
 
 
-def validate_required_infos(infos: dict[str, Any]) -> None:
-    """Validate that required infos categories and keys are present.
-
-    Args:
-        infos: Dataset infos dictionary loaded from disk.
-
-    Raises:
-        ValueError: If a required infos category or key is missing.
-    """
-    assert isinstance(infos, dict)
-
-    missing_entries = []
-
-    for category, required_keys in REQUIRED_INFOS_KEYS.items():
-        category_infos = infos.get(category)
-        assert isinstance(category_infos, dict)
-
-        for key in required_keys:
-            if key not in category_infos:
-                missing_entries.append(f"{category}.{key}")
-
-    if missing_entries:
-        raise ValueError(
-            "Missing required infos entries: "
-            + ", ".join(sorted(missing_entries))
-            + f". Required entries are defined by {REQUIRED_INFOS_KEYS!r}."
-        )

@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # %% Imports
 
 import os
@@ -12,10 +5,8 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from packaging.version import Version
+from pydantic import ValidationError
 
-import plaid
-from plaid.containers import FeatureIdentifier
 from plaid.problem_definition import ProblemDefinition
 
 # %% Fixtures
@@ -28,25 +19,22 @@ def problem_definition() -> ProblemDefinition:
 
 @pytest.fixture()
 def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDefinition:
-    problem_definition.set_task("regression")
-    problem_definition.set_name("regression_1")
+    problem_definition.task = "regression"
+    problem_definition.name = "regression_1"
 
     # ----
-    feature_identifier = FeatureIdentifier({"type": "scalar", "name": "feature"})
-    predict_feature_identifier = FeatureIdentifier(
-        {"type": "scalar", "name": "predict_feature"}
-    )
-    test_feature_identifier = FeatureIdentifier(
-        {"type": "scalar", "name": "test_feature"}
-    )
+    feature_identifier = "Global/feature"
+    predict_feature_identifier = "Global/predict_feature"
+    test_feature_identifier = "Global/test_feature"
+
     problem_definition.add_in_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_in_feature_identifier(feature_identifier)
+    problem_definition.add_in_features_identifiers(feature_identifier)
     problem_definition.add_out_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_out_feature_identifier(feature_identifier)
+    problem_definition.add_out_features_identifiers(feature_identifier)
     # ----
     feature_identifier = "Base_2_2/Zone/PointData/U1"
     predict_feature_identifier = "Base_2_2/Zone/PointData/U2"
@@ -54,44 +42,12 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
     problem_definition.add_in_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_in_feature_identifier(feature_identifier)
+    problem_definition.add_in_features_identifiers(feature_identifier)
     problem_definition.add_out_features_identifiers(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_constant_feature_identifier(feature_identifier)
-    problem_definition.add_constant_features_identifiers(
-        [predict_feature_identifier, test_feature_identifier]
-    )
-
-    # ----
-    problem_definition.add_input_scalars_names(["scalar", "test_scalar"])
-    problem_definition.add_input_scalar_name("predict_scalar")
-    problem_definition.add_output_scalars_names(["scalar", "test_scalar"])
-    problem_definition.add_output_scalar_name("predict_scalar")
-
-    problem_definition.add_input_fields_names(["field", "test_field"])
-    problem_definition.add_input_field_name("predict_field")
-    problem_definition.add_output_fields_names(["field", "test_field"])
-    problem_definition.add_output_field_name("predict_field")
-
-    problem_definition.add_input_timeseries_names(["timeseries", "test_timeseries"])
-    problem_definition.add_input_timeseries_name("predict_timeseries")
-    problem_definition.add_output_timeseries_names(["timeseries", "test_timeseries"])
-    problem_definition.add_output_timeseries_name("predict_timeseries")
-
-    problem_definition.add_input_meshes_names(["mesh", "test_mesh"])
-    problem_definition.add_input_mesh_name("predict_mesh")
-    problem_definition.add_output_meshes_names(["mesh", "test_mesh"])
-    problem_definition.add_output_mesh_name("predict_mesh")
-
-    new_split = {"train": [0, 1, 2], "test": [3, 4]}
-    problem_definition.set_split(new_split)
-
-    new_split = {"train_1": [0, 1, 2], "train_2": "all"}
-    problem_definition.set_train_split(new_split)
-
-    new_split = {"test_1": "all", "test_2": [0, 2]}
-    problem_definition.set_test_split(new_split)
+    problem_definition.train_split = {"train_1": [0, 1, 2]}
+    problem_definition.test_split = {"test_1": "all"}
 
     return problem_definition
 
@@ -120,16 +76,8 @@ def clean_tests():
 
 class Test_ProblemDefinition:
     def test__init__(self, problem_definition):
-        assert problem_definition.get_task() is None
+        assert problem_definition.task is None
         print(problem_definition)
-
-    def test__init__path(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        ProblemDefinition(path=d_path)
-
-    def test__init__directory_path(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        ProblemDefinition(directory_path=d_path)
 
     def test__init__both_path_and_directory_path(self, current_directory):
         d_path = current_directory / "problem_definition"
@@ -137,633 +85,310 @@ class Test_ProblemDefinition:
             ProblemDefinition(path=d_path, directory_path=d_path)
 
     # -------------------------------------------------------------------------#
-    def test_version(self, problem_definition):
-        # Unauthorized version
-        assert problem_definition.get_version() == Version(plaid.__version__)
-
-    # -------------------------------------------------------------------------#
     def test_task(self, problem_definition):
         # Unauthorized task
-        with pytest.raises(TypeError):
-            problem_definition.set_task("ighyurgv")
-        problem_definition.set_task("classification")
-        with pytest.raises(ValueError):
-            problem_definition.set_task("regression")
-        assert problem_definition.get_task() == "classification"
+        with pytest.raises(ValidationError):
+            problem_definition.task = "ighyurgv"
+        problem_definition.task = "classification"
+        assert problem_definition.task == "classification"
         print(problem_definition)
 
     # -------------------------------------------------------------------------#
     def test_score_function(self, problem_definition):
         # Unauthorized task
-        with pytest.raises(TypeError):
-            problem_definition.set_score_function("ighyurgv")
-        problem_definition.set_score_function("RRMSE")
-        with pytest.raises(ValueError):
-            problem_definition.set_score_function("RRMSE")
-        assert problem_definition.get_score_function() == "RRMSE"
+        with pytest.raises(ValidationError):
+            problem_definition.score_function = "ighyurgv"
+        problem_definition.score_function = "RRMSE"
+        # can be set again to the same value
+        problem_definition.score_function = "RRMSE"
+        assert problem_definition.score_function == "RRMSE"
         print(problem_definition)
 
-    # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-    # -------------------------------------------------------------------------#
-    def test_get_in_features_identifiers(self, problem_definition):
-        assert problem_definition.get_in_features_identifiers() == []
-
-    def test_set_in_features_identifiers(self, problem_definition):
-        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
-        problem_definition.set_in_features_identifiers(dummy_identifier)
-        dummy_identifier = "Global/toto"
-        problem_definition.set_in_features_identifiers(dummy_identifier)
-
-    def test_add_in_features_identifiers_fail_same_identifier(self, problem_definition):
-        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
-        with pytest.raises(ValueError):
-            problem_definition.add_in_features_identifiers(
-                [dummy_identifier, dummy_identifier]
-            )
-        problem_definition.add_in_feature_identifier(dummy_identifier)
-        with pytest.raises(ValueError):
-            problem_definition.add_in_feature_identifier(dummy_identifier)
-
-    def test_add_in_features_identifiers(self, problem_definition):
-        dummy_identifier_1 = FeatureIdentifier({"type": "scalar", "name": "dummy_1"})
-        dummy_identifier_2 = FeatureIdentifier({"type": "scalar", "name": "dummy_2"})
-        dummy_identifier_3 = FeatureIdentifier({"type": "scalar", "name": "dummy_3"})
-        problem_definition.add_in_features_identifiers(
-            [dummy_identifier_1, dummy_identifier_2]
-        )
-        problem_definition.add_in_feature_identifier(dummy_identifier_3)
-        inputs = problem_definition.get_in_features_identifiers()
-        assert len(inputs) == 3
-        assert set(inputs) == set(
-            [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
-        )
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_get_out_features_identifiers(self, problem_definition):
-        assert problem_definition.get_out_features_identifiers() == []
-
-    def test_set_out_features_identifiers(self, problem_definition):
-        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
-        problem_definition.set_out_features_identifiers(dummy_identifier)
-        dummy_identifier = "Global/toto"
-        problem_definition.set_out_features_identifiers(dummy_identifier)
-
-    def test_add_out_features_identifiers_fail(self, problem_definition):
-        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
-        with pytest.raises(ValueError):
-            problem_definition.add_out_features_identifiers(
-                [dummy_identifier, dummy_identifier]
-            )
-        problem_definition.add_out_feature_identifier(dummy_identifier)
-        with pytest.raises(ValueError):
-            problem_definition.add_out_feature_identifier(dummy_identifier)
-
-    def test_add_out_features_identifiers(self, problem_definition):
-        dummy_identifier_1 = FeatureIdentifier({"type": "scalar", "name": "dummy_1"})
-        dummy_identifier_2 = FeatureIdentifier({"type": "scalar", "name": "dummy_2"})
-        dummy_identifier_3 = FeatureIdentifier({"type": "scalar", "name": "dummy_3"})
-        problem_definition.add_out_features_identifiers(
-            [dummy_identifier_1, dummy_identifier_2]
-        )
-        problem_definition.add_out_feature_identifier(dummy_identifier_3)
-        outputs = problem_definition.get_out_features_identifiers()
-        assert len(outputs) == 3
-        assert set(outputs) == set(
-            [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
-        )
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_get_constant_features_identifiers(self, problem_definition):
-        assert problem_definition.get_constant_features_identifiers() == []
-
-    def test_set_constant_features_identifiers(self, problem_definition):
-        dummy_identifier_1 = "Global/P"
-        dummy_identifier_2 = "Base_2_2/Zone/GridCoordinates"
-        problem_definition.set_constant_features_identifiers(
-            [dummy_identifier_1, dummy_identifier_2]
-        )
-        constants = problem_definition.get_constant_features_identifiers()
-        assert len(constants) == 2
-        assert set(constants) == set([dummy_identifier_1, dummy_identifier_2])
-
-    def test_add_constant_features_identifiers_fail(self, problem_definition):
-        dummy_identifier = FeatureIdentifier({"type": "scalar", "name": "dummy"})
-        with pytest.raises(ValueError):
-            problem_definition.add_constant_features_identifiers(
-                [dummy_identifier, dummy_identifier]
-            )
-        problem_definition.add_constant_feature_identifier(dummy_identifier)
-        with pytest.raises(ValueError):
-            problem_definition.add_constant_feature_identifier(dummy_identifier)
-
-    def test_add_constant_features_identifiers(self, problem_definition):
-        dummy_identifier_1 = FeatureIdentifier({"type": "scalar", "name": "dummy_1"})
-        dummy_identifier_2 = FeatureIdentifier({"type": "scalar", "name": "dummy_2"})
-        dummy_identifier_3 = FeatureIdentifier({"type": "scalar", "name": "dummy_3"})
-        problem_definition.add_constant_features_identifiers(
-            [dummy_identifier_1, dummy_identifier_2]
-        )
-        problem_definition.add_constant_feature_identifier(dummy_identifier_3)
-        constants = problem_definition.get_constant_features_identifiers()
-        assert len(constants) == 3
-        assert set(constants) == set(
-            [dummy_identifier_1, dummy_identifier_2, dummy_identifier_3]
-        )
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_filter_features_identifiers(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        problem = ProblemDefinition(d_path)
-        predict_feature_identifier = FeatureIdentifier(
-            {"type": "scalar", "name": "predict_feature"}
-        )
-        test_feature_identifier = FeatureIdentifier(
-            {"type": "scalar", "name": "test_feature"}
-        )
-        filter_in = problem.filter_in_features_identifiers(
-            [predict_feature_identifier, test_feature_identifier]
-        )
-        filter_out = problem.filter_out_features_identifiers(
-            [predict_feature_identifier, test_feature_identifier]
-        )
-        filter_cte = problem.filter_constant_features_identifiers(
-            [predict_feature_identifier, test_feature_identifier]
-        )
-        filter_cte
-        assert len(filter_in) == 2 and filter_in == [
-            predict_feature_identifier,
-            test_feature_identifier,
-        ]
-        assert filter_in != [test_feature_identifier, predict_feature_identifier], (
-            "common inputs not sorted"
+    def test_from_path_single_definition(self, monkeypatch, tmp_path):
+        expected = ProblemDefinition(
+            name="pb_single",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
         )
 
-        assert len(filter_out) == 2 and filter_out == [
-            predict_feature_identifier,
-            test_feature_identifier,
-        ]
-        assert filter_out != [test_feature_identifier, predict_feature_identifier], (
-            "common outputs not sorted"
+        def fake_loader(path):
+            assert path == tmp_path
+            return {"pb_single": expected}
+
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk", fake_loader
         )
 
-        inexisting_feature_identifier = FeatureIdentifier(
-            {"type": "scalar", "name": "inexisting_feature"}
-        )
-        fail_filter_in = problem.filter_in_features_identifiers(
-            [inexisting_feature_identifier]
-        )
-        fail_filter_out = problem.filter_out_features_identifiers(
-            [inexisting_feature_identifier]
-        )
-        fail_filter_cte = problem.filter_constant_features_identifiers(
-            ["Base_2_2/Zone/PointData/inexisting_feature"]
-        )
+        loaded = ProblemDefinition.from_path(tmp_path)
+        assert loaded.name == "pb_single"
+        assert loaded.task == "regression"
+        assert loaded.input_features == ["in_a"]
+        assert loaded.output_features == ["out_a"]
+        assert loaded.get_train_split_name() == "train_0"
+        assert loaded.get_test_split_name() == "test_0"
+        assert loaded.get_train_split_indices() == [0, 1]
+        assert loaded.get_test_split_indices() == [2]
 
-        assert fail_filter_in == []
-        assert fail_filter_out == []
-        assert fail_filter_cte == []
-
-    # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-    # -------------------------------------------------------------------------#
-    def test_get_input_scalars_names(self, problem_definition):
-        assert problem_definition.get_input_scalars_names() == []
-
-    def test_add_input_scalars_names_fail_same_name(self, problem_definition):
-        with pytest.raises(ValueError):
-            problem_definition.add_input_scalars_names(["feature_name", "feature_name"])
-        problem_definition.add_input_scalar_name("feature_name")
-        with pytest.raises(ValueError):
-            problem_definition.add_input_scalar_name("feature_name")
-
-    def test_add_input_scalars_names(self, problem_definition):
-        problem_definition.add_input_scalars_names(["scalar", "test_scalar"])
-        problem_definition.add_input_scalar_name("predict_scalar")
-        inputs = problem_definition.get_input_scalars_names()
-        assert len(inputs) == 3
-        assert set(inputs) == set(["predict_scalar", "scalar", "test_scalar"])
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_get_output_scalars_names(self, problem_definition):
-        assert problem_definition.get_output_scalars_names() == []
-
-    def test_add_output_scalars_names_fail(self, problem_definition):
-        with pytest.raises(ValueError):
-            problem_definition.add_output_scalars_names(
-                ["feature_name", "feature_name"]
-            )
-        problem_definition.add_output_scalar_name("feature_name")
-        with pytest.raises(ValueError):
-            problem_definition.add_output_scalar_name("feature_name")
-
-    def test_add_output_scalars_names(self, problem_definition):
-        problem_definition.add_output_scalars_names(["scalar", "test_scalar"])
-        problem_definition.add_output_scalar_name("predict_scalar")
-        outputs = problem_definition.get_output_scalars_names()
-        assert len(outputs) == 3
-        assert set(outputs) == set(["predict_scalar", "scalar", "test_scalar"])
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_filter_scalars_names(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        problem = ProblemDefinition(d_path)
-        filter_in = problem.filter_input_scalars_names(
-            ["predict_scalar", "test_scalar"]
-        )
-        filter_out = problem.filter_output_scalars_names(
-            ["predict_scalar", "test_scalar"]
-        )
-        assert len(filter_in) == 2 and filter_in == ["predict_scalar", "test_scalar"]
-        assert filter_in != ["test_scalar", "predict_scalar"], (
-            "common inputs not sorted"
+    def test_from_path_single_definition_with_override(self, monkeypatch, tmp_path):
+        expected = ProblemDefinition(
+            name="pb_single",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
         )
 
-        assert len(filter_out) == 2 and filter_out == ["predict_scalar", "test_scalar"]
-        assert filter_out != ["test_scalar", "predict_scalar"], (
-            "common outputs not sorted"
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk",
+            lambda path: {"pb_single": expected},
         )
 
-        fail_filter_in = problem.filter_input_scalars_names(["a_scalar"])
-        fail_filter_out = problem.filter_output_scalars_names(["b_scalar"])
+        loaded = ProblemDefinition.from_path(tmp_path)
+        assert loaded.name == "pb_single"
 
-        assert fail_filter_in == []
-        assert fail_filter_out == []
-
-    # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-    # -------------------------------------------------------------------------#
-    def test_get_input_fields_names(self, problem_definition):
-        assert problem_definition.get_input_fields_names() == []
-
-    def test_add_input_fields_names_fail_same_name(self, problem_definition):
-        with pytest.raises(ValueError):
-            problem_definition.add_input_fields_names(["feature_name", "feature_name"])
-        problem_definition.add_input_field_name("feature_name")
-        with pytest.raises(ValueError):
-            problem_definition.add_input_field_name("feature_name")
-
-    def test_add_input_fields_names(self, problem_definition):
-        problem_definition.add_input_fields_names(["field", "test_field"])
-        problem_definition.add_input_field_name("predict_field")
-        inputs = problem_definition.get_input_fields_names()
-        assert len(inputs) == 3
-        assert set(inputs) == set(["predict_field", "field", "test_field"])
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_get_output_fields_names(self, problem_definition):
-        assert problem_definition.get_output_fields_names() == []
-
-    def test_add_output_fields_names_fail(self, problem_definition):
-        with pytest.raises(ValueError):
-            problem_definition.add_output_fields_names(["feature_name", "feature_name"])
-        problem_definition.add_output_field_name("feature_name")
-        with pytest.raises(ValueError):
-            problem_definition.add_output_field_name("feature_name")
-
-    def test_add_output_fields_names(self, problem_definition):
-        problem_definition.add_output_fields_names(["field", "test_field"])
-        problem_definition.add_output_field_name("predict_field")
-        outputs = problem_definition.get_output_fields_names()
-        assert len(outputs) == 3
-        assert set(outputs) == set(["predict_field", "field", "test_field"])
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_filter_fields_names(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        problem = ProblemDefinition(d_path)
-        filter_in = problem.filter_input_fields_names(["predict_field", "test_field"])
-        filter_out = problem.filter_output_fields_names(["predict_field", "test_field"])
-        assert len(filter_in) == 2 and filter_in == ["predict_field", "test_field"]
-        assert filter_in != ["test_field", "predict_field"], "common inputs not sorted"
-
-        assert len(filter_out) == 2 and filter_out == ["predict_field", "test_field"]
-        assert filter_out != ["test_field", "predict_field"], (
-            "common outputs not sorted"
+    def test_from_path_named_definition_and_override(self, monkeypatch, tmp_path):
+        pb_1 = ProblemDefinition(
+            name="pb_1",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
+        )
+        pb_2 = ProblemDefinition(
+            name="pb_2",
+            task="classification",
+            input_features=["in_b"],
+            output_features=["out_b"],
+            train_split={"train_1": [3, 4]},
+            test_split={"test_1": [5]},
         )
 
-        fail_filter_in = problem.filter_input_fields_names(["a_field"])
-        fail_filter_out = problem.filter_output_fields_names(["b_field"])
+        def fake_loader(path):
+            assert path == tmp_path
+            return {"pb_1": pb_1, "pb_2": pb_2}
 
-        assert fail_filter_in == []
-        assert fail_filter_out == []
-
-    # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-    # -------------------------------------------------------------------------#
-    def test_get_input_timeseries_names(self, problem_definition):
-        assert problem_definition.get_input_timeseries_names() == []
-
-    def test_add_input_timeseries_names_fail_same_name(self, problem_definition):
-        with pytest.raises(ValueError):
-            problem_definition.add_input_timeseries_names(
-                ["feature_name", "feature_name"]
-            )
-        problem_definition.add_input_timeseries_name("feature_name")
-        with pytest.raises(ValueError):
-            problem_definition.add_input_timeseries_name("feature_name")
-
-    def test_add_input_timeseries_names(self, problem_definition):
-        problem_definition.add_input_timeseries_names(["timeseries", "test_timeseries"])
-        problem_definition.add_input_timeseries_name("predict_timeseries")
-        inputs = problem_definition.get_input_timeseries_names()
-        assert len(inputs) == 3
-        assert set(inputs) == set(
-            ["predict_timeseries", "timeseries", "test_timeseries"]
-        )
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_get_output_timeseries_names(self, problem_definition):
-        assert problem_definition.get_output_timeseries_names() == []
-
-    def test_add_output_timeseries_names_fail(self, problem_definition):
-        with pytest.raises(ValueError):
-            problem_definition.add_output_timeseries_names(
-                ["feature_name", "feature_name"]
-            )
-        problem_definition.add_output_timeseries_name("feature_name")
-        with pytest.raises(ValueError):
-            problem_definition.add_output_timeseries_name("feature_name")
-
-    def test_add_output_timeseries_names(self, problem_definition):
-        problem_definition.add_output_timeseries_names(
-            ["timeseries", "test_timeseries"]
-        )
-        problem_definition.add_output_timeseries_name("predict_timeseries")
-        outputs = problem_definition.get_output_timeseries_names()
-        assert len(outputs) == 3
-        assert set(outputs) == set(
-            ["predict_timeseries", "timeseries", "test_timeseries"]
-        )
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_filter_timeseries_names(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        problem = ProblemDefinition(d_path)
-        filter_in = problem.filter_input_timeseries_names(
-            ["predict_timeseries", "test_timeseries"]
-        )
-        filter_out = problem.filter_output_timeseries_names(
-            ["predict_timeseries", "test_timeseries"]
-        )
-        assert len(filter_in) == 2 and filter_in == [
-            "predict_timeseries",
-            "test_timeseries",
-        ]
-        assert filter_in != ["test_timeseries", "predict_timeseries"], (
-            "common inputs not sorted"
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk", fake_loader
         )
 
-        assert len(filter_out) == 2 and filter_out == [
-            "predict_timeseries",
-            "test_timeseries",
-        ]
-        assert filter_out != ["test_timeseries", "predict_timeseries"], (
-            "common outputs not sorted"
+        loaded = ProblemDefinition.from_path(
+            tmp_path,
+            name="pb_2",
+            score_function="RRMSE",
+        )
+        assert loaded.name == "pb_2"
+        assert loaded.task == "classification"
+        assert loaded.score_function == "RRMSE"
+
+    def test_from_path_unknown_name_raises(self, monkeypatch, tmp_path):
+        pb = ProblemDefinition(
+            name="existing",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
         )
 
-        fail_filter_in = problem.filter_input_timeseries_names(["a_timeseries"])
-        fail_filter_out = problem.filter_output_timeseries_names(["b_timeseries"])
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk",
+            lambda path: {"existing": pb},
+        )
 
-        assert fail_filter_in == []
-        assert fail_filter_out == []
+        with pytest.raises(ValueError, match="Problem definition 'missing' not found"):
+            ProblemDefinition.from_path(tmp_path, name="missing")
 
-    # -#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#-#
-    # -------------------------------------------------------------------------#
-    def test_get_input_meshes_names(self, problem_definition):
-        assert problem_definition.get_input_meshes_names() == []
+    def test_from_path_requires_name_when_multiple(self, monkeypatch, tmp_path):
+        pb_1 = ProblemDefinition(
+            name="pb_1",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
+        )
+        pb_2 = ProblemDefinition(
+            name="pb_2",
+            task="classification",
+            input_features=["in_b"],
+            output_features=["out_b"],
+            train_split={"train_1": [3, 4]},
+            test_split={"test_1": [5]},
+        )
 
-    def test_add_input_meshes_names_fail_same_name(self, problem_definition):
-        with pytest.raises(ValueError):
-            problem_definition.add_input_meshes_names(["feature_name", "feature_name"])
-        problem_definition.add_input_mesh_name("feature_name")
-        with pytest.raises(ValueError):
-            problem_definition.add_input_mesh_name("feature_name")
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk",
+            lambda path: {"pb_1": pb_1, "pb_2": pb_2},
+        )
 
-    def test_add_input_meshes_names(self, problem_definition):
-        problem_definition.add_input_meshes_names(["mesh", "test_mesh"])
-        problem_definition.add_input_mesh_name("predict_mesh")
-        inputs = problem_definition.get_input_meshes_names()
-        assert len(inputs) == 3
-        assert set(inputs) == set(["predict_mesh", "mesh", "test_mesh"])
-        print(problem_definition)
+        with pytest.raises(RuntimeError, match="more than one Problem definition"):
+            ProblemDefinition.from_path(tmp_path)
 
-    # -------------------------------------------------------------------------#
-    def test_get_output_meshes_names(self, problem_definition):
-        assert problem_definition.get_output_meshes_names() == []
+    def test_from_path_error_lists_sorted_available_names(self, monkeypatch, tmp_path):
+        pb_a = ProblemDefinition(name="a", input_features=["in"], output_features=["out"])
+        pb_b = ProblemDefinition(name="b", input_features=["in"], output_features=["out"])
 
-    def test_add_output_meshes_names_fail(self, problem_definition):
-        with pytest.raises(ValueError):
-            problem_definition.add_output_meshes_names(["feature_name", "feature_name"])
-        problem_definition.add_output_mesh_name("feature_name")
-        with pytest.raises(ValueError):
-            problem_definition.add_output_mesh_name("feature_name")
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk",
+            lambda path: {"b": pb_b, "a": pb_a},
+        )
 
-    def test_add_output_meshes_names(self, problem_definition):
-        problem_definition.add_output_meshes_names(["mesh", "test_mesh"])
-        problem_definition.add_output_mesh_name("predict_mesh")
-        outputs = problem_definition.get_output_meshes_names()
-        assert len(outputs) == 3
-        assert set(outputs) == set(["predict_mesh", "mesh", "test_mesh"])
-        print(problem_definition)
+        with pytest.raises(ValueError, match="Available definitions: a, b"):
+            ProblemDefinition.from_path(tmp_path, name="missing")
 
-    # -------------------------------------------------------------------------#
-    def test_filter_meshes_names(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        problem = ProblemDefinition(d_path)
-        print(f"{problem=}")
-        print(f"{problem.get_input_meshes_names()=}")
-        filter_in = problem.filter_input_meshes_names(["predict_mesh", "test_mesh"])
-        filter_out = problem.filter_output_meshes_names(["predict_mesh", "test_mesh"])
-        assert len(filter_in) == 2 and filter_in == ["predict_mesh", "test_mesh"]
-        assert filter_in != ["test_mesh", "predict_mesh"], "common inputs not sorted"
+    def test_feature_validators_reject_duplicates(self):
+        with pytest.raises(
+            ValidationError, match="duplicated values in input_features"
+        ):
+            ProblemDefinition(input_features=["a", "a"])
 
-        assert len(filter_out) == 2 and filter_out == ["predict_mesh", "test_mesh"]
-        assert filter_out != ["test_mesh", "predict_mesh"], "common outputs not sorted"
+        with pytest.raises(
+            ValidationError, match="duplicated values in output_features"
+        ):
+            ProblemDefinition(output_features=["a", "a"])
 
-        fail_filter_in = problem.filter_input_meshes_names(["a_mesh"])
-        fail_filter_out = problem.filter_output_meshes_names(["b_mesh"])
+    def test_split_validator_rejects_more_than_one_key(self):
+        with pytest.raises(ValidationError, match="Splits only support one element"):
+            ProblemDefinition(train_split={"train_1": [0], "train_2": [1]})
 
-        assert fail_filter_in == []
-        assert fail_filter_out == []
+    def test_non_overwritable_attributes_raise(self, problem_definition):
+        problem_definition.name = "problem_a"
+        with pytest.raises(AttributeError, match="'name' is already set"):
+            problem_definition.name = "problem_b"
+
+        problem_definition.task = "regression"
+        with pytest.raises(AttributeError, match="'task' is already set"):
+            problem_definition.task = "classification"
+
+        problem_definition.score_function = "RRMSE"
+        with pytest.raises(AttributeError, match="'score_function' is already set"):
+            problem_definition.score_function = "MSE"
+
+    def test_split_replacement_logs_warning(self, problem_definition, caplog):
+        problem_definition.train_split = {"train_0": [0, 1]}
+        with caplog.at_level("WARNING"):
+            problem_definition.train_split = {"train_1": [2, 3]}
+
+        assert "already exists -> data will be replaced" in caplog.text
+
+    def test_get_split_paths(self, problem_definition):
+        problem_definition.train_split = {"train_0": [0, 1, 2]}
+        problem_definition.test_split = {"test_0": [3, 4]}
+
+        assert problem_definition.get_train_split_name() == "train_0"
+        assert problem_definition.get_test_split_name() == "test_0"
+        assert problem_definition.get_train_split_indices() == [0, 1, 2]
+        assert problem_definition.get_test_split_indices() == [3, 4]
+
+    def test_get_split_paths_raise_when_not_defined(self, problem_definition):
+        with pytest.raises(ValueError, match="train_split is not defined"):
+            problem_definition.get_train_split_name()
+        with pytest.raises(ValueError, match="train_split is not defined"):
+            problem_definition.get_train_split_indices()
+        with pytest.raises(ValueError, match="test_split is not defined"):
+            problem_definition.get_test_split_name()
+        with pytest.raises(ValueError, match="test_split is not defined"):
+            problem_definition.get_test_split_indices()
+
+    def test_add_feature_identifiers_duplicate_checks(self, problem_definition):
+        problem_definition.add_in_features_identifiers(["in_1", "in_2"])
+        with pytest.raises(ValueError, match="in_1 is already in"):
+            problem_definition.add_in_features_identifiers("in_1")
+        with pytest.raises(
+            ValueError, match="Some input features share the same identifier"
+        ):
+            problem_definition.add_in_features_identifiers(["x", "x"])
+
+        problem_definition.add_out_features_identifiers(["out_1", "out_2"])
+        with pytest.raises(ValueError, match="out_1 is already in"):
+            problem_definition.add_out_features_identifiers("out_1")
+        with pytest.raises(
+            ValueError, match="Some output features share the same identifier"
+        ):
+            problem_definition.add_out_features_identifiers(["y", "y"])
 
     # -------------------------------------------------------------------------#
     def test_split(self, problem_definition):
-        new_split = {"train": [0, 1, 2], "test": [3, 4]}
-        problem_definition.set_split(new_split)
-        assert problem_definition.get_split("train") == [0, 1, 2]
-        assert problem_definition.get_split("test") == [3, 4]
-
-        all_split = problem_definition.get_split()
-        assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
-        assert problem_definition.get_all_indices() == [0, 1, 2, 3, 4]
-
-    def test_train_split(self, problem_definition):
-        train_split = {"train1": [0, 1, 2], "train2": [3, 4]}
-        problem_definition.set_train_split(train_split)
-        problem_definition.get_train_split()
-        assert problem_definition.get_train_split("train1") == [0, 1, 2]
-        assert problem_definition.get_train_split("train2") == [3, 4]
-
-    def test_test_split(self, problem_definition):
-        test_split = {"test1": [0, 1, 2], "test2": [3, 4]}
-        problem_definition.set_test_split(test_split)
-        problem_definition.get_test_split()
-        assert problem_definition.get_test_split("test1") == [0, 1, 2]
-        assert problem_definition.get_test_split("test2") == [3, 4]
-
-    # -------------------------------------------------------------------------#
-    def test__save_to_dir_(
-        self, problem_definition_full: ProblemDefinition, tmp_path: Path
-    ):
-        problem_definition_full._save_to_dir_(tmp_path / "problem_definition")
-
-    def test_save_to_dir(
-        self, problem_definition_full: ProblemDefinition, tmp_path: Path
-    ):
-        problem_definition_full.save_to_dir(tmp_path / "problem_definition")
-
-    def test_load_path_object(self, current_directory):
-        my_dir = Path(current_directory)
-        ProblemDefinition(my_dir / "problem_definition")
-
-    def test___init___path(
-        self, problem_definition_full: ProblemDefinition, tmp_path: Path
-    ):
-        d_path = tmp_path / "problem_definition"
-        problem_definition_full._save_to_dir_(d_path)
-        #
-        problem = ProblemDefinition(d_path)
-        assert problem.get_task() == "regression"
-        assert set(problem.get_input_scalars_names()) == set(
-            ["predict_scalar", "scalar", "test_scalar"]
-        )
-        assert set(problem.get_output_scalars_names()) == set(
-            ["predict_scalar", "scalar", "test_scalar"]
-        )
-        all_split = problem.get_split()
-        assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
-
-    def test__load_from_dir_(
-        self, problem_definition_full: ProblemDefinition, tmp_path: Path
-    ):
-        d_path = tmp_path / "problem_definition"
-        problem_definition_full._save_to_dir_(d_path)
-        #
-        problem = ProblemDefinition()
-        problem._load_from_dir_(d_path)
-        assert problem.get_task() == "regression"
-        assert set(problem.get_input_scalars_names()) == set(
-            ["predict_scalar", "scalar", "test_scalar"]
-        )
-        assert set(problem.get_output_scalars_names()) == set(
-            ["predict_scalar", "scalar", "test_scalar"]
-        )
-        all_split = problem.get_split()
-        assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
+        problem_definition.train_split = {"train_0": [0, 1, 2]}
+        problem_definition.test_split = {"test-1": [3, 4]}
+        assert problem_definition.train_split == {"train_0": [0, 1, 2]}
+        assert problem_definition.test_split == {"test-1": [3, 4]}
 
     def test__load_from_file_(
         self, problem_definition_full: ProblemDefinition, tmp_path: Path
     ):
+
         path = tmp_path / "pb_def"
         problem_definition_full.save_to_file(path)
-        #
         problem = ProblemDefinition()
         problem._load_from_file_(path)
-        assert problem.get_task() == "regression"
-        assert set(problem.get_input_scalars_names()) == set(
-            ["predict_scalar", "scalar", "test_scalar"]
+        assert problem.task == "regression"
+        assert set(problem.input_features) == set(
+            [
+                "Base_2_2/Zone/PointData/sig12",
+                "Base_2_2/Zone/PointData/U1",
+                "Base_2_2/Zone/PointData/U2",
+                "Global/predict_feature",
+                "Global/test_feature",
+                "Global/feature",
+            ]
         )
-        assert set(problem.get_output_scalars_names()) == set(
-            ["predict_scalar", "scalar", "test_scalar"]
+        assert set(problem.output_features) == set(
+            [
+                "Global/predict_feature",
+                "Base_2_2/Zone/PointData/sig12",
+                "Global/feature",
+                "Base_2_2/Zone/PointData/U2",
+                "Global/test_feature",
+            ]
         )
 
-    def test_load(self, problem_definition_full: ProblemDefinition, tmp_path: Path):
-        d_path = tmp_path / "problem_definition"
-        problem_definition_full._save_to_dir_(d_path)
-        #
-        problem = ProblemDefinition.load(d_path)
-        assert problem.get_task() == "regression"
-        assert problem.get_name() == "regression_1"
-        assert set(problem.get_input_scalars_names()) == set(
-            ["predict_scalar", "scalar", "test_scalar"]
+    def test_save_and_load_keep_yaml_suffix(self, tmp_path: Path):
+        problem = ProblemDefinition(
+            name="pb",
+            task="regression",
+            input_features=["in_1"],
+            output_features=["out_1"],
+            train_split={"train": [0]},
+            test_split={"test": [1]},
         )
-        assert set(problem.get_output_scalars_names()) == set(
-            ["predict_scalar", "scalar", "test_scalar"]
+        file_path = tmp_path / "problem.yaml"
+        problem.save_to_file(file_path)
+
+        loaded = ProblemDefinition()
+        loaded._load_from_file_(file_path)
+
+        assert loaded.name == "pb"
+        assert loaded.task == "regression"
+        assert loaded.get_train_split_name() == "train"
+        assert loaded.get_test_split_name() == "test"
+
+    def test__load_from_file__unknown_field_warns_and_raises(self, tmp_path: Path, caplog):
+        file_path = tmp_path / "problem_with_unknown.yaml"
+        file_path.write_text(
+            "name: pb\n"
+            "task: regression\n"
+            "input_features:\n"
+            "  - in_1\n"
+            "output_features:\n"
+            "  - out_1\n"
+            "unknown_key: value\n",
+            encoding="utf-8",
         )
-        all_split = problem.get_split()
-        assert all_split["train"] == [0, 1, 2] and all_split["test"] == [3, 4]
 
-    def test__load_from_dir__old_version(
-        self, problem_definition_full: ProblemDefinition, tmp_path: Path
-    ):
-        d_path = tmp_path / "problem_definition"
-        problem_definition_full._save_to_dir_(d_path)
-        # Modify the plaid version in saved file
-        infos_path = d_path / "problem_infos.yaml"
-        with infos_path.open("r") as f:
-            text = f.read().splitlines()
-        text.pop()
-        text.append("version: 0.1.7")
-        text.append("")
-        infos_path.write_text("\n".join(text))
-
-        # Load the problem definition from the directory
-        problem = ProblemDefinition.load(d_path)
-        assert problem.get_version() == Version("0.1.7")
-
-    def test__load_from_dir__empty_dir(self, tmp_path):
         problem = ProblemDefinition()
-        with pytest.raises(FileNotFoundError):
-            problem._load_from_dir_(tmp_path)
+        with caplog.at_level("WARNING"):
+            problem._load_from_file_(file_path)
 
-    def test__load_from_dir__non_existing_dir(self):
-        problem = ProblemDefinition()
-        non_existing_dir = Path("non_existing_path")
-        with pytest.raises(FileNotFoundError):
-            problem._load_from_dir_(non_existing_dir)
+        assert "Data ignored! : unknown_key: value" in caplog.text
 
     def test__load_from_file__non_existing_file(self):
         problem = ProblemDefinition()
         non_existing_path = Path("non_existing_path")
         with pytest.raises(FileNotFoundError):
             problem._load_from_file_(non_existing_path)
-
-    def test__load_from_dir__path_is_file(self, tmp_path):
-        problem = ProblemDefinition()
-        file_path = tmp_path / "file.yaml"
-        file_path.touch()  # Create an empty file
-        with pytest.raises(FileExistsError):
-            problem._load_from_dir_(file_path)
-
-    def test_extract_problem_definition_from_identifiers(self, problem_definition):
-        in_id_1 = FeatureIdentifier({"type": "scalar", "name": "in_1"})
-        in_id_2 = FeatureIdentifier({"type": "scalar", "name": "in_2"})
-        out_id_1 = FeatureIdentifier({"type": "scalar", "name": "out_1"})
-        out_id_2 = FeatureIdentifier({"type": "scalar", "name": "out_2"})
-
-        problem_definition.add_in_features_identifiers([in_id_1, in_id_2])
-        problem_definition.add_out_features_identifiers([out_id_1, out_id_2])
-        problem_definition.set_task("regression")
-        problem_definition.set_name("regression_1")
-        with pytest.raises(ValueError):
-            problem_definition.set_name("regression_2")
-        problem_definition.set_split({"train": [0, 1], "test": [2, 3]})
-
-        sub_problem_definition = (
-            problem_definition.extract_problem_definition_from_identifiers(
-                [in_id_1, out_id_1]
-            )
-        )
-
-        assert sub_problem_definition.get_in_features_identifiers() == [in_id_1]
-        assert sub_problem_definition.get_out_features_identifiers() == [out_id_1]
-        assert sub_problem_definition.get_version() == problem_definition.get_version()
-        assert sub_problem_definition.get_task() == "regression"
-        assert sub_problem_definition.get_name() == "regression_1"
-        assert sub_problem_definition.get_split() == {"train": [0, 1], "test": [2, 3]}

@@ -10,14 +10,6 @@ Key features:
 - Selective loading of splits and sample IDs
 - Integration with PLAID Sample objects
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import os
 import shutil
@@ -31,7 +23,7 @@ from datasets import IterableDataset
 from datasets.splits import NamedSplit
 from huggingface_hub import hf_hub_download, snapshot_download
 
-from plaid import Sample
+from ...containers.sample import Sample
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +46,11 @@ class CGNSDataset:
         Args:
             path: Path to the dataset directory.
         """
-        self.path = path
+        self.path = Path(path)
 
         ids = sorted(
             int(p.name.removeprefix("sample_"))
-            for p in path.iterdir()
+            for p in self.path.iterdir()
             if p.is_dir() and p.name.startswith("sample_")
         )
         self.ids = np.asarray(ids, dtype=int)
@@ -222,7 +214,7 @@ def download_datasetdict_from_hub(
         if overwrite:
             shutil.rmtree(local_dir)
             logger.warning(f"Existing {local_dir} directory has been reset.")
-        elif any(local_dir.iterdir()):
+        elif any(output_folder.iterdir()):
             raise ValueError(
                 f"directory {local_dir} already exists and is not empty. Set `overwrite` to True if needed."
             )

@@ -4,14 +4,6 @@ This module provides bridge functions for converting between PLAID datasets/samp
 and Hugging Face Datasets format. It includes utilities for feature type conversion,
 dataset generation from PLAID objects, and sample reconstruction.
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from functools import partial
 from typing import Any, Callable, Generator, Optional
 
@@ -20,9 +12,10 @@ import numpy as np
 import pyarrow as pa
 from datasets import Features, Sequence, Value
 
-from plaid import Sample
 from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.types import IndexType
+
+from ...containers.sample import Sample
 
 
 def convert_dtype_to_hf_feature(feature_type: dict[str, Any]):
@@ -159,7 +152,7 @@ def to_var_sample_dict(
     ds: datasets.Dataset,
     i: int,
     features: Optional[list[str]] = None,
-    enforce_shapes: bool = True,
+    indexers: Optional[dict[str, Any]] = None,
 ) -> dict[str, Optional[np.ndarray]]:
     """Convert a Hugging Face dataset row to a variable sample dict containing the features that vary in the dataset.
 
@@ -167,7 +160,8 @@ def to_var_sample_dict(
         ds (datasets.Dataset): The Hugging Face dataset.
         i (int): The row index.
         features: Iterable of feature names (keys) to extract from the dataset.
-        enforce_shapes (bool): Whether to enforce consistent shapes.
+        indexers: Optional mapping ``feature_path -> indexer`` used to select
+            feature values along the last axis.
 
     Returns:
         dict[str, Optional[np.ndarray]]: The variable sample dictionary.
@@ -175,39 +169,85 @@ def to_var_sample_dict(
     table = ds.data
 
     if features is None:
-        features = table.column_names
+        selected_features = list(table.column_names)
     else:
         missing = set(features) - set(table.column_names)
         if missing:  # pragma: no cover
             raise KeyError(f"Missing features in hf_dataset: {sorted(missing)}")
+        selected_features = features
 
     var_sample_dict = {}
-    if not enforce_shapes:
-        for name in features:
+    indexers = indexers or {}
+
+    for name in selected_features:
+        if isinstance(table[name][i], pa.NullScalar):
+            var_sample_dict[name] = None  # pragma: no cover
+        else:
             value = table[name][i].values
             if value is None:
                 var_sample_dict[name] = None  # pragma: no cover
             else:
-                var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
-    else:
-        for name in features:
-            if isinstance(table[name][i], pa.NullScalar):
-                var_sample_dict[name] = None  # pragma: no cover
-            else:
-                value = table[name][i].values
-                if value is None:
-                    var_sample_dict[name] = None  # pragma: no cover
+                if name in indexers:
+                    var_sample_dict[name] = _extract_indexed_arrow(
+                        value, indexers[name], name
+                    )
+                elif isinstance(value, pa.ListArray):
+                    var_sample_dict[name] = np.stack(
+                        value.to_numpy(zero_copy_only=False)
+                    )
+                elif isinstance(value, pa.StringArray):  # pragma: no cover
+                    var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
                 else:
-                    if isinstance(value, pa.ListArray):
-                        var_sample_dict[name] = np.stack(
-                            value.to_numpy(zero_copy_only=False)
-                        )
-                    elif isinstance(value, pa.StringArray):  # pragma: no cover
-                        var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
-                    else:
-                        var_sample_dict[name] = value.to_numpy(zero_copy_only=True)
+                    var_sample_dict[name] = value.to_numpy(zero_copy_only=True)
 
     return var_sample_dict
+
+
+def _extract_indexed_arrow(value: Any, indexer: Any, feat_name: str) -> np.ndarray:
+    """Extract selected indices along the last axis from an Arrow value."""
+    if indexer is None:  # pragma: no cover
+        return _to_numpy_arrow(value)
+
+    if isinstance(indexer, slice):
+        return _apply_indexer(_to_numpy_arrow(value), indexer, feat_name)
+
+    idx = np.asarray(indexer, dtype=np.int64)
+    if idx.ndim != 1:
+        raise ValueError(
+            f"Indexer for feature '{feat_name}' must be a 1D sequence or slice"
+        )
+
+    # Best effort: for primitive arrays, gather directly with Arrow before numpy conversion.
+    if isinstance(value, pa.Array) and not isinstance(value, pa.ListArray):
+        axis_size = len(value)
+        if np.any(idx >= axis_size) or np.any(idx < -axis_size):
+            raise IndexError(
+                f"Indexer for feature '{feat_name}' contains out-of-bounds values "
+                f"for last axis of size {axis_size}"
+            )
+        idx_arrow = pa.array(idx, type=pa.int64())
+        taken = value.take(idx_arrow)
+        return taken.to_numpy(zero_copy_only=False)
+
+    return _apply_indexer(_to_numpy_arrow(value), idx, feat_name)
+
+
+def _to_numpy_arrow(value: Any) -> np.ndarray:
+    """Convert Arrow values used by storage bridge to numpy arrays."""
+    if isinstance(value, pa.ListArray):
+        return np.stack(value.to_numpy(zero_copy_only=False))
+    if isinstance(value, pa.StringArray):  # pragma: no cover
+        return value.to_numpy(zero_copy_only=False)
+    return value.to_numpy(zero_copy_only=False)
+
+
+def _apply_indexer(arr: np.ndarray, indexer: Any, feat_name: str) -> np.ndarray:
+    """Apply a last-axis indexer to a numpy array."""
+    if arr.ndim == 0:
+        raise ValueError(f"Cannot apply indexer to scalar feature '{feat_name}'")
+
+    selector_prefix = (slice(None),) * (arr.ndim - 1)
+    return np.asarray(arr[selector_prefix + (indexer,)])
 
 
 def sample_to_var_sample_dict(

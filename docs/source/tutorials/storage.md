@@ -119,11 +119,11 @@ pb_def = ProblemDefinition()
 pb_def.add_in_features_identifiers(input_features)
 pb_def.add_out_features_identifiers(output_features)
 pb_def.add_constant_features_identifiers(constant_features)
-pb_def.set_task("regression")
+pb_def.task = "regression"
 pb_def.set_name("regression_1")
 pb_def.set_score_function("RRMSE")
-pb_def.set_train_split({"train":"all"})
-pb_def.set_test_split({"test":"all"})
+pb_def.train_split = {"train":"all"}
+pb_def.test_split = {"test":"all"}
 
 #---------------------------------------------------------------
 # Define a simple function that takes a single identifier and returns a Sample.
@@ -256,6 +256,17 @@ for backend in all_backends:
         plaid_sample = converter.to_plaid(dataset, i)
     print(f"duration {time.time()-start}")
 
+    # Optional: extract only selected indices inside specific variable features
+    # (currently supported for hf_datasets and zarr backends).
+    field_path = "Base_2_3/Zone/VertexFields/pressure"
+    selected_idx = [0, 10, 20, 30]
+    plaid_sample_sub = converter.to_plaid(
+        dataset,
+        0,
+        features=[field_path],
+        indexers={field_path: selected_idx},
+    )
+
     # instantiate the first sample, depends on the backend
     sample = dataset[0]
     # alternative way instantiate a plaid sample (much slower for hf_datasets)
@@ -318,7 +329,7 @@ for backend in all_backends:
             # efficient plaid sample reconstruction
             plaid_sample = converter.to_plaid(dataset, idx)
             # generic way of retrieving features and send them to GPU
-            for time_ in plaid_sample.get_all_mesh_times():
+            for time_ in plaid_sample.get_all_time_values():
                 torch_sample = {}
                 for path in features:
                     value = plaid_sample.get_feature_by_path(path=path, time=time_)
@@ -328,6 +339,29 @@ for backend in all_backends:
                         torch_sample[path] = torch.as_tensor(value).to("cuda", non_blocking=True)
     print(f"duration {time.time()-start}")
     print("----------")
+
+```
+
+### Indexed extraction with `indexers`
+
+`converter.to_dict(...)` and `converter.to_plaid(...)` accept an optional
+`indexers` argument:
+
+```python
+sample = converter.to_plaid(
+    dataset,
+    idx=0,
+    features=["Base/Zone/VertexFields/mach"],
+    indexers={"Base/Zone/VertexFields/mach": [1, 5, 9]},
+)
+```
+
+- `indexers` is a mapping `feature_path -> indexer` (list/array of indices or slice).
+- Indexing is applied on the **last axis** of each indexed feature.
+- This enables a “read less + one gathered output copy” behavior:
+  - **zarr**: partial chunk reads + gathered output
+  - **hf_datasets**: Arrow/NumPy best-effort gather + gathered output
+- `cgns` backend does not use this mechanism.
 
 
 print("----------------------------------------------------")

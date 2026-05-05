@@ -72,8 +72,6 @@ feat_ids = dataset.get_all_features_identifiers(ids=None)
 node_ids = dataset.get_all_features_identifiers_by_type("nodes")
 ```
 
-Learn more about identifiers: {doc}`feature_identifiers`.
-
 ## Retrieve features by identifier(s)
 
 ```python
