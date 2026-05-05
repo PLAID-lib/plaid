@@ -1,8 +1,10 @@
 [project]
 site_name = "plaid"
-site_description = "PLAID documentation"
+site_description = "plaid documentation"
 site_author = "Safran"
-copyright = "Copyright © Safran"
+copyright = "2023-2026, Safran"
+repo_url = "https://github.com/PLAID-lib/plaid"
+edit_uri = "edit/main/docs/source/"
 
 # Build from the existing Sphinx source folder.
 docs_dir = "docs/source"
@@ -10,9 +12,14 @@ site_dir = "docs/_build/zensical"
 
 # Minimal navigation focused on Markdown pages that already exist in docs/source.
 nav = [
+  { "Home" = "index.md" },
   { "Quickstart" = "quickstart.md" },
   { "Citation" = "citation.md" },
   { "Contributing" = "contributing.md" },
+  { "Examples and tutorials" = "examples_tutorials.md" },
+  { "PLAID benchmarks" = "plaid_benchmarks.md" },
+  { "API reference" = "api_reference.md" },
+  { "Core concepts overview" = "core_concepts.md" },
   { "Core concepts" = [
       { "Sample" = "core_concepts/sample.md" },
       { "Dataset" = "core_concepts/dataset.md" },
@@ -30,6 +37,8 @@ nav = [
 
 [project.theme]
 language = "en"
+logo = "images/plaid.jpg"
+favicon = "images/plaid.jpg"
 
 [[project.theme.palette]]
 scheme = "default"
@@ -56,3 +65,13 @@ permalink = true
 alternate_style = true
 [project.markdown_extensions.pymdownx.tasklist]
 custom_checkbox = true
+
+[project.plugins.search]
+
+[project.plugins.mkdocstrings]
+
+[project.plugins.mkdocstrings.handlers.python]
+paths = ["src"]
+options.docstring_style = "google"
+options.show_root_heading = true
+options.show_source = false

@@ -37,6 +37,7 @@ dependencies = [
   "matplotlib>=3.8,<4",
   "pydantic>=2.6,<3",
   "zensical>=0.0.38",
+  "mkdocstrings[python]>=1.0.4",
 ]
 
 dynamic = ["version"]

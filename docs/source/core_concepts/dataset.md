@@ -4,7 +4,7 @@ title: Dataset
 
 # Dataset
 
-A PLAID {py:class}`~plaid.containers.dataset.Dataset` is a collection of physics configurations, organized into {py:class}`~plaid.containers.sample.Sample`. Each {py:class}`~plaid.containers.sample.Sample` contains all the necessary features to define a specific configuration, including mesh and scalar data.
+A PLAID [`plaid.containers.dataset.Dataset`](../api_reference.md#api-dataset) is a collection of physics configurations, organized into [`plaid.containers.sample.Sample`](../api_reference.md#api-sample). Each [`plaid.containers.sample.Sample`](../api_reference.md#api-sample) contains all the necessary features to define a specific configuration, including mesh and scalar data.
 
 A dataset must contain at least two different samples, i.e. having at least one features different between the two samples.
 
@@ -40,7 +40,7 @@ samples = [Sample(...), Sample(...)]
 dataset = Dataset.from_list_of_samples(samples)
 ```
 
-See also: {doc}`../notebooks/containers/dataset_example`.
+See also: `notebooks/containers/dataset_example`.
 
 ## Basic usage
 
@@ -162,4 +162,4 @@ print(dataset.check_feature_completeness()) # detect missing features per sample
 - Prefer FeatureIdentifiers for unambiguous selection and stable keys.
 - Keep sample IDs contiguous when possible (simplifies slicing and joins).
 - For large datasets, consider using `processes_number` when loading from disk to parallelize I/O.
-- When building learning tasks, pair `Dataset` with {py:class}`~plaid.problem_definition.ProblemDefinition` and rely on identifiers for inputs/outputs.
+- When building learning tasks, pair `Dataset` with [`plaid.problem_definition.ProblemDefinition`](../api_reference.md#api-problemdefinition) and rely on identifiers for inputs/outputs.

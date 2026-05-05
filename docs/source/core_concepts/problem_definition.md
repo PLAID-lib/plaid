@@ -4,7 +4,7 @@ title: Problem definition
 
 # Problem definition
 
-{py:class}`~plaid.problem_definition.ProblemDefinition` gathers all the information defining a learning problem:
+[`plaid.problem_definition.ProblemDefinition`](../api_reference.md#api-problemdefinition) gathers all the information defining a learning problem:
 - task: e.g., regression or classification
 - inputs: list of FeatureIdentifiers
 - outputs: list of FeatureIdentifiers
@@ -30,4 +30,4 @@ pb.set_split(splits)
 pb._save_to_dir_("problem_definition")
 ```
 
-{py:class}`~plaid.problem_definition.ProblemDefinition` supports filtering helpers to intersect existing inputs/outputs with a candidate list of identifiers.
+[`plaid.problem_definition.ProblemDefinition`](../api_reference.md#api-problemdefinition) supports filtering helpers to intersect existing inputs/outputs with a candidate list of identifiers.

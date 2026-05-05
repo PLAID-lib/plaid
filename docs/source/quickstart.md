@@ -33,18 +33,18 @@ To use the library, the simplest way is to install it from the packages availabl
 
 ## 2 Core concepts
 
-- {doc}`core_concepts/sample` → API: {py:class}`plaid.containers.sample.Sample`
-- {doc}`core_concepts/dataset` → API: {py:class}`plaid.containers.dataset.Dataset`
-- {doc}`core_concepts/problem_definition` → API: {py:class}`plaid.problem_definition.ProblemDefinition`
-- {doc}`core_concepts/defaults`
-- {doc}`core_concepts/disk_format`
-- {doc}`core_concepts/interoperability`
+- [Sample](core_concepts/sample.md) → API: [`plaid.containers.sample.Sample`](api_reference.md#api-sample)
+- [Dataset](core_concepts/dataset.md) → API: [`plaid.containers.dataset.Dataset`](api_reference.md#api-dataset)
+- [Problem definition](core_concepts/problem_definition.md) → API: [`plaid.problem_definition.ProblemDefinition`](api_reference.md#api-problemdefinition)
+- [Defaults](core_concepts/defaults.md)
+- [On-disk format](core_concepts/disk_format.md)
+- [Interoperability](core_concepts/interoperability.md)
 
 ## 3 Going further
 
-Explore {doc}`example examples_tutorials <examples_tutorials>` for practical use cases and advanced techniques.
+Explore [Examples and Tutorials](examples_tutorials.md) for practical use cases and advanced techniques.
 
-The {doc}`API documentation <../autoapi/plaid/index>` provides detailed information on all available classes and methods.
+The [API documentation](api_reference.md) provides detailed information on all available classes and methods.
 
 Two companion libraries extend the `plaid` standard to support machine-learning workflows in physics:
 

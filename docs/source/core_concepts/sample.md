@@ -4,7 +4,7 @@ title: Sample
 
 # Sample
 
-{py:class}`~plaid.containers.sample.Sample` represents one observation. It contains:
+[`plaid.containers.sample.Sample`](../api_reference.md#api-sample) represents one observation. It contains:
 - scalars: name → value
 - meshes containing:
   - nodes: mesh node coordinates, that can be located:
@@ -16,8 +16,8 @@ title: Sample
     - in different locations in each base/zone among: `Vertex`, `EdgeCenter`, `FaceCenter`, or `CellCenter`
 
 Key APIs include:
-- Feature accessors: {py:meth}`~plaid.containers.sample.Sample.get_scalar`, {py:meth}`~plaid.containers.sample.Sample.get_field`, {py:meth}`~plaid.containers.sample.Sample.get_nodes`
-- Feature updates: {py:meth}`~plaid.containers.sample.Sample.add_scalar`, {py:meth}`~plaid.containers.sample.Sample.add_field`, {py:meth}`~plaid.containers.sample.Sample.set_nodes`, and high-level identifier-based updates
-- Discovery: {py:meth}`~plaid.containers.sample.Sample.get_all_features_identifiers()` or {py:meth}`~plaid.containers.sample.Sample.get_all_features_identifiers_by_type()` to list all available features with their context
+- Feature accessors: `Sample.get_scalar`, `Sample.get_field`, `Sample.get_nodes`
+- Feature updates: `Sample.add_scalar`, `Sample.add_field`, `Sample.set_nodes`, and high-level identifier-based updates
+- Discovery: `Sample.get_all_features_identifiers()` or `Sample.get_all_features_identifiers_by_type()` to list all available features with their context
 
-See also: {doc}`../examples_tutorials` for hands-on examples.
+See also: [Examples and Tutorials](../examples_tutorials.md) for hands-on examples.
