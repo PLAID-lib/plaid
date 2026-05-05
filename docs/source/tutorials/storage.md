@@ -363,7 +363,7 @@ sample = converter.to_plaid(
   - **hf_datasets**: Arrow/NumPy best-effort gather + gathered output
 - `cgns` backend does not use this mechanism.
 
-
+```python
 print("----------------------------------------------------")
 print("-- Streaming test ----------------------------------")
 print("----------------------------------------------------")

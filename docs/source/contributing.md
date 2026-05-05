@@ -8,7 +8,6 @@
 - [3. Development setup](#3-development-setup)
   - [3.1. Prerequisites](#31-prerequisites)
   - [3.2. Installation Steps](#32-installation-steps)
-  - [3.3. Important Note](#33-important-note)
 - [4. Tests and examples](#4-tests-and-examples)
 - [5. Documentation](#5-documentation)
 - [6. Formatting and linting with Ruff](#6-formatting-and-linting-with-ruff)
@@ -183,7 +182,7 @@ These guidelines help keep PLAID users' code and datasets working across release
 
 - Create a new release branch from `main` called e.g. `release_0.1.10`
 - Update the CHANGELOG
-  - Rename the section [Unreleased] to the new version number (e.g., [0.1.10]) followed by the release date (YYYY-MM-DD)
+  - Rename the section __Unreleased__ to the new version number (e.g., `0.1.10`) followed by the release date (YYYY-MM-DD)
   - Update links at the end of the file
 - Create a pull request and request reviews
 - Once approved, merge the pull request
