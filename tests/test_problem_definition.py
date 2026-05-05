@@ -132,6 +132,24 @@ class Test_ProblemDefinition:
         assert loaded.get_train_split_indices() == [0, 1]
         assert loaded.get_test_split_indices() == [2]
 
+    def test_from_path_single_definition_with_override(self, monkeypatch, tmp_path):
+        expected = ProblemDefinition(
+            name="pb_single",
+            task="regression",
+            input_features=["in_a"],
+            output_features=["out_a"],
+            train_split={"train_0": [0, 1]},
+            test_split={"test_0": [2]},
+        )
+
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk",
+            lambda path: {"pb_single": expected},
+        )
+
+        loaded = ProblemDefinition.from_path(tmp_path)
+        assert loaded.name == "pb_single"
+
     def test_from_path_named_definition_and_override(self, monkeypatch, tmp_path):
         pb_1 = ProblemDefinition(
             name="pb_1",
@@ -211,6 +229,18 @@ class Test_ProblemDefinition:
         with pytest.raises(RuntimeError, match="more than one Problem definition"):
             ProblemDefinition.from_path(tmp_path)
 
+    def test_from_path_error_lists_sorted_available_names(self, monkeypatch, tmp_path):
+        pb_a = ProblemDefinition(name="a", input_features=["in"], output_features=["out"])
+        pb_b = ProblemDefinition(name="b", input_features=["in"], output_features=["out"])
+
+        monkeypatch.setattr(
+            "plaid.storage.load_problem_definitions_from_disk",
+            lambda path: {"b": pb_b, "a": pb_a},
+        )
+
+        with pytest.raises(ValueError, match="Available definitions: a, b"):
+            ProblemDefinition.from_path(tmp_path, name="missing")
+
     def test_feature_validators_reject_duplicates(self):
         with pytest.raises(
             ValidationError, match="duplicated values in input_features"
@@ -254,6 +284,16 @@ class Test_ProblemDefinition:
         assert problem_definition.get_test_split_name() == "test_0"
         assert problem_definition.get_train_split_indices() == [0, 1, 2]
         assert problem_definition.get_test_split_indices() == [3, 4]
+
+    def test_get_split_paths_raise_when_not_defined(self, problem_definition):
+        with pytest.raises(ValueError, match="train_split is not defined"):
+            problem_definition.get_train_split_name()
+        with pytest.raises(ValueError, match="train_split is not defined"):
+            problem_definition.get_train_split_indices()
+        with pytest.raises(ValueError, match="test_split is not defined"):
+            problem_definition.get_test_split_name()
+        with pytest.raises(ValueError, match="test_split is not defined"):
+            problem_definition.get_test_split_indices()
 
     def test_add_feature_identifiers_duplicate_checks(self, problem_definition):
         problem_definition.add_in_features_identifiers(["in_1", "in_2"])
@@ -307,6 +347,45 @@ class Test_ProblemDefinition:
                 "Global/test_feature",
             ]
         )
+
+    def test_save_and_load_keep_yaml_suffix(self, tmp_path: Path):
+        problem = ProblemDefinition(
+            name="pb",
+            task="regression",
+            input_features=["in_1"],
+            output_features=["out_1"],
+            train_split={"train": [0]},
+            test_split={"test": [1]},
+        )
+        file_path = tmp_path / "problem.yaml"
+        problem.save_to_file(file_path)
+
+        loaded = ProblemDefinition()
+        loaded._load_from_file_(file_path)
+
+        assert loaded.name == "pb"
+        assert loaded.task == "regression"
+        assert loaded.get_train_split_name() == "train"
+        assert loaded.get_test_split_name() == "test"
+
+    def test__load_from_file__unknown_field_warns_and_raises(self, tmp_path: Path, caplog):
+        file_path = tmp_path / "problem_with_unknown.yaml"
+        file_path.write_text(
+            "name: pb\n"
+            "task: regression\n"
+            "input_features:\n"
+            "  - in_1\n"
+            "output_features:\n"
+            "  - out_1\n"
+            "unknown_key: value\n",
+            encoding="utf-8",
+        )
+
+        problem = ProblemDefinition()
+        with caplog.at_level("WARNING"):
+            problem._load_from_file_(file_path)
+
+        assert "Data ignored! : unknown_key: value" in caplog.text
 
     def test__load_from_file__non_existing_file(self):
         problem = ProblemDefinition()

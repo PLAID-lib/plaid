@@ -54,8 +54,7 @@ class ProblemDefinition(BaseModel):
     test_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(
         default=None
     )
-
-    # verifier que tab autotocopleate marche bien dans vscode
+    constant_features: list[str] = Field(default_factory=list)
 
     @staticmethod
     def from_path(
@@ -271,31 +270,6 @@ class ProblemDefinition(BaseModel):
         for output_feature in outputs:
             self.add_out_features_identifiers(output_feature)
 
-    def _generate_problem_infos_dict(self) -> dict[str, Union[str, list[str|int]]]:
-        """Generate a dictionary containing all relevant problem definition data.
-
-        Returns:
-            dict[str, Union[str, list]]: A dictionary with keys for task, input/output features, scalars, fields, timeseries, and meshes.
-        """
-        data = {
-            "task": self.task,
-            "score_function": self.score_function,
-            "input_features": self.input_features.copy(),
-            "output_features": self.output_features.copy(),
-        }
-
-        if self.train_split is not None:
-            data["train_split"] = self.train_split
-
-        if self.test_split is not None:
-            data["test_split"] = self.test_split
-        if self.name is not None:
-            data["name"] = self.name
-
-        # Handle version
-        return data
-
-
     def save_to_file(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified file in YAML format.
 
@@ -309,8 +283,6 @@ class ProblemDefinition(BaseModel):
                 problem = ProblemDefinition()
                 problem.save_to_file("/path/to/save_file")
         """
-        problem_infos_dict = self._generate_problem_infos_dict()
-
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -320,7 +292,7 @@ class ProblemDefinition(BaseModel):
         # Save infos
         with path.open("w") as file:
             yaml.dump(
-                problem_infos_dict, file, default_flow_style=False, sort_keys=True
+                self.model_dump(), file, default_flow_style=False, sort_keys=True
             )
 
     def _load_from_file_(self, path: Union[str, Path]) -> None:
@@ -350,8 +322,9 @@ class ProblemDefinition(BaseModel):
         with path.open("r") as file:
             data = yaml.safe_load(file)
 
+        model_fields = type(self).model_fields.keys()
         for key, value in data.items():
-            if key in type(self).model_fields.keys():
+            if key in model_fields:
                 setattr(self, key, value)
             else:
                 logger.warning(f" Data ignored! : {key}: {value}")
