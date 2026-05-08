@@ -2091,6 +2091,17 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 ctrl.view_reset_camera = view.reset_camera
 
     # Trigger initial population.
+    #
+    # ``@state.change("dataset_id")`` listeners are *not* dispatched for
+    # the value installed via ``state.setdefault`` before the listener
+    # was registered — older trame-server releases happened to flush
+    # those once at startup, but trame-server >= 3.11 / trame-client
+    # >= 3.12 are stricter and skip the initial broadcast. We therefore
+    # have to populate the feature list explicitly here, otherwise
+    # ``has_features`` stays ``False`` until the user manually picks
+    # another dataset and the side-drawer "Features" panel never shows
+    # up on the first load.
+    _refresh_available_features()
     _refresh_splits()
 
     return server
