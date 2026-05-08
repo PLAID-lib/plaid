@@ -462,6 +462,8 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         self.scalar_bar.SetHeight(0.35)
         self.scalar_bar.GetTitleTextProperty().SetColor(1.0, 1.0, 1.0)
         self.scalar_bar.GetLabelTextProperty().SetColor(1.0, 1.0, 1.0)
+        self.scalar_bar.GetTitleTextProperty().SetFontSize(18)
+        self.scalar_bar.GetLabelTextProperty().SetFontSize(18)
         _hide_scalar_bar(self.scalar_bar)
         self.renderer.AddActor2D(self.scalar_bar)
 
