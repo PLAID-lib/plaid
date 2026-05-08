@@ -1093,6 +1093,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         if not state.dataset_id:
             state.available_features = []
             state.selected_features = []
+            # See note below: explicitly mark the keys dirty so the client
+            # picks up the new (possibly identical) value under
+            # trame-server >= 3.11, which otherwise gates the broadcast
+            # on a stricter "value actually changed" check.
+            state.dirty("available_features", "selected_features")
+            state.flush()
             return
         try:
             with _silence_stderr():
@@ -1101,10 +1107,25 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             logger.warning("Failed to list features: %s", exc)
             state.available_features = []
             state.selected_features = []
+            state.dirty("available_features", "selected_features")
+            state.flush()
             return
         state.available_features = available
         current = dataset_service.get_features(state.dataset_id)
         state.selected_features = list(current) if current else []
+        # trame-server 3.11 introduced a per-key "suppress listeners"
+        # change stack that filters which state keys are broadcast to
+        # the client. Combined with the "no-op assignment if value
+        # unchanged" early-return in ``state.__setitem__``, this could
+        # cause ``available_features`` / ``selected_features`` to never
+        # propagate to the JS side after the initial ``state.setdefault``
+        # already pushed an empty list — leaving the side-drawer
+        # "Features" panel hidden because its ``v_if`` reads
+        # ``available_features.length > 0`` on stale client state.
+        # Marking the keys dirty and flushing forces the broadcast on
+        # trame-server >= 3.11 and is a safe no-op on 3.10.
+        state.dirty("available_features", "selected_features")
+        state.flush()
 
     @ctrl.set("apply_features")
     def _apply_features() -> None:
