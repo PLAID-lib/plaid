@@ -703,6 +703,16 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     # means "no filter": every feature is loaded (default behaviour).
     state.setdefault("available_features", [])
     state.setdefault("selected_features", [])
+    # Primitive boolean mirror of ``len(available_features) > 0``,
+    # maintained by ``_refresh_available_features``. It drives the
+    # ``v_if`` of the side-drawer "Features" panel: array-based
+    # client-side expressions of the form ``(available_features ||
+    # []).length > 0`` were observed to stop reactively re-evaluating
+    # after recent trame client/server upgrades (trame-server 3.10 ->
+    # 3.11, trame-client 3.10 -> 3.12), which made the panel disappear
+    # entirely. Boolean state keys round-trip cleanly through every
+    # trame client release, so we use this dedicated flag instead.
+    state.setdefault("has_features", False)
 
     state.setdefault("base_options", [])
     # Single active base (exclusive selection). Kept as a list internally
@@ -1093,12 +1103,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         if not state.dataset_id:
             state.available_features = []
             state.selected_features = []
-            # See note below: explicitly mark the keys dirty so the client
-            # picks up the new (possibly identical) value under
-            # trame-server >= 3.11, which otherwise gates the broadcast
-            # on a stricter "value actually changed" check.
-            state.dirty("available_features", "selected_features")
-            state.flush()
+            state.has_features = False
             return
         try:
             with _silence_stderr():
@@ -1107,25 +1112,22 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             logger.warning("Failed to list features: %s", exc)
             state.available_features = []
             state.selected_features = []
-            state.dirty("available_features", "selected_features")
-            state.flush()
+            state.has_features = False
             return
         state.available_features = available
         current = dataset_service.get_features(state.dataset_id)
         state.selected_features = list(current) if current else []
-        # trame-server 3.11 introduced a per-key "suppress listeners"
-        # change stack that filters which state keys are broadcast to
-        # the client. Combined with the "no-op assignment if value
-        # unchanged" early-return in ``state.__setitem__``, this could
-        # cause ``available_features`` / ``selected_features`` to never
-        # propagate to the JS side after the initial ``state.setdefault``
-        # already pushed an empty list — leaving the side-drawer
-        # "Features" panel hidden because its ``v_if`` reads
-        # ``available_features.length > 0`` on stale client state.
-        # Marking the keys dirty and flushing forces the broadcast on
-        # trame-server >= 3.11 and is a safe no-op on 3.10.
-        state.dirty("available_features", "selected_features")
-        state.flush()
+        # The side-drawer "Features" panel uses ``v_if=("!is_streaming
+        # && has_features",)`` instead of reading
+        # ``available_features.length`` directly: across recent trame
+        # client/server upgrades (notably trame-server 3.10 -> 3.11
+        # combined with the trame-client 3.12 Vue 3 bundle), array-based
+        # ``v_if`` expressions stopped reactively re-evaluating when the
+        # underlying list state was reassigned, so the panel never
+        # appeared. Driving the panel from a primitive boolean state
+        # variable is robust to that change because boolean state keys
+        # are tracked uniformly by every trame client release.
+        state.has_features = bool(available)
 
     @ctrl.set("apply_features")
     def _apply_features() -> None:
@@ -1940,7 +1942,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 # the full feature payload; local disk datasets keep the
                 # complete feature selection UI unchanged.
                 with html.Div(
-                    v_if=("!is_streaming && (available_features || []).length > 0",),
+                    v_if=("!is_streaming && has_features",),
                     classes="mt-3",
                 ):
                     v3.VDivider(classes="my-2")
