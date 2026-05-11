@@ -1531,6 +1531,17 @@ class Test_Sample:
             "time": 0.0,
         } in feat_ids
 
+    def test_get_all_features(self, sample_with_tree_and_scalar):
+        feat_paths = sample_with_tree_and_scalar.get_all_features()
+        assert len(feat_paths) == 7
+        assert "Global/r" in feat_paths
+        assert "Global/test_scalar_1" in feat_paths
+        assert "Base_2_2/Zone/VertexFields/big_node_field" in feat_paths
+        assert "Base_2_2/Zone/VertexFields/test_node_field_1" in feat_paths
+        assert "Base_2_2/Zone/VertexFields/OriginalIds" in feat_paths
+        assert "Base_2_2/Zone/CellCenterFields/test_elem_field_1" in feat_paths
+        assert "Base_2_2/Zone/CellCenterFields/OriginalIds" in feat_paths
+
     def test_get_all_features_identifiers_by_type(self, sample_with_tree_and_scalar):
         feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
             "scalar"

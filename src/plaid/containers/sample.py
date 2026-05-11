@@ -263,6 +263,18 @@ class Sample(BaseModel):
             if feat_id["type"] == feature_type
         ]
 
+    def get_all_features(self) -> list[str]:
+        """Get the list of all CGNS paths for all fields and global scalars."""
+        flat_tree, _ = CGH.flatten_cgns_tree(self.features.get_tree())
+        fn = self.get_field_names()
+        sn = self.get_scalar_names()
+        all_features_paths = []
+        for path in flat_tree:
+            name = path.split("/")[-1]
+            if name in fn or name in sn:
+                all_features_paths.append(path)
+        return all_features_paths
+
     def get_feature_by_path(self, path: str, time: Optional[int] = None) -> Feature:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style path.
 
