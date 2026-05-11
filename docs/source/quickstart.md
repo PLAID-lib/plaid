@@ -46,7 +46,12 @@ Explore {doc}`example examples_tutorials <examples_tutorials>` for practical use
 
 The {doc}`API documentation <../autoapi/plaid/index>` provides detailed information on all available classes and methods.
 
-Two companion libraries extend the `plaid` standard to support machine-learning workflows in physics:
+In-repository core capabilities are provided by `plaid` itself (containers, storage backends,
+and converters under `plaid.storage`).
+
+Two companion repositories extend the `plaid` ecosystem:
 
 - [plaid-bridges](https://github.com/PLAID-lib/plaid-bridges): integrations with popular ML frameworks such as PyTorch Geometric.
 - [plaid-ops](https://github.com/PLAID-lib/plaid-ops): standardized operations on PLAID samples and datasets, including advanced mesh processing (some requiring a finite-element engine) powered by [muscat](https://gitlab.com/drti/muscat).
+
+These companion projects are external repositories (not modules shipped in this package).
