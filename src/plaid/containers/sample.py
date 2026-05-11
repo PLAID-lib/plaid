@@ -77,7 +77,7 @@ class Sample(BaseModel):
 
     By default, the sample is empty but:
         - You can provide a path to a folder containing the sample data, and it will be loaded during initialization.
-        - You can provide `SampleFeatures` and `SampleFeatures` instances to initialize the sample with existing data.
+        - You can provide a `SampleFeatures` instance to initialize the sample with existing data.
 
     The default `SampleFeatures` instance is initialized with `data=None` (i.e., no mesh data).
     """
@@ -200,8 +200,8 @@ class Sample(BaseModel):
         using feature identifiers, and corresponding feature data.
 
         Args:
-            feature_identifier (dict): A feature identifier.
-            feature (Feature): A feature corresponding to the identifiers.
+            feature_path (str): A feature path string.
+            feature (Feature): Feature value corresponding to ``feature_path``.
 
         Returns:
             Self: The updated sample
@@ -243,7 +243,7 @@ class Sample(BaseModel):
     def del_feature_by_path(
         self, path: str, time: Optional[float] = None
     ) -> np.number | np.ndarray | None:
-        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
+        """Delete a feature/node by CGNS-style path from the sample mesh tree.
 
         Args:
             path (str): CGNS node path relative to the mesh root (for example
@@ -255,11 +255,11 @@ class Sample(BaseModel):
                 assignment is used. Defaults to None.
 
         Returns:
-            Feature: The value stored at the given CGNS path. This may be a numpy array, a scalar, or None if the node has no value.
+            Feature: Updated tree after node deletion.
 
         Note:
-            - This is a thin wrapper around CGNS.PAT.cgnsutils.getValueByPath and Sample.get_tree(time). Callers should handle a returned None when the path or value does not exist.
-            - For field-like features, prefer using Sample.get_field which applies additional validation and selection logic.
+            - This method resolves the requested time and deletes the node at
+              ``path`` when present.
         """
         time = self.features.resolve_time(time)
 #        return CGU.getValueByPath(self.get_tree(time), path)
