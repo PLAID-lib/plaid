@@ -4,25 +4,47 @@ title: On-disk format
 
 # On-disk format
 
-A PLAID {py:class}`~plaid.containers.dataset.Dataset` is a collection of physics configurations, stored on disk in a human-readable, tool-friendly structure:
+PLAID storage is backend-oriented. A saved dataset folder contains shared metadata
+at the root and split data written by the selected backend.
+
+Typical structure:
 
 ```
-folder
-├── dataset
-│   ├── samples
-│   │   ├── sample_000000000
-│   │   │   ├── meshes/
-│   │   │   │   ├── mesh_000000000.cgns
-│   │   │   │   ├── mesh_000000001.cgns
-│   │   │   └── scalars.csv
-│   │   └── sample_yyyyyyyyy
-│   └── infos.yaml
-└── problem_definition
-    ├── problem_infos.yaml
-    └── split.json (or split.csv for <=0.1.7)
+dataset_root/
+├── infos.yaml
+├── variable_schema.yaml
+├── cgns_types.yaml
+├── constants/
+│   ├── train/
+│   └── test/
+├── data/
+│   ├── train/
+│   └── test/
+└── problem_definitions/
 ```
 
-- `dataset/samples/`: one directory per {py:class}`~plaid.containers.sample.Sample`.
-- `meshes/`: CGNS files for time steps; can be explored in ParaView.
-- `scalars.csv`: constant scalars for the {py:class}`~plaid.containers.sample.Sample`.
-- `problem_definition/`: learning task definition and splits.
+## Root metadata
+
+- `infos.yaml`: global dataset metadata (including storage backend and number of
+  samples per split).
+- `variable_schema.yaml`: schema of variable (per-sample) features.
+- `cgns_types.yaml`: CGNS typing metadata used by converters.
+
+## Split content
+
+- `constants/<split>/`: split-level constant feature payloads.
+- `data/<split>/`: backend-specific variable sample payloads.
+
+The exact files under `data/<split>/` depend on the backend (`cgns`,
+`hf_datasets`, `zarr`).
+
+## Problem definitions
+
+- `problem_definitions/`: serialized
+  {py:class}`~plaid.problem_definition.ProblemDefinition` files (YAML).
+
+## Notes
+
+- The current layout is produced by the storage writer API
+  ({py:meth}`plaid.storage.save_to_disk`).
+- Historical layouts from older PLAID versions may differ.
