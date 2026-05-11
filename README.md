@@ -12,12 +12,10 @@
 <!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/pyplaid.svg?label=PyPI%20downloads)](https://pypi.org/project/pyplaid/) -->
 
 
-# Physics Learning AI Datamodel (PLAID)
-
-</div>
+# Physics Learning AI Data Model (PLAID)
 
 
-- [Physics Learning AI Datamodel (PLAID)](#physics-learning-ai-datamodel-plaid)
+- [Physics Learning AI Data Model (PLAID)](#physics-learning-ai-data-model-plaid)
   - [1. Description](#1-description)
   - [2. Getting started](#2-getting-started)
   - [3. Call for Contributions](#3-call-for-contributions)
@@ -26,15 +24,15 @@
 
 ## 1. Description
 
-This library proposes an implementation for a datamodel tailored for AI and ML learning of physics problems.
-It has been developped at SafranTech, the research center of [Safran group](https://www.safran-group.com/).
+This library proposes an implementation for a data model tailored for AI and ML learning of physics problems.
+It has been developed at SafranTech, the research center of [Safran group](https://www.safran-group.com/).
 
 - **Documentation:** https://plaid-lib.readthedocs.io/
 - **Source code:** https://github.com/PLAID-lib/plaid
 - **Contributing:** https://github.com/PLAID-lib/plaid/blob/main/CONTRIBUTING.md
 - **License:** https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
 - **Bug reports:** https://github.com/PLAID-lib/plaid/issues
-- **Report a security vulnerability:** https://github.com/PLAID-lib/plaid/issues
+- **Report a security vulnerability:** https://github.com/PLAID-lib/plaid/security/advisories/new
 
 
 ## 2. Getting started

@@ -59,8 +59,8 @@
 .. |JOSS paper| image:: https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg
    :target: https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e
 
-PLAID (Physics Learning AI Datamodel) is a library proposing an implementation for a datamodel tailored for AI and ML learning of physics problems.
-It has been developped at SafranTech, the research center of `Safran group <https://www.safran-group.com/>`_
+PLAID (Physics Learning AI Data Model) is a library proposing an implementation for a data model tailored for AI and ML learning of physics problems.
+It has been developed at SafranTech, the research center of `Safran group <https://www.safran-group.com/>`_
 
 The code is hosted on `GitHub <https://github.com/PLAID-lib/plaid>`_
 
