@@ -5,7 +5,7 @@
 | | |
 | --- | --- |
 | Testing | [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml) [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest) [![Coverage](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list) ![Last Commit](https://img.shields.io/github/last-commit/PLAID-lib/plaid/main) |
-| Package | [![Conda Latest Release](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/plaid) [![PyPI Latest Release](https://img.shields.io/pypi/v/pyplaid.svg)](https://pypi.org/project/pyplaid/) [![PyPI Downloads](https://static.pepy.tech/badge/pyplaid)](https://pepy.tech/projects/pyplaid) ![Platform](https://img.shields.io/badge/platform-any-blue) ![Python Version](https://img.shields.io/pypi/pyversions/pyplaid)  |
+| | Package | [![Conda Latest Release](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/plaid) [![PyPI Latest Release](https://img.shields.io/pypi/v/pyplaid.svg)](https://pypi.org/project/pyplaid/) [![PyPI Downloads](https://static.pepy.tech/badge/pyplaid)](https://pepy.tech/projects/pyplaid) ![Platform](https://img.shields.io/badge/platform-POSIX-blue) ![Python Version](https://img.shields.io/pypi/pyversions/pyplaid)  |
 | Other | [![License - BSD 3-Clause](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt) ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social) [![JOSS status](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg)](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e) |
 
 
@@ -44,12 +44,12 @@ It has been developped at SafranTech, the research center of [Safran group](http
 
 To use the library, the simplest way is to install it from the packages available:
 
-- on conda-forge for Windows, macOS and Linux:
+- on conda-forge for POSIX systems (Linux and macOS):
   ```bash
   conda install -c conda-forge plaid
   ```
 
-- or on PyPi for Linux:
+- or on PyPI for Linux:
   ```bash
   pip install pyplaid
   ```

@@ -14,7 +14,7 @@
 +-------------+-----------------------------------------------------------------------------------------------+
 | **Testing** | |CI Status| |Docs| |Coverage| |Last Commit|                                                   |
 +-------------+-----------------------------------------------------------------------------------------------+
-| **Package** | |Conda Version| |Conda Downloads| |PyPI Version| |PyPi Downloads| |Platform| |Python Version| |
+| **Package** | |Conda Version| |Conda Downloads| |PyPI Version| |PyPI Downloads| |Platform| |Python Version| |
 +-------------+-----------------------------------------------------------------------------------------------+
 | **Meta**    | |License| |GitHub Stars| |JOSS paper|                                                         |
 +-------------+-----------------------------------------------------------------------------------------------+
@@ -38,7 +38,7 @@
 .. |Conda Version| image:: https://anaconda.org/conda-forge/plaid/badges/version.svg
    :target: https://anaconda.org/conda-forge/plaid
 
-.. |Platform| image:: https://img.shields.io/badge/platform-any-blue
+.. |Platform| image:: https://img.shields.io/badge/platform-POSIX-blue
    :target: https://github.com/PLAID-lib/plaid
 
 .. |Python Version| image:: https://img.shields.io/pypi/pyversions/pyplaid
@@ -47,7 +47,7 @@
 .. |Conda Downloads| image:: https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads
    :target: https://anaconda.org/conda-forge/plaid
 
-.. |PyPi Downloads| image:: https://static.pepy.tech/badge/pyplaid
+.. |PyPI Downloads| image:: https://static.pepy.tech/badge/pyplaid
    :target: https://pepy.tech/projects/pyplaid
 
 .. |License| image:: https://anaconda.org/conda-forge/plaid/badges/license.svg
