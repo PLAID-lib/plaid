@@ -8,7 +8,6 @@
 - [3. Development setup](#3-development-setup)
   - [3.1. Prerequisites](#31-prerequisites)
   - [3.2. Installation Steps](#32-installation-steps)
-  - [3.3. Important Note](#33-important-note)
 - [4. Tests and examples](#4-tests-and-examples)
 - [5. Documentation](#5-documentation)
 - [6. Formatting and linting with Ruff](#6-formatting-and-linting-with-ruff)
