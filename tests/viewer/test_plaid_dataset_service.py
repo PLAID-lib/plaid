@@ -237,9 +237,7 @@ def test_load_sample_rejects_non_integer_sample_id(
     _install_fake_init_from_disk(monkeypatch, {"ds": (dataset_dict, converter_dict)})
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    ref = SampleRef(
-        dataset_id="ds", split="train", sample_id="not-an-int"
-    )
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="not-an-int")
     with pytest.raises(ValueError):
         service.load_sample(ref)
 
