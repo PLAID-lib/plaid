@@ -15,7 +15,7 @@ Everything you need to start using PLAID and contributing effectively.
 
 To use the library, the simplest way is to install it from the packages available:
 
-- on conda-forge for POSIX systems (Linux and macOS):
+- on conda-forge for Linux, macOS, and Windows:
   ```bash
   conda install -c conda-forge plaid
   ```
@@ -27,7 +27,7 @@ To use the library, the simplest way is to install it from the packages availabl
 
 **Note**
 
-- Conda-forge packages (Linux and macOS) and the Linux PyPI package include a bundled pyCGNS dependency. In other situations, which we have not tested, pyCGNS must be installed separately beforehand.
+- Conda-forge packages for all supported operating systems (Linux, macOS, and Windows) and the Linux PyPI package include a bundled pyCGNS dependency. In other situations, which we have not tested, pyCGNS must be installed separately beforehand.
 - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 
