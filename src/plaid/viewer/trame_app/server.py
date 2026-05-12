@@ -1940,7 +1940,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 ):
                     v3.VDivider(classes="my-2")
                     with html.Div(classes="d-flex align-center mb-1"):
-                        html.Div("Features", classes="text-subtitle-2 flex-grow-1")
+                        html.Div(
+                            "Pre-select browsable features",
+                            classes="text-subtitle-2 flex-grow-1",
+                        )
                         v3.VBtn(
                             "Load all",
                             click=ctrl.select_all_features,
