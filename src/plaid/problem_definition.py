@@ -48,7 +48,6 @@ class ProblemDefinition(object):
     def __init__(
         self,
         path: Optional[Union[str, Path]] = None,
-        directory_path: Optional[Union[str, Path]] = None,
     ) -> None:
         """Initialize an empty :class:`ProblemDefinition <plaid.problem_definition.ProblemDefinition>`.
 
@@ -56,7 +55,6 @@ class ProblemDefinition(object):
 
         Args:
             path (Union[str,Path], optional): The path from which to load PLAID problem definition files.
-            directory_path (Union[str,Path], optional): Deprecated, use `path` instead.
 
         Example:
             .. code-block:: python
@@ -80,28 +78,17 @@ class ProblemDefinition(object):
         self.in_features_identifiers: Sequence[Union[str, FeatureIdentifier]] = []
         self.out_features_identifiers: Sequence[Union[str, FeatureIdentifier]] = []
         self.constant_features_identifiers: list[str] = []
-        self.in_scalars_names: list[str] = []
-        self.out_scalars_names: list[str] = []
-        self.in_timeseries_names: list[str] = []
-        self.out_timeseries_names: list[str] = []
-        self.in_fields_names: list[str] = []
-        self.out_fields_names: list[str] = []
-        self.in_meshes_names: list[str] = []
-        self.out_meshes_names: list[str] = []
+        #self.in_scalars_names: list[str] = []
+        #self.out_scalars_names: list[str] = []
+        #self.in_timeseries_names: list[str] = []
+        #self.out_timeseries_names: list[str] = []
+        #self.in_fields_names: list[str] = []
+        #self.out_fields_names: list[str] = []
+        #self.in_meshes_names: list[str] = []
+        #self.out_meshes_names: list[str] = []
         self._split: Optional[dict[str, IndexType]] = None
         self._train_split: Optional[dict[str, dict[str, IndexType]]] = None
         self._test_split: Optional[dict[str, dict[str, IndexType]]] = None
-
-        if directory_path is not None:
-            if path is not None:
-                raise ValueError(
-                    "Arguments `path` and `directory_path` cannot be both set. Use only `path` as `directory_path` is deprecated."
-                )
-            else:
-                path = directory_path
-                logger.warning(
-                    "DeprecationWarning: 'directory_path' is deprecated, use 'path' instead."
-                )
 
         if path is not None:
             path = Path(path)
@@ -652,187 +639,187 @@ class ProblemDefinition(object):
         )
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def get_input_scalars_names(self) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def get_input_scalars_names(self) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
 
-        Get the input scalars names of the problem.
+    #     Get the input scalars names of the problem.
 
-        Returns:
-            list[str]: A list of input feature names.
+    #     Returns:
+    #         list[str]: A list of input feature names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                input_scalars_names = problem.get_input_scalars_names()
-                print(input_scalars_names)
-                >>> ['omega', 'pressure']
-        """
-        return self.in_scalars_names
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             input_scalars_names = problem.get_input_scalars_names()
+    #             print(input_scalars_names)
+    #             >>> ['omega', 'pressure']
+    #     """
+    #     return self.in_scalars_names
 
-    @deprecated(
-        "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_input_scalars_names(self, inputs: list[str]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_input_scalars_names(self, inputs: list[str]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
 
-        Add input scalars names to the problem.
+    #     Add input scalars names to the problem.
 
-        Args:
-            inputs (list[str]): A list of input feature names to add.
+    #     Args:
+    #         inputs (list[str]): A list of input feature names to add.
 
-        Raises:
-            ValueError: If some :code:`inputs` are redondant.
+    #     Raises:
+    #         ValueError: If some :code:`inputs` are redondant.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                input_scalars_names = ['omega', 'pressure']
-                problem.add_input_scalars_names(input_scalars_names)
-        """
-        if not (len(set(inputs)) == len(inputs)):
-            raise ValueError("Some inputs have same names")
-        for input in inputs:
-            self.add_input_scalar_name(input)
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             input_scalars_names = ['omega', 'pressure']
+    #             problem.add_input_scalars_names(input_scalars_names)
+    #     """
+    #     if not (len(set(inputs)) == len(inputs)):
+    #         raise ValueError("Some inputs have same names")
+    #     for input in inputs:
+    #         self.add_input_scalar_name(input)
 
-    @deprecated(
-        "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_input_scalar_name(self, input: str) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
+    # @deprecated(
+    #     "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_input_scalar_name(self, input: str) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
 
-        Add an input scalar name to the problem.
+    #     Add an input scalar name to the problem.
 
-        Args:
-            input (str):  The name of the input feature to add.
+    #     Args:
+    #         input (str):  The name of the input feature to add.
 
-        Raises:
-            ValueError: If the specified input feature is already in the list of inputs.
+    #     Raises:
+    #         ValueError: If the specified input feature is already in the list of inputs.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                input_name = 'pressure'
-                problem.add_input_scalar_name(input_name)
-        """
-        if input in self.in_scalars_names:
-            raise ValueError(f"{input} is already in self.in_scalars_names")
-        self.in_scalars_names.append(input)
-        self.in_scalars_names.sort()
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             input_name = 'pressure'
+    #             problem.add_input_scalar_name(input_name)
+    #     """
+    #     if input in self.in_scalars_names:
+    #         raise ValueError(f"{input} is already in self.in_scalars_names")
+    #     self.in_scalars_names.append(input)
+    #     self.in_scalars_names.sort()
 
-    @deprecated(
-        "use `filter_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def filter_input_scalars_names(self, names: list[str]) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.filter_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `filter_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def filter_input_scalars_names(self, names: list[str]) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.filter_in_features_identifiers` instead.
 
-        Filter and get input scalars features corresponding to a list of names.
+    #     Filter and get input scalars features corresponding to a list of names.
 
-        Args:
-            names (list[str]): A list of names for which to retrieve corresponding input features.
+    #     Args:
+    #         names (list[str]): A list of names for which to retrieve corresponding input features.
 
-        Returns:
-            list[str]: A sorted list of input feature names or categories corresponding to the provided names.
+    #     Returns:
+    #         list[str]: A sorted list of input feature names or categories corresponding to the provided names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                scalars_names = ['omega', 'pressure', 'temperature']
-                input_features = problem.filter_input_scalars_names(scalars_names)
-                print(input_features)
-                >>> ['omega', 'pressure']
-        """
-        return sorted(set(names).intersection(self.get_input_scalars_names()))
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             scalars_names = ['omega', 'pressure', 'temperature']
+    #             input_features = problem.filter_input_scalars_names(scalars_names)
+    #             print(input_features)
+    #             >>> ['omega', 'pressure']
+    #     """
+    #     return sorted(set(names).intersection(self.get_input_scalars_names()))
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def get_output_scalars_names(self) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
+    # @deprecated(
+    #     "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def get_output_scalars_names(self) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
 
-        Get the output scalars names of the problem.
+    #     Get the output scalars names of the problem.
 
-        Returns:
-            list[str]: A list of output feature names.
+    #     Returns:
+    #         list[str]: A list of output feature names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                outputs_names = problem.get_output_scalars_names()
-                print(outputs_names)
-                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-        """
-        return self.out_scalars_names
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             outputs_names = problem.get_output_scalars_names()
+    #             print(outputs_names)
+    #             >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+    #     """
+    #     return self.out_scalars_names
 
-    @deprecated(
-        "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_output_scalars_names(self, outputs: list[str]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
+    # @deprecated(
+    #     "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_output_scalars_names(self, outputs: list[str]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
 
-        Add output scalars names to the problem.
+    #     Add output scalars names to the problem.
 
-        Args:
-            outputs (list[str]): A list of output feature names to add.
+    #     Args:
+    #         outputs (list[str]): A list of output feature names to add.
 
-        Raises:
-            ValueError: if some :code:`outputs` are redondant.
+    #     Raises:
+    #         ValueError: if some :code:`outputs` are redondant.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                output_scalars_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-                problem.add_output_scalars_names(output_scalars_names)
-        """
-        if not (len(set(outputs)) == len(outputs)):
-            raise ValueError("Some outputs have same names")
-        for output in outputs:
-            self.add_output_scalar_name(output)
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             output_scalars_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+    #             problem.add_output_scalars_names(output_scalars_names)
+    #     """
+    #     if not (len(set(outputs)) == len(outputs)):
+    #         raise ValueError("Some outputs have same names")
+    #     for output in outputs:
+    #         self.add_output_scalar_name(output)
 
-    @deprecated(
-        "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_output_scalar_name(self, output: str) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
+    # @deprecated(
+    #     "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_output_scalar_name(self, output: str) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
 
-        Add an output scalar name to the problem.
+    #     Add an output scalar name to the problem.
 
-        Args:
-            output (str):  The name of the output feature to add.
+    #     Args:
+    #         output (str):  The name of the output feature to add.
 
-        Raises:
-            ValueError: If the specified output feature is already in the list of outputs.
+    #     Raises:
+    #         ValueError: If the specified output feature is already in the list of outputs.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                output_scalars_names = 'pressure'
-                problem.add_output_scalar_name(output_scalars_names)
-        """
-        if output in self.out_scalars_names:
-            raise ValueError(f"{output} is already in self.out_scalars_names")
-        self.out_scalars_names.append(output)
-        self.in_scalars_names.sort()
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             output_scalars_names = 'pressure'
+    #             problem.add_output_scalar_name(output_scalars_names)
+    #     """
+    #     if output in self.out_scalars_names:
+    #         raise ValueError(f"{output} is already in self.out_scalars_names")
+    #     self.out_scalars_names.append(output)
+    #     self.in_scalars_names.sort()
 
     def filter_output_scalars_names(self, names: list[str]) -> list[str]:
         """Filter and get output features corresponding to a list of names.
@@ -854,185 +841,185 @@ class ProblemDefinition(object):
                 print(output_features)
                 >>> ['in_massflow']
         """
-        return sorted(set(names).intersection(self.get_output_scalars_names()))
+        return sorted(set(names).intersection([f["name"] for f in self.get_out_features_identifiers()]))
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def get_input_fields_names(self) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def get_input_fields_names(self) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
 
-        Get the input fields names of the problem.
+    #     Get the input fields names of the problem.
 
-        Returns:
-            list[str]: A list of input feature names.
+    #     Returns:
+    #         list[str]: A list of input feature names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                input_fields_names = problem.get_input_fields_names()
-                print(input_fields_names)
-                >>> ['omega', 'pressure']
-        """
-        return self.in_fields_names
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             input_fields_names = problem.get_input_fields_names()
+    #             print(input_fields_names)
+    #             >>> ['omega', 'pressure']
+    #     """
+    #     return self.in_fields_names
 
-    @deprecated(
-        "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_input_fields_names(self, inputs: list[str]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_input_fields_names(self, inputs: list[str]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
 
-        Add input fields names to the problem.
+    #     Add input fields names to the problem.
 
-        Args:
-            inputs (list[str]): A list of input feature names to add.
+    #     Args:
+    #         inputs (list[str]): A list of input feature names to add.
 
-        Raises:
-            ValueError: If some :code:`inputs` are redondant.
+    #     Raises:
+    #         ValueError: If some :code:`inputs` are redondant.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                input_fields_names = ['omega', 'pressure']
-                problem.add_input_fields_names(input_fields_names)
-        """
-        if not (len(set(inputs)) == len(inputs)):
-            raise ValueError("Some inputs have same names")
-        for input in inputs:
-            self.add_input_field_name(input)
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             input_fields_names = ['omega', 'pressure']
+    #             problem.add_input_fields_names(input_fields_names)
+    #     """
+    #     if not (len(set(inputs)) == len(inputs)):
+    #         raise ValueError("Some inputs have same names")
+    #     for input in inputs:
+    #         self.add_input_field_name(input)
 
-    @deprecated(
-        "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_input_field_name(self, input: str) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
+    # @deprecated(
+    #     "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_input_field_name(self, input: str) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
 
-        Add an input field name to the problem.
+    #     Add an input field name to the problem.
 
-        Args:
-            input (str):  The name of the input feature to add.
+    #     Args:
+    #         input (str):  The name of the input feature to add.
 
-        Raises:
-            ValueError: If the specified input feature is already in the list of inputs.
+    #     Raises:
+    #         ValueError: If the specified input feature is already in the list of inputs.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                input_name = 'pressure'
-                problem.add_input_field_name(input_name)
-        """
-        if input in self.in_fields_names:
-            raise ValueError(f"{input} is already in self.in_fields_names")
-        self.in_fields_names.append(input)
-        self.in_fields_names.sort()
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             input_name = 'pressure'
+    #             problem.add_input_field_name(input_name)
+    #     """
+    #     if input in self.in_fields_names:
+    #         raise ValueError(f"{input} is already in self.in_fields_names")
+    #     self.in_fields_names.append(input)
+    #     self.in_fields_names.sort()
 
-    def filter_input_fields_names(self, names: list[str]) -> list[str]:
-        """Filter and get input fields features corresponding to a list of names.
+    # def filter_input_fields_names(self, names: list[str]) -> list[str]:
+    #     """Filter and get input fields features corresponding to a list of names.
 
-        Args:
-            names (list[str]): A list of names for which to retrieve corresponding input features.
+    #     Args:
+    #         names (list[str]): A list of names for which to retrieve corresponding input features.
 
-        Returns:
-            list[str]: A sorted list of input feature names or categories corresponding to the provided names.
+    #     Returns:
+    #         list[str]: A sorted list of input feature names or categories corresponding to the provided names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                input_fields_names = ['omega', 'pressure', 'temperature']
-                input_features = problem.filter_input_fields_names(input_fields_names)
-                print(input_features)
-                >>> ['omega', 'pressure']
-        """
-        return sorted(set(names).intersection(self.get_input_fields_names()))
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             input_fields_names = ['omega', 'pressure', 'temperature']
+    #             input_features = problem.filter_input_fields_names(input_fields_names)
+    #             print(input_features)
+    #             >>> ['omega', 'pressure']
+    #     """
+    #     return sorted(set(names).intersection(self.get_input_fields_names()))
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def get_output_fields_names(self) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
+    # @deprecated(
+    #     "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def get_output_fields_names(self) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
 
-        Get the output fields names of the problem.
+    #     Get the output fields names of the problem.
 
-        Returns:
-            list[str]: A list of output feature names.
+    #     Returns:
+    #         list[str]: A list of output feature names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                outputs_names = problem.get_output_fields_names()
-                print(outputs_names)
-                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-        """
-        return self.out_fields_names
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             outputs_names = problem.get_output_fields_names()
+    #             print(outputs_names)
+    #             >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+    #     """
+    #     return self.out_fields_names
 
-    @deprecated(
-        "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_output_fields_names(self, outputs: list[str]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
+    # @deprecated(
+    #     "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_output_fields_names(self, outputs: list[str]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
 
-        Add output fields names to the problem.
+    #     Add output fields names to the problem.
 
-        Args:
-            outputs (list[str]): A list of output feature names to add.
+    #     Args:
+    #         outputs (list[str]): A list of output feature names to add.
 
-        Raises:
-            ValueError: if some :code:`outputs` are redondant.
+    #     Raises:
+    #         ValueError: if some :code:`outputs` are redondant.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                output_fields_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-                problem.add_output_fields_names(output_fields_names)
-        """
-        if not (len(set(outputs)) == len(outputs)):
-            raise ValueError("Some outputs have same names")
-        for output in outputs:
-            self.add_output_field_name(output)
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             output_fields_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+    #             problem.add_output_fields_names(output_fields_names)
+    #     """
+    #     if not (len(set(outputs)) == len(outputs)):
+    #         raise ValueError("Some outputs have same names")
+    #     for output in outputs:
+    #         self.add_output_field_name(output)
 
-    @deprecated(
-        "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_output_field_name(self, output: str) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
+    # @deprecated(
+    #     "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_output_field_name(self, output: str) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
 
-        Add an output field name to the problem.
+    #     Add an output field name to the problem.
 
-        Args:
-            output (str):  The name of the output feature to add.
+    #     Args:
+    #         output (str):  The name of the output feature to add.
 
-        Raises:
-            ValueError: If the specified output feature is already in the list of outputs.
+    #     Raises:
+    #         ValueError: If the specified output feature is already in the list of outputs.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                output_fields_names = 'pressure'
-                problem.add_output_field_name(output_fields_names)
-        """
-        if output in self.out_fields_names:
-            raise ValueError(f"{output} is already in self.out_fields_names")
-        self.out_fields_names.append(output)
-        self.out_fields_names.sort()
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             output_fields_names = 'pressure'
+    #             problem.add_output_field_name(output_fields_names)
+    #     """
+    #     if output in self.out_fields_names:
+    #         raise ValueError(f"{output} is already in self.out_fields_names")
+    #     self.out_fields_names.append(output)
+    #     self.out_fields_names.sort()
 
     def filter_output_fields_names(self, names: list[str]) -> list[str]:
         """Filter and get output features corresponding to a list of names.
@@ -1057,182 +1044,182 @@ class ProblemDefinition(object):
         return sorted(set(names).intersection(self.get_output_fields_names()))
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def get_input_timeseries_names(self) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def get_input_timeseries_names(self) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
 
-        Get the input timeseries names of the problem.
+    #     Get the input timeseries names of the problem.
 
-        Returns:
-            list[str]: A list of input feature names.
+    #     Returns:
+    #         list[str]: A list of input feature names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                input_timeseries_names = problem.get_input_timeseries_names()
-                print(input_timeseries_names)
-                >>> ['omega', 'pressure']
-        """
-        return self.in_timeseries_names
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             input_timeseries_names = problem.get_input_timeseries_names()
+    #             print(input_timeseries_names)
+    #             >>> ['omega', 'pressure']
+    #     """
+    #     return self.in_timeseries_names
 
-    @deprecated(
-        "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_input_timeseries_names(self, inputs: list[str]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_input_timeseries_names(self, inputs: list[str]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
 
-        Add input timeseries names to the problem.
+    #     Add input timeseries names to the problem.
 
-        Args:
-            inputs (list[str]): A list of input feature names to add.
+    #     Args:
+    #         inputs (list[str]): A list of input feature names to add.
 
-        Raises:
-            ValueError: If some :code:`inputs` are redondant.
+    #     Raises:
+    #         ValueError: If some :code:`inputs` are redondant.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                input_timeseries_names = ['omega', 'pressure']
-                problem.add_input_timeseries_names(input_timeseries_names)
-        """
-        if not (len(set(inputs)) == len(inputs)):
-            raise ValueError("Some inputs have same names")
-        for input in inputs:
-            self.add_input_timeseries_name(input)
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             input_timeseries_names = ['omega', 'pressure']
+    #             problem.add_input_timeseries_names(input_timeseries_names)
+    #     """
+    #     if not (len(set(inputs)) == len(inputs)):
+    #         raise ValueError("Some inputs have same names")
+    #     for input in inputs:
+    #         self.add_input_timeseries_name(input)
 
-    @deprecated(
-        "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_input_timeseries_name(self, input: str) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
+    # @deprecated(
+    #     "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_input_timeseries_name(self, input: str) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
 
-        Add an input timeseries name to the problem.
+    #     Add an input timeseries name to the problem.
 
-        Args:
-            input (str):  The name of the input feature to add.
+    #     Args:
+    #         input (str):  The name of the input feature to add.
 
-        Raises:
-            ValueError: If the specified input feature is already in the list of inputs.
+    #     Raises:
+    #         ValueError: If the specified input feature is already in the list of inputs.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                input_name = 'pressure'
-                problem.add_input_timeseries_name(input_name)
-        """
-        if input in self.in_timeseries_names:
-            raise ValueError(f"{input} is already in self.in_timeseries_names")
-        self.in_timeseries_names.append(input)
-        self.in_timeseries_names.sort()
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             input_name = 'pressure'
+    #             problem.add_input_timeseries_name(input_name)
+    #     """
+    #     if input in self.in_timeseries_names:
+    #         raise ValueError(f"{input} is already in self.in_timeseries_names")
+    #     self.in_timeseries_names.append(input)
+    #     self.in_timeseries_names.sort()
 
-    def filter_input_timeseries_names(self, names: list[str]) -> list[str]:
-        """Filter and get input timeseries features corresponding to a list of names.
+    # def filter_input_timeseries_names(self, names: list[str]) -> list[str]:
+    #     """Filter and get input timeseries features corresponding to a list of names.
 
-        Args:
-            names (list[str]): A list of names for which to retrieve corresponding input features.
+    #     Args:
+    #         names (list[str]): A list of names for which to retrieve corresponding input features.
 
-        Returns:
-            list[str]: A sorted list of input feature names or categories corresponding to the provided names.
+    #     Returns:
+    #         list[str]: A sorted list of input feature names or categories corresponding to the provided names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                input_timeseries_names = ['omega', 'pressure', 'temperature']
-                input_features = problem.filter_input_timeseries_names(input_timeseries_names)
-                print(input_features)
-                >>> ['omega', 'pressure']
-        """
-        return sorted(set(names).intersection(self.get_input_timeseries_names()))
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             input_timeseries_names = ['omega', 'pressure', 'temperature']
+    #             input_features = problem.filter_input_timeseries_names(input_timeseries_names)
+    #             print(input_features)
+    #             >>> ['omega', 'pressure']
+    #     """
+    #     return sorted(set(names).intersection(self.get_input_timeseries_names()))
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def get_output_timeseries_names(self) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
+    # @deprecated(
+    #     "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def get_output_timeseries_names(self) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
 
-        Get the output timeseries names of the problem.
+    #     Get the output timeseries names of the problem.
 
-        Returns:
-            list[str]: A list of output feature names.
+    #     Returns:
+    #         list[str]: A list of output feature names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                outputs_names = problem.get_output_timeseries_names()
-                print(outputs_names)
-                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-        """
-        return self.out_timeseries_names
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             outputs_names = problem.get_output_timeseries_names()
+    #             print(outputs_names)
+    #             >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+    #     """
+    #     return self.out_timeseries_names
 
-    @deprecated(
-        "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_output_timeseries_names(self, outputs: list[str]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
+    # @deprecated(
+    #     "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_output_timeseries_names(self, outputs: list[str]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
 
-        Add output timeseries names to the problem.
+    #     Add output timeseries names to the problem.
 
-        Args:
-            outputs (list[str]): A list of output feature names to add.
+    #     Args:
+    #         outputs (list[str]): A list of output feature names to add.
 
-        Raises:
-            ValueError: if some :code:`outputs` are redondant.
+    #     Raises:
+    #         ValueError: if some :code:`outputs` are redondant.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                output_timeseries_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-                problem.add_output_timeseries_names(output_timeseries_names)
-        """
-        if not (len(set(outputs)) == len(outputs)):
-            raise ValueError("Some outputs have same names")
-        for output in outputs:
-            self.add_output_timeseries_name(output)
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             output_timeseries_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+    #             problem.add_output_timeseries_names(output_timeseries_names)
+    #     """
+    #     if not (len(set(outputs)) == len(outputs)):
+    #         raise ValueError("Some outputs have same names")
+    #     for output in outputs:
+    #         self.add_output_timeseries_name(output)
 
-    @deprecated(
-        "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_output_timeseries_name(self, output: str) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
+    # @deprecated(
+    #     "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_output_timeseries_name(self, output: str) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
 
-        Add an output timeseries name to the problem.
+    #     Add an output timeseries name to the problem.
 
-        Args:
-            output (str):  The name of the output feature to add.
+    #     Args:
+    #         output (str):  The name of the output feature to add.
 
-        Raises:
-            ValueError: If the specified output feature is already in the list of outputs.
+    #     Raises:
+    #         ValueError: If the specified output feature is already in the list of outputs.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                output_timeseries_names = 'pressure'
-                problem.add_output_timeseries_name(output_timeseries_names)
-        """
-        if output in self.out_timeseries_names:
-            raise ValueError(f"{output} is already in self.out_timeseries_names")
-        self.out_timeseries_names.append(output)
-        self.in_timeseries_names.sort()
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             output_timeseries_names = 'pressure'
+    #             problem.add_output_timeseries_name(output_timeseries_names)
+    #     """
+    #     if output in self.out_timeseries_names:
+    #         raise ValueError(f"{output} is already in self.out_timeseries_names")
+    #     self.out_timeseries_names.append(output)
+    #     self.in_timeseries_names.sort()
 
     def filter_output_timeseries_names(self, names: list[str]) -> list[str]:
         """Filter and get output features corresponding to a list of names.
@@ -1257,82 +1244,82 @@ class ProblemDefinition(object):
         return sorted(set(names).intersection(self.get_output_timeseries_names()))
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def get_input_meshes_names(self) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `get_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def get_input_meshes_names(self) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.get_in_features_identifiers` instead.
 
-        Get the input meshes names of the problem.
+    #     Get the input meshes names of the problem.
 
-        Returns:
-            list[str]: A list of input feature names.
+    #     Returns:
+    #         list[str]: A list of input feature names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                input_meshes_names = problem.get_input_meshes_names()
-                print(input_meshes_names)
-                >>> ['omega', 'pressure']
-        """
-        return self.in_meshes_names
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             input_meshes_names = problem.get_input_meshes_names()
+    #             print(input_meshes_names)
+    #             >>> ['omega', 'pressure']
+    #     """
+    #     return self.in_meshes_names
 
-    @deprecated(
-        "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_input_meshes_names(self, inputs: list[str]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
+    # @deprecated(
+    #     "use `add_in_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_input_meshes_names(self, inputs: list[str]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_in_features_identifiers` instead.
 
-        Add input meshes names to the problem.
+    #     Add input meshes names to the problem.
 
-        Args:
-            inputs (list[str]): A list of input feature names to add.
+    #     Args:
+    #         inputs (list[str]): A list of input feature names to add.
 
-        Raises:
-            ValueError: If some :code:`inputs` are redondant.
+    #     Raises:
+    #         ValueError: If some :code:`inputs` are redondant.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                input_meshes_names = ['omega', 'pressure']
-                problem.add_input_meshes_names(input_meshes_names)
-        """
-        if not (len(set(inputs)) == len(inputs)):
-            raise ValueError("Some inputs have same names")
-        for input in inputs:
-            self.add_input_mesh_name(input)
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             input_meshes_names = ['omega', 'pressure']
+    #             problem.add_input_meshes_names(input_meshes_names)
+    #     """
+    #     if not (len(set(inputs)) == len(inputs)):
+    #         raise ValueError("Some inputs have same names")
+    #     for input in inputs:
+    #         self.add_input_mesh_name(input)
 
-    @deprecated(
-        "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_input_mesh_name(self, input: str) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
+    # @deprecated(
+    #     "use `add_in_feature_identifier` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_input_mesh_name(self, input: str) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_in_feature_identifier` instead.
 
-        Add an input mesh name to the problem.
+    #     Add an input mesh name to the problem.
 
-        Args:
-            input (str):  The name of the input feature to add.
+    #     Args:
+    #         input (str):  The name of the input feature to add.
 
-        Raises:
-            ValueError: If the specified input feature is already in the list of inputs.
+    #     Raises:
+    #         ValueError: If the specified input feature is already in the list of inputs.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                input_name = 'pressure'
-                problem.add_input_mesh_name(input_name)
-        """
-        if input in self.in_meshes_names:
-            raise ValueError(f"{input} is already in self.in_meshes_names")
-        self.in_meshes_names.append(input)
-        self.in_meshes_names.sort()
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             input_name = 'pressure'
+    #             problem.add_input_mesh_name(input_name)
+    #     """
+    #     if input in self.in_meshes_names:
+    #         raise ValueError(f"{input} is already in self.in_meshes_names")
+    #     self.in_meshes_names.append(input)
+    #     self.in_meshes_names.sort()
 
     def filter_input_meshes_names(self, names: list[str]) -> list[str]:
         """Filter and get input meshes features corresponding to a list of names.
@@ -1357,82 +1344,82 @@ class ProblemDefinition(object):
         return sorted(set(names).intersection(self.get_input_meshes_names()))
 
     # -------------------------------------------------------------------------#
-    @deprecated(
-        "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def get_output_meshes_names(self) -> list[str]:
-        """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
+    # @deprecated(
+    #     "use `get_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def get_output_meshes_names(self) -> list[str]:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.get_out_features_identifiers` instead.
 
-        Get the output meshes names of the problem.
+    #     Get the output meshes names of the problem.
 
-        Returns:
-            list[str]: A list of output feature names.
+    #     Returns:
+    #         list[str]: A list of output feature names.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                # [...]
-                outputs_names = problem.get_output_meshes_names()
-                print(outputs_names)
-                >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-        """
-        return self.out_meshes_names
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             # [...]
+    #             outputs_names = problem.get_output_meshes_names()
+    #             print(outputs_names)
+    #             >>> ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+    #     """
+    #     return self.out_meshes_names
 
-    @deprecated(
-        "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_output_meshes_names(self, outputs: list[str]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
+    # @deprecated(
+    #     "use `add_out_features_identifiers` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_output_meshes_names(self, outputs: list[str]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_out_features_identifiers` instead.
 
-        Add output meshes names to the problem.
+    #     Add output meshes names to the problem.
 
-        Args:
-            outputs (list[str]): A list of output feature names to add.
+    #     Args:
+    #         outputs (list[str]): A list of output feature names to add.
 
-        Raises:
-            ValueError: if some :code:`outputs` are redondant.
+    #     Raises:
+    #         ValueError: if some :code:`outputs` are redondant.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                output_meshes_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
-                problem.add_output_meshes_names(output_meshes_names)
-        """
-        if not (len(set(outputs)) == len(outputs)):
-            raise ValueError("Some outputs have same names")
-        for output in outputs:
-            self.add_output_mesh_name(output)
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             output_meshes_names = ['compression_rate', 'in_massflow', 'isentropic_efficiency']
+    #             problem.add_output_meshes_names(output_meshes_names)
+    #     """
+    #     if not (len(set(outputs)) == len(outputs)):
+    #         raise ValueError("Some outputs have same names")
+    #     for output in outputs:
+    #         self.add_output_mesh_name(output)
 
-    @deprecated(
-        "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
-    )
-    def add_output_mesh_name(self, output: str) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
+    # @deprecated(
+    #     "use `add_out_feature_identifier` instead", version="0.1.8", removal="0.2.0"
+    # )
+    # def add_output_mesh_name(self, output: str) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.add_out_feature_identifier` instead.
 
-        Add an output mesh name to the problem.
+    #     Add an output mesh name to the problem.
 
-        Args:
-            output (str):  The name of the output feature to add.
+    #     Args:
+    #         output (str):  The name of the output feature to add.
 
-        Raises:
-            ValueError: If the specified output feature is already in the list of outputs.
+    #     Raises:
+    #         ValueError: If the specified output feature is already in the list of outputs.
 
-        Example:
-            .. code-block:: python
+    #     Example:
+    #         .. code-block:: python
 
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                output_meshes_names = 'pressure'
-                problem.add_output_mesh_name(output_meshes_names)
-        """
-        if output in self.out_meshes_names:
-            raise ValueError(f"{output} is already in self.out_meshes_names")
-        self.out_meshes_names.append(output)
-        self.in_meshes_names.sort()
+    #             from plaid import ProblemDefinition
+    #             problem = ProblemDefinition()
+    #             output_meshes_names = 'pressure'
+    #             problem.add_output_mesh_name(output_meshes_names)
+    #     """
+    #     if output in self.out_meshes_names:
+    #         raise ValueError(f"{output} is already in self.out_meshes_names")
+    #     self.out_meshes_names.append(output)
+    #     self.in_meshes_names.sort()
 
     def filter_output_meshes_names(self, names: list[str]) -> list[str]:
         """Filter and get output features corresponding to a list of names.
@@ -1500,23 +1487,23 @@ class ProblemDefinition(object):
             data["test_split"] = self._test_split
         if self._name is not None:
             data["name"] = self._name
-        if Version(plaid.__version__) < Version("0.2.0"):
-            data.update(
-                {
-                    k: v
-                    for k, v in {
-                        "input_scalars": self.in_scalars_names,
-                        "output_scalars": self.out_scalars_names,
-                        "input_fields": self.in_fields_names,
-                        "output_fields": self.out_fields_names,
-                        "input_timeseries": self.in_timeseries_names,
-                        "output_timeseries": self.out_timeseries_names,
-                        "input_meshes": self.in_meshes_names,
-                        "output_meshes": self.out_meshes_names,
-                    }.items()
-                    if v  # keeps only truthy (non-empty, non-None) lists
-                }
-            )
+        # if Version(plaid.__version__) < Version("0.2.0"):
+        #     data.update(
+        #         {
+        #             k: v
+        #             for k, v in {
+        #                 "input_scalars": self.in_scalars_names,
+        #                 "output_scalars": self.out_scalars_names,
+        #                 "input_fields": self.in_fields_names,
+        #                 "output_fields": self.out_fields_names,
+        #                 "input_timeseries": self.in_timeseries_names,
+        #                 "output_timeseries": self.out_timeseries_names,
+        #                 "input_meshes": self.in_meshes_names,
+        #                 "output_meshes": self.out_meshes_names,
+        #             }.items()
+        #             if v  # keeps only truthy (non-empty, non-None) lists
+        #         }
+        #     )
 
         # Handle version
         plaid_version = Version(plaid.__version__)
@@ -1529,16 +1516,6 @@ class ProblemDefinition(object):
             data["version"] = str(self._version)
 
         return data
-
-        # Handle version
-        plaid_version = Version(plaid.__version__)
-        if self._version != plaid_version:  # pragma: no cover
-            logger.warning(
-                f"Version mismatch: ProblemDefinition was loaded from version {self._version if self._version is not None else 'anterior to 0.1.10'}, and will be saved with version: {plaid_version}"
-            )
-            data["version"] = str(plaid_version)
-        else:
-            data["version"] = str(self._version)
 
         # Save infos
 
@@ -1569,14 +1546,14 @@ class ProblemDefinition(object):
                 problem_infos_dict, file, default_flow_style=False, sort_keys=True
             )
 
-    @deprecated(
-        "`ProblemDefinition._save_to_dir_(...)` is deprecated. Use `ProblemDefinition.save_to_dir(...)` instead.",
-        version="0.1.10",
-        removal="0.2.0",
-    )
-    def _save_to_dir_(self, path: Union[str, Path]) -> None:
-        """DEPRECATED: use :meth:`ProblemDefinition.save_to_dir` instead."""
-        self.save_to_dir(path)
+    # @deprecated(
+    #     "`ProblemDefinition._save_to_dir_(...)` is deprecated. Use `ProblemDefinition.save_to_dir(...)` instead.",
+    #     version="0.1.10",
+    #     removal="0.2.0",
+    # )
+    # def _save_to_dir_(self, path: Union[str, Path]) -> None:
+    #     """DEPRECATED: use :meth:`ProblemDefinition.save_to_dir` instead."""
+    #     self.save_to_dir(path)
 
     def save_to_dir(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified directory in YAML and CSV formats.

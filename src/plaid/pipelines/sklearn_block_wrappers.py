@@ -249,7 +249,7 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
 
         dataset_predicted = Dataset.merge_dataset_by_features(
             [
-                dataset.from_tabular(
+                dataset.add_features_from_tabular(
                     y[
                         :,
                         None,
@@ -262,9 +262,7 @@ class WrappedSklearnRegressor(RegressorMixin, BaseEstimator):
                 for i_feat, feat_ids in enumerate(self.out_features_identifiers_)
             ]
         )
-        # dataset_predicted = dataset.add_features_from_tabular(
-        #     y, self.out_features_identifiers_, restrict_to_features=False
-        # )
+
         dataset_predicted = dataset.merge_features(dataset_predicted)
 
         return dataset_predicted

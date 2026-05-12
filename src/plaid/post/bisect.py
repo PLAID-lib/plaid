@@ -37,7 +37,7 @@ def prepare_datasets(
     assert ref_problem == pred_problem, "Reference and predicted dataset scalars differ"
 
     n_samples = len(ref_dataset)
-    out_scalars_names = problem_definition.get_output_scalars_names()
+    out_scalars_names = [f["name"] for f in problem_definition.get_out_features_identifiers()]
 
     ref_out_scalars = {}
     pred_out_scalars = {}
