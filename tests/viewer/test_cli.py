@@ -20,7 +20,6 @@ def test_build_parser_defaults() -> None:
     assert args.disable_dataset_change is False
     assert args.host == "127.0.0.1"
     assert args.port == 8080
-    assert args.backend_id == "disk"
     assert args.hub_repo is None
 
 
@@ -44,8 +43,6 @@ def test_build_parser_accepts_all_options(tmp_path: Path) -> None:
             "0.0.0.0",
             "--port",
             "9000",
-            "--backend-id",
-            "zarr",
             "--hub-repo",
             "org/one",
             "--hub-repo",
@@ -60,7 +57,6 @@ def test_build_parser_accepts_all_options(tmp_path: Path) -> None:
     assert args.disable_dataset_change is True
     assert args.host == "0.0.0.0"
     assert args.port == 9000
-    assert args.backend_id == "zarr"
     assert args.hub_repo == ["org/one", "org/two"]
 
 

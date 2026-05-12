@@ -337,7 +337,7 @@ class PlaidDatasetService:
                 infos.append(
                     DatasetInfo(
                         dataset_id=entry.name,
-                        backend_id="disk",
+                        is_streaming=False,
                         path=str(entry),
                         has_infos=(entry / "infos.yaml").exists()
                         or (entry / "infos.json").exists(),
@@ -350,7 +350,7 @@ class PlaidDatasetService:
             infos.append(
                 DatasetInfo(
                     dataset_id=repo_id,
-                    backend_id="hub",
+                    is_streaming=True,
                     path=f"hf://{repo_id}",
                     has_infos=False,
                     has_problem_definitions=False,
@@ -613,7 +613,7 @@ class PlaidDatasetService:
             splits = self._splits_with_counts(dataset_id)
             return DatasetDetail(
                 dataset_id=dataset_id,
-                backend_id="hub",
+                is_streaming=True,
                 path=f"hf://{dataset_id}",
                 has_infos=False,
                 has_problem_definitions=False,
@@ -635,7 +635,7 @@ class PlaidDatasetService:
         )
         return DatasetDetail(
             dataset_id=dataset_id,
-            backend_id="disk",
+            is_streaming=False,
             path=str(base),
             has_infos=(base / "infos.yaml").exists() or (base / "infos.json").exists(),
             has_problem_definitions=bool(pb_defs),
@@ -657,7 +657,6 @@ class PlaidDatasetService:
         """
         datasetdict, _ = self._open(dataset_id)
         streaming = self.is_streaming(dataset_id)
-        backend_id = "hub" if self._is_hub_dataset(dataset_id) else "disk"
 
         refs: list[SampleRef] = []
         for split, ds in datasetdict.items():
@@ -665,7 +664,6 @@ class PlaidDatasetService:
             if streaming:
                 refs.append(
                     SampleRef(
-                        backend_id=backend_id,
                         dataset_id=dataset_id,
                         split=split_key,
                         sample_id=STREAM_CURSOR_ID,
@@ -675,7 +673,6 @@ class PlaidDatasetService:
             for index in range(len(ds)):
                 refs.append(
                     SampleRef(
-                        backend_id=backend_id,
                         dataset_id=dataset_id,
                         split=split_key,
                         sample_id=str(index),
@@ -717,7 +714,6 @@ class PlaidDatasetService:
         cursor.current_record = record
         cursor.position += 1
         return SampleRef(
-            backend_id="hub",
             dataset_id=dataset_id,
             split=split,
             sample_id=STREAM_CURSOR_ID,
@@ -1156,7 +1152,5 @@ class PlaidDatasetService:
 
 
 @lru_cache(maxsize=8)
-def _cached_service(root: str, backend_id: str) -> PlaidDatasetService:
-    return PlaidDatasetService(
-        ViewerConfig(datasets_root=Path(root), backend_id=backend_id)
-    )
+def _cached_service(root: str) -> PlaidDatasetService:
+    return PlaidDatasetService(ViewerConfig(datasets_root=Path(root)))

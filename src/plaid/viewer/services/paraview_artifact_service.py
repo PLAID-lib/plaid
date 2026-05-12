@@ -56,7 +56,6 @@ def _build_cache_key(
 ) -> str:
     """Return a deterministic SHA256 cache key for a sample export."""
     payload = {
-        "backend_id": ref.backend_id,
         "dataset_id": ref.dataset_id,
         "split": ref.split,
         "sample_id": ref.sample_id,
@@ -248,7 +247,6 @@ class ParaviewArtifactService:
             "export_version": self._export_version,
             "plaid_version": _plaid_version(),
             "sample_ref": {
-                "backend_id": ref.backend_id,
                 "dataset_id": ref.dataset_id,
                 "split": ref.split,
                 "sample_id": ref.sample_id,

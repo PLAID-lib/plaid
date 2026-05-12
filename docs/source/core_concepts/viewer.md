@@ -42,7 +42,6 @@ Useful options:
 | `--datasets-root` | *required*  | Directory containing one sub-directory per PLAID dataset. A single-dataset directory also works. |
 | `--host`          | `127.0.0.1` | Bind address for the trame HTTP server.                                                          |
 | `--port`          | `8080`      | Port exposed by the trame HTTP server.                                                           |
-| `--backend-id`    | `disk`      | PLAID backend identifier embedded in sample references and the cache key.                        |
 | `--hub-repo`      | `None`      | Hugging Face Hub repo id (`namespace/name`) streamed via `init_streaming_from_hub`. Repeat the flag to pre-register multiple repos. |
 
 Open `http://<host>:<port>/` in your browser.
@@ -166,7 +165,7 @@ layers: `atexit`, `SIGINT` / `SIGTERM` handlers, the `with CacheRoot()`
 context manager used by the CLI, and an orphan sweep at startup that
 removes directories left behind by previously-crashed processes.
 
-The cache key is a SHA-256 of the sample reference, backend id, PLAID
+The cache key is a SHA-256 of the sample reference, PLAID
 version and `ViewerConfig.export_version`.
 
 ## Programmatic usage

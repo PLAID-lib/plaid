@@ -934,13 +934,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     def _refresh_sample_view_impl() -> None:
         split = state.split if state.split != "__default__" else None
-        # Streaming datasets expose a "hub" backend regardless of the
-        # CLI-default backend id, so ``SampleRef`` carries the correct
-        # loader hint and the paraview artifact cache remains coherent
-        # across local/streaming switches.
-        backend_id = "hub" if state.is_streaming else dataset_service._config.backend_id
         ref = SampleRef(
-            backend_id=backend_id,
             dataset_id=state.dataset_id,
             split=split,
             sample_id=str(state.sample_id),
@@ -1335,7 +1329,6 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         if state.dataset_id and state.sample_id is not None:
             split = state.split if state.split != "__default__" else None
             ref = SampleRef(
-                backend_id=dataset_service._config.backend_id,
                 dataset_id=state.dataset_id,
                 split=split,
                 sample_id=str(state.sample_id),

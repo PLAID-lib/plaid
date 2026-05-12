@@ -14,20 +14,17 @@ from pydantic import BaseModel, Field
 
 @dataclass(frozen=True)
 class SampleRef:
-    """Backend-agnostic reference to a PLAID sample.
+    """Reference to a PLAID sample.
 
     Attributes:
-        backend_id: Identifier of the PLAID storage backend (e.g. ``"disk"``,
-            ``"hf_datasets"``, ``"zarr"``).
         dataset_id: Identifier of the dataset (typically the dataset directory
-            name).
+            name for local datasets, or the ``org/repo`` id for Hub datasets).
         split: Optional split name (``"train"``, ``"test"``, ...). ``None``
             when the dataset is not split.
         sample_id: Identifier of the sample within the split. For disk-backed
             datasets this is the zero-based index rendered as a string.
     """
 
-    backend_id: str
     dataset_id: str
     split: str | None
     sample_id: str
@@ -35,17 +32,16 @@ class SampleRef:
     def encode(self) -> str:
         """Return a URL-safe string identifier usable as a route parameter."""
         split = self.split if self.split is not None else "_"
-        return f"{self.backend_id}:{self.dataset_id}:{split}:{self.sample_id}"
+        return f"{self.dataset_id}:{split}:{self.sample_id}"
 
     @classmethod
     def decode(cls, value: str) -> "SampleRef":
         """Parse a string produced by :meth:`encode`."""
         parts = value.split(":")
-        if len(parts) != 4:
+        if len(parts) != 3:
             raise ValueError(f"Invalid sample reference: {value!r}")
-        backend_id, dataset_id, split, sample_id = parts
+        dataset_id, split, sample_id = parts
         return cls(
-            backend_id=backend_id,
             dataset_id=dataset_id,
             split=None if split == "_" else split,
             sample_id=sample_id,
@@ -89,16 +85,16 @@ class ParaviewArtifact:
 class DatasetInfo(BaseModel):
     """Summary information about an available dataset.
 
-    ``backend_id`` identifies the loading mode: ``"disk"`` for datasets
-    opened with :func:`plaid.storage.init_from_disk` and ``"hub"`` for
-    Hugging Face repositories streamed through
-    :func:`plaid.storage.init_streaming_from_hub`. Streamed datasets do
-    not always expose a total sample count and may need to be navigated
-    sequentially through a streaming cursor.
+    ``is_streaming`` distinguishes datasets opened with
+    :func:`plaid.storage.init_from_disk` (``False``) from Hugging Face
+    repositories streamed through
+    :func:`plaid.storage.init_streaming_from_hub` (``True``). Streamed
+    datasets do not always expose a total sample count and may need to be
+    navigated sequentially through a streaming cursor.
     """
 
     dataset_id: str
-    backend_id: str
+    is_streaming: bool
     path: str
     has_infos: bool = False
     has_problem_definitions: bool = False
@@ -119,7 +115,6 @@ class DatasetDetail(DatasetInfo):
 class SampleRefDTO(BaseModel):
     """Serializable form of :class:`SampleRef` used by the API."""
 
-    backend_id: str
     dataset_id: str
     split: str | None
     sample_id: str
@@ -129,7 +124,6 @@ class SampleRefDTO(BaseModel):
     def from_ref(cls, ref: SampleRef) -> "SampleRefDTO":
         """Build the DTO from a :class:`SampleRef`."""
         return cls(
-            backend_id=ref.backend_id,
             dataset_id=ref.dataset_id,
             split=ref.split,
             sample_id=ref.sample_id,

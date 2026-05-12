@@ -132,7 +132,7 @@ def test_load_sample_calls_converter_to_plaid_with_integer_index(
     _install_fake_init_from_disk(monkeypatch, {"ds": (dataset_dict, converter_dict)})
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="2")
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="2")
     assert service.load_sample(ref) is target
 
 
@@ -193,7 +193,7 @@ def test_describe_non_visual_bases_lists_zoneless_bases_only(
     _install_fake_init_from_disk(monkeypatch, {"ds": (dataset_dict, converter_dict)})
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
     summary = service.describe_non_visual_bases(ref)
 
     assert list(summary.keys()) == ["Constants"]
@@ -224,7 +224,7 @@ def test_describe_non_visual_bases_returns_empty_for_sample_without_times(
     )
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
     assert service.describe_non_visual_bases(ref) == {}
 
 
@@ -238,7 +238,7 @@ def test_load_sample_rejects_non_integer_sample_id(
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     ref = SampleRef(
-        backend_id="disk", dataset_id="ds", split="train", sample_id="not-an-int"
+        dataset_id="ds", split="train", sample_id="not-an-int"
     )
     with pytest.raises(ValueError):
         service.load_sample(ref)
@@ -369,8 +369,8 @@ def test_add_hub_dataset_is_listed_alongside_local(tmp_path: Path) -> None:
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     service.add_hub_dataset("PLAID-lib/VKI-LS59")
     entries = service.list_datasets()
-    ids = {d.dataset_id: d.backend_id for d in entries}
-    assert ids == {"local_ds": "disk", "PLAID-lib/VKI-LS59": "hub"}
+    ids = {d.dataset_id: d.is_streaming for d in entries}
+    assert ids == {"local_ds": False, "PLAID-lib/VKI-LS59": True}
     # Idempotent add
     service.add_hub_dataset("PLAID-lib/VKI-LS59")
     assert len(service.list_datasets()) == 2
@@ -392,9 +392,9 @@ def test_list_samples_streams_from_hub(
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     service.add_hub_dataset(repo_id)
     refs = service.list_samples(repo_id)
-    assert {(r.backend_id, r.split, r.sample_id) for r in refs} == {
-        ("hub", "train", "0"),
-        ("hub", "train", "1"),
+    assert {(r.split, r.sample_id) for r in refs} == {
+        ("train", "0"),
+        ("train", "1"),
     }
 
 
@@ -500,7 +500,6 @@ def test_list_samples_emits_single_cursor_ref_for_streaming(
     # Streaming splits surface a single synthetic reference using the
     # sentinel sample id, regardless of how many records the stream holds.
     assert len(refs) == 1
-    assert refs[0].backend_id == "hub"
     assert refs[0].sample_id == "cursor"
     assert refs[0].split == "train"
 
@@ -703,7 +702,7 @@ def test_load_sample_forwards_selected_features_on_disk(
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
-    ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
     assert service.load_sample(ref) is target
     # The user-selected field is forwarded, but the split's constant
     # features (mesh supports + globals) are always appended so the
@@ -726,7 +725,7 @@ def test_load_sample_without_filter_does_not_forward_features(
     _install_fake_init_from_disk(monkeypatch, {"ds": (dataset_dict, converter_dict)})
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
     assert service.load_sample(ref) is target
     assert converter.last_features is None
 
@@ -900,7 +899,7 @@ def test_load_sample_default_split_fallback_and_missing_split(
         },
     )
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    assert service.load_sample(SampleRef("disk", "ds", "missing", "0")) is target
+    assert service.load_sample(SampleRef("ds", "missing", "0")) is target
 
     _make_dataset_dir(tmp_path, "ds2")
     _install_fake_init_from_disk(
@@ -921,7 +920,7 @@ def test_load_sample_default_split_fallback_and_missing_split(
     )
     service2 = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     with pytest.raises(KeyError):
-        service2.load_sample(SampleRef("disk", "ds2", "missing", "0"))
+        service2.load_sample(SampleRef("ds2", "missing", "0"))
 
 
 def test_load_sample_empty_augmented_falls_back_unfiltered(
@@ -941,7 +940,7 @@ def test_load_sample_empty_augmented_falls_back_unfiltered(
     )
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
-    assert service.load_sample(SampleRef("disk", "ds", "train", "0")) is target
+    assert service.load_sample(SampleRef("ds", "train", "0")) is target
     assert converter.last_features is None
 
 
@@ -987,7 +986,7 @@ def test_summary_time_globals_and_validation(
         },
     )
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    ref = SampleRef("disk", "ds", "train", "0")
+    ref = SampleRef("ds", "train", "0")
     summary = service.get_sample_summary(ref)
     assert summary.globals == {"s": "3"}
     assert service.list_time_values(ref) == [1.0, 2.0]
@@ -1030,7 +1029,7 @@ def test_time_globals_and_validation_error_branches(
         },
     )
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    ref = SampleRef("disk", "ds", "train", "0")
+    ref = SampleRef("ds", "train", "0")
     assert service.list_time_values(ref) == []
     assert service.describe_globals(ref, time=1.0)[0]["name"] == "g"
     assert service.get_sample_validation(ref).errors == ["error: bad"]
@@ -1140,9 +1139,7 @@ def test_time_keys_describe_tree_empty_and_cached_service(tmp_path: Path) -> Non
         {"Base": ["Pressure"]},
     )
     _cached_service.cache_clear()
-    assert _cached_service(str(tmp_path), "disk") is _cached_service(
-        str(tmp_path), "disk"
-    )
+    assert _cached_service(str(tmp_path)) is _cached_service(str(tmp_path))
 
 
 def test_load_sample_auto_advances_cursor_on_first_access(
@@ -1157,9 +1154,7 @@ def test_load_sample_auto_advances_cursor_on_first_access(
     records, mapping = _install_fake_streaming_dataset(monkeypatch, repo_id)
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     service.add_hub_dataset(repo_id)
-    ref = SampleRef(
-        backend_id="hub", dataset_id=repo_id, split="train", sample_id="cursor"
-    )
+    ref = SampleRef(dataset_id=repo_id, split="train", sample_id="cursor")
     sample = service.load_sample(ref)
     assert sample is mapping[records[0]]
     assert service.stream_cursor_position(repo_id, "train") == 0
@@ -1228,7 +1223,7 @@ def test_load_sample_falls_back_when_empty_filter_triggers_missing_features(
     # Emulate the UI: the user selected a field that exists elsewhere in
     # the dataset metadata but not in this split.
     service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
-    ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
 
     assert service.load_sample(ref) is target
     assert converter.unfiltered_calls == 1
@@ -1282,7 +1277,7 @@ def test_load_sample_does_not_reinject_deselected_constant_fields(
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     # User clears the selection -> load only the geometry.
     service.set_features("ds", [])
-    ref = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
     assert service.load_sample(ref) is target
     # Bookkeeping paths are preserved so the renderer can draw the mesh...
     assert converter.last_features is not None

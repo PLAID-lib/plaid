@@ -16,8 +16,6 @@ class ViewerConfig:
             (or the root may itself be such a folder). When ``None``, the
             viewer starts without a root and the user is expected to pick one
             interactively (when ``allow_root_change`` is True).
-        backend_id: PLAID backend identifier embedded in :class:`SampleRef`
-            objects and in the artifact cache key.
         export_version: Opaque string mixed into the artifact cache key. Bump
             when export logic changes.
         extra_cache_key_fields: Extra fields serialised into the cache key.
@@ -38,7 +36,6 @@ class ViewerConfig:
     """
 
     datasets_root: Path | None = None
-    backend_id: str = "disk"
     export_version: str = "1"
     extra_cache_key_fields: dict[str, str] = field(default_factory=dict)
     browse_roots: tuple[Path, ...] = ()

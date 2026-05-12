@@ -52,7 +52,7 @@ class _FakeDatasetService:
 
 @pytest.fixture
 def ref() -> SampleRef:
-    return SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
+    return SampleRef(dataset_id="ds", split="train", sample_id="0")
 
 
 def test_ensure_artifact_single_timestep_creates_single_cgns(
@@ -105,8 +105,8 @@ def test_force_recreates_artifact(tmp_path: Path, ref: SampleRef) -> None:
 def test_ensure_artifact_evicts_previous_artifact(tmp_path: Path) -> None:
     """The cache keeps at most one artifact on disk."""
     service = ParaviewArtifactService(_FakeDatasetService(), tmp_path)
-    ref_a = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="0")
-    ref_b = SampleRef(backend_id="disk", dataset_id="ds", split="train", sample_id="1")
+    ref_a = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    ref_b = SampleRef(dataset_id="ds", split="train", sample_id="1")
 
     first = service.ensure_artifact(ref_a)
     first_root = first.cgns_path.parent
