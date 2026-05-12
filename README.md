@@ -147,6 +147,49 @@ pre-commit install
 
 This ensures that every time you commit, all the hooks are executed automatically on the staged files.
 
+### 2.3 Build a PLAID dataset from raw CSV data
+
+PLAID provides a CLI entry point to build a dataset from a raw-data directory layout in one command:
+
+```bash
+plaid-build-dataset --input-dir="/path/to/raw/data" --output-dir="/path/to/plaid/output"
+```
+
+Equivalent module invocation:
+
+```bash
+python -m plaid.cli.build_dataset --input-dir="/path/to/raw/data" --output-dir="/path/to/plaid/output"
+```
+
+Expected raw-data layout (example):
+
+```text
+/path/to/raw/data
+├── input_scalars/
+│   ├── scalars_00000.csv
+│   ├── scalars_00001.csv
+│   └── ...
+├── output_scalars/
+│   ├── scalars_00000.csv
+│   ├── scalars_00001.csv
+│   └── ...
+├── field_1/
+│   ├── scalars_00000.csv
+│   ├── scalars_00001.csv
+│   └── ...
+├── field_2/
+│   ├── scalars_00000.csv
+│   ├── scalars_00001.csv
+│   └── ...
+└── ...
+```
+
+Notes:
+- Scalar files must contain one header row and one data row.
+- Sample IDs are inferred from numeric filename suffixes (e.g. `scalars_00012.csv` -> id `12`) and must match across directories.
+- Field directories are auto-detected (all subdirectories except `input_scalars` and `output_scalars`) unless passed explicitly via `--field-dirs`.
+- Use `--overwrite` to replace an existing output directory.
+
 ## 3. Call for Contributions
 
 The PLAID project welcomes your expertise and enthusiasm!
