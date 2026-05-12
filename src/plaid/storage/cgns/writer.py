@@ -4,14 +4,6 @@ This module provides functionality for writing datasets in CGNS format for the P
 It includes utilities for generating datasets from sample generators, saving to disk,
 uploading to Hugging Face Hub, and configuring dataset cards.
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import multiprocessing as mp
 from pathlib import Path
@@ -21,8 +13,8 @@ import yaml
 from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
-from plaid import Sample
-from plaid.types import IndexType
+from ...containers.sample import Sample
+from ...types import IndexType
 
 logger = logging.getLogger(__name__)
 

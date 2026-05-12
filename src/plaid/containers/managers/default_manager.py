@@ -76,7 +76,7 @@ class DefaultManager:
 
         Note:
             - Setting the default time is important for synchronizing operations with a specific time point in the system's data.
-            - The available mesh times can be obtained using the `get_all_mesh_times` method.
+            - The available mesh times can be obtained using the `get_all_time_values` method.
 
         Example:
             .. code-block:: python

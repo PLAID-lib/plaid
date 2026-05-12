@@ -3,22 +3,15 @@
 This module provides bridge functions for converting between PLAID samples and
 storage formats, including flattening/unflattening and sample reconstruction.
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from typing import Any, Iterable, Optional
 
 import numpy as np
 
 from plaid.containers.features import SampleFeatures
 from plaid.containers.sample import Sample
-from plaid.storage.common.preprocessor import build_sample_dict
 from plaid.utils.cgns_helper import unflatten_cgns_tree
+
+from .preprocessor import build_sample_dict
 
 
 def unflatten_path(key: str) -> str:

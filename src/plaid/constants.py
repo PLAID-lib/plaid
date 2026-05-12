@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
 """This module defines common constants used throughout the PLAID library.
 
 It includes:
@@ -17,16 +11,22 @@ It includes:
 These constants help standardize metadata, task types, and mesh element references across the PLAID codebase.
 """
 
-AUTHORIZED_TASKS = ["regression", "classification"]
+from typing import Literal, get_args
 
-AUTHORIZED_SCORE_FUNCTIONS = ["RRMSE"]
+AUTHORIZED_TASKS_T = Literal["regression", "classification"]
+AUTHORIZED_TASKS = get_args(AUTHORIZED_TASKS_T)
 
-AUTHORIZED_FEATURE_TYPES = ["scalar", "field", "nodes"]
+
+AUTHORIZED_SCORE_FUNCTIONS_T = Literal["RRMSE"]
+AUTHORIZED_SCORE_FUNCTIONS = get_args(AUTHORIZED_SCORE_FUNCTIONS_T)
+
+AUTHORIZED_FEATURE_TYPES_T = Literal["scalar", "field", "nodes"]
+AUTHORIZED_FEATURE_TYPES = get_args(AUTHORIZED_FEATURE_TYPES_T)
 
 AUTHORIZED_FEATURE_INFOS = {
     "scalar": ["name"],
-    "field": ["name", "location", "zone_name", "base_name", "time"],
-    "nodes": ["zone_name", "base_name", "time"],
+    "field": ["name", "location", "zone", "base", "time"],
+    "nodes": ["zone", "base", "time"],
 }
 
 # Information keys for dataset metadata

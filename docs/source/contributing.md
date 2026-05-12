@@ -8,7 +8,6 @@
 - [3. Development setup](#3-development-setup)
   - [3.1. Prerequisites](#31-prerequisites)
   - [3.2. Installation Steps](#32-installation-steps)
-  - [3.3. Important Note](#33-important-note)
 - [4. Tests and examples](#4-tests-and-examples)
 - [5. Documentation](#5-documentation)
 - [6. Formatting and linting with Ruff](#6-formatting-and-linting-with-ruff)
@@ -18,6 +17,7 @@
   - [9.1. Github](#91-github)
   - [9.2. conda-forge](#92-conda-forge)
   - [9.3. Readthedocs](#93-readthedocs)
+- [10. Documentation consistency checks](#10-documentation-consistency-checks)
 
 ## 1. Contributor License Agreement (CLA)
 
@@ -206,3 +206,31 @@ These guidelines help keep PLAID users' code and datasets working across release
 ### 9.3. Readthedocs
 
 Just check a version was created for the release tag, it should have automatically triggered a new build on Read the Docs.
+
+## 10. Documentation consistency checks
+
+Before opening a PR that modifies docs or public APIs, run a quick consistency pass:
+
+1. **Build docs locally**
+
+   ```bash
+   cd docs
+   make html
+   ```
+
+2. **Validate API references**
+   - Ensure documented methods/classes exist in current source.
+   - Ensure renamed/removed APIs are either removed from docs or explicitly marked as legacy.
+
+3. **Validate code snippets/imports**
+   - Verify documented imports execute against the current package.
+   - Prefer snippets that reflect maintained modules under `src/plaid`.
+
+4. **Validate storage-layout claims**
+   - Ensure on-disk format docs match current `plaid.storage` behavior.
+   - Cross-check against tests/fixtures when updating storage documentation.
+
+5. **CI recommendations**
+   - Keep dead-link checks enabled.
+   - Keep docs build checks enabled.
+   - Add checks for stale method-name references when practical.

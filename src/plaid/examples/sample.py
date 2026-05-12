@@ -1,11 +1,4 @@
 """Examples for PLAID `Sample` objects."""
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
 from plaid import Sample
 from plaid.examples.dataset import datasets
 from plaid.examples.config import _HF_REPOS

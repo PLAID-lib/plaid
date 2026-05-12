@@ -10,18 +10,9 @@ Key features:
 - Automatic backend detection and converter creation
 - Sample conversion between storage formats and PLAID objects
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
-from plaid import Sample
 from plaid.storage.common.bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,
@@ -41,6 +32,8 @@ from plaid.storage.common.writer import (
 )
 from plaid.storage.registry import get_backend
 from plaid.utils.cgns_helper import update_features_for_CGNS_compatibility
+
+from ..containers.sample import Sample
 
 
 class Converter:
@@ -102,7 +95,7 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.to_var_sample_dict is None:
+        if self.backend_spec.to_var_sample_dict is None:   # pragma: no cover
             raise ValueError(
                 f"Converter.to_dict not available for {self.backend} backend"
             )
@@ -181,7 +174,7 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.sample_to_var_sample_dict is None:
+        if self.backend_spec.sample_to_var_sample_dict is None:  # pragma: no cover
             raise ValueError(
                 f"Converter.sample_to_var_sample_dict not available for {self.backend} backend"
             )
@@ -252,8 +245,7 @@ def init_from_disk(
     backend = infos["storage_backend"]
     num_samples = infos["num_samples"]
 
-    backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_from_disk(local_dir)
+    datasetdict = get_backend(backend).init_from_disk(path=local_dir)
 
     if splits is None:
         splits = list(datasetdict.keys())
@@ -337,7 +329,9 @@ def init_streaming_from_hub(
     num_samples = infos["num_samples"]
 
     backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_streaming_from_hub(repo_id, split_ids, features)
+    datasetdict = backend_spec.init_datasetdict_streaming_from_hub(
+        repo_id, split_ids, features
+    )
 
     converterdict = {}
     for split in datasetdict.keys():

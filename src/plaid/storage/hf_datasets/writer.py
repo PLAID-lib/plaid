@@ -10,13 +10,6 @@ Key features:
 - Hub uploading with optimized sharding
 - Dataset card configuration and updating
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
 import gc
 import logging
 import tempfile
@@ -27,10 +20,11 @@ import datasets
 import yaml
 from huggingface_hub import DatasetCard, hf_hub_download
 
-from plaid import Sample
 from plaid.storage.hf_datasets.bridge import generator_to_datasetdict
 from plaid.storage.hf_datasets.reader import init_datasetdict_from_disk
 from plaid.types import IndexType
+
+from ...containers.sample import Sample
 
 logger = logging.getLogger(__name__)
 

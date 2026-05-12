@@ -4,164 +4,102 @@ title: Dataset
 
 # Dataset
 
-A PLAID {py:class}`~plaid.containers.dataset.Dataset` is a collection of physics configurations, organized into {py:class}`~plaid.containers.sample.Sample`. Each {py:class}`~plaid.containers.sample.Sample` contains all the necessary features to define a specific configuration, including mesh and scalar data.
+A PLAID {py:class}`~plaid.containers.dataset.Dataset` is a lightweight container/view
+that accesses samples through a backend.
 
-A dataset must contain at least two different samples, i.e. having at least one features different between the two samples.
+In the current API, `Dataset` focuses on:
+
+- loading data from disk,
+- exposing a split/view (`indices`),
+- delegating sample access to its backend,
+- saving a dataset view back to disk.
 
 ## Create and load
 
-- Empty dataset:
+### Empty dataset
 
 ```python
 from plaid.containers.dataset import Dataset
 
 dataset = Dataset()
-print(dataset)  # Dataset(0 samples, 0 scalars, 0 fields)
 ```
 
-- From directory in PLAID format:
+### Load from a local directory or archive
+
+Use the factory method:
 
 ```python
-dataset = Dataset.load_from_dir("/path/to/dataset_dir")
+dataset = Dataset.from_path("/path/to/plaid_dataset", split="train")
 ```
 
-- From .plaid archive (TAR produced by `Dataset.save`):
+Or instantiate and load later:
 
 ```python
-dataset = Dataset.load_from_file("/path/to/dataset.plaid")
+dataset = Dataset(path="/path/to/plaid_dataset", split="train")
+dataset.load()
 ```
 
-- From a list of Samples (IDs optional):
+`Dataset.load(...)` accepts either:
 
-```python
-from plaid.containers.sample import Sample
+- a directory path,
+- or a tar archive path.
 
-samples = [Sample(...), Sample(...)]
-dataset = Dataset.from_list_of_samples(samples)
-```
+When no split is provided, the default split is `"train"`.
 
 See also: {doc}`../notebooks/containers/dataset_example`.
 
-## Basic usage
+## Main attributes
 
-- Length, iteration, indexing:
+- `path`: source dataset path.
+- `split`: loaded split name.
+- `stage`: optional label (`"training"` or `"evaluating"`).
+- `problem_definition`: attached
+  {py:class}`~plaid.problem_definition.ProblemDefinition`.
+- `indices`: either `"all"` or an explicit integer index array.
+- `infos`: normalized metadata dictionary.
+
+## Access samples
 
 ```python
-len(dataset)                # number of samples
-for sample in dataset: ...  # iterate samples
-sample_3 = dataset[3]       # get sample by id
-subset = dataset[0:10]      # returns a Dataset with selected ids
-```
-
-- Manage samples and IDs:
-
-```python
-sid = dataset.add_sample(Sample(...))
-dataset.del_sample(sid)
+len(dataset)        # number of exposed samples
+sample0 = dataset[0]
+samples = dataset.get_samples()
 ids = dataset.get_sample_ids()
 ```
 
-## Discover features across the dataset
+### About indexing/slicing
+
+`Dataset.__getitem__` delegates directly to the backend. Depending on backend behavior,
+a slice can return a backend-native object (for example a `list[Sample]`), not
+necessarily another `Dataset` instance.
+
+## Backends
+
+Access the backend with:
 
 ```python
-dataset.get_scalar_names(ids=None)
-dataset.get_field_names(ids=None, zone_name=None, base_name=None)
-
-# Structured, hashable descriptors of features (recommended)
-feat_ids = dataset.get_all_features_identifiers(ids=None)
-node_ids = dataset.get_all_features_identifiers_by_type("nodes")
+backend = dataset.get_backend()
 ```
 
-Learn more about identifiers: {doc}`feature_identifiers`.
+The default backend is in-memory, and backend-specific operations (such as adding
+samples in memory) are performed on the backend object itself.
 
-## Retrieve features by identifier(s)
+## Metadata (`infos`)
 
-```python
-from plaid.types import FeatureIdentifier
-
-fid_scalar = FeatureIdentifier({"type": "scalar", "name": "Re"})
-fid_field  = FeatureIdentifier({
-    "type": "field", "name": "pressure", "base_name": "Base",
-    "zone_name": "Zone", "location": "Vertex", "time": 0.0,
-})
-
-# One feature for all samples (dict: sample_id -> feature)
-scalar_by_sample = dataset.get_feature_from_identifier(fid_scalar)
-
-# Several features per sample (dict: sample_id -> list[feature])
-features_by_sample = dataset.get_features_from_identifiers([fid_scalar, fid_field])
-```
-
-## Convert to/from tabular data
-
-Extract homogeneous features (same sizes) to a 3D array `(n_samples, n_features, dim_feature)`:
+Set normalized metadata with:
 
 ```python
-tab = dataset.get_tabular_from_homogeneous_identifiers([fid_scalar, fid_field])
-```
-
-Extract and stack features to a 2D array `(n_samples, dim_stacked)`:
-
-```python
-tab = dataset.get_tabular_from_stacked_identifiers([fid_scalar, fid_field])
-```
-
-Update/add features from tabular data (optionally restricting the output dataset to only those features):
-
-```python
-updated = dataset.add_features_from_tabular(
-    tabular=tab,
-    feature_identifiers=[fid_scalar, fid_field],
-    restrict_to_features=True,
+dataset.set_infos(
+    {
+        "legal": {"owner": "CompanyX"},
+    }
 )
-```
-
-## Merge and extract
-
-- Extract a dataset containing only selected features:
-
-```python
-slim = dataset.extract_dataset_from_identifier([fid_field])
-```
-
-- Merge entire datasets (append samples) or merge only features:
-
-```python
-ids_added = dataset.merge_dataset(other_dataset)          # append samples
-merged    = dataset.merge_features(other_dataset)         # union of features
 ```
 
 ## Save to disk
 
-```python
-# Save to directory (PLAID format)
-dataset._save_to_dir_("/path/to/output_dir")
-
-# Save to .plaid archive (TAR)
-dataset.save("/path/to/output.plaid")
-```
-
-## Dataset metadata (infos)
-
-Datasets can carry metadata grouped by categories (e.g., legal, data_production):
+Save the current dataset view:
 
 ```python
-dataset.add_info("legal", "owner", "CompanyX")
-dataset.add_infos("data_production", {"type": "simulation", "simulator": "Z-Set"})
-infos = dataset.get_infos()
-dataset.print_infos()
+dataset.save_to_dir("/path/to/output_dir")
 ```
-
-## Quality checks and summaries
-
-```python
-print(dataset.summarize_features())         # coverage of feature names
-print(dataset.check_feature_completeness()) # detect missing features per sample
-```
-
-## Best practices
-
-- Prefer FeatureIdentifiers for unambiguous selection and stable keys.
-- Keep sample IDs contiguous when possible (simplifies slicing and joins).
-- For large datasets, consider using `processes_number` when loading from disk to parallelize I/O.
-- When building learning tasks, pair `Dataset` with {py:class}`~plaid.problem_definition.ProblemDefinition` and rely on identifiers for inputs/outputs.

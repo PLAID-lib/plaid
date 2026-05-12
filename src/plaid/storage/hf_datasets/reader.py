@@ -10,20 +10,12 @@
     - If the dataset is already cached locally, loads from disk.
     - Otherwise, loads from the hub, optionally using streaming mode.
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 
 import datasets
 from datasets import load_dataset, load_from_disk
@@ -38,7 +30,7 @@ logger = logging.getLogger(__name__)
 # Load from disk
 # ------------------------------------------------------
 
-HFDatasetDict = dict[str, datasets.DatasetDict]
+HFDatasetDict = datasets.DatasetDict
 
 
 def init_datasetdict_from_disk(path: Union[str, Path]) -> HFDatasetDict:
@@ -50,7 +42,10 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> HFDatasetDict:
     Returns:
         HFDatasetDict: The loaded dataset dictionary.
     """
-    return load_from_disk(dataset_path=str(Path(path) / "data"))
+    dataset = load_from_disk(dataset_path=str(Path(path) / "data"))
+    if not isinstance(dataset, datasets.DatasetDict):  # pragma: no cover
+        raise TypeError("Expected DatasetDict when loading hf_datasets backend from disk")
+    return dataset
 
 
 # ------------------------------------------------------
@@ -61,7 +56,7 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> HFDatasetDict:
 def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
-    split_ids: Optional[dict[str, int]] = None,  # noqa: ARG001
+    split_ids: Optional[dict[str, Iterable[int]]] = None,  # noqa: ARG001
     features: Optional[list[str]] = None,  # noqa: ARG001
     overwrite: bool = False,
 ) -> str:  # pragma: no cover (not tested in unit tests)
@@ -70,7 +65,7 @@ def download_datasetdict_from_hub(
     Args:
         repo_id (str): The repository ID on Hugging Face Hub.
         local_dir (Union[str, Path]): Local directory to download to.
-        split_ids (Optional[dict[str, int]]): Unused parameter for split selection.
+        split_ids (Optional[dict[str, Iterable[int]]]): Unused parameter for split selection.
         features (Optional[list[str]]): Unused parameter for feature selection.
         overwrite (bool): Whether to overwrite existing directory.
 
@@ -102,19 +97,19 @@ def download_datasetdict_from_hub(
         datasetdict = load_dataset("parquet", data_files=data_files, cache_dir=tmp_dir)
         datasetdict.save_to_disk(str(Path(output_folder) / "data"))
 
-    return output_folder
+    return str(output_folder)
 
 
 def init_datasetdict_streaming_from_hub(
     repo_id: str,
-    split_ids: Optional[dict[str, int]] = None,  # noqa: ARG001
+    split_ids: Optional[dict[str, Iterable[int]]] = None,  # noqa: ARG001
     features: Optional[list[str]] = None,
 ) -> datasets.IterableDatasetDict:  # pragma: no cover
     """Initializes a streaming DatasetDict from Hugging Face Hub.
 
     Args:
         repo_id (str): The repository ID on Hugging Face Hub.
-        split_ids (Optional[dict[str, int]]): Unused parameter for split selection.
+        split_ids (Optional[dict[str, Iterable[int]]]): Unused parameter for split selection.
         features (Optional[list[str]]): Optional list of features to load.
 
     Returns:

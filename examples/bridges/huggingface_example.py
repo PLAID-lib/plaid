@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ---
 # jupyter:
 #   jupytext:
@@ -44,9 +43,9 @@ import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
-from plaid.bridges import huggingface_bridge
+#from plaid.bridges import huggingface_bridge
 from plaid import Dataset, Sample, ProblemDefinition
-from plaid.types import FeatureIdentifier
+#from plaid.types import FeatureIdentifier
 
 
 # %%
@@ -54,7 +53,7 @@ from plaid.types import FeatureIdentifier
 def show_sample(sample: Sample):
     print(f"sample = {sample}")
     sample.show_tree()
-    print(f"{sample.get_scalar_names() = }")
+    print(f"{sample.get_global_names() = }")
     print(f"{sample.get_field_names() = }")
 
 
@@ -90,13 +89,9 @@ triangles = np.array(
 
 dataset = Dataset()
 
-scalar_feat_id = FeatureIdentifier({"type": "scalar", "name": "scalar"})
-node_field_feat_id = FeatureIdentifier(
-    {"type": "field", "name": "node_field", "location": "Vertex"}
-)
-cell_field_feat_id = FeatureIdentifier(
-    {"type": "field", "name": "cell_field", "location": "CellCenter"}
-)
+scalar_feat_id = "Global/scalar"
+node_field_feat_id = "Base_2_2/Zone/VertexFields/node_field"
+cell_field_feat_id = "Base_2_2/Zone/CellCenterFields/cell_field"
 
 print("Creating meshes dataset...")
 for _ in range(3):
@@ -106,17 +101,17 @@ for _ in range(3):
 
     sample.add_tree(MeshToCGNS(mesh, exportOriginalIDs=False))
 
-    sample.update_features_from_identifier(
+    sample.update_features_by_path(
         scalar_feat_id, np.random.randn(), in_place=True
     )
-    sample.update_features_from_identifier(
+    sample.update_features_by_path(
         node_field_feat_id, np.random.rand(len(points)), in_place=True
     )
-    sample.update_features_from_identifier(
+    sample.update_features_by_path(
         cell_field_feat_id, np.random.rand(len(triangles)), in_place=True
     )
 
-    dataset.add_sample(sample)
+    dataset.get_backend().add_sample(sample)
 
 infos = {
     "legal": {"owner": "Bob", "license": "my_license"},
@@ -128,12 +123,13 @@ dataset.set_infos(infos)
 print(f" {dataset = }")
 print(f" {infos = }")
 
-pb_def = ProblemDefinition()
+pb_def = ProblemDefinition(name="test PD")
 pb_def.add_in_features_identifiers([scalar_feat_id, node_field_feat_id])
 pb_def.add_out_features_identifiers([cell_field_feat_id])
 
-pb_def.set_task("regression")
-pb_def.set_split({"train": [0, 1], "test": [2]})
+pb_def.task = "regression"
+pb_def.train_split = {"train": [0, 1]}
+pb_def.test_split = {"test": [2]}
 
 print(f" {pb_def = }")
 
@@ -142,16 +138,43 @@ print(f" {pb_def = }")
 
 # %%
 main_splits = {
-    split_name: pb_def.get_split(split_name) for split_name in ["train", "test"]
+    "train": [0, 1],
+    "test": [2],
 }
 
-hf_datasetdict, flat_cst, key_mappings = (
-    huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, main_splits)
+def make_generator(dataset, ids):
+    def _gen():
+        for i in ids:
+            yield dataset[i]
+    return _gen
+
+generators = {
+    split: make_generator(dataset, ids)
+    for split, ids in main_splits.items()
+}
+from plaid.storage.common.preprocessor import preprocess
+
+flat_cst, variable_schema, constant_schema, num_samples, cgns_types = preprocess(
+    generators,
+    num_proc=1,
+    verbose=False,
 )
 
+from plaid.storage.hf_datasets.bridge import generator_to_datasetdict
+
+hf_datasetdict = generator_to_datasetdict(
+    generators=generators,
+    variable_schema=variable_schema,
+    cache_dir="/tmp/hf_cache",
+)
+
+#hf_datasetdict, flat_cst, key_mappings = (
+#    huggingface_bridge.plaid_dataset_to_huggingface_datasetdict(dataset, main_splits)
+#)
+
 print(f"{hf_datasetdict = }")
-print(f"{flat_cst = }")
-print(f"{key_mappings = }")
+#print(f"{flat_cst = }")
+#print(f"{key_mappings = }")
 
 # %% [markdown]
 # A partitioning of all the indices is provided in `main_splits`. The conversion outputs `flat_cst` and `key_mappings`, which are central to the Hugging Face support:
@@ -183,14 +206,26 @@ for split_name in split_ids.keys():
 
     generators[split_name] = partial(generator_, ids = split_ids[split_name])
 
-hf_datasetdict, flat_cst, key_mappings = (
-    huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
-        generators
-    )
+flat_cst, variable_schema, constant_schema, num_samples, cgns_types = preprocess(
+    generators,
+    num_proc=1,
+    verbose=False,
 )
+
+hf_datasetdict = generator_to_datasetdict(
+    generators=generators,
+    variable_schema=variable_schema,
+    cache_dir="/tmp/hf_cache",
+)
+
+#hf_datasetdict, flat_cst, key_mappings = (
+#    huggingface_bridge.plaid_generator_to_huggingface_datasetdict(
+#        generators
+#    )
+#)
 print(f"{hf_datasetdict = }")
 print(f"{flat_cst = }")
-print(f"{key_mappings = }")
+#print(f"{key_mappings = }")
 
 # %% [markdown]
 # In this example, the generators are not very usefull since the plaid dataset is already loaded in memory. In real settings, one can create generators in the following way to prevent loading all the data beforehand:
@@ -209,11 +244,16 @@ print(f"{key_mappings = }")
 # ## Section 3: Convert a Hugging Face dataset to plaid
 
 # %%
-cgns_types = key_mappings["cgns_types"]
+from plaid.storage.common.bridge import to_sample_dict, to_plaid_sample
+from plaid.storage.hf_datasets.bridge import to_var_sample_dict
 
-dataset_2 = huggingface_bridge.to_plaid_dataset(
-    hf_datasetdict["train"], flat_cst["train"], cgns_types
-)
+dataset_2 = Dataset()
+for i in range(len(hf_datasetdict["train"])):
+    var_sample_dict = to_var_sample_dict(hf_datasetdict["train"], i)
+    sample_dict = to_sample_dict(var_sample_dict, flat_cst["train"], cgns_types)
+    plaid_sample = to_plaid_sample(sample_dict, cgns_types)
+    dataset_2.get_backend().add_sample(plaid_sample)
+
 print()
 print(f"{dataset_2 = }")
 
@@ -226,19 +266,37 @@ print(f"{dataset_2 = }")
 
 # %%
 with tempfile.TemporaryDirectory() as out_dir:
-    huggingface_bridge.save_dataset_dict_to_disk(out_dir, hf_datasetdict)
-    huggingface_bridge.save_infos_to_disk(out_dir, infos)
-    huggingface_bridge.save_tree_struct_to_disk(out_dir, flat_cst, key_mappings)
-    huggingface_bridge.save_problem_definition_to_disk(out_dir, "task_1", pb_def)
-
-    loaded_hf_datasetdict = huggingface_bridge.load_dataset_from_disk(out_dir)
-    loaded_infos = huggingface_bridge.load_infos_from_disk(out_dir)
-    flat_cst, key_mappings = huggingface_bridge.load_tree_struct_from_disk(out_dir)
-    loaded_pb_def = huggingface_bridge.load_problem_definition_from_disk(
-        out_dir, "task_1"
+    from plaid.storage.hf_datasets.writer import save_datasetdict_to_disk
+    from plaid.storage.hf_datasets.reader import init_datasetdict_from_disk
+    from plaid.storage.common.writer import (
+        save_infos_to_disk,
+        save_metadata_to_disk,
+        save_problem_definitions_to_disk,
+    )
+    from plaid.storage.common.reader import (
+        load_infos_from_disk,
+        load_metadata_from_disk,
+        load_problem_definitions_from_disk,
     )
 
-    shutil.rmtree(out_dir)
+    save_datasetdict_to_disk(out_dir, hf_datasetdict)
+    save_infos_to_disk(out_dir, infos)
+    save_metadata_to_disk(out_dir, flat_cst, variable_schema, constant_schema, cgns_types)
+    save_problem_definitions_to_disk(out_dir, pb_def)
+
+    loaded_hf_datasetdict = init_datasetdict_from_disk(out_dir)
+    loaded_infos = load_infos_from_disk(out_dir)
+    flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(out_dir)
+    loaded_pb_defs = load_problem_definitions_from_disk(out_dir)
+    loaded_pb_def = loaded_pb_defs[pb_def.name]
+
+    key_mappings = {
+        "variable_features": list(variable_schema.keys()),
+        "constant_features": {
+            split: list(schema.keys()) for split, schema in constant_schema.items()
+        },
+        "cgns_types": cgns_types,
+    }
 
 print(f"{loaded_hf_datasetdict = }")
 print(f"{loaded_infos = }")
@@ -325,13 +383,13 @@ print(f"{hf_sample = }")
 # We notice that ``hf_sample`` is not a plaid sample, but a dict containing the variable features of the datasets, with keys being the flattened path of the CGNS tree. contains a binary object efficiently handled by huggingface datasets. It can be converted into a plaid sample using a specific constructor relying on a pydantic validator, and the required `flat_cst` and `cgns_types`.
 
 # %%
-plaid_sample = huggingface_bridge.to_plaid_sample(
-    hf_datasetdict["train"], 0, flat_cst["train"], cgns_types
-)
+var_sample_dict = to_var_sample_dict(hf_datasetdict["train"], 0)
+sample_dict = to_sample_dict(var_sample_dict, flat_cst["train"], cgns_types)
+plaid_sample = to_plaid_sample(sample_dict, cgns_types)
 
 print("Variable features:")
 for t in plaid_sample.get_all_time_values():
-    for path in key_mappings["variable_features"]:
+    for path in variable_schema.keys():
         print(path, plaid_sample.get_feature_by_path(path=path, time=t))
 print("-------")
 print("Sample and CGNS tree:")
@@ -451,7 +509,7 @@ show_sample(plaid_sample)
 #         cgns_types,
 #         enforce_shapes=False,
 #     )
-#     for t in sample.get_all_mesh_times():
+#     for t in sample.get_all_time_values():
 #         for path in pb_def.get_in_features_identifiers():
 #             sample.get_feature_by_path(path=path, time=t)
 #         for path in pb_def.get_out_features_identifiers():

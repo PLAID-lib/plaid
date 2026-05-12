@@ -10,14 +10,6 @@ Key features:
 - Metadata and problem definition handling
 - Hub integration with dataset cards and metadata
 """
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import shutil
 from pathlib import Path
@@ -25,13 +17,6 @@ from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Union
 
 from packaging.version import Version
 
-import plaid
-from plaid import ProblemDefinition, Sample
-from plaid.containers.utils import validate_required_infos
-from plaid.storage.common.preprocessor import preprocess
-from plaid.storage.common.reader import (
-    load_infos_from_disk,
-)
 from plaid.storage.common.writer import (
     push_infos_to_hub,
     push_local_metadata_to_hub,
@@ -41,6 +26,15 @@ from plaid.storage.common.writer import (
     save_problem_definitions_to_disk,
 )
 from plaid.storage.registry import available_backends, get_backend
+
+from ..containers.sample import Sample
+from ..problem_definition import ProblemDefinition
+from ..utils.info import validate_required_infos
+from ..version import __version__
+from .common.preprocessor import preprocess
+from .common.reader import (
+    load_infos_from_disk,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -230,7 +224,7 @@ def save_to_disk(
     infos = infos.copy() if infos else {}
     infos.setdefault("num_samples", num_samples)
     infos.setdefault("storage_backend", backend)
-    infos.setdefault("plaid", {"version": str(Version(plaid.__version__))})
+    infos.setdefault("plaid", {"version": str(Version(__version__))})
 
     save_infos_to_disk(output_folder, infos)
 

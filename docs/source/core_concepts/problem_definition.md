@@ -4,30 +4,56 @@ title: Problem definition
 
 # Problem definition
 
-{py:class}`~plaid.problem_definition.ProblemDefinition` gathers all the information defining a learning problem:
-- task: e.g., regression or classification
-- inputs: list of FeatureIdentifiers
-- outputs: list of FeatureIdentifiers
-- split: arbitrary named splits (train/val/test, etc.) stored as JSON
+{py:class}`~plaid.problem_definition.ProblemDefinition` defines a machine-learning
+task on top of a PLAID dataset.
 
-Typical usage:
+In the current API, a problem definition stores:
+
+- `name`
+- `task`
+- `input_features` (`list[str]`)
+- `output_features` (`list[str]`)
+- `score_function`
+- `train_split` and `test_split`
+- `constant_features`
+
+## Basic usage
 
 ```python
 from plaid.problem_definition import ProblemDefinition
-from plaid.types import FeatureIdentifier
 
-pb = ProblemDefinition()
-pb.set_task("regression")
+pb = ProblemDefinition(name="regression_1", task="regression")
 
-pb.add_in_feature_identifier(FeatureIdentifier({"type": "scalar", "name": "Re"}))
-pb.add_out_feature_identifier(FeatureIdentifier({
-    "type": "field", "name": "pressure", "base_name": "Base", "zone_name": "Zone", "location": "Vertex", "time": 0.0
-}))
+pb.add_in_features_identifiers([
+    "Base/Zone/GridCoordinates/CoordinateX",
+    "Base/Zone/GridCoordinates/CoordinateY",
+])
+pb.add_out_features_identifiers([
+    "Base/Zone/Solution/pressure",
+])
 
-splits = {"train": [0, 1, 2], "test": [3, 4]}
-pb.set_split(splits)
-
-pb._save_to_dir_("problem_definition")
+pb.train_split = {"train": [0, 1, 2]}
+pb.test_split = {"test": [3, 4]}
 ```
 
-{py:class}`~plaid.problem_definition.ProblemDefinition` supports filtering helpers to intersect existing inputs/outputs with a candidate list of identifiers.
+## Loading from disk
+
+Load a definition from a dataset path:
+
+```python
+pb = ProblemDefinition.from_path("/path/to/plaid_dataset", name="regression_1")
+```
+
+## Saving
+
+Save to YAML:
+
+```python
+pb.save_to_file("problem_definitions/regression_1.yaml")
+```
+
+## Notes
+
+- Input/output features are plain strings in the current implementation.
+- Splits are represented by `train_split` and `test_split` dictionaries.
+- Each split dictionary is expected to contain a single split entry.
