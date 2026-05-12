@@ -1551,9 +1551,9 @@ class Test_Sample:
         feat_paths = sample_with_tree_and_scalar.get_all_features_by_type(
             "boundary_condition"
         )
-        assert 'Base_2_2/Zone/ZoneBC/tag' in feat_paths
-        assert 'Base_2_2/Zone/ZoneBC/tag/PointList' in feat_paths
-        assert 'Base_2_2/Zone/ZoneBC/tag/GridLocation' in feat_paths
+        assert "Base_2_2/Zone/ZoneBC/tag" in feat_paths
+        assert "Base_2_2/Zone/ZoneBC/tag/PointList" in feat_paths
+        assert "Base_2_2/Zone/ZoneBC/tag/GridLocation" in feat_paths
 
         feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("elements")
         assert "Base_2_2/Zone/Elements_TRI_3/ElementRange" in feat_paths
