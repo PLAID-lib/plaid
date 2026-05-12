@@ -32,8 +32,8 @@ class InMemoryBackend:
         """Raise because the in-memory backend cannot be initialized from disk."""
         raise NotImplementedError("inMemoryBackend does not support init from disk")
 
+    @staticmethod
     def download_from_hub(
-        self,
         repo_id: str,
         local_dir: Union[str, Path],
         split_ids: Optional[dict[str, Iterable[int]]] = None,
@@ -43,8 +43,8 @@ class InMemoryBackend:
         """Raise because hub download is not implemented for the in-memory backend."""
         raise NotImplementedError("InMemoryBackend download_from_hub not implemented")
 
+    @staticmethod
     def init_datasetdict_streaming_from_hub(
-        self,
         repo_id: str,
         split_ids: Optional[dict[str, Iterable[int]]] = None,
         features: Optional[list[str]] = None,
@@ -54,8 +54,8 @@ class InMemoryBackend:
             "InMemoryBackend init_datasetdict_streaming_from_hub not implemented"
         )
 
+    @staticmethod
     def generate_to_disk(
-        self,
         output_folder: Union[str, Path],
         generators: dict[str, Callable[..., Generator[Sample, None, None]]],
         variable_schema: Optional[dict[str, dict]] = None,
@@ -66,14 +66,15 @@ class InMemoryBackend:
         """Raise because writing to disk is not implemented for the in-memory backend."""
         raise NotImplementedError("InMemoryBackend generate_to_disk not implemented")
 
+    @staticmethod
     def push_local_to_hub(
-        self, repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
+        repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
     ) -> None:
         """Raise because pushing to hub is not implemented for this backend."""
         raise NotImplementedError("InMemoryBackend push_local_to_hub not implemented")
 
+    @staticmethod
     def configure_dataset_card(
-        self,
         repo_id: str,
         infos: dict,
         local_dir: Optional[Union[str, Path]] = None,
