@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (dataset-viewer) add a trame app for dataset visual exploration.
 - (sample/features) add_field: check field size consistency with geometrical support.
 - (sample) add `set_trees` to `Sample` delegated methods: `sample.set_trees(...)` now works as a direct proxy to `SampleFeatures.set_trees`, consistent with other delegated tree methods.
 
