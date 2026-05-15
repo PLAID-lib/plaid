@@ -63,10 +63,10 @@ field_2_feat_id = "Base_2_2/Zone/VertexFields/field_2"
 
 # %%
 # Add unique input and output feature identifiers
-problem.add_in_features_identifiers(scalar_1_feat_id)
-problem.add_out_features_identifiers(scalar_2_feat_id)
+#problem.add_in_features_identifiers(scalar_1_feat_id)
+#problem.add_out_features_identifiers(scalar_2_feat_id)
 
-# Add list of input and output feature identifiers
+# or Add list of input and output feature identifiers
 problem.add_in_features_identifiers([scalar_3_feat_id, field_1_feat_id])
 problem.add_out_features_identifiers([field_2_feat_id])
 
