@@ -3,7 +3,6 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - plaid
 ##### RUN #####
 #---# base
   - tqdm
@@ -42,3 +41,6 @@ dependencies:
   - myst-parser
   - furo
   - jupytext
+  - pip
+  - pip:
+    - plaid@git+https://github.com/PLAID-lib/plaid.git@BinderSupport
