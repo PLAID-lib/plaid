@@ -43,4 +43,4 @@ dependencies:
   - jupytext
   - pip
   - pip:
-    - plaid@git+https://github.com/PLAID-lib/plaid.git@BinderSupport
+    - pyplaid@git+https://github.com/PLAID-lib/plaid.git@BinderSupport
