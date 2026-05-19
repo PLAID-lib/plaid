@@ -152,9 +152,6 @@ class ProblemDefinition(BaseModel):
 
         super().__setattr__(name, value)
 
-    # def get_name(self) -> str | None:
-    #    return self.name
-
     #     # -------------------------------------------------------------------------#
     def get_train_split_name(self) -> str:
         """Return the name of the train split."""
