@@ -108,8 +108,9 @@ if in_notebook():
 
 
 # %% [markdown]
-# ## Sample contructor, a function to buid an instance for the sample i
+# Sample contructor, a function to buid an instance for the sample i
 
+# %%
 def sample_constructor(i):
     #Creating mesh
     # this can be different for every sample

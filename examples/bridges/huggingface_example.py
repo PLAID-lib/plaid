@@ -128,7 +128,6 @@ pb_def = ProblemDefinition(name="test PD")
 pb_def.add_in_features_identifiers([scalar_feat_id, node_field_feat_id])
 pb_def.add_out_features_identifiers([cell_field_feat_id])
 
-pb_def.task = "regression"
 pb_def.train_split = {"train": [0, 1]}
 pb_def.test_split = {"test": [2]}
 

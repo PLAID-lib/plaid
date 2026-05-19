@@ -224,7 +224,6 @@ def save_to_disk(
     infos = infos.copy() if infos else {}
     infos.setdefault("num_samples", num_samples)
     infos.setdefault("storage_backend", backend)
-    infos.setdefault("plaid", {"version": str(Version(__version__))})
 
     save_infos_to_disk(output_folder, infos)
 

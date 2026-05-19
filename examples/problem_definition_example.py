@@ -81,14 +81,6 @@ print(
 # This section demonstrates how to handle and configure ProblemDefinition objects and access data.
 
 # %% [markdown]
-# ### Set Problem Definition task
-
-# %%
-# Set the task type (e.g., regression)
-problem.task = "regression"
-print(f"{problem.task = }")
-
-# %% [markdown]
 # ### Set Problem Definition split
 
 # %%

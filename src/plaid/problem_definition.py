@@ -44,17 +44,14 @@ class ProblemDefinition(BaseModel):
     )
 
     name: Optional[str] = Field(default=None)
-    task: Optional[AUTHORIZED_TASKS_T] = Field(default=None)
     input_features: list[str] = Field(default_factory=list)
     output_features: list[str] = Field(default_factory=list)
-    score_function: Optional[AUTHORIZED_SCORE_FUNCTIONS_T] = Field(default=None)
     train_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(
         default=None
     )
     test_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(
         default=None
     )
-    constant_features: list[str] = Field(default_factory=list)
 
     @staticmethod
     def from_path(
@@ -100,7 +97,6 @@ class ProblemDefinition(BaseModel):
                 data2.update(overrides)
                 data = data2
 
-        # return data
         return ProblemDefinition(**data)
 
     @field_validator("input_features", mode="before")

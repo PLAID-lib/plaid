@@ -19,7 +19,6 @@ def problem_definition() -> ProblemDefinition:
 
 @pytest.fixture()
 def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDefinition:
-    problem_definition.task = "regression"
     problem_definition.name = "regression_1"
 
     # ----
@@ -76,7 +75,6 @@ def clean_tests():
 
 class Test_ProblemDefinition:
     def test__init__(self, problem_definition):
-        assert problem_definition.task is None
         print(problem_definition)
 
     def test__init__both_path_and_directory_path(self, current_directory):
@@ -85,29 +83,10 @@ class Test_ProblemDefinition:
             ProblemDefinition(path=d_path, directory_path=d_path)
 
     # -------------------------------------------------------------------------#
-    def test_task(self, problem_definition):
-        # Unauthorized task
-        with pytest.raises(ValidationError):
-            problem_definition.task = "ighyurgv"
-        problem_definition.task = "classification"
-        assert problem_definition.task == "classification"
-        print(problem_definition)
-
-    # -------------------------------------------------------------------------#
-    def test_score_function(self, problem_definition):
-        # Unauthorized task
-        with pytest.raises(ValidationError):
-            problem_definition.score_function = "ighyurgv"
-        problem_definition.score_function = "RRMSE"
-        # can be set again to the same value
-        problem_definition.score_function = "RRMSE"
-        assert problem_definition.score_function == "RRMSE"
-        print(problem_definition)
 
     def test_from_path_single_definition(self, monkeypatch, tmp_path):
         expected = ProblemDefinition(
             name="pb_single",
-            task="regression",
             input_features=["in_a"],
             output_features=["out_a"],
             train_split={"train_0": [0, 1]},
@@ -124,7 +103,6 @@ class Test_ProblemDefinition:
 
         loaded = ProblemDefinition.from_path(tmp_path)
         assert loaded.name == "pb_single"
-        assert loaded.task == "regression"
         assert loaded.input_features == ["in_a"]
         assert loaded.output_features == ["out_a"]
         assert loaded.get_train_split_name() == "train_0"
@@ -135,7 +113,6 @@ class Test_ProblemDefinition:
     def test_from_path_single_definition_with_override(self, monkeypatch, tmp_path):
         expected = ProblemDefinition(
             name="pb_single",
-            task="regression",
             input_features=["in_a"],
             output_features=["out_a"],
             train_split={"train_0": [0, 1]},
@@ -153,7 +130,6 @@ class Test_ProblemDefinition:
     def test_from_path_named_definition_and_override(self, monkeypatch, tmp_path):
         pb_1 = ProblemDefinition(
             name="pb_1",
-            task="regression",
             input_features=["in_a"],
             output_features=["out_a"],
             train_split={"train_0": [0, 1]},
@@ -161,7 +137,6 @@ class Test_ProblemDefinition:
         )
         pb_2 = ProblemDefinition(
             name="pb_2",
-            task="classification",
             input_features=["in_b"],
             output_features=["out_b"],
             train_split={"train_1": [3, 4]},
@@ -179,16 +154,12 @@ class Test_ProblemDefinition:
         loaded = ProblemDefinition.from_path(
             tmp_path,
             name="pb_2",
-            score_function="RRMSE",
         )
         assert loaded.name == "pb_2"
-        assert loaded.task == "classification"
-        assert loaded.score_function == "RRMSE"
 
     def test_from_path_unknown_name_raises(self, monkeypatch, tmp_path):
         pb = ProblemDefinition(
             name="existing",
-            task="regression",
             input_features=["in_a"],
             output_features=["out_a"],
             train_split={"train_0": [0, 1]},
@@ -206,7 +177,6 @@ class Test_ProblemDefinition:
     def test_from_path_requires_name_when_multiple(self, monkeypatch, tmp_path):
         pb_1 = ProblemDefinition(
             name="pb_1",
-            task="regression",
             input_features=["in_a"],
             output_features=["out_a"],
             train_split={"train_0": [0, 1]},
@@ -214,7 +184,6 @@ class Test_ProblemDefinition:
         )
         pb_2 = ProblemDefinition(
             name="pb_2",
-            task="classification",
             input_features=["in_b"],
             output_features=["out_b"],
             train_split={"train_1": [3, 4]},
@@ -261,13 +230,6 @@ class Test_ProblemDefinition:
         with pytest.raises(AttributeError, match="'name' is already set"):
             problem_definition.name = "problem_b"
 
-        problem_definition.task = "regression"
-        with pytest.raises(AttributeError, match="'task' is already set"):
-            problem_definition.task = "classification"
-
-        problem_definition.score_function = "RRMSE"
-        with pytest.raises(AttributeError, match="'score_function' is already set"):
-            problem_definition.score_function = "MSE"
 
     def test_split_replacement_logs_warning(self, problem_definition, caplog):
         problem_definition.train_split = {"train_0": [0, 1]}
@@ -327,7 +289,6 @@ class Test_ProblemDefinition:
         problem_definition_full.save_to_file(path)
         problem = ProblemDefinition()
         problem._load_from_file_(path)
-        assert problem.task == "regression"
         assert set(problem.input_features) == set(
             [
                 "Base_2_2/Zone/PointData/sig12",
@@ -351,7 +312,6 @@ class Test_ProblemDefinition:
     def test_save_and_load_keep_yaml_suffix(self, tmp_path: Path):
         problem = ProblemDefinition(
             name="pb",
-            task="regression",
             input_features=["in_1"],
             output_features=["out_1"],
             train_split={"train": [0]},
@@ -364,7 +324,6 @@ class Test_ProblemDefinition:
         loaded._load_from_file_(file_path)
 
         assert loaded.name == "pb"
-        assert loaded.task == "regression"
         assert loaded.get_train_split_name() == "train"
         assert loaded.get_test_split_name() == "test"
 
