@@ -10,7 +10,6 @@ import numpy as np
 import rich
 from tqdm import tqdm
 
-from plaid import Dataset
 from plaid import Sample
 
 if __name__ == "__main__":
@@ -65,8 +64,8 @@ if __name__ == "__main__":
 
         t0 = time.perf_counter()
         # ---# Build a fake dataset
-        dset = Dataset()
-        for i in tqdm(range(args.number_of_samples), desc="Generate samples"):
+        def sample_constructor(i):
+        #for i in tqdm(range(args.number_of_samples), desc="Generate samples"):
             # ---# Read a sample provided in tests
             sample_path = Path("../tests/containers/dataset/data/test/sample_000000000")
             if not (sample_path.is_dir()):
@@ -81,10 +80,18 @@ if __name__ == "__main__":
             smp.add_global("s0", np.random.randn())
             n_nodes = smp.get_nodes().shape[0]
             smp.add_field("f0", np.random.randn(n_nodes))
+            return smp
 
-            dset._backend.add_sample(smp)
+        #dset.save_to_dir(out_dir, verbose=True)
+        from plaid.storage import save_to_disk, init_from_disk
 
-        dset.save_to_dir(out_dir, verbose=True)
+        save_to_disk(output_folder=out_dir,
+            sample_constructor=sample_constructor,
+            ids={"train":range(args.number_of_samples)},
+            backend="cgns",
+            overwrite=True)
+
+
         rich.print(f"create and save dataset took: {time.perf_counter() - t0:.3f} s")
         print()
 
@@ -92,14 +99,17 @@ if __name__ == "__main__":
         all_durations: list[list[float]] = []
         for nb_cores in tqdm(range(NB_CORES + 1), desc="Loop on nb_cores"):
             durations: list[float] = []
+
             for _ in tqdm(range(args.number_of_tests), desc="   Loop on nb_tests"):
-                new_dset = Dataset()
                 t0 = time.perf_counter()
                 print(out_dir)
-                new_dset.load(out_dir) #, processes_number=nb_cores)
+                datasetdict, converterdict = init_from_disk(out_dir)
+                #new_dset.load(out_dir) #, processes_number=nb_cores)
                 t1 = time.perf_counter()
                 durations.append(t1 - t0)
-                del new_dset
+                del datasetdict
+                del converterdict
+                #del new_dset
 
 
             all_durations.append(durations)
