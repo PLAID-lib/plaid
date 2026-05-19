@@ -94,10 +94,10 @@ def full_sample(sample_with_tree_and_scalar: Sample, tree3d):
         name="test_field_1", field=np.random.randn(3), location="CellCenter"
     )
     sample_with_tree_and_scalar.init_zone(
-        zone_shape=np.array([[5, 3, 0]]), zone_name="test_field_1"
+        zone_shape=np.array([[5, 3, 0]]), zone="test_field_1"
     )
     sample_with_tree_and_scalar.init_base(
-        topological_dim=2, physical_dim=3, base_name="test_base_1"
+        topological_dim=2, physical_dim=3, base="test_base_1"
     )
     sample_with_tree_and_scalar.features.init_tree(time=1.0)
     sample_with_tree_and_scalar.features.add_tree(tree=tree3d)
@@ -237,11 +237,11 @@ class Test_Sample:
         # No zone provided
         assert sample.features.get_zone() is None
 
-        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base_name=base_name)
+        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base=base_name)
         # Look for the only zone in the default base
         assert sample.features.get_zone() is not None
 
-        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base_name=base_name)
+        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base=base_name)
         # There is more than one zone in this base
         with pytest.raises(KeyError):
             sample.features.get_zone()
@@ -256,7 +256,7 @@ class Test_Sample:
         zone_shape,
     ):
         sample.init_base(topological_dim, physical_dim, base_name, time=0.5)
-        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base_name=base_name)
+        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base=base_name)
 
         sample.set_default_zone_base(zone_name, base_name, 0.5)
         # check dims getters
@@ -490,10 +490,10 @@ class Test_Sample:
     # -------------------------------------------------------------------------#
     def test_init_zone(self, sample: Sample, base_name, zone_name, zone_shape):
         with pytest.raises(KeyError):
-            sample.init_zone(zone_shape, zone_name=zone_name, base_name=base_name)
+            sample.init_zone(zone_shape, zone=zone_name, base=base_name)
         sample.init_base(3, 3, base_name)
-        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base_name=base_name)
-        sample.init_zone(zone_shape, CGK.Unstructured_s, zone_name, base_name=base_name)
+        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base=base_name)
+        sample.init_zone(zone_shape, CGK.Unstructured_s, zone_name, base=base_name)
         # check dims getters
         assert sample.features.get_topological_dim(base_name) == 3
         assert sample.features.get_physical_dim(base_name) == 3
@@ -509,9 +509,9 @@ class Test_Sample:
         sample.init_base(topological_dim, physical_dim, base_name)
 
         second_zone_name = zone_name + "_2"
-        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base_name=base_name)
+        sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base=base_name)
         sample.init_zone(
-            zone_shape, CGK.Unstructured_s, second_zone_name, base_name=base_name
+            zone_shape, CGK.Unstructured_s, second_zone_name, base=base_name
         )
 
         # Delete first zone
@@ -526,10 +526,10 @@ class Test_Sample:
         # Add 2 zones and delete one zone at time 0.2
         sample.init_base(topological_dim, physical_dim, base_name, 0.2)
         sample.init_zone(
-            zone_shape, CGK.Structured_s, zone_name, base_name=base_name, time=0.2
+            zone_shape, CGK.Structured_s, zone_name, base=base_name, time=0.2
         )
         sample.init_zone(
-            zone_shape, CGK.Unstructured_s, "test", base_name=base_name, time=0.2
+            zone_shape, CGK.Unstructured_s, "test", base=base_name, time=0.2
         )
 
         updated_cgns_tree = sample.features.del_zone("test", base_name, 0.2)
@@ -559,7 +559,7 @@ class Test_Sample:
         sample.init_base(topological_dim, physical_dim, base_name, time=1.0)
         zone_name = "test123"
         sample.init_zone(
-            zone_shape, CGK.Structured_s, zone_name, base_name=base_name, time=1.0
+            zone_shape, CGK.Structured_s, zone_name, base=base_name, time=1.0
         )
         with pytest.raises(KeyError):
             sample.features.del_zone(zone_name, base_name, 2.0)
@@ -574,7 +574,7 @@ class Test_Sample:
     def test_has_zone(self, sample, base_name, zone_name):
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
         )
         sample.show_tree()
         assert sample.features.has_zone(zone_name, base_name)
@@ -588,13 +588,13 @@ class Test_Sample:
         sample.init_base(3, 3, base_name)
         sample.init_zone(
             np.array([[5, 3, 0]]),
-            zone_name="zone_name_1",
-            base_name=base_name,
+            zone="zone_name_1",
+            base=base_name,
         )
         sample.init_zone(
             np.array([[5, 3, 0]]),
-            zone_name="zone_name_2",
-            base_name=base_name,
+            zone="zone_name_2",
+            base=base_name,
         )
         assert sample.features.get_zone_names(base_name) == [
             "zone_name_1",
@@ -618,7 +618,7 @@ class Test_Sample:
         with pytest.raises(KeyError):
             sample.features.get_zone_type(zone_name, base_name)
         sample.init_zone(
-            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
         )
         assert sample.features.get_zone_type(zone_name, base_name) == CGK.Unstructured_s
 
@@ -627,14 +627,14 @@ class Test_Sample:
         sample.init_base(3, 3, base_name)
         assert sample.features.get_zone(zone_name, base_name) is None
         sample.init_zone(
-            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
         )
         assert sample.features.get_zone() is not None
         assert sample.features.get_zone(zone_name, base_name) is not None
         sample.init_zone(
             np.array([[5, 3, 0]]),
-            zone_name="other_zone_name",
-            base_name=base_name,
+            zone="other_zone_name",
+            base=base_name,
         )
         assert sample.features.get_zone(zone_name, base_name) is not None
         with pytest.raises(KeyError):
@@ -742,7 +742,7 @@ class Test_Sample:
         with pytest.raises(KeyError):
             sample.set_nodes(nodes, zone_name, base_name)
         sample.init_zone(
-            np.array([len(nodes), 0, 0]), zone_name=zone_name, base_name=base_name
+            np.array([len(nodes), 0, 0]), zone=zone_name, base=base_name
         )
         sample.set_nodes(nodes, zone_name, base_name)
 
@@ -769,63 +769,63 @@ class Test_Sample:
         sample.init_tree(time=-0.1)
         sample.init_tree(time=1.0)
         sample.init_base(
-            topological_dim=1, physical_dim=2, base_name="Base_1_2", time=-0.1
+            topological_dim=1, physical_dim=2, base="Base_1_2", time=-0.1
         )
         sample.init_base(
-            topological_dim=2, physical_dim=2, base_name="Base_2_2", time=-0.1
+            topological_dim=2, physical_dim=2, base="Base_2_2", time=-0.1
         )
         sample.init_base(
-            topological_dim=1, physical_dim=3, base_name="Base_1_3", time=1.0
+            topological_dim=1, physical_dim=3, base="Base_1_3", time=1.0
         )
         sample.init_base(
-            topological_dim=3, physical_dim=3, base_name="Base_3_3", time=1.0
+            topological_dim=3, physical_dim=3, base="Base_3_3", time=1.0
         )
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
-            zone_name="Zone_1",
-            base_name="Base_1_2",
+            zone="Zone_1",
+            base="Base_1_2",
             time=-0.1,
         )
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
-            zone_name="Zone_2",
-            base_name="Base_1_2",
+            zone="Zone_2",
+            base="Base_1_2",
             time=-0.1,
         )
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
-            zone_name="Zone_1",
-            base_name="Base_2_2",
+            zone="Zone_1",
+            base="Base_2_2",
             time=-0.1,
         )
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
-            zone_name="Zone_2",
-            base_name="Base_2_2",
+            zone="Zone_2",
+            base="Base_2_2",
             time=-0.1,
         )
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
-            zone_name="Zone_1",
-            base_name="Base_1_3",
+            zone="Zone_1",
+            base="Base_1_3",
             time=1.0,
         )
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
-            zone_name="Zone_2",
-            base_name="Base_1_3",
+            zone="Zone_2",
+            base="Base_1_3",
             time=1.0,
         )
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
-            zone_name="Zone_1",
-            base_name="Base_3_3",
+            zone="Zone_1",
+            base="Base_3_3",
             time=1.0,
         )
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
-            zone_name="Zone_2",
-            base_name="Base_3_3",
+            zone="Zone_2",
+            base="Base_3_3",
             time=1.0,
         )
         sample.add_field(
@@ -1015,7 +1015,7 @@ class Test_Sample:
                 base=base_name,
             )
         sample.init_zone(
-            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
         )
         sample.add_field(
             name="test_node_field_2",
@@ -1044,7 +1044,7 @@ class Test_Sample:
                 base=base_name,
             )
         sample.init_zone(
-            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
         )
         sample.add_field(
             name="test_elem_field_2",
@@ -1118,7 +1118,7 @@ class Test_Sample:
         sample = Sample()
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            np.array([[5, 3, 0]]), zone_name=zone_name, base_name=base_name
+            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
         )
         sample.add_field(
             name="test_elem_field_1",

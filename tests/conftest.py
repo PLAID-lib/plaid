@@ -23,7 +23,7 @@ def generate_samples_no_string(nb: int, zone_name: str, base_name: str) -> list[
         sample = Sample()
         sample.init_base(3, 3, base_name)
         sample.init_zone(
-            np.array([[17, 10, 0]]), zone_name=zone_name, base_name=base_name
+            np.array([[17, 10, 0]]), zone=zone_name, base=base_name
         )
         sample.add_global("test_scalar", float(i))
         sample.add_global("test_scalar_2", float(i**2))

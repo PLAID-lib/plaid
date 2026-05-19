@@ -540,7 +540,7 @@ class Sample(BaseModel):
             ## Need to include all possible location within the count
             base_names = self.features.get_base_names(time=time)
             for bn in base_names:
-                zone_names = self.features.get_zone_names(base_name=bn, time=time)
+                zone_names = self.features.get_zone_names(base=bn, time=time)
                 for zn in zone_names:
                     for location in CGNS_FIELD_LOCATIONS:
                         field_names = field_names.union(
@@ -619,7 +619,7 @@ class Sample(BaseModel):
                 for base_name in base_names:
                     summary += f"        Base: {base_name}\n"
                     zone_names = self.features.get_zone_names(
-                        base_name=base_name, time=time
+                        base=base_name, time=time
                     )
                     for zone_name in zone_names:
                         summary += f"            Zone: {zone_name}\n"
@@ -689,7 +689,7 @@ class Sample(BaseModel):
                 base_names = self.features.get_base_names(time=time)
                 for base_name in base_names:
                     zone_names = self.features.get_zone_names(
-                        base_name=base_name, time=time
+                        base=base_name, time=time
                     )
                     for zone_name in zone_names:
                         for location in CGNS_FIELD_LOCATIONS:

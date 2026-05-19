@@ -173,7 +173,7 @@ show_sample(sample)
 # %%
 # Init CGNS tree zone to a base at time 0.
 shape = np.array([[len(points), len(triangles), 0]])
-sample.init_zone(shape, zone_name="TestZoneName", base_name="SurfaceMesh", time=0.0)
+sample.init_zone(shape, zone="TestZoneName", base="SurfaceMesh", time=0.0)
 
 show_sample(sample)
 
@@ -455,8 +455,8 @@ print(f"{sample.features.resolve_time() = }", end="\n\n")
 sample.init_zone(
     zone_shape=np.array([[5, 3, 0]]),
     zone_type=CGK.Structured_s,
-    zone_name="new_zone",
-    base_name="SurfaceMesh",
+    zone="new_zone",
+    base="SurfaceMesh",
 )
 print(f"{sample.features.get_zone_type('TestZoneName', 'SurfaceMesh') = }")
 print(f"{sample.features.get_zone_type('new_zone', 'SurfaceMesh') = }")
