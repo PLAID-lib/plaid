@@ -10,7 +10,9 @@ import numpy as np
 import rich
 from tqdm import tqdm
 
-from plaid import Sample
+import plaid
+from plaid.storage import save_to_disk, init_from_disk
+
 
 if __name__ == "__main__":
     # ---# Input parameters
@@ -67,12 +69,8 @@ if __name__ == "__main__":
         def sample_constructor(i):
         #for i in tqdm(range(args.number_of_samples), desc="Generate samples"):
             # ---# Read a sample provided in tests
-            sample_path = Path("../tests/containers/dataset/data/test/sample_000000000")
-            if not (sample_path.is_dir()):
-                sample_path = Path(
-                    "../../tests/containers/dataset/data/test/sample_000000000"
-                )
-            tmpsmp = Sample(path=sample_path)
+            sample_path = Path(plaid.__file__).parents[2] / "tests" / "containers" / "dataset" / "data" / "test" / "sample_000000000"
+            tmpsmp = plaid.Sample(path=sample_path)
             smp = tmpsmp
 
             # ---# Add some random data
@@ -83,7 +81,6 @@ if __name__ == "__main__":
             return smp
 
         #dset.save_to_dir(out_dir, verbose=True)
-        from plaid.storage import save_to_disk, init_from_disk
 
         save_to_disk(output_folder=out_dir,
             sample_constructor=sample_constructor,
@@ -104,12 +101,11 @@ if __name__ == "__main__":
                 t0 = time.perf_counter()
                 print(out_dir)
                 datasetdict, converterdict = init_from_disk(out_dir)
-                #new_dset.load(out_dir) #, processes_number=nb_cores)
+                dataset = datasetdict["train"]
+                converter = converterdict["train"]
+                _ = converter.to_plaid(dataset,0)
                 t1 = time.perf_counter()
                 durations.append(t1 - t0)
-                del datasetdict
-                del converterdict
-                #del new_dset
 
 
             all_durations.append(durations)
