@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- (examples) remove downloadable_example from run_examples scripts to prevent crash when huggingface services are not fully operational.
+
 ## [0.1.15] - 2026-03-25
 
 ### Changed
