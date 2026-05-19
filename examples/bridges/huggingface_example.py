@@ -44,7 +44,8 @@ from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
 #from plaid.bridges import huggingface_bridge
-from plaid import Dataset, Sample, ProblemDefinition
+from plaid import Sample, ProblemDefinition
+from plaid.storage.in_memory import InMemoryBackend
 #from plaid.types import FeatureIdentifier
 
 
@@ -87,7 +88,7 @@ triangles = np.array(
     ]
 )
 
-dataset = Dataset()
+dataset = InMemoryBackend()
 
 scalar_feat_id = "Global/scalar"
 node_field_feat_id = "Base_2_2/Zone/VertexFields/node_field"
@@ -111,14 +112,14 @@ for _ in range(3):
         cell_field_feat_id, np.random.rand(len(triangles)), in_place=True
     )
 
-    dataset.get_backend().add_sample(sample)
+    dataset.add_sample(sample)
 
 infos = {
     "legal": {"owner": "Bob", "license": "my_license"},
     "data_production": {"type": "simulation", "physics": "3D example"},
 }
 
-dataset.set_infos(infos)
+# infos can be passed to plaid.storage.save_to_disk(..., infos=infos)
 
 print(f" {dataset = }")
 print(f" {infos = }")
@@ -247,12 +248,12 @@ print(f"{flat_cst = }")
 from plaid.storage.common.bridge import to_sample_dict, to_plaid_sample
 from plaid.storage.hf_datasets.bridge import to_var_sample_dict
 
-dataset_2 = Dataset()
+dataset_2 = InMemoryBackend()
 for i in range(len(hf_datasetdict["train"])):
     var_sample_dict = to_var_sample_dict(hf_datasetdict["train"], i)
     sample_dict = to_sample_dict(var_sample_dict, flat_cst["train"], cgns_types)
     plaid_sample = to_plaid_sample(sample_dict, cgns_types)
-    dataset_2.get_backend().add_sample(plaid_sample)
+    dataset_2.add_sample(plaid_sample)
 
 print()
 print(f"{dataset_2 = }")

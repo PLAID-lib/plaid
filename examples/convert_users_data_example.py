@@ -25,8 +25,8 @@ import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
-from plaid import Dataset
 from plaid import Sample
+from plaid.storage import save_to_disk, push_to_hub
 
 # %% [markdown]
 # ## Construction stages
@@ -106,55 +106,39 @@ if in_notebook():
 #
 # Generates a dataset (python list) of 3D meshes with random fields defined over nodes and elements
 
-# %%
-nb_meshes = 5000
-meshes = []
 
-print("Creating meshes dataset...")
-for _ in range(nb_meshes):
+# %% [markdown]
+# ## Sample contructor, a function to buid an instance for the sample i
+
+def sample_constructor(i):
+    #Creating mesh
+    # this can be different for every sample
     """Create a Unstructured mesh using only points
     and the connectivity matrix for the triangles.
     Nodes id are given by there position in the list
     """
-    Mesh = MCT.CreateMeshOfTriangles(nodes_3D, triangles)
+    mesh = MCT.CreateMeshOfTriangles(nodes_3D, triangles)
+
 
     """ Add field defined over the nodes (all the nodes).
         The keys are the names of the fields
         the values are the actual data of size (nb nodes, nb of components)"""
-    Mesh.nodeFields["node_field"] = np.random.randn(5)
+    mesh.nodeFields["node_field"] = np.random.randn(5)
 
     """ Add field defined over the elements (all the elements).
         The keys are the names of the fields
         the values are the actual data of size (nb elements, nb of components)"""
-    Mesh.elemFields["elem_field"] = np.random.randn(6)
+    mesh.elemFields["elem_field"] = np.random.randn(6)
 
-    meshes.append(Mesh)
+    """ Convert the Muscat mesh to a cgns mesh """
+    cgns_tree = MeshToCGNS(mesh)
 
-print(f"{len(meshes) = }")
+    # operate directly on teh cgns mesh
+    in_scalars_names = ["P", "p1", "p2", "p3", "p4", "p5"]
+    out_scalars_names = ["max_von_mises", "max_q", "max_U2_top", "max_sig22_top"]
+    out_fields_names = ["U1", "U2", "q", "sig11", "sig22", "sig12"]
 
-# %% [markdown]
-# ## Convert to CGNS meshes
-
-# %%
-CGNS_meshes = []
-for mesh in meshes:
-    # Converts a Mesh (muscat mesh following vtk conventions) to a CGNS Mesh
-    CGNS_tree = MeshToCGNS(mesh)
-    CGNS_meshes.append(CGNS_tree)
-
-print(f"{len(CGNS_meshes) = }")
-
-# %% [markdown]
-# ## Create PLAID Samples from CGNS meshes
-
-# %%
-in_scalars_names = ["P", "p1", "p2", "p3", "p4", "p5"]
-out_scalars_names = ["max_von_mises", "max_q", "max_U2_top", "max_sig22_top"]
-out_fields_names = ["U1", "U2", "q", "sig11", "sig22", "sig12"]
-
-samples = []
-for cgns_tree in CGNS_meshes:
-    # Add CGNS Meshe to samples with specific time steps
+    # Add CGNS Mesh to samples with specific time steps
     sample = Sample()
 
     sample.features.add_tree(cgns_tree)
@@ -170,12 +154,10 @@ for cgns_tree in CGNS_meshes:
     for j, sname in enumerate(out_fields_names):
         sample.add_field(sname, np.random.rand(len(nodes_3D)))
 
-    samples.append(sample)
-
-print(samples[0])
+    return sample
 
 # %% [markdown]
-# ## Create PLAID Dataset
+# ## Create PLAID Dataset on disk
 
 # %%
 infos: dict = {
@@ -183,15 +165,19 @@ infos: dict = {
     "data_production": {"type": "simulation", "physics": "3D example"},
 }
 
-
-dataset = Dataset()
-
-# Set information for the PLAID dataset
-dataset.set_infos(infos)
-#dataset.print_infos()
-
 # %%
-# Add PLAID samples to the dataset
-sample_ids = dataset.get_backend().add_sample(samples)
-print(sample_ids)
-print(dataset)
+# save the dataset to disk using the cgns backend
+import tempfile
+temp_dir = tempfile.gettempdir() + "/my_new_cgns_dataset"
+
+ids = {"train": list(range(5)),
+       "test": list(range(10))}
+
+save_to_disk(output_folder=temp_dir,
+            sample_constructor=sample_constructor,
+            ids=ids,
+            backend="cgns",
+            infos=infos,
+            overwrite=True)
+
+

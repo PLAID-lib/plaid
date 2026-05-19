@@ -6,6 +6,9 @@ else
     FILES="*.py utils/*.py containers/*.py"
 fi
 
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
+
 for file in $FILES
 do
     echo "--------------------------------------------------------------------------------------"
