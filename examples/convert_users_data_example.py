@@ -33,12 +33,11 @@ from plaid import Sample
 
 # %%
 from IPython.display import Image
-try:
-    filename = Path(__file__).parent.parent / "docs" / "source" / "images" / "to_plaid.png"
-except NameError:
-    filename = Path("..") / "images" / "to_plaid.png"
+filename = list(x for x in [Path(locals().get("__file__","..")).parent.parent / "docs" / "source" / "images" / "to_plaid.png",
+                        Path.cwd().parent / "docs" / "source" / "images" / "to_plaid.png"  ,
+                        Path("..") / "images" / "to_plaid.png"
+                      ] if x.exists())[0]
 Image(filename=filename)
-
 
 # %% [markdown]
 # ## Define a 3D Mesh
