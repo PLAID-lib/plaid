@@ -7,14 +7,8 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
-from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.types import CGNSTree
-
-
-@pytest.fixture()
-def dataset():
-    return Dataset()
 
 
 @pytest.fixture()
@@ -201,51 +195,3 @@ def empty_sample():
     return Sample()
 
 
-@pytest.fixture()
-def empty_dataset():
-    return Dataset()
-
-
-@pytest.fixture()
-def dataset_with_samples(dataset, samples):
-    dataset.get_backend().add_sample(samples, list(range(len(samples)) ))
-    return dataset
-
-
-@pytest.fixture()
-def dataset_with_samples_with_tree(samples_with_tree):
-    dataset = Dataset()
-    dataset.get_backend_new().add_sample(samples_with_tree)
-    return dataset
-
-
-@pytest.fixture()
-def other_dataset_with_samples(other_samples):
-    other_dataset = Dataset()
-    other_dataset.get_backend_new().add_sample(other_samples)
-    return other_dataset
-
-
-@pytest.fixture()
-def heterogeneous_dataset(dataset_with_samples_with_tree):
-    dataset = dataset_with_samples_with_tree.copy()
-    dataset.get_backend_new().add_sample(Sample())
-    sample_with_scalar = Sample()
-    sample_with_scalar.add_global("scalar", 1.0)
-    dataset.get_backend_new().add_sample(sample_with_scalar)
-    sample_with_ts = Sample()
-    dataset.get_backend_new().add_sample(sample_with_ts)
-    return dataset
-
-
-@pytest.fixture()
-def scalar_dataset():
-    dataset = Dataset()
-    sample = Sample()
-    sample.add_global("test_scalar", 0.0)
-    dataset.get_backend_new().add_sample(sample)
-    sample2 = Sample()
-    for i in range(8):
-        sample2.add_global(f"scalar_{i}", float(i))
-    dataset.get_backend_new().add_sample(sample2)
-    return dataset

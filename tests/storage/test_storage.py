@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 import yaml
 
-from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.storage import (
@@ -151,17 +150,14 @@ def current_directory():
 
 # %% Fixtures
 @pytest.fixture()
-def dataset(samples) -> Dataset:
+def samples_with_extra_global(samples) -> list[Sample]:
     samples_ = []
     for i, sample in enumerate(samples):
         sample_ = deepcopy(sample)
         if i == 0 or i == 2:
             sample_.add_global("toto", 1.0)
         samples_.append(sample_)
-
-    dataset = Dataset()
-    dataset.get_backend().add_sample(sample=samples_)
-    return dataset
+    return samples_
 
 
 @pytest.fixture()
@@ -180,11 +176,11 @@ def problem_definition(main_splits) -> ProblemDefinition:
 
 
 @pytest.fixture()
-def sample_constructor(dataset):
+def sample_constructor(samples_with_extra_global):
     """A simple function that takes an id and returns a Sample."""
 
     def _sample_constructor(id):
-        return dataset[id]
+        return samples_with_extra_global[id]
 
     return _sample_constructor
 
@@ -765,7 +761,7 @@ class Test_Storage:
 
     def test_save_to_disk_with_string_ids(
         self,
-        dataset,
+        samples_with_extra_global,
         tmp_path,
         infos,
         problem_definition,
@@ -774,7 +770,7 @@ class Test_Storage:
         id_map = {"sample_a": 0, "sample_b": 2, "sample_c": 1, "sample_d": 3}
 
         def sample_constructor(str_id):
-            return dataset[id_map[str_id]]
+            return samples_with_extra_global[id_map[str_id]]
 
         save_to_disk(
             output_folder=tmp_path / "test_string_ids",
@@ -854,10 +850,10 @@ class Test_Storage:
         # Verify auto-sharding was triggered
         assert len(build_called) == 1
 
-    def test_cgns_generate_no_gen_kwargs(self, tmp_path, dataset):
+    def test_cgns_generate_no_gen_kwargs(self, tmp_path, samples_with_extra_global):
         """Cover cgns writer else branch: gen_func() called without batch_ids_list."""
         test_dir = tmp_path / "test_cgns_no_kwargs"
-        samples_to_yield = [dataset[0], dataset[1]]
+        samples_to_yield = [samples_with_extra_global[0], samples_with_extra_global[1]]
 
         def my_generator():
             yield from samples_to_yield
@@ -927,13 +923,15 @@ class Test_Storage:
         assert sample_groups[1] == "sample_000000001"
 
     def test_cgns_generate_parallel(
-        self, tmp_path, dataset, split_ids, infos, problem_definition
+        self, tmp_path, samples_with_extra_global, split_ids, infos, problem_definition
     ):
         """Cover cgns writer parallel branch with num_proc=2."""
         test_dir = tmp_path / "test_cgns_parallel"
 
         # Pre-build samples list so the picklable generator can index into it
-        all_samples = [dataset[i] for i in range(len(dataset))]
+        all_samples = [
+            samples_with_extra_global[i] for i in range(len(samples_with_extra_global))
+        ]
         gen = _PicklableSampleLookup(all_samples)
 
         save_to_disk(
@@ -953,12 +951,14 @@ class Test_Storage:
         assert len(written) == 2
 
     def test_zarr_generate_parallel(
-        self, tmp_path, dataset, split_ids, infos, problem_definition
+        self, tmp_path, samples_with_extra_global, split_ids, infos, problem_definition
     ):
         """Cover zarr writer parallel branch with num_proc=2."""
         test_dir = tmp_path / "test_zarr_parallel"
 
-        all_samples = [dataset[i] for i in range(len(dataset))]
+        all_samples = [
+            samples_with_extra_global[i] for i in range(len(samples_with_extra_global))
+        ]
         gen = _PicklableSampleLookup(all_samples)
 
         save_to_disk(
