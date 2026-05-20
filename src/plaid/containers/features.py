@@ -1057,13 +1057,13 @@ class SampleFeatures:
                     if (grid_loc_node.tobytes().decode()!= location ):
                         continue
                 else:
-                    ##possible an integration point data
-                    grid_loc_node = CGU.getValueByPath(search_node , f_path+"/Gridlocation")
+                    ##possible an integration point data check Muscat Implementation for details
+                    grid_loc_node = CGU.getValueByPath(search_node, f_path + "/gridlocation")
                     if grid_loc_node is not None:
                         if (grid_loc_node.tobytes().decode()!= location ):
                             continue
                     else:
-                        raise
+                        continue
 
                 f_node = CGU.getNodeByPath(search_node, f_path)
                 for path in CGU.getPathByTypeFilter(f_node, CGK.DataArray_t):
