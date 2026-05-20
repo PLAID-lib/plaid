@@ -26,7 +26,7 @@ from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
 from plaid import Sample
-from plaid.storage import save_to_disk, push_to_hub
+from plaid.storage import save_to_disk
 
 # %% [markdown]
 # ## Construction stages
