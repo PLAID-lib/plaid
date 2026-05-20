@@ -42,6 +42,8 @@ def infer_dtype(value: Any) -> dict[str, int | str]:
             dt = "int64"
         elif np.issubdtype(dtype, np.str_):
             dt = "string"
+        elif np.issubdtype(dtype, np.dtype('S1')):
+            dt = "S1"
         else:  # pragma: no cover
             raise ValueError(f"Unrecognized scalar dtype: {dtype}")
         return {"dtype": dt, "ndim": arr.ndim}
@@ -183,7 +185,8 @@ def _hash_value(value: Any) -> str:
         str: The MD5 hash of the value.
     """
     if isinstance(value, np.ndarray):
-        return hashlib.md5(value.view(np.uint8)).hexdigest()
+        contiguous_value = np.ascontiguousarray(value)
+        return hashlib.md5(contiguous_value.tobytes(order="C")).hexdigest()
     return hashlib.md5(str(value).encode("utf-8")).hexdigest()
 
 
@@ -535,10 +538,10 @@ def preprocess(
 
     # --- build features ---
     var_features = sorted(list(set().union(*split_var_path.values())))
-    if len(var_features) == 0:  # pragma: no cover
-        raise ValueError(
-            "no variable feature found, is your dataset variable through samples?"
-        )
+    #if len(var_features) == 0:  # pragma: no cover
+    #    raise ValueError(
+    #        "no variable feature found, is your dataset variable through samples?"
+    #    )
 
     for split_name in split_flat_cst.keys():
         for path in var_features:

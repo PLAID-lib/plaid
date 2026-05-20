@@ -3,6 +3,7 @@
 import copy
 from pathlib import Path
 
+import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
@@ -573,9 +574,7 @@ class Test_Sample:
 
     def test_has_zone(self, sample, base_name, zone_name):
         sample.init_base(3, 3, base_name)
-        sample.init_zone(
-            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
-        )
+        sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
         sample.show_tree()
         assert sample.features.has_zone(zone_name, base_name)
         assert not sample.features.has_zone("not_present_zone_name", base_name)
@@ -617,18 +616,14 @@ class Test_Sample:
         sample.init_base(3, 3, base_name)
         with pytest.raises(KeyError):
             sample.features.get_zone_type(zone_name, base_name)
-        sample.init_zone(
-            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
-        )
+        sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
         assert sample.features.get_zone_type(zone_name, base_name) == CGK.Unstructured_s
 
     def test_get_zone(self, sample: Sample, zone_name, base_name):
         assert sample.features.get_zone(zone_name, base_name) is None
         sample.init_base(3, 3, base_name)
         assert sample.features.get_zone(zone_name, base_name) is None
-        sample.init_zone(
-            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
-        )
+        sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
         assert sample.features.get_zone() is not None
         assert sample.features.get_zone(zone_name, base_name) is not None
         sample.init_zone(
@@ -650,6 +645,21 @@ class Test_Sample:
 
         assert sample.get_global_names(time=0.0) == ["g_t0"]
         assert sample.get_global_names(time=1.0) == ["g_t1"]
+
+    def test_add_global_string_and_update_existing(self, sample: Sample):
+        sample.add_global("g_str", "abc")
+        value = sample.get_global("g_str")
+        assert isinstance(value, np.ndarray)
+        assert value.tobytes().decode("ascii") == "abc"
+
+        sample.add_global("g_str", np.array([7.0]))
+        assert sample.get_global("g_str") == 7.0
+
+    def test_get_global_names_excludes_time_arrays(self, sample: Sample):
+        sample.init_base(2, 2, "Base_2_2", time=0.0)
+        sample.add_global("kept_name", np.array([1.0]), time=0.0)
+        names = sample.get_global_names(time=0.0)
+        assert names == ["kept_name"]
 
     def test_get_scalar_empty(self, sample):
         assert sample.get_global("missing_scalar_name") is None
@@ -709,7 +719,9 @@ class Test_Sample:
     def test_del_feature(self, sample_with_scalar: Sample, sample_with_tree3d: Sample):
         sample_with_scalar.del_feature_by_path(path="Global/test_scalar_1")
         assert sample_with_scalar.get_all_features_identifiers_by_type("scalar") == []
-        sample_with_tree3d.del_feature_by_path("Base_2_3/Zone/VertexFields/test_node_field_1")
+        sample_with_tree3d.del_feature_by_path(
+            "Base_2_3/Zone/VertexFields/test_node_field_1"
+        )
 
     # -------------------------------------------------------------------------#
     def test_get_nodal_tags_empty(self, sample):
@@ -737,14 +749,37 @@ class Test_Sample:
         with pytest.raises(ValueError):
             sample_with_tree.get_nodes(name="UnknownCoordinate")
 
+    # def test_get_nodes_returns_none_without_gridcoordinates(
+    #     self, sample: Sample, base_name: str, zone_name: str
+    # ):
+    #     sample.init_base(2, 2, base_name)
+    #     sample.init_zone(np.array([3, 0, 0]), zone=zone_name, base=base_name)
+    #     zone_node = sample.features.get_zone(zone=zone_name, base=base_name)
+    #     gc_node = CGU.getNodeByPath(zone_node, "GridCoordinates")
+    #     assert gc_node is not None
+    #     CGU.nodeDelete(zone_node, gc_node)
+    #    assert sample.get_nodes(zone=zone_name, base=base_name) is None
+
     def test_set_nodes(self, sample, nodes, zone_name, base_name):
         sample.init_base(3, 3, base_name)
         with pytest.raises(KeyError):
             sample.set_nodes(nodes, zone_name, base_name)
-        sample.init_zone(
-            np.array([len(nodes), 0, 0]), zone=zone_name, base=base_name
-        )
+        sample.init_zone(np.array([len(nodes), 0, 0]), zone=zone_name, base=base_name)
         sample.set_nodes(nodes, zone_name, base_name)
+
+    def test_set_nodes_replaces_existing_coordinates(
+        self, sample: Sample, base_name: str, zone_name: str
+    ):
+        sample.init_base(3, 3, base_name)
+        sample.init_zone(np.array([3, 0, 0]), zone=zone_name, base=base_name)
+
+        nodes_a = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]])
+        nodes_b = np.array([[2.0, 2.0], [3.0, 2.0], [3.0, 3.0]])
+        sample.set_nodes(nodes_a, zone=zone_name, base=base_name)
+        sample.set_nodes(nodes_b, zone=zone_name, base=base_name)
+
+        got = sample.get_nodes(zone=zone_name, base=base_name)
+        assert np.allclose(got, nodes_b)
 
     # -------------------------------------------------------------------------#
     def test_get_elements_empty(self, sample: Sample):
@@ -768,18 +803,10 @@ class Test_Sample:
         sample = Sample()
         sample.init_tree(time=-0.1)
         sample.init_tree(time=1.0)
-        sample.init_base(
-            topological_dim=1, physical_dim=2, base="Base_1_2", time=-0.1
-        )
-        sample.init_base(
-            topological_dim=2, physical_dim=2, base="Base_2_2", time=-0.1
-        )
-        sample.init_base(
-            topological_dim=1, physical_dim=3, base="Base_1_3", time=1.0
-        )
-        sample.init_base(
-            topological_dim=3, physical_dim=3, base="Base_3_3", time=1.0
-        )
+        sample.init_base(topological_dim=1, physical_dim=2, base="Base_1_2", time=-0.1)
+        sample.init_base(topological_dim=2, physical_dim=2, base="Base_2_2", time=-0.1)
+        sample.init_base(topological_dim=1, physical_dim=3, base="Base_1_3", time=1.0)
+        sample.init_base(topological_dim=3, physical_dim=3, base="Base_3_3", time=1.0)
         sample.init_zone(
             zone_shape=np.array([[5, 3, 0]]),
             zone="Zone_1",
@@ -998,6 +1025,28 @@ class Test_Sample:
             "test_elem_field_1", location="CellCenter"
         ).shape == (3,)
 
+    def test_get_field_from_user_defined_data_lowercase_gridlocation(
+        self, sample: Sample, base_name: str, zone_name: str
+    ):
+        sample.init_base(2, 2, base_name)
+        sample.init_zone(np.array([3, 0, 0]), zone=zone_name, base=base_name)
+
+        zone_node = sample.features.get_zone(zone=zone_name, base=base_name)
+        udd = CGL.newUserDefinedData(zone_node, "ItgPointData")
+        CGL.newDataArray(
+            udd,
+            "gridlocation",
+            value=np.frombuffer("Vertex".encode("ascii"), dtype="S1"),
+        )
+        CGL.newDataArray(udd, "my_udd_field", value=np.array([1.0, 2.0, 3.0]))
+
+        assert (
+            sample.get_field("my_udd_field", zone=zone_name, base=base_name) is not None
+        )
+        assert "my_udd_field" in sample.get_field_names(
+            zone=zone_name, base=base_name, location="Vertex"
+        )
+
     def test_add_field_vertex(self, sample: Sample, vertex_field, zone_name, base_name):
         sample.init_base(3, 3, base_name)
         with pytest.raises(KeyError):
@@ -1014,9 +1063,7 @@ class Test_Sample:
                 zone=zone_name,
                 base=base_name,
             )
-        sample.init_zone(
-            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
-        )
+        sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
         sample.add_field(
             name="test_node_field_2",
             field=vertex_field,
@@ -1043,9 +1090,7 @@ class Test_Sample:
                 zone=zone_name,
                 base=base_name,
             )
-        sample.init_zone(
-            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
-        )
+        sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
         sample.add_field(
             name="test_elem_field_2",
             location="CellCenter",
@@ -1117,9 +1162,7 @@ class Test_Sample:
     def test_del_field_in_zone(self, zone_name, base_name, cell_center_field):
         sample = Sample()
         sample.init_base(3, 3, base_name)
-        sample.init_zone(
-            np.array([[5, 3, 0]]), zone=zone_name, base=base_name
-        )
+        sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
         sample.add_field(
             name="test_elem_field_1",
             field=cell_center_field,

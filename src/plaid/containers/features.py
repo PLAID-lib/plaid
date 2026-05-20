@@ -1048,20 +1048,29 @@ class SampleFeatures:
                 return []
 
             names = []
-            solution_paths = CGU.getPathsByTypeSet(search_node, [CGK.FlowSolution_t])
+            # try to find IntegrationPoint on UserDefinedData_t
+            solution_paths = CGU.getPathsByTypeSet(search_node, [CGK.FlowSolution_t, "UserDefinedData_t"])
             for f_path in solution_paths:
-                if (
-                    CGU.getValueByPath(search_node, f_path + "/GridLocation")
-                    .tobytes()
-                    .decode()
-                    != location
-                ):
-                    continue
+
+                grid_loc_node = CGU.getValueByPath(search_node, f_path + "/GridLocation")
+                if grid_loc_node is not None:
+                    if (grid_loc_node.tobytes().decode()!= location ):
+                        continue
+                else:
+                    ##possible an integration point data check Muscat Implementation for details
+                    grid_loc_node = CGU.getValueByPath(search_node, f_path + "/gridlocation")
+                    if grid_loc_node is not None:
+                        if (grid_loc_node.tobytes().decode()!= location ):
+                            continue
+                    else:
+                        continue
+
                 f_node = CGU.getNodeByPath(search_node, f_path)
                 for path in CGU.getPathByTypeFilter(f_node, CGK.DataArray_t):
                     field_name = path.split("/")[-1]
-                    if not (field_name == "GridLocation"):
+                    if field_name not in ["GridLocation","ItgRules","gridlocation","ItgPointStartOffset", "Ids","Path"]:
                         names.append(field_name)
+
             return names
 
         field_names = []
@@ -1117,12 +1126,22 @@ class SampleFeatures:
             return None
 
         full_field = []
-        solution_paths = CGU.getPathsByTypeSet(search_node, [CGK.FlowSolution_t])
+        solution_paths = CGU.getPathsByTypeSet(search_node, [CGK.FlowSolution_t, "UserDefinedData_t"])
 
         for f_path in solution_paths:
             grid_loc = CGU.getValueByPath(search_node, f_path + "/GridLocation")
-            if grid_loc.tobytes().decode() != location:
-                continue
+            if grid_loc is not None:
+                if grid_loc.tobytes().decode() != location:
+                    continue
+            else:
+                ##possible an integration point data
+                grid_loc = CGU.getValueByPath(search_node , f_path+"/gridlocation")
+                if grid_loc is not None:
+                    if (grid_loc.tobytes().decode()!= location ):
+                        continue
+                else:
+                    raise
+
 
             field = CGU.getValueByPath(search_node, f_path + "/" + name)
             if field is not None and field.size > 0:
