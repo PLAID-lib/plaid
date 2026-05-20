@@ -1058,7 +1058,7 @@ class SampleFeatures:
                         continue
                 else:
                     ##possible an integration point data
-                    grid_loc_node = CGU.getValueByPath(search_node , f_path+"/gridlocation")
+                    grid_loc_node = CGU.getValueByPath(search_node , f_path+"/Gridlocation")
                     if grid_loc_node is not None:
                         if (grid_loc_node.tobytes().decode()!= location ):
                             continue
@@ -1070,8 +1070,6 @@ class SampleFeatures:
                     field_name = path.split("/")[-1]
                     if field_name not in ["GridLocation","ItgRules","gridlocation","ItgPointStartOffset", "Ids","Path"]:
                         names.append(field_name)
-
-            solution_paths = CGU.getPathsByTypeSet(search_node, [CGK.FlowSolution_t])
 
             return names
 
