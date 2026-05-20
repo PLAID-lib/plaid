@@ -128,7 +128,6 @@ pb_def = ProblemDefinition(name="test PD")
 pb_def.add_in_features_identifiers([scalar_feat_id, node_field_feat_id])
 pb_def.add_out_features_identifiers([cell_field_feat_id])
 
-pb_def.task = "regression"
 pb_def.train_split = {"train": [0, 1]}
 pb_def.test_split = {"test": [2]}
 
@@ -226,20 +225,7 @@ hf_datasetdict = generator_to_datasetdict(
 #)
 print(f"{hf_datasetdict = }")
 print(f"{flat_cst = }")
-#print(f"{key_mappings = }")
 
-# %% [markdown]
-# In this example, the generators are not very usefull since the plaid dataset is already loaded in memory. In real settings, one can create generators in the following way to prevent loading all the data beforehand:
-# ```python
-# generators = {}
-# for split_name, ids in main_splits.items():
-#     def generator_(ids=ids):
-#         for id in ids:
-#             loaded_simulation_data = load('path/to/split_name/simulation_id')
-#             sample = convert_to_sample(loaded_simulation_data)
-#             yield sample
-#     generators[split_name] = generator_
-# ```
 
 # %% [markdown]
 # ## Section 3: Convert a Hugging Face dataset to plaid

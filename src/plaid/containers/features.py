@@ -52,26 +52,26 @@ class SampleFeatures:
         """
         self.defaults.set_default_time(time)
 
-    def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
+    def set_default_base(self, base: str, time: Optional[float] = None) -> None:
         """Set the default active base. Calls the DefaultManager to set the default base.
 
         Args:
-            base_name (str): The base name to set as the default active base.
+            base (str): The base name to set as the default active base.
             time (float, optional): The time at which to set the default base. Defaults to None.
         """
-        self.defaults.set_default_base(base_name, time=time)
+        self.defaults.set_default_base(base, time=time)
 
     def set_default_zone_base(
-        self, zone_name: str, base_name: str, time: Optional[float] = None
+        self, zone: str, base: str, time: Optional[float] = None
     ) -> None:
         """Set the default active zone within a base. Calls the DefaultManager to set the default zone and base.
 
         Args:
-            zone_name (str): The zone name to set as the default active zone.
-            base_name (str): The base name in which the zone is located.
+            zone (str): The zone name to set as the default active zone.
+            base (str): The base name in which the zone is located.
             time (float, optional): The time at which to set the default zone and base. Defaults to None.
         """
-        self.defaults.set_default_zone_base(zone_name, base_name, time=time)
+        self.defaults.set_default_zone_base(zone, base, time=time)
 
     def resolve_time(self, time: Optional[float] = None) -> float:
         """Get the resolved time assignment. Calls the DefaultManager to resolve the time.
@@ -85,37 +85,37 @@ class SampleFeatures:
         return self.defaults.resolve_time(time)
 
     def resolve_base(
-        self, base_name: Optional[str] = None, time: Optional[float] = None
+        self, base: Optional[str] = None, time: Optional[float] = None
     ) -> Optional[str]:
         """Get the resolved base assignment. Calls the DefaultManager to resolve the base.
 
         Args:
-            base_name (str, optional): The base name to resolve. Defaults to None.
+            base (str, optional): The base name to resolve. Defaults to None.
             time (float, optional): The time at which to resolve the base. Defaults to None.
 
         Returns:
             Optional[str]: The resolved base name.
         """
-        return self.defaults.resolve_base(base_name=base_name, time=time)
+        return self.defaults.resolve_base(base=base, time=time)
 
     def resolve_zone(
         self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> Optional[str]:
         """Get the resolved zone assignment. Calls the DefaultManager to resolve the zone.
 
         Args:
-            zone_name (str, optional): The zone name to resolve. Defaults to None.
-            base_name (str, optional): The base name in which the zone is located. Defaults to None.
+            zone (str, optional): The zone name to resolve. Defaults to None.
+            base (str, optional): The base name in which the zone is located. Defaults to None.
             time (float, optional): The time at which to resolve the zone. Defaults to None.
 
         Returns:
             Optional[str]: The resolved zone name.
         """
         return self.defaults.resolve_zone(
-            zone_name=zone_name, base_name=base_name, time=time
+            zone=zone, base=base, time=time
         )
 
     # -------------------------------------------------------------------------#
@@ -288,26 +288,26 @@ class SampleFeatures:
 
     # -------------------------------------------------------------------------#
     def get_topological_dim(
-        self, base_name: Optional[str] = None, time: Optional[float] = None
+        self, base: Optional[str] = None, time: Optional[float] = None
     ) -> int:
         """Get the topological dimension of a base node at a specific time.
 
         Args:
-            base_name (str, optional): The name of the base node for which to retrieve the topological dimension. Defaults to None.
+            base (str, optional): The name of the base node for which to retrieve the topological dimension. Defaults to None.
             time (float, optional): The time at which to retrieve the topological dimension. Defaults to None.
 
         Raises:
-            ValueError: If there is no base node with the specified `base_name` at the given `time` in this sample.
+            ValueError: If there is no base node with the specified `base` at the given `time` in this sample.
 
         Returns:
             int: The topological dimension of the specified base node at the given time.
         """
-        # get_base will look for default time and base_name
-        base_node = self.get_base(base_name, time)
+        # get_base will look for default time and base
+        base_node = self.get_base(base, time)
 
         if base_node is None:  # pragma: no cover
             raise ValueError(
-                f"there is no base called {base_name} at the time {time} in this sample"
+                f"there is no base called {base} at the time {time} in this sample"
             )
 
         return base_node[1][0]
@@ -322,7 +322,7 @@ class SampleFeatures:
             time (float, optional): The time at which to retrieve the topological dimension. Defaults to None.
 
         Raises:
-            ValueError: If there is no base node with the specified `base_name` at the given `time` in this sample.
+            ValueError: If there is no base node with the specified `base` at the given `time` in this sample.
 
         Returns:
             int: The topological dimension of the specified base node at the given time.
@@ -339,36 +339,36 @@ class SampleFeatures:
         self,
         topological_dim: int,
         physical_dim: int,
-        base_name: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> CGNSNode:
-        """Create a Base node named `base_name` if it doesn't already exists.
+        """Create a Base node named `base` if it doesn't already exists.
 
         Args:
             topological_dim (int): Cell dimension, see [CGNS standard](https://pycgns.github.io/PAT/lib.html#CGNS.PAT.cgnslib.newCGNSBase).
             physical_dim (int): Ambient space dimension, see [CGNS standard](https://pycgns.github.io/PAT/lib.html#CGNS.PAT.cgnslib.newCGNSBase).
-            base_name (str): If not specified, uses `mesh_base_name` specified in Sample initialization. Defaults to None.
+            base (str): If not specified, uses `mesh_base_name` specified in Sample initialization. Defaults to None.
             time (float, optional): The time at which to initialize the base. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
             CGNSNode: The created Base node.
         """
-        _check_names([base_name])
+        _check_names([base])
 
         time = self.resolve_time(time)
 
-        if base_name is None:
-            base_name = "Base_" + str(topological_dim) + "_" + str(physical_dim)
+        if base is None:
+            base = "Base_" + str(topological_dim) + "_" + str(physical_dim)
 
         self.init_tree(time)
-        if not (self.has_base(base_name, time)):
+        if not (self.has_base(base, time)):
             base_node = CGL.newCGNSBase(
-                self.data[time], base_name, topological_dim, physical_dim
+                self.data[time], base, topological_dim, physical_dim
             )
 
         base_names = self.get_base_names(time=time)
-        for base_name in base_names:
-            base_node = self.get_base(base_name, time=time)
+        for base in base_names:
+            base_node = self.get_base(base, time=time)
             if CGU.getValueByPath(base_node, "Time/TimeValues") is None:
                 base_iterative_data_node = CGL.newBaseIterativeData(
                     base_node, "Time", 1
@@ -380,11 +380,11 @@ class SampleFeatures:
 
         return base_node
 
-    def del_base(self, base_name: str, time: float) -> CGNSTree:
+    def del_base(self, base: str, time: float) -> CGNSTree:
         """Delete a CGNS base node for a specific time.
 
         Args:
-            base_name (str): The name of the base node to be deleted.
+            base (str): The name of the base node to be deleted.
             time (float): The time step for which to delete the CGNS base node.
 
         Raises:
@@ -400,12 +400,12 @@ class SampleFeatures:
         if time not in self.data:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
-        base_node = self.get_base(base_name, time)
+        base_node = self.get_base(base, time)
         mesh_tree = self.data[time]
 
         if base_node is None:
             raise KeyError(
-                f"There is no base node with name {base_name} for time {time}."
+                f"There is no base node with name {base} for time {time}."
             )
 
         return CGU.nodeDelete(mesh_tree, base_node)
@@ -435,18 +435,18 @@ class SampleFeatures:
         else:
             return []
 
-    def has_base(self, base_name: str, time: Optional[float] = None) -> bool:
+    def has_base(self, base: str, time: Optional[float] = None) -> bool:
         """Check if a CGNS tree contains a Base with a given name at a specified time.
 
         Args:
-            base_name (str): The name of the Base to check for in the CGNS tree.
+            base (str): The name of the Base to check for in the CGNS tree.
             time (float, optional): The time at which to check for the Base. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-            bool: `True` if the CGNS tree has a Base called `base_name`, else return `False`.
+            bool: `True` if the CGNS tree has a Base called `base`, else return `False`.
         """
         # get_base_names will look for the default time
-        return base_name in self.get_base_names(time=time)
+        return base in self.get_base_names(time=time)
 
     def has_globals(self, time: Optional[float] = None) -> bool:
         """Check if a CGNS tree contains globals a given name at a specified time.
@@ -460,14 +460,14 @@ class SampleFeatures:
         return "Global" in self.get_base_names(time=time)
 
     def get_base(
-        self, base_name: Optional[str] = None, time: Optional[float] = None
+        self, base: Optional[str] = None, time: Optional[float] = None
     ) -> CGNSNode:
-        """Return Base node named `base_name`.
+        """Return Base node named `base`.
 
-        If `base_name` is not specified, checks that there is **at most** one base, else raises an error.
+        If `base` is not specified, checks that there is **at most** one base, else raises an error.
 
         Args:
-            base_name (str, optional): The name of the Base node to retrieve. Defaults to None. Defaults to None.
+            base (str, optional): The name of the Base node to retrieve. Defaults to None. Defaults to None.
             time (float, optional): Time at which you want to retrieve the Base node. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
@@ -478,17 +478,17 @@ class SampleFeatures:
             logger.warning(f"No mesh exists in the sample at {time=}")
             return None
 
-        if base_name != "Global":
-            base_name = self.resolve_base(base_name, time)
-        return CGU.getNodeByPath(self.data[time], f"/CGNSTree/{base_name}")
+        if base != "Global":
+            base = self.resolve_base(base, time)
+        return CGU.getNodeByPath(self.data[time], f"/CGNSTree/{base}")
 
     # -------------------------------------------------------------------------#
     def init_zone(
         self,
         zone_shape: Array,
         zone_type: str = CGK.Unstructured_s,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> CGNSNode:
         """Initialize a new zone within a CGNS base.
@@ -496,39 +496,39 @@ class SampleFeatures:
         Args:
             zone_shape (Array): An array specifying the shape or dimensions of the zone.
             zone_type (str, optional): The type of the zone. Defaults to CGK.Unstructured_s.
-            zone_name (str, optional): The name of the zone to initialize. If not provided, uses `mesh_zone_name` specified in Sample initialization. Defaults to None.
-            base_name (str, optional): The name of the base to which the zone will be added. If not provided, the zone will be added to the currently active base. Defaults to None.
+            zone (str, optional): The name of the zone to initialize. If not provided, uses `mesh_zone_name` specified in Sample initialization. Defaults to None.
+            base (str, optional): The name of the base to which the zone will be added. If not provided, the zone will be added to the currently active base. Defaults to None.
             time (float, optional): The time at which to initialize the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Raises:
-            KeyError: If the specified base does not exist. You can create a base using `Sample.init_base(base_name)`.
+            KeyError: If the specified base does not exist. You can create a base using `Sample.init_base(base)`.
 
         Returns:
             CGLNode: The newly initialized zone node within the CGNS tree.
         """
-        _check_names([zone_name])
+        _check_names([zone])
 
         # init_tree will look for default time
         self.init_tree(time)
-        # get_base will look for default base_name and time
-        base_node = self.get_base(base_name, time)
+        # get_base will look for default base and time
+        base_node = self.get_base(base, time)
         if base_node is None:
             raise KeyError(
-                f"there is no base <{base_name}>, you should first create one with `Sample.init_base({base_name=})`"
+                f"there is no base <{base}>, you should first create one with `Sample.init_base({base=})`"
             )
 
-        zone_name = self.resolve_zone(zone_name, base_name, time)
-        if zone_name is None:
-            zone_name = "Zone"
-        zone_node = CGL.newZone(base_node, zone_name, zone_shape, zone_type)
+        zone = self.resolve_zone(zone, base, time)
+        if zone is None:
+            zone = "Zone"
+        zone_node = CGL.newZone(base_node, zone, zone_shape, zone_type)
         return zone_node
 
-    def del_zone(self, zone_name: str, base_name: str, time: float) -> CGNSTree:
+    def del_zone(self, zone: str, base: str, time: float) -> CGNSTree:
         """Delete a zone within a CGNS base.
 
         Args:
-            zone_name (str): The name of the zone to be deleted.
-            base_name (str, optional): The name of the base from which the zone will be deleted. If not provided, the zone will be deleted from the currently active base. Defaults to None.
+            zone (str): The name of the zone to be deleted.
+            base (str, optional): The name of the base from which the zone will be deleted. If not provided, the zone will be deleted from the currently active base. Defaults to None.
             time (float, optional): The time step for which to delete the zone. Defaults to None.
 
         Raises:
@@ -544,44 +544,44 @@ class SampleFeatures:
         if time not in self.data:
             raise KeyError(f"There is no CGNS tree for time {time}.")
 
-        zone_node = self.get_zone(zone=zone_name, base=base_name, time=time)
+        zone_node = self.get_zone(zone=zone, base=base, time=time)
         mesh_tree = self.data[time]
 
         if zone_node is None:
             raise KeyError(
-                f"There is no zone node with name {zone_name} or base node with name {base_name}."
+                f"There is no zone node with name {zone} or base node with name {base}."
             )
 
         return CGU.nodeDelete(mesh_tree, zone_node)
 
     def get_zone_names(
         self,
-        base_name: Optional[str] = None,
+        base: Optional[str] = None,
         full_path: bool = False,
         unique: bool = False,
         time: Optional[float] = None,
     ) -> list[str]:
-        """Return list of Zone names in Base named `base_name` with specific time.
+        """Return list of Zone names in Base named `base` with specific time.
 
         Args:
-            base_name (str, optional): Name of Base where to search Zones. If not specified, checks if there is at most one Base. Defaults to None.
+            base (str, optional): Name of Base where to search Zones. If not specified, checks if there is at most one Base. Defaults to None.
             full_path (bool, optional): If True, returns full paths instead of only Zone names. Defaults to False.
             unique (bool, optional): If True, returns unique names instead of potentially duplicated names. Defaults to False.
             time (float, optional): The time at which to check for the Zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-            list[str]: List of Zone names in Base named `base_name`, empty if there is none or if the Base doesn't exist.
+            list[str]: List of Zone names in Base named `base`, empty if there is none or if the Base doesn't exist.
         """
         zone_paths = []
 
-        # get_base will look for default base_name and time
-        base_node = self.get_base(base_name, time)
+        # get_base will look for default base and time
+        base_node = self.get_base(base, time)
         if base_node is not None:
             z_paths = CGU.getPathsByTypeSet(base_node, "CGNSZone_t")
             for pth in z_paths:
                 s_pth = pth.split("/")
                 assert len(s_pth) == 2
-                assert s_pth[0] == base_name or base_name is None
+                assert s_pth[0] == base or base is None
                 if full_path:
                     zone_paths.append(pth)
                 else:
@@ -594,22 +594,22 @@ class SampleFeatures:
 
     def has_zone(
         self,
-        zone_name: str,
-        base_name: Optional[str] = None,
+        zone: str,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> bool:
         """Check if the CGNS tree contains a Zone with the specified name within a specific Base and time.
 
         Args:
-            zone_name (str): The name of the Zone to check for.
-            base_name (str, optional): The name of the Base where the Zone should be located. If not provided, the function checks all bases. Defaults to None.
+            zone (str): The name of the Zone to check for.
+            base (str, optional): The name of the Base where the Zone should be located. If not provided, the function checks all bases. Defaults to None.
             time (float, optional): The time at which to check for the Zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
-            bool: `True` if the CGNS tree has a Zone called `zone_name` in a Base called `base_name`, else return `False`.
+            bool: `True` if the CGNS tree has a Zone called `zone` in a Base called `base`, else return `False`.
         """
-        # get_zone_names will look for default base_name and time
-        return zone_name in self.get_zone_names(base_name, time=time)
+        # get_zone_names will look for default base and time
+        return zone in self.get_zone_names(base, time=time)
 
     def get_zone(
         self,
@@ -620,23 +620,23 @@ class SampleFeatures:
         """Retrieve a CGNS Zone node by its name within a specific Base and time.
 
         Args:
-            zone_name (str, optional): The name of the Zone node to retrieve. If not specified, checks that there is **at most** one zone in the base, else raises an error. Defaults to None.
-            base_name (str, optional): The Base in which to seek to zone retrieve. If not specified, checks that there is **at most** one base, else raises an error. Defaults to None.
+            zone (str, optional): The name of the Zone node to retrieve. If not specified, checks that there is **at most** one zone in the base, else raises an error. Defaults to None.
+            base (str, optional): The Base in which to seek to zone retrieve. If not specified, checks that there is **at most** one base, else raises an error. Defaults to None.
             time (float, optional): Time at which you want to retrieve the Zone node.
 
         Returns:
             CGNSNode: Returns a CGNS Zone node if found; otherwise, returns None.
         """
-        # get_base will look for default base_name and time
+        # get_base will look for default base and time
         base_node = self.get_base(base, time)
         if base_node is None:
-            # logger.warning(f"No base with name {base_name} in this tree")
+            # logger.warning(f"No base with name {base} in this tree")
             return None
 
-        # _zone_attribution will look for default base_name
+        # _zone_attribution will look for default base
         zone = self.resolve_zone(zone, base, time)
         if zone is None:
-            # logger.warning(f"No zone with name {zone_name} in this base ({base_name})")
+            # logger.warning(f"No zone with name {zone} in this base ({base})")
             return None
 
         return CGU.getNodeByPath(base_node, zone)
@@ -650,17 +650,17 @@ class SampleFeatures:
         """Get the type of a specific zone at a specified time.
 
         Args:
-            zone_name (str, optional): The name of the zone whose type you want to retrieve. Default is None.
-            base_name (str, optional): The name of the base in which the zone is located. Default is None.
+            zone (str, optional): The name of the zone whose type you want to retrieve. Default is None.
+            base (str, optional): The name of the base in which the zone is located. Default is None.
             time (float, optional): The timestamp for which you want to retrieve the zone type. Default is 0.0.
 
         Raises:
-            KeyError: Raised when the specified zone or base does not exist. You should first create the base/zone using `Sample.init_zone(zone_name, base_name)`.
+            KeyError: Raised when the specified zone or base does not exist. You should first create the base/zone using `Sample.init_zone(zone, base)`.
 
         Returns:
             str: The type of the specified zone as a string.
         """
-        # get_zone will look for default base_name, zone_name and time
+        # get_zone will look for default base, zone and time
         zone_node = self.get_zone(zone=zone, base=base, time=time)
 
         if zone_node is None:
@@ -679,15 +679,15 @@ class SampleFeatures:
         """Get the nodal tags for a specified base and zone at a given time.
 
         Args:
-            zone_name (str, optional): The name of the zone for which element connectivity data is requested. Defaults to None, indicating the default zone.
-            base_name (str, optional): The name of the base for which element connectivity data is requested. Defaults to None, indicating the default base.
+            zone (str, optional): The name of the zone for which element connectivity data is requested. Defaults to None, indicating the default zone.
+            base (str, optional): The name of the base for which element connectivity data is requested. Defaults to None, indicating the default base.
             time (float, optional): The time at which element connectivity data is requested. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
             dict[str, Array]: A dictionary where keys are nodal tags names and values are NumPy arrays containing the corresponding tag indices.
             The NumPy arrays have shape (num_nodal_tags).
         """
-        # get_zone will look for default base_name, zone_name and time
+        # get_zone will look for default base, zone and time
         zone_node = self.get_zone(zone=zone, base=base, time=time)
 
         if zone_node is None:
@@ -865,8 +865,8 @@ class SampleFeatures:
         """Get grid node coordinates from a specified base, zone, and time.
 
         Args:
-            zone_name (str, optional): The name of the zone to search for. Defaults to None.
-            base_name (str, optional): The name of the base to search for. Defaults to None.
+            zone (str, optional): The name of the zone to search for. Defaults to None.
+            base (str, optional): The name of the base to search for. Defaults to None.
             time (float, optional):  The time value to consider when searching for the zone. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Raises:
@@ -876,7 +876,7 @@ class SampleFeatures:
             Optional[Array]: A NumPy array containing the grid node coordinates.
             If no matching zone or grid coordinates are found, None is returned.
         """
-        # get_zone will look for default base_name, zone_name and time
+        # get_zone will look for default base, zone and time
         search_node = self.get_zone(zone=zone, base=base, time=time)
 
         if search_node is None:
@@ -929,15 +929,15 @@ class SampleFeatures:
 
         Args:
             nodes (Array): A numpy array containing the new node coordinates.
-            zone_name (str, optional): The name of the zone where the nodes should be updated. Defaults to None.
-            base_name (str, optional): The name of the base where the nodes should be updated. Defaults to None.
+            zone (str, optional): The name of the zone where the nodes should be updated. Defaults to None.
+            base (str, optional): The name of the base where the nodes should be updated. Defaults to None.
             time (float, optional): The time at which the node coordinates should be updated. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Raises:
             KeyError: Raised if the specified base or zone do not exist. You should first
-            create the base and zone using the `Sample.init_zone(zone_name,base_name)` method.
+            create the base and zone using the `Sample.init_zone(zone,base)` method.
         """
-        # get_zone will look for default base_name, zone_name and time
+        # get_zone will look for default base, zone and time
         zone_node = self.get_zone(zone=zone, base=base, time=time)
 
         if zone_node is None:
@@ -1072,7 +1072,7 @@ class SampleFeatures:
                 zones = (
                     [zone]
                     if zone is not None
-                    else self.get_zone_names(base_name=_base, time=_time)
+                    else self.get_zone_names(base=_base, time=_time)
                 )
                 for _zone in zones:
                     locations = (
@@ -1104,8 +1104,8 @@ class SampleFeatures:
             name (str): The name of the field to retrieve.
             location (str, optional): The location at which to retrieve the field. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
-            zone_name (str, optional): The name of the zone to search for. Defaults to None.
-            base_name (str, optional): The name of the base to search for. Defaults to None.
+            zone (str, optional): The name of the zone to search for. Defaults to None.
+            base (str, optional): The name of the base to search for. Defaults to None.
             time (float, optional): The time value to consider when searching for the field. If a specific time is not provided, the method will display the tree structure for the default time step.
 
         Returns:
@@ -1155,8 +1155,8 @@ class SampleFeatures:
                 ``np.float64`` (with a warning) for CGNS compatibility.
             location (str, optional): The grid location where the field will be stored. Defaults to 'Vertex'.
                 Possible values : :py:const:`plaid.constants.CGNS_FIELD_LOCATIONS`
-            zone_name (str, optional): The name of the zone where the field will be added. Defaults to None.
-            base_name (str, optional): The name of the base where the zone is located. Defaults to None.
+            zone (str, optional): The name of the zone where the field will be added. Defaults to None.
+            base (str, optional): The name of the base where the zone is located. Defaults to None.
             time (float, optional): The time associated with the field. Defaults to 0.
             warning_overwrite (bool, optional): Show warning if a preexisting field is being overwritten. Defaults to True.
 
@@ -1171,7 +1171,7 @@ class SampleFeatures:
         _check_names([name])
         # init_tree will look for default time
         self.init_tree(time)
-        # get_zone will look for default zone_name, base_name and time
+        # get_zone will look for default zone, base and time
         zone_node = self.get_zone(zone=zone, base=base, time=time)
 
         if zone_node is None:
@@ -1265,7 +1265,7 @@ class SampleFeatures:
         Returns:
             CGNSTree: The tree at the provided time (without the deleted node)
         """
-        # get_zone will look for default zone_name, base_name, and time
+        # get_zone will look for default zone, base, and time
         zone_node = self.get_zone(zone=zone, base=base, time=time)
         time = self.resolve_time(time)
         mesh_tree = self.data[time]

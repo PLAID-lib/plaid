@@ -24,19 +24,19 @@ class FeaturesBackend(Protocol):
         ...
 
     def get_zone_names(
-        self, base_name: Optional[str] = None, *, time: Optional[float] = None
+        self, base: Optional[str] = None, *, time: Optional[float] = None
     ) -> list[str]:
         """Get all available zone names within a base at a given time."""
         ...
 
-    def has_base(self, base_name: str, time: Optional[float] = None) -> bool:
+    def has_base(self, base: str, time: Optional[float] = None) -> bool:
         """Check if a base exists at a given time."""
         ...
 
     def has_zone(
         self,
-        zone_name: str,
-        base_name: Optional[str] = None,
+        zone: str,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> bool:
         """Check if a zone exists within a base at a given time."""
@@ -101,13 +101,13 @@ class DefaultManager:
             raise ValueError(f"time {time} does not exist in mesh times")
         self._default_active_time = time
 
-    def set_default_base(self, base_name: str, time: Optional[float] = None) -> None:
+    def set_default_base(self, base: str, time: Optional[float] = None) -> None:
         """Set the default base for the specified time (that will also be set as default if provided).
 
         The default base is a reference point for various operations in the system.
 
         Args:
-            base_name (str): The name of the base to be set as the default.
+            base (str): The name of the base to be set as the default.
             time (float, optional): The time at which the base should be set as default. If not provided, the default base and active zone will be set with the default time.
 
         Raises:
@@ -143,22 +143,22 @@ class DefaultManager:
         """
         if time is not None:
             self.set_default_time(time)
-        if base_name in (self._default_active_base, None):
+        if base in (self._default_active_base, None):
             return
-        if not self._features.has_base(base_name, time):
-            raise ValueError(f"base {base_name} does not exist at time {time}")
-        self._default_active_base = base_name
+        if not self._features.has_base(base, time):
+            raise ValueError(f"base {base} does not exist at time {time}")
+        self._default_active_base = base
 
     def set_default_zone_base(
-        self, zone_name: str, base_name: str, time: Optional[float] = None
+        self, zone: str, base: str, time: Optional[float] = None
     ) -> None:
         """Set the default base and active zone for the specified time (that will also be set as default if provided).
 
         The default base and active zone serve as reference points for various operations in the system.
 
         Args:
-            zone_name (str): The name of the zone to be set as the active zone.
-            base_name (str): The name of the base to be set as the default.
+            zone (str): The name of the zone to be set as the active zone.
+            base (str): The name of the base to be set as the default.
             time (float, optional): The time at which the base and zone should be set as default. If not provided, the default base and active zone will be set with the default time.
 
         Raises:
@@ -192,14 +192,14 @@ class DefaultManager:
                 print(sample.get_zone_type()) # type of the zone "ZoneY" of base "BaseB" at 0.5
                 >>> Unstructured
         """
-        self.set_default_base(base_name, time)
-        if zone_name in (self._default_active_zone, None):
+        self.set_default_base(base, time)
+        if zone in (self._default_active_zone, None):
             return
-        if not self._features.has_zone(zone_name, base_name, time):
+        if not self._features.has_zone(zone, base, time):
             raise ValueError(
-                f"zone {zone_name} does not exist for the base {base_name} at time {time}"
+                f"zone {zone} does not exist for the base {base} at time {time}"
             )
-        self._default_active_zone = zone_name
+        self._default_active_zone = zone
 
     def resolve_time(self, time: Optional[float] = None) -> float:
         """Resolve which time to use for an operation.
@@ -236,12 +236,12 @@ class DefaultManager:
         return resolved_time
 
     def resolve_base(
-        self, base_name: Optional[str] = None, time: Optional[float] = None
+        self, base: Optional[str] = None, time: Optional[float] = None
     ) -> Optional[str]:
         """Resolve which base name to use for an operation.
 
         Args:
-            base_name (str, optional): The base name to resolve. Defaults to None.
+            base (str, optional): The base name to resolve. Defaults to None.
             time (float, optional): The time at which to resolve the base. Defaults to None.
 
         Returns:
@@ -250,9 +250,9 @@ class DefaultManager:
         Raises:
             KeyError: If multiple bases exist and no default is set.
         """
-        base_name = base_name or self._default_active_base
-        if base_name:
-            return base_name
+        base = base or self._default_active_base
+        if base:
+            return base
 
         base_names = self._features.get_base_names(time=time)
         if "Global" in base_names:
@@ -267,15 +267,15 @@ class DefaultManager:
 
     def resolve_zone(
         self,
-        zone_name: Optional[str] = None,
-        base_name: Optional[str] = None,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> Optional[str]:
         """Resolve which zone name to use for an operation.
 
         Args:
-            zone_name (str, optional): The zone name to resolve. Defaults to None.
-            base_name (str, optional): The base name in which the zone is located. Defaults to None.
+            zone (str, optional): The zone name to resolve. Defaults to None.
+            base (str, optional): The base name in which the zone is located. Defaults to None.
             time (float, optional): The time at which to resolve the zone. Defaults
 
         Returns::
@@ -284,11 +284,11 @@ class DefaultManager:
         Raises:
             KeyError: If multiple zones exist and no default is set.
         """
-        zone_name = zone_name or self._default_active_zone
-        if zone_name:
-            return zone_name
+        zone = zone or self._default_active_zone
+        if zone:
+            return zone
 
-        resolved_base = self.resolve_base(base_name, time)
+        resolved_base = self.resolve_base(base, time)
         zone_names = self._features.get_zone_names(resolved_base, time=time)
 
         if len(zone_names) == 0:

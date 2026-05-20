@@ -26,7 +26,7 @@ from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
 from plaid import Sample
-from plaid.storage import save_to_disk, push_to_hub
+from plaid.storage import save_to_disk
 
 # %% [markdown]
 # ## Construction stages
@@ -108,8 +108,9 @@ if in_notebook():
 
 
 # %% [markdown]
-# ## Sample contructor, a function to buid an instance for the sample i
+# Sample contructor, a function to buid an instance for the sample i
 
+# %%
 def sample_constructor(i):
     #Creating mesh
     # this can be different for every sample

@@ -4,25 +4,22 @@ title: Problem definition
 
 # Problem definition
 
-{py:class}`~plaid.problem_definition.ProblemDefinition` defines a machine-learning
-task on top of a PLAID dataset.
+{py:class}`~plaid.problem_definition.ProblemDefinition` defines the feature
+selection and split configuration used on top of a PLAID dataset.
 
 In the current API, a problem definition stores:
 
 - `name`
-- `task`
 - `input_features` (`list[str]`)
 - `output_features` (`list[str]`)
-- `score_function`
 - `train_split` and `test_split`
-- `constant_features`
 
 ## Basic usage
 
 ```python
 from plaid.problem_definition import ProblemDefinition
 
-pb = ProblemDefinition(name="regression_1", task="regression")
+pb = ProblemDefinition(name="regression_1")
 
 pb.add_in_features_identifiers([
     "Base/Zone/GridCoordinates/CoordinateX",

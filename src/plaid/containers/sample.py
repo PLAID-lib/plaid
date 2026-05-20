@@ -171,24 +171,6 @@ class Sample(BaseModel):
         time = self.features.resolve_time(time)
         return CGU.getValueByPath(self.get_tree(time), path)
 
-    # def get_feature_from_details(self, feature_details):
-    #     #TODO (FB) dont know if this is useful
-
-    #     my_type = feature_details.pop("type", None)
-    #     my_sub_type = feature_details.pop("sub_type", None)
-    #     if my_type == 'coordinate':
-    #         print(feature_details)
-    #         return self.get_nodes(**feature_details).flatten()
-    #     elif my_type == 'field':
-    #         print(feature_details)
-    #         return self.get_field(**feature_details)
-    #     elif my_type == 'global':
-    #         return self.get_global(**feature_details)
-
-    #     print(feature_details)
-    #     print(my_type)
-    #     raise RuntimeError(f"Cant find a featurn for the given details")
-
     def add_feature(
         self,
         feature_path: str,
@@ -315,97 +297,6 @@ class Sample(BaseModel):
 
         return sample
 
-    # def extract_sample_by_path(
-    #     self,
-    #     feature_identifiers: Union[str, list[str]],
-    # ) -> Self:
-    #     """Extract features of the sample by their identifier(s) and return a new sample containing these features.
-
-    #     This method applies updates to scalars, fields, or nodes
-    #     using feature identifiers
-
-    #     Args:
-    #         feature_identifiers (dict or list of dict): One or more feature identifiers.
-
-    #     Returns:
-    #         Self: New sample containing the provided feature identifiers
-
-    #     Raises:
-    #         AssertionError: If types are inconsistent or identifiers contain unexpected keys.
-    #     """
-    #     assert isinstance(feature_identifiers, dict) or isinstance(
-    #         feature_identifiers, list
-    #     ), "Check types of feature_identifiers argument"
-    #     if isinstance(feature_identifiers, dict):
-    #         feature_identifiers = [feature_identifiers]
-
-    #     source_sample = self.copy()
-    #     source_sample.del_all_fields()
-
-    #     sample = Sample()
-
-    #     for feat_id in feature_identifiers:
-    #         feature = self.get_feature_from_identifier(feat_id)
-
-    #         if feature is not None:
-    #             # get time of current feature
-    #             time = self.features.resolve_time(time=feat_id.get("time"))
-
-    #             # if the constructed sample does not have a tree, add the one from the source sample, with no field
-    #             if len(sample.features.get_base_names(time=time)) == 0:
-    #                 sample.features.add_tree(source_sample.features.get_tree(time))
-    #                 for name in sample.features.get_global_names(time=time):
-    #                     sample.features.del_global(name, time)
-
-    #             sample.add_feature(feat_id, feature)
-
-    #     sample._extra_data = copy.deepcopy(self._extra_data)
-
-    #     return sample
-
-    # def merge_features(self, sample: Self, in_place: bool = False) -> Self:
-    #     """Merge features from another sample into the current sample.
-
-    #     This method applies updates to scalars, fields, or nodes
-    #     using features from another sample. When `in_place=False`, a deep copy of the sample is created
-    #     before applying updates, ensuring full isolation from the original.
-
-    #     Args:
-    #         sample (Sample): The sample from which features will be merged.
-    #         in_place (bool, optional): If True, modifies the current sample in place.
-    #             If False, returns a deep copy with updated features.
-
-    #     Returns:
-    #         Self: The updated sample (either the current instance or a new copy).
-    #     """
-    #     merged_dataset = self if in_place else self.copy()
-
-    #     all_features_identifiers = sample.get_all_features_identifiers()
-    #     all_features = sample.get_features_from_identifiers(all_features_identifiers)
-
-    #     feature_types = set([feat_id["type"] for feat_id in all_features_identifiers])
-
-    #     # if field or node features are to extract, copy the source sample and delete all fields
-    #     if "field" in feature_types or "nodes" in feature_types:
-    #         source_sample = sample.copy()
-    #         source_sample.del_all_fields()
-
-    #     # DELETE LATER IF CONFIRMED THIS IS NOT NEEDED (WITH GLOBAL, THERE IS ALWAYS A TREE)
-    #     # for feat_id in all_features_identifiers:
-    #     #     # if trying to add a field or nodes, must check if the corresponding tree exists, and add it if not
-    #     #     if feat_id["type"] in ["field", "nodes"]:
-    #     #         # get time of current feature
-    #     #         time = sample.features.resolve_time(time=feat_id.get("time"))
-
-    #     #         # if the constructed sample does not have a tree, add the one from the source sample, with no field
-    #     #         if not merged_dataset.features.get_tree(time):
-    #     #             merged_dataset.features.add_tree(source_sample.get_tree(time))
-
-    #     return merged_dataset.update_features_by_path(
-    #         feature_identifiers=all_features_identifiers,
-    #         features=all_features,
-    #         in_place=in_place,
-    #     )
 
     # -------------------------------------------------------------------------#
     def save_to_dir(
@@ -540,7 +431,7 @@ class Sample(BaseModel):
             ## Need to include all possible location within the count
             base_names = self.features.get_base_names(time=time)
             for bn in base_names:
-                zone_names = self.features.get_zone_names(base_name=bn, time=time)
+                zone_names = self.features.get_zone_names(base=bn, time=time)
                 for zn in zone_names:
                     for location in CGNS_FIELD_LOCATIONS:
                         field_names = field_names.union(
@@ -619,7 +510,7 @@ class Sample(BaseModel):
                 for base_name in base_names:
                     summary += f"        Base: {base_name}\n"
                     zone_names = self.features.get_zone_names(
-                        base_name=base_name, time=time
+                        base=base_name, time=time
                     )
                     for zone_name in zone_names:
                         summary += f"            Zone: {zone_name}\n"
@@ -689,7 +580,7 @@ class Sample(BaseModel):
                 base_names = self.features.get_base_names(time=time)
                 for base_name in base_names:
                     zone_names = self.features.get_zone_names(
-                        base_name=base_name, time=time
+                        base=base_name, time=time
                     )
                     for zone_name in zone_names:
                         for location in CGNS_FIELD_LOCATIONS:
