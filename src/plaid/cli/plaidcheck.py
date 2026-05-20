@@ -9,6 +9,7 @@ from typing import Any, Optional
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 
+from plaid.constants import CGNS_FIELD_LOCATIONS
 from plaid.storage import init_from_disk
 from plaid.storage.common.reader import (
     load_infos_from_disk,
@@ -214,14 +215,26 @@ def compute_checksum(sample):
 def check_dataset(
     path: Path,
     splits: Optional[list[str]] = None,
-    max_samples: Optional[int] = None,
 ) -> CheckReport:
     """Run integrity checks on a local PLAID dataset.
+
+    Algorithm overview:
+        1. Validate the required on-disk PLAID layout.
+        2. Load infos, metadata, and split-specific dataset/converter objects.
+        3. Validate top-level declarations from ``infos.yaml`` (backend, sample counts).
+        4. Resolve requested splits and report unknown ones.
+        5. For each checked split:
+           - verify split-level schema/value consistency,
+           - validate sample IDs,
+           - convert each sample and validate values,
+           - compute checksums for duplicate-data detection,
+           - build scalar signatures to detect duplicated DOE-like inputs.
+        6. Validate optional problem definitions against available features/splits/indices.
+        7. Emit an ``OK`` info message when no issue is detected.
 
     Args:
         path: Dataset directory.
         splits: Optional selected split names.
-        max_samples: Optional cap for per-sample checks.
 
     Returns:
         A populated :class:`CheckReport`.
@@ -276,7 +289,8 @@ def check_dataset(
     target_splits = set(splits) if splits else dataset_splits
     unknown_splits = target_splits - dataset_splits
     for split in sorted(unknown_splits):
-        report.add("error", "UNKNOWN_SPLIT", split, "Split not found in dataset")
+        available = ' and '.join(f'"{x}"' for x in dataset_splits)
+        report.add("error", "UNKNOWN_SPLIT", split, f"Split not found in dataset, available are {available}")
     target_splits = target_splits & dataset_splits
 
     checksum_report = {}
@@ -302,6 +316,7 @@ def check_dataset(
                 split,
                 "No constant schema for split",
             )
+
         if split not in flat_cst:
             report.add(
                 "error",
@@ -310,88 +325,11 @@ def check_dataset(
                 "No constant values for split",
             )
 
-        ids = getattr(dataset, "ids", None)
-        if ids is not None and isinstance(expected_n, int):
-            id_list = [int(i) for i in ids]
-            duplicates = len(id_list) - len(set(id_list))
-            if duplicates > 0:
-                report.add(
-                    "warning",
-                    "DUPLICATED_SAMPLE_IDS",
-                    split,
-                    f"Found {duplicates} duplicated sample id(s)",
-                )
 
-            expected_ids = set(range(expected_n))
-            missing_ids = sorted(expected_ids - set(id_list))
-            extra_ids = sorted(set(id_list) - expected_ids)
-            if missing_ids:
-                report.add(
-                    "warning",
-                    "MISSING_SAMPLE_IDS",
-                    split,
-                    f"Missing sample ids (first 10): {missing_ids[:10]}",
-                )
-            if extra_ids:
-                report.add(
-                    "warning",
-                    "UNEXPECTED_SAMPLE_IDS",
-                    split,
-                    f"Unexpected sample ids (first 10): {extra_ids[:10]}",
-                )
-
-        # Deep-check a bounded number of samples to validate content and detect
-        # duplicated scalar DOE signatures without necessarily scanning all data.
-        n_to_check = actual_n if max_samples is None else min(max_samples, actual_n)
-        doe_signatures: dict[tuple[Any, ...], int] = {}
-        for idx in range(n_to_check):
-            # CGNS-backed datasets expose sample trees directly through
-            # `to_plaid`, so validate global scalar values from the tree API.
-            if converter.backend == "cgns":
-                try:
-                    sample = converter.to_plaid(dataset, idx)
-                except Exception as exc:
-                    report.add(
-                        "error",
-                        "SAMPLE_CONVERSION_ERROR",
-                        f"{split}[{idx}]",
-                        str(exc),
-                    )
-                    continue
-
-                # Track whole-sample checksums to detect duplicated data across
-                # all checked splits after the per-split loop completes.
-                sample_checksum = compute_checksum(sample)
-                checksum_report[(idx, split)] = sample_checksum
-
-                scalar_signature: list[Any] = []
-                for global_name in sample.get_global_names():
-                    value = sample.get_feature_by_path(global_name)
-                    if _is_branch_without_data(sample, global_name):
-                        continue
-                    issue = _check_numeric_content(value)
-                    if issue is not None:
-                        report.add(
-                            "warning",
-                            "INVALID_DATA_VALUE A",
-                            f"{split}[{idx}] global/{global_name}",
-                            issue,
-                        )
-                    arr = np.asarray(value)
-                    if arr.size == 1 and np.issubdtype(arr.dtype, np.number):
-                        scalar_signature.append(
-                            ("global", global_name, float(arr.ravel()[0]))
-                        )
-
-                sig_key = tuple(sorted(scalar_signature))
-                if sig_key:
-                    doe_signatures[sig_key] = doe_signatures.get(sig_key, 0) + 1
-                continue
-
-            # Non-CGNS backends are normalized to dictionaries so validation can
-            # iterate over time keys and feature maps in a backend-neutral way.
+        # Deep-check to validate content and detect non valide data in fields (nan inf)
+        for idx in range(actual_n):
             try:
-                sample_dict = converter.to_dict(dataset, idx)
+                sample = converter.to_plaid(dataset, idx)
             except Exception as exc:
                 report.add(
                     "error",
@@ -401,55 +339,60 @@ def check_dataset(
                 )
                 continue
 
-            # Track whole-sample checksums for duplicate data detection.
-            sample_checksum = compute_checksum(sample_dict)
+            # Track whole-sample checksums to detect duplicated data across
+            # all checked splits after the per-split loop completes.
+            sample_checksum = compute_checksum(sample)
             checksum_report[(idx, split)] = sample_checksum
 
-            # Validate each materialized feature value while ignoring branch
-            # entries that exist only to group child feature paths.
-            for time_key, feat_map in sample_dict.items():
-                for feature_name, value in feat_map.items():
-                    if _is_branch_without_data_in_mapping(
-                        feature_name, value, feat_map
-                    ):
-                        continue
+            for global_name in sample.get_global_names():
+                global_path = "Global/" + global_name
+                value = sample.get_feature_by_path(global_path)
 
-                    issue = _check_numeric_content(value)
+                if _is_branch_without_data(sample, global_path):
+                    continue
 
-                    if issue is not None:
-                        report.add(
-                            "warning",
-                            "INVALID_DATA_VALUE B",
-                            f"{split}[{idx}]/{time_key} {feature_name}",
-                            issue,
-                        )
+                issue = _check_numeric_content(value)
+                if issue is not None:
+                    report.add(
+                        "warning",
+                        "INVALID_DATA_VALUE A",
+                        f"{split}[{idx}] global/{global_name}",
+                        issue,
+                    )
 
-            # Build a scalar signature for duplicate DOE input detection within
-            # this split. Only scalar numeric values are included.
-            scalar_signature: list[Any] = []
-            for time_key, feat_map in sample_dict.items():
-                for feature_name, value in feat_map.items():
-                    arr = np.asarray(value)
-                    if arr.size == 1 and np.issubdtype(arr.dtype, np.number):
-                        scalar_signature.append(
-                            (str(time_key), feature_name, float(arr.ravel()[0]))
-                        )
+            for time in sample.get_all_time_values():
+                local_bases = sample.get_base_names(time=time)
+                for base in local_bases:
+                    zone_names = sample.features.get_zone_names(
+                        base=base, time=time
+                    )
+                    for zone in zone_names:
+                        for location in CGNS_FIELD_LOCATIONS:
+                            field_names = sample.get_field_names(
+                                location=location,
+                                zone=zone,
+                                base=base,
+                                time=time,
+                            )
 
-            sig_key = tuple(sorted(scalar_signature))
-            if sig_key:
-                doe_signatures[sig_key] = doe_signatures.get(sig_key, 0) + 1
-
-        repeated = sum(1 for count in doe_signatures.values() if count > 1)
-        if repeated > 0:
-            report.add(
-                "warning",
-                "DUPLICATED_DOE_INPUTS",
-                split,
-                f"Detected {repeated} duplicated scalar signature(s) in checked samples",
-            )
+                            for f_name in field_names:
+                                field_value  = sample.get_field(f_name,
+                                                                location= location,
+                                                                zone=zone,
+                                                                base=base,
+                                                                time=time)
+                                issue = _check_numeric_content(field_value)
+                                if issue is not None:
+                                    report.add(
+                                        "warning",
+                                        "INVALID_DATA_VALUE A",
+                                        f"{split}[{idx}][{time}] {base}/{zone}/{location}/{f_name}",
+                                        issue,
+                                    )
 
     # Compare checksums from every checked sample to flag identical sample data.
-    if len(checksum_report) != len(np.unique(checksum_report.values())):
+    checksum_values = list(checksum_report.values())
+    if len(checksum_report) != len(np.unique(checksum_values)):
         k = list(checksum_report.keys())
         v = list(checksum_report.values())
         uni, cou = np.unique(v, return_counts=True)
@@ -464,7 +407,6 @@ def check_dataset(
                 str(duplicated),
                 "duplicated sample",
             )
-
     # If problem definitions are present, verify that their feature references,
     # split names, and sample indices are compatible with the dataset.
     pb_def_dir = path / "problem_definitions"
@@ -478,7 +420,7 @@ def check_dataset(
                 "problem_definitions",
                 str(exc),
             )
-            pb_defs = {}
+            return report
 
         all_features = set(variable_schema.keys())
         for split_cst in flat_cst.values():
@@ -493,13 +435,6 @@ def check_dataset(
                         f"problem_definitions/{pb_name}",
                         f"Unknown input feature: {feat}",
                     )
-                if "GlobalConvergenceHistory" not in feat and "Global" not in feat:
-                    report.add(
-                        "warning",
-                        "DOE_INPUT_NOT_SCALAR",
-                        f"problem_definitions/{pb_name}",
-                        f"Input feature may not be scalar/global for DOE: {feat}",
-                    )
 
             for feat in pb_def.output_features:
                 if feat not in all_features:
@@ -513,6 +448,15 @@ def check_dataset(
             for split_dict_name in ["train_split", "test_split"]:
                 split_dict = getattr(pb_def, split_dict_name)
                 if split_dict is None:
+                    continue
+                #split_dict must have only one elements
+                if len(split_dict) > 1 :
+                    report.add(
+                        "error",
+                        "PB_DEF_SPLIT",
+                        f"problem_definitions/{pb_name}",
+                        f"{split_dict_name} has more than 1 split: {list(split_dict.keys())}",
+                    )
                     continue
                 split_name = next(iter(split_dict.keys()))
                 split_ids = next(iter(split_dict.values()))
@@ -565,12 +509,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Split to check (can be provided multiple times)",
     )
     parser.add_argument(
-        "--max-samples",
-        type=int,
-        default=None,
-        help="Maximum number of samples per split for deep checks",
-    )
-    parser.add_argument(
         "--json",
         action="store_true",
         help="Print report in JSON format",
@@ -597,8 +535,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     report = check_dataset(
         path=args.path,
-        splits=args.split,
-        max_samples=args.max_samples,
+        splits=args.split
     )
 
     if args.json:
