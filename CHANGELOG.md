@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixes
 
+- (constants) fix memmaps types correctly, by inferring from constant_schema.
+
 ### Removed
 
 ## [0.1.15] - 2026-03-25
