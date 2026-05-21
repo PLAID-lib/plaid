@@ -162,9 +162,12 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
                     arr = np.asarray(value)
                     assert arr.ndim == spec["ndim"]
 
-                    # FORCE contiguous + little-endian
-                    arr = np.ascontiguousarray(arr)
-                    arr = arr.astype(arr.dtype.newbyteorder("<"), copy=False)
+                    # Enforce schema dtype (e.g. float32 for floating leaves),
+                    # little-endian, contiguous. This keeps constants aligned
+                    # with the dtype declared in constant_schema.yaml (and with
+                    # the variable side, which is stored as float32 for floats).
+                    target_dtype = np.dtype(spec["dtype"]).newbyteorder("<")
+                    arr = np.ascontiguousarray(arr, dtype=target_dtype)
 
                     f.write(arr.tobytes(order="C"))
 
