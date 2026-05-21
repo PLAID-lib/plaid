@@ -4,6 +4,7 @@ This module provides utilities for preprocessing PLAID samples into formats suit
 for storage, including flattening CGNS trees, inferring data types, and handling
 parallel processing of sample shards.
 """
+
 import hashlib
 import logging
 import multiprocessing as mp
@@ -42,7 +43,7 @@ def infer_dtype(value: Any) -> dict[str, int | str]:
             dt = "int64"
         elif np.issubdtype(dtype, np.str_):
             dt = "string"
-        elif np.issubdtype(dtype, np.dtype('S1')):
+        elif np.issubdtype(dtype, np.dtype("S1")):
             dt = "S1"
         else:  # pragma: no cover
             raise ValueError(f"Unrecognized scalar dtype: {dtype}")
@@ -475,19 +476,26 @@ def preprocess_splits(
 
         split_n_samples[split_name] = n_samples_total
 
-        # Determine truly constant paths (same hash across all samples)
-        constant_paths = [
-            p
-            for p, entry in split_constant_hashes.items()
-            if len(entry["hashes"]) == 1 and entry["count"] == n_samples_total
-        ]
-
         # Retrieve **values** only for constant paths from first sample
         if gen_kwargs:
             first_sample = next(generator_fn([shards_ids_list[0]]))  # pragma: no cover
         else:
             first_sample = next(generator_fn())
         sample_dict, _, _ = build_sample_dict(first_sample)
+
+        # Determine truly constant paths (same hash across all samples). A split
+        # with a single sample has no cross-sample repetition to prove that a
+        # value is constant. Keep only None-valued structural paths as constants
+        # so sample-based backends still have typed per-sample data columns.
+        # this make possible to work with dataset with only one sample
+        if n_samples_total <= 1:
+            constant_paths = [p for p, value in sample_dict.items() if value is None]
+        else:
+            constant_paths = [
+                p
+                for p, entry in split_constant_hashes.items()
+                if len(entry["hashes"]) == 1 and entry["count"] == n_samples_total
+            ]
 
         split_flat_cst[split_name] = {p: sample_dict[p] for p in sorted(constant_paths)}
         split_var_path[split_name] = {
@@ -538,7 +546,7 @@ def preprocess(
 
     # --- build features ---
     var_features = sorted(list(set().union(*split_var_path.values())))
-    #if len(var_features) == 0:  # pragma: no cover
+    # if len(var_features) == 0:  # pragma: no cover
     #    raise ValueError(
     #        "no variable feature found, is your dataset variable through samples?"
     #    )

@@ -201,6 +201,38 @@ class Test_Storage:
         assert "test_field_same_size" in sample.get_field_names()
         assert sample.get_field("test_field_same_size").shape[0] == 17
 
+    @pytest.mark.parametrize("backend", ["cgns", "hf_datasets", "zarr"])
+    def test_single_sample_dataset_roundtrip(
+        self,
+        backend,
+        tmp_path,
+        samples_with_extra_global,
+        infos,
+    ):
+        """HF datasets and Zarr backends support splits with one sample."""
+        test_dir = tmp_path / f"test_single_sample_{backend}"
+
+        def single_sample_constructor(sample_id):
+            return samples_with_extra_global[sample_id]
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=single_sample_constructor,
+            ids={"train": [0]},
+            backend=backend,
+            infos=infos,
+            overwrite=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+        dataset = datasetdict["train"]
+        converter = converterdict["train"]
+
+        assert len(dataset) == 1
+        assert converter.num_samples == 1
+        self.assert_sample(converter.to_plaid(dataset, 0))
+        self.assert_sample(converter.sample_to_plaid(dataset[0]))
+
     # ------------------------------------------------------------------------------
     #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
     # ------------------------------------------------------------------------------
