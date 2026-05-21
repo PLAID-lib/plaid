@@ -1272,6 +1272,34 @@ class Test_Sample:
             in_place=False,
         )
 
+    def test_get_all_features_by_type(self, sample_with_tree_and_scalar):
+
+        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("field")
+        assert "Base_2_2/Zone/VertexFields/big_node_field" in feat_paths
+        assert "Base_2_2/Zone/VertexFields/test_node_field_1" in feat_paths
+        assert "Base_2_2/Zone/VertexFields/OriginalIds" in feat_paths
+        assert "Base_2_2/Zone/CellCenterFields/test_elem_field_1" in feat_paths
+        assert "Base_2_2/Zone/CellCenterFields/OriginalIds" in feat_paths
+
+        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("global")
+        assert "Global/r" in feat_paths
+        assert "Global/test_scalar_1" in feat_paths
+
+        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("coordinate")
+        assert "Base_2_2/Zone/GridCoordinates/CoordinateX" in feat_paths
+        assert "Base_2_2/Zone/GridCoordinates/CoordinateY" in feat_paths
+
+        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type(
+            "boundary_condition"
+        )
+        assert "Base_2_2/Zone/ZoneBC/tag" in feat_paths
+        assert "Base_2_2/Zone/ZoneBC/tag/PointList" in feat_paths
+        assert "Base_2_2/Zone/ZoneBC/tag/GridLocation" in feat_paths
+
+        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("elements")
+        assert "Base_2_2/Zone/Elements_TRI_3/ElementRange" in feat_paths
+        assert "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity" in feat_paths
+
     def test_get_all_features_identifiers_by_type(self, sample_with_tree_and_scalar):
         feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
             "scalar"

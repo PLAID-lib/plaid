@@ -33,6 +33,7 @@ from ..constants import (
 from ..utils import cgns_helper as CGH
 from ..utils.base import delegate_methods, safe_len
 from .features import SampleFeatures
+from .utils import get_feature_details_from_path
 
 logger = logging.getLogger(__name__)
 
@@ -147,11 +148,25 @@ class Sample(BaseModel):
                 )
             ]
 
+    def get_all_features_by_type(self, type: str) -> list[str]:
+        """Get the list of all CGNS paths of features of a given type (eg 'field', 'global', 'coordinate', etc...)."""
+        flat_tree, _ = CGH.flatten_cgns_tree(self.features.get_tree())
+        out = []
+        for path in flat_tree:
+            feature_details = get_feature_details_from_path(path)
+            if feature_details["type"] == type:
+                if type == "global":
+                    if feature_details["sub_type"] == "scalar":
+                        out.append(path)
+                else:
+                    out.append(path)
+        return out
+
     def get_feature_by_path(
         self, path: str, time: Optional[int] = None
     ) -> np.number | np.ndarray | None:
-        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
-
+        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.'
+        '
         Args:
             path (str): CGNS node path relative to the mesh root (for example
                 "BaseName/ZoneName/GridCoordinates/CoordinateX" or

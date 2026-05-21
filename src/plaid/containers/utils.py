@@ -239,13 +239,27 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     # ----------------------
     # Fields (generic location)
     # ----------------------
-    if node in path_to_location:
+    #Base_3_3/Zone/VertexFields/RU1:
+    if (
+        node in path_to_location
+        and len(split_path) == 4
+        and split_path[3] != "GridLocation"
+    ):
         feat["type"] = "field"
         feat["location"] = path_to_location[node]
+        feat["name"] = split_path[3]
 
-        if len(split_path) == 4:
-            feat["name"] = split_path[3]
-
+        return feat
+    # ----------------------
+    # special case for Integration point fields
+    # ----------------------
+    # Base_3_3/Zone/cucum1_IntegrationPointFields/cucum1
+    if ( len(split_path) == 4
+        and split_path[2].endswith("IntegrationPointFields")
+    ):
+        feat["type"] = "field"
+        feat["location"] = "IntegrationPoint"
+        feat["name"] = split_path[3]
         return feat
 
     # ----------------------
