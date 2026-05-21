@@ -394,12 +394,14 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
     # ----------------------
     # Fields (generic location)
     # ----------------------
-    if node in path_to_location:
+    if (
+        node in path_to_location
+        and len(split_path) == 4
+        and split_path[3] != "GridLocation"
+    ):
         feat["type"] = "field"
         feat["location"] = path_to_location[node]
-
-        if len(split_path) == 4:
-            feat["name"] = split_path[3]
+        feat["name"] = split_path[3]
 
         return feat
 

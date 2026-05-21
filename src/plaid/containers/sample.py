@@ -38,7 +38,10 @@ from plaid.constants import (
 )
 from plaid.containers.feature_identifier import FeatureIdentifier
 from plaid.containers.features import SampleFeatures
-from plaid.containers.utils import get_feature_type_and_details_from
+from plaid.containers.utils import (
+    get_feature_details_from_path,
+    get_feature_type_and_details_from,
+)
 from plaid.types import (
     Feature,
     Scalar,
@@ -262,6 +265,20 @@ class Sample(BaseModel):
             for feat_id in all_features_identifiers
             if feat_id["type"] == feature_type
         ]
+
+    def get_all_features_by_type(self, type: str) -> list[str]:
+        """Get the list of all CGNS paths of features of a given type (eg 'field', 'global', 'coordinate', etc...)."""
+        flat_tree, _ = CGH.flatten_cgns_tree(self.features.get_tree())
+        out = []
+        for path in flat_tree:
+            feature_details = get_feature_details_from_path(path)
+            if feature_details["type"] == type:
+                if type == "global":
+                    if feature_details["sub_type"] == "scalar":
+                        out.append(path)
+                else:
+                    out.append(path)
+        return out
 
     def get_feature_by_path(self, path: str, time: Optional[int] = None) -> Feature:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style path.
