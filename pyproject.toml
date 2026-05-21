@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-    "setuptools>=60",
+    "setuptools>=80",
     "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
@@ -8,7 +8,7 @@ build-backend = "setuptools.build_meta"
 name = "pyplaid"
 authors = [{name = "Safran", email = "fabien.casenave@safrangroup.com"}]
 description = "A package that implements a data model tailored for AI and ML in the context of physics problems"
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.11, <=3.14.3"
 dynamic = ["version"]
 keywords=[
     "machine learning",
@@ -18,11 +18,11 @@ keywords=[
 ]
 classifiers = [
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: POSIX",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Mathematics",
@@ -46,6 +46,9 @@ viewer = [
     "vtk>=9.6.1",
 ]
 
+license = "BSD-3-Clause"
+license-files = ["LICENSE.txt"]
+
 [tool.setuptools_scm]
 write_to = "src/plaid/_version.py"
 
@@ -53,10 +56,6 @@ write_to = "src/plaid/_version.py"
 homepage = "https://plaid-lib.github.io"
 documentation = "https://plaid-lib.readthedocs.io"
 repository = "https://github.com/PLAID-lib/plaid"
-
-[project.license]
-text="BSD 3-Clause License"
-files=["LICENSE.txt"]
 
 [project.readme]
 file="README.md"
