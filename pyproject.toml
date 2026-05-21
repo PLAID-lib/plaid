@@ -64,6 +64,7 @@ content-type = "text/markdown"
 
 [project.scripts]
 plaid-check = "plaid.cli.plaidcheck:main"
+plaid-viewer = "plaid.viewer.cli:main"
 
 [tool.setuptools]
 platforms = [
@@ -101,5 +102,3 @@ omit = ["src/plaid/examples/*"]
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"
 
-[project.scripts]
-plaid-viewer = "plaid.viewer.cli:main"
