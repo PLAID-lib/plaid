@@ -980,18 +980,26 @@ class PlaidDatasetService:
         try:
             sample = self.load_sample(ref)
         except Exception as exc:  # noqa: BLE001 - surface error to API caller
+            # Always log the full traceback: ``str(exc)`` can be empty
+            # for some C-extension exceptions (VTK / CGNS / HDF5), in
+            # which case the API response would otherwise reduce to a
+            # bare "Failed to load sample:" with no diagnostic value.
+            logger.exception("Failed to load sample %s", ref.encode())
+            message = str(exc) or exc.__class__.__name__
             return ValidationResult(
                 ref=SampleRefDTO.from_ref(ref),
                 ok=False,
-                errors=[f"Failed to load sample: {exc}"],
+                errors=[f"Failed to load sample ({type(exc).__name__}): {message}"],
             )
         try:
             report = sample.check_completeness()
         except Exception as exc:  # noqa: BLE001
+            logger.exception("Completeness check failed for sample %s", ref.encode())
+            message = str(exc) or exc.__class__.__name__
             return ValidationResult(
                 ref=SampleRefDTO.from_ref(ref),
                 ok=False,
-                errors=[f"Completeness check failed: {exc}"],
+                errors=[f"Completeness check failed ({type(exc).__name__}): {message}"],
             )
         ok = isinstance(report, str) and "error" not in report.lower()
         if report and not ok:
