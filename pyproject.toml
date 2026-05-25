@@ -42,7 +42,7 @@ dependencies = [
 viewer = [
     "trame>=3.6,<4.0",
     "trame-vtk>=2.8,<3.0",
-    "trame-vuetify>=2.7,<3.0",
+    "trame-vuetify>=2.7,<4.0",
     "vtk>=9.6.1",
 ]
 
