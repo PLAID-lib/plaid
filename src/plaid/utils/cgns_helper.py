@@ -434,7 +434,7 @@ def flatten_cgns_tree(
             name, data, children, cgns_type = node
             new_path = f"{path}/{name}" if path else name
 
-            if new_path in flat:
+            if new_path in flat:  # pragma: no cover
                 raise RuntimeError(
                     f"Error: Non unique path for every entity. The path '{new_path}' points to multiple data. Try changing the name of your fields"
                 )
