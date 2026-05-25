@@ -3,6 +3,7 @@
 This module provides bridge functions for converting between PLAID samples and
 storage formats, including flattening/unflattening and sample reconstruction.
 """
+
 from typing import Any, Iterable, Optional
 
 import numpy as np

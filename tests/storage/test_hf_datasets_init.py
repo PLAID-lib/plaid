@@ -26,7 +26,9 @@ def test_hf_backend_init_from_disk_delegates(monkeypatch):
         call["path"] = path
         return {"train": "dataset"}
 
-    monkeypatch.setattr(hf_datasets, "init_datasetdict_from_disk", fake_init_datasetdict_from_disk)
+    monkeypatch.setattr(
+        hf_datasets, "init_datasetdict_from_disk", fake_init_datasetdict_from_disk
+    )
 
     local_path = Path("/tmp/my_dataset")
     result = HFBackend.init_from_disk(local_path)
@@ -38,7 +40,9 @@ def test_hf_backend_init_from_disk_delegates(monkeypatch):
 def test_hf_backend_download_from_hub_delegates(monkeypatch):
     call = {}
 
-    def fake_download_datasetdict_from_hub(repo_id, local_dir, split_ids, features, overwrite):
+    def fake_download_datasetdict_from_hub(
+        repo_id, local_dir, split_ids, features, overwrite
+    ):
         call["repo_id"] = repo_id
         call["local_dir"] = local_dir
         call["split_ids"] = split_ids
@@ -46,7 +50,9 @@ def test_hf_backend_download_from_hub_delegates(monkeypatch):
         call["overwrite"] = overwrite
         return "downloaded_path"
 
-    monkeypatch.setattr(hf_datasets, "download_datasetdict_from_hub", fake_download_datasetdict_from_hub)
+    monkeypatch.setattr(
+        hf_datasets, "download_datasetdict_from_hub", fake_download_datasetdict_from_hub
+    )
 
     result = HFBackend.download_from_hub(
         repo_id="dummy/repo",
@@ -98,7 +104,9 @@ def test_hf_backend_streaming_from_hub_delegates(monkeypatch):
 def test_hf_backend_streaming_from_hub_default_args(monkeypatch):
     call = {}
 
-    def fake_init_datasetdict_streaming_from_hub(repo_id, split_ids=None, features=None):
+    def fake_init_datasetdict_streaming_from_hub(
+        repo_id, split_ids=None, features=None
+    ):
         call["repo_id"] = repo_id
         call["split_ids"] = split_ids
         call["features"] = features
@@ -127,7 +135,9 @@ def test_hf_backend_generate_to_disk_delegates(monkeypatch):
         call.update(kwargs)
         return "ok"
 
-    monkeypatch.setattr(hf_datasets, "generate_datasetdict_to_disk", fake_generate_datasetdict_to_disk)
+    monkeypatch.setattr(
+        hf_datasets, "generate_datasetdict_to_disk", fake_generate_datasetdict_to_disk
+    )
 
     generators = {"train": lambda: iter(())}
     variable_schema = {"Global/temperature": {"dtype": "float32", "ndim": 1}}
@@ -185,18 +195,20 @@ def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
         repo_id,
         infos,
         local_dir=None,
-        viewer=False,
-        pretty_name=None,
-        dataset_long_description=None,
-        illustration_urls=None,
-        arxiv_paper_urls=None,
+        viewer=False,  # noqa: ARG001
+        pretty_name=None,  # noqa: ARG001
+        dataset_long_description=None,  # noqa: ARG001
+        illustration_urls=None,  # noqa: ARG001
+        arxiv_paper_urls=None,  # noqa: ARG001
     ):
         call["repo_id"] = repo_id
         call["infos"] = infos
         call["local_dir"] = local_dir
         return "configured"
 
-    monkeypatch.setattr(hf_datasets, "configure_dataset_card", fake_configure_dataset_card)
+    monkeypatch.setattr(
+        hf_datasets, "configure_dataset_card", fake_configure_dataset_card
+    )
 
     infos = {"legal": {"owner": "owner", "license": "cc-by-4.0"}}
     result = HFBackend.configure_dataset_card("dummy/repo", infos)
@@ -237,7 +249,9 @@ def test_hf_backend_sample_to_var_sample_dict_delegates(monkeypatch):
         call["hf_sample"] = hf_sample
         return {"field": [4, 5]}
 
-    monkeypatch.setattr(hf_datasets, "sample_to_var_sample_dict", fake_sample_to_var_sample_dict)
+    monkeypatch.setattr(
+        hf_datasets, "sample_to_var_sample_dict", fake_sample_to_var_sample_dict
+    )
 
     sample = {"Base": {"Zone": {}}}
     result = HFBackend.sample_to_var_sample_dict(sample)

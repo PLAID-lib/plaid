@@ -16,6 +16,7 @@ BACKENDS = {
 
 
 def get_backend(name: str) -> type[BackendModule]:
+    """Return backend module."""
     if name not in BACKENDS:
         raise ValueError(
             f"Error! backend '{name}' not available, option are: {list(BACKENDS.keys())}"

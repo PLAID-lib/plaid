@@ -1,4 +1,5 @@
 """Implementation of the `Sample` container."""
+
 # %% Imports
 import sys
 from typing import TYPE_CHECKING
@@ -165,8 +166,8 @@ class Sample(BaseModel):
     def get_feature_by_path(
         self, path: str, time: Optional[int] = None
     ) -> np.number | np.ndarray | None:
-        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.'
-        '
+        """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
+
         Args:
             path (str): CGNS node path relative to the mesh root (for example
                 "BaseName/ZoneName/GridCoordinates/CoordinateX" or
@@ -259,7 +260,7 @@ class Sample(BaseModel):
               ``path`` when present.
         """
         time = self.features.resolve_time(time)
-#        return CGU.getValueByPath(self.get_tree(time), path)
+        #        return CGU.getValueByPath(self.get_tree(time), path)
 
         updated_tree = None
         node = CGU.getNodeByPath(self.get_tree(time), path)
@@ -271,7 +272,6 @@ class Sample(BaseModel):
             raise KeyError(f"There is no field with name {path} in the specified zone.")
 
         return updated_tree
-
 
     def update_features_by_path(
         self,
@@ -311,7 +311,6 @@ class Sample(BaseModel):
             sample.add_feature(feat_id, feat)
 
         return sample
-
 
     # -------------------------------------------------------------------------#
     def save_to_dir(
@@ -524,9 +523,7 @@ class Sample(BaseModel):
                 base_names = self.features.get_base_names(time=time)
                 for base_name in base_names:
                     summary += f"        Base: {base_name}\n"
-                    zone_names = self.features.get_zone_names(
-                        base=base_name, time=time
-                    )
+                    zone_names = self.features.get_zone_names(base=base_name, time=time)
                     for zone_name in zone_names:
                         summary += f"            Zone: {zone_name}\n"
                         # Nodes, nodal tags and fields at verticies
@@ -594,9 +591,7 @@ class Sample(BaseModel):
             for time in times:
                 base_names = self.features.get_base_names(time=time)
                 for base_name in base_names:
-                    zone_names = self.features.get_zone_names(
-                        base=base_name, time=time
-                    )
+                    zone_names = self.features.get_zone_names(base=base_name, time=time)
                     for zone_name in zone_names:
                         for location in CGNS_FIELD_LOCATIONS:
                             field_names = self.get_field_names(
@@ -617,4 +612,7 @@ class Sample(BaseModel):
 if TYPE_CHECKING:
     # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING
     # automatically adds all its methods to Sample's autocomplete.
-    class Sample(Sample, SampleFeatures): ...
+    class Sample(Sample, SampleFeatures):
+        """Sample type enriched with SampleFeatures protocol methods for type checkers."""
+
+        ...

@@ -26,7 +26,9 @@ def test_zarr_backend_init_from_disk_delegates(monkeypatch):
         call["path"] = path
         return {"train": "dataset"}
 
-    monkeypatch.setattr(zarr, "init_datasetdict_from_disk", fake_init_datasetdict_from_disk)
+    monkeypatch.setattr(
+        zarr, "init_datasetdict_from_disk", fake_init_datasetdict_from_disk
+    )
 
     local_path = Path("/tmp/my_dataset")
     result = ZarrBackend.init_from_disk(local_path)
@@ -48,7 +50,9 @@ def test_zarr_backend_download_from_hub_delegates(monkeypatch):
         call["overwrite"] = overwrite
         return "downloaded_path"
 
-    monkeypatch.setattr(zarr, "download_datasetdict_from_hub", fake_download_datasetdict_from_hub)
+    monkeypatch.setattr(
+        zarr, "download_datasetdict_from_hub", fake_download_datasetdict_from_hub
+    )
 
     backend = ZarrBackend()
     result = backend.download_from_hub("dummy/repo", "/tmp/local")
@@ -98,7 +102,9 @@ def test_zarr_backend_generate_to_disk_delegates(monkeypatch):
         call.update(kwargs)
         return "ok"
 
-    monkeypatch.setattr(zarr, "generate_datasetdict_to_disk", fake_generate_datasetdict_to_disk)
+    monkeypatch.setattr(
+        zarr, "generate_datasetdict_to_disk", fake_generate_datasetdict_to_disk
+    )
 
     generators = {"train": lambda: iter(())}
     variable_schema = {"Global/temperature": {"dtype": "float32", "ndim": 1}}
@@ -156,11 +162,11 @@ def test_zarr_backend_configure_dataset_card_delegates(monkeypatch):
         repo_id,
         infos,
         local_dir,
-        viewer=False,
-        pretty_name=None,
-        dataset_long_description=None,
-        illustration_urls=None,
-        arxiv_paper_urls=None,
+        viewer=False,  # noqa: ARG001
+        pretty_name=None,  # noqa: ARG001
+        dataset_long_description=None,  # noqa: ARG001
+        illustration_urls=None,  # noqa: ARG001
+        arxiv_paper_urls=None,  # noqa: ARG001
     ):
         call["repo_id"] = repo_id
         call["infos"] = infos
@@ -208,7 +214,9 @@ def test_zarr_backend_sample_to_var_sample_dict_delegates(monkeypatch):
         call["zarr_sample"] = zarr_sample
         return {"field": [4, 5]}
 
-    monkeypatch.setattr(zarr, "sample_to_var_sample_dict", fake_sample_to_var_sample_dict)
+    monkeypatch.setattr(
+        zarr, "sample_to_var_sample_dict", fake_sample_to_var_sample_dict
+    )
 
     sample = {"Base": {"Zone": {}}}
     result = ZarrBackend.sample_to_var_sample_dict(sample)

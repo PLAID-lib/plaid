@@ -1,4 +1,5 @@
 """Custom types for PLAID library."""
+
 from .cgns_types import (
     CGNSNode,
     CGNSTree,

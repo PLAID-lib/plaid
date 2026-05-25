@@ -10,12 +10,11 @@ Key features:
 - Metadata and problem definition handling
 - Hub integration with dataset cards and metadata
 """
+
 import logging
 import shutil
 from pathlib import Path
 from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Union
-
-from packaging.version import Version
 
 from plaid.storage.common.writer import (
     push_infos_to_hub,
@@ -30,7 +29,6 @@ from plaid.storage.registry import available_backends, get_backend
 from ..containers.sample import Sample
 from ..problem_definition import ProblemDefinition
 from ..utils.info import validate_required_infos
-from ..version import __version__
 from .common.preprocessor import preprocess
 from .common.reader import (
     load_infos_from_disk,

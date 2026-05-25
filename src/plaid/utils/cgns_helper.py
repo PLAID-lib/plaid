@@ -1,4 +1,5 @@
 """Utility functions for working with CGNS trees and nodes."""
+
 from copy import copy
 from typing import Any, Iterable, Optional
 
@@ -433,8 +434,10 @@ def flatten_cgns_tree(
             name, data, children, cgns_type = node
             new_path = f"{path}/{name}" if path else name
 
-            if  new_path in flat:
-                raise RuntimeError(f"Error: Non unique path for every entity. The path '{new_path}' points to multiple data. Try changing the name of your fields")
+            if new_path in flat:
+                raise RuntimeError(
+                    f"Error: Non unique path for every entity. The path '{new_path}' points to multiple data. Try changing the name of your fields"
+                )
             flat[new_path] = data
             cgns_types[new_path] = cgns_type
 

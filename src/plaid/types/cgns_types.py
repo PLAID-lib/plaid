@@ -1,4 +1,6 @@
 """Custom types for CGNS data structures."""
+
+import re
 import sys
 from typing import Any, Optional
 
@@ -27,12 +29,12 @@ class CGNSNode(BaseModel):
 # A CGNSTree is simply the root CGNSNode
 CGNSTree: TypeAlias = CGNSNode
 
-import re
-
 CGNS_PATTERN = re.compile(r"^Base_\d+_\d+/[^/]+/[^/]+$")
 
 
 class CGNSPath(RootModel):
+    """CGNSPath class."""
+
     root: str
 
     @field_validator("root")

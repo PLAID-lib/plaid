@@ -26,23 +26,23 @@ def problem_definition_full(problem_definition: ProblemDefinition) -> ProblemDef
     predict_feature_identifier = "Global/predict_feature"
     test_feature_identifier = "Global/test_feature"
 
-    problem_definition.add_in_features_identifiers(
+    problem_definition.add_input_features(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_in_features_identifiers(feature_identifier)
-    problem_definition.add_out_features_identifiers(
+    problem_definition.add_input_features(feature_identifier)
+    problem_definition.add_output_features(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_out_features_identifiers(feature_identifier)
+    problem_definition.add_output_features(feature_identifier)
     # ----
     feature_identifier = "Base_2_2/Zone/PointData/U1"
     predict_feature_identifier = "Base_2_2/Zone/PointData/U2"
     test_feature_identifier = "Base_2_2/Zone/PointData/sig12"
-    problem_definition.add_in_features_identifiers(
+    problem_definition.add_input_features(
         [predict_feature_identifier, test_feature_identifier]
     )
-    problem_definition.add_in_features_identifiers(feature_identifier)
-    problem_definition.add_out_features_identifiers(
+    problem_definition.add_input_features(feature_identifier)
+    problem_definition.add_output_features(
         [predict_feature_identifier, test_feature_identifier]
     )
     problem_definition.train_split = {"train_1": [0, 1, 2]}
@@ -121,7 +121,7 @@ class Test_ProblemDefinition:
 
         monkeypatch.setattr(
             "plaid.storage.load_problem_definitions_from_disk",
-            lambda path: {"pb_single": expected},
+            lambda path: {"pb_single": expected},  # noqa: ARG005
         )
 
         loaded = ProblemDefinition.from_path(tmp_path)
@@ -168,7 +168,7 @@ class Test_ProblemDefinition:
 
         monkeypatch.setattr(
             "plaid.storage.load_problem_definitions_from_disk",
-            lambda path: {"existing": pb},
+            lambda path: {"existing": pb},  # noqa: ARG005
         )
 
         with pytest.raises(ValueError, match="Problem definition 'missing' not found"):
@@ -192,19 +192,23 @@ class Test_ProblemDefinition:
 
         monkeypatch.setattr(
             "plaid.storage.load_problem_definitions_from_disk",
-            lambda path: {"pb_1": pb_1, "pb_2": pb_2},
+            lambda path: {"pb_1": pb_1, "pb_2": pb_2},  # noqa: ARG005
         )
 
         with pytest.raises(RuntimeError, match="more than one Problem definition"):
             ProblemDefinition.from_path(tmp_path)
 
     def test_from_path_error_lists_sorted_available_names(self, monkeypatch, tmp_path):
-        pb_a = ProblemDefinition(name="a", input_features=["in"], output_features=["out"])
-        pb_b = ProblemDefinition(name="b", input_features=["in"], output_features=["out"])
+        pb_a = ProblemDefinition(
+            name="a", input_features=["in"], output_features=["out"]
+        )
+        pb_b = ProblemDefinition(
+            name="b", input_features=["in"], output_features=["out"]
+        )
 
         monkeypatch.setattr(
             "plaid.storage.load_problem_definitions_from_disk",
-            lambda path: {"b": pb_b, "a": pb_a},
+            lambda path: {"b": pb_b, "a": pb_a},  # noqa: ARG005
         )
 
         with pytest.raises(ValueError, match="Available definitions: a, b"):
@@ -229,7 +233,6 @@ class Test_ProblemDefinition:
         problem_definition.name = "problem_a"
         with pytest.raises(AttributeError, match="'name' is already set"):
             problem_definition.name = "problem_b"
-
 
     def test_split_replacement_logs_warning(self, problem_definition, caplog):
         problem_definition.train_split = {"train_0": [0, 1]}
@@ -258,21 +261,21 @@ class Test_ProblemDefinition:
             problem_definition.get_test_split_indices()
 
     def test_add_feature_identifiers_duplicate_checks(self, problem_definition):
-        problem_definition.add_in_features_identifiers(["in_1", "in_2"])
+        problem_definition.add_input_features(["in_1", "in_2"])
         with pytest.raises(ValueError, match="in_1 is already in"):
-            problem_definition.add_in_features_identifiers("in_1")
+            problem_definition.add_input_features("in_1")
         with pytest.raises(
             ValueError, match="Some input features share the same identifier"
         ):
-            problem_definition.add_in_features_identifiers(["x", "x"])
+            problem_definition.add_input_features(["x", "x"])
 
-        problem_definition.add_out_features_identifiers(["out_1", "out_2"])
+        problem_definition.add_output_features(["out_1", "out_2"])
         with pytest.raises(ValueError, match="out_1 is already in"):
-            problem_definition.add_out_features_identifiers("out_1")
+            problem_definition.add_output_features("out_1")
         with pytest.raises(
             ValueError, match="Some output features share the same identifier"
         ):
-            problem_definition.add_out_features_identifiers(["y", "y"])
+            problem_definition.add_output_features(["y", "y"])
 
     # -------------------------------------------------------------------------#
     def test_split(self, problem_definition):
@@ -327,7 +330,9 @@ class Test_ProblemDefinition:
         assert loaded.get_train_split_name() == "train"
         assert loaded.get_test_split_name() == "test"
 
-    def test__load_from_file__unknown_field_warns_and_raises(self, tmp_path: Path, caplog):
+    def test__load_from_file__unknown_field_warns_and_raises(
+        self, tmp_path: Path, caplog
+    ):
         file_path = tmp_path / "problem_with_unknown.yaml"
         file_path.write_text(
             "name: pb\n"

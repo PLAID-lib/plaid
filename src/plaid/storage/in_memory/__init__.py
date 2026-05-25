@@ -1,3 +1,5 @@
+"""In-memory storage backend implementation."""
+
 from pathlib import Path
 from typing import (
     Any,
@@ -25,6 +27,8 @@ def _find_first_missing(d: Iterable[int]) -> int:
 
 
 class InMemoryBackend:
+    """Storage backend keeping samples in memory only."""
+
     name = "in_memory"
 
     @staticmethod
@@ -90,14 +94,17 @@ class InMemoryBackend:
         )
 
     def __init__(self) -> None:
+        """Initialize an empty in-memory sample store."""
         self._samples: Dict[int, Sample] = {}
 
     def __len__(self) -> int:
+        """Return the number of stored samples."""
         return len(self._samples)
 
     def __getitem__(
         self, key: Union[int, slice, Sequence[int]]
     ) -> Union[Sample, list[Sample]]:
+        """Return one sample or a list of samples by id, slice, or id sequence."""
         if isinstance(key, (slice, Sequence)):
             return [
                 self._samples[k]
@@ -172,8 +179,6 @@ class InMemoryBackend:
         self,
         sample: Union[Sample, Sequence[Sample]],
         sample_id: Optional[Union[int, Sequence[int]]] = None,
-        *,
-        id: Optional[Union[int, Sequence[int]]] = None,
     ) -> Union[int, list[int]]:
         """Set the samples of the data set, overwriting the existing ones.
 
@@ -186,9 +191,6 @@ class InMemoryBackend:
             TypeError: If ``sample_id`` type does not match the ``sample`` kind.
             ValueError: If a provided integer sample_id is negative.
         """
-        if sample_id is None:
-            sample_id = id
-
         if isinstance(sample, Sequence) and not isinstance(sample, Sample):
             if sample_id is None:
                 return [self.set_sample(s) for s in sample]
@@ -215,7 +217,9 @@ class InMemoryBackend:
             )
 
         if sample_id < 0:
-            raise ValueError(f"sample_id should be positive (sample_id>=0) but {sample_id=}")
+            raise ValueError(
+                f"sample_id should be positive (sample_id>=0) but {sample_id=}"
+            )
 
         self._samples[sample_id] = sample
 

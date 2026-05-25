@@ -71,7 +71,12 @@ def test_main_json_output_and_exit_code(tmp_path: Path, capsys) -> None:
     """CLI should output JSON and return expected status code."""
     dataset_path = _copy_reference_dataset(tmp_path)
 
-    code = main([str(dataset_path), "--json", ])
+    code = main(
+        [
+            str(dataset_path),
+            "--json",
+        ]
+    )
     out = capsys.readouterr().out
     payload = json.loads(out)
 
@@ -107,7 +112,12 @@ def test_is_branch_without_data_true_for_none_with_children(monkeypatch) -> None
     def _fake_get_node_by_path(tree: Any, path: str) -> list[Any]:
         assert tree == {"tree": "sentinel"}
         assert path == "Global/Branch"
-        return ["Branch", None, [["Child", 1.0, [], "DataArray_t"]], "UserDefinedData_t"]
+        return [
+            "Branch",
+            None,
+            [["Child", 1.0, [], "DataArray_t"]],
+            "UserDefinedData_t",
+        ]
 
     monkeypatch.setattr(plaidcheck.CGU, "getNodeByPath", _fake_get_node_by_path)
 
@@ -171,7 +181,7 @@ def _make_minimal_layout(root: Path) -> Path:
 class _FakeFeatures:
     """Minimal features wrapper used by fake sample objects."""
 
-    def get_zone_names(self, base: str, time: float) -> list[str]:
+    def get_zone_names(self, base: str, time: float) -> list[str]:  # noqa: ARG002
         """Return a single deterministic zone name.
 
         Args:
@@ -206,7 +216,7 @@ class _FakeSampleForCheck:
         """Return configured global names."""
         return self._global_names
 
-    def get_feature_by_path(self, path: str) -> Any:
+    def get_feature_by_path(self, path: str) -> Any:  # noqa: ARG002
         """Return configured global value.
 
         Args:
@@ -225,7 +235,7 @@ class _FakeSampleForCheck:
         """Return one time value."""
         return [0.0]
 
-    def get_base_names(self, time: float) -> list[str]:
+    def get_base_names(self, time: float) -> list[str]:  # noqa: ARG002
         """Return one base name.
 
         Args:
@@ -238,10 +248,10 @@ class _FakeSampleForCheck:
 
     def get_field_names(
         self,
-        location: str,
-        zone: str,
-        base: str,
-        time: float,
+        location: str,  # noqa: ARG002
+        zone: str,  # noqa: ARG002
+        base: str,  # noqa: ARG002
+        time: float,  # noqa: ARG002
     ) -> list[str]:
         """Return one field name.
 
@@ -256,7 +266,7 @@ class _FakeSampleForCheck:
         """
         return ["F"]
 
-    def get_field(self, *args, **kwargs) -> Any:
+    def get_field(self, *args, **kwargs) -> Any:  # noqa: ARG002
         """Return configured field value.
 
         Returns:
@@ -279,11 +289,13 @@ class _FakeDataset:
 class _FakeConverter:
     """Converter-like object exposing `to_plaid`."""
 
-    def __init__(self, samples: list[Any], fail_indices: set[int] | None = None) -> None:
+    def __init__(
+        self, samples: list[Any], fail_indices: set[int] | None = None
+    ) -> None:
         self._samples = samples
         self._fail_indices = set() if fail_indices is None else fail_indices
 
-    def to_plaid(self, dataset: _FakeDataset, idx: int) -> Any:
+    def to_plaid(self, dataset: _FakeDataset, idx: int) -> Any:  # noqa: ARG002
         """Return fake sample or raise conversion error.
 
         Args:
@@ -322,10 +334,12 @@ def test_is_branch_without_data_false_variants(monkeypatch) -> None:
 
     assert not _is_branch_without_data(_SampleNoTree(), "any")
 
-    monkeypatch.setattr(plaidcheck.CGU, "getNodeByPath", lambda tree, path: None)
+    monkeypatch.setattr(plaidcheck.CGU, "getNodeByPath", lambda _tree, _path: None)
     assert not _is_branch_without_data(_SampleWithTree(), "any")
 
-    monkeypatch.setattr(plaidcheck.CGU, "getNodeByPath", lambda tree, path: ["X", None])
+    monkeypatch.setattr(
+        plaidcheck.CGU, "getNodeByPath", lambda _tree, _path: ["X", None]
+    )
     assert not _is_branch_without_data(_SampleWithTree(), "any")
 
 
@@ -341,48 +355,102 @@ def test_check_dataset_loader_failures_and_header_validations(
     """Checker should report infos/metadata/init failures and header errors."""
     dataset = _make_minimal_layout(tmp_path)
 
-    monkeypatch.setattr(plaidcheck, "load_infos_from_disk", lambda path: (_ for _ in ()).throw(RuntimeError("infos")))
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: (_ for _ in ()).throw(RuntimeError("infos")),  # noqa: ARG005
+    )
     report_infos = check_dataset(dataset)
     assert any(msg.code == "INFOS_READ_ERROR" for msg in report_infos.messages)
 
-    monkeypatch.setattr(plaidcheck, "load_infos_from_disk", lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}})
-    monkeypatch.setattr(plaidcheck, "load_metadata_from_disk", lambda path: (_ for _ in ()).throw(RuntimeError("meta")))
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}},  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: (_ for _ in ()).throw(RuntimeError("meta")),  # noqa: ARG005
+    )
     report_meta = check_dataset(dataset)
     assert any(msg.code == "METADATA_READ_ERROR" for msg in report_meta.messages)
 
-    monkeypatch.setattr(plaidcheck, "load_metadata_from_disk", lambda path: ({"train": {}}, {}, {"train": {}}, None))
-    monkeypatch.setattr(plaidcheck, "init_from_disk", lambda path: (_ for _ in ()).throw(RuntimeError("init")))
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {}, {"train": {}}, None),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: (_ for _ in ()).throw(RuntimeError("init")),  # noqa: ARG005
+    )
     report_init = check_dataset(dataset)
     assert any(msg.code == "DATASET_INIT_ERROR" for msg in report_init.messages)
 
-    monkeypatch.setattr(plaidcheck, "init_from_disk", lambda path: ({"train": _FakeDataset(0)}, {"train": _FakeConverter([])}))
-    monkeypatch.setattr(plaidcheck, "load_infos_from_disk", lambda path: {"storage_backend": 12, "num_samples": "bad"})
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: ({"train": _FakeDataset(0)}, {"train": _FakeConverter([])}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: {"storage_backend": 12, "num_samples": "bad"},  # noqa: ARG005
+    )
     report_header = check_dataset(dataset)
     assert any(msg.code == "BACKEND_MISSING" for msg in report_header.messages)
     assert any(msg.code == "NUM_SAMPLES_INVALID" for msg in report_header.messages)
 
 
-def test_check_dataset_split_and_data_warnings_and_duplicates(tmp_path: Path, monkeypatch) -> None:
+def test_check_dataset_split_and_data_warnings_and_duplicates(
+    tmp_path: Path, monkeypatch
+) -> None:
     """Checker should report split errors, warnings and duplicated samples."""
     dataset = _make_minimal_layout(tmp_path)
 
-    monkeypatch.setattr(plaidcheck, "load_infos_from_disk", lambda path: {"storage_backend": "zarr", "num_samples": {"train": 3}})
-    monkeypatch.setattr(plaidcheck, "load_metadata_from_disk", lambda path: ({}, {"Var": {}}, {}, None))
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 3}},  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck, "load_metadata_from_disk", lambda _path: ({}, {"Var": {}}, {}, None)
+    )
 
     monkeypatch.setattr(
         plaidcheck.CGU,
         "getNodeByPath",
-        lambda tree, path: ["Branch", None, [["child", 1.0, [], "DataArray_t"]], "UserDefinedData_t"],
+        lambda tree, path: [  # noqa: ARG005
+            "Branch",
+            None,
+            [["child", 1.0, [], "DataArray_t"]],
+            "UserDefinedData_t",
+        ],
     )
 
     samples = [
         _FakeSampleForCheck(global_value=1.0, field_value=1.0, checksum="dup"),
-        _FakeSampleForCheck(global_value=np.array([np.nan]), field_value=np.array([np.nan]), tree={"branch": 1}, checksum="unique"),
-        _FakeSampleForCheck(global_value=np.array([np.nan]), field_value=np.array([np.nan]), checksum="dup"),
+        _FakeSampleForCheck(
+            global_value=np.array([np.nan]),
+            field_value=np.array([np.nan]),
+            tree={"branch": 1},
+            checksum="unique",
+        ),
+        _FakeSampleForCheck(
+            global_value=np.array([np.nan]),
+            field_value=np.array([np.nan]),
+            checksum="dup",
+        ),
     ]
     converter = _FakeConverter(samples=samples)
     datasetdict = {"train": _FakeDataset(3)}
-    monkeypatch.setattr(plaidcheck, "init_from_disk", lambda path: (datasetdict, {"train": converter}))
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: (datasetdict, {"train": converter}),  # noqa: ARG005
+    )
     monkeypatch.setattr(plaidcheck, "compute_checksum", lambda sample: sample._checksum)
 
     report = check_dataset(dataset, splits=["train", "ghost"])
@@ -398,12 +466,23 @@ def test_check_dataset_sample_conversion_error(tmp_path: Path, monkeypatch) -> N
     """Checker should emit conversion errors when converter fails on an index."""
     dataset = _make_minimal_layout(tmp_path)
 
-    monkeypatch.setattr(plaidcheck, "load_infos_from_disk", lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}})
-    monkeypatch.setattr(plaidcheck, "load_metadata_from_disk", lambda path: ({"train": {}}, {"Var": {}}, {"train": {}}, None))
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}},  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Var": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
     monkeypatch.setattr(
         plaidcheck,
         "init_from_disk",
-        lambda path: ({"train": _FakeDataset(1)}, {"train": _FakeConverter([_FakeSampleForCheck()], fail_indices={0})}),
+        lambda path: (  # noqa: ARG005
+            {"train": _FakeDataset(1)},
+            {"train": _FakeConverter([_FakeSampleForCheck()], fail_indices={0})},
+        ),
     )
 
     report = check_dataset(dataset, splits=["train"])
@@ -411,20 +490,42 @@ def test_check_dataset_sample_conversion_error(tmp_path: Path, monkeypatch) -> N
     assert any(msg.code == "SAMPLE_CONVERSION_ERROR" for msg in report.messages)
 
 
-def test_check_dataset_problem_definition_validation_paths(tmp_path: Path, monkeypatch) -> None:
+def test_check_dataset_problem_definition_validation_paths(
+    tmp_path: Path, monkeypatch
+) -> None:
     """Checker should cover problem-definition read/validation branches."""
     dataset = _make_minimal_layout(tmp_path)
     (dataset / "problem_definitions").mkdir()
 
-    monkeypatch.setattr(plaidcheck, "load_infos_from_disk", lambda path: {"storage_backend": "zarr", "num_samples": {"train": 2}})
-    monkeypatch.setattr(plaidcheck, "load_metadata_from_disk", lambda path: ({"train": {"Known": 1.0}}, {"KnownVar": {}}, {"train": {}}, None))
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 2}},  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": {"Known": 1.0}},
+            {"KnownVar": {}},
+            {"train": {}},
+            None,
+        ),
+    )
     monkeypatch.setattr(
         plaidcheck,
         "init_from_disk",
-        lambda path: ({"train": _FakeDataset(2)}, {"train": _FakeConverter([_FakeSampleForCheck(), _FakeSampleForCheck()])}),
+        lambda path: (  # noqa: ARG005
+            {"train": _FakeDataset(2)},
+            {"train": _FakeConverter([_FakeSampleForCheck(), _FakeSampleForCheck()])},
+        ),
     )
 
-    monkeypatch.setattr(plaidcheck, "load_problem_definitions_from_disk", lambda path: (_ for _ in ()).throw(RuntimeError("pb")))
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: (_ for _ in ()).throw(RuntimeError("pb")),  # noqa: ARG005
+    )
     report_read = check_dataset(dataset)
     assert any(msg.code == "PB_DEF_READ_ERROR" for msg in report_read.messages)
 
@@ -438,9 +539,15 @@ def test_check_dataset_problem_definition_validation_paths(tmp_path: Path, monke
     pb_defs = {
         "pb_many": _PBDef(train_split={"train": [0], "other": [1]}, test_split=None),
         "pb_unknown_split": _PBDef(train_split={"ghost": [0]}, test_split=None),
-        "pb_indices": _PBDef(train_split={"train": [0, 0, -1, 9]}, test_split={"train": "all"}),
+        "pb_indices": _PBDef(
+            train_split={"train": [0, 0, -1, 9]}, test_split={"train": "all"}
+        ),
     }
-    monkeypatch.setattr(plaidcheck, "load_problem_definitions_from_disk", lambda path: pb_defs)
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: pb_defs,  # noqa: ARG005
+    )
     report_pb = check_dataset(dataset)
 
     assert any(msg.code == "PB_DEF_UNKNOWN_INPUT" for msg in report_pb.messages)
@@ -451,12 +558,14 @@ def test_check_dataset_problem_definition_validation_paths(tmp_path: Path, monke
     assert any(msg.code == "PB_DEF_OUT_OF_RANGE_INDICES" for msg in report_pb.messages)
 
 
-def test_main_strict_returns_warning_exit_code(monkeypatch, tmp_path: Path, capsys) -> None:
+def test_main_strict_returns_warning_exit_code(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
     """Main should return exit code 2 when strict mode sees warnings only."""
     report = CheckReport(messages=[])
     report.add("warning", "W", "loc", "msg")
 
-    monkeypatch.setattr(plaidcheck, "check_dataset", lambda path, splits=None: report)
+    monkeypatch.setattr(plaidcheck, "check_dataset", lambda path, splits=None: report)  # noqa: ARG005
     code = main([str(tmp_path), "--strict"])
     _ = capsys.readouterr().out
 

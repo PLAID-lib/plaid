@@ -21,11 +21,11 @@ from plaid.problem_definition import ProblemDefinition
 
 pb = ProblemDefinition(name="regression_1")
 
-pb.add_in_features_identifiers([
+pb.add_input_features([
     "Base/Zone/GridCoordinates/CoordinateX",
     "Base/Zone/GridCoordinates/CoordinateY",
 ])
-pb.add_out_features_identifiers([
+pb.add_output_features([
     "Base/Zone/Solution/pressure",
 ])
 

@@ -1,4 +1,5 @@
 """Package for Zarr storage."""
+
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any, Optional, Union

@@ -125,8 +125,8 @@ print(f" {dataset = }")
 print(f" {infos = }")
 
 pb_def = ProblemDefinition(name="test PD")
-pb_def.add_in_features_identifiers([scalar_feat_id, node_field_feat_id])
-pb_def.add_out_features_identifiers([cell_field_feat_id])
+pb_def.add_input_features([scalar_feat_id, node_field_feat_id])
+pb_def.add_output_features([cell_field_feat_id])
 
 pb_def.train_split = {"train": [0, 1]}
 pb_def.test_split = {"test": [2]}
@@ -467,7 +467,7 @@ show_sample(plaid_sample)
 # for i in tqdm(
 #     range(len(hf_dataset_new["train"])), desc="Retrieving features"
 # ):
-#     for path in pb_def.get_out_features_identifiers():
+#     for path in pb_def.output_features:
 #         hf_dataset_new["train"].data[path][i].values.to_numpy(
 #             zero_copy_only=False
 #         )
@@ -497,9 +497,9 @@ show_sample(plaid_sample)
 #         enforce_shapes=False,
 #     )
 #     for t in sample.get_all_time_values():
-#         for path in pb_def.get_in_features_identifiers():
+#         for path in pb_def.input_features:
 #             sample.get_feature_by_path(path=path, time=t)
-#         for path in pb_def.get_out_features_identifiers():
+#         for path in pb_def.output_features:
 #             sample.get_feature_by_path(path=path, time=t)
 # elapsed = time() - start
 # print(

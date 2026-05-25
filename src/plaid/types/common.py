@@ -1,4 +1,5 @@
 """Common types used across the PLAID library."""
+
 import sys
 from typing import Annotated, Any, Union
 

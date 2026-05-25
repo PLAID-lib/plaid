@@ -1,4 +1,5 @@
 """PLAID package public API."""
+
 from .containers.sample import Sample
 from .containers.utils import get_number_of_samples, get_sample_ids
 from .problem_definition import ProblemDefinition

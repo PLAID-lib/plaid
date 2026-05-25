@@ -4,6 +4,7 @@ This module provides functionality for writing datasets in CGNS format for the P
 It includes utilities for generating datasets from sample generators, saving to disk,
 uploading to Hugging Face Hub, and configuring dataset cards.
 """
+
 import logging
 import multiprocessing as mp
 from pathlib import Path
@@ -330,9 +331,9 @@ pb_def = pb_defs[0]
 plaid_sample = ... # use a method from above to instantiate a plaid sample
 
 for t in plaid_sample.get_all_time_values():
-    for path in pb_def.get_in_features_identifiers():
+    for path in pb_def.input_features:
         plaid_sample.get_feature_by_path(path=path, time=t)
-    for path in pb_def.get_out_features_identifiers():
+    for path in pb_def.output_features:
         plaid_sample.get_feature_by_path(path=path, time=t)
 ```
 """
