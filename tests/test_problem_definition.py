@@ -225,10 +225,6 @@ class Test_ProblemDefinition:
         ):
             ProblemDefinition(output_features=["a", "a"])
 
-    def test_split_validator_rejects_more_than_one_key(self):
-        with pytest.raises(ValidationError, match="Splits only support one element"):
-            ProblemDefinition(train_split={"train_1": [0], "train_2": [1]})
-
     def test_non_overwritable_attributes_raise(self, problem_definition):
         problem_definition.name = "problem_a"
         with pytest.raises(AttributeError, match="'name' is already set"):

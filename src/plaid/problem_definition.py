@@ -103,16 +103,6 @@ class ProblemDefinition(BaseModel):
             raise ValueError("duplicated values in input_features")
         return _normalize_list(v)
 
-    @field_validator("train_split", "test_split", mode="after")
-    @classmethod
-    def check_split_has_only_one_obj(cls, v):
-        """Ensure that the split dictionaries contain only one key-value pair."""
-        if len(v) > 1:
-            raise ValueError(
-                "Splits only support one element (dict with only one object)"
-            )
-        return v
-
     @field_validator("output_features", mode="before")
     @classmethod
     def normalize_output_features(cls, v):
