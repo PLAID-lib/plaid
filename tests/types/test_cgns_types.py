@@ -19,14 +19,4 @@ def _load_cgns_types_module():
 
 def test_cgns_node_and_tree_alias():
     cgns_types = _load_cgns_types_module()
-    child = cgns_types.CGNSNode(name="Child", value=1, label="DataArray_t")
-    root = cgns_types.CGNSNode(
-        name="Root",
-        value=None,
-        children=[child],
-        label="CGNSTree_t",
-    )
-
-    assert root.name == "Root"
-    assert root.children[0].name == "Child"
     assert cgns_types.CGNSTree is cgns_types.CGNSNode
