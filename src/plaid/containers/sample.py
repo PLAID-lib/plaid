@@ -2,10 +2,10 @@
 
 # %% Imports
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
-from ..types.common import ArrayDType
-
+from ..types.common import ScalarDType, ScalarOrArrayOrStr
+from ..types.cgns_types import CGNSTree
 if sys.version_info >= (3, 11):
     from typing import Self
 else:  # pragma: no cover
@@ -164,7 +164,7 @@ class Sample(BaseModel):
         return out
 
     def get_feature_by_path(
-        self, path: str, time: Optional[int] = None
+        self, path: str, time: Optional[float | np.floating] = None
     ) -> np.number | np.ndarray | None:
         """Retrieve a feature value from the sample's CGNS mesh using a CGNS-style url.
 
@@ -172,7 +172,7 @@ class Sample(BaseModel):
             path (str): CGNS node path relative to the mesh root (for example
                 "BaseName/ZoneName/GridCoordinates/CoordinateX" or
                 "BaseName/ZoneName/Solution/FieldName").
-            time (Optional[int], optional): Time selection for the mesh. If an integer,
+            time (Optional[float | np.floating], optional): Time selection for the mesh. If an integer,
                 it is interpreted via the SampleFeatures time-assignment logic
                 (see SampleFeatures.resolve_time). If None, the default time
                 assignment is used. Defaults to None.
@@ -190,7 +190,7 @@ class Sample(BaseModel):
     def add_feature(
         self,
         feature_path: str,
-        feature: ArrayDType,
+        feature: ScalarOrArrayOrStr,
     ) -> Self:
         """Add a feature to current sample.
 
@@ -240,7 +240,7 @@ class Sample(BaseModel):
 
     def del_feature_by_path(
         self, path: str, time: Optional[float] = None
-    ) -> np.number | np.ndarray | None:
+    ) -> CGNSTree:
         """Delete a feature/node by CGNS-style path from the sample mesh tree.
 
         Args:
@@ -275,8 +275,8 @@ class Sample(BaseModel):
 
     def update_features_by_path(
         self,
-        feature_identifiers: dict[int, Union[str, list[str]]],
-        features: Union[ArrayDType, list[ArrayDType]],
+        feature_identifiers: str | Sequence[str],
+        features: Union[ScalarDType, list[ScalarDType]],
         in_place: bool = False,
     ) -> Self:
         """Update one or several features of the sample by their identifier(s).

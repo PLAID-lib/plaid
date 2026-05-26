@@ -39,7 +39,7 @@ def test_check_dataset_valid_reference(tmp_path: Path) -> None:
     dataset_path = _copy_reference_dataset(tmp_path)
 
     report = check_dataset(dataset_path)
-
+    print(report)
     assert not report.has_errors()
 
 

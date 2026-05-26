@@ -16,7 +16,7 @@ from typing import (
 import numpy as np
 
 from ...containers.sample import Sample
-from ...types import IndexType
+from ...types import IndexArrayType
 
 
 def _find_first_missing(d: Iterable[int]) -> int:
@@ -63,7 +63,7 @@ class InMemoryBackend:
         output_folder: Union[str, Path],
         generators: dict[str, Callable[..., Generator[Sample, None, None]]],
         variable_schema: Optional[dict[str, dict]] = None,
-        gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+        gen_kwargs: Optional[dict[str, dict[str, IndexArrayType]]] = None,
         num_proc: int = 1,
         verbose: bool = False,
     ) -> None:

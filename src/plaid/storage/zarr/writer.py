@@ -15,7 +15,7 @@ Key features:
 import gc
 import multiprocessing as mp
 from pathlib import Path
-from typing import Callable, Generator, Optional, Union
+from typing import Any, Callable, Generator, Optional, Union
 
 import numpy as np
 import yaml
@@ -25,8 +25,6 @@ from tqdm import tqdm
 
 from plaid.storage.common.bridge import flatten_path
 from plaid.storage.common.preprocessor import build_sample_dict
-from plaid.types import IndexType
-
 from ...containers.sample import Sample
 
 
@@ -149,7 +147,7 @@ def generate_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     variable_schema: dict[str, dict],
-    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
 ) -> None:
@@ -168,7 +166,7 @@ def generate_datasetdict_to_disk(
             functions that yield Sample objects.
         variable_schema (dict[str, dict]): Schema describing the structure and types
             of variables/features in the samples.
-        gen_kwargs (Optional[dict[str, dict[str, list[IndexType]]]]): Optional
+        gen_kwargs (Optional[dict[str, dict[str, IndexArrayType]]]): Optional
             generator arguments for parallel processing. Must include "shards_ids"
             for each split when num_proc > 1. Required for parallel execution.
         num_proc (int, optional): Number of processes to use for parallel processing.

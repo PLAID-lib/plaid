@@ -14,18 +14,20 @@ else:  # pragma: no cover
 import numpy as np
 from numpy.typing import NDArray
 
-# A generic float array type (float32 or float64)
-ArrayDType = Union[np.int32, np.int64, np.float32, np.float64]
-Array: TypeAlias = NDArray[ArrayDType]
+# scalars
+ScalarDType = Union[np.integer, np.floating, float]
+
+# arrays
+IArray = NDArray[np.integer]
+FArray = NDArray[np.floating]
+Array: TypeAlias = IArray | FArray | np.integer | np.floating
+BytesS1Array = NDArray[np.dtype("S1")]
+
+# scalar or arrays
+IScalarOrArray = int | np.integer | IArray
+FScalarOrArray = float | np.floating | FArray
+ScalarOrArray = ScalarDType | Array
+ScalarOrArrayOrStr = ScalarDType | Array | str | BytesS1Array
 
 # Types used in indexing operations
-IndexType = Union[list[int], NDArray[Union[np.int32, np.int64]]]
-
-# Define a reusable custom type
-NDArrayInt = Annotated[
-    Any,
-    BeforeValidator(lambda v: np.asarray(v, dtype=int)),  # Convert input to numpy array
-    PlainSerializer(
-        lambda v: v.tolist(), return_type=list
-    ),  # Serialize back to list for JSON
-]
+IndexArrayType = Union[list[int], IArray]

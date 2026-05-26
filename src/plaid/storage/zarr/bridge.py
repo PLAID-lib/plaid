@@ -49,7 +49,7 @@ def to_var_sample_dict(
         if feat in indexers:
             out[feat] = _apply_indexer(arr, indexers[feat], feat)
         else:
-            out[feat] = arr
+            out[feat] = np.asarray(arr)
 
     return out
 

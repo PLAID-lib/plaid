@@ -15,11 +15,13 @@ CGNS per timestep under ``meshes/``), then adds:
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata as importlib_metadata
 import json
 import logging
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from plaid.viewer.models import ParaviewArtifact, SampleRef
 from plaid.viewer.services.plaid_dataset_service import PlaidDatasetService
@@ -44,10 +46,8 @@ class _ArtifactLayout:
 
 def _plaid_version() -> str:
     try:
-        from importlib.metadata import PackageNotFoundError, version
-
-        return version("pyplaid")
-    except PackageNotFoundError:
+        return importlib_metadata.version("pyplaid")
+    except importlib_metadata.PackageNotFoundError:
         return "unknown"
 
 
@@ -136,7 +136,7 @@ class ParaviewArtifactService:
 
     def __init__(
         self,
-        dataset_service: PlaidDatasetService,
+        dataset_service: Any,
         cache_root: Path,
         *,
         export_version: str = EXPORT_VERSION,
@@ -286,7 +286,7 @@ def ensure_paraview_artifact(
     sample_ref: SampleRef,
     *,
     cache_dir: Path,
-    dataset_service: PlaidDatasetService,
+    dataset_service: Any,
     force: bool = False,
 ) -> ParaviewArtifact:
     """Functional wrapper around :meth:`ParaviewArtifactService.ensure_artifact`."""

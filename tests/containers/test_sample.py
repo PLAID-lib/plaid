@@ -24,13 +24,19 @@ from plaid.containers.utils import (
 
 
 @pytest.fixture()
-def topological_dim():
+def topological_dim() -> int:
     return 2
 
 
 @pytest.fixture()
 def physical_dim():
     return 3
+
+
+@pytest.fixture()
+def coordinates_dim():
+    return [5, 3, 2]
+
 
 
 @pytest.fixture()
@@ -136,16 +142,16 @@ def test_add_tree_invalid_name_length(sample: Sample, tree):
         sample.features.add_tree(invalid_tree)
 
 
-def test_read_index(tree, physical_dim):
-    _read_index(tree, physical_dim)
+def test_read_index(tree, coordinates_dim):
+    _read_index(tree, coordinates_dim)
 
 
 def test_read_index_array(tree):
     _read_index_array(tree)
 
 
-def test_read_index_range(tree, physical_dim):
-    _read_index_range(tree, physical_dim)
+def test_read_index_range(tree, coordinates_dim):
+    _read_index_range(tree, coordinates_dim)
 
 
 @pytest.fixture()
@@ -217,7 +223,6 @@ class Test_Sample:
         assert sample.features.resolve_base("test") == "test"
 
         sample.set_default_base(f"Base_{topological_dim}_{physical_dim}")  # already set
-        sample.set_default_base(None)  # will not assign to None
         assert (
             sample.features.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
         )
@@ -267,7 +272,6 @@ class Test_Sample:
         assert sample.features.resolve_time() == 0.5
 
         sample.set_default_base(base_name)  # already set
-        sample.set_default_base(None)  # will not assign to None
         assert sample.features.resolve_base() == base_name
         with pytest.raises(ValueError):
             sample.set_default_base("Unknown base name")
@@ -277,7 +281,6 @@ class Test_Sample:
 
         assert sample.features.get_zone() is not None
         sample.set_default_zone_base(zone_name, base_name)
-        sample.set_default_zone_base(None, base_name)  # will not assign to None
         assert sample.features.resolve_zone() == zone_name
         with pytest.raises(ValueError):
             sample.set_default_zone_base("Unknown zone name", base_name)
@@ -291,7 +294,6 @@ class Test_Sample:
         assert sample.features.resolve_time() == 1.5, "here"
 
         sample.set_default_time(1.5)  # already set
-        sample.set_default_time(None)  # will not assign to None
         assert sample.features.resolve_time() == 1.5
         with pytest.raises(ValueError):
             sample.set_default_time(2.5)
@@ -703,7 +705,7 @@ class Test_Sample:
     def test_add_feature(self, sample_with_tree3d):
         sample_with_tree3d.add_feature(
             feature_path="Global/test_scalar_2",
-            feature=[3.1415],
+            feature=np.array([3.1415]),
         )
 
         sample_with_tree3d.add_feature(

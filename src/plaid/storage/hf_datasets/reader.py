@@ -16,7 +16,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Iterable, Optional, Union
+from typing import Any, Iterable, Optional, Union
 
 import datasets
 from datasets import load_dataset, load_from_disk
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # Load from disk
 # ------------------------------------------------------
 
-HFDatasetDict = datasets.DatasetDict
+HFDatasetDict = Any
 
 
 def init_datasetdict_from_disk(path: Union[str, Path]) -> HFDatasetDict:
@@ -107,7 +107,7 @@ def init_datasetdict_streaming_from_hub(
     repo_id: str,
     split_ids: Optional[dict[str, Iterable[int]]] = None,  # noqa: ARG001
     features: Optional[list[str]] = None,
-) -> datasets.IterableDatasetDict:  # pragma: no cover
+) -> Any:  # pragma: no cover
     """Initializes a streaming DatasetDict from Hugging Face Hub.
 
     Args:

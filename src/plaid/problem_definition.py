@@ -17,7 +17,11 @@ from typing import Any, Literal, Optional, Sequence, Union, cast
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .types import IndexType
+from .constants import (
+    AUTHORIZED_SCORE_FUNCTIONS_T,
+    AUTHORIZED_TASKS_T,
+)
+from .types import IndexArrayType
 
 # %% Globals
 
@@ -141,18 +145,18 @@ class ProblemDefinition(BaseModel):
             raise ValueError("train_split is not defined.")
         return list(self.train_split.keys())[0]
 
-    def get_train_split_indices(self) -> IndexType | Literal["all"]:
+    def get_train_split_indices(self) -> IndexArrayType | Literal["all"]:
         """Return the indices associated with the train split.
 
         Raises:
             ValueError: If `train_split` is not defined.
 
         Returns:
-            IndexType | Literal["all"]: The indices associated with the train split.
+            IndexArrayType | Literal["all"]: The indices associated with the train split.
         """
         if self.train_split is None:
             raise ValueError("train_split is not defined.")
-        return cast(IndexType | Literal["all"], next(iter(self.train_split.values())))
+        return cast(IndexArrayType | Literal["all"], next(iter(self.train_split.values())))
 
     def get_test_split_name(self) -> str:
         """Return the name of the test split."""
@@ -160,18 +164,18 @@ class ProblemDefinition(BaseModel):
             raise ValueError("test_split is not defined.")
         return list(self.test_split.keys())[0]
 
-    def get_test_split_indices(self) -> IndexType | Literal["all"]:
+    def get_test_split_indices(self) -> IndexArrayType | Literal["all"]:
         """Return the indices associated with the test split.
 
         Raises:
             ValueError: If `test_split` is not defined.
 
         Returns:
-            IndexType | Literal["all"]: The indices associated with the test split.
+            IndexArrayType | Literal["all"]: The indices associated with the test split.
         """
         if self.test_split is None:
             raise ValueError("test_split is not defined.")
-        return cast(IndexType | Literal["all"], next(iter(self.test_split.values())))
+        return cast(IndexArrayType | Literal["all"], next(iter(self.test_split.values())))
 
     def add_input_features(self, inputs: Union[str, Sequence[str]]) -> None:
         """Add input features identifiers to the problem.

@@ -163,7 +163,7 @@ class Converter:
         else:
             return dataset[idx]
 
-    def sample_to_dict(self, sample: Sample) -> dict[float, dict[str, Any]]:
+    def sample_to_dict(self, sample: Any) -> dict[float, dict[str, Any]]:
         """Convert a PLAID Sample to dictionary format.
 
         Args:
@@ -182,7 +182,7 @@ class Converter:
         var_sample_dict = self.backend_spec.sample_to_var_sample_dict(sample)
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types)
 
-    def sample_to_plaid(self, sample: Sample) -> Sample:
+    def sample_to_plaid(self, sample: Any) -> Sample:
         """Convert a sample to PLAID format (identity function for most backends).
 
         Args:

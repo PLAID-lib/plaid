@@ -96,7 +96,8 @@ def load_problem_definitions_from_disk(
             if p.is_file():
                 pb_def = ProblemDefinition()
                 pb_def._load_from_file_(pb_def_dir / Path(p.name))
-                pb_defs[pb_def.name] = pb_def
+                pb_name = pb_def.name if isinstance(pb_def.name, str) else p.stem
+                pb_defs[pb_name] = pb_def
         return pb_defs
     else:
         raise ValueError(

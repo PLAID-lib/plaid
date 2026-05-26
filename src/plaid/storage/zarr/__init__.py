@@ -52,7 +52,7 @@ class ZarrBackend:
         repo_id: str,
         split_ids: Optional[dict[str, Iterable[int]]] = None,
         features: Optional[list[str]] = None,
-    ) -> dict[str, IterableDataset]:
+    ) -> dict[str, Any]:
         return init_datasetdict_streaming_from_hub(
             repo_id=repo_id, split_ids=split_ids, features=features
         )
@@ -65,7 +65,7 @@ class ZarrBackend:
         gen_kwargs: Optional[dict[str, dict[str, list]]] = None,
         num_proc: int = 1,
         verbose: bool = False,
-    ) -> None:
+    ) -> Any:
         return generate_datasetdict_to_disk(
             output_folder=output_folder,
             generators=generators,
@@ -78,7 +78,7 @@ class ZarrBackend:
     @staticmethod
     def push_local_to_hub(
         repo_id: str, local_dir: Union[str, Path], num_workers: int = 1
-    ) -> None:
+    ) -> Any:
         return push_local_datasetdict_to_hub(
             repo_id=repo_id, local_dir=local_dir, num_workers=num_workers
         )
@@ -93,7 +93,7 @@ class ZarrBackend:
         dataset_long_description: Optional[str] = None,
         illustration_urls: Optional[list[str]] = None,
         arxiv_paper_urls: Optional[list[str]] = None,
-    ) -> None:
+    ) -> Any:
         if local_dir is None:  # pragma: no cover
             raise ValueError("local_dir must be provided for zarr backend")
         return configure_dataset_card(
@@ -109,11 +109,11 @@ class ZarrBackend:
 
     @staticmethod
     def to_var_sample_dict(
-        dataset: zarr.Group,
+        dataset: Any,
         idx: int,
         features: Optional[list[str]] = None,
         indexers: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Optional[np.ndarray]]:
+    ) -> dict[str, Any]:
         return to_var_sample_dict(
             zarr_dataset=dataset,
             idx=idx,

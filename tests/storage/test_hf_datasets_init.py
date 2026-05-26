@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import numpy as np
+import datasets
+
 import plaid.storage.hf_datasets as hf_datasets
 from plaid.storage.hf_datasets import HFBackend
 
@@ -57,7 +60,7 @@ def test_hf_backend_download_from_hub_delegates(monkeypatch):
     result = HFBackend.download_from_hub(
         repo_id="dummy/repo",
         local_dir="/tmp/local",
-        split_ids={"train": 0},
+        split_ids={"train": [0]},
         features=["path/to/feature"],
         overwrite=True,
     )
@@ -66,7 +69,7 @@ def test_hf_backend_download_from_hub_delegates(monkeypatch):
     assert call == {
         "repo_id": "dummy/repo",
         "local_dir": "/tmp/local",
-        "split_ids": {"train": 0},
+        "split_ids": {"train": [0]},
         "features": ["path/to/feature"],
         "overwrite": True,
     }
@@ -79,7 +82,7 @@ def test_hf_backend_streaming_from_hub_delegates(monkeypatch):
         call["repo_id"] = repo_id
         call["split_ids"] = split_ids
         call["features"] = features
-        return {"train": "streaming_dataset"}
+        return datasets.dataset_dict.IterableDatasetDict()
 
     monkeypatch.setattr(
         hf_datasets,
@@ -87,13 +90,12 @@ def test_hf_backend_streaming_from_hub_delegates(monkeypatch):
         fake_init_datasetdict_streaming_from_hub,
     )
 
-    result = HFBackend.init_datasetdict_streaming_from_hub(
+    HFBackend.init_datasetdict_streaming_from_hub(
         repo_id="PhysArena/Rotor37",
         split_ids={"train": [0, 1]},
         features=["Base/Zone/Field"],
     )
 
-    assert result == {"train": "streaming_dataset"}
     assert call == {
         "repo_id": "PhysArena/Rotor37",
         "split_ids": {"train": [0, 1]},
@@ -110,7 +112,7 @@ def test_hf_backend_streaming_from_hub_default_args(monkeypatch):
         call["repo_id"] = repo_id
         call["split_ids"] = split_ids
         call["features"] = features
-        return {"train": "streaming_dataset"}
+        return datasets.dataset_dict.IterableDatasetDict()
 
     monkeypatch.setattr(
         hf_datasets,
@@ -118,9 +120,8 @@ def test_hf_backend_streaming_from_hub_default_args(monkeypatch):
         fake_init_datasetdict_streaming_from_hub,
     )
 
-    result = HFBackend.init_datasetdict_streaming_from_hub("PhysArena/Rotor37")
+    HFBackend.init_datasetdict_streaming_from_hub("PhysArena/Rotor37")
 
-    assert result == {"train": "streaming_dataset"}
     assert call == {
         "repo_id": "PhysArena/Rotor37",
         "split_ids": None,
@@ -133,7 +134,7 @@ def test_hf_backend_generate_to_disk_delegates(monkeypatch):
 
     def fake_generate_datasetdict_to_disk(**kwargs):
         call.update(kwargs)
-        return "ok"
+        return
 
     monkeypatch.setattr(
         hf_datasets, "generate_datasetdict_to_disk", fake_generate_datasetdict_to_disk
@@ -143,7 +144,7 @@ def test_hf_backend_generate_to_disk_delegates(monkeypatch):
     variable_schema = {"Global/temperature": {"dtype": "float32", "ndim": 1}}
     gen_kwargs = {"train": {"shards_ids": [[0, 1]]}}
 
-    result = HFBackend.generate_to_disk(
+    HFBackend.generate_to_disk(
         output_folder="/tmp/output",
         generators=generators,
         variable_schema=variable_schema,
@@ -152,7 +153,6 @@ def test_hf_backend_generate_to_disk_delegates(monkeypatch):
         verbose=True,
     )
 
-    assert result == "ok"
     assert call == {
         "output_folder": "/tmp/output",
         "generators": generators,
@@ -170,17 +170,15 @@ def test_hf_backend_push_local_to_hub_delegates(monkeypatch):
         call["repo_id"] = repo_id
         call["local_dir"] = local_dir
         call["num_workers"] = num_workers
-        return "pushed"
-
+        return
     monkeypatch.setattr(
         hf_datasets,
         "push_local_datasetdict_to_hub",
         fake_push_local_datasetdict_to_hub,
     )
 
-    result = HFBackend.push_local_to_hub("dummy/repo", "/tmp/local")
+    HFBackend.push_local_to_hub("dummy/repo", "/tmp/local")
 
-    assert result == "pushed"
     assert call == {
         "repo_id": "dummy/repo",
         "local_dir": "/tmp/local",
@@ -204,36 +202,34 @@ def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
         call["repo_id"] = repo_id
         call["infos"] = infos
         call["local_dir"] = local_dir
-        return "configured"
+        return
 
     monkeypatch.setattr(
         hf_datasets, "configure_dataset_card", fake_configure_dataset_card
     )
 
     infos = {"legal": {"owner": "owner", "license": "cc-by-4.0"}}
-    result = HFBackend.configure_dataset_card("dummy/repo", infos)
+    HFBackend.configure_dataset_card("dummy/repo", infos)
 
-    assert result == "configured"
     assert call == {"repo_id": "dummy/repo", "infos": infos, "local_dir": None}
 
 
 def test_hf_backend_to_var_sample_dict_delegates(monkeypatch):
     call = {}
-
+    returndata = {"field": np.array([1, 2, 3])}
     def fake_to_var_sample_dict(ds, i, features, indexers=None):
         call["ds"] = ds
         call["i"] = i
         call["features"] = features
         call["indexers"] = indexers
-        return {"field": [1, 2, 3]}
+        return returndata
 
     monkeypatch.setattr(hf_datasets, "to_var_sample_dict", fake_to_var_sample_dict)
-
-    dataset = object()
+    dataset = datasets.Dataset.from_dict({"Base/Zone/Field": [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]})
     features = ["Base/Zone/Field"]
     result = HFBackend.to_var_sample_dict(dataset=dataset, idx=3, features=features)
 
-    assert result == {"field": [1, 2, 3]}
+    assert result is returndata
     assert call == {
         "ds": dataset,
         "i": 3,

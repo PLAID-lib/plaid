@@ -20,7 +20,8 @@ from ..containers.utils import (
     _read_index,
     get_feature_details_from_path,
 )
-from ..types import Array, CGNSNode, CGNSTree
+from ..types import Array, CGNSNode, CGNSTree, ScalarOrArrayOrStr
+
 from ..utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -308,7 +309,7 @@ class SampleFeatures:
                 f"there is no base called {base} at the time {time} in this sample"
             )
 
-        return base_node[1][0]
+        return int(base_node[1][0])
 
     def get_physical_dim(
         self, base: Optional[str] = None, time: Optional[float] = None
@@ -331,7 +332,7 @@ class SampleFeatures:
                 f"there is no base called {base} at the time {time} in this sample"
             )
 
-        return base_node[1][1]
+        return int(base_node[1][1])
 
     def init_base(
         self,
@@ -457,7 +458,7 @@ class SampleFeatures:
 
     def get_base(
         self, base: Optional[str] = None, time: Optional[float] = None
-    ) -> CGNSNode:
+    ) -> CGNSNode | None:
         """Return Base node named `base`.
 
         If `base` is not specified, checks that there is **at most** one base, else raises an error.
@@ -612,7 +613,7 @@ class SampleFeatures:
         zone: Optional[str] = None,
         base: Optional[str] = None,
         time: Optional[float] = None,
-    ) -> CGNSNode:
+    ) -> CGNSNode | None:
         """Retrieve a CGNS Zone node by its name within a specific Base and time.
 
         Args:
@@ -738,7 +739,7 @@ class SampleFeatures:
         self,
         name: str,
         time: Optional[float] = None,
-    ) -> Optional[Array]:
+    ) -> Optional[ScalarOrArrayOrStr]:
         """Retrieve a global array by name at a specified time.
 
         Args:
@@ -765,7 +766,7 @@ class SampleFeatures:
     def add_global(
         self,
         name: str,
-        global_array: Array,
+        global_array: ScalarOrArrayOrStr,
         time: Optional[float] = None,
     ) -> None:
         """Add or update a global array at a specified time.
@@ -1114,7 +1115,7 @@ class SampleFeatures:
         zone: Optional[str] = None,
         base: Optional[str] = None,
         time: Optional[float] = None,
-    ) -> np.ndarray:
+    ) -> np.ndarray | None:
         """Retrieve a field with a specified name from a given zone, base, location, and time.
 
         Args:

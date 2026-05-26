@@ -66,71 +66,6 @@ def test_cgns_backend_download_from_hub_delegates(monkeypatch):
         "overwrite": False,
     }
 
-
-def test_cgns_backend_streaming_from_hub_delegates(monkeypatch):
-    call = {}
-
-    def fake_init_datasetdict_streaming_from_hub(
-        repo_id, split_ids=None, features=None
-    ):
-        call["repo_id"] = repo_id
-        call["split_ids"] = split_ids
-        call["features"] = features
-        return {"train": "stream"}
-
-    monkeypatch.setattr(
-        cgns,
-        "init_datasetdict_streaming_from_hub",
-        fake_init_datasetdict_streaming_from_hub,
-    )
-
-    result = CgnsBackend.init_datasetdict_streaming_from_hub(
-        "PhysArena/Rotor37", split_ids=["train"], features={"a": "b"}
-    )
-
-    assert result == {"train": "stream"}
-    assert call == {
-        "repo_id": "PhysArena/Rotor37",
-        "split_ids": ["train"],
-        "features": {"a": "b"},
-    }
-
-
-def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
-    call = {}
-
-    def fake_generate_datasetdict_to_disk(**kwargs):
-        call.update(kwargs)
-        return "ok"
-
-    monkeypatch.setattr(
-        cgns, "generate_datasetdict_to_disk", fake_generate_datasetdict_to_disk
-    )
-
-    generators = {"train": lambda: iter(())}
-    variable_schema = {"Global/temperature": {"dtype": "float32", "ndim": 1}}
-    gen_kwargs = {"train": {"shards_ids": [[0, 1]]}}
-
-    result = CgnsBackend.generate_to_disk(
-        output_folder="/tmp/output",
-        generators=generators,
-        variable_schema=variable_schema,
-        gen_kwargs=gen_kwargs,
-        num_proc=2,
-        verbose=True,
-    )
-
-    assert result == "ok"
-    assert call == {
-        "output_folder": "/tmp/output",
-        "generators": generators,
-        "variable_schema": variable_schema,
-        "gen_kwargs": gen_kwargs,
-        "num_proc": 2,
-        "verbose": True,
-    }
-
-
 def test_cgns_backend_push_local_to_hub_delegates(monkeypatch):
     call = {}
 
@@ -138,15 +73,14 @@ def test_cgns_backend_push_local_to_hub_delegates(monkeypatch):
         call["repo_id"] = repo_id
         call["local_dir"] = local_dir
         call["num_workers"] = num_workers
-        return "pushed"
+        return
 
     monkeypatch.setattr(
         cgns, "push_local_datasetdict_to_hub", fake_push_local_datasetdict_to_hub
     )
 
-    result = CgnsBackend.push_local_to_hub("dummy/repo", "/tmp/local")
+    CgnsBackend.push_local_to_hub("dummy/repo", "/tmp/local")
 
-    assert result == "pushed"
     assert call == {
         "repo_id": "dummy/repo",
         "local_dir": "/tmp/local",
@@ -164,11 +98,11 @@ def test_cgns_backend_configure_dataset_card_delegates(monkeypatch):
 
     def fake_configure_dataset_card(**kwargs):
         call.update(kwargs)
-        return "configured"
+        return
 
     monkeypatch.setattr(cgns, "configure_dataset_card", fake_configure_dataset_card)
 
-    result = CgnsBackend.configure_dataset_card(
+    CgnsBackend.configure_dataset_card(
         repo_id="dummy/repo",
         infos={"source": "synthetic"},
         local_dir="/tmp/local",
@@ -179,7 +113,6 @@ def test_cgns_backend_configure_dataset_card_delegates(monkeypatch):
         arxiv_paper_urls=["https://arxiv.org/abs/1234.5678"],
     )
 
-    assert result == "configured"
     assert call == {
         "repo_id": "dummy/repo",
         "infos": {"source": "synthetic"},

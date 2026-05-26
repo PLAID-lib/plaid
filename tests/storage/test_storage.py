@@ -212,7 +212,7 @@ class Test_Storage:
         """HF datasets and Zarr backends support splits with one sample."""
         test_dir = tmp_path / f"test_single_sample_{backend}"
 
-        def single_sample_constructor(sample_id):
+        def single_sample_constructor(sample_id) -> Sample:
             return samples_with_extra_global[sample_id]
 
         save_to_disk(
