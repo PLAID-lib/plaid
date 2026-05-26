@@ -66,6 +66,79 @@ def test_cgns_backend_download_from_hub_delegates(monkeypatch):
         "overwrite": False,
     }
 
+
+def test_cgns_backend_init_datasetdict_streaming_from_hub_delegates(monkeypatch):
+    call = {}
+
+    def fake_init_datasetdict_streaming_from_hub(repo_id, split_ids=None, features=None):
+        call["repo_id"] = repo_id
+        call["split_ids"] = split_ids
+        call["features"] = features
+        return {"train": "stream"}
+
+    monkeypatch.setattr(
+        cgns,
+        "init_datasetdict_streaming_from_hub",
+        fake_init_datasetdict_streaming_from_hub,
+    )
+
+    result = CgnsBackend.init_datasetdict_streaming_from_hub(
+        repo_id="dummy/repo",
+        split_ids={"train": [0, 2]},
+        features=["a", "b"],
+    )
+
+    assert result == {"train": "stream"}
+    assert call == {
+        "repo_id": "dummy/repo",
+        "split_ids": {"train": [0, 2]},
+        "features": ["a", "b"],
+    }
+
+
+def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
+    call = {}
+
+    def fake_generate_datasetdict_to_disk(
+        output_folder,
+        generators,
+        variable_schema=None,
+        gen_kwargs=None,
+        num_proc=1,
+        verbose=False,
+    ):
+        call["output_folder"] = output_folder
+        call["generators"] = generators
+        call["variable_schema"] = variable_schema
+        call["gen_kwargs"] = gen_kwargs
+        call["num_proc"] = num_proc
+        call["verbose"] = verbose
+        return
+
+    monkeypatch.setattr(
+        cgns,
+        "generate_datasetdict_to_disk",
+        fake_generate_datasetdict_to_disk,
+    )
+
+    CgnsBackend.generate_to_disk(
+        output_folder="/tmp/output",
+        generators={"train": lambda: iter(())},
+        variable_schema={"x": {"dtype": "float32"}},
+        gen_kwargs={"train": {"paths": ["a", "b"]}},
+        num_proc=2,
+        verbose=True,
+    )
+
+    assert call == {
+        "output_folder": "/tmp/output",
+        "generators": {"train": call["generators"]["train"]},
+        "variable_schema": {"x": {"dtype": "float32"}},
+        "gen_kwargs": {"train": {"paths": ["a", "b"]}},
+        "num_proc": 2,
+        "verbose": True,
+    }
+
 def test_cgns_backend_push_local_to_hub_delegates(monkeypatch):
     call = {}
 

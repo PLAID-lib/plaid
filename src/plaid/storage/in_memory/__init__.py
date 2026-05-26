@@ -213,7 +213,7 @@ class InMemoryBackend:
             sample_id = _find_first_missing(self._samples)
         elif not (isinstance(sample_id, int)):
             raise TypeError(
-                f"sample_id should be of type {int.__class__} but {type(sample_id)=}"
+                f"sample_id should be of type {int} but {type(sample_id)=}"
             )
 
         if sample_id < 0:

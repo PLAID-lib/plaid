@@ -106,7 +106,7 @@ def test_set_sample_single_iterable_and_validation_errors():
     with pytest.raises(Exception, match="sample"):
         backend.set_sample(3.14, sample_id=None)  # type: ignore[arg-type]
 
-    with pytest.raises(Exception, match="sample_id='abc'"):
+    with pytest.raises(Exception, match="sample_id should"):
         backend.set_sample(_new_sample(), sample_id="abc")  # type: ignore[arg-type]
 
     with pytest.raises(ValueError, match="sample_id should be positive"):
