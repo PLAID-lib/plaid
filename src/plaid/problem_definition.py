@@ -55,7 +55,7 @@ class ProblemDefinition(BaseModel):
 
     @staticmethod
     def from_path(
-        path: str | Path, name: str | None = None, **overrides
+        path: str | Path, name: str | None = None, **overrides :str
     ) -> "ProblemDefinition":
         """Load a problem definition from a YAML file located at the specified path.
 
@@ -64,12 +64,12 @@ class ProblemDefinition(BaseModel):
         Args:
             path (str | Path): The file path to the YAML file containing problem definitions.
             name (str | None, optional): The name of the problem definition to load. If None, it will attempt to load the
-            only problem definition available in the file. Defaults to None.
+                only problem definition available in the file. Defaults to None.
             **overrides: Additional keyword arguments to override specific fields in the loaded problem definition.
 
         Raises:
             ValueError: If the specified name is not found in the YAML file or if multiple problem definitions are present
-            without a specified name.
+                without a specified name.
 
         Returns:
             ProblemDefinition: The loaded problem definition.
