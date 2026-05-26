@@ -17,10 +17,6 @@ from typing import Any, Literal, Optional, Sequence, Union, cast
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .constants import (
-    AUTHORIZED_SCORE_FUNCTIONS_T,
-    AUTHORIZED_TASKS_T,
-)
 from .types import IndexType
 
 # %% Globals
@@ -101,25 +97,15 @@ class ProblemDefinition(BaseModel):
 
     @field_validator("input_features", mode="before")
     @classmethod
-    def normalize_in_features_identifiers(cls, v):
+    def normalize_input_features(cls, v):
         """Normalize input features identifiers by ensuring they are unique and sorted."""
         if len(set(v)) != len(v):
             raise ValueError("duplicated values in input_features")
         return _normalize_list(v)
 
-    @field_validator("train_split", "test_split", mode="after")
-    @classmethod
-    def check_split_has_only_one_obj(cls, v):
-        """Ensure that the split dictionaries contain only one key-value pair."""
-        if len(v) > 1:
-            raise ValueError(
-                "Splits only support one element (dict with only one object)"
-            )
-        return v
-
     @field_validator("output_features", mode="before")
     @classmethod
-    def normalize_out_features_identifiers(cls, v):
+    def normalize_output_features(cls, v):
         """Normalize output features identifiers by ensuring they are unique and sorted."""
         if len(set(v)) != len(v):
             raise ValueError("duplicated values in output_features")
@@ -128,7 +114,7 @@ class ProblemDefinition(BaseModel):
     def __setattr__(self, name: str, value: Any) -> None:
         """Override the default attribute setting behavior to enforce immutability for certain fields and log warnings for others."""
         # to set the name, task, score_function only once and oly once
-        if name in ["name", "task", "score_function"]:
+        if name in ["name"]:
             current_value = getattr(self, name, None)
             if (
                 current_value is not None
@@ -187,7 +173,7 @@ class ProblemDefinition(BaseModel):
             raise ValueError("test_split is not defined.")
         return cast(IndexType | Literal["all"], next(iter(self.test_split.values())))
 
-    def add_in_features_identifiers(self, inputs: Union[str, Sequence[str]]) -> None:
+    def add_input_features(self, inputs: Union[str, Sequence[str]]) -> None:
         """Add input features identifiers to the problem.
 
         Args:
@@ -201,19 +187,17 @@ class ProblemDefinition(BaseModel):
 
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
-                in_features_identifiers = ['omega', 'pressure']
-                problem.add_in_features_identifiers(in_features_identifiers)
+                input_features = ['omega', 'pressure']
+                problem.add_input_features(input_features)
 
                 # or for a single feature
 
-                problem.add_in_features_identifiers("angle")
+                problem.add_input_features("angle")
         """
         if isinstance(inputs, str):
             input_feature = inputs
             if input_feature in self.input_features:
-                raise ValueError(
-                    f"{input_feature} is already in self.input_features"
-                )
+                raise ValueError(f"{input_feature} is already in self.input_features")
 
             self.input_features.append(input_feature)
             self.input_features.sort()
@@ -223,9 +207,9 @@ class ProblemDefinition(BaseModel):
             raise ValueError("Some input features share the same identifier")
 
         for input_feature in inputs:
-            self.add_in_features_identifiers(input_feature)
+            self.add_input_features(input_feature)
 
-    def add_out_features_identifiers(self, outputs: Union[str, Sequence[str]]) -> None:
+    def add_output_features(self, outputs: Union[str, Sequence[str]]) -> None:
         """Add output features identifiers to the problem.
 
         Args:
@@ -239,19 +223,17 @@ class ProblemDefinition(BaseModel):
 
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition()
-                out_features_identifiers = ['omega', 'pressure']
-                problem.add_out_features_identifiers(out_features_identifiers)
+                output_features = ['omega', 'pressure']
+                problem.add_output_features(output_features)
 
                 # or for a single feature
 
-                problem.add_out_features_identifiers("angle")
+                problem.add_output_features("angle")
         """
         if isinstance(outputs, str):
             output_feature = outputs
             if output_feature in self.output_features:
-                raise ValueError(
-                    f"{output_feature} is already in self.output_features"
-                )
+                raise ValueError(f"{output_feature} is already in self.output_features")
 
             self.output_features.append(output_feature)
             self.output_features.sort()
@@ -261,7 +243,7 @@ class ProblemDefinition(BaseModel):
             raise ValueError("Some output features share the same identifier")
 
         for output_feature in outputs:
-            self.add_out_features_identifiers(output_feature)
+            self.add_output_features(output_feature)
 
     def save_to_file(self, path: Union[str, Path]) -> None:
         """Save problem information, inputs, outputs, and split to the specified file in YAML format.
@@ -282,10 +264,26 @@ class ProblemDefinition(BaseModel):
         if path.suffix != ".yaml":
             path = path.with_suffix(".yaml")
 
+        data = self.model_dump()
+
+        key_order = [
+            "name",
+            "input_features",
+            "output_features",
+            "train_split",
+            "test_split",
+        ]
+
+        ordered_data = {key: data[key] for key in key_order if key in data}
+
         # Save infos
         with path.open("w") as file:
-            yaml.dump(
-                self.model_dump(), file, default_flow_style=False, sort_keys=True
+            yaml.safe_dump(
+                ordered_data,
+                file,
+                default_flow_style=False,
+                sort_keys=False,
+                allow_unicode=True,
             )
 
     def _load_from_file_(self, path: Union[str, Path]) -> None:

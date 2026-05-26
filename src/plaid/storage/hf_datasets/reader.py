@@ -10,6 +10,7 @@
     - If the dataset is already cached locally, loads from disk.
     - Otherwise, loads from the hub, optionally using streaming mode.
 """
+
 import logging
 import os
 import shutil
@@ -44,7 +45,9 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> HFDatasetDict:
     """
     dataset = load_from_disk(dataset_path=str(Path(path) / "data"))
     if not isinstance(dataset, datasets.DatasetDict):  # pragma: no cover
-        raise TypeError("Expected DatasetDict when loading hf_datasets backend from disk")
+        raise TypeError(
+            "Expected DatasetDict when loading hf_datasets backend from disk"
+        )
     return dataset
 
 

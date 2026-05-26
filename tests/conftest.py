@@ -22,9 +22,7 @@ def generate_samples_no_string(nb: int, zone_name: str, base_name: str) -> list[
     for i in range(nb):
         sample = Sample()
         sample.init_base(3, 3, base_name)
-        sample.init_zone(
-            np.array([[17, 10, 0]]), zone=zone_name, base=base_name
-        )
+        sample.init_zone(np.array([[17, 10, 0]]), zone=zone_name, base=base_name)
         sample.add_global("test_scalar", float(i))
         sample.add_global("test_scalar_2", float(i**2))
         sample.add_global("global_0", 0.5 + np.ones((2, 3)))
@@ -193,5 +191,3 @@ def scalar_names(nb_scalars):
 @pytest.fixture
 def empty_sample():
     return Sample()
-
-

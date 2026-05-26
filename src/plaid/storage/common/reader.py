@@ -3,6 +3,7 @@
 This module provides common utilities for reading dataset metadata, problem definitions,
 and other auxiliary files from disk or downloading them from Hugging Face Hub.
 """
+
 import json
 import logging
 import tempfile
@@ -85,7 +86,6 @@ def load_problem_definitions_from_disk(
         ValueError:
             If the ``problem_definitions/`` directory does not exist.
     """
-
     pb_def_dir = Path(path).absolute()
     if pb_def_dir.name != "problem_definitions":
         pb_def_dir /= Path("problem_definitions")

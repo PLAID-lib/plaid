@@ -10,6 +10,7 @@ Key features:
 - Automatic backend detection and converter creation
 - Sample conversion between storage formats and PLAID objects
 """
+
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
@@ -95,7 +96,7 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.to_var_sample_dict is None:   # pragma: no cover
+        if self.backend_spec.to_var_sample_dict is None:  # pragma: no cover
             raise ValueError(
                 f"Converter.to_dict not available for {self.backend} backend"
             )

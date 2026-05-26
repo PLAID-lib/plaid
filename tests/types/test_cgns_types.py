@@ -7,7 +7,11 @@ import pytest
 
 def _load_cgns_types_module():
     module_path = (
-        Path(__file__).resolve().parents[2] / "src" / "plaid" / "types" / "cgns_types.py"
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "plaid"
+        / "types"
+        / "cgns_types.py"
     )
     spec = importlib.util.spec_from_file_location("cgns_types_for_test", module_path)
     assert spec is not None
@@ -50,7 +54,11 @@ def test_cgns_path_rejects_invalid_pattern():
 
 def test_module_main_example_runs(capsys):
     module_path = (
-        Path(__file__).resolve().parents[2] / "src" / "plaid" / "types" / "cgns_types.py"
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "plaid"
+        / "types"
+        / "cgns_types.py"
     )
     runpy.run_path(str(module_path), run_name="__main__")
 

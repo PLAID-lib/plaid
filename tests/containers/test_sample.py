@@ -3,8 +3,8 @@
 import copy
 from pathlib import Path
 
-import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnskeywords as CGK
+import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 import pytest

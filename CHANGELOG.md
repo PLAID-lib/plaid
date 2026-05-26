@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (problem_definition) rename add_(in/out)_features_identifiers to add_(in/out)put_features. Impose order in yaml keys.
+
 ### Fixes
 
 - (constants) fix memmaps types correctly, by inferring from constant_schema.

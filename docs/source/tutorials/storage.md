@@ -112,8 +112,8 @@ output_features = [
 
 
 pb_def = ProblemDefinition()
-pb_def.add_in_features_identifiers(input_features)
-pb_def.add_out_features_identifiers(output_features)
+pb_def.add_input_features(input_features)
+pb_def.add_output_features(output_features)
 pb_def.set_name("regression_1")
 pb_def.train_split = {"train":"all"}
 pb_def.test_split = {"test":"all"}
@@ -211,7 +211,7 @@ split = "train"
 # Load problem definitions and define features as all the input and output features
 pb_defs = load_problem_definitions_from_disk(f"{BASE_DOWNLOADED_DATA_FOLDER}/{all_backends[0]}_dataset")
 pb_def = pb_defs[0]
-features = pb_def.get_in_features_identifiers() + pb_def.get_out_features_identifiers()
+features = pb_def.input_features + pb_def.output_features
 
 print("----------------------------------------------------")
 print("-- Download datasets -------------------------------")
@@ -270,9 +270,9 @@ for backend in all_backends:
 
     # generic way to read all features for all time steps
     for t in plaid_sample.get_all_time_values():
-        for path in pb_def.get_in_features_identifiers():
+        for path in pb_def.input_features:
             plaid_sample.get_feature_by_path(path=path, time=t)
-        for path in pb_def.get_out_features_identifiers():
+        for path in pb_def.output_features:
             plaid_sample.get_feature_by_path(path=path, time=t)
 
     # generic way to return the data as a dict containing all constant and variable features

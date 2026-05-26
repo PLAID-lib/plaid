@@ -1,4 +1,5 @@
 """Package for common functions of the storage backends."""
+
 from .bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,

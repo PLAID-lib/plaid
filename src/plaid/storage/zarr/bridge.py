@@ -3,6 +3,7 @@
 This module provides utility functions for bridging between PLAID samples and Zarr storage format.
 It includes functions for key transformation and sample data conversion.
 """
+
 from typing import Any, Optional
 
 import numpy as np

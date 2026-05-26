@@ -66,7 +66,7 @@ CGNS_FIELD_LOCATIONS = [
     "JFaceCenter",
     "KFaceCenter",
     "EdgeCenter",
-    "IntegrationPoint"
+    "IntegrationPoint",
 ]
 
 CGNS_ELEMENT_NAMES = [

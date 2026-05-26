@@ -10,6 +10,7 @@ Key features:
 - Hub uploading with optimized sharding
 - Dataset card configuration and updating
 """
+
 import gc
 import logging
 import tempfile
@@ -330,9 +331,9 @@ pb_def = pb_defs[0]
 plaid_sample = ... # use a method from above to instantiate a plaid sample
 
 for t in plaid_sample.get_all_time_values():
-    for path in pb_def.get_in_features_identifiers():
+    for path in pb_def.input_features:
         plaid_sample.get_feature_by_path(path=path, time=t)
-    for path in pb_def.get_out_features_identifiers():
+    for path in pb_def.output_features:
         plaid_sample.get_feature_by_path(path=path, time=t)
 ```
 

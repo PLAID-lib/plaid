@@ -1,4 +1,5 @@
 """Package for CGNS storage."""
+
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any, Mapping, Optional, Union
@@ -108,11 +109,11 @@ class CgnsBackend:
         indexers: Optional[dict[str, Any]] = None,
     ) -> dict:
         _ = dataset, idx, features, indexers
-        raise ValueError(f"to_dict not available for 'cgns' backend")
+        raise ValueError("to_dict not available for 'cgns' backend")
 
     @staticmethod
-    def sample_to_var_sample_dict(sample: dict) -> dict:
-        raise ValueError(f"sample_to_var_sample_dict not available for 'cgns' backend")
+    def sample_to_var_sample_dict(_sample: dict) -> dict:
+        raise ValueError("sample_to_var_sample_dict not available for 'cgns' backend")
 
 
 __all__ = [

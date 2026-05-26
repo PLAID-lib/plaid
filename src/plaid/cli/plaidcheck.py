@@ -289,8 +289,13 @@ def check_dataset(
     target_splits = set(splits) if splits else dataset_splits
     unknown_splits = target_splits - dataset_splits
     for split in sorted(unknown_splits):
-        available = ' and '.join(f'"{x}"' for x in dataset_splits)
-        report.add("error", "UNKNOWN_SPLIT", split, f"Split not found in dataset, available are {available}")
+        available = " and ".join(f'"{x}"' for x in dataset_splits)
+        report.add(
+            "error",
+            "UNKNOWN_SPLIT",
+            split,
+            f"Split not found in dataset, available are {available}",
+        )
     target_splits = target_splits & dataset_splits
 
     checksum_report = {}
@@ -324,7 +329,6 @@ def check_dataset(
                 split,
                 "No constant values for split",
             )
-
 
         # Deep-check to validate content and detect non valide data in fields (nan inf)
         for idx in range(actual_n):
@@ -363,9 +367,7 @@ def check_dataset(
             for time in sample.get_all_time_values():
                 local_bases = sample.get_base_names(time=time)
                 for base in local_bases:
-                    zone_names = sample.features.get_zone_names(
-                        base=base, time=time
-                    )
+                    zone_names = sample.features.get_zone_names(base=base, time=time)
                     for zone in zone_names:
                         for location in CGNS_FIELD_LOCATIONS:
                             field_names = sample.get_field_names(
@@ -376,11 +378,13 @@ def check_dataset(
                             )
 
                             for f_name in field_names:
-                                field_value  = sample.get_field(f_name,
-                                                                location= location,
-                                                                zone=zone,
-                                                                base=base,
-                                                                time=time)
+                                field_value = sample.get_field(
+                                    f_name,
+                                    location=location,
+                                    zone=zone,
+                                    base=base,
+                                    time=time,
+                                )
                                 issue = _check_numeric_content(field_value)
                                 if issue is not None:
                                     report.add(
@@ -449,8 +453,8 @@ def check_dataset(
                 split_dict = getattr(pb_def, split_dict_name)
                 if split_dict is None:
                     continue
-                #split_dict must have only one elements
-                if len(split_dict) > 1 :
+                # split_dict must have only one elements
+                if len(split_dict) > 1:
                     report.add(
                         "error",
                         "PB_DEF_SPLIT",
@@ -533,10 +537,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    report = check_dataset(
-        path=args.path,
-        splits=args.split
-    )
+    report = check_dataset(path=args.path, splits=args.split)
 
     if args.json:
         print(report.to_json())

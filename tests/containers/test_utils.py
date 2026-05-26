@@ -25,19 +25,19 @@ def current_directory():
 
 class Test_Container_Utils:
     def test_get_sample_ids(self, current_directory):
-        dataset_path = current_directory / "dataset" /"data"/"test"
+        dataset_path = current_directory / "dataset" / "data" / "test"
         assert get_sample_ids(dataset_path) == list(np.arange(0, 10))
 
     def test_get_number_of_samples(self, current_directory):
-        dataset_path = current_directory / "dataset" /"data"/"test"
+        dataset_path = current_directory / "dataset" / "data" / "test"
         assert get_number_of_samples(dataset_path) == 10
 
     def test_get_sample_ids_with_str(self, current_directory):
-        dataset_path = current_directory / "dataset" /"data"/"test"
+        dataset_path = current_directory / "dataset" / "data" / "test"
         assert get_sample_ids(str(dataset_path)) == list(np.arange(0, 10))
 
     def test_get_number_of_samples_with_str(self, current_directory):
-        dataset_path = current_directory / "dataset" /"data"/"test"
+        dataset_path = current_directory / "dataset" / "data" / "test"
         assert get_number_of_samples(str(dataset_path)) == 10
 
     @pytest.mark.parametrize(
@@ -142,7 +142,6 @@ class Test_Container_Utils:
     def test_get_feature_details_from_path(self, url, expected):
         assert get_feature_details_from_path(url) == expected
 
-
     def test_validate_required_infos(self):
         infos = {
             "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
@@ -156,4 +155,3 @@ class Test_Container_Utils:
         }
         with pytest.raises(ValueError):
             validate_required_infos(infos_missing_license)
-
