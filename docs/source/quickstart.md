@@ -34,7 +34,7 @@ To use the library, the simplest way is to install it from the packages availabl
 ## 2 Core concepts
 
 - [Sample](core_concepts/sample.md) → API: [`plaid.containers.sample.Sample`](api_reference.md#api-sample)
-- [Dataset](core_concepts/dataset.md) → API: [`plaid.containers.dataset.Dataset`](api_reference.md#api-dataset)
+- [Dataset](core_concepts/dataset.md)
 - [Problem definition](core_concepts/problem_definition.md) → API: [`plaid.problem_definition.ProblemDefinition`](api_reference.md#api-problemdefinition)
 - [Defaults](core_concepts/defaults.md)
 - [On-disk format](core_concepts/disk_format.md)

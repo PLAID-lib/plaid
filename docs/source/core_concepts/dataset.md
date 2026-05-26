@@ -4,7 +4,7 @@ title: Dataset
 
 # Dataset
 
-A PLAID [`plaid.containers.dataset.Dataset`](../api_reference.md#api-dataset) is a collection of physics configurations, organized into [`plaid.containers.sample.Sample`](../api_reference.md#api-sample). Each [`plaid.containers.sample.Sample`](../api_reference.md#api-sample) contains all the necessary features to define a specific configuration, including mesh and scalar data.
+A PLAID dataset is a collection of physics configurations, organized into [`plaid.containers.sample.Sample`](../api_reference.md#api-sample). Each [`plaid.containers.sample.Sample`](../api_reference.md#api-sample) contains all the necessary features to define a specific configuration, including mesh and scalar data.
 
 In the current API, `Dataset` focuses on:
 
