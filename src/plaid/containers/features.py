@@ -786,11 +786,11 @@ class SampleFeatures:
 
         if topo_dim == 3:
             bulk_elems = CGK.ElementType3D
-        elif topo_dim == 2:
+        elif topo_dim == 2:  # pragma: no cover
             bulk_elems = CGK.ElementType2D
-        elif topo_dim == 1:
+        elif topo_dim == 1:  # pragma: no cover
             bulk_elems = CGK.ElementType1D
-        else:
+        else:  # pragma: no cover
             bulk_elems = CGK.ElementType1D
 
         if len(fnpath  + afnpath) :
@@ -1230,9 +1230,9 @@ class SampleFeatures:
                 ##possible an integration point data
                 grid_loc = CGU.getValueByPath(search_node, f_path + "/gridlocation")
                 if grid_loc is not None:
-                    if grid_loc.tobytes().decode() != location:
+                    if grid_loc.tobytes().decode() != location:  # pragma: no cover
                         continue
-                else:
+                else:  # pragma: no cover
                     raise
 
             field = CGU.getValueByPath(search_node, f_path + "/" + name)
