@@ -209,8 +209,8 @@ exclude_patterns = ["joss_paper", "_build", "Thumbs.db", ".DS_Store"]
 # html_theme = 'alabaster'
 # html_theme = 'sphinx_rtd_theme'
 html_theme = "furo"
-html_logo = "source/images/plaid.jpg"
-html_favicon = "source/images/plaid.jpg"
+html_logo = "source/images/plaid_logo.png"
+html_favicon = "source/images/plaid_logo.png"
 
 # cf https://pradyunsg.me/furo/customisation/edit-button/
 html_theme_options = {
