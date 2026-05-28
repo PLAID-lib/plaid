@@ -7,9 +7,9 @@
 
     <br>
 
-.. image:: source/images/plaid_logo.png
+.. image:: https://plaid-lib.github.io/assets/images/PLAID-large-logo.png
    :align: center
-   :width: 300px
+   :width: 150px
 
 +-------------+-----------------------------------------------------------------------------------------------+
 | **Testing** | |CI Status| |Docs| |Coverage| |Last Commit|                                                   |
