@@ -1,5 +1,5 @@
 <div align="center">
-<img src="docs/source/images/plaid_logo.png" width="200">
+<img src="docs/source/images/plaid_logo.png" width="150">
 </div>
 
 | | |
