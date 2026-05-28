@@ -51,6 +51,7 @@ FEATURES_METHODS = [
     "get_base_names",
     "get_zone_names",
     "get_nodal_tags",
+    "get_element_tags",
     "has_globals",
     "get_global",
     "add_global",

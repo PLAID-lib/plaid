@@ -77,10 +77,22 @@ def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
     tree = MeshToCGNS(Mesh)
     return tree
 
-
 @pytest.fixture()
 def sample_with_tree3d(sample, tree3d):
     sample.features.add_tree(tree3d)
+    return sample
+
+@pytest.fixture()
+def sample_from_muscat_mesh_dent3D(sample):
+    from Muscat.TestData import GetTestDataPath
+    from Muscat.IO.GmshReader import ReadGmsh
+    filename = GetTestDataPath() + "dent3D.msh"
+    mesh = ReadGmsh(filename)
+    cgnsmesh = MeshToCGNS(mesh)
+    from Muscat.Bridges.CGNSBridge import CGNSToMesh
+    print(mesh )
+    print(CGNSToMesh(cgnsmesh) )
+    sample.features.add_tree(cgnsmesh)
     return sample
 
 
@@ -731,6 +743,17 @@ class Test_Sample:
 
     def test_get_nodal_tags(self, sample_with_tree, nodal_tags):
         assert np.all(sample_with_tree.features.get_nodal_tags()["tag"] == nodal_tags)
+
+    def test_get_element_tags_empty(self, sample):
+        assert sample.get_element_tags() == {}
+
+    def test_get_element_tags(self, sample_from_muscat_mesh_dent3D: Sample):
+
+        element_tags = sample_from_muscat_mesh_dent3D.get_element_tags()
+        assert "Top" in element_tags
+        assert np.all(element_tags["Top"] == np.arange(729,753) )
+        assert "Vol" in element_tags
+        assert np.all(element_tags["Vol"] == np.arange(9,668) )
 
     # -------------------------------------------------------------------------#
     def test_get_nodes_empty(self, sample):

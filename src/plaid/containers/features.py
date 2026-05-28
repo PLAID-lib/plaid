@@ -734,6 +734,88 @@ class SampleFeatures:
 
         return sorted_nodal_tags
 
+    def get_element_tags(
+        self,
+        zone: Optional[str] = None,
+        base: Optional[str] = None,
+        time: Optional[float] = None,
+    ) -> dict[str, Array]:
+        """Get the element tags for a specified base and zone at a given time.
+
+        Args:
+            zone (str, optional): The name of the zone for which element tags are
+                requested. Defaults to None.
+            base (str, optional): The name of the base for which element tags are
+                requested. Defaults to None.
+            time (float, optional): The time at which element tags are requested.
+                Defaults to None.
+
+        Returns:
+            dict[str, Array]: A dictionary where keys are element tag names and
+                values are NumPy arrays containing the corresponding element
+                indices (0-based).
+        """
+        zone_node = self.get_zone(zone=zone, base=base, time=time)
+
+        if zone_node is None:
+            return {}
+
+        element_tags = {}
+
+        BCPaths = CGU.getPathsByTypeList(zone_node, ["Zone_t", "ZoneBC_t", "BC_t"])
+        for BCPath in BCPaths:
+            print(BCPath)
+            BCNode = CGU.getNodeByPath(zone_node, BCPath)
+            BCName = BCNode[0]
+            indices = _read_index(BCNode, [1])
+            if len(indices) == 0:  # pragma: no cover
+                continue
+
+            gl = CGU.getPathsByTypeSet(BCNode, ["GridLocation_t"])
+            if gl:
+                location = CGU.getValueAsString(CGU.getNodeByPath(BCNode, gl[0]))
+            else:  # pragma: no cover
+                location = "Vertex"
+            if location in ["CellCenter", "FaceCenter"]:
+                element_tags[BCName] = indices - 1
+
+        # we treat FamilyName_t and AdditionalFamilyName_t as tag over the topological dimension elements
+        fnpath = CGU.getPathsByTypeList(zone_node, ["Zone_t", 'FamilyName_t'])
+        afnpath = CGU.getPathsByTypeList(zone_node, ["Zone_t", 'AdditionalFamilyName_t'])
+        topo_dim = self.get_topological_dim()
+
+        if topo_dim == 3:
+            bulk_elems = CGK.ElementType3D
+        elif topo_dim == 2:
+            bulk_elems = CGK.ElementType2D
+        elif topo_dim == 1:
+            bulk_elems = CGK.ElementType1D
+        else:
+            bulk_elems = CGK.ElementType1D
+
+        if len(fnpath  + afnpath) :
+            self.show_tree()
+            bulk_ids = []
+            elem_paths = CGU.getAllNodesByTypeSet(zone_node, ["Elements_t"])
+            for elem in elem_paths:
+                elem_node = CGU.getNodeByPath(zone_node, elem)
+                if CGK.ElementType[elem_node[0].lstrip("Elements_")]  in bulk_elems:
+                    erange = CGU.getValueByPath(elem_node, "ElementRange")
+                    bulk_ids += list(range(erange[0]-1, erange[1]-1))
+            if len(bulk_ids):
+                for fpath in fnpath  + afnpath:
+                    fn = CGU.getNodeByPath(zone_node, fpath)
+                    if fn:
+                        familyName = CGU.getValueAsString(fn)
+                        element_tags[familyName] = bulk_ids
+
+
+        sorted_element_tags = {
+            key: np.sort(value) for key, value in element_tags.items()
+        }
+
+        return sorted_element_tags
+
     # -------------------------------------------------------------------------#
     def get_global(
         self,
