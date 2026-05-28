@@ -547,6 +547,74 @@ class PlaidDatasetService:
         """
         return self._features.get(dataset_id)
 
+    def list_available_bases(self, dataset_id: str) -> list[str]:
+        """Return the unique CGNS base prefixes (e.g. ``Base_2_2``).
+
+        Derived from the constant/variable feature catalogues, so the
+        list is available *before* any sample has been loaded - which
+        lets the trame UI populate the "Base" toggle as soon as a
+        dataset is selected. The synthetic ``Globals`` base is
+        excluded; it is exposed separately by
+        :meth:`list_globals_paths` and surfaced as its own toggle in
+        the side drawer.
+        """
+        constant_keys, variable_keys = self._load_feature_metadata(dataset_id)
+        bases: set[str] = set()
+        for path in set(constant_keys) | set(variable_keys):
+            if not path:
+                continue
+            head = path.split("/", 1)[0]
+            # Skip the synthetic PLAID ``Global`` / ``Global_times`` base
+            # (sample-level scalars / tensors); they are surfaced through
+            # the dedicated "Globals" toggle in the side drawer.
+            if head in {"Global", "Global_times"}:
+                continue
+            # Skip ``Base_X_Y_times`` bookkeeping bases - they are
+            # PLAID time-series duplicates of their companion
+            # ``Base_X_Y`` and are not separately renderable.
+            if head.startswith("Base_") and not head.endswith("_times"):
+                bases.add(head)
+        return sorted(bases)
+
+    def list_base_paths(self, dataset_id: str, base: str) -> list[str]:
+        """Return every PLAID feature path declared under ``base``.
+
+        Used by the trame "Base" toggle to translate a base pick into
+        a concrete feature list passed to :meth:`set_features`. The
+        returned paths span both constant and variable schemas, so
+        :meth:`Converter.to_plaid` can rebuild the *mesh* of that base
+        (and any field declared at the dataset level) without pulling
+        in unrelated bases.
+
+        ``Base_X_Y`` and ``Base_X_Y_times`` paths are both returned
+        when present so the time-series bookkeeping companion of the
+        chosen base is loaded along with it.
+        """
+        constant_keys, variable_keys = self._load_feature_metadata(dataset_id)
+        prefix = f"{base}/"
+        prefix_times = f"{base}_times/"
+        return sorted(
+            p
+            for p in set(constant_keys) | set(variable_keys)
+            if p.startswith(prefix) or p.startswith(prefix_times)
+        )
+
+    def list_globals_paths(self, dataset_id: str) -> list[str]:
+        """Return every PLAID feature path that lives under ``Global/``.
+
+        Used by the trame UI to translate the "Globals" toggle into a
+        concrete feature list passed to :meth:`set_features`. PLAID
+        identifies sample-level scalars / tensors with a singular
+        ``Global`` base (and a companion ``Global_times`` base for time
+        series), so we accept exactly those two prefixes.
+        """
+        constant_keys, variable_keys = self._load_feature_metadata(dataset_id)
+        return sorted(
+            p
+            for p in set(constant_keys) | set(variable_keys)
+            if p.startswith("Global/") or p.startswith("Global_times/")
+        )
+
     def set_features(
         self, dataset_id: str, features: list[str] | None
     ) -> list[str] | None:
@@ -910,7 +978,27 @@ class PlaidDatasetService:
         selected_linked = set(selected) | {
             f"{path}_times" for path in selected if f"{path}_times" in split_keys
         }
-        always_keep = split_keys - user_visible_linked
+        # PLAID stores sample-level scalars / tensors under a synthetic
+        # ``Global`` (and ``Global_times``) base. Those paths are
+        # *user-controllable* through the dedicated "Globals" toggle in
+        # the trame side drawer (they are passed verbatim in
+        # ``features`` when the toggle is on), so they must NOT be
+        # re-injected by ``always_keep``. Otherwise PLAID would load
+        # the entire globals catalogue regardless of the user's
+        # selection. Exclude every ``Global/...`` and
+        # ``Global_times/...`` path (and the bare base names handled by
+        # ``update_features_for_CGNS_compatibility``) from the
+        # "always keep" set so toggling Globals genuinely turns the
+        # descriptor list on and off.
+        globals_paths = {
+            p
+            for p in split_keys
+            if p == "Global"
+            or p == "Global_times"
+            or p.startswith("Global/")
+            or p.startswith("Global_times/")
+        }
+        always_keep = split_keys - user_visible_linked - globals_paths
         augmented = sorted(selected_linked | always_keep)
         if not augmented:
             # Split has no bookkeeping paths AND user-selected fields
@@ -1183,7 +1271,23 @@ class PlaidDatasetService:
                 datasetdict, converterdict = init_streaming_from_hub(dataset_id)
             else:
                 constant_keys, variable_keys = self._load_feature_metadata(dataset_id)
-                base_features = list(features) if features else list(constant_keys)
+                # When the user explicitly cleared the filter (empty
+                # ``features`` list) we still need a valid set of paths
+                # to keep the mesh/zones around. We use every constant
+                # path EXCEPT the ``Global`` ones: those are gated by
+                # the dedicated "Globals" toggle, so an empty selection
+                # must not silently re-load them on streaming datasets.
+                if features:
+                    base_features = list(features)
+                else:
+                    base_features = [
+                        p
+                        for p in constant_keys
+                        if p != "Global"
+                        and p != "Global_times"
+                        and not p.startswith("Global/")
+                        and not p.startswith("Global_times/")
+                    ]
                 expanded_features = update_features_for_CGNS_compatibility(
                     base_features, constant_keys, variable_keys
                 )
