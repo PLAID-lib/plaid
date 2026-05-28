@@ -40,40 +40,7 @@ logger = logging.getLogger(__name__)
 
 CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
 
-FEATURES_METHODS = [
-    "set_default_base",
-    "set_default_zone_base",
-    "resolve_base",
-    "resolve_zone",
-    "set_default_time",
-    "get_all_time_values",
-    "get_tree",
-    "get_base_names",
-    "get_zone_names",
-    "get_nodal_tags",
-    "has_globals",
-    "get_global",
-    "add_global",
-    "del_global",
-    "get_global_names",
-    "get_nodes",
-    "get_elements",
-    "get_field_names",
-    "get_field",
-    "show_tree",
-    "set_nodes",
-    "del_field",
-    "add_field",
-    "init_base",
-    "init_zone",
-    "init_tree",
-    "add_tree",
-    "del_tree",
-    "set_trees",
-]
-
-
-@delegate_methods("features", FEATURES_METHODS)
+@delegate_methods("features", SampleFeatures)
 class Sample(BaseModel):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
 
@@ -613,6 +580,9 @@ if TYPE_CHECKING:
     # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING
     # automatically adds all its methods to Sample's autocomplete.
     class Sample(Sample, SampleFeatures):
-        """Sample type enriched with SampleFeatures protocol methods for type checkers."""
-
+        """This class is only used for type checking and IDE autocompletion,
+        it inherits from both Sample and SampleFeatures to allow access to all methods of both classes without explicit delegation.
+        Please note that this class is not instantiated at runtime, and is only used for static type checking purposes.
+        Use the earlear defined Sample class for documentation and runtime execution.
+        """
         ...
