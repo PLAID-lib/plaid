@@ -2,7 +2,8 @@
 # %% Imports
 
 from functools import wraps
-
+import inspect
+from typing import Type
 import numpy as np
 
 # %% Functions
@@ -44,17 +45,24 @@ def safe_len(obj):
     return len(obj) if hasattr(obj, "__len__") else 0
 
 
-def delegate_methods(to: str, methods: list[str]):
-    """Class decorator to forward specific methods from a delegate attribute."""
+def delegate_methods(to: str, delegate_cls: Type):
+    """Class decorator to automatically forward all public methods from a delegate class."""
+
+    # Programmatically extract all public methods from the class definition
+    methods = [
+        name for name, attr in inspect.getmembers(delegate_cls, predicate=inspect.isfunction)
+        if not name.startswith("_")
+    ]
 
     def wrapper(cls):
         for name in methods:
+            def make_delegate(method_name):
+                target_method = getattr(delegate_cls, method_name)
 
-            def make_delegate(name):
-                @wraps(getattr(getattr(cls, to, None), name, lambda *_, **__: None))
+                @wraps(target_method)
                 def method(self, *args, **kwargs):
-                    return getattr(getattr(self, to), name)(*args, **kwargs)
-
+                    # Route execution to the instance attribute (e.g., self.features)
+                    return getattr(getattr(self, to), method_name)(*args, **kwargs)
                 return method
 
             setattr(cls, name, make_delegate(name))
