@@ -7,7 +7,7 @@
 
     <br>
 
-.. image:: https://plaid-lib.github.io/assets/images/PLAID-large-logo.png
+.. image:: source/images/plaid_logo.png
    :align: center
    :width: 300px
 
