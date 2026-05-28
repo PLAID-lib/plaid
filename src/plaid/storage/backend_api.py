@@ -11,18 +11,20 @@ from typing import (
     Optional,
     Protocol,
     Union,
+    runtime_checkable,
 )
 
 import numpy as np
 from datasets import IterableDataset
 
-from ..types import IndexType
+from ..types import IndexArrayType
 
 if TYPE_CHECKING:
     from ..containers.dataset import Dataset
     from ..containers.sample import Sample
 
 
+@runtime_checkable
 class BackendModule(Protocol):
     """Protocol describing required methods for storage backend plugins."""
 
@@ -58,7 +60,7 @@ class BackendModule(Protocol):
         output_folder: Union[str, Path],
         generators: dict[str, Callable[..., Generator["Sample", None, None]]],
         variable_schema: Optional[dict[str, dict]] = None,  # noqa: ARG001
-        gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+        gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
         num_proc: int = 1,
         verbose: bool = False,
     ) -> None:

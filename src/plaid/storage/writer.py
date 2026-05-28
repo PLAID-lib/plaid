@@ -14,7 +14,7 @@ Key features:
 import logging
 import shutil
 from pathlib import Path
-from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Union
+from typing import Any, Callable, Generator, Mapping, Optional, Union
 
 from plaid.storage.common.writer import (
     push_infos_to_hub,
@@ -71,7 +71,7 @@ class _SampleFuncGenerator:
 
 
 def _build_gen_kwargs(
-    ids: Mapping[str, Sequence],
+    ids: Mapping[str, Any],
     num_proc: int,
 ) -> dict[str, dict[str, Any]]:
     """Build ``gen_kwargs`` by sharding the ids for each split.
@@ -117,7 +117,7 @@ def _check_folder(output_folder: Path, overwrite: bool) -> None:
 def save_to_disk(
     output_folder: Union[str, Path],
     sample_constructor: Callable[[Any], Sample],
-    ids: Mapping[str, Sequence],
+    ids: Mapping[str, Any],
     backend: str = "hf_datasets",
     infos: Optional[dict[str, Any]] = None,
     pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,

@@ -4,12 +4,14 @@ from .cgns_types import (
     CGNSNode,
     CGNSTree,
 )
-from .common import Array, ArrayDType, IndexType
+from .common import Array, ScalarDType, IndexArrayType, ScalarOrArray, ScalarOrArrayOrStr
 
 __all__ = [
+    "ScalarOrArray",
+    "ScalarOrArrayOrStr",
     "Array",
-    "ArrayDType",
-    "IndexType",
+    "ScalarDType",
+    "IndexArrayType",
     "CGNSNode",
     "CGNSTree",
 ]

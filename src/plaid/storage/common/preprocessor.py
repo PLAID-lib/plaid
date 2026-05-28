@@ -9,12 +9,11 @@ import hashlib
 import logging
 import multiprocessing as mp
 from queue import Empty
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Any, Callable, Generator, Optional, Sequence, Union
 
 import numpy as np
 from tqdm import tqdm
 
-from plaid.types import IndexType
 from plaid.utils.cgns_helper import flatten_cgns_tree
 
 from ...containers.sample import Sample
@@ -195,12 +194,12 @@ def process_shard(
     generator_fn: Callable[..., Any],
     progress: Any,
     n_proc: int,
-    shard_ids: Optional[list[IndexType]] = None,
+    shard_ids: Optional[Sequence[Any]] = None,
 ) -> tuple[
     set[str],
     dict[str, str],
     dict[str, Any],
-    dict[str, dict[str, Union[str, bool, int]]],
+    dict[str, dict[str, Union[str, bool, int, set]]],
     int,
 ]:
     """Process a single shard of sample ids and collect per-shard metadata.
@@ -215,7 +214,7 @@ def process_shard(
     - updates progress (either a multiprocessing.Queue or a tqdm progress bar).
 
     Args:
-        shard_ids (list[IndexType]): Sequence of sample ids (a single shard) to process.
+        shard_ids (IndexArrayType): Sequence of sample ids (a single shard) to process.
         generator_fn (Callable): Generator function accepting a list of shard id sequences
             and yielding Sample objects for those ids.
         progress (Any): Progress reporter; either a multiprocessing.Queue (for parallel
@@ -296,7 +295,7 @@ def _process_shard_debug(
     generator_fn: Callable[..., Any],
     progress_queue: Any,
     n_proc: int,
-    shard_ids: Optional[list[IndexType]],
+    shard_ids: Optional[Sequence[Any]],
 ) -> Any:  # pragma: no cover
     """Debug wrapper for process_shard that prints exceptions.
 
@@ -344,7 +343,7 @@ def preprocess_splits(
         generators (dict[str, Callable]):
             Mapping from split name to a generator function. Each generator must
             accept a single argument (a sequence of shard ids) and yield PLAID samples.
-        gen_kwargs (dict[str, dict[str, list[IndexType]]]):
+        gen_kwargs (dict[str, dict[str, list[IndexArrayType]]]):
             Per-split kwargs used to drive generator invocation (e.g. {"train": {"shards_ids": [...]}}).
         num_proc (int, optional):
             Number of worker processes to use for shard-level parallelism. Defaults to 1.

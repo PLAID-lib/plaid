@@ -63,7 +63,7 @@ class CGNSDataset:
             Sample: A PLAID Sample object for each sample in the dataset.
         """
         for idx in self.ids:
-            yield self[idx]
+            yield self[int(idx)]
 
     def __getitem__(self, idx: int) -> Sample:
         """Get a sample by index.

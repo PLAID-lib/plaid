@@ -8,15 +8,13 @@ uploading to Hugging Face Hub, and configuring dataset cards.
 import logging
 import multiprocessing as mp
 from pathlib import Path
-from typing import Callable, Generator, Optional, Union
+from typing import Any, Callable, Generator, Optional, Union
 
 import yaml
 from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
 from ...containers.sample import Sample
-from ...types import IndexType
-
 logger = logging.getLogger(__name__)
 
 
@@ -45,7 +43,7 @@ def generate_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     variable_schema: Optional[dict[str, dict]] = None,  # noqa: ARG001
-    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
 ) -> None:

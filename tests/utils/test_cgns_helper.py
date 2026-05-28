@@ -51,6 +51,14 @@ class Test_cgns_helper:
         assert cgns_helper.compare_cgns_trees(tree, tree)
         assert not cgns_helper.compare_cgns_trees(tree, samples[0].get_tree())
 
+        tree_with_empty_data_1 = copy.deepcopy(tree)
+        tree_with_empty_data_2 = copy.deepcopy(tree)
+        tree_with_empty_data_1[1] = np.array([], dtype=np.float32)
+        tree_with_empty_data_2[1] = np.array([], dtype=np.float32)
+        assert cgns_helper.compare_cgns_trees(
+            tree_with_empty_data_1, tree_with_empty_data_2
+        )
+
         tree2 = copy.deepcopy(tree)
         tree2[0] = "A"
         assert not cgns_helper.compare_cgns_trees(tree, tree2)
