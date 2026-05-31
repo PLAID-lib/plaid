@@ -961,27 +961,20 @@ class PlaidDatasetService:
             return []
         return sorted(float(t) for t in times)
 
-    def describe_globals(
-        self, ref: SampleRef, *, time: float | None = None
+    @staticmethod
+    def _describe_globals_for_sample(
+        sample, *, time: float | None = None
     ) -> list[dict[str, object]]:
-        """Return PLAID global scalars/tensors reported by the sample.
+        """Return PLAID globals descriptors for an already-loaded sample.
 
-        Uses :meth:`plaid.Sample.get_global_names` to enumerate globals
-        and :meth:`plaid.Sample.get_global` to fetch each value, so only
-        the "real" globals exposed by PLAID's API are reported. The CGNS
-        bookkeeping arrays ``IterationValues`` and ``TimeValues`` (which
-        describe time steps, not physical scalars) are filtered out.
+        Pure helper extracted from :meth:`describe_globals` so the
+        viewer can pre-compute globals for every timestep in one
+        :meth:`load_sample` call (see :meth:`describe_globals_all_times`).
 
-        Args:
-            ref: The sample to inspect.
-            time: Optional time value; when ``None`` the sample's first
-                available time (or the static value) is used.
-
-        Returns:
-            A list of ``{"name": str, "shape": list[int], "dtype": str,
-            "preview": str | None}`` descriptors, one per global.
+        ``IterationValues`` and ``TimeValues`` are CGNS bookkeeping
+        arrays that describe the time axis, not physical scalars, so
+        they are filtered out.
         """
-        sample = self.load_sample(ref)
         kwargs = {"time": time} if time is not None else {}
         try:
             names = sample.get_global_names(**kwargs)
@@ -1008,6 +1001,64 @@ class PlaidDatasetService:
                 }
             )
         return entries
+
+    def describe_globals(
+        self, ref: SampleRef, *, time: float | None = None
+    ) -> list[dict[str, object]]:
+        """Return PLAID global scalars/tensors reported by the sample.
+
+        Uses :meth:`plaid.Sample.get_global_names` to enumerate globals
+        and :meth:`plaid.Sample.get_global` to fetch each value, so only
+        the "real" globals exposed by PLAID's API are reported. The CGNS
+        bookkeeping arrays ``IterationValues`` and ``TimeValues`` (which
+        describe time steps, not physical scalars) are filtered out.
+
+        Args:
+            ref: The sample to inspect.
+            time: Optional time value; when ``None`` the sample's first
+                available time (or the static value) is used.
+
+        Returns:
+            A list of ``{"name": str, "shape": list[int], "dtype": str,
+            "preview": str | None}`` descriptors, one per global.
+        """
+        sample = self.load_sample(ref)
+        return self._describe_globals_for_sample(sample, time=time)
+
+    def describe_globals_all_times(
+        self, ref: SampleRef
+    ) -> tuple[list[dict[str, object]], dict[float, list[dict[str, object]]]]:
+        """Return globals descriptors for every time step of a sample.
+
+        Performs a single :meth:`load_sample` call (which goes through
+        the in-memory LRU) and then iterates over every time value
+        exposed by :meth:`plaid.Sample.features.get_all_time_values`,
+        building a ``{time: [globals_entries]}`` snapshot. The trame
+        playback loop can then refresh the globals panel by indexing
+        into this dict instead of triggering a fresh service call (and
+        risking a per-frame decode on backends that bypass the cache).
+
+        Args:
+            ref: The sample to inspect.
+
+        Returns:
+            A pair ``(static, by_time)`` where ``static`` is the
+            time-less globals listing (used as a fallback when the
+            sample has no time axis or the requested time is missing)
+            and ``by_time`` maps each available ``float`` time value
+            to its globals descriptors.
+        """
+        sample = self.load_sample(ref)
+        static = self._describe_globals_for_sample(sample, time=None)
+        try:
+            times = sample.features.get_all_time_values()
+        except Exception:  # noqa: BLE001 - defensive, PLAID shouldn't raise
+            times = []
+        by_time: dict[float, list[dict[str, object]]] = {}
+        for raw_time in times:
+            t = float(raw_time)
+            by_time[t] = self._describe_globals_for_sample(sample, time=t)
+        return static, by_time
 
     def describe_non_visual_bases(
         self, ref: SampleRef

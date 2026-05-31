@@ -1087,6 +1087,97 @@ def test_summary_time_globals_and_validation(
     assert validation.warnings == ["warning"]
 
 
+def test_describe_globals_all_times_indexes_each_timestep(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``describe_globals_all_times`` must build a per-time snapshot.
+
+    The trame server feeds this snapshot into the playback loop so the
+    "Globals" panel can be refreshed on each frame without re-decoding
+    the sample. The service contract is therefore:
+
+    1. A single underlying ``load_sample`` is performed.
+    2. The returned ``static`` listing matches what
+       ``describe_globals(ref)`` returns with ``time=None``.
+    3. ``by_time`` exposes a deterministic ``{float: [...]}`` mapping
+       keyed on every value reported by ``sample.features.get_all_time_values``.
+    4. ``IterationValues`` / ``TimeValues`` bookkeeping arrays are
+       filtered out at every timestep.
+    """
+    import types
+
+    _make_dataset_dir(tmp_path, "ds")
+
+    class _TimeAwareSample:
+        def __init__(self) -> None:
+            self.features = types.SimpleNamespace(
+                data={},
+                get_all_time_values=lambda: [1.0, 2.0],
+            )
+            self.calls: list[float | None] = []
+
+        # CGNS bookkeeping arrays must be filtered out by the service
+        # at every requested time, just like the time-less path.
+        def get_global_names(self, *, time=None):
+            self.calls.append(time)
+            return ["IterationValues", "pressure"]
+
+        def get_global(self, name: str, *, time=None):
+            if name == "pressure":
+                return 10.0 if time == 1.0 else (20.0 if time == 2.0 else 0.0)
+            return [int(time or 0)]
+
+    sample = _TimeAwareSample()
+    converter = _CountingConverter({0: sample})
+    dataset_dict = {"train": _FakeDataset(range(1))}
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    static, by_time = service.describe_globals_all_times(ref)
+
+    assert converter.calls == 1, "must decode the sample only once"
+    assert {entry["name"] for entry in static} == {"pressure"}
+    assert set(by_time.keys()) == {1.0, 2.0}
+    for entries in by_time.values():
+        assert "IterationValues" not in {e["name"] for e in entries}
+    # ``_array_preview`` defers to ``numpy.array2string`` which drops the
+    # trailing zero on 0-d float arrays ("10." rather than "10.0").
+    assert by_time[1.0][0]["preview"].startswith("10")
+    assert by_time[2.0][0]["preview"].startswith("20")
+
+    # The convenience wrapper must agree with the snapshot at each time.
+    assert service.describe_globals(ref, time=1.0) == by_time[1.0]
+    assert service.describe_globals(ref, time=2.0) == by_time[2.0]
+    assert service.describe_globals(ref) == static
+
+
+def test_describe_globals_all_times_empty_when_no_time_axis(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Static (time-less) samples produce an empty ``by_time`` mapping."""
+    _make_dataset_dir(tmp_path, "ds")
+    sample = _SummarySample()
+    sample.features.get_all_time_values = lambda: []
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"train": _FakeDataset(range(1))},
+                {"train": _FakeConverter({0: sample})},
+            )
+        },
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    static, by_time = service.describe_globals_all_times(ref)
+    assert by_time == {}
+    # ``static`` is the time-less describe_globals result.
+    assert static == service.describe_globals(ref)
+
+
 def test_time_globals_and_validation_error_branches(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

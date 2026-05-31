@@ -607,6 +607,20 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     # filter, so without this force-refresh the renderer would keep
     # showing the pre-filter CGNS file).
     force_artifact_refresh: dict[str, bool] = {"pending": False}
+    # Pre-computed globals descriptors for the active sample, keyed by
+    # time value. Built once per selection by ``_refresh_sample_view_impl``
+    # so the playback loop in ``_apply_time_step_impl`` can refresh the
+    # globals panel via a dict lookup instead of calling
+    # ``dataset_service.describe_globals(ref, time=...)`` on every frame.
+    # Layout: ``{"static": [...], "by_time": {float: [...]}, "ref": <encoded>}``.
+    # ``ref`` lets the playback loop verify the snapshot still matches
+    # the active selection (and fall back to the per-frame service call
+    # otherwise, e.g. for streaming datasets that share a single ref).
+    globals_snapshot: dict[str, object] = {
+        "static": [],
+        "by_time": {},
+        "ref": None,
+    }
 
     with _silence_stderr():
         datasets = dataset_service.list_datasets()
@@ -956,14 +970,50 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.time_count = len(times)
         state.time_index = 0
         state.current_time = times[0] if times else None
-        try:
-            with _silence_stderr():
-                state.sample_globals = dataset_service.describe_globals(
-                    ref, time=state.current_time
-                )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to describe globals: %s", exc)
-            state.sample_globals = []
+        # Pre-compute the globals descriptors for *every* timestep of
+        # the sample and stash them in ``globals_snapshot``. The
+        # playback loop in ``_apply_time_step_impl`` then refreshes the
+        # globals panel by indexing into this dict instead of issuing a
+        # fresh ``describe_globals`` call (which, on backends that
+        # bypass the LRU sample cache, would otherwise re-decode the
+        # PLAID sample on every frame). For streaming datasets the
+        # snapshot is left empty: the per-record sample object is
+        # rebuilt on every cursor advance, so a per-time snapshot is
+        # meaningless and the loop falls back to the per-frame service
+        # call (which is fine because streaming is never used with
+        # multi-timestep playback in the same record).
+        ref_key = ref.encode()
+        if state.is_streaming:
+            globals_snapshot["static"] = []
+            globals_snapshot["by_time"] = {}
+            globals_snapshot["ref"] = None
+        else:
+            try:
+                with _silence_stderr():
+                    static, by_time = dataset_service.describe_globals_all_times(ref)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to pre-compute globals snapshot: %s", exc)
+                static, by_time = [], {}
+            globals_snapshot["static"] = static
+            globals_snapshot["by_time"] = by_time
+            globals_snapshot["ref"] = ref_key
+        # Show the globals matching the initial time step (or the
+        # static fallback when no time axis is available).
+        if globals_snapshot["ref"] == ref_key:
+            by_time = globals_snapshot["by_time"]
+            if state.current_time is not None and float(state.current_time) in by_time:
+                state.sample_globals = by_time[float(state.current_time)]
+            else:
+                state.sample_globals = globals_snapshot["static"]
+        else:
+            try:
+                with _silence_stderr():
+                    state.sample_globals = dataset_service.describe_globals(
+                        ref, time=state.current_time
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to describe globals: %s", exc)
+                state.sample_globals = []
         try:
             # Streaming samples all share the same ``SampleRef`` (the
             # ``STREAM_CURSOR_ID`` sentinel) and would therefore hit the
@@ -1342,13 +1392,31 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 split=split,
                 sample_id=str(state.sample_id),
             )
-            try:
-                with _silence_stderr():
-                    state.sample_globals = dataset_service.describe_globals(
-                        ref, time=state.current_time
-                    )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to describe globals: %s", exc)
+            ref_key = ref.encode()
+            # Fast path: index into the pre-built snapshot. ``ref_key``
+            # guards against stale snapshots (e.g. the user changed
+            # sample mid-playback so the loop still has the previous
+            # ``ref`` in scope but the snapshot has not been rebuilt
+            # yet) and against streaming datasets, which never populate
+            # the snapshot. When the guard fails, we fall back to the
+            # original per-frame service call.
+            current_time = state.current_time
+            if (
+                globals_snapshot["ref"] == ref_key
+                and current_time is not None
+                and float(current_time) in globals_snapshot["by_time"]
+            ):
+                state.sample_globals = globals_snapshot["by_time"][float(current_time)]
+            elif globals_snapshot["ref"] == ref_key and current_time is None:
+                state.sample_globals = globals_snapshot["static"]
+            else:
+                try:
+                    with _silence_stderr():
+                        state.sample_globals = dataset_service.describe_globals(
+                            ref, time=current_time
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Failed to describe globals: %s", exc)
 
     @state.change("time_index")
     def _on_time_index(**_: object) -> None:
