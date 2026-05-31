@@ -53,7 +53,7 @@ plaid-check /path/to/plaid_dataset
 plaid-viewer --datasets-root /path/to/datasets
 ```
 
-Additional core concepts are detailed in {doc}`Core concepts <core_concepts>`.
+Additional concepts are detailed in {doc}`Concepts <concepts>`.
 
 ## 3 Going further
 
