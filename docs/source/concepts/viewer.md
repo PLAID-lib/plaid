@@ -36,6 +36,8 @@ Useful launch options:
 
 ## Follow the steps in the side panel
 
+![defaults](../images/viewer.jpg)
+
 The left panel is numbered in the same order as a typical workflow.
 
 ### 1) Select Datasets root
