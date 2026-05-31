@@ -21,7 +21,6 @@ from ..containers.utils import (
     get_feature_details_from_path,
 )
 from ..types import Array, CGNSNode, CGNSTree, ScalarOrArrayOrStr
-
 from ..utils import cgns_helper as CGH
 
 logger = logging.getLogger(__name__)
@@ -306,7 +305,7 @@ class SampleFeatures:
 
         if base_node is None:  # pragma: no cover
             raise ValueError(
-                f"there is no base called {base} at the time {time} in this sample"
+                f"There is no base called {base} at the time {time} in this sample."
             )
 
         return int(base_node[1][0])
@@ -329,7 +328,7 @@ class SampleFeatures:
         base_node = self.get_base(base, time)
         if base_node is None:  # pragma: no cover
             raise ValueError(
-                f"there is no base called {base} at the time {time} in this sample"
+                f"There is no base called {base} at the time {time} in this sample."
             )
 
         return int(base_node[1][1])
@@ -780,8 +779,10 @@ class SampleFeatures:
                 element_tags[BCName] = indices - 1
 
         # we treat FamilyName_t and AdditionalFamilyName_t as tag over the topological dimension elements
-        fnpath = CGU.getPathsByTypeList(zone_node, ["Zone_t", 'FamilyName_t'])
-        afnpath = CGU.getPathsByTypeList(zone_node, ["Zone_t", 'AdditionalFamilyName_t'])
+        fnpath = CGU.getPathsByTypeList(zone_node, ["Zone_t", "FamilyName_t"])
+        afnpath = CGU.getPathsByTypeList(
+            zone_node, ["Zone_t", "AdditionalFamilyName_t"]
+        )
         topo_dim = self.get_topological_dim()
 
         if topo_dim == 3:
@@ -793,22 +794,21 @@ class SampleFeatures:
         else:  # pragma: no cover
             bulk_elems = CGK.ElementType1D
 
-        if len(fnpath  + afnpath) :
+        if len(fnpath + afnpath):
             self.show_tree()
             bulk_ids = []
             elem_paths = CGU.getAllNodesByTypeSet(zone_node, ["Elements_t"])
             for elem in elem_paths:
                 elem_node = CGU.getNodeByPath(zone_node, elem)
-                if CGK.ElementType[elem_node[0].lstrip("Elements_")]  in bulk_elems:
+                if CGK.ElementType[elem_node[0].lstrip("Elements_")] in bulk_elems:
                     erange = CGU.getValueByPath(elem_node, "ElementRange")
-                    bulk_ids += list(range(erange[0]-1, erange[1]-1))
+                    bulk_ids += list(range(erange[0] - 1, erange[1] - 1))
             if len(bulk_ids):
-                for fpath in fnpath  + afnpath:
+                for fpath in fnpath + afnpath:
                     fn = CGU.getNodeByPath(zone_node, fpath)
                     if fn:
                         familyName = CGU.getValueAsString(fn)
                         element_tags[familyName] = bulk_ids
-
 
         sorted_element_tags = {
             key: np.sort(value) for key, value in element_tags.items()

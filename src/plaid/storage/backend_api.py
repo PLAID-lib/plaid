@@ -17,8 +17,6 @@ from typing import (
 import numpy as np
 from datasets import IterableDataset
 
-from ..types import IndexArrayType
-
 if TYPE_CHECKING:
     from ..containers.dataset import Dataset
     from ..containers.sample import Sample

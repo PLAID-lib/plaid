@@ -1,12 +1,20 @@
 ---
-title: Storage backends
+title: Conversion tutorial
 ---
 
-# Storage tutorial
+# Conversion tutorial
 
 End‑to‑end workflows for creating, saving, and loading PLAID datasets with the three storage backends: **hf_datasets**, **cgns**, and **zarr**.
 
-## Key concepts
+## Backend capabilities
+
+| Backend | Persistent on disk | Hub download/push | Streaming from Hub | Feature selection notes |
+| --- | --- | --- | --- | --- |
+| `hf_datasets` | yes | yes | yes | streaming can pass selected columns; local download currently downloads backend data as parquet |
+| `cgns` | yes | yes | yes | sample selection is supported; feature filtering is handled at conversion time where applicable |
+| `zarr` | yes | yes | yes | supports selected sample ids and selected variable features for download/streaming |
+
+## Storage concepts
 
 - **`sample_constructor`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
 - **`ids`** is a dictionary mapping split names to **sliceable sequences** of identifiers — anything with `__getitem__` and `__len__` (list, tuple, numpy array, …). PLAID handles iteration, generator creation, and parallel sharding internally.
@@ -14,11 +22,9 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
 - Backend converters turn raw backend samples into PLAID `Sample` objects.
 
-## Notes
+## Note
 
 - The example uses external tools (`plyfile`, `Muscat`) to build meshes — these are not PLAID runtime dependencies.
-- Set `datasets.config.HF_DATASETS_CACHE` to a dedicated folder when using the HF backend.
-- Loading metadata from **local disk** keeps numeric constants as `np.memmap` for memory efficiency; loading from the **Hub** materializes them into in-memory arrays to avoid lifetime issues with temporary download folders.
 
 
 ## How to create data and save to disk/push to hub
@@ -30,7 +36,6 @@ import shutil
 
 import numpy as np
 
-from datasets import config
 from plaid import Sample, ProblemDefinition
 from plaid.storage import save_to_disk, push_to_hub
 
@@ -39,11 +44,6 @@ from plyfile import PlyData
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools.MeshCreationTools import CreateMeshOf
 import Muscat.MeshContainers.ElementsDescription as ED
-
-
-# Use a dedicated temporary cache folder
-tmp_cache_dir = "hf_tmp_cache"
-config.HF_DATASETS_CACHE = tmp_cache_dir
 
 
 N_PROC = 6 # number of parallel processes (set to 1 for sequential execution)
@@ -111,10 +111,9 @@ output_features = [
 ]
 
 
-pb_def = ProblemDefinition()
+pb_def = ProblemDefinition(name="regression_1")
 pb_def.add_input_features(input_features)
 pb_def.add_output_features(output_features)
-pb_def.set_name("regression_1")
 pb_def.train_split = {"train":"all"}
 pb_def.test_split = {"test":"all"}
 
@@ -182,6 +181,8 @@ for backend in all_backends:
                 illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
     print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
 
+# Note: for maximal compatibility, you may need to call the `save_to_disk` and `push_to_hub` under the `if __name__ == "__main__":` context;
+
 if Path(tmp_cache_dir).exists():
     shutil.rmtree(Path(tmp_cache_dir))
 ```
@@ -210,7 +211,7 @@ split = "train"
 
 # Load problem definitions and define features as all the input and output features
 pb_defs = load_problem_definitions_from_disk(f"{BASE_DOWNLOADED_DATA_FOLDER}/{all_backends[0]}_dataset")
-pb_def = pb_defs[0]
+pb_def = next(iter(pb_defs.values()))
 features = pb_def.input_features + pb_def.output_features
 
 print("----------------------------------------------------")
@@ -357,6 +358,7 @@ sample = converter.to_plaid(
 - `cgns` backend does not use this mechanism.
 
 
+```python
 print("----------------------------------------------------")
 print("-- Streaming test ----------------------------------")
 print("----------------------------------------------------")

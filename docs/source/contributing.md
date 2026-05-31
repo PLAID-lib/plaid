@@ -12,12 +12,11 @@
 - [5. Documentation](#5-documentation)
 - [6. Formatting and linting with Ruff](#6-formatting-and-linting-with-ruff)
 - [7. Setting up pre-commit](#7-setting-up-pre-commit)
-- [8. Backward-compatibility guidelines](#8-backward-compatibility-guidelines)
-- [9. Release process](#9-release-process)
-  - [9.1. Github](#91-github)
-  - [9.2. conda-forge](#92-conda-forge)
-  - [9.3. Readthedocs](#93-readthedocs)
-- [10. Documentation consistency checks](#10-documentation-consistency-checks)
+- [8. Release process](#8-release-process)
+  - [8.1. Github](#81-github)
+  - [8.2. conda-forge](#82-conda-forge)
+  - [8.3. Readthedocs](#83-readthedocs)
+- [9. Documentation consistency checks](#9-documentation-consistency-checks)
 
 ## 1. Contributor License Agreement (CLA)
 
@@ -36,16 +35,14 @@ The agreement will be presented automatically through GitHub's interface when yo
 ### 2.1. Coding Standards
 - Follow PEP 8 and PEP 257 guidelines
 - Use snake_case naming convention
-- Keep lines under 80 characters
 - Prefer one class per file
 - Aim for simple and flexible API design
 - Maintain 100% test coverage
 
 ### 2.2. Contributing Process
-1. Review the backward-compatibility guidelines
-2. Write local/unit tests for your changes
-3. Include examples when adding new features
-4. Submit a pull request with your changes
+1. Write local/unit tests for your changes
+2. Include examples when adding new features
+3. Submit a pull request with your changes
 
 ### 2.3. Issue Guidelines
 When reporting issues:
@@ -65,7 +62,7 @@ For feature requests:
 
 - Git
 - Python (`>=3.10, <3.14`)
-- Conda package manager
+- Conda or uv package manager
 
 ### 3.2. Installation Steps
 
@@ -87,7 +84,7 @@ For feature requests:
    - Using uv (Linux):
 
     ```bash
-    uv sync --dev
+    uv sync --dev --extra viewer
     ```
 
 
@@ -153,33 +150,9 @@ You can also run (once):
 pre-commit install
 ```
 
-## 8. Backward-compatibility guidelines
+## 8. Release process
 
-Follow these concrete rules to preserve retro-compatibility for both the public API and on-disk formats.
-
-- Public API
-  - Prefer additive changes: add new functions, methods or keyword-only arguments instead of changing existing call signatures.
-  - Mark any removed or renamed public function/method/argument with the `@deprecated` utilities and document the replacement and planned removal version.
-  - When changing return types, keep a migration path (helper converting old format to new) and emit a deprecation warning for callers of the old format.
-  - Add unit tests that exercise the old behaviour and the migration path.
-  - Update the changelog and the release notes with clear migration steps and examples.
-
-- On-disk formats (YAML/JSON/CSV, etc.)
-  - Version any written problem/dataset metadata with a `version` field. When loading, accept older versions and migrate them in-memory.
-  - Keep readers tolerant: accept both previous keys and new keys (using deprecation warnings when reading old keys). Don't break on extra unknown keys.
-  - Write automated migration code for disk formats when the format changes. Prefer writing newer-format files while still supporting read of older files.
-  - Add round-trip tests: save a structure with the current writer, then read it back; and also read legacy files and compare expected migrated structure.
-
-- General process
-  - Open an issue describing the compatibility impact for any breaking change and link it to the PR.
-  - Add deprecation warnings at least one minor release before removal.
-  - Keep `examples/` and `docs/` updated with migration examples and sample commands.
-
-These guidelines help keep PLAID users' code and datasets working across releases. See `docs/` and issues `#97`, `#14` for past discussions and examples of migrations.
-
-## 9. Release process
-
-### 9.1. Github
+### 8.1. Github
 
 - Create a new release branch from `main` called e.g. `release_0.1.10`
 - Update the CHANGELOG
@@ -193,7 +166,7 @@ These guidelines help keep PLAID users' code and datasets working across release
   - Include a link to the CHANGELOG file at the release tag, e.g.: `https://github.com/PLAID-lib/plaid/blob/0.1.10/CHANGELOG.md`
 - Create a new pull request to add a new `Unreleased` section to the CHANGELOG, with sub-sections `Added`, `Changed`, `Fixes`, `Removed`
 
-### 9.2. conda-forge
+### 8.2. conda-forge
 
 - Create a fork of https://github.com/conda-forge/plaid-feedstock or sync with the latest changes if you already have a fork
 - Update the conda-forge recipe `plaid-feedstock/recipe/meta.yaml`
@@ -203,11 +176,11 @@ These guidelines help keep PLAID users' code and datasets working across release
 - Submit a pull request to the conda-forge feedstock repository
 - Follow the instructions provided in the PR message
 
-### 9.3. Readthedocs
+### 8.3. Readthedocs
 
 Just check a version was created for the release tag, it should have automatically triggered a new build on Read the Docs.
 
-## 10. Documentation consistency checks
+## 9. Documentation consistency checks
 
 Before opening a PR that modifies docs or public APIs, run a quick consistency pass:
 
@@ -229,8 +202,3 @@ Before opening a PR that modifies docs or public APIs, run a quick consistency p
 4. **Validate storage-layout claims**
    - Ensure on-disk format docs match current `plaid.storage` behavior.
    - Cross-check against tests/fixtures when updating storage documentation.
-
-5. **CI recommendations**
-   - Keep dead-link checks enabled.
-   - Keep docs build checks enabled.
-   - Add checks for stale method-name references when practical.

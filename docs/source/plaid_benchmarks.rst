@@ -166,6 +166,7 @@ As of August 5, 2025
 
 ❌: Not compatible with topology variation
 
+The code to reproduce these results is available in `this repository <https://github.com/PLAID-lib/plaid-benchmarks>`_.
 
 .. note::
 

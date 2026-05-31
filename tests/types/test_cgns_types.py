@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 
+
 def _load_cgns_types_module():
     module_path = (
         Path(__file__).resolve().parents[2]

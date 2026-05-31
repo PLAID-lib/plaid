@@ -37,7 +37,6 @@ def coordinates_dim():
     return [5, 3, 2]
 
 
-
 @pytest.fixture()
 def zone_shape():
     return np.array([5, 3, 0])
@@ -76,21 +75,25 @@ def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
     tree = MeshToCGNS(Mesh)
     return tree
 
+
 @pytest.fixture()
 def sample_with_tree3d(sample, tree3d):
     sample.features.add_tree(tree3d)
     return sample
 
+
 @pytest.fixture()
 def sample_from_muscat_mesh_dent3D(sample):
-    from Muscat.TestData import GetTestDataPath
     from Muscat.IO.GmshReader import ReadGmsh
+    from Muscat.TestData import GetTestDataPath
+
     filename = GetTestDataPath() + "dent3D.msh"
     mesh = ReadGmsh(filename)
     cgnsmesh = MeshToCGNS(mesh)
     from Muscat.Bridges.CGNSBridge import CGNSToMesh
-    print(mesh )
-    print(CGNSToMesh(cgnsmesh) )
+
+    print(mesh)
+    print(CGNSToMesh(cgnsmesh))
     sample.features.add_tree(cgnsmesh)
     return sample
 
@@ -750,9 +753,9 @@ class Test_Sample:
 
         element_tags = sample_from_muscat_mesh_dent3D.get_element_tags()
         assert "Top" in element_tags
-        assert np.all(element_tags["Top"] == np.arange(729,753) )
+        assert np.all(element_tags["Top"] == np.arange(729, 753))
         assert "Vol" in element_tags
-        assert np.all(element_tags["Vol"] == np.arange(9,668) )
+        assert np.all(element_tags["Vol"] == np.arange(9, 668))
 
     # -------------------------------------------------------------------------#
     def test_get_nodes_empty(self, sample):
@@ -1404,5 +1407,3 @@ class Test_Sample:
 
     def test_check_completeness_with_tree_and_scalar(self, sample_with_tree_and_scalar):
         print(sample_with_tree_and_scalar.check_completeness())
-
-

@@ -4,8 +4,9 @@
 import sys
 from typing import TYPE_CHECKING, Sequence
 
-from ..types.common import ScalarDType, ScalarOrArrayOrStr
 from ..types.cgns_types import CGNSTree
+from ..types.common import ScalarDType, ScalarOrArrayOrStr
+
 if sys.version_info >= (3, 11):
     from typing import Self
 else:  # pragma: no cover
@@ -39,6 +40,7 @@ from .utils import get_feature_details_from_path
 logger = logging.getLogger(__name__)
 
 CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
+
 
 @delegate_methods("features", SampleFeatures)
 class Sample(BaseModel):
@@ -205,9 +207,7 @@ class Sample(BaseModel):
 
         return self
 
-    def del_feature_by_path(
-        self, path: str, time: Optional[float] = None
-    ) -> CGNSTree:
+    def del_feature_by_path(self, path: str, time: Optional[float] = None) -> CGNSTree:
         """Delete a feature/node by CGNS-style path from the sample mesh tree.
 
         Args:
@@ -580,9 +580,11 @@ if TYPE_CHECKING:
     # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING
     # automatically adds all its methods to Sample's autocomplete.
     class Sample(Sample, SampleFeatures):
-        """This class is only used for type checking and IDE autocompletion,
+        """This class is only used for type checking and IDE autocompletion.
+
         it inherits from both Sample and SampleFeatures to allow access to all methods of both classes without explicit delegation.
         Please note that this class is not instantiated at runtime, and is only used for static type checking purposes.
         Use the earlear defined Sample class for documentation and runtime execution.
         """
+
         ...

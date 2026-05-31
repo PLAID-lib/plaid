@@ -24,7 +24,6 @@ from pathlib import Path
 from typing import Any
 
 from plaid.viewer.models import ParaviewArtifact, SampleRef
-from plaid.viewer.services.plaid_dataset_service import PlaidDatasetService
 
 logger = logging.getLogger(__name__)
 

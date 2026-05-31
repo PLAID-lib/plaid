@@ -17,10 +17,6 @@ from typing import Any, Literal, Optional, Sequence, Union, cast
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from .constants import (
-    AUTHORIZED_SCORE_FUNCTIONS_T,
-    AUTHORIZED_TASKS_T,
-)
 from .types import IndexArrayType
 
 # %% Globals
@@ -156,7 +152,9 @@ class ProblemDefinition(BaseModel):
         """
         if self.train_split is None:
             raise ValueError("train_split is not defined.")
-        return cast(IndexArrayType | Literal["all"], next(iter(self.train_split.values())))
+        return cast(
+            IndexArrayType | Literal["all"], next(iter(self.train_split.values()))
+        )
 
     def get_test_split_name(self) -> str:
         """Return the name of the test split."""
@@ -175,7 +173,9 @@ class ProblemDefinition(BaseModel):
         """
         if self.test_split is None:
             raise ValueError("test_split is not defined.")
-        return cast(IndexArrayType | Literal["all"], next(iter(self.test_split.values())))
+        return cast(
+            IndexArrayType | Literal["all"], next(iter(self.test_split.values()))
+        )
 
     def add_input_features(self, inputs: Union[str, Sequence[str]]) -> None:
         """Add input features identifiers to the problem.

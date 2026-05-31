@@ -1,7 +1,7 @@
 from pathlib import Path
 
-import numpy as np
 import datasets
+import numpy as np
 
 import plaid.storage.hf_datasets as hf_datasets
 from plaid.storage.hf_datasets import HFBackend
@@ -171,6 +171,7 @@ def test_hf_backend_push_local_to_hub_delegates(monkeypatch):
         call["local_dir"] = local_dir
         call["num_workers"] = num_workers
         return
+
     monkeypatch.setattr(
         hf_datasets,
         "push_local_datasetdict_to_hub",
@@ -217,6 +218,7 @@ def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
 def test_hf_backend_to_var_sample_dict_delegates(monkeypatch):
     call = {}
     returndata = {"field": np.array([1, 2, 3])}
+
     def fake_to_var_sample_dict(ds, i, features, indexers=None):
         call["ds"] = ds
         call["i"] = i
@@ -225,7 +227,9 @@ def test_hf_backend_to_var_sample_dict_delegates(monkeypatch):
         return returndata
 
     monkeypatch.setattr(hf_datasets, "to_var_sample_dict", fake_to_var_sample_dict)
-    dataset = datasets.Dataset.from_dict({"Base/Zone/Field": [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]})
+    dataset = datasets.Dataset.from_dict(
+        {"Base/Zone/Field": [[1, 2, 3], [4, 5, 6], [7, 8, 9], [10, 11, 12]]}
+    )
     features = ["Base/Zone/Field"]
     result = HFBackend.to_var_sample_dict(dataset=dataset, idx=3, features=features)
 

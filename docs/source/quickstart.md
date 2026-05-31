@@ -33,25 +33,32 @@ To use the library, the simplest way is to install it from the packages availabl
 
 ## 2 Core concepts
 
-- {doc}`core_concepts/sample` → API: {py:class}`plaid.containers.sample.Sample`
-- {doc}`core_concepts/dataset` → API: {py:class}`plaid.containers.dataset.Dataset`
-- {doc}`core_concepts/problem_definition` → API: {py:class}`plaid.problem_definition.ProblemDefinition`
-- {doc}`core_concepts/defaults`
-- {doc}`core_concepts/disk_format`
-- {doc}`core_concepts/interoperability`
+The main public imports are:
+
+```python
+from plaid import Sample, ProblemDefinition
+from plaid.storage import (
+    save_to_disk,
+    init_from_disk,
+    download_from_hub,
+    init_streaming_from_hub,
+    push_to_hub,
+)
+```
+
+There is no public top-level dataset container class: all operations are out-of-core, so full datasets are never loaded into RAM at once.
+
+The package also ships two command-line tools:
+
+```bash
+plaid-check /path/to/plaid_dataset
+plaid-viewer --datasets-root /path/to/datasets
+```
+
+Additional concepts are detailed in {doc}`Concepts <concepts>`.
 
 ## 3 Going further
 
-Explore {doc}`example examples_tutorials <examples_tutorials>` for practical use cases and advanced techniques.
+Explore {doc}`Examples & Tutorials <examples_tutorials>` for practical use cases and advanced techniques.
 
-The {doc}`API documentation <../autoapi/plaid/index>` provides detailed information on all available classes and methods.
-
-In-repository core capabilities are provided by `plaid` itself (containers, storage backends,
-and converters under `plaid.storage`).
-
-Two companion repositories extend the `plaid` ecosystem:
-
-- [plaid-bridges](https://github.com/PLAID-lib/plaid-bridges): integrations with popular ML frameworks such as PyTorch Geometric.
-- [plaid-ops](https://github.com/PLAID-lib/plaid-ops): standardized operations on PLAID samples and datasets, including advanced mesh processing (some requiring a finite-element engine) powered by [muscat](https://gitlab.com/drti/muscat).
-
-These companion projects are external repositories (not modules shipped in this package).
+The {doc}`API Reference <../autoapi/plaid/index>` provides detailed information on all available classes and methods.

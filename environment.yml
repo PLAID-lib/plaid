@@ -21,6 +21,7 @@ dependencies:
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs
   - muscat-core>=2.5.1
+  - vtk
 #---# base
   - rich
 #---# optim

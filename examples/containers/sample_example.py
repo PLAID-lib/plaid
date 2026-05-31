@@ -14,55 +14,72 @@
 # ---
 
 # %% [markdown]
-# # Sample Examples
+# # Sample
 #
-# This Jupyter Notebook demonstrates various operations and methods involving a sample data structure using the PLAID library. It includes examples of:
-#
-# 1. Initializing an Empty Sample and Adding Data
-# 2. Accessing and Modifying Sample Data
-# 3. Set and Get default values
-# 4. Saving and Loading Samples
-#
-# This notebook provides detailed examples of using the Sample class to manage and manipulate sample data structures.
-#
-# **Each section is documented and explained.**
+# The Sample class contains the main element of the data model: all the heterogeneity and generality capacities come from it.
+# This Jupyter Notebook demonstrates various operations and methods involving a sample data structure using the PLAID library.
+# We start with simple sample generation examples relying on Muscat reader, and finish with more advanced data handling examples.
 
 # %%
-# Import required libraries
+# First imports
 from pathlib import Path
-
 import numpy as np
-
-# %%
-# Import necessary libraries and functions
-import CGNS.PAT.cgnskeywords as CGK
-
-from Muscat.Bridges.CGNSBridge import MeshToCGNS
-from Muscat.MeshTools import MeshCreationTools as MCT
-
 from plaid import Sample
-from plaid.utils import cgns_helper as CGH
-
-
-# %%
-# Print Sample util
-def show_sample(sample: Sample):
-    print(f"sample = {sample}")
-    sample.show_tree()
-    print(f"{sample.get_global_names() = }")
-    print(f"{sample.get_field_names() = }")
 
 
 # %% [markdown]
-# ## Section 1: Initializing an Empty Sample and Adding Data
+# ## Section 1: Simple sample creation using Muscat readers
+
+# %% [markdown]
+# ### Load a physics simulation in a given format, here in vtk.
+
+# %%
+# Load a vtk file
+from Muscat.IO.VtkReader import VtkReader
+
+reader = VtkReader()
+mesh_path = Path(__file__).resolve().parent / "mesh.vtk"
+mesh = reader.Read(fileName=str(mesh_path))
+
+# %%
+# Convert it to a CGNS tree using Muscat's CGNS bridge
+from Muscat.Bridges.CGNSBridge import MeshToCGNS
+from plaid.utils import cgns_helper as CGH
+
+tree = MeshToCGNS(mesh)
+print("#---# Show CGNS Tree")
+CGH.show_cgns_tree(tree)
+
+# %% [markdown]
+# ### Initialize a plaid sample, populate it with a CGNS tree and add a global
+
+# %%
+sample = Sample()
+sample.add_tree(tree)
+sample.add_global("power", 1.)
+
+# %% [markdown]
+# ### Check the sample content
+
+# %%
+print(sample.check_completeness())
+print(sample.summarize())
+
+# %% [markdown]
+# ## Section 2: Advanced data handling
+
+# %% [markdown]
+# ### Section 2.1: Initializing an Empty Sample and Adding Data
 #
 # This section demonstrates how to initialize an empty Sample and add scalars, and meshes / CGNS trees.
 
 # %% [markdown]
-# ### Create and display CGNS tree from an unstructured mesh
+# #### Create and display CGNS tree from an unstructured mesh
 
 # %%
 # Input data
+from Muscat.MeshTools import MeshCreationTools as MCT
+
 points = np.array(
     [
         [0.0, 0.0],
@@ -97,7 +114,7 @@ print("\n#---# Summarize CGNS Tree without additional Field Information")
 CGH.summarize_cgns_tree(tree, verbose=False)
 
 # %% [markdown]
-# ### Initialize a new empty Sample and print it
+# #### Initialize a new empty Sample and print it
 
 # %%
 # Initialize an empty Sample
@@ -105,36 +122,36 @@ print("#---# Empty Sample")
 sample = Sample()
 
 print(sample, end="\n\n")
-show_sample(sample)
+print(sample.summarize())
 
 # %% [markdown]
-# ### Add a scalars to a Sample
+# #### Add a scalars to a Sample
 
 # %%
 # Add a rotation scalar to this Sample
 sample.add_global("rotation", np.random.randn())
 
-show_sample(sample)
+print(sample.summarize())
 
 # %%
 # Add a more scalars to this Sample
 sample.add_global("speed", np.random.randn())
 sample.add_global("other", np.random.randn())
 
-show_sample(sample)
+print(sample.summarize())
 
 # %% [markdown]
-# ### Add a CGNS Tree to a Sample and display it
+# #### Add a CGNS Tree to a Sample and display it
 
 # %%
 # Add the previously created CGNS tree to the sample
-sample.features.add_tree(tree)
+sample.add_tree(tree)
 
 # Display the Sample CGNS tree
 sample.show_tree()
 
 # %% [markdown]
-# ### Set all meshes with their corresponding time step
+# #### Set all meshes with their corresponding time step
 
 # %%
 # Init an empty Sample
@@ -149,12 +166,12 @@ new_sample_mult_mesh.features.set_trees(meshes_dict)
 print(f"{new_sample_mult_mesh.get_all_time_values() = }")
 
 # %% [markdown]
-# ## Section 2: Accessing and Modifying Sample Data
+# ### Section 2.2: Accessing and Modifying Sample Data
 #
 # This section demonstrates how to access and modify base, zone, node, scalar and field data within the Sample.
 
 # %% [markdown]
-# ### Initialize CGNS tree base
+# #### Initialize CGNS tree base
 
 # %%
 # Initialize an new empty Sample
@@ -165,20 +182,20 @@ print(sample, end="\n\n")
 # Init CGNS tree base at time 0.
 sample.init_base(2, 3, "SurfaceMesh", time=0.0)
 
-show_sample(sample)
+print(sample.summarize())
 
 # %% [markdown]
-# ### Initialize CGNS tree zone
+# #### Initialize CGNS tree zone
 
 # %%
 # Init CGNS tree zone to a base at time 0.
 shape = np.array([[len(points), len(triangles), 0]])
 sample.init_zone(shape, zone="TestZoneName", base="SurfaceMesh", time=0.0)
 
-show_sample(sample)
+print(sample.summarize())
 
 # %% [markdown]
-# ### Set the coordinates of nodes for a specified base and zone
+# #### Set the coordinates of nodes for a specified base and zone
 
 # %%
 points = np.array(
@@ -195,10 +212,10 @@ points = np.array(
 # set node coordinates
 sample.set_nodes(points, base="SurfaceMesh", zone="TestZoneName", time=0.0)
 
-show_sample(sample)
+print(sample.summarize())
 
 # %% [markdown]
-# ### Add a field to a specified zone in the grid
+# #### Add a field to a specified zone in the grid
 
 # %%
 # Add a field to a specified zone
@@ -210,7 +227,7 @@ sample.add_field(
     time=0.0,
 )
 
-show_sample(sample)
+print(sample.summarize())
 
 # %%
 # Add another field
@@ -222,10 +239,10 @@ sample.add_field(
     time=0.0,
 )
 
-show_sample(sample)
+print(sample.summarize())
 
 # %% [markdown]
-# ### Access scalars data in Sample
+# #### Access scalars data in Sample
 
 # %%
 # It will look for a default base if no base and zone are given
@@ -234,7 +251,7 @@ print(f"{sample.get_global('omega') = }")
 print(f"{sample.get_global('rotation') = }")
 
 # %% [markdown]
-# ### Access fields data in Sample
+# #### Access fields data in Sample
 
 # %%
 # It will look for a default base if no base and zone are given
@@ -243,7 +260,7 @@ print(f"{sample.get_field('T') = }")
 print(f"{sample.get_field('Temperature') = }")
 
 # %% [markdown]
-# ### Access to points coordinates
+# #### Access to points coordinates
 
 # %%
 # It will look for a default base if no base and zone are given
@@ -251,7 +268,7 @@ print(f"{sample.get_nodes() = }")
 print(f"{sample.features.get_nodes() = }")
 
 # %% [markdown]
-# ### Retrieve element connectivity data
+# #### Retrieve element connectivity data
 
 # %%
 # Create an empty Sample
@@ -263,7 +280,7 @@ tmp_sample.features.add_tree(tree)
 print("element connectivity = \n", f"{tmp_sample.features.get_elements()}")
 
 # %% [markdown]
-# ### Access the available base of the CGNS tree
+# #### Access the available base of the CGNS tree
 
 # %%
 # Get base names
@@ -283,7 +300,7 @@ base_node_content = sample.features.get_base(base_name)
 print(f"{base_node_content = }")
 
 # %% [markdown]
-# ### Check if a base exists in a Sample
+# #### Check if a base exists in a Sample
 
 # %%
 # Get the first base name
@@ -293,7 +310,7 @@ print(f"{sample.features.has_base(base_name) = }")
 print(f"{sample.features.has_base('unknown_base_name') = }")
 
 # %% [markdown]
-# ### Access the available zone from a CGNS tree base
+# #### Access the available zone from a CGNS tree base
 
 # %%
 # Get the first base name
@@ -317,7 +334,7 @@ zone_node_content = sample.features.get_zone(zone_name, base_name)
 print(f"{zone_node_content = }")
 
 # %% [markdown]
-# ### Get the zone type
+# #### Get the zone type
 
 # %%
 # Get the first zone name from a base name
@@ -327,7 +344,7 @@ z_type = sample.features.get_zone_type(zone_name, base_name)
 print(f"zone type = {z_type}")
 
 # %% [markdown]
-# ### Check if a zone exists in a Sample
+# #### Check if a zone exists in a Sample
 
 # %%
 # Get the first zone name from a base name
@@ -337,14 +354,14 @@ print(f"{sample.features.has_zone(zone_name, base_name) = }")
 print(f"{sample.features.has_zone('unknown_zone_name', base_name) = }")
 
 # %% [markdown]
-# ### Get mesh from sample
+# #### Get mesh from sample
 
 # %%
 sample_mesh = sample.get_tree()
 print(sample_mesh)
 
 # %% [markdown]
-# ### Get all mesh time available in Sample
+# #### Get all mesh time available in Sample
 
 # %%
 # Before adding new tree
@@ -357,7 +374,7 @@ sample.features.add_tree(tree, 1.0)
 print(f"{sample.features.get_all_time_values() = }")
 
 # %% [markdown]
-# ### Creating a Sample Hierarchy with bases, zones, and associated data.
+# #### Creating a Sample Hierarchy with bases, zones, and associated data.
 
 # %%
 bases_names = sample.features.get_base_names()
@@ -375,12 +392,12 @@ for b_name in bases_names:
         )
 
 # %% [markdown]
-# ## Section 3: Set and Get default values
+# ### Section 2.3: Set and Get default values
 #
 # This section demonstrates how to use default CGNS values in a Sample.
 
 # %% [markdown]
-# ### Set and use default time in a Sample
+# #### Set and use default time in a Sample
 
 # %%
 # Without a provided default time, it searches the first time available in all mesh times
@@ -400,7 +417,7 @@ sample.show_tree()  # == sample.show_tree(1.0)
 sample.show_tree(0.0)  # Print the tree at time 0.0 even if default time is 1.0
 
 # %% [markdown]
-# ### Set and use default base and time in a Sample
+# #### Set and use default base and time in a Sample
 
 # %%
 # Reset default time
@@ -441,9 +458,11 @@ print(
 )  # Print the 'new_base' physical dim instead of the default base physical dim
 
 # %% [markdown]
-# ### Set and use default base, zone and time in a Sample
+# #### Set and use default base, zone and time in a Sample
 
 # %%
+import CGNS.PAT.cgnskeywords as CGK
+
 # Reset default base and time
 sample.features._default_active_time = None
 sample.features._default_active_base = None
@@ -498,7 +517,7 @@ print(
 )  # Print the 'new_zone' type instead of the default zone type
 
 # %% [markdown]
-# ### More information on how default values work
+# #### More information on how default values work
 
 # %%
 from IPython.display import Image
@@ -516,12 +535,12 @@ except NameError:
 Image(filename=filename)
 
 # %% [markdown]
-# ## Section 4: Saving and Loading Sample
+# ### Section 2.4: Saving and Loading Sample
 #
 # This section demonstrates how to save and load a Sample from a directory.
 
 # %% [markdown]
-# ### Save Sample to as a file tree
+# #### Save Sample to as a file tree
 
 # %%
 test_pth = Path(
@@ -535,26 +554,25 @@ print(f"saving path: {sample_save_fname}")
 sample.save_to_dir(sample_save_fname)
 
 # %% [markdown]
-# ### Load a Sample from a directory via initialization
+# #### Load a Sample from a directory via initialization
 
 # %%
 new_sample = Sample(path=sample_save_fname)
 
-show_sample(new_sample)
+print(sample.summarize())
 
 # %% [markdown]
-# ### Load a Sample from a directory via the Sample class
+# #### Load a Sample from a directory via the Sample class
 
 # %%
 new_sample_2 = Sample.load_from_dir(test_pth / "test")
 
-show_sample(new_sample_2)
+print(sample.summarize())
 
 # %% [markdown]
-# ### Load the Sample from a directory via a Sample instance
+# #### Load the Sample from a directory via a Sample instance
 
 # %%
 new_sample = Sample()
 new_sample.load(sample_save_fname)
-
-show_sample(new_sample)
+print(sample.summarize())

@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # Problem Definition Examples
+# # Problem Definition
 #
 # This Jupyter Notebook demonstrates the usage of the ProblemDefinition class for defining machine learning problems using the PLAID library. It includes examples of:
 #
@@ -79,6 +79,13 @@ print(
 # ## Section 2: Configuring Problem Characteristics and retrieve data
 #
 # This section demonstrates how to handle and configure ProblemDefinition objects and access data.
+
+# %% [markdown]
+# ### Set Problem Definition name
+
+# %%
+problem.name = "my_problem_definition"
+print(f"{problem.name = }")
 
 # %% [markdown]
 # ### Set Problem Definition split
