@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILES="*.py utils/*.py containers/*.py"
+FILES="*.py containers/*.py"
 
 export OMP_PROC_BIND=spread
 export OMP_PLACES=threads
