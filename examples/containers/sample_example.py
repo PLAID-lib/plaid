@@ -38,7 +38,12 @@ from plaid import Sample
 from Muscat.IO.VtkReader import VtkReader
 
 reader = VtkReader()
-mesh_path = Path(__file__).resolve().parent / "mesh.vtk"
+
+try:
+    mesh_path = Path(__file__).resolve().parent / "mesh.vtk"
+except NameError: # for jupyter notebook execution
+    mesh_path = Path("mesh.vtk").resolve()
+
 mesh = reader.Read(fileName=str(mesh_path))
 
 # %%
