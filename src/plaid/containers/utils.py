@@ -2,7 +2,7 @@
 # %% Imports
 
 from pathlib import Path
-from typing import Optional, Union, Sequence
+from typing import Optional, Sequence, Union
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
@@ -44,7 +44,7 @@ def _check_names(names: Union[str, list[Optional[str]], None]):
             )
 
 
-def _read_index(pyTree: list, dim: Sequence [int]):
+def _read_index(pyTree: list, dim: Sequence[int]):
     """Read Index Array or Index Range from CGNS.
 
     Args:

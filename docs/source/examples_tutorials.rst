@@ -20,7 +20,6 @@ You can find here detailed examples for different parts of plaid, explained main
 
    notebooks/containers/sample_example
    tutorials/storage.md
-   notebooks/containers/dataset_example
    notebooks/problem_definition_example
    notebooks/bridges/huggingface_example
    notebooks/examples/downloadable_example

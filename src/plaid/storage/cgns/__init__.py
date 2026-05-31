@@ -112,8 +112,8 @@ class CgnsBackend:
         raise ValueError("to_dict not available for 'cgns' backend")
 
     @staticmethod
-    def sample_to_var_sample_dict(sample: Any) -> dict:
-        raise ValueError(f"sample_to_var_sample_dict not available for 'cgns' backend")
+    def sample_to_var_sample_dict(_sample: Any) -> dict:
+        raise ValueError("sample_to_var_sample_dict not available for 'cgns' backend")
 
 
 __all__ = [

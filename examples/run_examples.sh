@@ -1,10 +1,6 @@
 #!/bin/bash
 
-if [[ "$(uname)" == "Linux" ]]; then
-    FILES="*.py utils/*.py containers/*.py bridges/*.py"
-else
-    FILES="*.py utils/*.py containers/*.py"
-fi
+FILES="*.py utils/*.py containers/*.py"
 
 export OMP_PROC_BIND=spread
 export OMP_PLACES=threads

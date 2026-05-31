@@ -6,6 +6,15 @@ title: Storage backends
 
 End‑to‑end workflows for creating, saving, and loading PLAID datasets with the three storage backends: **hf_datasets**, **cgns**, and **zarr**.
 
+## Backend capabilities
+
+| Backend | Persistent on disk | Hub download/push | Streaming from Hub | Feature selection notes |
+| --- | --- | --- | --- | --- |
+| `hf_datasets` | yes | yes | yes | streaming can pass selected columns; local download currently downloads backend data as parquet |
+| `cgns` | yes | yes | yes | sample selection is supported; feature filtering is handled at conversion time where applicable |
+| `zarr` | yes | yes | yes | supports selected sample ids and selected variable features for download/streaming |
+| `in_memory` | no | no | no | registered for in-process sample storage, not for persistence |
+
 ## Key concepts
 
 - **`sample_constructor`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
@@ -111,10 +120,9 @@ output_features = [
 ]
 
 
-pb_def = ProblemDefinition()
+pb_def = ProblemDefinition(name="regression_1")
 pb_def.add_input_features(input_features)
 pb_def.add_output_features(output_features)
-pb_def.set_name("regression_1")
 pb_def.train_split = {"train":"all"}
 pb_def.test_split = {"test":"all"}
 
@@ -210,7 +218,7 @@ split = "train"
 
 # Load problem definitions and define features as all the input and output features
 pb_defs = load_problem_definitions_from_disk(f"{BASE_DOWNLOADED_DATA_FOLDER}/{all_backends[0]}_dataset")
-pb_def = pb_defs[0]
+pb_def = next(iter(pb_defs.values()))
 features = pb_def.input_features + pb_def.output_features
 
 print("----------------------------------------------------")
@@ -357,6 +365,7 @@ sample = converter.to_plaid(
 - `cgns` backend does not use this mechanism.
 
 
+```python
 print("----------------------------------------------------")
 print("-- Streaming test ----------------------------------")
 print("----------------------------------------------------")

@@ -1,105 +1,142 @@
 ---
-title: Dataset
+title: Stored datasets and converters
 ---
 
-# Dataset
+# Stored datasets and converters
 
-A PLAID {py:class}`~plaid.containers.dataset.Dataset` is a lightweight container/view
-that accesses samples through a backend.
+In the current PLAID API, there is no public high-level dataset container class.
+A PLAID dataset is represented on disk
+by a shared metadata layout plus backend-specific sample payloads.  Loading a
+dataset returns:
 
-In the current API, `Dataset` focuses on:
+- a dictionary of backend datasets, one per split;
+- a dictionary of {py:class}`~plaid.storage.reader.Converter` objects, one per split.
 
-- loading data from disk,
-- exposing a split/view (`indices`),
-- delegating sample access to its backend,
-- saving a dataset view back to disk.
+This keeps storage concerns explicit while providing a common way to materialize
+backend-native samples as PLAID {py:class}`~plaid.containers.sample.Sample`
+objects.
 
-## Create and load
+## Save a dataset
 
-### Empty dataset
+Datasets are written with {py:func}`plaid.storage.save_to_disk`.  The user
+provides:
 
-```python
-from plaid.containers.dataset import Dataset
-
-dataset = Dataset()
-```
-
-### Load from a local directory or archive
-
-Use the factory method:
+- `sample_constructor(id) -> Sample`, a callable returning one
+  {py:class}`~plaid.containers.sample.Sample`;
+- `ids`, a dictionary mapping split names to sliceable sequences of identifiers;
+- a persistent backend, usually `"hf_datasets"`, `"cgns"`, or `"zarr"`.
 
 ```python
-dataset = Dataset.from_path("/path/to/plaid_dataset", split="train")
-```
+from plaid import Sample
+from plaid.storage import save_to_disk
 
-Or instantiate and load later:
+def sample_constructor(sample_id):
+    sample = Sample()
+    # Fill the sample: add_tree, add_global, add_field, ...
+    return sample
 
-```python
-dataset = Dataset(path="/path/to/plaid_dataset", split="train")
-dataset.load()
-```
-
-`Dataset.load(...)` accepts either:
-
-- a directory path,
-- or a tar archive path.
-
-When no split is provided, the default split is `"train"`.
-
-See also: {doc}`../notebooks/containers/dataset_example`.
-
-## Main attributes
-
-- `path`: source dataset path.
-- `split`: loaded split name.
-- `stage`: optional label (`"training"` or `"evaluating"`).
-- `problem_definition`: attached
-  {py:class}`~plaid.problem_definition.ProblemDefinition`.
-- `indices`: either `"all"` or an explicit integer index array.
-- `infos`: normalized metadata dictionary.
-
-## Access samples
-
-```python
-len(dataset)        # number of exposed samples
-sample0 = dataset[0]
-samples = dataset.get_samples()
-ids = dataset.get_sample_ids()
-```
-
-### About indexing/slicing
-
-`Dataset.__getitem__` delegates directly to the backend. Depending on backend behavior,
-a slice can return a backend-native object (for example a `list[Sample]`), not
-necessarily another `Dataset` instance.
-
-## Backends
-
-Access the backend with:
-
-```python
-backend = dataset.get_backend()
-```
-
-The default backend is in-memory, and backend-specific operations (such as adding
-samples in memory) are performed on the backend object itself.
-
-## Metadata (`infos`)
-
-Set normalized metadata with:
-
-```python
-dataset.set_infos(
-    {
-        "legal": {"owner": "CompanyX"},
-    }
+save_to_disk(
+    "my_plaid_dataset",
+    sample_constructor=sample_constructor,
+    ids={"train": [0, 1, 2], "test": [3, 4]},
+    backend="zarr",
 )
 ```
 
-## Save to disk
+## Load from disk
 
-Save the current dataset view:
+Use {py:func}`plaid.storage.init_from_disk`:
 
 ```python
-dataset.save_to_dir("/path/to/output_dir")
+from plaid.storage import init_from_disk
+
+datasetdict, converterdict = init_from_disk("my_plaid_dataset")
+
+dataset = datasetdict["train"]
+converter = converterdict["train"]
+
+sample = converter.to_plaid(dataset, idx=0)
+```
+
+Backend dataset objects expose backend-specific behavior:
+
+- `hf_datasets` returns Hugging Face `datasets.Dataset` objects;
+- `cgns` returns local `CGNSDataset` objects containing `Sample` directories;
+- `zarr` returns `ZarrDataset` objects;
+- streaming from the Hub returns iterable datasets when supported.
+
+## Converter API
+
+The converter normalizes backend-specific data access:
+
+```python
+plaid_sample = converter.to_plaid(dataset, idx=0)
+sample_dict = converter.to_dict(dataset, idx=0)
+```
+
+For non-CGNS backends, `to_plaid(...)` reconstructs a
+{py:class}`~plaid.containers.sample.Sample` from dictionaries and shared
+metadata.  For the CGNS backend, samples are already PLAID `Sample` objects.
+
+Selected features can be requested when supported by the backend:
+
+```python
+sample = converter.to_plaid(
+    dataset,
+    idx=0,
+    features=["Base/Zone/VertexFields/pressure"],
+)
+```
+
+Some backends also support `indexers` to extract selected indices within a
+variable feature:
+
+```python
+sample = converter.to_plaid(
+    dataset,
+    idx=0,
+    features=["Base/Zone/VertexFields/pressure"],
+    indexers={"Base/Zone/VertexFields/pressure": [0, 10, 20]},
+)
+```
+
+## Backends
+
+Persistent backends currently used for disk and Hub workflows are:
+
+- `hf_datasets`
+- `cgns`
+- `zarr`
+
+The registry also contains `in_memory`, which is useful internally as an
+in-process sample store but does not implement disk or Hub persistence.
+
+## Metadata and problem definitions
+
+`save_to_disk(...)` writes shared metadata (`infos.yaml`, schemas, CGNS types,
+constants) and can also persist one or more
+{py:class}`~plaid.problem_definition.ProblemDefinition` objects:
+
+```python
+from plaid import ProblemDefinition
+from plaid.storage import save_to_disk
+
+pb_def = ProblemDefinition(name="regression_1")
+
+save_to_disk(
+    "my_plaid_dataset",
+    sample_constructor=sample_constructor,
+    ids={"train": [0, 1, 2]},
+    infos={"legal": {"owner": "CompanyX", "license": "proprietary"}},
+    pb_defs=pb_def,
+)
+```
+
+Problem definitions can be loaded later with:
+
+```python
+from plaid.storage import load_problem_definitions_from_disk
+
+pb_defs = load_problem_definitions_from_disk("my_plaid_dataset")
+pb_def = pb_defs["regression_1"]
 ```

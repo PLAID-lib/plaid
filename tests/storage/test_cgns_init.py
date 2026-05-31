@@ -70,7 +70,9 @@ def test_cgns_backend_download_from_hub_delegates(monkeypatch):
 def test_cgns_backend_init_datasetdict_streaming_from_hub_delegates(monkeypatch):
     call = {}
 
-    def fake_init_datasetdict_streaming_from_hub(repo_id, split_ids=None, features=None):
+    def fake_init_datasetdict_streaming_from_hub(
+        repo_id, split_ids=None, features=None
+    ):
         call["repo_id"] = repo_id
         call["split_ids"] = split_ids
         call["features"] = features
@@ -138,6 +140,7 @@ def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
         "num_proc": 2,
         "verbose": True,
     }
+
 
 def test_cgns_backend_push_local_to_hub_delegates(monkeypatch):
     call = {}

@@ -17,7 +17,7 @@ In the current API, a problem definition stores:
 ## Basic usage
 
 ```python
-from plaid.problem_definition import ProblemDefinition
+from plaid import ProblemDefinition
 
 pb = ProblemDefinition(name="regression_1")
 
@@ -26,12 +26,16 @@ pb.add_input_features([
     "Base/Zone/GridCoordinates/CoordinateY",
 ])
 pb.add_output_features([
-    "Base/Zone/Solution/pressure",
+    "Base/Zone/VertexFields/pressure",
 ])
 
 pb.train_split = {"train": [0, 1, 2]}
 pb.test_split = {"test": [3, 4]}
 ```
+
+Feature lists are normalized by the model: entries are converted to strings,
+sorted, and checked for duplicates.  The `name` field can be set once; attempting
+to replace an already initialized non-null name raises an error.
 
 ## Loading from disk
 
@@ -39,6 +43,15 @@ Load a definition from a dataset path:
 
 ```python
 pb = ProblemDefinition.from_path("/path/to/plaid_dataset", name="regression_1")
+```
+
+At storage level, problem definitions are loaded as a dictionary keyed by name:
+
+```python
+from plaid.storage import load_problem_definitions_from_disk
+
+pb_defs = load_problem_definitions_from_disk("/path/to/plaid_dataset")
+pb = pb_defs["regression_1"]
 ```
 
 ## Saving
@@ -54,3 +67,6 @@ pb.save_to_file("problem_definitions/regression_1.yaml")
 - Input/output features are plain strings in the current implementation.
 - Splits are represented by `train_split` and `test_split` dictionaries.
 - Each split dictionary is expected to contain a single split entry.
+- Split values can be explicit index sequences or the string `"all"`.
+- `add_input_features(...)` and `add_output_features(...)` accept either a
+  single string or a sequence of strings.
