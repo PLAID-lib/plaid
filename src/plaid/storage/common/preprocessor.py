@@ -532,7 +532,8 @@ def preprocess(
         verbose: Whether to show progress.
 
     Returns:
-        tuple: (split_flat_cst, variable_schema, constant_schema, split_n_samples, global_cgns_types)
+        A tuple containing ``split_flat_cst``, ``variable_schema``, ``constant_schema``, ``split_n_samples``, and
+            ``global_cgns_types``.
     """
     (
         split_all_paths,

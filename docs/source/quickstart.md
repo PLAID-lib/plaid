@@ -1,16 +1,5 @@
 # Quickstart
 
-Everything you need to start using PLAID and contributing effectively.
-
----
-
-- [1 Using the library](#1-using-the-library)
-- [2 Core concepts](#2-core-concepts)
-- [3 Going further](#3-going-further)
-
----
-
-
 ## 1 Using the library
 
 To use the library, the simplest way is to install it from the packages available:

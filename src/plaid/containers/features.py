@@ -1014,7 +1014,7 @@ class SampleFeatures:
 
         Raises:
             KeyError: Raised if the specified base or zone do not exist. You should first
-            create the base and zone using the `Sample.init_zone(zone,base)` method.
+                create the base and zone using the `Sample.init_zone(zone,base)` method.
         """
         # get_zone will look for default base, zone and time
         zone_node = self.get_zone(zone=zone, base=base, time=time)

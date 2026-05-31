@@ -118,13 +118,10 @@ def load_constants_from_disk(path):
         path (str | Path): Root dataset directory that contains the "constants" folder.
 
     Returns:
-        tuple:
-            flat_cst (dict[str, dict[str, Any]]): Mapping from split names to dictionaries of constant
-            values. Numeric constants are returned as
-            ``np.memmap`` arrays backed by ``data.mmap``. String constants are
-            returned as 1-element numpy arrays of Python strings decoded using
-            ASCII. If a layout entry is ``None``, the returned value is ``None``
-            constant_schema (dict[str, dict[str, Any]]): Mapping split -> loaded constant schema (from YAML).
+        tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]: The loaded constant values and their schemas. Numeric
+            constants are returned as ``np.memmap`` arrays backed by ``data.mmap``. String constants are returned as
+            one-element numpy arrays of Python strings decoded using ASCII. If a layout entry is ``None``, the returned
+            value is ``None``.
 
     Raises:
         FileNotFoundError: If the expected "constants" directory or required files are missing.

@@ -1,0 +1,193 @@
+[project]
+site_name = "plaid"
+site_description = "Physics Learning AI Data Model documentation"
+site_author = "Safran"
+site_url = "https://plaid-lib.github.io/"
+docs_dir = "source"
+site_dir = "_build/html"
+use_directory_urls = false
+repo_url = "https://github.com/PLAID-lib/plaid"
+repo_name = "PLAID-lib/plaid"
+edit_uri = "edit/main/docs/source/"
+copyright = "Copyright &copy; 2023-2026, Safran"
+language = "en"
+extra_javascript = [
+  "javascripts/mathjax.js",
+  "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js",
+]
+features = [
+  "content.action.edit",
+  "content.action.view",
+  "content.code.copy",
+  "navigation.footer",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+nav = [
+  { "Overview" = [
+    { "Home" = "index.md" },
+    { "Quickstart" = "quickstart.md" },
+    { "Citation" = "citation.md" },
+    { "Contributing" = "contributing.md" },
+  ] },
+  { "User guide" = [
+    { "Concepts" = [
+      { "Overview" = "concepts.md" },
+      { "Sample" = "concepts/sample.md" },
+      { "Dataset" = "concepts/dataset.md" },
+      { "Problem definition" = "concepts/problem_definition.md" },
+      { "Defaults" = "concepts/defaults.md" },
+      { "Disk format" = "concepts/disk_format.md" },
+      { "Viewer" = "concepts/viewer.md" },
+    ] },
+    { "Examples and tutorials" = [
+      { "Overview" = "examples_tutorials.md" },
+      { "Storage tutorial" = "tutorials/storage.md" },
+      { "Sample notebook" = "notebooks/containers/sample_example.md" },
+      { "Problem definition notebook" = "notebooks/problem_definition_example.md" },
+      { "Downloadable samples notebook" = "notebooks/downloadable_example/sample_example.md" },
+    ] },
+    { "API reference" = [
+      { "Overview" = "api/index.md" },
+      { "Core" = [
+        { "constants" = "api/constants.md" },
+        { "problem_definition" = "api/problem_definition.md" },
+        { "version" = "api/version.md" },
+      ] },
+      { "CLI" = [
+        { "Overview" = "api/cli/index.md" },
+        { "plaidcheck" = "api/cli/plaidcheck.md" },
+      ] },
+      { "Containers" = [
+        { "Overview" = "api/containers/index.md" },
+        { "features" = "api/containers/features.md" },
+        { "sample" = "api/containers/sample.md" },
+        { "utils" = "api/containers/utils.md" },
+        { "managers" = [
+          { "Overview" = "api/containers/managers/index.md" },
+          { "default_manager" = "api/containers/managers/default_manager.md" },
+        ] },
+      ] },
+      { "Downloadable examples" = [
+        { "Overview" = "api/downloadable_examples/index.md" },
+        { "config" = "api/downloadable_examples/config.md" },
+      ] },
+      { "Storage" = [
+        { "Overview" = "api/storage/index.md" },
+        { "backend_api" = "api/storage/backend_api.md" },
+        { "reader" = "api/storage/reader.md" },
+        { "registry" = "api/storage/registry.md" },
+        { "writer" = "api/storage/writer.md" },
+        { "common" = [
+          { "Overview" = "api/storage/common/index.md" },
+          { "bridge" = "api/storage/common/bridge.md" },
+          { "preprocessor" = "api/storage/common/preprocessor.md" },
+          { "reader" = "api/storage/common/reader.md" },
+          { "writer" = "api/storage/common/writer.md" },
+        ] },
+        { "cgns" = [
+          { "Overview" = "api/storage/cgns/index.md" },
+          { "reader" = "api/storage/cgns/reader.md" },
+          { "writer" = "api/storage/cgns/writer.md" },
+        ] },
+        { "hf_datasets" = [
+          { "Overview" = "api/storage/hf_datasets/index.md" },
+          { "bridge" = "api/storage/hf_datasets/bridge.md" },
+          { "reader" = "api/storage/hf_datasets/reader.md" },
+          { "writer" = "api/storage/hf_datasets/writer.md" },
+        ] },
+        { "in_memory" = "api/storage/in_memory/index.md" },
+        { "zarr" = [
+          { "Overview" = "api/storage/zarr/index.md" },
+          { "bridge" = "api/storage/zarr/bridge.md" },
+          { "reader" = "api/storage/zarr/reader.md" },
+          { "writer" = "api/storage/zarr/writer.md" },
+        ] },
+      ] },
+      { "Types" = [
+        { "Overview" = "api/types/index.md" },
+        { "cgns_types" = "api/types/cgns_types.md" },
+        { "common" = "api/types/common.md" },
+      ] },
+      { "Utils" = [
+        { "Overview" = "api/utils/index.md" },
+        { "base" = "api/utils/base.md" },
+        { "cgns_helper" = "api/utils/cgns_helper.md" },
+        { "cgns_worker" = "api/utils/cgns_worker.md" },
+        { "info" = "api/utils/info.md" },
+      ] },
+      { "Viewer" = [
+        { "Overview" = "api/viewer/index.md" },
+        { "cache" = "api/viewer/cache.md" },
+        { "cli" = "api/viewer/cli.md" },
+        { "config" = "api/viewer/config.md" },
+        { "models" = "api/viewer/models.md" },
+        { "preferences" = "api/viewer/preferences.md" },
+        { "services" = [
+          { "Overview" = "api/viewer/services/index.md" },
+          { "paraview_artifact_service" = "api/viewer/services/paraview_artifact_service.md" },
+          { "plaid_dataset_service" = "api/viewer/services/plaid_dataset_service.md" },
+        ] },
+        { "trame_app" = [
+          { "Overview" = "api/viewer/trame_app/index.md" },
+          { "server" = "api/viewer/trame_app/server.md" },
+        ] },
+      ] },
+    ] },
+  ] },
+  { "Ecosystem & Benchmarks" = [
+    { "CGNS Standard" = "https://cgns.org/" },
+    { "Muscat library" = "https://muscat.readthedocs.io/" },
+    { "PLAID Benchmarks" = "plaid_benchmarks.md" },
+  ] },
+]
+
+[plugins.mkdocstrings.handlers.python]
+paths = ["../src"]
+options.docstring_options.warn_missing_types = false
+options.docstring_options.warn_unknown_params = false
+options.show_source = true
+options.show_root_heading = true
+options.show_root_full_path = false
+
+[project.theme]
+favicon = "images/plaid_logo.png"
+logo = "images/plaid_logo.png"
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/PLAID-lib/plaid"
+name = "PLAID on GitHub"
+
+[[project.extra.social]]
+icon = "simple/pypi"
+link = "https://pypi.org/project/pyplaid/"
+name = "pyplaid on PyPI"
+
+[[project.extra.social]]
+icon = "simple/anaconda"
+link = "https://anaconda.org/conda-forge/plaid"
+name = "plaid on conda-forge"
+
+[project.validation]
+# Notebook text outputs contain CGNS tree dumps with square brackets (e.g.
+# ``[1 2 3]``) that are valid rendered content but look like reference-style
+# Markdown links to the validator. Keep the build quiet while preserving those
+# outputs verbatim in the generated documentation.
+unresolved_references = false

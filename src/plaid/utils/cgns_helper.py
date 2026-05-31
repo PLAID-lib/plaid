@@ -557,12 +557,8 @@ def update_features_for_CGNS_compatibility(
             context (e.g., flow solution fields, time-varying parameters).
 
     Returns:
-        list[str]: Expanded list of feature paths including:
-            - Original requested features
-            - Parent nodes in the CGNS hierarchy
-            - Associated metadata nodes (GridLocation, ZoneType, FamilyName)
-            - Temporal information (_times suffix for all features)
-            - Related structural elements (coordinates, elements, boundary conditions)
+        list[str]: Expanded list of feature paths, including original requested features, parent nodes in the CGNS
+            hierarchy, associated metadata nodes, temporal information, and related structural elements.
 
     Raises:
         KeyError: If any requested feature is not found in the combined context features.

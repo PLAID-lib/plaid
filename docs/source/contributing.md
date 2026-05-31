@@ -1,23 +1,5 @@
 # Contributing
 
-- [1. Contributor License Agreement (CLA)](#1-contributor-license-agreement-cla)
-- [2. How to contribute](#2-how-to-contribute)
-  - [2.1. Coding Standards](#21-coding-standards)
-  - [2.2. Contributing Process](#22-contributing-process)
-  - [2.3. Issue Guidelines](#23-issue-guidelines)
-- [3. Development setup](#3-development-setup)
-  - [3.1. Prerequisites](#31-prerequisites)
-  - [3.2. Installation Steps](#32-installation-steps)
-- [4. Tests and examples](#4-tests-and-examples)
-- [5. Documentation](#5-documentation)
-- [6. Formatting and linting with Ruff](#6-formatting-and-linting-with-ruff)
-- [7. Setting up pre-commit](#7-setting-up-pre-commit)
-- [8. Release process](#8-release-process)
-  - [8.1. Github](#81-github)
-  - [8.2. conda-forge](#82-conda-forge)
-  - [8.3. Readthedocs](#83-readthedocs)
-- [9. Documentation consistency checks](#9-documentation-consistency-checks)
-
 ## 1. Contributor License Agreement (CLA)
 
 When you make your first contribution to this project, you will be automatically prompted to sign our Contributor License Agreement (CLA) through GitHub. This is a one-time process that you'll need to complete before your contributions can be accepted.

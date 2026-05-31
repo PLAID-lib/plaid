@@ -69,6 +69,7 @@ docs/_build/
 docs/api_reference/
 docs/autoapi/
 docs/_extra/
+docs/source/api/
 docs/source/notebooks
 
 ###############################################################################

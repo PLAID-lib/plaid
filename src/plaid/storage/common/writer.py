@@ -86,7 +86,7 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
         flat_cst (dict): Mapping split -> {constant_name: numpy array | None} containing values to save.
 
     Returns:
-        None
+        This function does not return a value.
 
     Raises:
         AssertionError: if a numeric array does not match the expected ndim.
