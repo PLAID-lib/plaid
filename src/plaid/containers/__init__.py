@@ -1,4 +1,4 @@
-"""Package for PLAID containers such as `Dataset` and `Sample`."""
+"""Package for PLAID containers."""
 
 from .sample import Sample
 

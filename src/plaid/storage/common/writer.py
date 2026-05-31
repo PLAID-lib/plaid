@@ -64,7 +64,11 @@ def save_problem_definitions_to_disk(
         pb_def.save_to_file(target_dir / name)
 
 
-def save_constants_to_disk(path, constant_schema, flat_cst):
+def save_constants_to_disk(
+    path: Union[str, Path],
+    constant_schema: dict[str, Any],
+    flat_cst: dict[str, Any],
+) -> None:
     """Write constant features to disk under <path>/constants/.
 
     For each split in flat_cst this creates a directory:
@@ -86,7 +90,7 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
         flat_cst (dict): Mapping split -> {constant_name: numpy array | None} containing values to save.
 
     Returns:
-        None
+        None: This function does not return a value.
 
     Raises:
         AssertionError: if a numeric array does not match the expected ndim.

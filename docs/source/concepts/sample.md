@@ -4,30 +4,32 @@ title: Sample
 
 # Sample
 
-{py:class}`~plaid.containers.sample.Sample` represents one observation. It contains:
+`Sample` represents one observation. It contains:
+
 - globals: named scalar, string or array values stored in a dedicated CGNS base
 - meshes containing:
-  - nodes: mesh node coordinates, that can be located:
-    - in different bases
-    - in different zones in each base
-  - fields, arrays that can be located:
-    - in different bases
-    - in different zones in each base
-    - in different locations in each base/zone among: `Vertex`, `EdgeCenter`, `FaceCenter`, or `CellCenter`
+    - nodes: mesh node coordinates, that can be located:
+        - in different bases
+        - in different zones in each base
+    - fields, arrays that can be located:
+        - in different bases
+        - in different zones in each base
+        - in different locations in each base/zone among: `Vertex`, `EdgeCenter`, `FaceCenter`, or `CellCenter`
 
 Key APIs include:
-- Feature accessors: {py:meth}`~plaid.containers.sample.Sample.get_global`, {py:meth}`~plaid.containers.sample.Sample.get_field`, {py:meth}`~plaid.containers.sample.Sample.get_nodes`
-- Feature updates: {py:meth}`~plaid.containers.sample.Sample.add_global`, {py:meth}`~plaid.containers.sample.Sample.add_field`, {py:meth}`~plaid.containers.sample.Sample.set_nodes`, and path-based updates with {py:meth}`~plaid.containers.sample.Sample.add_feature`
-- Discovery: {py:meth}`~plaid.containers.sample.Sample.get_global_names`, {py:meth}`~plaid.containers.sample.Sample.get_field_names`, and {py:meth}`~plaid.containers.sample.Sample.get_all_features_identifiers_by_type`
+
+- Feature accessors: `get_global`, `get_field`, `get_nodes`
+- Feature updates: `add_global`, `add_field`, `set_nodes`, and path-based updates with `add_feature`
+- Discovery: `get_global_names`, `get_field_names`, and `get_all_features_identifiers_by_type`
 
 ## Time, base and zone defaults
 
 Most mesh/field methods accept optional `time`, `base` and `zone` arguments.
 When they are omitted, PLAID resolves them through the sample's default manager:
 
-- {py:meth}`~plaid.containers.sample.Sample.set_default_time`
-- {py:meth}`~plaid.containers.sample.Sample.set_default_base`
-- {py:meth}`~plaid.containers.sample.Sample.set_default_zone_base`
+- `set_default_time`
+- `set_default_base`
+- `set_default_zone_base`
 - `resolve_time`, `resolve_base`, `resolve_zone`
 
 This is useful for concise code on simple single-time, single-base, single-zone

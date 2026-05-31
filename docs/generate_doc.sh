@@ -1,59 +1,55 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-#---# Clean
-rm -rf _build
-rm -rf source/additional
-rm -rf autoapi
-# rm -rf api_reference
-# mkdir -p source/additional
-# mkdir -p _extra
+# This script is intentionally the single documentation command used locally and
+# in CI. It prepares Jupytext notebooks, executes them so outputs are rendered in
+# the generated documentation, and then delegates the site build to Zensical.
 
-#---# Copy coverage in local
-# rm -rf _extra/coverage
-# cp -r ../public/coverage _extra/coverage
+DOCS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_DIR="$(cd "${DOCS_DIR}/.." && pwd)"
 
-#---# Copy diagrams in local
-# rm -rf _extra/diagrams
-# cp -r ../public/diagrams _extra/diagrams
-# rm -rf source/additional/diagrams
-# cp -r ../public/diagrams source/additional/diagrams
+cd "${DOCS_DIR}"
 
-# #---# Copy notebooks in local
-# rm -rf source/additional/notebooks
-# mkdir -p source/additional/notebooks
-# cp ../examples/*.ipynb source/additional/notebooks
+echo "#---# Clean generated documentation artifacts"
+rm -rf _build site .cache source/notebooks
 
-# #---# Generate API pages
-# sphinx-apidoc --ext-autodoc --ext-doctest --ext-intersphinx --ext-todo --ext-coverage --ext-imgmath --ext-mathjax --ext-ifconfig --ext-viewcode --ext-githubpages -P -e -f -d 2 -o api_reference/plaid ../src/plaid
-# sphinx-apidoc --ext-autodoc --ext-doctest --ext-intersphinx --ext-todo --ext-coverage --ext-imgmath --ext-mathjax --ext-ifconfig --ext-viewcode --ext-githubpages -P -e -f -d 2 -o api_reference/tests ../tests
-# sphinx-apidoc --ext-autodoc --ext-doctest --ext-intersphinx --ext-todo --ext-coverage --ext-imgmath --ext-mathjax --ext-ifconfig --ext-viewcode --ext-githubpages -P -e -f -d 2 -o api_reference/examples ../examples
-# #---# Clean and add informations to generated API pages
-# python fix_module.py
+echo "#---# Regenerate mkdocstrings API reference stubs"
+python "${DOCS_DIR}/generate_api_stubs.py"
 
-#---# Verbose BEFORE
-echo "";echo "#---# ls -lAh source/"
-ls -lAh source/
-# echo "";echo "#---# ls -lAh source/additional/*"
-# ls -lAh source/additional/notebooks
-# echo "";echo "#---# ls -lAh _extra/diagrams/*"
-# ls -lAh _extra/diagrams/*
-# echo "";echo "#---# ls -lAh api_reference/"
-# ls -lAh api_reference/
-# cat api_reference/*/module*
+echo "#---# Copy Jupytext notebooks from examples/"
+mkdir -p source/notebooks
+cp -R "${REPO_DIR}/examples/." source/notebooks/
 
-#---# Generate doc site
-# export PYDEVD_DISABLE_FILE_VALIDATION=1
-make html
+echo "#---# Convert Jupytext Python notebooks to ipynb"
+find source/notebooks -name "*_example.py" -print0 \
+  | xargs -0 -r -n 1 jupytext --to ipynb
 
-# #---# Verbose AFTER
-# echo "";echo "#---# ls -lAh"
-# ls -lAh *
-# echo "";echo "#---# ls -lAh _build/html/*"
-# ls -lAh _build/html/*
-# echo "";echo "#---# ls -lAh _build/html/autoapi"
-# ls -lAh _build/html/autoapi
-# echo "";echo "#---# ls -lAh _build/html/reports"
-# ls -lAh _build/html/reports
+echo "#---# Execute notebooks and export Markdown with outputs"
+while IFS= read -r -d '' notebook; do
+  notebook_dir="$(dirname "${notebook}")"
+  notebook_base="$(basename "${notebook}" .ipynb)"
 
-#---# Post
-rsync -av --delete-after _build/html/* ../public
+  jupyter nbconvert \
+    --to markdown \
+    --execute \
+    --ExecutePreprocessor.timeout=300 \
+    --output "${notebook_base}" \
+    --output-dir "${notebook_dir}" \
+    "${notebook}"
+
+  # Remove noisy HTTP client logs from notebook outputs. They render poorly as
+  # Markdown reference-style links while adding no useful information to the
+  # published examples.
+  sed -i '/:INFO:_client\.py:_send_single_request(1025)\]:HTTP Request:/d' \
+    "${notebook_dir}/${notebook_base}.md"
+done < <(find source/notebooks -name "*_example.ipynb" -print0)
+
+echo "#---# Remove notebook source files that should not be published as static assets"
+find source/notebooks -name "*.py" -delete
+find source/notebooks -name "*.ipynb" -delete
+find source/notebooks -name "*.bat" -delete
+find source/notebooks -name "*.sh" -delete
+
+echo "#---# Build the static site with Zensical"
+zensical build --clean --config-file zensical.toml
+

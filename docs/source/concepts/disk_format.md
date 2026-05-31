@@ -46,8 +46,7 @@ The exact files under `data/<split>/` depend on the backend (`cgns`,
 
 ## Problem definitions
 
-- `problem_definitions/`: optional serialized
-  {py:class}`~plaid.problem_definition.ProblemDefinition` files (YAML).
+- `problem_definitions/`: optional serialized `ProblemDefinition` files (YAML).
 
 ## Loading policy for constants
 

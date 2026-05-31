@@ -52,7 +52,12 @@ def _auto_chunks(shape: tuple[int, ...], target_n: int) -> tuple[int, ...]:
     return (rows,) + shape[1:]
 
 
-def write_sample(split_root, sample, var_features_keys, sample_counter):
+def write_sample(
+    split_root: Any,
+    sample: Sample,
+    var_features_keys: list[str],
+    sample_counter: int,
+) -> None:
     """Write a single PLAID sample to a Zarr group on disk.
 
     This function serializes one ``Sample`` instance into a dedicated Zarr group
@@ -301,8 +306,6 @@ def configure_dataset_card(
             including legal information like license.
         local_dir (Union[str, Path]): Path to the local directory containing the
             dataset files, expected to have a 'data' subdirectory with split folders.
-        variable_schema (Optional[dict]): Schema describing the variables/features
-            in the dataset, used to generate the features section in the card.
         viewer (Optional[bool]): Unused parameter for viewer configuration.
         pretty_name (Optional[str]): A human-readable name for the dataset to
             display in the card.

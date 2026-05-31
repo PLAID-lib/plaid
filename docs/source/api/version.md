@@ -1,0 +1,3 @@
+# `plaid.version`
+
+::: plaid.version

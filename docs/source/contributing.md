@@ -1,23 +1,5 @@
 # Contributing
 
-- [1. Contributor License Agreement (CLA)](#1-contributor-license-agreement-cla)
-- [2. How to contribute](#2-how-to-contribute)
-  - [2.1. Coding Standards](#21-coding-standards)
-  - [2.2. Contributing Process](#22-contributing-process)
-  - [2.3. Issue Guidelines](#23-issue-guidelines)
-- [3. Development setup](#3-development-setup)
-  - [3.1. Prerequisites](#31-prerequisites)
-  - [3.2. Installation Steps](#32-installation-steps)
-- [4. Tests and examples](#4-tests-and-examples)
-- [5. Documentation](#5-documentation)
-- [6. Formatting and linting with Ruff](#6-formatting-and-linting-with-ruff)
-- [7. Setting up pre-commit](#7-setting-up-pre-commit)
-- [8. Release process](#8-release-process)
-  - [8.1. Github](#81-github)
-  - [8.2. conda-forge](#82-conda-forge)
-  - [8.3. Readthedocs](#83-readthedocs)
-- [9. Documentation consistency checks](#9-documentation-consistency-checks)
-
 ## 1. Contributor License Agreement (CLA)
 
 When you make your first contribution to this project, you will be automatically prompted to sign our Contributor License Agreement (CLA) through GitHub. This is a one-time process that you'll need to complete before your contributions can be accepted.
@@ -106,14 +88,31 @@ run_examples.bat      # [win]
 
 ## 5. Documentation
 
-To compile locally the documentation, you can run:
+The documentation is built with [Zensical](https://zensical.org/) and the
+[mkdocstrings](https://mkdocstrings.github.io/) Python handler. To compile it
+locally, run:
 
 ```bash
 cd docs
-make html
+bash generate_doc.sh
 ```
 
-Various notebooks are executed during compilation. The documentation can then be explored in ``docs/_build/html``.
+Various notebooks are executed during compilation. The documentation can then
+be explored in ``docs/_build/html``.
+
+When you add, rename, or remove a Python module under ``src/plaid``, regenerate
+the API reference:
+
+```bash
+python docs/generate_api_stubs.py
+```
+
+The script writes minimal mkdocstrings stubs under ``docs/source/api`` and
+rewrites the ``API reference`` ``nav`` block in ``docs/zensical.toml`` (between
+the ``AUTO-GENERATED API REFERENCE`` markers). CI (`Documentation` workflow)
+re-runs the script and fails if the working tree is not clean, so both the
+stubs and the navigation stay in sync with the source layout. The script is
+also invoked automatically at the start of ``bash docs/generate_doc.sh``.
 
 ## 6. Formatting and linting with Ruff
 
@@ -188,7 +187,7 @@ Before opening a PR that modifies docs or public APIs, run a quick consistency p
 
    ```bash
    cd docs
-   make html
+   bash generate_doc.sh
    ```
 
 2. **Validate API references**

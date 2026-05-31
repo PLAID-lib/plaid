@@ -79,21 +79,18 @@ include = ["plaid*"]
 
 [dependency-groups]
 dev = [
-    "furo>=2025.12.19",
-    "jupytext>=1.19.1",
+    "ipykernel>=6.29.0",
+    "jupytext>=1.19.3",
     "muscat[storage]>=2.5.1",
-    "myst-nb>=1.4.0",
-    "myst-parser>=5.0.0",
+    "mkdocstrings[python]>=0.27.0",
+    "nbconvert>=7.16.0",
     "optuna>=4.7.0",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "rich>=14.3.3",
     "ruff>=0.15.4",
-    "sphinx>=9.0.4",
-    "sphinx-autoapi>=3.7.0",
-    "sphinx-tabs>=3.4.7",
-    "sphinxcontrib-bibtex>=2.6.5",
+    "zensical>=0.0.38",
 ]
 
 [tool.coverage.run]

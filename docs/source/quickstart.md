@@ -1,16 +1,5 @@
 # Quickstart
 
-Everything you need to start using PLAID and contributing effectively.
-
----
-
-- [1 Using the library](#1-using-the-library)
-- [2 Core concepts](#2-core-concepts)
-- [3 Going further](#3-going-further)
-
----
-
-
 ## 1 Using the library
 
 To use the library, the simplest way is to install it from the packages available:
@@ -61,4 +50,4 @@ Additional concepts are detailed in {doc}`Concepts <concepts>`.
 
 Explore {doc}`Examples & Tutorials <examples_tutorials>` for practical use cases and advanced techniques.
 
-The {doc}`API Reference <../autoapi/plaid/index>` provides detailed information on all available classes and methods.
+The [API Reference](api/index.md) provides detailed information on all available classes and methods.

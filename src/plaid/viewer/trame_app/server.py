@@ -35,6 +35,10 @@ import json
 import logging
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    pass
 
 from plaid.viewer.models import SampleRef
 from plaid.viewer.services import ParaviewArtifactService, PlaidDatasetService
@@ -570,7 +574,7 @@ def _build_lut(cmap: str, lo: float, hi: float):
 def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless safe
     dataset_service: PlaidDatasetService,
     artifact_service: ParaviewArtifactService,
-):
+) -> "Any":
     """Create a configured trame :class:`Server` instance.
 
     Args:
@@ -579,8 +583,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             artifact on disk.
 
     Returns:
-        The configured ``trame.app.Server``. Call ``.start(host=..., port=...)``
-        to run it.
+        Server: The configured ``trame.app.Server``. Call
+            ``.start(host=..., port=...)`` to run it.
     """
     from trame.app import (
         asynchronous,  # noqa: PLC0415
