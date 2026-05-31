@@ -1,0 +1,3 @@
+# `plaid.types`
+
+::: plaid.types

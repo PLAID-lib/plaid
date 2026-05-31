@@ -50,4 +50,4 @@ Additional concepts are detailed in {doc}`Concepts <concepts>`.
 
 Explore {doc}`Examples & Tutorials <examples_tutorials>` for practical use cases and advanced techniques.
 
-The {doc}`API Reference <../autoapi/plaid/index>` provides detailed information on all available classes and methods.
+The [API Reference](api/index.md) provides detailed information on all available classes and methods.

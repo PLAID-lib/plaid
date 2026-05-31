@@ -34,6 +34,14 @@ jobs:
         run: |
           uv sync --dev --extra viewer
 
+      - name: Check API stubs are in sync with src/plaid
+        run: |
+          uv run python docs/generate_api_stubs.py
+          if ! git diff --exit-code -- docs/source/api; then
+            echo "::error::docs/source/api is out of date. Run 'python docs/generate_api_stubs.py' and commit the result." >&2
+            exit 1
+          fi
+
       - name: Compile documentation
         run: |
           cd docs

@@ -80,7 +80,7 @@ include = ["plaid*"]
 [dependency-groups]
 dev = [
     "ipykernel>=6.29.0",
-    "jupytext>=1.19.1",
+    "jupytext>=1.19.3",
     "muscat[storage]>=2.5.1",
     "mkdocstrings[python]>=0.27.0",
     "nbconvert>=7.16.0",

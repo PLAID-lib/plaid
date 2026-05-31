@@ -88,14 +88,29 @@ run_examples.bat      # [win]
 
 ## 5. Documentation
 
-To compile locally the documentation, you can run:
+The documentation is built with [Zensical](https://zensical.org/) and the
+[mkdocstrings](https://mkdocstrings.github.io/) Python handler. To compile it
+locally, run:
 
 ```bash
 cd docs
-make html
+bash generate_doc.sh
 ```
 
-Various notebooks are executed during compilation. The documentation can then be explored in ``docs/_build/html``.
+Various notebooks are executed during compilation. The documentation can then
+be explored in ``docs/_build/html``.
+
+When you add, rename, or remove a Python module under ``src/plaid``, regenerate
+the API reference stubs and update the navigation in ``docs/zensical.toml``:
+
+```bash
+python docs/generate_api_stubs.py
+```
+
+The script writes minimal mkdocstrings stubs under ``docs/source/api`` and
+prints a suggested ``nav`` block to copy into ``docs/zensical.toml``. CI
+(`Documentation` workflow) re-runs the script and fails if the working tree
+is not clean, so the stubs stay in sync with the source layout.
 
 ## 6. Formatting and linting with Ruff
 
@@ -170,7 +185,7 @@ Before opening a PR that modifies docs or public APIs, run a quick consistency p
 
    ```bash
    cd docs
-   make html
+   bash generate_doc.sh
    ```
 
 2. **Validate API references**

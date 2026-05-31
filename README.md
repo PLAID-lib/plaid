@@ -99,11 +99,12 @@ run_examples.bat      # [win]
 
 #### 2.2.3 Documentation
 
-To compile locally the documentation, you can run:
+The documentation is built with [Zensical](https://zensical.org/) and
+[mkdocstrings](https://mkdocstrings.github.io/). To compile it locally, run:
 
 ```bash
 cd docs
-make html
+bash generate_doc.sh
 ```
 
 Various notebooks are executed during compilation. The documentation can then be explored in ``docs/_build/html``.
