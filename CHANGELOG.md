@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (docs) migrate to Zensical.
 - (problem_definition) rename add_(in/out)_features_identifiers to add_(in/out)put_features. Impose order in yaml keys.
 - (docs) update logos.
 - (dataset-viewer) memoise decoded `Sample` objects in `PlaidDatasetService.load_sample` (small in-memory LRU keyed on dataset/split/sample/features). Pre-compute the per-timestep "Globals" panel snapshot when a sample is loaded (new `PlaidDatasetService.describe_globals_all_times`).
