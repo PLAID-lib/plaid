@@ -152,13 +152,22 @@ nav = [
   ] },
 ]
 
-[plugins.mkdocstrings.handlers.python]
+[project.plugins.mkdocstrings.config]
+default_handler = "python"
+
+[project.plugins.mkdocstrings.config.handlers.python]
 paths = ["../src"]
-options.docstring_options.warn_missing_types = false
-options.docstring_options.warn_unknown_params = false
-options.show_source = true
-options.show_root_heading = true
-options.show_root_full_path = false
+
+[project.plugins.mkdocstrings.config.handlers.python.options]
+
+show_source = true
+show_root_heading = true
+show_root_full_path = false
+show_if_no_docstring = false
+docstring_style = "google"
+merge_init_into_class = true
+separate_signature = true
+show_signature_annotations = true
 
 [project.theme]
 favicon = "images/plaid_logo.png"
