@@ -6,7 +6,7 @@
 
 We provide interactive benchmarks hosted on Hugging Face, in which anyone can test their own SciML method.
 These benchmarks involve regression problems posed on datasets provided in PLAID format.
-Some of these datasets have been introduced in the MMGP (Mesh Morphing Gaussian Process) paper and the PLAID paper.
+Some of these datasets have been introduced in the MMGP (Mesh Morphing Gaussian Process) paper [^mmgp] and the PLAID paper [^plaid].
 A ranking is automatically updated based on a score computed on the testing set of each dataset.
 For the benchmarks to be meaningful, the outputs on the testing sets are not made public.
 
@@ -35,7 +35,7 @@ $$
 | **2D_profile** | [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.15155119.svg)](https://doi.org/10.5281/zenodo.15155119) [![Hugging Face](https://huggingface.co/datasets/huggingface/badges/resolve/main/dataset-on-hf-md-dark.svg)](https://huggingface.co/datasets/PLAID-datasets/2D_profile) | [![Benchmark](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm-dark.svg)](https://huggingface.co/spaces/PLAIDcompetitions/2DprofileBenchmark) |
 | **VKI-LS59** | [![Zenodo](https://zenodo.org/badge/DOI/10.5281/zenodo.14840512.svg)](https://doi.org/10.5281/zenodo.14840512) [![Hugging Face](https://huggingface.co/datasets/huggingface/badges/resolve/main/dataset-on-hf-md-dark.svg)](https://huggingface.co/datasets/PLAID-datasets/VKI-LS59) | [![Benchmark](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-sm-dark.svg)](https://huggingface.co/spaces/PLAIDcompetitions/VKILS59Benchmark) |
 
-AirfRANS is an additional dataset provided in PLAID format and various variants.
+AirfRANS [^airfrans] is an additional dataset provided in PLAID format and various variants.
 Since the outputs on the testing sets are public, no benchmark application is provided for this dataset.
 
 | Dataset | Dataset links |
@@ -67,3 +67,10 @@ The code to reproduce these results is available in [this repository](https://gi
     - MARIO is computationally expensive to train but achieves consistently a very strong performance across most datasets. Its result on `2D_MultiScHypEl` is slightly worse than other tested methods, which may reflect the challenge of capturing complex shape variability in these cases.
     - Vi-Transformer and Augur perform well across all datasets, showing strong versatility and generalization capabilities.
     - FNO suffers on datasets featuring unstructured meshes with pronounced anisotropies, due to the loss of accuracy introduced by projections to and from regular grids (e.g., `Rotor37` and `2D_profile`). Additionally, the use of a 3D regular grid on `Rotor37` results in substantial computational overhead.
+
+
+[^mmgp]: F. Casenave, B. Staber, and X. Roynard, “MMGP: a Mesh Morphing Gaussian Process-based machine learning method for regression of physical problems under non-parameterized geometrical variability,” *Thirty-seventh Conference on Neural Information Processing Systems*, 2023. [arXiv:2305.12871](https://arxiv.org/abs/2305.12871).
+
+[^plaid]: F. Casenave, X. Roynard, B. Staber, A. Devaux-Rivière, W. Piat, M. A. Bucci, N. Akkari, A. Kabalan, X. M. V. Nguyen, L. Saverio, R. Carpintero Perez, A. Kalaydjian, S. Fouché, T. Gonon, G. Najjar, T. Daniel, E. Menier, M. Nastorg, G. Catalani, and C. Rey, “PLAID: A Unified Data Model for Machine Learning on Heterogeneous Physics Simulations,” ICML AI4Physics Workshop, 2026. [arXiv:2505.02974](https://arxiv.org/abs/2505.02974).
+
+[^airfrans]: F. Bonnet, J. Mazari, P. Cinnella, and P. Gallinari, “AirfRANS: High Fidelity Computational Fluid Dynamics Dataset for Approximating Reynolds-Averaged Navier–Stokes Solutions,” *Advances in Neural Information Processing Systems*, vol. 35, pp. 23463–23478, 2022. [arXiv:2212.07564](https://arxiv.org/abs/2212.07564).

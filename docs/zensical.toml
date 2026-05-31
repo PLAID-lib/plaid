@@ -229,3 +229,5 @@ name = "plaid on conda-forge"
 # Markdown links to the validator. Keep the build quiet while preserving those
 # outputs verbatim in the generated documentation.
 unresolved_references = false
+
+# [project.markdown_extensions.footnotes]
