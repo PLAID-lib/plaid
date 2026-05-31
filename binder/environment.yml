@@ -20,6 +20,7 @@ dependencies:
 #---# data validation
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
+  - ipython
 #---# mesh/graph libs
   - muscat-core>=2.5.1
   - vtk
