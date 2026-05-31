@@ -2,8 +2,8 @@
 # Read the Docs configuration file
 # See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
 #
-# The PLAID documentation is built with Zensical (mkdocstrings handler) instead
-# of Sphinx, so we drive the build through ``docs/generate_doc.sh`` using the
+# The PLAID documentation is built with Zensical (mkdocstrings handler),
+# so we drive the build through ``docs/generate_doc.sh`` using the
 # ``build.commands`` escape hatch.
 
 version: 2
