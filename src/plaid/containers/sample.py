@@ -2,7 +2,7 @@
 
 # %% Imports
 import sys
-from typing import TYPE_CHECKING, Sequence
+from typing import Sequence
 
 from ..types.cgns_types import CGNSTree
 from ..types.common import ScalarDType, ScalarOrArrayOrStr
@@ -51,6 +51,15 @@ class Sample(BaseModel):
         - You can provide a `SampleFeatures` instance to initialize the sample with existing data.
 
     The default `SampleFeatures` instance is initialized with `data=None` (i.e., no mesh data).
+
+    Note:
+        In addition to the methods defined directly below, ``Sample`` exposes
+        every public method of [`SampleFeatures`][plaid.containers.features.SampleFeatures]
+        through the [`@delegate_methods`][plaid.utils.base.delegate_methods]
+        class decorator. Calling ``sample.<method>(...)`` is equivalent to
+        ``sample.features.<method>(...)``. See the
+        [`features` module][plaid.containers.features] for the full list of
+        delegated operations (mesh, fields, scalars, time series, …).
     """
 
     # Pydantic configuration
@@ -574,17 +583,3 @@ class Sample(BaseModel):
                 report += f"Field names: {', '.join(sorted(total_fields))}\n"
 
         return report
-
-
-if TYPE_CHECKING:
-    # Inheriting from the Protocol (SampleFeatures)  inside TYPE_CHECKING
-    # automatically adds all its methods to Sample's autocomplete.
-    class Sample(Sample, SampleFeatures):
-        """This class is only used for type checking and IDE autocompletion.
-
-        it inherits from both Sample and SampleFeatures to allow access to all methods of both classes without explicit delegation.
-        Please note that this class is not instantiated at runtime, and is only used for static type checking purposes.
-        Use the earlear defined Sample class for documentation and runtime execution.
-        """
-
-        ...

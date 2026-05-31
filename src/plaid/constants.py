@@ -1,12 +1,13 @@
-"""This module defines common constants used throughout the PLAID library.
+"""Define common constants used throughout the PLAID library.
 
 It includes:
-- AUTHORIZED_TASKS: List of supported task types (e.g., regression, classification).
-- AUTHORIZED_FEATURE_TYPES: List of supported feature types (e.g., scalar, field, nodes).
-- AUTHORIZED_FEATURE_INFOS: Dictionary specifying allowed metadata keys for various feature types.
-- AUTHORIZED_INFO_KEYS: Dictionary specifying allowed metadata keys for various information sections.
-- CGNS_FIELD_LOCATIONS: List of valid field locations as defined by the CGNS standard.
-- CGNS_ELEMENT_NAMES: List of CGNS element names representing different mesh element types.
+
+- ``AUTHORIZED_TASKS``: List of supported task types, such as regression and classification.
+- ``AUTHORIZED_FEATURE_TYPES``: List of supported feature types, such as scalar, field, and nodes.
+- ``AUTHORIZED_FEATURE_INFOS``: Dictionary specifying allowed metadata keys for feature types.
+- ``AUTHORIZED_INFO_KEYS``: Dictionary specifying allowed metadata keys for information sections.
+- ``CGNS_FIELD_LOCATIONS``: List of valid field locations as defined by the CGNS standard.
+- ``CGNS_ELEMENT_NAMES``: List of CGNS element names representing mesh element types.
 
 These constants help standardize metadata, task types, and mesh element references across the PLAID codebase.
 """

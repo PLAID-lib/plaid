@@ -183,7 +183,14 @@ show_object_full_path = true
 show_if_no_docstring = false
 
 # --- ordering and style ---
-inherited_members = false
+# Render members inherited via base classes. ``Sample`` declares itself
+# (inside a ``TYPE_CHECKING`` block in ``plaid.containers.sample``) as
+# inheriting from ``SampleFeatures`` so that the public methods delegated
+# at runtime by ``@delegate_methods("features", SampleFeatures)`` show up
+# on its documentation page. Without this, the ``Sample`` page would only
+# list the few methods literally defined inside ``class Sample`` and hide
+# most of the actual API surface a user calls on a sample.
+inherited_members = true
 members_order = "source"
 merge_init_into_class = true
 

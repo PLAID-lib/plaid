@@ -39,7 +39,6 @@ NAV_END = "# <<< AUTO-GENERATED API REFERENCE END"
 SKIP_FILES = {"_version.py"}
 
 
-
 def module_name(path: Path) -> str:
     rel = path.relative_to(SRC_DIR).with_suffix("")
     if rel.name == "__init__":
@@ -58,7 +57,23 @@ def is_namespace_package(path: Path) -> bool:
     return path.name == "__init__.py" and not path.read_text(encoding="utf-8").strip()
 
 
-def stub_content(module: str) -> str:
+def stub_content(module: str, *, is_package_index: bool = False) -> str:
+    """Return the Markdown stub for a module page.
+
+    For package ``index.md`` pages we render the package docstring only and
+    suppress members. Otherwise mkdocstrings would document every symbol that
+    the package's ``__init__.py`` re-exports (for example ``Sample`` is
+    re-exported from ``plaid.containers``), which would then be duplicated on
+    the dedicated module page (``api/containers/sample.md``). Submodules and
+    subpackages still appear in the navigation tree generated below.
+    """
+    if is_package_index:
+        return (
+            f"# `{module}`\n\n"
+            f"::: {module}\n"
+            f"    options:\n"
+            f"      members: false\n"
+        )
     return f"# `{module}`\n\n::: {module}\n"
 
 
@@ -114,7 +129,11 @@ def write_stubs() -> list[Path]:
     written: list[Path] = []
     for out, module in files.items():
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(stub_content(module), encoding="utf-8")
+        is_package_index = out.name == "index.md"
+        out.write_text(
+            stub_content(module, is_package_index=is_package_index),
+            encoding="utf-8",
+        )
         written.append(out)
 
     # Package index pages for namespace packages (empty ``__init__``).
@@ -125,7 +144,7 @@ def write_stubs() -> list[Path]:
             continue
         out.parent.mkdir(parents=True, exist_ok=True)
         module = ".".join(("plaid", *rel.parts)) if rel.parts else "plaid"
-        out.write_text(stub_content(module), encoding="utf-8")
+        out.write_text(stub_content(module, is_package_index=True), encoding="utf-8")
         written.append(out)
 
     return written
