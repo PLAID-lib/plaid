@@ -328,7 +328,7 @@ class SampleFeatures:
         base_node = self.get_base(base, time)
         if base_node is None:  # pragma: no cover
             raise ValueError(
-                f"there is no base called {base} at the time {time} in this sample"
+                f"There is no base called {base} at the time {time} in this sample."
             )
 
         return int(base_node[1][1])
