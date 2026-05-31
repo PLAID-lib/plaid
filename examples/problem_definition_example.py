@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # Problem Definition Examples
+# # Problem Definition
 #
 # This Jupyter Notebook demonstrates the usage of the ProblemDefinition class for defining machine learning problems using the PLAID library. It includes examples of:
 #

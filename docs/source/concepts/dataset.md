@@ -1,8 +1,8 @@
 ---
-title: Stored datasets and converters
+title: Dataset
 ---
 
-# Stored datasets and converters
+# Dataset
 
 In the current PLAID API, there is no public high-level dataset container class.
 A PLAID dataset is represented on disk

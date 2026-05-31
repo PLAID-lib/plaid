@@ -1,8 +1,8 @@
 ---
-title: Storage backends
+title: Conversion tutorial
 ---
 
-# Storage tutorial
+# Conversion tutorial
 
 End‑to‑end workflows for creating, saving, and loading PLAID datasets with the three storage backends: **hf_datasets**, **cgns**, and **zarr**.
 
@@ -22,11 +22,9 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
 - Backend converters turn raw backend samples into PLAID `Sample` objects.
 
-## Notes
+## Note
 
 - The example uses external tools (`plyfile`, `Muscat`) to build meshes — these are not PLAID runtime dependencies.
-- Set `datasets.config.HF_DATASETS_CACHE` to a dedicated folder when using the HF backend.
-- Loading metadata from **local disk** keeps numeric constants as `np.memmap` for memory efficiency; loading from the **Hub** materializes them into in-memory arrays to avoid lifetime issues with temporary download folders.
 
 
 ## How to create data and save to disk/push to hub
@@ -38,7 +36,6 @@ import shutil
 
 import numpy as np
 
-from datasets import config
 from plaid import Sample, ProblemDefinition
 from plaid.storage import save_to_disk, push_to_hub
 
@@ -47,11 +44,6 @@ from plyfile import PlyData
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools.MeshCreationTools import CreateMeshOf
 import Muscat.MeshContainers.ElementsDescription as ED
-
-
-# Use a dedicated temporary cache folder
-tmp_cache_dir = "hf_tmp_cache"
-config.HF_DATASETS_CACHE = tmp_cache_dir
 
 
 N_PROC = 6 # number of parallel processes (set to 1 for sequential execution)

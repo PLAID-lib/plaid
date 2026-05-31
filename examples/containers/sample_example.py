@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # Sample Examples
+# # Sample
 #
 # This Jupyter Notebook demonstrates various operations and methods involving a sample data structure using the PLAID library. It includes examples of:
 #

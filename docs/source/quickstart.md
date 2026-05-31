@@ -46,6 +46,8 @@ from plaid.storage import (
 )
 ```
 
+There is no public top-level dataset container class: all operations are out-of-core, so full datasets are never loaded into RAM at once.
+
 The package also ships two command-line tools:
 
 ```bash

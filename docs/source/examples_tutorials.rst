@@ -15,5 +15,4 @@ You can find here detailed examples for different parts of plaid, explained main
    notebooks/containers/sample_example
    notebooks/problem_definition_example
    notebooks/downloadable_example/sample_example
-   notebooks/convert_users_data_example
    tutorials/storage.md
