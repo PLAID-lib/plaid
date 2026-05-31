@@ -73,8 +73,8 @@ jobs:
           cd examples
           uv run bash run_examples.sh
 
-      - name: Upload coverage to Codecov (Linux + py3.11 only)
-        if: runner.os == 'Linux' && matrix.python-version == '3.11'
+      - name: Upload coverage to Codecov (Linux + py3.12 only)
+        if: runner.os == 'Linux' && matrix.python-version == '3.12'
         uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
