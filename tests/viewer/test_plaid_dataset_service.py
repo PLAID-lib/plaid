@@ -658,6 +658,43 @@ def test_list_available_features_only_exposes_field_paths(
     assert "Global/angle_in" not in fields
 
 
+def test_feature_catalogue_helpers_expose_bases_paths_and_globals(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Metadata-only helpers should stay fast and avoid sample decoding."""
+    _make_dataset_dir(tmp_path, "ds")
+    variable = {
+        "Base_2_2/Zone/VertexFields/pressure": None,
+        "Base_2_2_times/Zone/VertexFields/pressure_times": None,
+        "Base_3_3/Zone/VertexFields/temperature": None,
+        "Global/lift": None,
+    }
+    constant = {
+        "train": {
+            "": None,
+            "Base_2_2/Zone/GridCoordinates/CoordinateX": None,
+            "Base_2_2_times/Zone/GridCoordinates/CoordinateX": None,
+            "Global_times/lift": None,
+            "Global": None,
+            "Global_times": None,
+        }
+    }
+    _install_fake_metadata(
+        monkeypatch, variable_schema=variable, constant_schema=constant
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+
+    assert service.list_available_bases("ds") == ["Base_2_2", "Base_3_3"]
+    assert service.list_base_paths("ds", "Base_2_2") == [
+        "Base_2_2/Zone/GridCoordinates/CoordinateX",
+        "Base_2_2/Zone/VertexFields/pressure",
+        "Base_2_2_times/Zone/GridCoordinates/CoordinateX",
+        "Base_2_2_times/Zone/VertexFields/pressure_times",
+    ]
+    assert service.list_globals_paths("ds") == ["Global/lift", "Global_times/lift"]
+
+
 def test_set_features_rejects_unknown_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -787,6 +824,65 @@ def test_streaming_open_expands_features_via_cgns_helper(
     ]
 
 
+def test_streaming_open_empty_filter_keeps_geometry_but_drops_globals(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An empty streaming selection should not be treated as unfiltered.
+
+    The service must pass geometry/support constants to the streaming
+    loader, while excluding ``Global`` paths controlled by the dedicated
+    Globals toggle.
+    """
+    repo_id = "org/stream_geometry_only"
+    variable = {"Base_2_2/Zone/VertexFields/pressure": None}
+    constant = {
+        "train": {
+            "Base_2_2/Zone": None,
+            "Base_2_2/Zone/GridCoordinates/CoordinateX": None,
+            "Global/lift": None,
+            "Global_times/lift": None,
+        }
+    }
+    _install_fake_metadata(
+        monkeypatch, variable_schema=variable, constant_schema=constant
+    )
+    captured: dict[str, object] = {}
+
+    def _fake_init_streaming_from_hub(_repo, features=None):
+        captured["features"] = features
+        return (
+            {"train": _FakeDataset(range(1))},
+            {"train": _FakeConverter({0: object()})},
+        )
+
+    import plaid.storage as storage  # noqa: PLC0415
+
+    monkeypatch.setattr(
+        storage,
+        "init_streaming_from_hub",
+        _fake_init_streaming_from_hub,
+        raising=False,
+    )
+
+    from plaid.utils import cgns_helper  # noqa: PLC0415
+
+    monkeypatch.setattr(
+        cgns_helper,
+        "update_features_for_CGNS_compatibility",
+        lambda features, _constant, _variable: sorted(features),
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset(repo_id)
+    service.set_features(repo_id, [])
+    service.list_samples(repo_id)
+
+    assert captured["features"] == [
+        "Base_2_2/Zone",
+        "Base_2_2/Zone/GridCoordinates/CoordinateX",
+    ]
+
+
 def test_set_features_invalidates_store_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -826,6 +922,97 @@ def test_get_and_clear_features(
     assert service.get_features("ds") is None
     assert service.set_features("ds", None) is None
     assert service.get_features("ds") is None
+
+
+class _CountingConverter:
+    """Converter recording the number of ``to_plaid`` decode calls."""
+
+    def __init__(self, samples_by_index: dict[int, object]) -> None:
+        self._samples = samples_by_index
+        self.calls = 0
+
+    def to_plaid(self, dataset, index: int):  # noqa: ARG002 - interface match
+        self.calls += 1
+        # Return a fresh object each call so a test that wants to detect
+        # a re-decode by identity can do so reliably.
+        return self._samples.setdefault(index, object())
+
+
+def test_load_sample_caches_decoded_sample_for_repeated_calls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Repeated ``load_sample`` calls for the same ref must hit the cache."""
+    _make_dataset_dir(tmp_path, "ds")
+    converter = _CountingConverter({0: object(), 1: object()})
+    dataset_dict = {"train": _FakeDataset(range(2))}
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    first = service.load_sample(ref)
+    second = service.load_sample(ref)
+    third = service.load_sample(ref)
+    # Single underlying decode despite three calls.
+    assert converter.calls == 1
+    assert first is second is third
+
+
+def test_load_sample_cache_evicts_beyond_capacity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """LRU is bounded: the oldest entry is dropped when capacity is exceeded."""
+    _make_dataset_dir(tmp_path, "ds")
+    converter = _CountingConverter({})
+    dataset_dict = {"train": _FakeDataset(range(3))}
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    # Default capacity is 2: filling positions 0, 1, 2 evicts 0.
+    refs = [
+        SampleRef(dataset_id="ds", split="train", sample_id=str(i)) for i in range(3)
+    ]
+    for ref in refs:
+        service.load_sample(ref)
+    assert converter.calls == 3
+    # ``refs[0]`` was evicted: re-loading it triggers a fresh decode.
+    service.load_sample(refs[0])
+    assert converter.calls == 4
+    # ``refs[2]`` is still cached: no extra decode.
+    service.load_sample(refs[2])
+    assert converter.calls == 4
+
+
+def test_load_sample_cache_invalidated_on_set_features(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Changing the feature filter must drop cached decodes for that dataset."""
+    _make_dataset_dir(tmp_path, "ds")
+    variable = {"Base_2_2/Zone/VertexFields/pressure": None}
+    _install_fake_metadata(
+        monkeypatch,
+        variable_schema=variable,
+        constant_schema={"train": {}},
+    )
+    converter = _FeatureAwareConverter(
+        {0: object()},
+        variable_features=set(variable.keys()),
+    )
+    dataset_dict = {"train": _FakeDataset(range(1))}
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    service.load_sample(ref)
+    # Cache populated under the "no filter" key.
+    assert len(service._sample_cache) == 1  # noqa: SLF001
+    service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
+    assert len(service._sample_cache) == 0  # noqa: SLF001
 
 
 def test_split_feature_keys_falls_back_to_dataset_union(
@@ -994,6 +1181,124 @@ def test_summary_time_globals_and_validation(
     validation = service.get_sample_validation(ref)
     assert validation.ok is True
     assert validation.warnings == ["warning"]
+
+
+def test_describe_globals_all_times_indexes_each_timestep(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``describe_globals_all_times`` must build a per-time snapshot.
+
+    The trame server feeds this snapshot into the playback loop so the
+    "Globals" panel can be refreshed on each frame without re-decoding
+    the sample. The service contract is therefore:
+
+    1. A single underlying ``load_sample`` is performed.
+    2. The returned ``static`` listing matches what
+       ``describe_globals(ref)`` returns with ``time=None``.
+    3. ``by_time`` exposes a deterministic ``{float: [...]}`` mapping
+       keyed on every value reported by ``sample.features.get_all_time_values``.
+    4. ``IterationValues`` / ``TimeValues`` bookkeeping arrays are
+       filtered out at every timestep.
+    """
+    import types
+
+    _make_dataset_dir(tmp_path, "ds")
+
+    class _TimeAwareSample:
+        def __init__(self) -> None:
+            self.features = types.SimpleNamespace(
+                data={},
+                get_all_time_values=lambda: [1.0, 2.0],
+            )
+            self.calls: list[float | None] = []
+
+        # CGNS bookkeeping arrays must be filtered out by the service
+        # at every requested time, just like the time-less path.
+        def get_global_names(self, *, time=None):
+            self.calls.append(time)
+            return ["IterationValues", "pressure"]
+
+        def get_global(self, name: str, *, time=None):
+            if name == "pressure":
+                return 10.0 if time == 1.0 else (20.0 if time == 2.0 else 0.0)
+            return [int(time or 0)]
+
+    sample = _TimeAwareSample()
+    converter = _CountingConverter({0: sample})
+    dataset_dict = {"train": _FakeDataset(range(1))}
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    static, by_time = service.describe_globals_all_times(ref)
+
+    assert converter.calls == 1, "must decode the sample only once"
+    assert {entry["name"] for entry in static} == {"pressure"}
+    assert set(by_time.keys()) == {1.0, 2.0}
+    for entries in by_time.values():
+        assert "IterationValues" not in {e["name"] for e in entries}
+    # ``_array_preview`` defers to ``numpy.array2string`` which drops the
+    # trailing zero on 0-d float arrays ("10." rather than "10.0").
+    assert by_time[1.0][0]["preview"].startswith("10")
+    assert by_time[2.0][0]["preview"].startswith("20")
+
+    # The convenience wrapper must agree with the snapshot at each time.
+    assert service.describe_globals(ref, time=1.0) == by_time[1.0]
+    assert service.describe_globals(ref, time=2.0) == by_time[2.0]
+    assert service.describe_globals(ref) == static
+
+
+def test_describe_globals_all_times_empty_when_no_time_axis(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Static (time-less) samples produce an empty ``by_time`` mapping."""
+    _make_dataset_dir(tmp_path, "ds")
+    sample = _SummarySample()
+    sample.features.get_all_time_values = lambda: []
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"train": _FakeDataset(range(1))},
+                {"train": _FakeConverter({0: sample})},
+            )
+        },
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    static, by_time = service.describe_globals_all_times(ref)
+    assert by_time == {}
+    # ``static`` is the time-less describe_globals result.
+    assert static == service.describe_globals(ref)
+
+
+def test_describe_globals_all_times_ignores_time_lookup_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A broken time-axis lookup should still return static globals."""
+    _make_dataset_dir(tmp_path, "ds")
+    sample = _SummarySample()
+    sample.features.get_all_time_values = lambda: (_ for _ in ()).throw(
+        RuntimeError("bad times")
+    )
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"train": _FakeDataset(range(1))},
+                {"train": _FakeConverter({0: sample})},
+            )
+        },
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+
+    static, by_time = service.describe_globals_all_times(ref)
+
+    assert static == [{"name": "g", "shape": [], "dtype": "int", "preview": "4"}]
+    assert by_time == {}
 
 
 def test_time_globals_and_validation_error_branches(

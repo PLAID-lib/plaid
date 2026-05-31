@@ -607,6 +607,28 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     # filter, so without this force-refresh the renderer would keep
     # showing the pre-filter CGNS file).
     force_artifact_refresh: dict[str, bool] = {"pending": False}
+    # Re-entrancy guard for the (active_base, show_globals) state
+    # listener. ``_refresh_sample_view_impl`` re-syncs
+    # ``state.active_base`` from the freshly loaded CGNS (e.g. it
+    # restores the previous selection when the new sample exposes the
+    # same base), and ``_refresh_available_features`` resets it to
+    # ``None`` on every dataset switch. Both writes would otherwise
+    # re-fire ``_on_user_filter`` and trigger an infinite reload loop.
+    suppress_user_filter: dict[str, bool] = {"pending": False}
+    # Pre-computed globals descriptors for the active sample, keyed by
+    # time value. Built once per selection by ``_refresh_sample_view_impl``
+    # so the playback loop in ``_apply_time_step_impl`` can refresh the
+    # globals panel via a dict lookup instead of calling
+    # ``dataset_service.describe_globals(ref, time=...)`` on every frame.
+    # Layout: ``{"static": [...], "by_time": {float: [...]}, "ref": <encoded>}``.
+    # ``ref`` lets the playback loop verify the snapshot still matches
+    # the active selection (and fall back to the per-frame service call
+    # otherwise, e.g. for streaming datasets that share a single ref).
+    globals_snapshot: dict[str, object] = {
+        "static": [],
+        "by_time": {},
+        "ref": None,
+    }
 
     with _silence_stderr():
         datasets = dataset_service.list_datasets()
@@ -717,8 +739,30 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("base_options", [])
     # Single active base (exclusive selection). Kept as a list internally
     # so `_apply_base_selection` has a uniform interface, but the UI
-    # exposes it as a ``VBtnToggle`` with ``multiple=False``.
+    # exposes it as a ``VBtnToggle`` with ``multiple=False``. ``None``
+    # is the default after a dataset is selected: the user explicitly
+    # picks a base from the toggle, which then drives the filtered
+    # sample load through ``_apply_user_filter``.
     state.setdefault("active_base", None)
+    # Globals toggle. When ``True``, every PLAID feature path under
+    # ``Globals/`` is included in the active feature filter passed to
+    # :meth:`PlaidDatasetService.set_features`. Defaults to ``False`` so
+    # a freshly selected dataset stays empty until the user opts in
+    # (matches the "Pick a Base or enable Globals to load the sample"
+    # placeholder shown by ``_refresh_sample_view_impl``).
+    state.setdefault("show_globals", False)
+    # Cached set of ``Globals/...`` paths for the current dataset,
+    # populated by ``_refresh_available_features`` so
+    # ``_apply_user_filter`` does not have to re-query the service on
+    # every toggle.
+    available_globals_paths: dict[str, list[str]] = {"paths": []}
+    # Full list of user-visible field paths for the active dataset, kept
+    # in a closure so ``_apply_user_filter`` can restrict the visible
+    # subset to those declared under the currently-active base. The
+    # checkbox panel binds to ``state.available_features`` (the *visible*
+    # list); ``all_available_features`` is the un-filtered superset
+    # populated once per dataset by ``_refresh_available_features``.
+    all_available_features: dict[str, list[str]] = {"paths": []}
     # PLAID globals (``sample.get_global_names`` / ``sample.get_global``)
 
     # for the current sample, minus the ``IterationValues`` / ``TimeValues``
@@ -767,7 +811,15 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             state.status = f"Failed to load dataset: {exc}"
             splits = []
         state.splits = splits
-        new_split = splits[0] if splits else None
+        # Prefer the conventional ``train`` split when the dataset
+        # exposes one (case-insensitive match): users overwhelmingly
+        # want to start with the training split rather than whichever
+        # one happens to come first in the metadata. Fall back to the
+        # first split otherwise.
+        new_split = None
+        if splits:
+            train_match = next((s for s in splits if str(s).lower() == "train"), None)
+            new_split = train_match if train_match is not None else splits[0]
         # When the new dataset exposes the same first split name as the
         # previous one (e.g. both default to ``train``), ``state.split``
         # does not change and the ``@state.change("split")`` listener is
@@ -790,8 +842,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         pipeline.mapper.RemoveAllInputConnections(0)
         pipeline.mapper.ScalarVisibilityOff()
         _hide_scalar_bar(pipeline.scalar_bar)
-        state.base_options = []
-        state.active_base = None
+        # ``base_options`` is left untouched: it was just populated
+        # by ``_refresh_available_features`` from PLAID metadata so
+        # the Base toggle stays usable while the scene is empty.
+        # Same reasoning for ``active_base``: keep the user's pick
+        # so they don't have to re-tick it after every dataset
+        # refresh path.
         state.field_options = []
         state.field = None
         state.sample_globals = []
@@ -940,6 +996,34 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             sample_id=str(state.sample_id),
         )
 
+        # Active feature filter is an *explicit empty list* ("show
+        # nothing yet"). This is the default state right after a dataset
+        # is selected (see ``_refresh_available_features``) and after
+        # the user has hit "Clear" in the feature panel without ticking
+        # anything else. We deliberately skip the whole sample-loading +
+        # artifact build pipeline so the user does not pay for an
+        # implicit "load everything" the first time they open a dataset
+        # (which used to be very expensive on the zarr backend). The
+        # canvas is left empty until the user opts in by ticking a
+        # ``Base_X_Y`` and/or a field path.
+        try:
+            current_features = dataset_service.get_features(state.dataset_id)
+        except Exception:  # noqa: BLE001
+            current_features = None
+        if current_features is not None and len(current_features) == 0:
+            _clear_scene(status="Pick a Base or enable Globals to load the sample")
+            return
+
+        # "Globals only" mode: the user enabled the Globals toggle but
+        # has not picked a base. We still need to surface the sample's
+        # globals at the bottom of the drawer (and let the user navigate
+        # samples / time steps), but the 3D scene must stay empty - the
+        # globals are sample-level scalars and have no mesh support to
+        # render. We therefore skip the entire ParaView artifact build
+        # + VTK rendering path and only refresh the time axis + globals
+        # panel below.
+        globals_only = bool(state.show_globals) and not state.active_base
+
         # Refresh time axis + globals panel (independent of VTK rendering).
         # PLAID's CGNS loading (pyCGNS / CHLone) writes low-level HDF5
         # warnings such as "Mismatch in number of children and child IDs
@@ -956,14 +1040,66 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.time_count = len(times)
         state.time_index = 0
         state.current_time = times[0] if times else None
-        try:
-            with _silence_stderr():
-                state.sample_globals = dataset_service.describe_globals(
-                    ref, time=state.current_time
-                )
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Failed to describe globals: %s", exc)
-            state.sample_globals = []
+        # Pre-compute the globals descriptors for *every* timestep of
+        # the sample and stash them in ``globals_snapshot``. The
+        # playback loop in ``_apply_time_step_impl`` then refreshes the
+        # globals panel by indexing into this dict instead of issuing a
+        # fresh ``describe_globals`` call (which, on backends that
+        # bypass the LRU sample cache, would otherwise re-decode the
+        # PLAID sample on every frame). For streaming datasets the
+        # snapshot is left empty: the per-record sample object is
+        # rebuilt on every cursor advance, so a per-time snapshot is
+        # meaningless and the loop falls back to the per-frame service
+        # call (which is fine because streaming is never used with
+        # multi-timestep playback in the same record).
+        ref_key = ref.encode()
+        if state.is_streaming:
+            globals_snapshot["static"] = []
+            globals_snapshot["by_time"] = {}
+            globals_snapshot["ref"] = None
+        else:
+            try:
+                with _silence_stderr():
+                    static, by_time = dataset_service.describe_globals_all_times(ref)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to pre-compute globals snapshot: %s", exc)
+                static, by_time = [], {}
+            globals_snapshot["static"] = static
+            globals_snapshot["by_time"] = by_time
+            globals_snapshot["ref"] = ref_key
+        # Show the globals matching the initial time step (or the
+        # static fallback when no time axis is available).
+        if globals_snapshot["ref"] == ref_key:
+            by_time = globals_snapshot["by_time"]
+            if state.current_time is not None and float(state.current_time) in by_time:
+                state.sample_globals = by_time[float(state.current_time)]
+            else:
+                state.sample_globals = globals_snapshot["static"]
+        else:
+            try:
+                with _silence_stderr():
+                    state.sample_globals = dataset_service.describe_globals(
+                        ref, time=state.current_time
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to describe globals: %s", exc)
+                state.sample_globals = []
+        if globals_only:
+            # The user only enabled the Globals toggle: clear the 3D
+            # scene (no mesh to render) but keep the time axis and
+            # globals panel populated above. The status bar gives a
+            # contextual hint so the user understands why the view is
+            # empty.
+            pipeline.reader = None
+            pipeline.mapper.RemoveAllInputConnections(0)
+            pipeline.mapper.ScalarVisibilityOff()
+            _hide_scalar_bar(pipeline.scalar_bar)
+            state.field_options = []
+            state.field = None
+            state.status = "Globals only: pick a Base to load the geometrical support."
+            ctrl.view_update()
+            return
+
         try:
             # Streaming samples all share the same ``SampleRef`` (the
             # ``STREAM_CURSOR_ID`` sentinel) and would therefore hit the
@@ -1017,11 +1153,29 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             # Preserve the user's base selection across samples when the
             # same base still exists; otherwise fall back to the first
             # renderable base.
+            # Re-syncing ``state.active_base`` from the freshly-loaded
+            # CGNS would otherwise re-fire the ``_on_user_filter``
+            # listener and trigger another sample reload (the user did
+            # not change their pick). Suppress the listener for the
+            # duration of the assignment.
+            # Preserve the user's pick verbatim. We deliberately do NOT
+            # auto-fallback to ``visual_bases[0]`` when ``previous`` is
+            # ``None`` or absent from the freshly loaded CGNS: doing so
+            # would silently re-toggle a base whenever the user flips
+            # the Globals switch (the load triggered by the toggle ends
+            # up here, with ``active_base=None``, and would clobber the
+            # toggle state). Letting ``new_active`` stay ``None`` keeps
+            # the Base toggle visually untouched; the VTK renderer then
+            # simply has no base enabled, which matches the
+            # "Globals only" intent.
             previous = state.active_base
-            if previous in visual_bases:
-                state.active_base = previous
-            else:
-                state.active_base = visual_bases[0] if visual_bases else None
+            new_active = previous if previous in visual_bases else None
+            if new_active != previous:
+                suppress_user_filter["pending"] = True
+                try:
+                    state.active_base = new_active
+                finally:
+                    suppress_user_filter["pending"] = False
             if state.active_base is not None:
                 _apply_base_selection(pipeline.reader, [state.active_base])
             _refresh_field_options()
@@ -1117,9 +1271,60 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             state.selected_features = []
             state.has_features = False
             return
-        state.available_features = available
-        current = dataset_service.get_features(state.dataset_id)
-        state.selected_features = list(current) if current else []
+        # Store the full superset in the closure-local cache so
+        # ``_apply_user_filter`` can compute the per-base intersection
+        # without re-querying the service. ``state.available_features``
+        # itself is left empty until the user picks a base or enables
+        # the Globals toggle: the checkbox panel then shows only the
+        # field paths that actually belong to the active base (or the
+        # globals when toggled on).
+        all_available_features["paths"] = list(available)
+        # Pre-populate the Base toggle options and the cached list of
+        # ``Globals/...`` feature paths from PLAID metadata so the
+        # Base / Globals controls in the drawer are usable *before*
+        # any sample has been loaded. The user picks a base (or flips
+        # the Globals switch); the new ``_apply_user_filter`` handler
+        # then translates that choice into a concrete
+        # :meth:`PlaidDatasetService.set_features` call which drives
+        # the actual sample load.
+        try:
+            with _silence_stderr():
+                state.base_options = dataset_service.list_available_bases(
+                    state.dataset_id
+                )
+                available_globals_paths["paths"] = dataset_service.list_globals_paths(
+                    state.dataset_id
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to list bases / globals: %s", exc)
+            state.base_options = []
+            available_globals_paths["paths"] = []
+        # Reset both controls to "off" so a freshly selected dataset
+        # never triggers an implicit load. The empty filter pushed
+        # below makes ``_refresh_sample_view_impl`` short-circuit and
+        # display the placeholder hint until the user opts in. The
+        # suppression guard prevents these writes from re-firing
+        # ``_on_user_filter`` (which would push another empty filter
+        # in a tight loop).
+        suppress_user_filter["pending"] = True
+        try:
+            state.active_base = None
+            state.show_globals = False
+        finally:
+            suppress_user_filter["pending"] = False
+        # Default policy on dataset (re)selection: start with an EMPTY
+        # filter, not "no filter". An empty filter means
+        # ``_refresh_sample_view_impl`` short-circuits with the
+        # placeholder "Pick a Base or enable Globals to load the
+        # sample" hint. This avoids loading the whole dataset (all
+        # bases, all fields) the very first time the user opens it -
+        # which used to be especially expensive on the zarr backend.
+        try:
+            with _silence_stderr():
+                dataset_service.set_features(state.dataset_id, [])
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to initialise empty feature filter: %s", exc)
+        state.selected_features = []
         # The side-drawer "Features" panel uses ``v_if=("!is_streaming
         # && has_features",)`` instead of reading
         # ``available_features.length`` directly: across recent trame
@@ -1147,7 +1352,46 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         """
         if not state.dataset_id:
             return
-        features = list(state.selected_features or [])
+        # The "Pre-select browsable field features" panel only carries
+        # the user's *field* picks. To produce a coherent feature list
+        # for :meth:`set_features` we re-augment it with:
+        #  * the geometrical support of the active base (mesh
+        #    coordinates, connectivities, ``_times`` bookkeeping...)
+        #    so the 3D scene actually renders something;
+        #  * every ``Globals/...`` path when the Globals switch is on
+        #    so the descriptor list at the bottom of the drawer stays
+        #    populated alongside the field selection.
+        # Without this, ticking a field while Globals was on would
+        # quietly drop the globals from the loaded sample (the panel
+        # would disappear) and ticking a field with no base picked
+        # would load fields without their mesh support.
+        selected = list(state.selected_features or [])
+        features: list[str] = list(selected)
+        if state.active_base:
+            try:
+                with _silence_stderr():
+                    base_paths = dataset_service.list_base_paths(
+                        state.dataset_id, state.active_base
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to expand base %s: %s", state.active_base, exc)
+                base_paths = []
+            all_field_paths = set(all_available_features.get("paths", []))
+            forbidden = all_field_paths | {f"{p}_times" for p in all_field_paths}
+            # Re-include selected fields' ``_times`` companions when
+            # they exist in the dataset (PLAID flat-dict layout pairs
+            # ``F`` with ``F_times`` for time-dependent fields).
+            kept_times = {
+                f"{p}_times" for p in selected if f"{p}_times" not in selected
+            }
+            features.extend(
+                p for p in base_paths if p not in forbidden or p in kept_times
+            )
+        if state.show_globals:
+            features.extend(available_globals_paths.get("paths", []))
+        # De-duplicate while preserving order.
+        seen: set[str] = set()
+        features = [p for p in features if not (p in seen or seen.add(p))]
         try:
             with _silence_stderr():
                 # Pass the list unconditionally: ``None`` means "no
@@ -1265,6 +1509,21 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         if streaming:
             _refresh_samples()
             return
+        # Mirror the dataset-switch reset: untoggle the active base and
+        # the Globals switch so the new split starts blank with the
+        # "Pick a Base or enable Globals to load the sample" hint.
+        # Without this, ``state.active_base`` would still point at the
+        # previous split's pick (which may not even exist in the new
+        # split) and silently re-trigger ``_apply_user_filter`` with a
+        # stale base name. ``suppress_user_filter`` prevents that
+        # listener from racing with the explicit ``_apply_features``
+        # call below.
+        suppress_user_filter["pending"] = True
+        try:
+            state.active_base = None
+            state.show_globals = False
+        finally:
+            suppress_user_filter["pending"] = False
         state.selected_features = []
         _apply_features()
 
@@ -1342,13 +1601,31 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 split=split,
                 sample_id=str(state.sample_id),
             )
-            try:
-                with _silence_stderr():
-                    state.sample_globals = dataset_service.describe_globals(
-                        ref, time=state.current_time
-                    )
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("Failed to describe globals: %s", exc)
+            ref_key = ref.encode()
+            # Fast path: index into the pre-built snapshot. ``ref_key``
+            # guards against stale snapshots (e.g. the user changed
+            # sample mid-playback so the loop still has the previous
+            # ``ref`` in scope but the snapshot has not been rebuilt
+            # yet) and against streaming datasets, which never populate
+            # the snapshot. When the guard fails, we fall back to the
+            # original per-frame service call.
+            current_time = state.current_time
+            if (
+                globals_snapshot["ref"] == ref_key
+                and current_time is not None
+                and float(current_time) in globals_snapshot["by_time"]
+            ):
+                state.sample_globals = globals_snapshot["by_time"][float(current_time)]
+            elif globals_snapshot["ref"] == ref_key and current_time is None:
+                state.sample_globals = globals_snapshot["static"]
+            else:
+                try:
+                    with _silence_stderr():
+                        state.sample_globals = dataset_service.describe_globals(
+                            ref, time=current_time
+                        )
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("Failed to describe globals: %s", exc)
 
     @state.change("time_index")
     def _on_time_index(**_: object) -> None:
@@ -1456,20 +1733,130 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         finally:
             state.loading = False
 
-    @state.change("active_base")
-    def _on_base(**_: object) -> None:
-        if pipeline.reader is None:
+    def _apply_user_filter() -> None:
+        """Translate (active_base, show_globals) into a feature filter.
+
+        Central handler that drives sample loading after a dataset is
+        selected. We build a feature list from the current ``active_base``
+        and ``show_globals`` flags, push it to
+        :meth:`PlaidDatasetService.set_features`, and trigger the usual
+        ``_refresh_samples`` cascade. An empty resulting filter leaves
+        the scene blank with the placeholder hint. Picking a base loads
+        the *mesh only* of that base (no fields).
+        """
+        if not state.dataset_id:
             return
-        active = [state.active_base] if state.active_base else []
+        # Expand the user's high-level pick (a base name and/or the
+        # ``Globals`` switch) into the concrete PLAID feature paths
+        # that :meth:`set_features` validates against the dataset
+        # metadata. ``active_base`` is just a CGNS base name (e.g.
+        # ``Base_2_2``), so we look up every constant / variable
+        # feature path declared under that base before pushing it
+        # downstream.
+        # Picking a Base loads only the geometrical support of that
+        # base (mesh coordinates, connectivities, GridLocation, ...
+        # plus the eventual ``_times`` bookkeeping paths) - **no
+        # field**. The user opts into individual fields afterwards
+        # through the "Pre-select browsable field features" panel.
+        # We therefore subtract every user-visible field path
+        # (``available_features``) from the raw base expansion so the
+        # initial Base toggle never streams scalar / vector data.
+        features: list[str] = []
+        # Restrict the user-visible "Pre-select browsable field
+        # features" panel to the field paths that actually belong to
+        # the currently-active base (plus the global field paths when
+        # the Globals toggle is on). This keeps the checkbox panel
+        # scoped to features the user can meaningfully load given
+        # their current base selection, and the ``x / y`` counter
+        # stays consistent with the listed checkboxes.
+        all_field_paths = list(all_available_features.get("paths", []))
+        all_field_set = set(all_field_paths)
+        # When dropping a user-visible field path ``F`` from the base
+        # expansion we must also drop its time-series companion
+        # ``F_times`` if any: PLAID's ``_split_dict_feat`` would
+        # otherwise classify ``F_times`` as a regular value (because
+        # its trimmed counterpart ``F`` is no longer in the selected
+        # set), which makes ``flat_dict_to_sample_dict`` trip on
+        # ``Unexpected keys in row_val``.
+        forbidden = all_field_set | {f"{p}_times" for p in all_field_set}
+        globals_path_list = list(available_globals_paths.get("paths", []))
+        globals_set = set(globals_path_list)
+        # Field paths declared under the active base, computed by a
+        # straight ``startswith`` test on the user-visible field list.
+        # We deliberately do *not* go through ``list_base_paths`` here:
+        # it returns the full base expansion (mesh coordinates,
+        # connectivities, ...) which would not intersect with the
+        # field-only ``all_field_paths`` if the dataset uses CGNS path
+        # conventions that differ from the metadata catalogue (e.g.
+        # casing, trailing components, ...). Filtering by prefix keeps
+        # the visible list reliable across all dataset layouts.
+        visible_fields: list[str] = []
+        if state.active_base:
+            base_prefix = f"{state.active_base}/"
+            visible_fields.extend(
+                p
+                for p in all_field_paths
+                if p.startswith(base_prefix) and p not in globals_set
+            )
+            try:
+                with _silence_stderr():
+                    base_paths = dataset_service.list_base_paths(
+                        state.dataset_id, state.active_base
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Failed to expand base %s: %s", state.active_base, exc)
+                base_paths = []
+            features.extend(p for p in base_paths if p not in forbidden)
+        if state.show_globals:
+            features.extend(globals_path_list)
+            visible_fields.extend(p for p in globals_path_list if p in all_field_set)
+        # Push the restricted list to the UI. ``available_features``
+        # is sorted to keep checkbox order deterministic across
+        # toggle flips on the same dataset. ``has_features`` stays
+        # driven by the full superset (``all_field_paths``) so the
+        # panel itself is always visible when the dataset declares any
+        # field path: it is just the *content* of the panel that gets
+        # filtered down to the active base / globals scope.
+        state.available_features = sorted(visible_fields)
+        state.has_features = bool(all_field_paths)
+        # Preserve the user's previous field selection across toggle
+        # flips: when they tick fields, then flip Globals on or off,
+        # the field checkboxes must stay ticked. We keep every
+        # previously-selected path that is still in the (possibly
+        # narrowed) ``visible_fields`` set, and we re-inject those
+        # selections plus their ``_times`` companions into the feature
+        # list pushed to the service.
+        previous_selection = list(state.selected_features or [])
+        visible_set = set(state.available_features or [])
+        kept_selection = [p for p in previous_selection if p in visible_set]
+        state.selected_features = kept_selection
+        # Re-inject the user-selected fields (and their ``_times``
+        # companions if any) so the load actually carries the field
+        # data, not just the base support / globals computed above.
+        for path in kept_selection:
+            features.append(path)
+            times_companion = f"{path}_times"
+            if times_companion in (
+                set(all_field_paths) | {f"{q}_times" for q in all_field_paths}
+            ):
+                features.append(times_companion)
+        # De-duplicate while preserving order.
+        seen: set[str] = set()
+        features = [p for p in features if not (p in seen or seen.add(p))]
         try:
-            _apply_base_selection(pipeline.reader, active)
+            with _silence_stderr():
+                dataset_service.set_features(state.dataset_id, features)
         except Exception as exc:  # noqa: BLE001
-            state.status = f"Failed to update base: {exc}"
+            state.status = f"Failed to set features: {exc}"
             return
-        # Narrow the field dropdown to arrays that actually exist on the
-        # newly-selected base.
-        _refresh_field_options()
-        _apply_pipeline(reset_camera=True)
+        force_artifact_refresh["pending"] = True
+        _refresh_samples()
+
+    @state.change("active_base", "show_globals")
+    def _on_user_filter(**_: object) -> None:
+        if suppress_user_filter["pending"]:
+            return
+        _apply_user_filter()
 
     @state.change("field", "cmap", "show_edges")
     def _on_view_params(**_: object) -> None:
@@ -1688,6 +2075,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 # when ``--disable-root-change`` was passed on the CLI so
                 # a public deployment can pin the root for good.
                 with html.Div(v_if=("allow_root_change",), classes="mb-2"):
+                    html.Div(
+                        "1) Select Datasets root",
+                        classes="text-subtitle-2 mb-1",
+                    )
                     with v3.VTabs(
                         v_model=("source_tab",),
                         density="compact",
@@ -1771,6 +2162,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 # (``init_streaming_from_hub`` datasets). The user never
                 # sees ids from the inactive source in the same menu.
                 with html.Div(v_if=("allow_dataset_change",)):
+                    html.Div(
+                        "2) Select Dataset",
+                        classes="text-subtitle-2 mb-1",
+                    )
                     v3.VSelect(
                         label="Dataset",
                         v_model=("dataset_id",),
@@ -1780,12 +2175,146 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         density="compact",
                     )
 
+                html.Div(
+                    "3) Select Split",
+                    classes="text-subtitle-2 mb-1 mt-2",
+                )
                 v3.VSelect(
                     label="Split",
                     v_model=("split",),
                     items=("splits",),
                     density="compact",
                 )
+                v3.VDivider(classes="my-2")
+                html.Div(
+                    "4) Select Base (and/or enable Globals)",
+                    classes="text-subtitle-2 mb-1",
+                )
+                # "Globals" toggle. Off by default; flipping it on adds
+                # every ``Globals/...`` PLAID feature path to the active
+                # filter so the side-panel "Globals" descriptor list is
+                # populated. The switch is only shown once the
+                # currently-selected dataset declares any global at all.
+                v3.VSwitch(
+                    label="Globals",
+                    v_model=("show_globals",),
+                    density="compact",
+                    hide_details=True,
+                    color="primary",
+                    classes="mb-1",
+                )
+                html.Div("Base", classes="text-caption")
+
+                # ``mandatory`` is intentionally left off so the user
+                # can deselect every base (clicking the active one a
+                # second time clears the toggle). An empty selection
+                # combined with ``show_globals=False`` makes
+                # ``_apply_user_filter`` push an empty feature filter,
+                # which clears the scene and shows the
+                # "Pick a Base or enable Globals to load the sample"
+                # placeholder.
+                # ``selected-class="bg-primary text-white"`` makes the
+                # active base visually obvious: Vuetify applies it to
+                # the toggled button, which would otherwise only differ
+                # from the inactive ones by a subtle grey background.
+                # ``color="primary"`` covers the case where the global
+                # theme overrides the default ``bg-primary`` token.
+                with v3.VBtnToggle(
+                    v_model=("active_base",),
+                    density="compact",
+                    divided=True,
+                    color="primary",
+                    selected_class="bg-primary text-white",
+                    classes="flex-wrap mb-2",
+                ):
+                    v3.VBtn(
+                        "{{ base }}",
+                        v_for="base in base_options",
+                        key="base",
+                        value=("base",),
+                        size="small",
+                        variant=("active_base === base ? 'flat' : 'outlined'",),
+                    )
+
+                # Feature filter panel. Moved between the Base toggle
+                # and the Field dropdown to match the numbered workflow
+                # exposed in the drawer (1) Dataset, 2) Split, 3) Base,
+                # 4) Pre-select fields, 5) Field/Colormap/Edges).
+                # Hidden for streaming (Hugging Face Hub) datasets:
+                # feature filtering goes through ``init_streaming_from_hub``
+                # which rebuilds the iterator from the dataset-wide
+                # metadata union, a workflow that does not fit the
+                # per-split viewer model and led to confusing "Missing
+                # features" errors.
+                with html.Div(
+                    v_if=("!is_streaming && has_features",),
+                    classes="mb-2",
+                ):
+                    with html.Div(classes="d-flex align-center mb-1"):
+                        html.Div(
+                            "5) Pre-select browsable field features",
+                            classes="text-subtitle-2 flex-grow-1",
+                        )
+                        v3.VBtn(
+                            "Load all",
+                            click=ctrl.select_all_features,
+                            size="x-small",
+                            color="primary",
+                            variant="tonal",
+                        )
+                    with v3.VExpansionPanels(variant="accordion", multiple=True):
+                        with v3.VExpansionPanel():
+                            v3.VExpansionPanelTitle(
+                                "Select features ({{ (selected_features"
+                                " || []).length }} / {{ (available_features"
+                                " || []).length }})"
+                            )
+                            with v3.VExpansionPanelText():
+                                html.Div(
+                                    "Empty selection loads every feature.",
+                                    classes="text-caption text-medium-emphasis mb-1",
+                                )
+                                with html.Div(classes="d-flex mb-1"):
+                                    v3.VBtn(
+                                        "Clear",
+                                        click="selected_features = []",
+                                        size="x-small",
+                                        variant="text",
+                                        classes="mr-1",
+                                    )
+                                    v3.VBtn(
+                                        "Apply",
+                                        click=ctrl.apply_features,
+                                        size="x-small",
+                                        color="primary",
+                                        variant="tonal",
+                                    )
+                                with html.Div(
+                                    style="max-height: 240px; overflow: auto;",
+                                    classes="pa-1",
+                                ):
+                                    v3.VCheckbox(
+                                        v_for="feat in available_features",
+                                        key="feat",
+                                        v_model=("selected_features",),
+                                        value=("feat",),
+                                        label=("feat",),
+                                        density="compact",
+                                        hide_details=True,
+                                        multiple=True,
+                                    )
+
+                html.Div(
+                    "6) Select field to plot",
+                    classes="text-subtitle-2 mb-1 mt-2",
+                )
+                v3.VSelect(
+                    label="Field",
+                    v_model=("field",),
+                    items=("field_options",),
+                    density="compact",
+                )
+
                 # Sample picker. Two mutually-exclusive widgets:
                 # - Local datasets expose a random-access slider over
                 #   the integer sample indices.
@@ -1793,7 +2322,14 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 #   only be consumed forward, so we expose a "Next"
                 #   button that advances the ``_StreamCursor`` by one
                 #   step via ``ctrl.stream_next``.
-                html.Div("Sample", classes="text-caption mt-2")
+                # Placed at step 5 (between the field selection and the
+                # downstream rendering options) so the user picks
+                # *what* to look at (Dataset / Split / Base / Field)
+                # before navigating *which sample* to display.
+                html.Div(
+                    "7) Select Sample",
+                    classes="text-subtitle-2 mb-1 mt-2",
+                )
                 v3.VSlider(
                     v_if=("!is_streaming",),
                     v_model_number=("sample_index",),
@@ -1879,29 +2415,25 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         hide_details=True,
                         density="compact",
                     )
-                v3.VDivider(classes="my-2")
-                html.Div("Base", classes="text-caption")
 
-                with v3.VBtnToggle(
-                    v_model=("active_base",),
-                    mandatory=True,
-                    density="compact",
-                    divided=True,
-                    classes="flex-wrap mb-2",
-                ):
-                    v3.VBtn(
-                        "{{ base }}",
-                        v_for="base in base_options",
-                        key="base",
-                        value=("base",),
-                        size="small",
-                    )
-                v3.VSelect(
-                    label="Field",
-                    v_model=("field",),
-                    items=("field_options",),
-                    density="compact",
+                # Bold visual separator between the selection-stage
+                # controls (steps 1-6 above) and the rendering / camera
+                # options (Colormap, Show edges, Reset camera) below.
+                # The default ``VDivider`` is a 1px hair-thin grey line
+                # that is barely visible inside the drawer; we
+                # emphasise this one with a thicker, primary-coloured
+                # rule and extra vertical margin so the two sections
+                # are clearly separated.
+                v3.VDivider(
+                    thickness=3,
+                    color="primary",
+                    classes="my-4",
                 )
+                html.Div(
+                    "Rendering options",
+                    classes="text-overline text-medium-emphasis mb-1",
+                )
+
                 v3.VSelect(
                     label="Colormap",
                     v_model=("cmap",),
@@ -1916,91 +2448,6 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 )
                 v3.VDivider(classes="my-2")
                 v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
-
-                # Feature filter panel. Only rendered when the active
-                # dataset exposes any feature path (otherwise the panel
-                # would be empty and misleading). Driven by the
-                # ``available_features`` / ``selected_features`` state
-                # vectors populated by ``_refresh_available_features``;
-                # the Apply button forwards the selection to
-                # :meth:`PlaidDatasetService.set_features`, which in turn
-                # invalidates the store cache and (for streaming
-                # datasets) rebuilds the iterator with an
-                # ``update_features_for_CGNS_compatibility`` expansion of
-                # the user selection.
-                # Feature filter panel. The expansion panel starts
-                # collapsed: most users only need the "Load all" shortcut
-                # button exposed above it, and the full checkbox list is
-                # only expanded when they actually want to subset the
-                # dataset. The top-level "Load all" button clears the
-                # current selection and forces a reload without the user
-                # having to open the panel at all.
-                # Hidden for streaming (Hugging Face Hub) datasets:
-                # feature filtering goes through ``init_streaming_from_hub``
-                # which rebuilds the iterator from the dataset-wide
-                # metadata union, a workflow that does not fit the
-                # per-split viewer model and led to confusing "Missing
-                # features" errors. Streaming users therefore always see
-                # the full feature payload; local disk datasets keep the
-                # complete feature selection UI unchanged.
-                with html.Div(
-                    v_if=("!is_streaming && has_features",),
-                    classes="mt-3",
-                ):
-                    v3.VDivider(classes="my-2")
-                    with html.Div(classes="d-flex align-center mb-1"):
-                        html.Div(
-                            "Pre-select browsable features",
-                            classes="text-subtitle-2 flex-grow-1",
-                        )
-                        v3.VBtn(
-                            "Load all",
-                            click=ctrl.select_all_features,
-                            size="x-small",
-                            color="primary",
-                            variant="tonal",
-                        )
-                    with v3.VExpansionPanels(variant="accordion", multiple=True):
-                        with v3.VExpansionPanel():
-                            v3.VExpansionPanelTitle(
-                                "Select features ({{ (selected_features"
-                                " || []).length }} / {{ (available_features"
-                                " || []).length }})"
-                            )
-                            with v3.VExpansionPanelText():
-                                html.Div(
-                                    "Empty selection loads every feature.",
-                                    classes="text-caption text-medium-emphasis mb-1",
-                                )
-                                with html.Div(classes="d-flex mb-1"):
-                                    v3.VBtn(
-                                        "Clear",
-                                        click="selected_features = []",
-                                        size="x-small",
-                                        variant="text",
-                                        classes="mr-1",
-                                    )
-                                    v3.VBtn(
-                                        "Apply",
-                                        click=ctrl.apply_features,
-                                        size="x-small",
-                                        color="primary",
-                                        variant="tonal",
-                                    )
-                                with html.Div(
-                                    style="max-height: 240px; overflow: auto;",
-                                    classes="pa-1",
-                                ):
-                                    v3.VCheckbox(
-                                        v_for="feat in available_features",
-                                        key="feat",
-                                        v_model=("selected_features",),
-                                        value=("feat",),
-                                        label=("feat",),
-                                        density="compact",
-                                        hide_details=True,
-                                        multiple=True,
-                                    )
 
                 html.Div("{{ status }}", classes="text-caption mt-2")
 

@@ -22,10 +22,6 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
 - Backend converters turn raw backend samples into PLAID `Sample` objects.
 
-## Note
-
-- The example uses external tools (`plyfile`, `Muscat`) to build meshes — these are not PLAID runtime dependencies.
-
 
 ## How to create data and save to disk/push to hub
 

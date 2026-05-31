@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -194,6 +195,25 @@ class PlaidDatasetService:
         # ...')`` whenever the request names a path that the split in
         # hand does not know about.
         self._split_feature_metadata: dict[str, dict[str, set[str]]] = {}
+        # In-memory LRU of decoded :class:`plaid.Sample` objects keyed by
+        # ``(dataset_id, split_key, sample_id, features_tuple)``. The
+        # viewer calls :meth:`load_sample` several times per user
+        # interaction (one for the VTK artifact, one for globals, one
+        # for non-visual bases, one per playback frame, ...). Without
+        # this cache each call performs a full ``Converter.to_plaid``
+        # decode of the same sample - cheap on the memory-mapped
+        # ``hf_datasets`` backend but very expensive on ``zarr``, where
+        # every decode reopens hundreds of small chunk files. The cache
+        # collapses repeated calls into a single decode for the
+        # currently active sample (and the previous one for back-and-
+        # forth navigation). Streaming datasets are intentionally
+        # bypassed: their ``sample_id`` is the constant
+        # :data:`STREAM_CURSOR_ID` sentinel so caching would conflate
+        # different cursor positions.
+        self._sample_cache: OrderedDict[
+            tuple[str, str, str, tuple[str, ...] | None], Any
+        ] = OrderedDict()
+        self._sample_cache_capacity: int = 2
 
     # ----------------------------------------------------------- Discovery
 
@@ -234,6 +254,7 @@ class PlaidDatasetService:
         if path is None:
             self._datasets_root = None
             self._store_cache.clear()
+            self._sample_cache.clear()
             set_last_datasets_root(None)
             return None
         resolved = Path(path).expanduser().resolve()
@@ -242,6 +263,7 @@ class PlaidDatasetService:
         self._ensure_within_browse_roots(resolved)
         self._datasets_root = resolved
         self._store_cache.clear()
+        self._sample_cache.clear()
         # Persist the new root so the next launch of the viewer picks it
         # up automatically when ``--datasets-root`` is not provided.
         set_last_datasets_root(resolved)
@@ -404,6 +426,7 @@ class PlaidDatasetService:
             self._cursors = {
                 key: cur for key, cur in self._cursors.items() if key[0] != repo_id
             }
+            self._invalidate_sample_cache(repo_id)
 
     # ------------------------------------------------------- Feature filter
 
@@ -524,6 +547,74 @@ class PlaidDatasetService:
         """
         return self._features.get(dataset_id)
 
+    def list_available_bases(self, dataset_id: str) -> list[str]:
+        """Return the unique CGNS base prefixes (e.g. ``Base_2_2``).
+
+        Derived from the constant/variable feature catalogues, so the
+        list is available *before* any sample has been loaded - which
+        lets the trame UI populate the "Base" toggle as soon as a
+        dataset is selected. The synthetic ``Globals`` base is
+        excluded; it is exposed separately by
+        :meth:`list_globals_paths` and surfaced as its own toggle in
+        the side drawer.
+        """
+        constant_keys, variable_keys = self._load_feature_metadata(dataset_id)
+        bases: set[str] = set()
+        for path in set(constant_keys) | set(variable_keys):
+            if not path:
+                continue
+            head = path.split("/", 1)[0]
+            # Skip the synthetic PLAID ``Global`` / ``Global_times`` base
+            # (sample-level scalars / tensors); they are surfaced through
+            # the dedicated "Globals" toggle in the side drawer.
+            if head in {"Global", "Global_times"}:
+                continue
+            # Skip ``Base_X_Y_times`` bookkeeping bases - they are
+            # PLAID time-series duplicates of their companion
+            # ``Base_X_Y`` and are not separately renderable.
+            if head.startswith("Base_") and not head.endswith("_times"):
+                bases.add(head)
+        return sorted(bases)
+
+    def list_base_paths(self, dataset_id: str, base: str) -> list[str]:
+        """Return every PLAID feature path declared under ``base``.
+
+        Used by the trame "Base" toggle to translate a base pick into
+        a concrete feature list passed to :meth:`set_features`. The
+        returned paths span both constant and variable schemas, so
+        :meth:`Converter.to_plaid` can rebuild the *mesh* of that base
+        (and any field declared at the dataset level) without pulling
+        in unrelated bases.
+
+        ``Base_X_Y`` and ``Base_X_Y_times`` paths are both returned
+        when present so the time-series bookkeeping companion of the
+        chosen base is loaded along with it.
+        """
+        constant_keys, variable_keys = self._load_feature_metadata(dataset_id)
+        prefix = f"{base}/"
+        prefix_times = f"{base}_times/"
+        return sorted(
+            p
+            for p in set(constant_keys) | set(variable_keys)
+            if p.startswith(prefix) or p.startswith(prefix_times)
+        )
+
+    def list_globals_paths(self, dataset_id: str) -> list[str]:
+        """Return every PLAID feature path that lives under ``Global/``.
+
+        Used by the trame UI to translate the "Globals" toggle into a
+        concrete feature list passed to :meth:`set_features`. PLAID
+        identifies sample-level scalars / tensors with a singular
+        ``Global`` base (and a companion ``Global_times`` base for time
+        series), so we accept exactly those two prefixes.
+        """
+        constant_keys, variable_keys = self._load_feature_metadata(dataset_id)
+        return sorted(
+            p
+            for p in set(constant_keys) | set(variable_keys)
+            if p.startswith("Global/") or p.startswith("Global_times/")
+        )
+
     def set_features(
         self, dataset_id: str, features: list[str] | None
     ) -> list[str] | None:
@@ -590,7 +681,16 @@ class PlaidDatasetService:
         self._cursors = {
             key: cur for key, cur in self._cursors.items() if key[0] != dataset_id
         }
+        self._invalidate_sample_cache(dataset_id)
         return normalised
+
+    def _invalidate_sample_cache(self, dataset_id: str) -> None:
+        """Drop cached decoded samples that belong to ``dataset_id``."""
+        self._sample_cache = OrderedDict(
+            (key, value)
+            for key, value in self._sample_cache.items()
+            if key[0] != dataset_id
+        )
 
     def is_streaming(self, dataset_id: str) -> bool:
         """Return ``True`` when ``dataset_id`` is a Hugging Face Hub stream.
@@ -752,6 +852,17 @@ class PlaidDatasetService:
 
         Uses ``converter.to_plaid(dataset, index)`` to rebuild the sample
         from whatever backend store (hf_datasets, cgns, zarr) is in use.
+
+        For random-access (non-streaming) samples, results are memoised
+        in a small LRU keyed on
+        ``(dataset_id, split_key, sample_id, features_tuple)`` so that
+        repeated calls within the same UI interaction (summary, globals,
+        non-visual bases, paraview artifact build, playback frames, ...)
+        only incur a single ``Converter.to_plaid`` decode. The cache is
+        invalidated whenever the active feature filter, datasets root,
+        or hub registration changes. Streaming samples bypass the cache
+        because their ``sample_id`` is the constant
+        :data:`STREAM_CURSOR_ID` sentinel.
         """
         datasetdict, converterdict = self._open(ref.dataset_id)
         split_key = ref.split if ref.split is not None else "__default__"
@@ -789,6 +900,37 @@ class PlaidDatasetService:
                 f"Invalid sample id {ref.sample_id!r}; expected an integer index."
             ) from exc
         features = self._features.get(ref.dataset_id)
+        cache_key = (
+            ref.dataset_id,
+            split_key,
+            ref.sample_id,
+            tuple(features) if features is not None else None,
+        )
+        cached = self._sample_cache.get(cache_key)
+        if cached is not None:
+            self._sample_cache.move_to_end(cache_key)
+            return cached
+        sample = self._decode_sample(ref, converter, dataset, index, features)
+        self._sample_cache[cache_key] = sample
+        if len(self._sample_cache) > self._sample_cache_capacity:
+            self._sample_cache.popitem(last=False)
+        return sample
+
+    def _decode_sample(
+        self,
+        ref: SampleRef,
+        converter: Any,
+        dataset: Any,
+        index: int,
+        features: list[str] | None,
+    ):
+        """Materialise a PLAID sample via ``converter.to_plaid``.
+
+        Pure (no caching) counterpart of :meth:`load_sample` for
+        random-access samples. The caching layer is intentionally kept
+        in :meth:`load_sample` so this helper stays a faithful mirror
+        of the previous direct-decode logic.
+        """
         if features is None:
             # No filter active: load every feature.
             return converter.to_plaid(dataset, index)
@@ -836,7 +978,27 @@ class PlaidDatasetService:
         selected_linked = set(selected) | {
             f"{path}_times" for path in selected if f"{path}_times" in split_keys
         }
-        always_keep = split_keys - user_visible_linked
+        # PLAID stores sample-level scalars / tensors under a synthetic
+        # ``Global`` (and ``Global_times``) base. Those paths are
+        # *user-controllable* through the dedicated "Globals" toggle in
+        # the trame side drawer (they are passed verbatim in
+        # ``features`` when the toggle is on), so they must NOT be
+        # re-injected by ``always_keep``. Otherwise PLAID would load
+        # the entire globals catalogue regardless of the user's
+        # selection. Exclude every ``Global/...`` and
+        # ``Global_times/...`` path (and the bare base names handled by
+        # ``update_features_for_CGNS_compatibility``) from the
+        # "always keep" set so toggling Globals genuinely turns the
+        # descriptor list on and off.
+        globals_paths = {
+            p
+            for p in split_keys
+            if p == "Global"
+            or p == "Global_times"
+            or p.startswith("Global/")
+            or p.startswith("Global_times/")
+        }
+        always_keep = split_keys - user_visible_linked - globals_paths
         augmented = sorted(selected_linked | always_keep)
         if not augmented:
             # Split has no bookkeeping paths AND user-selected fields
@@ -887,27 +1049,20 @@ class PlaidDatasetService:
             return []
         return sorted(float(t) for t in times)
 
-    def describe_globals(
-        self, ref: SampleRef, *, time: float | None = None
+    @staticmethod
+    def _describe_globals_for_sample(
+        sample, *, time: float | None = None
     ) -> list[dict[str, object]]:
-        """Return PLAID global scalars/tensors reported by the sample.
+        """Return PLAID globals descriptors for an already-loaded sample.
 
-        Uses :meth:`plaid.Sample.get_global_names` to enumerate globals
-        and :meth:`plaid.Sample.get_global` to fetch each value, so only
-        the "real" globals exposed by PLAID's API are reported. The CGNS
-        bookkeeping arrays ``IterationValues`` and ``TimeValues`` (which
-        describe time steps, not physical scalars) are filtered out.
+        Pure helper extracted from :meth:`describe_globals` so the
+        viewer can pre-compute globals for every timestep in one
+        :meth:`load_sample` call (see :meth:`describe_globals_all_times`).
 
-        Args:
-            ref: The sample to inspect.
-            time: Optional time value; when ``None`` the sample's first
-                available time (or the static value) is used.
-
-        Returns:
-            A list of ``{"name": str, "shape": list[int], "dtype": str,
-            "preview": str | None}`` descriptors, one per global.
+        ``IterationValues`` and ``TimeValues`` are CGNS bookkeeping
+        arrays that describe the time axis, not physical scalars, so
+        they are filtered out.
         """
-        sample = self.load_sample(ref)
         kwargs = {"time": time} if time is not None else {}
         try:
             names = sample.get_global_names(**kwargs)
@@ -934,6 +1089,64 @@ class PlaidDatasetService:
                 }
             )
         return entries
+
+    def describe_globals(
+        self, ref: SampleRef, *, time: float | None = None
+    ) -> list[dict[str, object]]:
+        """Return PLAID global scalars/tensors reported by the sample.
+
+        Uses :meth:`plaid.Sample.get_global_names` to enumerate globals
+        and :meth:`plaid.Sample.get_global` to fetch each value, so only
+        the "real" globals exposed by PLAID's API are reported. The CGNS
+        bookkeeping arrays ``IterationValues`` and ``TimeValues`` (which
+        describe time steps, not physical scalars) are filtered out.
+
+        Args:
+            ref: The sample to inspect.
+            time: Optional time value; when ``None`` the sample's first
+                available time (or the static value) is used.
+
+        Returns:
+            A list of ``{"name": str, "shape": list[int], "dtype": str,
+            "preview": str | None}`` descriptors, one per global.
+        """
+        sample = self.load_sample(ref)
+        return self._describe_globals_for_sample(sample, time=time)
+
+    def describe_globals_all_times(
+        self, ref: SampleRef
+    ) -> tuple[list[dict[str, object]], dict[float, list[dict[str, object]]]]:
+        """Return globals descriptors for every time step of a sample.
+
+        Performs a single :meth:`load_sample` call (which goes through
+        the in-memory LRU) and then iterates over every time value
+        exposed by :meth:`plaid.Sample.features.get_all_time_values`,
+        building a ``{time: [globals_entries]}`` snapshot. The trame
+        playback loop can then refresh the globals panel by indexing
+        into this dict instead of triggering a fresh service call (and
+        risking a per-frame decode on backends that bypass the cache).
+
+        Args:
+            ref: The sample to inspect.
+
+        Returns:
+            A pair ``(static, by_time)`` where ``static`` is the
+            time-less globals listing (used as a fallback when the
+            sample has no time axis or the requested time is missing)
+            and ``by_time`` maps each available ``float`` time value
+            to its globals descriptors.
+        """
+        sample = self.load_sample(ref)
+        static = self._describe_globals_for_sample(sample, time=None)
+        try:
+            times = sample.features.get_all_time_values()
+        except Exception:  # noqa: BLE001 - defensive, PLAID shouldn't raise
+            times = []
+        by_time: dict[float, list[dict[str, object]]] = {}
+        for raw_time in times:
+            t = float(raw_time)
+            by_time[t] = self._describe_globals_for_sample(sample, time=t)
+        return static, by_time
 
     def describe_non_visual_bases(
         self, ref: SampleRef
@@ -1058,7 +1271,23 @@ class PlaidDatasetService:
                 datasetdict, converterdict = init_streaming_from_hub(dataset_id)
             else:
                 constant_keys, variable_keys = self._load_feature_metadata(dataset_id)
-                base_features = list(features) if features else list(constant_keys)
+                # When the user explicitly cleared the filter (empty
+                # ``features`` list) we still need a valid set of paths
+                # to keep the mesh/zones around. We use every constant
+                # path EXCEPT the ``Global`` ones: those are gated by
+                # the dedicated "Globals" toggle, so an empty selection
+                # must not silently re-load them on streaming datasets.
+                if features:
+                    base_features = list(features)
+                else:
+                    base_features = [
+                        p
+                        for p in constant_keys
+                        if p != "Global"
+                        and p != "Global_times"
+                        and not p.startswith("Global/")
+                        and not p.startswith("Global_times/")
+                    ]
                 expanded_features = update_features_for_CGNS_compatibility(
                     base_features, constant_keys, variable_keys
                 )

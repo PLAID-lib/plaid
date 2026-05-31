@@ -151,12 +151,16 @@ class Converter:
         Returns:
             Sample: A PLAID Sample object.
         """
-        if features:
-            features = update_features_for_CGNS_compatibility(
-                features,
-                self.constant_features,
-                self.variable_features,
-            )
+        # Note: we deliberately do NOT call
+        # ``update_features_for_CGNS_compatibility`` here. ``to_dict`` runs it
+        # once for non-CGNS backends, and the CGNS branch ignores ``features``
+        # entirely. Calling the helper twice used to break feature filtering
+        # because its missing-key check only validates the *input* list while
+        # the helper itself appends auxiliary paths (parent FlowSolution,
+        # ``GridLocation``, ``Base_times``, ``ZoneType``, ...) that may not
+        # be declared in ``constant_features`` / ``variable_features``. On
+        # the second call those additions look "missing" and the helper
+        # raises ``KeyError("Missing features in dataset/converter: ...")``.
         if self.backend != "cgns":
             sample_dict = self.to_dict(dataset, idx, features, indexers=indexers)
             return to_plaid_sample(sample_dict, self.cgns_types)
