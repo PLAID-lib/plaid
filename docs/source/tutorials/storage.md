@@ -181,6 +181,8 @@ for backend in all_backends:
                 illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
     print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
 
+# Note: for maximal compatibility, you may need to call the `save_to_disk` and `push_to_hub` under the `if __name__ == "__main__":` context;
+
 if Path(tmp_cache_dir).exists():
     shutil.rmtree(Path(tmp_cache_dir))
 ```
