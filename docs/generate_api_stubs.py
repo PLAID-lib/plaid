@@ -256,7 +256,7 @@ def render_nav_block(base_indent: str) -> str:
         lines: list[str] = []
 
         index_rel = "/".join(("api", *rel.parts, "index.md")) if rel.parts else "api/index.md"
-        lines.append(f'{indent}{{ "Overview" = "{index_rel}" }},')
+        lines.append(f'{indent}{{ "overview" = "{index_rel}" }},')
 
         module_files = sorted(
             f for f in files
