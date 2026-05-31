@@ -170,8 +170,6 @@ def configure_dataset_card(
             including legal information like license.
         local_dir (Union[str, Path]): Path to the local directory containing the
             dataset files, expected to have a 'data' subdirectory with split folders.
-        variable_schema (Optional[dict]): Schema describing the variables/features
-            in the dataset, used to generate the features section in the card.
         viewer (Optional[bool]): Unused parameter for viewer configuration.
         pretty_name (Optional[str]): A human-readable name for the dataset to
             display in the card.

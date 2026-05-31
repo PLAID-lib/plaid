@@ -522,7 +522,13 @@ def preprocess(
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = True,
-):
+) -> tuple[
+    dict[str, dict[str, Any]],
+    dict[str, Any],
+    dict[str, dict[str, Any]],
+    dict[str, int],
+    dict[str, str],
+]:
     """Preprocess generators to extract schemas and metadata.
 
     Args:
@@ -532,8 +538,8 @@ def preprocess(
         verbose: Whether to show progress.
 
     Returns:
-        A tuple containing ``split_flat_cst``, ``variable_schema``, ``constant_schema``, ``split_n_samples``, and
-            ``global_cgns_types``.
+        tuple: A 5-tuple ``(split_flat_cst, variable_schema, constant_schema,
+            split_n_samples, global_cgns_types)``.
     """
     (
         split_all_paths,

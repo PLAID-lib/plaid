@@ -105,7 +105,9 @@ def load_problem_definitions_from_disk(
         )  # pragma: no cover
 
 
-def load_constants_from_disk(path):
+def load_constants_from_disk(
+    path: Union[str, Path],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     """Load constant features stored under a dataset's "constants" directory.
 
     The function expects the following layout under <path>/constants/. One folder per split (e.g. "train", "test", ...)
@@ -118,10 +120,12 @@ def load_constants_from_disk(path):
         path (str | Path): Root dataset directory that contains the "constants" folder.
 
     Returns:
-        tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]: The loaded constant values and their schemas. Numeric
-            constants are returned as ``np.memmap`` arrays backed by ``data.mmap``. String constants are returned as
-            one-element numpy arrays of Python strings decoded using ASCII. If a layout entry is ``None``, the returned
-            value is ``None``.
+        tuple: A 2-tuple ``(flat_cst, constant_schema)`` where ``flat_cst`` and
+            ``constant_schema`` are both ``dict[str, dict[str, Any]]``. Numeric
+            constants are returned as ``np.memmap`` arrays backed by ``data.mmap``.
+            String constants are returned as one-element numpy arrays of Python
+            strings decoded using ASCII. If a layout entry is ``None``, the
+            returned value is ``None``.
 
     Raises:
         FileNotFoundError: If the expected "constants" directory or required files are missing.

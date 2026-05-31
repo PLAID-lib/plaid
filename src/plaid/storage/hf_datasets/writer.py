@@ -57,7 +57,7 @@ def _compute_num_shards(hf_dataset_dict: Any) -> dict[str, int]:
 
 
 def save_datasetdict_to_disk(
-    path: Union[str, Path], hf_datasetdict: Any, **kwargs
+    path: Union[str, Path], hf_datasetdict: Any, **kwargs: Any
 ) -> None:
     """Save a Hugging Face DatasetDict to disk.
 
@@ -124,7 +124,7 @@ def generate_datasetdict_to_disk(
 
 
 def push_datasetdict_to_hub(
-    repo_id: str, hf_datasetdict: Any, **kwargs
+    repo_id: str, hf_datasetdict: Any, **kwargs: Any
 ) -> None:  # pragma: no cover
     """Push a Hugging Face `DatasetDict` to the Hugging Face Hub.
 
@@ -205,7 +205,6 @@ def configure_dataset_card(
         infos (dict[str, dict[str, str]]): Dictionary containing dataset metadata,
             including legal information like license.
         local_dir (Optional[Union[str, Path]]): Unused parameter for local directory path.
-        variable_schema (Optional[dict]): Unused parameter for variable schema.
         viewer (bool): Whether to enable the dataset viewer. Defaults to False, which
             sets 'viewer: false' in the card.
         pretty_name (Optional[str]): A human-readable name for the dataset to

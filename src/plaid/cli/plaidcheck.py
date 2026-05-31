@@ -195,14 +195,14 @@ def _is_branch_without_data_in_mapping(
     return any(name.startswith(prefix) for name in feat_map)
 
 
-def compute_checksum(sample):
+def compute_checksum(sample: Any) -> str:
     """Compute a SHA-256 checksum for a converted sample representation.
 
     Args:
         sample: Sample object or dictionary representation to checksum.
 
     Returns:
-        Hexadecimal SHA-256 digest of the pickled sample.
+        str: Hexadecimal SHA-256 digest of the pickled sample.
     """
     import hashlib
     import pickle

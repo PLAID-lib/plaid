@@ -228,7 +228,6 @@ class InMemoryBackend:
 
         Args:
             dataset (Dataset): The data set to be merged into this one (self).
-            in_place (bool, option): If True, modifies the current dataset in place.
 
         Returns:
             Optional[list[int]]: ids of added :class:`Samples <plaid.containers.sample.Sample>`

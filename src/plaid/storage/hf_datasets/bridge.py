@@ -18,14 +18,14 @@ from plaid.storage.common.preprocessor import build_sample_dict
 from ...containers.sample import Sample
 
 
-def convert_dtype_to_hf_feature(feature_type: dict[str, Any]):
+def convert_dtype_to_hf_feature(feature_type: dict[str, Any]) -> Any:
     """Convert a PLAID feature type dict to Hugging Face Feature.
 
     Args:
         feature_type (dict): Dictionary with 'dtype' and 'ndim' keys.
 
     Returns:
-        Features or Sequence: The corresponding HF feature type.
+        Any: The corresponding HF feature type (``Features`` or ``Sequence``).
     """
     base_dtype = feature_type["dtype"]
     ndim = feature_type["ndim"]
@@ -36,7 +36,7 @@ def convert_dtype_to_hf_feature(feature_type: dict[str, Any]):
     return feature
 
 
-def convert_to_hf_feature(variable_schema: dict[str, dict]):
+def convert_to_hf_feature(variable_schema: dict[str, dict]) -> Features:
     """Convert a PLAID variable schema to Hugging Face Features.
 
     Args:
