@@ -38,7 +38,8 @@ from plaid import Sample
 from Muscat.IO.VtkReader import VtkReader
 
 reader = VtkReader()
-mesh = reader.Read(fileName="./mesh.vtk")
+mesh_path = Path(__file__).resolve().parent / "mesh.vtk"
+mesh = reader.Read(fileName=str(mesh_path))
 
 # %%
 # Convert it to a CGNS tree using Muscat's CGNS bridge
