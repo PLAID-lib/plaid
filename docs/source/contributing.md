@@ -101,16 +101,18 @@ Various notebooks are executed during compilation. The documentation can then
 be explored in ``docs/_build/html``.
 
 When you add, rename, or remove a Python module under ``src/plaid``, regenerate
-the API reference stubs and update the navigation in ``docs/zensical.toml``:
+the API reference:
 
 ```bash
 python docs/generate_api_stubs.py
 ```
 
 The script writes minimal mkdocstrings stubs under ``docs/source/api`` and
-prints a suggested ``nav`` block to copy into ``docs/zensical.toml``. CI
-(`Documentation` workflow) re-runs the script and fails if the working tree
-is not clean, so the stubs stay in sync with the source layout.
+rewrites the ``API reference`` ``nav`` block in ``docs/zensical.toml`` (between
+the ``AUTO-GENERATED API REFERENCE`` markers). CI (`Documentation` workflow)
+re-runs the script and fails if the working tree is not clean, so both the
+stubs and the navigation stay in sync with the source layout. The script is
+also invoked automatically at the start of ``bash docs/generate_doc.sh``.
 
 ## 6. Formatting and linting with Ruff
 

@@ -53,18 +53,19 @@ nav = [
       { "Problem definition notebook" = "notebooks/problem_definition_example.md" },
       { "Downloadable samples notebook" = "notebooks/downloadable_example/sample_example.md" },
     ] },
+    # >>> AUTO-GENERATED API REFERENCE START
+    # The block below is overwritten by `python docs/generate_api_stubs.py`.
+    # Edit that script (or the markers) instead of changing this section by hand.
     { "API reference" = [
       { "Overview" = "api/index.md" },
-      { "Core" = [
-        { "constants" = "api/constants.md" },
-        { "problem_definition" = "api/problem_definition.md" },
-        { "version" = "api/version.md" },
-      ] },
-      { "CLI" = [
+      { "constants" = "api/constants.md" },
+      { "problem_definition" = "api/problem_definition.md" },
+      { "version" = "api/version.md" },
+      { "cli" = [
         { "Overview" = "api/cli/index.md" },
         { "plaidcheck" = "api/cli/plaidcheck.md" },
       ] },
-      { "Containers" = [
+      { "containers" = [
         { "Overview" = "api/containers/index.md" },
         { "features" = "api/containers/features.md" },
         { "sample" = "api/containers/sample.md" },
@@ -74,16 +75,21 @@ nav = [
           { "default_manager" = "api/containers/managers/default_manager.md" },
         ] },
       ] },
-      { "Downloadable examples" = [
+      { "downloadable_examples" = [
         { "Overview" = "api/downloadable_examples/index.md" },
         { "config" = "api/downloadable_examples/config.md" },
       ] },
-      { "Storage" = [
+      { "storage" = [
         { "Overview" = "api/storage/index.md" },
         { "backend_api" = "api/storage/backend_api.md" },
         { "reader" = "api/storage/reader.md" },
         { "registry" = "api/storage/registry.md" },
         { "writer" = "api/storage/writer.md" },
+        { "cgns" = [
+          { "Overview" = "api/storage/cgns/index.md" },
+          { "reader" = "api/storage/cgns/reader.md" },
+          { "writer" = "api/storage/cgns/writer.md" },
+        ] },
         { "common" = [
           { "Overview" = "api/storage/common/index.md" },
           { "bridge" = "api/storage/common/bridge.md" },
@@ -91,18 +97,15 @@ nav = [
           { "reader" = "api/storage/common/reader.md" },
           { "writer" = "api/storage/common/writer.md" },
         ] },
-        { "cgns" = [
-          { "Overview" = "api/storage/cgns/index.md" },
-          { "reader" = "api/storage/cgns/reader.md" },
-          { "writer" = "api/storage/cgns/writer.md" },
-        ] },
         { "hf_datasets" = [
           { "Overview" = "api/storage/hf_datasets/index.md" },
           { "bridge" = "api/storage/hf_datasets/bridge.md" },
           { "reader" = "api/storage/hf_datasets/reader.md" },
           { "writer" = "api/storage/hf_datasets/writer.md" },
         ] },
-        { "in_memory" = "api/storage/in_memory/index.md" },
+        { "in_memory" = [
+          { "Overview" = "api/storage/in_memory/index.md" },
+        ] },
         { "zarr" = [
           { "Overview" = "api/storage/zarr/index.md" },
           { "bridge" = "api/storage/zarr/bridge.md" },
@@ -110,19 +113,19 @@ nav = [
           { "writer" = "api/storage/zarr/writer.md" },
         ] },
       ] },
-      { "Types" = [
+      { "types" = [
         { "Overview" = "api/types/index.md" },
         { "cgns_types" = "api/types/cgns_types.md" },
         { "common" = "api/types/common.md" },
       ] },
-      { "Utils" = [
+      { "utils" = [
         { "Overview" = "api/utils/index.md" },
         { "base" = "api/utils/base.md" },
         { "cgns_helper" = "api/utils/cgns_helper.md" },
         { "cgns_worker" = "api/utils/cgns_worker.md" },
         { "info" = "api/utils/info.md" },
       ] },
-      { "Viewer" = [
+      { "viewer" = [
         { "Overview" = "api/viewer/index.md" },
         { "cache" = "api/viewer/cache.md" },
         { "cli" = "api/viewer/cli.md" },
@@ -140,6 +143,7 @@ nav = [
         ] },
       ] },
     ] },
+    # <<< AUTO-GENERATED API REFERENCE END
   ] },
   { "Ecosystem & Benchmarks" = [
     { "CGNS Standard" = "https://cgns.org/" },
