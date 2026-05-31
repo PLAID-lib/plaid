@@ -5,15 +5,16 @@ title: Sample
 # Sample
 
 `Sample` represents one observation. It contains:
+
 - globals: named scalar, string or array values stored in a dedicated CGNS base
 - meshes containing:
-  - nodes: mesh node coordinates, that can be located:
-    - in different bases
-    - in different zones in each base
-  - fields, arrays that can be located:
-    - in different bases
-    - in different zones in each base
-    - in different locations in each base/zone among: `Vertex`, `EdgeCenter`, `FaceCenter`, or `CellCenter`
+    - nodes: mesh node coordinates, that can be located:
+        - in different bases
+        - in different zones in each base
+    - fields, arrays that can be located:
+        - in different bases
+        - in different zones in each base
+        - in different locations in each base/zone among: `Vertex`, `EdgeCenter`, `FaceCenter`, or `CellCenter`
 
 Key APIs include:
 - Feature accessors: `get_global`, `get_field`, `get_nodes`

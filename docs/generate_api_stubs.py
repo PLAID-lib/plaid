@@ -3,7 +3,7 @@
 This helper walks ``src/plaid`` and creates a minimal Markdown stub for each
 module and (sub)package under ``docs/source/api``. Each stub contains a single
 ``:::`` mkdocstrings directive; rendering options are centralised in
-``docs/zensical.toml`` (``[plugins.mkdocstrings.handlers.python]``).
+``docs/zensical.toml`` (``[project.plugins.mkdocstrings.config.handlers.python]``).
 
 It also rewrites the ``API reference`` ``nav`` block in ``docs/zensical.toml``
 between the markers::
@@ -62,6 +62,18 @@ def stub_content(module: str) -> str:
     return f"# `{module}`\n\n::: {module}\n"
 
 
+def is_package(directory: Path) -> bool:
+    """A directory is documented only if it is a real Python package.
+
+    mkdocstrings/griffe rely on ``__init__.py`` to discover sub-packages, so
+    namespace-style directories (no ``__init__.py``) cannot be collected and
+    must be skipped to avoid build errors.
+    """
+    if directory == SRC_DIR:
+        return True
+    return (directory / "__init__.py").is_file()
+
+
 def collect_modules() -> tuple[set[Path], dict[Path, str]]:
     """Return (documented directories, mapping output path -> module name)."""
     documented_dirs: set[Path] = {SRC_DIR}
@@ -71,7 +83,13 @@ def collect_modules() -> tuple[set[Path], dict[Path, str]]:
         if path.name in SKIP_FILES or "__pycache__" in path.parts:
             continue
 
-        # Track every parent directory for the package index pages.
+        # Skip files living in directories that are not real packages.
+        if not all(is_package(parent) for parent in path.parents
+                   if SRC_DIR in parent.parents or parent == SRC_DIR):
+            continue
+
+        # Track every parent directory (up to ``SRC_DIR``) for the package
+        # index pages.
         current = path.parent
         while True:
             documented_dirs.add(current)
