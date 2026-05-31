@@ -1,3 +1,0 @@
-# `plaid.cli`
-
-::: plaid.cli
