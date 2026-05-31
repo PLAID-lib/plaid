@@ -75,9 +75,3 @@ The minimal required layout checked by the CLI is:
 - `cgns_types.yaml`
 - `constants/`
 - `data/`
-
-## Notes
-
-- The current layout is produced by the storage writer API
-  ({py:func}`plaid.storage.save_to_disk`).
-- Historical layouts from older PLAID versions may differ.

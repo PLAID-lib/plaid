@@ -24,5 +24,4 @@ For practical examples, see the :doc:`examples_tutorials` pages.
    concepts/problem_definition
    concepts/defaults
    concepts/disk_format
-   concepts/interoperability
    concepts/viewer

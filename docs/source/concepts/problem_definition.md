@@ -34,8 +34,7 @@ pb.test_split = {"test": [3, 4]}
 ```
 
 Feature lists are normalized by the model: entries are converted to strings,
-sorted, and checked for duplicates.  The `name` field can be set once; attempting
-to replace an already initialized non-null name raises an error.
+sorted, and checked for duplicates.
 
 ## Loading from disk
 
@@ -64,9 +63,8 @@ pb.save_to_file("problem_definitions/regression_1.yaml")
 
 ## Notes
 
-- Input/output features are plain strings in the current implementation.
+- Input/output features are plain strings correspond to CGNS paths.
 - Splits are represented by `train_split` and `test_split` dictionaries.
-- Each split dictionary is expected to contain a single split entry.
 - Split values can be explicit index sequences or the string `"all"`.
 - `add_input_features(...)` and `add_output_features(...)` accept either a
   single string or a sequence of strings.

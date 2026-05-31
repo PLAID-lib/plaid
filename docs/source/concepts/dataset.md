@@ -5,9 +5,7 @@ title: Dataset
 # Dataset
 
 In the current PLAID API, there is no public high-level dataset container class.
-A PLAID dataset is represented on disk
-by a shared metadata layout plus backend-specific sample payloads.  Loading a
-dataset returns:
+A PLAID dataset is represented on disk by a shared metadata layout plus backend-specific sample payloads.  Loading a dataset returns:
 
 - a dictionary of backend datasets, one per split;
 - a dictionary of {py:class}`~plaid.storage.reader.Converter` objects, one per split.
@@ -15,6 +13,16 @@ dataset returns:
 This keeps storage concerns explicit while providing a common way to materialize
 backend-native samples as PLAID {py:class}`~plaid.containers.sample.Sample`
 objects.
+
+
+## Storage backends
+
+Persistent backends currently used for disk and Hub workflows are:
+
+- `hf_datasets`, with power zero-copy instatiation,
+- `cgns`, the human-readable backend (samples can by open with Paraview),
+- `zarr`, with powerfull large-scale capabilities.
+
 
 ## Save a dataset
 
@@ -24,7 +32,7 @@ provides:
 - `sample_constructor(id) -> Sample`, a callable returning one
   {py:class}`~plaid.containers.sample.Sample`;
 - `ids`, a dictionary mapping split names to sliceable sequences of identifiers;
-- a persistent backend, usually `"hf_datasets"`, `"cgns"`, or `"zarr"`.
+- a persistent backend: `"hf_datasets"`, `"cgns"`, or `"zarr"`.
 
 ```python
 from plaid import Sample
@@ -54,8 +62,6 @@ datasetdict, converterdict = init_from_disk("my_plaid_dataset")
 
 dataset = datasetdict["train"]
 converter = converterdict["train"]
-
-sample = converter.to_plaid(dataset, idx=0)
 ```
 
 Backend dataset objects expose backend-specific behavior:
@@ -88,8 +94,7 @@ sample = converter.to_plaid(
 )
 ```
 
-Some backends also support `indexers` to extract selected indices within a
-variable feature:
+Spatial index extraction is possible with `indexers`:
 
 ```python
 sample = converter.to_plaid(
@@ -100,16 +105,6 @@ sample = converter.to_plaid(
 )
 ```
 
-## Backends
-
-Persistent backends currently used for disk and Hub workflows are:
-
-- `hf_datasets`
-- `cgns`
-- `zarr`
-
-The registry also contains `in_memory`, which is useful internally as an
-in-process sample store but does not implement disk or Hub persistence.
 
 ## Metadata and problem definitions
 
