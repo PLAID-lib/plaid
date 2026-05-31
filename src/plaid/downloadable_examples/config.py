@@ -6,7 +6,7 @@ _HF_REPOS = {
     "multiscale_hyperelasticity": "PhysArena/2D_Multiscale_Hyperelasticity",
     "tensile2d": "PhysArena/Tensile2d",
     "rotor37": "PhysArena/Rotor37",
-    "2dprofile": "PhysArena/2D_profile",
+    "profile2d": "PhysArena/2D_profile",
 }
 
 __all__ = ["_HF_REPOS"]
