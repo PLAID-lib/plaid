@@ -2,4 +2,4 @@
 
 ::: plaid.storage.hf_datasets
     options:
-      members: false
+      members: [HFBackend]

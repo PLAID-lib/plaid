@@ -2,4 +2,4 @@
 
 ::: plaid.storage.cgns
     options:
-      members: false
+      members: [CgnsBackend]

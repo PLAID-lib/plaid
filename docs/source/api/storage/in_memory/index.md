@@ -2,4 +2,4 @@
 
 ::: plaid.storage.in_memory
     options:
-      members: false
+      members: [InMemoryBackend]

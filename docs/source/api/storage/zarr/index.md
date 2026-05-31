@@ -2,4 +2,4 @@
 
 ::: plaid.storage.zarr
     options:
-      members: false
+      members: [ZarrBackend]

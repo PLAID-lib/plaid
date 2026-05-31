@@ -2,4 +2,4 @@
 
 ::: plaid.downloadable_examples
     options:
-      members: false
+      members: [AVAILABLE_EXAMPLES, Samples_example, samples]

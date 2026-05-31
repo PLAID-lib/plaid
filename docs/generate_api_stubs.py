@@ -25,6 +25,7 @@ tree changes (stubs or ``zensical.toml`` out of sync with ``src/plaid``).
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 DOCS_DIR = Path(__file__).resolve().parent
@@ -57,24 +58,74 @@ def is_namespace_package(path: Path) -> bool:
     return path.name == "__init__.py" and not path.read_text(encoding="utf-8").strip()
 
 
-def stub_content(module: str, *, is_package_index: bool = False) -> str:
+def _local_public_members(init_path: Path) -> list[str]:
+    """Return public names *defined* (not just re-exported) in ``__init__.py``.
+
+    Top-level ``class``, ``def``, ``async def`` and assignment names are
+    collected. ``from … import …`` and ``import …`` statements are ignored on
+    purpose: those symbols already have a dedicated module page elsewhere in
+    the API reference and we do not want them duplicated on the package
+    overview.
+    """
+    if not init_path.is_file():
+        return []
+    try:
+        tree = ast.parse(init_path.read_text(encoding="utf-8"))
+    except SyntaxError:  # pragma: no cover - defensive
+        return []
+
+    names: list[str] = []
+    for node in tree.body:
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            if not node.name.startswith("_"):
+                names.append(node.name)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                    names.append(target.id)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if not node.target.id.startswith("_"):
+                names.append(node.target.id)
+
+    seen: set[str] = set()
+    return [n for n in names if not (n in seen or seen.add(n))]
+
+
+def stub_content(
+    module: str,
+    *,
+    is_package_index: bool = False,
+    init_path: Path | None = None,
+) -> str:
     """Return the Markdown stub for a module page.
 
-    For package ``index.md`` pages we render the package docstring only and
-    suppress members. Otherwise mkdocstrings would document every symbol that
-    the package's ``__init__.py`` re-exports (for example ``Sample`` is
-    re-exported from ``plaid.containers``), which would then be duplicated on
-    the dedicated module page (``api/containers/sample.md``). Submodules and
-    subpackages still appear in the navigation tree generated below.
+    For package ``index.md`` pages we render the package docstring and only
+    the members *literally defined* in ``__init__.py`` (classes, functions,
+    module-level assignments). Names brought in via ``from … import …`` are
+    skipped: they already have a dedicated module page (e.g. ``Sample`` is
+    documented on ``api/containers/sample.md``) and rendering them on the
+    package overview too would create duplicates. Packages whose
+    ``__init__.py`` is a pure re-export shim therefore render just the
+    package docstring (``members: false``).
     """
-    if is_package_index:
+    if not is_package_index:
+        return f"# `{module}`\n\n::: {module}\n"
+
+    members = _local_public_members(init_path) if init_path else []
+    if not members:
         return (
             f"# `{module}`\n\n"
             f"::: {module}\n"
             f"    options:\n"
             f"      members: false\n"
         )
-    return f"# `{module}`\n\n::: {module}\n"
+    member_list = ", ".join(members)
+    return (
+        f"# `{module}`\n\n"
+        f"::: {module}\n"
+        f"    options:\n"
+        f"      members: [{member_list}]\n"
+    )
 
 
 def is_package(directory: Path) -> bool:
@@ -130,8 +181,20 @@ def write_stubs() -> list[Path]:
     for out, module in files.items():
         out.parent.mkdir(parents=True, exist_ok=True)
         is_package_index = out.name == "index.md"
+        init_path: Path | None = None
+        if is_package_index:
+            rel_dir = out.parent.relative_to(API_DIR)
+            init_path = (
+                SRC_DIR.joinpath(*rel_dir.parts, "__init__.py")
+                if rel_dir.parts
+                else SRC_DIR / "__init__.py"
+            )
         out.write_text(
-            stub_content(module, is_package_index=is_package_index),
+            stub_content(
+                module,
+                is_package_index=is_package_index,
+                init_path=init_path,
+            ),
             encoding="utf-8",
         )
         written.append(out)
@@ -144,7 +207,15 @@ def write_stubs() -> list[Path]:
             continue
         out.parent.mkdir(parents=True, exist_ok=True)
         module = ".".join(("plaid", *rel.parts)) if rel.parts else "plaid"
-        out.write_text(stub_content(module, is_package_index=True), encoding="utf-8")
+        init_path = (
+            SRC_DIR.joinpath(*rel.parts, "__init__.py")
+            if rel.parts
+            else SRC_DIR / "__init__.py"
+        )
+        out.write_text(
+            stub_content(module, is_package_index=True, init_path=init_path),
+            encoding="utf-8",
+        )
         written.append(out)
 
     return written
