@@ -828,6 +828,97 @@ def test_get_and_clear_features(
     assert service.get_features("ds") is None
 
 
+class _CountingConverter:
+    """Converter recording the number of ``to_plaid`` decode calls."""
+
+    def __init__(self, samples_by_index: dict[int, object]) -> None:
+        self._samples = samples_by_index
+        self.calls = 0
+
+    def to_plaid(self, dataset, index: int):  # noqa: ARG002 - interface match
+        self.calls += 1
+        # Return a fresh object each call so a test that wants to detect
+        # a re-decode by identity can do so reliably.
+        return self._samples.setdefault(index, object())
+
+
+def test_load_sample_caches_decoded_sample_for_repeated_calls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Repeated ``load_sample`` calls for the same ref must hit the cache."""
+    _make_dataset_dir(tmp_path, "ds")
+    converter = _CountingConverter({0: object(), 1: object()})
+    dataset_dict = {"train": _FakeDataset(range(2))}
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    first = service.load_sample(ref)
+    second = service.load_sample(ref)
+    third = service.load_sample(ref)
+    # Single underlying decode despite three calls.
+    assert converter.calls == 1
+    assert first is second is third
+
+
+def test_load_sample_cache_evicts_beyond_capacity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """LRU is bounded: the oldest entry is dropped when capacity is exceeded."""
+    _make_dataset_dir(tmp_path, "ds")
+    converter = _CountingConverter({})
+    dataset_dict = {"train": _FakeDataset(range(3))}
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    # Default capacity is 2: filling positions 0, 1, 2 evicts 0.
+    refs = [
+        SampleRef(dataset_id="ds", split="train", sample_id=str(i)) for i in range(3)
+    ]
+    for ref in refs:
+        service.load_sample(ref)
+    assert converter.calls == 3
+    # ``refs[0]`` was evicted: re-loading it triggers a fresh decode.
+    service.load_sample(refs[0])
+    assert converter.calls == 4
+    # ``refs[2]`` is still cached: no extra decode.
+    service.load_sample(refs[2])
+    assert converter.calls == 4
+
+
+def test_load_sample_cache_invalidated_on_set_features(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Changing the feature filter must drop cached decodes for that dataset."""
+    _make_dataset_dir(tmp_path, "ds")
+    variable = {"Base_2_2/Zone/VertexFields/pressure": None}
+    _install_fake_metadata(
+        monkeypatch,
+        variable_schema=variable,
+        constant_schema={"train": {}},
+    )
+    converter = _FeatureAwareConverter(
+        {0: object()},
+        variable_features=set(variable.keys()),
+    )
+    dataset_dict = {"train": _FakeDataset(range(1))}
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": (dataset_dict, {"train": converter})}
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+    service.load_sample(ref)
+    # Cache populated under the "no filter" key.
+    assert len(service._sample_cache) == 1  # noqa: SLF001
+    service.set_features("ds", ["Base_2_2/Zone/VertexFields/pressure"])
+    assert len(service._sample_cache) == 0  # noqa: SLF001
+
+
 def test_split_feature_keys_falls_back_to_dataset_union(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

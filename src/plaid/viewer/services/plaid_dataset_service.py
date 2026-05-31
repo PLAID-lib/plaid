@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -194,6 +195,25 @@ class PlaidDatasetService:
         # ...')`` whenever the request names a path that the split in
         # hand does not know about.
         self._split_feature_metadata: dict[str, dict[str, set[str]]] = {}
+        # In-memory LRU of decoded :class:`plaid.Sample` objects keyed by
+        # ``(dataset_id, split_key, sample_id, features_tuple)``. The
+        # viewer calls :meth:`load_sample` several times per user
+        # interaction (one for the VTK artifact, one for globals, one
+        # for non-visual bases, one per playback frame, ...). Without
+        # this cache each call performs a full ``Converter.to_plaid``
+        # decode of the same sample - cheap on the memory-mapped
+        # ``hf_datasets`` backend but very expensive on ``zarr``, where
+        # every decode reopens hundreds of small chunk files. The cache
+        # collapses repeated calls into a single decode for the
+        # currently active sample (and the previous one for back-and-
+        # forth navigation). Streaming datasets are intentionally
+        # bypassed: their ``sample_id`` is the constant
+        # :data:`STREAM_CURSOR_ID` sentinel so caching would conflate
+        # different cursor positions.
+        self._sample_cache: OrderedDict[
+            tuple[str, str, str, tuple[str, ...] | None], Any
+        ] = OrderedDict()
+        self._sample_cache_capacity: int = 2
 
     # ----------------------------------------------------------- Discovery
 
@@ -234,6 +254,7 @@ class PlaidDatasetService:
         if path is None:
             self._datasets_root = None
             self._store_cache.clear()
+            self._sample_cache.clear()
             set_last_datasets_root(None)
             return None
         resolved = Path(path).expanduser().resolve()
@@ -242,6 +263,7 @@ class PlaidDatasetService:
         self._ensure_within_browse_roots(resolved)
         self._datasets_root = resolved
         self._store_cache.clear()
+        self._sample_cache.clear()
         # Persist the new root so the next launch of the viewer picks it
         # up automatically when ``--datasets-root`` is not provided.
         set_last_datasets_root(resolved)
@@ -404,6 +426,7 @@ class PlaidDatasetService:
             self._cursors = {
                 key: cur for key, cur in self._cursors.items() if key[0] != repo_id
             }
+            self._invalidate_sample_cache(repo_id)
 
     # ------------------------------------------------------- Feature filter
 
@@ -590,7 +613,16 @@ class PlaidDatasetService:
         self._cursors = {
             key: cur for key, cur in self._cursors.items() if key[0] != dataset_id
         }
+        self._invalidate_sample_cache(dataset_id)
         return normalised
+
+    def _invalidate_sample_cache(self, dataset_id: str) -> None:
+        """Drop cached decoded samples that belong to ``dataset_id``."""
+        self._sample_cache = OrderedDict(
+            (key, value)
+            for key, value in self._sample_cache.items()
+            if key[0] != dataset_id
+        )
 
     def is_streaming(self, dataset_id: str) -> bool:
         """Return ``True`` when ``dataset_id`` is a Hugging Face Hub stream.
@@ -752,6 +784,17 @@ class PlaidDatasetService:
 
         Uses ``converter.to_plaid(dataset, index)`` to rebuild the sample
         from whatever backend store (hf_datasets, cgns, zarr) is in use.
+
+        For random-access (non-streaming) samples, results are memoised
+        in a small LRU keyed on
+        ``(dataset_id, split_key, sample_id, features_tuple)`` so that
+        repeated calls within the same UI interaction (summary, globals,
+        non-visual bases, paraview artifact build, playback frames, ...)
+        only incur a single ``Converter.to_plaid`` decode. The cache is
+        invalidated whenever the active feature filter, datasets root,
+        or hub registration changes. Streaming samples bypass the cache
+        because their ``sample_id`` is the constant
+        :data:`STREAM_CURSOR_ID` sentinel.
         """
         datasetdict, converterdict = self._open(ref.dataset_id)
         split_key = ref.split if ref.split is not None else "__default__"
@@ -789,6 +832,37 @@ class PlaidDatasetService:
                 f"Invalid sample id {ref.sample_id!r}; expected an integer index."
             ) from exc
         features = self._features.get(ref.dataset_id)
+        cache_key = (
+            ref.dataset_id,
+            split_key,
+            ref.sample_id,
+            tuple(features) if features is not None else None,
+        )
+        cached = self._sample_cache.get(cache_key)
+        if cached is not None:
+            self._sample_cache.move_to_end(cache_key)
+            return cached
+        sample = self._decode_sample(ref, converter, dataset, index, features)
+        self._sample_cache[cache_key] = sample
+        if len(self._sample_cache) > self._sample_cache_capacity:
+            self._sample_cache.popitem(last=False)
+        return sample
+
+    def _decode_sample(
+        self,
+        ref: SampleRef,
+        converter: Any,
+        dataset: Any,
+        index: int,
+        features: list[str] | None,
+    ):
+        """Materialise a PLAID sample via ``converter.to_plaid``.
+
+        Pure (no caching) counterpart of :meth:`load_sample` for
+        random-access samples. The caching layer is intentionally kept
+        in :meth:`load_sample` so this helper stays a faithful mirror
+        of the previous direct-decode logic.
+        """
         if features is None:
             # No filter active: load every feature.
             return converter.to_plaid(dataset, index)
