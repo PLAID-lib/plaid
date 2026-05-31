@@ -658,6 +658,43 @@ def test_list_available_features_only_exposes_field_paths(
     assert "Global/angle_in" not in fields
 
 
+def test_feature_catalogue_helpers_expose_bases_paths_and_globals(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Metadata-only helpers should stay fast and avoid sample decoding."""
+    _make_dataset_dir(tmp_path, "ds")
+    variable = {
+        "Base_2_2/Zone/VertexFields/pressure": None,
+        "Base_2_2_times/Zone/VertexFields/pressure_times": None,
+        "Base_3_3/Zone/VertexFields/temperature": None,
+        "Global/lift": None,
+    }
+    constant = {
+        "train": {
+            "": None,
+            "Base_2_2/Zone/GridCoordinates/CoordinateX": None,
+            "Base_2_2_times/Zone/GridCoordinates/CoordinateX": None,
+            "Global_times/lift": None,
+            "Global": None,
+            "Global_times": None,
+        }
+    }
+    _install_fake_metadata(
+        monkeypatch, variable_schema=variable, constant_schema=constant
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+
+    assert service.list_available_bases("ds") == ["Base_2_2", "Base_3_3"]
+    assert service.list_base_paths("ds", "Base_2_2") == [
+        "Base_2_2/Zone/GridCoordinates/CoordinateX",
+        "Base_2_2/Zone/VertexFields/pressure",
+        "Base_2_2_times/Zone/GridCoordinates/CoordinateX",
+        "Base_2_2_times/Zone/VertexFields/pressure_times",
+    ]
+    assert service.list_globals_paths("ds") == ["Global/lift", "Global_times/lift"]
+
+
 def test_set_features_rejects_unknown_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -784,6 +821,65 @@ def test_streaming_open_expands_features_via_cgns_helper(
     assert captured["features"] == [
         "Base_2_2/Zone/VertexFields/pressure",
         "__expanded__",
+    ]
+
+
+def test_streaming_open_empty_filter_keeps_geometry_but_drops_globals(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An empty streaming selection should not be treated as unfiltered.
+
+    The service must pass geometry/support constants to the streaming
+    loader, while excluding ``Global`` paths controlled by the dedicated
+    Globals toggle.
+    """
+    repo_id = "org/stream_geometry_only"
+    variable = {"Base_2_2/Zone/VertexFields/pressure": None}
+    constant = {
+        "train": {
+            "Base_2_2/Zone": None,
+            "Base_2_2/Zone/GridCoordinates/CoordinateX": None,
+            "Global/lift": None,
+            "Global_times/lift": None,
+        }
+    }
+    _install_fake_metadata(
+        monkeypatch, variable_schema=variable, constant_schema=constant
+    )
+    captured: dict[str, object] = {}
+
+    def _fake_init_streaming_from_hub(_repo, features=None):
+        captured["features"] = features
+        return (
+            {"train": _FakeDataset(range(1))},
+            {"train": _FakeConverter({0: object()})},
+        )
+
+    import plaid.storage as storage  # noqa: PLC0415
+
+    monkeypatch.setattr(
+        storage,
+        "init_streaming_from_hub",
+        _fake_init_streaming_from_hub,
+        raising=False,
+    )
+
+    from plaid.utils import cgns_helper  # noqa: PLC0415
+
+    monkeypatch.setattr(
+        cgns_helper,
+        "update_features_for_CGNS_compatibility",
+        lambda features, _constant, _variable: sorted(features),
+    )
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset(repo_id)
+    service.set_features(repo_id, [])
+    service.list_samples(repo_id)
+
+    assert captured["features"] == [
+        "Base_2_2/Zone",
+        "Base_2_2/Zone/GridCoordinates/CoordinateX",
     ]
 
 
@@ -1176,6 +1272,33 @@ def test_describe_globals_all_times_empty_when_no_time_axis(
     assert by_time == {}
     # ``static`` is the time-less describe_globals result.
     assert static == service.describe_globals(ref)
+
+
+def test_describe_globals_all_times_ignores_time_lookup_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A broken time-axis lookup should still return static globals."""
+    _make_dataset_dir(tmp_path, "ds")
+    sample = _SummarySample()
+    sample.features.get_all_time_values = lambda: (_ for _ in ()).throw(
+        RuntimeError("bad times")
+    )
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"train": _FakeDataset(range(1))},
+                {"train": _FakeConverter({0: sample})},
+            )
+        },
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    ref = SampleRef(dataset_id="ds", split="train", sample_id="0")
+
+    static, by_time = service.describe_globals_all_times(ref)
+
+    assert static == [{"name": "g", "shape": [], "dtype": "int", "preview": "4"}]
+    assert by_time == {}
 
 
 def test_time_globals_and_validation_error_branches(
