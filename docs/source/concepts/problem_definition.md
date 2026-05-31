@@ -4,8 +4,7 @@ title: Problem definition
 
 # Problem definition
 
-{py:class}`~plaid.problem_definition.ProblemDefinition` defines the feature
-selection and split configuration used on top of a PLAID dataset.
+`ProblemDefinition` defines the feature selection and split configuration used on top of a PLAID dataset.
 
 In the current API, a problem definition stores:
 

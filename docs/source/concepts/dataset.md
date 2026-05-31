@@ -8,10 +8,10 @@ In the current PLAID API, there is no public high-level dataset container class.
 A PLAID dataset is represented on disk by a shared metadata layout plus backend-specific sample payloads.  Loading a dataset returns:
 
 - a dictionary of backend datasets, one per split;
-- a dictionary of {py:class}`~plaid.storage.reader.Converter` objects, one per split.
+- a dictionary of `Converter` objects, one per split.
 
 This keeps storage concerns explicit while providing a common way to materialize
-backend-native samples as PLAID {py:class}`~plaid.containers.sample.Sample`
+backend-native samples as PLAID `Sample`
 objects.
 
 
@@ -26,11 +26,10 @@ Persistent backends currently used for disk and Hub workflows are:
 
 ## Save a dataset
 
-Datasets are written with {py:func}`plaid.storage.save_to_disk`.  The user
+Datasets are written with `save_to_disk`.  The user
 provides:
 
-- `sample_constructor(id) -> Sample`, a callable returning one
-  {py:class}`~plaid.containers.sample.Sample`;
+- `sample_constructor(id) -> Sample`, a callable returning one `Sample`;
 - `ids`, a dictionary mapping split names to sliceable sequences of identifiers;
 - a persistent backend: `"hf_datasets"`, `"cgns"`, or `"zarr"`.
 
@@ -53,7 +52,7 @@ save_to_disk(
 
 ## Load from disk
 
-Use {py:func}`plaid.storage.init_from_disk`:
+Use `init_from_disk`:
 
 ```python
 from plaid.storage import init_from_disk
@@ -80,8 +79,7 @@ plaid_sample = converter.to_plaid(dataset, idx=0)
 sample_dict = converter.to_dict(dataset, idx=0)
 ```
 
-For non-CGNS backends, `to_plaid(...)` reconstructs a
-{py:class}`~plaid.containers.sample.Sample` from dictionaries and shared
+For non-CGNS backends, `to_plaid(...)` reconstructs a `Sample` from dictionaries and shared
 metadata.  For the CGNS backend, samples are already PLAID `Sample` objects.
 
 Selected features can be requested when supported by the backend:
@@ -109,8 +107,7 @@ sample = converter.to_plaid(
 ## Metadata and problem definitions
 
 `save_to_disk(...)` writes shared metadata (`infos.yaml`, schemas, CGNS types,
-constants) and can also persist one or more
-{py:class}`~plaid.problem_definition.ProblemDefinition` objects:
+constants) and can also persist one or more `ProblemDefinition` objects:
 
 ```python
 from plaid import ProblemDefinition
