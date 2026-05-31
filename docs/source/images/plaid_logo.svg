@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   width="460.74707"
+   height="449.60709"
+   viewBox="0 0 460.74707 449.60708"
+   role="img"
+   aria-label="PLAID logo sans texte"
+   version="1.1"
+   id="svg24"
+   sodipodi:docname="PLAID_LOGO.svg"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   inkscape:export-filename="PLAID_LOGO.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs24" />
+  <sodipodi:namedview
+     id="namedview24"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.167"
+     inkscape:cx="75.835477"
+     inkscape:cy="291.77378"
+     inkscape:window-width="2161"
+     inkscape:window-height="1211"
+     inkscape:window-x="322"
+     inkscape:window-y="132"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg24" />
+  <rect
+     style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1.24303;stroke-linejoin:round;stroke-miterlimit:20;paint-order:fill markers stroke"
+     id="rect1"
+     width="460.74707"
+     height="449.60709"
+     x="0"
+     y="0"
+     ry="56.555271" />
+  <g
+     fill="none"
+     stroke="#111a7d"
+     stroke-width="8.5"
+     stroke-linecap="round"
+     stroke-linejoin="round"
+     id="g15"
+     transform="translate(-69.139078,-16.566635)">
+    <line
+       x1="110"
+       y1="150"
+       x2="205"
+       y2="102"
+       id="line1" />
+    <line
+       x1="205"
+       y1="102"
+       x2="300"
+       y2="54"
+       id="line2" />
+    <line
+       x1="300"
+       y1="54"
+       x2="395"
+       y2="102"
+       id="line3" />
+    <line
+       x1="395"
+       y1="102"
+       x2="490"
+       y2="150"
+       id="line4" />
+    <line
+       x1="110"
+       y1="150"
+       x2="205"
+       y2="198"
+       id="line5" />
+    <line
+       x1="205"
+       y1="198"
+       x2="300"
+       y2="246"
+       id="line6" />
+    <line
+       x1="300"
+       y1="246"
+       x2="395"
+       y2="198"
+       id="line7" />
+    <line
+       x1="395"
+       y1="198"
+       x2="490"
+       y2="150"
+       id="line8" />
+    <line
+       x1="205"
+       y1="102"
+       x2="205"
+       y2="198"
+       id="line9" />
+    <line
+       x1="395"
+       y1="102"
+       x2="395"
+       y2="198"
+       id="line10" />
+    <line
+       x1="300"
+       y1="54"
+       x2="300"
+       y2="246"
+       id="line11" />
+    <line
+       x1="205"
+       y1="102"
+       x2="300"
+       y2="150"
+       id="line12" />
+    <line
+       x1="300"
+       y1="150"
+       x2="395"
+       y2="102"
+       id="line13" />
+    <line
+       x1="205"
+       y1="198"
+       x2="300"
+       y2="150"
+       id="line14" />
+    <line
+       x1="300"
+       y1="150"
+       x2="395"
+       y2="198"
+       id="line15" />
+  </g>
+  <g
+     fill="#111a7d"
+     id="g23"
+     transform="translate(-69.139078,-16.566635)">
+    <circle
+       cx="110"
+       cy="150"
+       r="17"
+       id="circle15" />
+    <circle
+       cx="205"
+       cy="102"
+       r="17"
+       id="circle16" />
+    <circle
+       cx="300"
+       cy="54"
+       r="17"
+       id="circle17" />
+    <circle
+       cx="395"
+       cy="102"
+       r="17"
+       id="circle18" />
+    <circle
+       cx="490"
+       cy="150"
+       r="17"
+       id="circle19" />
+    <circle
+       id="circle20"
+       r="17"
+       cy="198"
+       cx="205" />
+    <circle
+       cx="300"
+       cy="150"
+       r="17"
+       id="circle21" />
+    <circle
+       cx="395"
+       cy="198"
+       r="17"
+       id="circle22" />
+    <circle
+       cx="300"
+       cy="246"
+       r="17"
+       id="circle23" />
+  </g>
+  <a
+     id="a26"
+     transform="translate(-69.139078,-16.566635)" />
+  <a
+     id="a4"
+     transform="translate(0.95035786,20.433365)" />
+  <path
+     fill="#000000"
+     opacity="1"
+     stroke="none"
+     d="m 384.3647,199.47401 c 15.28857,7.69862 30.21361,15.24881 45.1714,22.74069 3.99857,2.00275 7.82174,4.00235 7.87043,9.06127 0.0489,5.08261 -3.76985,7.13733 -7.76001,9.12723 -62.99486,31.41546 -125.13517,64.31112 -187.59475,96.6531 -8.08443,4.18619 -15.26218,3.08966 -22.95599,-0.90643 -44.96963,-23.35675 -90.02225,-46.57153 -135.101226,-69.7399 -17.195161,-8.83749 -34.515285,-17.45917 -51.821788,-26.10184 -4.098495,-2.04672 -7.491437,-4.31747 -7.453563,-9.32638 0.03696,-4.88355 3.566854,-6.79528 7.452281,-8.7269 15.761282,-7.83569 31.605914,-15.53847 47.12048,-23.7919 6.122541,-3.25705 11.153322,-3.07645 17.251527,-0.0284 40.368079,20.17677 81.021709,39.84776 121.254999,60.25872 9.42542,4.78167 16.88375,4.86578 26.4271,-0.009 39.86595,-20.36337 80.27335,-39.7796 120.26418,-59.92895 7.14828,-3.60166 13.14366,-3.89623 19.87493,0.71861 z"
+     id="path1"
+     style="fill:#08bf97;fill-opacity:1;stroke-width:1.02912" />
+  <path
+     fill="#000000"
+     opacity="1"
+     stroke="none"
+     d="m 384.26452,289.32926 c 15.28857,7.69862 30.21361,15.24881 45.1714,22.74069 3.99857,2.00275 7.82174,4.00235 7.87043,9.06127 0.0489,5.08261 -3.76985,7.13733 -7.76001,9.12723 -62.99486,31.41546 -125.13517,64.31112 -187.59475,96.6531 -8.08443,4.18619 -15.26218,3.08966 -22.95599,-0.90643 -44.96963,-23.35675 -90.02225,-46.57153 -135.101216,-69.7399 -17.19517,-8.83749 -34.51529,-17.45917 -51.82179,-26.10184 -4.0985,-2.04672 -7.49144,-4.31747 -7.45357,-9.32638 0.037,-4.88355 3.56686,-6.79528 7.45229,-8.7269 15.76128,-7.83569 31.60591,-15.53847 47.12048,-23.7919 6.12254,-3.25705 11.15332,-3.07645 17.25152,-0.0284 40.368076,20.17677 81.021706,39.84776 121.254996,60.25872 9.42542,4.78167 16.88375,4.86578 26.4271,-0.009 39.86595,-20.36337 80.27335,-39.7796 120.26418,-59.92895 7.14828,-3.60166 13.14366,-3.89623 19.87493,0.71861 z"
+     id="path1-8"
+     style="fill:#111a7e;fill-opacity:1;stroke-width:1.02912" />
+</svg>

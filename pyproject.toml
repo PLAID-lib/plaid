@@ -101,4 +101,3 @@ omit = ["src/plaid/downloadable_examples/*"]
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"
-

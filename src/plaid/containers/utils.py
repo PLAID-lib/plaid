@@ -248,6 +248,7 @@ def get_feature_details_from_path(path: str) -> dict[str, str]:
         feat["type"] = "field"
         feat["location"] = path_to_location[node]
         feat["name"] = split_path[3]
+        feat["name"] = split_path[3]
 
         return feat
     # ----------------------

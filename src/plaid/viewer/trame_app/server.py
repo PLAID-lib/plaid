@@ -1045,13 +1045,22 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             # of missing paths, which is both noisy and unactionable in
             # the viewer. We shorten it to a hint that the user should
             # check the split-specific availability of the filter.
-            message = str(exc)
+            #
+            # Always log the full traceback to the server log so that an
+            # otherwise opaque ``Failed to load sample:`` message in the
+            # UI status bar (e.g. when the underlying exception has an
+            # empty ``str(exc)``, as happens with some VTK/CGNS errors)
+            # can still be diagnosed from the terminal.
+            logger.exception("Failed to load sample %s", ref.encode())
+            message = str(exc) or exc.__class__.__name__
             if "Missing features" in message:
                 state.status = (
                     "Failed to load sample: Missing features in dataset, check split"
                 )
             else:
-                state.status = f"Failed to load sample: {exc}"
+                state.status = (
+                    f"Failed to load sample ({type(exc).__name__}): {message}"
+                )
 
     def _apply_pipeline(*, reset_camera: bool = False) -> None:
         """Rebuild the VTK pipeline and push the result to the client.
