@@ -1,186 +1,163 @@
 # Dataset viewer
 
-The dataset viewer is a small trame/VTK web application that lets
-you browse PLAID datasets stored on disk and inspect their samples in 3D.
-It ships as the `plaid-viewer` console script.
+`plaid-viewer` is a small web application for opening a PLAID dataset and
+looking at its samples in 3D. It is meant for exploration: choose where the
+data comes from, choose what part of the sample you want to see, then inspect
+the mesh and fields interactively.
 
-## Architecture
+## Start the viewer
 
-The viewer runs as a single trame server process:
+From a terminal, run:
 
-- `plaid.viewer.services.PlaidDatasetService` discovers datasets and
-  loads `plaid.Sample` instances. It uses
-  `plaid.storage.init_from_disk` to obtain `(dataset_dict,
-  converter_dict)` and materialises a sample on demand with
-  `converter.to_plaid(dataset, index)`, so every PLAID backend
-  (`hf_datasets`, `cgns`, `zarr`, ...) is supported uniformly.
-  Hugging Face Hub datasets are also supported: when a dataset id is
-  registered as a repo id, the service dispatches to
-  `plaid.storage.init_streaming_from_hub` instead, so samples are
-  streamed lazily without a full local copy.
-- `plaid.viewer.services.ParaviewArtifactService` writes each selected
-  sample to a CGNS file (or `.cgns.series` sidecar for time-dependent
-  samples) in a per-process cache directory.
-- `plaid.viewer.trame_app.server.build_server` assembles the UI
-  (Vuetify side drawer with dataset/split/sample selectors and display
-  options) and a VTK pipeline: `vtkCGNSReader` → optional cut plane →
-  optional threshold → composite-data geometry → mapper/actor.
+```bash
+uv run plaid-viewer
+```
 
-There is no separate FastAPI backend and no second port: dataset
-discovery, CGNS export and the 3D view are all served by trame.
-
-## Launching the viewer
+You can also start directly from a local datasets folder:
 
 ```bash
 uv run plaid-viewer --datasets-root /path/to/datasets
 ```
 
-Useful options:
+Then open the address shown by the command, usually:
 
-| Option            | Default     | Description                                                                                      |
-| ----------------- | ----------- | ------------------------------------------------------------------------------------------------ |
-| `--datasets-root` | *required*  | Directory containing one sub-directory per PLAID dataset. A single-dataset directory also works. |
-| `--host`          | `127.0.0.1` | Bind address for the trame HTTP server.                                                          |
-| `--port`          | `8080`      | Port exposed by the trame HTTP server.                                                           |
-| `--hub-repo`      | `None`      | Hugging Face Hub repo id (`namespace/name`) streamed via `init_streaming_from_hub`. Repeat the flag to pre-register multiple repos. |
-
-Open `http://<host>:<port>/` in your browser.
-
-### Streaming from the Hugging Face Hub
-
-Hub datasets can be added at launch time with `--hub-repo` or from the
-running UI through the **Hub** tab in the side drawer (the drawer now
-groups the local datasets root and the Hugging Face repo input under a
-`Local / Hub` tab selector, hidden when `--disable-root-change` is set).
-Each registered repo shows up as a removable chip and as a new entry in
-the **Dataset** dropdown. Samples are loaded on demand through
-`plaid.storage.init_streaming_from_hub`, so only the selected sample's
-shards are fetched.
-
-```bash
-# Start with one or more hub datasets pre-registered.
-uv run plaid-viewer --hub-repo PLAID-lib/VKI-LS59 --hub-repo PLAID-lib/Rotor37
+```text
+http://127.0.0.1:8080/
 ```
 
-Streaming splits returned by PLAID are forward-only
-`datasets.IterableDataset` objects without `__len__`. The viewer adapts
-accordingly:
+Useful launch options:
 
-- A `streaming` chip appears in the toolbar to advertise the mode.
-- The **Sample** slider starts at a single reachable step and grows by
-  one every time the user moves it to the right; each right-arrow press
-  consumes the next element from the iterator.
-- Revisiting an already-fetched index simply re-renders the cached
-  sample; the slider cannot be rewound because the underlying iterator
-  cannot.
-- Switching split or dataset rebuilds a fresh iterator from the Hub.
-- When the stream is exhausted the slider caps at the last consumed
-  index and the counter label shows `(end of stream)`.
+| Option | What it does |
+| --- | --- |
+| `--datasets-root /path/to/datasets` | Opens a local folder containing PLAID datasets. |
+| `--hub-repo namespace/name` | Adds a Hugging Face Hub dataset to stream. Can be repeated. |
+| `--host 0.0.0.0` | Makes the viewer reachable from another machine. |
+| `--port 8080` | Changes the web server port. |
 
+## Follow the steps in the side panel
 
-## Using the UI
+The left panel is numbered in the same order as a typical workflow.
 
-The side drawer provides, from top to bottom:
+### 1) Select Datasets root
 
-1. **Dataset / Split** - two `VSelect` controls that pick the active
-   dataset and split.
-2. **Sample** - a `VSlider` over the integer sample index of the current
-   split; the selected `sample_id` (and the total count) is shown under
-   the slider.
-3. **Base** - a `VBtnToggle` with exclusive, mandatory selection: exactly
-   one renderable CGNS base exposed by `vtkCGNSReader.GetBaseSelection()`
-   is active at any time. Bases that contain
-   no `Zone_t` children (for example, a `Global` base storing only
-   reference scalars or free-standing tensors) are not rendered but are
-   summarised in the **Non-visual bases** accordion further down the
-   drawer: each `DataArray_t` is listed with its name, dtype, shape and a
-   short value preview.
-4. **Field / Colormap / Show edges** - colour the geometry by any point
-   or cell array (all point and cell arrays are enabled on the reader
-   by default so every field shows up in the dropdown), pick from a set
-   of built-in colormaps and optionally overlay wireframe edges.
-5. **Cut plane** - toggle a `vtkCutter` and interactively adjust its
-   normal and signed offset along that normal (the plane origin is the
-   current dataset's bounding-box centre).
-6. **Threshold** - toggle a `vtkThreshold` filter on the currently
-   selected field and set the `[min, max]` range. Defaults are populated
-   from the field's data range.
-7. **Select features** - an expandable panel listing the field paths
-   available for the current dataset (retrieved from the PLAID metadata
-   schema). Toggling checkboxes and clicking **Apply** filters the loaded
-   samples down to the selected fields:
-   - For disk-backed datasets the selection is forwarded to
-     `converter.to_plaid(dataset, index, features=...)`. PLAID expands
-     the list internally with
-     `plaid.utils.cgns_helper.update_features_for_CGNS_compatibility`
-     to preserve the CGNS conventions (coordinates, zones, grid
-     locations, etc. that make the kept fields renderable). The
-     user-facing selection is first intersected with the active split's
-     own feature catalogue, so paths that only live in another split
-     (for example a field present in `train` but not in `test`) do not
-     trigger a `Missing features` error.
-   - For streaming (Hugging Face Hub) datasets the expansion must be
-     done ahead of `init_streaming_from_hub`. The viewer calls
-     `update_features_for_CGNS_compatibility` itself and hands the
-     expanded list to the streaming loader, then invalidates the
-     current iterator so the next sample is materialised with the new
-     filter.
-   The **Clear** / **Select all** buttons in the panel header provide
-   shortcuts; an empty selection loads only the geometric support
-   (mesh + zones + metadata).
-8. **Reset camera** - re-frames the current actor.
+Choose where the datasets come from.
 
-The 3D view is a server-side `VtkRemoteView` (images are rendered on the
-server and streamed to the browser). Camera manipulation uses the
-ParaView-like trackball style:
+- **Local**: enter the path to a folder on your computer. You can also click
+  the folder button to browse, then validate with the check button.
+- **Hub**: enter a Hugging Face Hub repository name such as
+  `PLAID-lib/VKI-LS59`, then click the plus button. Added Hub datasets appear
+  as chips and can be removed from the same area.
 
-- Left mouse button: rotate.
-- Middle mouse button (or Shift + left): pan.
-- Mouse wheel (or right button drag): zoom.
+If you started the viewer with `--datasets-root` or `--hub-repo`, this step may
+already be filled in.
 
-A status line at the bottom of the drawer reports the last action or
-error.
+### 2) Select Dataset
 
-## Cache layout
+Pick the dataset you want to inspect.
 
-Artifacts are written under an **ephemeral** per-process temp directory
-created by `plaid.viewer.cache.CacheRoot` (named
-`plaid-viewer-{pid}-{token}` under `tempfile.gettempdir()`):
+The list depends on the tab selected in step 1: local datasets are shown on the
+**Local** tab, while streamed Hub datasets are shown on the **Hub** tab.
 
-```
-<cache_root>/datasets/<dataset_id>/<split>/<sample_id>/<key_prefix>/
-    meshes/                   # one CGNS per timestep (time-dependent)
-    meshes.cgns.series        # ParaView file-series sidecar (time-dependent)
-    mesh.cgns                 # single static mesh
-    metadata.json             # cache key, sample ref, export version, ...
-```
+### 3) Select Split
 
-The cache holds **at most one artifact at a time**: once VTK has loaded
-a sample's CGNS into memory the on-disk copy is no longer needed, so
-the next `ensure_artifact` call removes the previous folder before
-writing the new one.
+Choose the dataset split, for example `train`, `test`, or any other split
+provided by the dataset.
 
-The whole cache root is deleted at shutdown through four complementary
-layers: `atexit`, `SIGINT` / `SIGTERM` handlers, the `with CacheRoot()`
-context manager used by the CLI, and an orphan sweep at startup that
-removes directories left behind by previously-crashed processes.
+### 4) Select Base (and/or enable Globals)
 
-The cache key is a SHA-256 of the sample reference, PLAID
-version and `ViewerConfig.export_version`.
+Choose which high-level part of the sample to load.
 
-## Programmatic usage
+- Click a **Base** button to display the mesh for that base.
+- Enable **Globals** if you want to load and display global values associated
+  with the sample.
 
-```python
-from pathlib import Path
-from plaid.viewer.cache import CacheRoot
-from plaid.viewer.config import ViewerConfig
-from plaid.viewer.services import ParaviewArtifactService, PlaidDatasetService
-from plaid.viewer.trame_app.server import build_server
+By default, the viewer starts light: it does not load every field immediately.
+Pick a base and/or enable globals first, then choose fields in the next steps.
 
-config = ViewerConfig(datasets_root=Path("/path/to/datasets"))
-with CacheRoot() as cache:
-    datasets = PlaidDatasetService(config)
-    artifacts = ParaviewArtifactService(datasets, cache.path)
-    server = build_server(datasets, artifacts)
-    server.start(host="127.0.0.1", port=8080, open_browser=False)
-```
+### 5) Pre-select browsable field features
+
+This step is shown when the local dataset exposes selectable fields.
+
+Use it to choose which fields should be loaded for the selected base. This is
+useful for large datasets because you can avoid loading everything at once.
+
+- Click **Load all** to load every available field for the current selection.
+- Expand **Select features** to tick only the fields you need.
+- Click **Apply** after changing the checked fields.
+- Click **Clear** to uncheck the current selection.
+
+For streamed Hub datasets, this panel can be hidden because samples are loaded
+progressively from the stream.
+
+### 6) Select field to plot
+
+Choose the field used to color the 3D view.
+
+If no field is selected, the viewer still shows the mesh, but without scalar
+coloring. When a field is selected, a color legend appears in the 3D view.
+
+### 7) Select Sample
+
+Choose which sample to display.
+
+- For local datasets, use the slider to move through the available samples.
+- For streamed Hub datasets, click **Next** to fetch the next sample. Streaming
+  is forward-only: the viewer loads samples one after another instead of
+  knowing the full list in advance.
+
+The label under this control shows the current sample id, number of samples, or
+streaming status.
+
+## Time-dependent samples
+
+If the selected sample contains several time steps, a **Time** slider appears
+under the sample selector.
+
+You can:
+
+- move through time with the slider;
+- press play/pause to animate the sample;
+- press stop to go back to the first time step;
+- toggle loop playback;
+- adjust the playback FPS.
+
+## Rendering options
+
+The controls below the thick separator only change how the current sample is
+drawn. They do not change which data is loaded.
+
+- **Colormap** changes the colors used for the selected field.
+- **Show edges** overlays mesh edges.
+- **Reset camera** recenters the view after you rotate, pan, or zoom.
+
+## Interacting with the 3D view
+
+Use the mouse directly in the 3D area:
+
+- left mouse button: rotate;
+- middle mouse button, or `Shift` + left mouse button: pan;
+- mouse wheel, or right mouse button drag: zoom.
+
+The small axes marker in the corner helps you keep track of the orientation.
+
+## Local datasets and Hub datasets
+
+The viewer can open data from two places:
+
+- **Local datasets** are read from disk and can usually be accessed in any
+  order. The sample control is therefore a slider.
+- **Hub datasets** are streamed from Hugging Face Hub. This avoids downloading
+  the full dataset first, but samples are consumed forward with the **Next**
+  button.
+
+When streaming is active, a `streaming` chip appears in the toolbar.
+
+## Tips
+
+- If the 3D view is empty, first select a **Base** in step 4.
+- If the field dropdown is empty, load fields with **Load all** or by selecting
+  features in step 5.
+- If the viewer feels slow on a large dataset, load only one base and a small
+  number of fields.
+- The message at the bottom of the side panel reports the latest action or
+  error.
