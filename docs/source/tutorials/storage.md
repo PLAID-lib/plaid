@@ -13,7 +13,6 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 | `hf_datasets` | yes | yes | yes | streaming can pass selected columns; local download currently downloads backend data as parquet |
 | `cgns` | yes | yes | yes | sample selection is supported; feature filtering is handled at conversion time where applicable |
 | `zarr` | yes | yes | yes | supports selected sample ids and selected variable features for download/streaming |
-| `in_memory` | no | no | no | registered for in-process sample storage, not for persistence |
 
 ## Key concepts
 
