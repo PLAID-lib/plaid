@@ -33,13 +33,6 @@ To use the library, the simplest way is to install it from the packages availabl
 
 ## 2 Core concepts
 
-- {doc}`core_concepts/sample` → API: {py:class}`plaid.containers.sample.Sample`
-- {doc}`core_concepts/dataset` → API: {mod}`plaid.storage` backend datasets and converters
-- {doc}`core_concepts/problem_definition` → API: {py:class}`plaid.problem_definition.ProblemDefinition`
-- {doc}`core_concepts/defaults`
-- {doc}`core_concepts/disk_format`
-- {doc}`core_concepts/interoperability`
-
 The main public imports are:
 
 ```python
@@ -60,18 +53,10 @@ plaid-check /path/to/plaid_dataset
 plaid-viewer --datasets-root /path/to/datasets
 ```
 
+Additional core concepts are detailed in {doc}`Core concepts <core_concepts>`.
+
 ## 3 Going further
 
-Explore {doc}`example examples_tutorials <examples_tutorials>` for practical use cases and advanced techniques.
+Explore {doc}`Examples & Tutorials <examples_tutorials>` for practical use cases and advanced techniques.
 
-The {doc}`API documentation <../autoapi/plaid/index>` provides detailed information on all available classes and methods.
-
-In-repository core capabilities are provided by `plaid` itself (containers, storage backends,
-and converters under `plaid.storage`).
-
-Two companion repositories extend the `plaid` ecosystem:
-
-- [plaid-bridges](https://github.com/PLAID-lib/plaid-bridges): integrations with popular ML frameworks such as PyTorch Geometric.
-- [plaid-ops](https://github.com/PLAID-lib/plaid-ops): standardized operations on PLAID samples and datasets, including advanced mesh processing (some requiring a finite-element engine) powered by [muscat](https://gitlab.com/drti/muscat).
-
-These companion projects are external repositories (not modules shipped in this package).
+The {doc}`API Reference <../autoapi/plaid/index>` provides detailed information on all available classes and methods.

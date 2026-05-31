@@ -14,7 +14,7 @@
 # ---
 
 # %% [markdown]
-# # Downloadable examples
+# # Downloadable samples
 #
 # This Jupyter Notebook show how to easily retrieve sample examples online.
 
@@ -47,4 +47,3 @@ sample = samples.vki_ls59
 end = time.perf_counter()
 
 print(f"Second sample retrieval duration: {end - start:.6f} seconds (in cache)")
-print("Done")

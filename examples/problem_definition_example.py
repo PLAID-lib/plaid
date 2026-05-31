@@ -81,6 +81,13 @@ print(
 # This section demonstrates how to handle and configure ProblemDefinition objects and access data.
 
 # %% [markdown]
+# ### Set Problem Definition name
+
+# %%
+problem.name = "my_problem_definition"
+print(f"{problem.name = }")
+
+# %% [markdown]
 # ### Set Problem Definition split
 
 # %%

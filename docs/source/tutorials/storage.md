@@ -14,7 +14,7 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 | `cgns` | yes | yes | yes | sample selection is supported; feature filtering is handled at conversion time where applicable |
 | `zarr` | yes | yes | yes | supports selected sample ids and selected variable features for download/streaming |
 
-## Key concepts
+## Storage concepts
 
 - **`sample_constructor`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
 - **`ids`** is a dictionary mapping split names to **sliceable sequences** of identifiers — anything with `__getitem__` and `__len__` (list, tuple, numpy array, …). PLAID handles iteration, generator creation, and parallel sharding internally.

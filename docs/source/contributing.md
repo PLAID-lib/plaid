@@ -35,7 +35,6 @@ The agreement will be presented automatically through GitHub's interface when yo
 ### 2.1. Coding Standards
 - Follow PEP 8 and PEP 257 guidelines
 - Use snake_case naming convention
-- Keep lines under 80 characters
 - Prefer one class per file
 - Aim for simple and flexible API design
 - Maintain 100% test coverage
@@ -63,7 +62,7 @@ For feature requests:
 
 - Git
 - Python (`>=3.10, <3.14`)
-- Conda package manager
+- Conda or uv package manager
 
 ### 3.2. Installation Steps
 
