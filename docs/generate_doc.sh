@@ -45,15 +45,15 @@ ls -lAh source/
 # export PYDEVD_DISABLE_FILE_VALIDATION=1
 make html
 
-#---# Verbose AFTER
-echo "";echo "#---# ls -lAh"
-ls -lAh *
-echo "";echo "#---# ls -lAh _build/html/*"
-ls -lAh _build/html/*
-echo "";echo "#---# ls -lAh _build/html/autoapi"
-ls -lAh _build/html/autoapi
-echo "";echo "#---# ls -lAh _build/html/reports"
-ls -lAh _build/html/reports
+# #---# Verbose AFTER
+# echo "";echo "#---# ls -lAh"
+# ls -lAh *
+# echo "";echo "#---# ls -lAh _build/html/*"
+# ls -lAh _build/html/*
+# echo "";echo "#---# ls -lAh _build/html/autoapi"
+# ls -lAh _build/html/autoapi
+# echo "";echo "#---# ls -lAh _build/html/reports"
+# ls -lAh _build/html/reports
 
 #---# Post
 rsync -av --delete-after _build/html/* ../public
