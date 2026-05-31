@@ -34,11 +34,10 @@ dependencies:
 #---# dev
   - pre-commit
 #---# doc
-  - sphinx
-  - sphinx-autoapi
-  - sphinx-tabs
-  - sphinxcontrib-bibtex
-  - myst-nb
-  - myst-parser
-  - furo
+  - zensical
   - jupytext
+  - mkdocstrings
+##### VIEWER #####
+  - trame
+  - trame-vtk
+  - trame-vuetify

@@ -22,6 +22,7 @@ dependencies:
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs
   - muscat-core>=2.5.1
+  - vtk
 #---# base
   - rich
 #---# optim
@@ -34,14 +35,13 @@ dependencies:
 #---# dev
   - pre-commit
 #---# doc
-  - sphinx
-  - sphinx-autoapi
-  - sphinx-tabs
-  - sphinxcontrib-bibtex
-  - myst-nb
-  - myst-parser
-  - furo
+  - zensical
   - jupytext
+  - mkdocstrings
+##### VIEWER #####
+  - trame
+  - trame-vtk
+  - trame-vuetify
   - pip
   - pip:
     - pyplaid@git+https://github.com/PLAID-lib/plaid.git@BinderSupport
