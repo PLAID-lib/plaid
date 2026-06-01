@@ -28,7 +28,7 @@ import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
-from pydantic import BaseModel, ConfigDict, PrivateAttr, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic import Field as PydanticField
 
 from ..constants import (
@@ -76,9 +76,8 @@ class Sample(BaseModel):
         description="A dictionary mapping time steps to CGNS trees.",
     )
 
-
     defaults: DefaultManager = PydanticField(
-        default= None,
+        default=None,
         exclude=True,
         repr=False,
         description="Default selector manager (time/base/zone).",
@@ -86,11 +85,13 @@ class Sample(BaseModel):
 
     @model_validator(mode="after")
     def initialize_defaults(self) -> "Sample":
+        """Initialize the default manager if not already set."""
         if self.defaults is None:
             self.defaults = DefaultManager(self)
         return self
 
     def model_post_init(self, _context: Any) -> None:
+        """Run post-initialization hooks (e.g. load sample from path)."""
         # Load if path is provided
         if self.path is not None:
             path = Path(self.path)
@@ -129,9 +130,7 @@ class Sample(BaseModel):
         elif feature_type == "nodes":
             return [
                 "Coordinate" + n
-                for _, n in zip(
-                    range(self.get_physical_dim()), ["X", "Y", "Z"]
-                )
+                for _, n in zip(range(self.get_physical_dim()), ["X", "Y", "Z"])
             ]
 
     def get_all_features_by_type(self, type: str) -> list[str]:
@@ -590,7 +589,6 @@ class Sample(BaseModel):
                 report += f"Field names: {', '.join(sorted(total_fields))}\n"
 
         return report
-
 
     # -------------------------------------------------------------------------#
     # Default time/base/zone management interface
@@ -1966,4 +1964,3 @@ class Sample(BaseModel):
 
         if self.data is not None:
             CGH.show_cgns_tree(self.data.get(time))
-

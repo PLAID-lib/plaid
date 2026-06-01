@@ -24,7 +24,6 @@ from .types import IndexArrayType
 logger = logging.getLogger(__name__)
 
 
-
 def _normalize_list(v):
     return sorted(map(str, v))
 

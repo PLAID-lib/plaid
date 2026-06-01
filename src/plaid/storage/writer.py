@@ -27,8 +27,8 @@ from plaid.storage.common.writer import (
 from plaid.storage.registry import available_backends, get_backend
 
 from ..containers.sample import Sample
-from ..problem_definition import ProblemDefinition
 from ..info import Info
+from ..problem_definition import ProblemDefinition
 from .common.preprocessor import preprocess
 from .common.reader import (
     load_infos_from_disk,

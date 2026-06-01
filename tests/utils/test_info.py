@@ -1,7 +1,8 @@
 import pytest
+from pydantic import ValidationError
 
 from plaid.info import Info
-from pydantic import ValidationError
+
 
 def test_verify_info_accepts_special_internal_keys():
     infos = {

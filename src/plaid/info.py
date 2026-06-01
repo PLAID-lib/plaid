@@ -8,7 +8,9 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic.dataclasses import dataclass
 
-_PD_CONFIG = ConfigDict(extra="forbid", str_strip_whitespace=True, validate_assignment=True)
+_PD_CONFIG = ConfigDict(
+    extra="forbid", str_strip_whitespace=True, validate_assignment=True
+)
 
 
 @dataclass(config=_PD_CONFIG)
@@ -69,12 +71,18 @@ class Info(BaseModel):
         """Validate schema/authorized keys without enforcing required sections."""
         normalized = cls._normalize_top_level(infos)
         if "legal" not in normalized:
-            normalized["legal"] = {"owner": "__placeholder__", "license": "__placeholder__"}
+            normalized["legal"] = {
+                "owner": "__placeholder__",
+                "license": "__placeholder__",
+            }
         try:
             model = cls.model_validate(normalized)
         except ValidationError as exc:
             for error in exc.errors():
-                if error.get("type") in {"extra_forbidden", "unexpected_keyword_argument"}:
+                if error.get("type") in {
+                    "extra_forbidden",
+                    "unexpected_keyword_argument",
+                }:
                     loc = ".".join(str(p) for p in error.get("loc", ()))
                     raise KeyError(f"Unauthorized infos key: {loc!r}") from exc
             raise

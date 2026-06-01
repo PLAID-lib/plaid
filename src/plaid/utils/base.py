@@ -1,10 +1,6 @@
 """Base utilities."""
 # %% Imports
 
-import inspect
-from functools import wraps
-from typing import Type
-
 import numpy as np
 
 # %% Functions

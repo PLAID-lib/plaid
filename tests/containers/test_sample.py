@@ -230,16 +230,12 @@ class Test_Sample:
         # check dims getters
         assert sample.get_topological_dim() == topological_dim
         assert sample.get_physical_dim() == physical_dim
-        assert (
-            sample.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
-        )
+        assert sample.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
         assert sample.resolve_time() == 0.5
         assert sample.resolve_base("test") == "test"
 
         sample.set_default_base(f"Base_{topological_dim}_{physical_dim}")  # already set
-        assert (
-            sample.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
-        )
+        assert sample.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
         with pytest.raises(ValueError):
             sample.set_default_base("Unknown base name")
 
@@ -457,9 +453,7 @@ class Test_Sample:
 
         # check dims getters
         assert (
-            sample.get_topological_dim(
-                f"Base_{topological_dim}_{physical_dim}"
-            )
+            sample.get_topological_dim(f"Base_{topological_dim}_{physical_dim}")
             == topological_dim
         )
         assert (
@@ -595,9 +589,7 @@ class Test_Sample:
         assert sample.has_zone(zone_name, base_name)
         assert not sample.has_zone("not_present_zone_name", base_name)
         assert not sample.has_zone(zone_name, "not_present_base_name")
-        assert not sample.has_zone(
-            "not_present_zone_name", "not_present_base_name"
-        )
+        assert not sample.has_zone("not_present_zone_name", "not_present_base_name")
 
     def test_get_zone_names(self, sample: Sample, base_name):
         sample.init_base(3, 3, base_name)

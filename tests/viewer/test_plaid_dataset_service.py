@@ -1130,7 +1130,6 @@ def test_load_sample_empty_augmented_falls_back_unfiltered(
 
 class _SummarySample:
     def __init__(self, report: str = "warning") -> None:
-        import types
 
         self.data = {}
         self._report = report
@@ -1200,18 +1199,16 @@ def test_describe_globals_all_times_indexes_each_timestep(
     4. ``IterationValues`` / ``TimeValues`` bookkeeping arrays are
        filtered out at every timestep.
     """
-    import types
 
     _make_dataset_dir(tmp_path, "ds")
 
     class _TimeAwareSample:
         def __init__(self) -> None:
-            self.data={}
+            self.data = {}
             self.calls: list[float | None] = []
 
         def get_all_time_values(self):
             return [1.0, 2.0]
-
 
         # CGNS bookkeeping arrays must be filtered out by the service
         # at every requested time, just like the time-less path.
