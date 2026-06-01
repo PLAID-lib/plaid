@@ -23,9 +23,6 @@ from .types import IndexArrayType
 
 logger = logging.getLogger(__name__)
 
-# %% Functions
-
-# %% Classes
 
 
 def _normalize_list(v):
