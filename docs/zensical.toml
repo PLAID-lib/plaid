@@ -28,6 +28,7 @@ features = [
   "navigation.tracking",
   "search.highlight",
 ]
+extra_css = ["stylesheets/extra.css"]
 
 nav = [
   { "Overview" = [
@@ -44,7 +45,6 @@ nav = [
       { "Problem definition" = "concepts/problem_definition.md" },
       { "Defaults" = "concepts/defaults.md" },
       { "Disk format" = "concepts/disk_format.md" },
-      { "Viewer" = "concepts/viewer.md" },
     ] },
     { "Examples and tutorials" = [
       { "Overview" = "examples_tutorials.md" },
@@ -53,6 +53,7 @@ nav = [
       { "Problem definition notebook" = "notebooks/problem_definition_example.md" },
       { "Downloadable samples notebook" = "notebooks/downloadable_example/sample_example.md" },
     ] },
+    { "Viewer" = "concepts/viewer.md" },
     # >>> AUTO-GENERATED API REFERENCE START
     # The block below is overwritten by `python docs/generate_api_stubs.py`.
     # Edit that script (or the markers) instead of changing this section by hand.

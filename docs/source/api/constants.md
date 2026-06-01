@@ -1,3 +1,0 @@
-# `plaid.constants`
-
-::: plaid.constants
