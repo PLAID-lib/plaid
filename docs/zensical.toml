@@ -104,9 +104,6 @@ nav = [
           { "reader" = "api/storage/hf_datasets/reader.md" },
           { "writer" = "api/storage/hf_datasets/writer.md" },
         ] },
-        { "in_memory" = [
-          { "overview" = "api/storage/in_memory/index.md" },
-        ] },
         { "zarr" = [
           { "overview" = "api/storage/zarr/index.md" },
           { "bridge" = "api/storage/zarr/bridge.md" },

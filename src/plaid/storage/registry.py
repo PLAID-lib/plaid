@@ -4,11 +4,10 @@ This module centralizes backend wiring so reader/writer code can use a single
 source of truth for backend capabilities.
 """
 
-from . import cgns, hf_datasets, in_memory, zarr
+from . import cgns, hf_datasets, zarr
 from .backend_api import BackendModule
 
 BACKENDS = {
-    "in_memory": in_memory.InMemoryBackend,
     "cgns": cgns.CgnsBackend,
     "hf_datasets": hf_datasets.HFBackend,
     "zarr": zarr.ZarrBackend,
