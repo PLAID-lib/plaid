@@ -196,17 +196,6 @@ class _FakeSampleForCheck:
         self._checksum = checksum
 
     def get_zone_names(self, base: str, time: float) -> list[str]:  # noqa: ARG002
-        """Return a single deterministic zone name.
-
-        Args:
-            base: Ignored.
-            time: Ignored.
-
-        Returns:
-            A single zone name list.
-        """
-
-    def get_zone_names(self, base: str, time: float) -> list[str]:  # noqa: ARG002
         """Return deterministic zone names for checker traversal.
 
         Args:
