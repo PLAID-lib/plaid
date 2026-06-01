@@ -8,7 +8,6 @@ from typing import Any, Iterable, Optional
 
 import numpy as np
 
-from plaid.containers.features import SampleFeatures
 from plaid.containers.sample import Sample
 from plaid.utils.cgns_helper import unflatten_cgns_tree
 
@@ -209,7 +208,7 @@ def to_plaid_sample(
     for time, flat_tree in sample_dict.items():
         sample_data[time] = unflatten_cgns_tree(flat_tree, cgns_types)
 
-    return Sample(path=None, features=SampleFeatures(sample_data))
+    return Sample(path=None, data=sample_data)
 
 
 def plaid_to_sample_dict(

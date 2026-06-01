@@ -58,7 +58,7 @@ def build_sample_dict(
 ) -> tuple[dict[str, Any], set[str], dict[str, str]]:
     """Flatten a PLAID Sample's CGNS trees into Hugging Face–compatible arrays and metadata.
 
-    The function traverses every CGNS tree stored in sample.features.data (keyed by time),
+    The function traverses every CGNS tree stored in sample.data (keyed by time),
     produces a flattened mapping path -> primitive value for each time, and then builds
     compact numpy arrays suitable for storage in a Hugging Face Dataset. Repeated value
     blocks that are identical across times are deduplicated and referenced by start/end
@@ -67,7 +67,7 @@ def build_sample_dict(
 
     Args:
         sample (Sample): A PLAID Sample whose features contain one or more CGNS trees
-            (sample.features.data maps time -> CGNSTree).
+            (sample.data maps time -> CGNSTree).
 
     Returns:
         tuple:
@@ -93,7 +93,7 @@ def build_sample_dict(
     all_paths = set()
 
     # --- Flatten CGNS trees ---
-    for time, tree in sample.features.data.items():
+    for time, tree in sample.data.items():
         flat, cgns_types = flatten_cgns_tree(tree)
         sample_flat_trees[time] = flat
 

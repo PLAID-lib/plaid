@@ -68,7 +68,6 @@ nav = [
       ] },
       { "containers" = [
         { "overview" = "api/containers/index.md" },
-        { "features" = "api/containers/features.md" },
         { "sample" = "api/containers/sample.md" },
         { "utils" = "api/containers/utils.md" },
         { "managers" = [

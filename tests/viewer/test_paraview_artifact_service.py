@@ -152,7 +152,7 @@ def test_collect_time_values_empty() -> None:
         == []
     )
     assert _collect_time_values(
-        types.SimpleNamespace(features=types.SimpleNamespace(data={2: None, 1: None}))
+        types.SimpleNamespace(data={2: None, 1: None})
     ) == [1.0, 2.0]
 
 

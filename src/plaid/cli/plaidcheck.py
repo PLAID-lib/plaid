@@ -367,7 +367,7 @@ def check_dataset(
             for time in sample.get_all_time_values():
                 local_bases = sample.get_base_names(time=time)
                 for base in local_bases:
-                    zone_names = sample.features.get_zone_names(base=base, time=time)
+                    zone_names = sample.get_zone_names(base=base, time=time)
                     for zone in zone_names:
                         for location in CGNS_FIELD_LOCATIONS:
                             field_names = sample.get_field_names(

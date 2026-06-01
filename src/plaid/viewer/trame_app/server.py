@@ -773,7 +773,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     # bookkeeping arrays which describe time steps rather than physical
     # scalars.
     state.setdefault("sample_globals", [])
-    # Time axis. ``time_values`` mirrors ``sample.features.get_all_time_values()``
+    # Time axis. ``time_values`` mirrors ``sample.get_all_time_values()``
     # and ``time_index`` is the index of the currently displayed step.
     state.setdefault("time_values", [])
     state.setdefault("time_index", 0)

@@ -178,22 +178,6 @@ def _make_minimal_layout(root: Path) -> Path:
     return dataset
 
 
-class _FakeFeatures:
-    """Minimal features wrapper used by fake sample objects."""
-
-    def get_zone_names(self, base: str, time: float) -> list[str]:  # noqa: ARG002
-        """Return a single deterministic zone name.
-
-        Args:
-            base: Ignored.
-            time: Ignored.
-
-        Returns:
-            A single zone name list.
-        """
-        return ["ZoneA"]
-
-
 class _FakeSampleForCheck:
     """Sample-like object implementing methods used by `check_dataset`."""
 
@@ -210,7 +194,29 @@ class _FakeSampleForCheck:
         self._global_names = ["G"] if global_names is None else global_names
         self._tree = tree
         self._checksum = checksum
-        self.features = _FakeFeatures()
+
+    def get_zone_names(self, base: str, time: float) -> list[str]:  # noqa: ARG002
+        """Return a single deterministic zone name.
+
+        Args:
+            base: Ignored.
+            time: Ignored.
+
+        Returns:
+            A single zone name list.
+        """
+
+    def get_zone_names(self, base: str, time: float) -> list[str]:  # noqa: ARG002
+        """Return deterministic zone names for checker traversal.
+
+        Args:
+            base: Ignored.
+            time: Ignored.
+
+        Returns:
+            A single zone name list.
+        """
+        return ["ZoneA"]
 
     def get_global_names(self) -> list[str]:
         """Return configured global names."""
