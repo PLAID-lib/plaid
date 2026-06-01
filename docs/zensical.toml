@@ -59,6 +59,7 @@ nav = [
     { "API reference" = [
       { "overview" = "api/index.md" },
       { "constants" = "api/constants.md" },
+      { "info" = "api/info.md" },
       { "problem_definition" = "api/problem_definition.md" },
       { "version" = "api/version.md" },
       { "cli" = [
@@ -123,7 +124,6 @@ nav = [
         { "base" = "api/utils/base.md" },
         { "cgns_helper" = "api/utils/cgns_helper.md" },
         { "cgns_worker" = "api/utils/cgns_worker.md" },
-        { "info" = "api/utils/info.md" },
       ] },
       { "viewer" = [
         { "overview" = "api/viewer/index.md" },
