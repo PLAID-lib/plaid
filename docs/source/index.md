@@ -119,7 +119,7 @@ massive, heterogeneous datasets.
 
     [:octicons-arrow-right-24: Concepts](concepts.md)
 
-- :material-school-outline:{ .lg .middle } **Tutorials**
+- :material-school-outline:{ .lg .middle } **Examples & tutorials**
 
     ---
 

@@ -43,15 +43,15 @@ nav = [
       { "Sample" = "concepts/sample.md" },
       { "Dataset" = "concepts/dataset.md" },
       { "Problem definition" = "concepts/problem_definition.md" },
-      { "Defaults values" = "concepts/defaults.md" },
+      { "Default values" = "concepts/defaults.md" },
       { "Disk format" = "concepts/disk_format.md" },
     ] },
     { "Examples and tutorials" = [
       { "Overview" = "examples_tutorials.md" },
-      { "Storage tutorial" = "tutorials/storage.md" },
       { "Sample notebook" = "notebooks/containers/sample_example.md" },
       { "Problem definition notebook" = "notebooks/problem_definition_example.md" },
       { "Downloadable samples notebook" = "notebooks/downloadable_example/sample_example.md" },
+      { "Storage tutorial" = "tutorials/storage.md" },
     ] },
     { "Viewer" = "concepts/viewer.md" },
     # >>> AUTO-GENERATED API REFERENCE START
@@ -60,7 +60,7 @@ nav = [
     { "API reference" = [
       { "overview" = "api/index.md" },
       { "constants" = "api/constants.md" },
-      { "info" = "api/info.md" },
+      { "infos" = "api/infos.md" },
       { "problem_definition" = "api/problem_definition.md" },
       { "version" = "api/version.md" },
       { "cli" = [

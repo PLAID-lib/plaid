@@ -1,4 +1,4 @@
-# Examples and Tutorials
+# :material-school-outline:{ .lg .middle } Examples and Tutorials
 
 You can find here detailed examples for different parts of plaid, explained mainly in Jupyter notebooks.
 

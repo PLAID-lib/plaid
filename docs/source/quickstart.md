@@ -1,4 +1,4 @@
-# Quickstart
+# :material-rocket-launch-outline:{ .lg .middle } Quickstart
 
 ## 1 Using the library
 

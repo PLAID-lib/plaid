@@ -1,4 +1,4 @@
-# Concepts
+# :material-book-open-page-variant-outline:{ .lg .middle } Concepts
 
 PLAID is a data model and library for organizing samples of heterogeneous physics data and defining
 learning problems on physics datasets.
@@ -19,6 +19,6 @@ For practical examples, see the [examples and tutorials](examples_tutorials.md) 
 * [Sample](concepts/sample.md)
 * [Dataset](concepts/dataset.md)
 * [Problem definition](concepts/problem_definition.md)
-* [Defaults](concepts/defaults.md)
+* [Default values](concepts/defaults.md)
 * [Disk format](concepts/disk_format.md)
 * [Viewer](concepts/viewer.md)
