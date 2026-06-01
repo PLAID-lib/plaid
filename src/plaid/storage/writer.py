@@ -272,7 +272,7 @@ def push_to_hub(
     """
     infos = load_infos_from_disk(local_dir)
 
-    validate_required_only(infos)
+    Info.validate_required_only(infos)
 
     backend = infos["storage_backend"]
 

@@ -5,7 +5,6 @@ It includes:
 - ``AUTHORIZED_TASKS``: List of supported task types, such as regression and classification.
 - ``AUTHORIZED_FEATURE_TYPES``: List of supported feature types, such as scalar, field, and nodes.
 - ``AUTHORIZED_FEATURE_INFOS``: Dictionary specifying allowed metadata keys for feature types.
-- ``AUTHORIZED_INFO_KEYS``: Dictionary specifying allowed metadata keys for information sections.
 - ``CGNS_FIELD_LOCATIONS``: List of valid field locations as defined by the CGNS standard.
 - ``CGNS_ELEMENT_NAMES``: List of CGNS element names representing mesh element types.
 
