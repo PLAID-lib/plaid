@@ -15,6 +15,7 @@ extra_javascript = [
   "javascripts/mathjax.js",
   "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js",
 ]
+extra_css = ["stylesheets/extra.css"]
 features = [
   "content.action.edit",
   "content.action.view",
@@ -42,9 +43,8 @@ nav = [
       { "Sample" = "concepts/sample.md" },
       { "Dataset" = "concepts/dataset.md" },
       { "Problem definition" = "concepts/problem_definition.md" },
-      { "Defaults" = "concepts/defaults.md" },
+      { "Defaults values" = "concepts/defaults.md" },
       { "Disk format" = "concepts/disk_format.md" },
-      { "Viewer" = "concepts/viewer.md" },
     ] },
     { "Examples and tutorials" = [
       { "Overview" = "examples_tutorials.md" },
@@ -53,6 +53,7 @@ nav = [
       { "Problem definition notebook" = "notebooks/problem_definition_example.md" },
       { "Downloadable samples notebook" = "notebooks/downloadable_example/sample_example.md" },
     ] },
+    { "Viewer" = "concepts/viewer.md" },
     # >>> AUTO-GENERATED API REFERENCE START
     # The block below is overwritten by `python docs/generate_api_stubs.py`.
     # Edit that script (or the markers) instead of changing this section by hand.

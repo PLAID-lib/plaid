@@ -53,3 +53,6 @@ find source/notebooks -name "*.sh" -delete
 echo "#---# Build the static site with Zensical"
 zensical build --clean --config-file zensical.toml
 
+echo "#---# Copy custom stylesheets"
+mkdir -p _build/html/stylesheets
+cp -av stylesheets/*.css _build/html/stylesheets/

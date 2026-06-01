@@ -66,6 +66,7 @@ report.xml
 
 # Documentation
 docs/_build/
+docs/source/api
 docs/source/notebooks
 
 ###############################################################################
