@@ -81,8 +81,7 @@ massive, heterogeneous datasets.
 
     ---
 
-    Request only the features you need and, where needed, selected indices inside
-    large variable arrays.
+    Request only the features you need and, when necessary, only selected indices within large variable arrays.
 
 - :material-eye-outline:{ .lg .middle } **Interactive viewer**
 
