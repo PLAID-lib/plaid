@@ -242,9 +242,6 @@ def init_from_disk(
         tuple: A tuple containing (datasetdict, converterdict) where datasetdict maps
             split names to dataset objects and converterdict maps split names to Converter objects.
     """
-    flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(
-        local_dir
-    )
     infos = load_infos_from_disk(local_dir)
 
     backend = infos["storage_backend"]
@@ -254,6 +251,18 @@ def init_from_disk(
 
     if splits is None:
         splits = list(datasetdict.keys())
+
+    if backend == "cgns":
+        # CGNS samples are self-contained: no derived metadata is written or
+        # consumed for this backend.
+        flat_cst = {str(s): {} for s in splits}
+        variable_schema = {}
+        constant_schema = {str(s): {} for s in splits}
+        cgns_types = {}
+    else:
+        flat_cst, variable_schema, constant_schema, cgns_types = (
+            load_metadata_from_disk(local_dir)
+        )
 
     converterdict = {}
     for split in splits:
@@ -287,9 +296,6 @@ def download_from_hub(
         features: Optional list of features to download.
         overwrite: If True, overwrites existing local directory.
     """
-    flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(
-        repo_id
-    )
     infos = load_infos_from_hub(repo_id)
     pb_defs = load_problem_definitions_from_hub(repo_id)
 
@@ -298,9 +304,13 @@ def download_from_hub(
     backend_spec = get_backend(backend)
     backend_spec.download_from_hub(repo_id, local_dir, split_ids, features, overwrite)
 
-    save_metadata_to_disk(
-        local_dir, flat_cst, variable_schema, constant_schema, cgns_types
-    )
+    if backend != "cgns":
+        flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(
+            repo_id
+        )
+        save_metadata_to_disk(
+            local_dir, flat_cst, variable_schema, constant_schema, cgns_types
+        )
     save_infos_to_disk(local_dir, infos)
     if pb_defs is not None:
         save_problem_definitions_to_disk(local_dir, pb_defs)

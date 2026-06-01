@@ -211,13 +211,21 @@ def save_to_disk(
     output_folder = Path(output_folder)
     _check_folder(output_folder, overwrite)
 
+    # The derivation of constant and variable parts is always computed: it
+    # validates the generated samples and yields the per-split sample counts
+    # recorded in ``infos.yaml``. For the CGNS backend the resulting
+    # constant / variable / cgns_types catalogues are intentionally NOT
+    # written to disk: CGNS samples are stored in full (not split between
+    # a per-split constants/ payload and a variable arrow/zarr column
+    # store), so those derived schemas are not needed at read time.
     flat_cst, variable_schema, constant_schema, num_samples, cgns_types = preprocess(
         generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
     )
 
-    save_metadata_to_disk(
-        output_folder, flat_cst, variable_schema, constant_schema, cgns_types
-    )
+    if backend != "cgns":
+        save_metadata_to_disk(
+            output_folder, flat_cst, variable_schema, constant_schema, cgns_types
+        )
 
     infos = infos.copy() if infos else {}
     infos.setdefault("num_samples", num_samples)
@@ -290,7 +298,8 @@ def push_to_hub(
         arxiv_paper_urls,
     )
 
-    push_local_metadata_to_hub(repo_id, local_dir)
+    if backend != "cgns":
+        push_local_metadata_to_hub(repo_id, local_dir)
 
     push_infos_to_hub(repo_id, infos)
 
