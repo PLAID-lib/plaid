@@ -78,7 +78,7 @@ def tree3d(nodes3d, triangles, vertex_field, cell_center_field):
 
 @pytest.fixture()
 def sample_with_tree3d(sample, tree3d):
-    sample.features.add_tree(tree3d)
+    sample.add_tree(tree3d)
     return sample
 
 
@@ -94,7 +94,7 @@ def sample_from_muscat_mesh_dent3D(sample):
 
     print(mesh)
     print(CGNSToMesh(cgnsmesh))
-    sample.features.add_tree(cgnsmesh)
+    sample.add_tree(cgnsmesh)
     return sample
 
 
@@ -120,8 +120,8 @@ def full_sample(sample_with_tree_and_scalar: Sample, tree3d):
     sample_with_tree_and_scalar.init_base(
         topological_dim=2, physical_dim=3, base="test_base_1"
     )
-    sample_with_tree_and_scalar.features.init_tree(time=1.0)
-    sample_with_tree_and_scalar.features.add_tree(tree=tree3d)
+    sample_with_tree_and_scalar.init_tree(time=1.0)
+    sample_with_tree_and_scalar.add_tree(tree=tree3d)
     return sample_with_tree_and_scalar
 
 
@@ -153,7 +153,7 @@ def test_add_tree_invalid_name_length(sample: Sample, tree):
     base_node[0] = "B" * 33
 
     with pytest.raises(ValueError):
-        sample.features.add_tree(invalid_tree)
+        sample.add_tree(invalid_tree)
 
 
 def test_read_index(tree, coordinates_dim):
@@ -191,9 +191,9 @@ class Test_Sample:
         sample_already_filled_1 = Sample(path=sample_path_1)
         sample_already_filled_2 = Sample(path=sample_path_2)
         sample_already_filled_3 = Sample(path=sample_path_3)
-        assert sample_already_filled_1.features
-        assert sample_already_filled_2.features
-        assert sample_already_filled_3.features
+        assert sample_already_filled_1
+        assert sample_already_filled_2
+        assert sample_already_filled_3
 
     def test__init__unknown_directory(self, current_directory):
         sample_path = current_directory / "dataset" / "samples" / "sample_000000298"
@@ -228,17 +228,17 @@ class Test_Sample:
 
         sample.set_default_base(f"Base_{topological_dim}_{physical_dim}", 0.5)
         # check dims getters
-        assert sample.features.get_topological_dim() == topological_dim
-        assert sample.features.get_physical_dim() == physical_dim
+        assert sample.get_topological_dim() == topological_dim
+        assert sample.get_physical_dim() == physical_dim
         assert (
-            sample.features.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
+            sample.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
         )
-        assert sample.features.resolve_time() == 0.5
-        assert sample.features.resolve_base("test") == "test"
+        assert sample.resolve_time() == 0.5
+        assert sample.resolve_base("test") == "test"
 
         sample.set_default_base(f"Base_{topological_dim}_{physical_dim}")  # already set
         assert (
-            sample.features.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
+            sample.resolve_base() == f"Base_{topological_dim}_{physical_dim}"
         )
         with pytest.raises(ValueError):
             sample.set_default_base("Unknown base name")
@@ -255,16 +255,16 @@ class Test_Sample:
         sample.init_base(topological_dim, physical_dim, base_name, time=0.5)
         sample.set_default_base(base_name)
         # No zone provided
-        assert sample.features.get_zone() is None
+        assert sample.get_zone() is None
 
         sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base=base_name)
         # Look for the only zone in the default base
-        assert sample.features.get_zone() is not None
+        assert sample.get_zone() is not None
 
         sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base=base_name)
         # There is more than one zone in this base
         with pytest.raises(KeyError):
-            sample.features.get_zone()
+            sample.get_zone()
 
     def test_set_default_zone(
         self,
@@ -280,22 +280,22 @@ class Test_Sample:
 
         sample.set_default_zone_base(zone_name, base_name, 0.5)
         # check dims getters
-        assert sample.features.get_topological_dim() == topological_dim
-        assert sample.features.get_physical_dim() == physical_dim
-        assert sample.features.resolve_base() == base_name
-        assert sample.features.resolve_time() == 0.5
+        assert sample.get_topological_dim() == topological_dim
+        assert sample.get_physical_dim() == physical_dim
+        assert sample.resolve_base() == base_name
+        assert sample.resolve_time() == 0.5
 
         sample.set_default_base(base_name)  # already set
-        assert sample.features.resolve_base() == base_name
+        assert sample.resolve_base() == base_name
         with pytest.raises(ValueError):
             sample.set_default_base("Unknown base name")
 
-        assert sample.features.resolve_zone() == zone_name
-        assert sample.features.resolve_time() == 0.5
+        assert sample.resolve_zone() == zone_name
+        assert sample.resolve_time() == 0.5
 
-        assert sample.features.get_zone() is not None
+        assert sample.get_zone() is not None
         sample.set_default_zone_base(zone_name, base_name)
-        assert sample.features.resolve_zone() == zone_name
+        assert sample.resolve_zone() == zone_name
         with pytest.raises(ValueError):
             sample.set_default_zone_base("Unknown zone name", base_name)
 
@@ -303,12 +303,12 @@ class Test_Sample:
         sample.init_base(topological_dim, physical_dim, time=0.5)
         sample.init_base(topological_dim, physical_dim, "OK_name", time=1.5)
 
-        assert sample.features.resolve_time() == 0.5
+        assert sample.resolve_time() == 0.5
         sample.set_default_time(1.5)
-        assert sample.features.resolve_time() == 1.5, "here"
+        assert sample.resolve_time() == 1.5, "here"
 
         sample.set_default_time(1.5)  # already set
-        assert sample.features.resolve_time() == 1.5
+        assert sample.resolve_time() == 1.5
         with pytest.raises(ValueError):
             sample.set_default_time(2.5)
 
@@ -318,39 +318,39 @@ class Test_Sample:
         sample_with_tree_and_scalar.show_tree()
 
     def test_init_tree(self, sample: Sample):
-        sample.features.init_tree()
-        sample.features.init_tree(0.5)
+        sample.init_tree()
+        sample.init_tree(0.5)
 
     def test_get_tree_empty(self, sample: Sample):
         sample.get_tree()
-        sample.features.get_tree()
+        sample.get_tree()
 
     def test_get_tree(self, sample_with_tree_and_scalar):
         sample_with_tree_and_scalar.get_tree()
         sample_with_tree_and_scalar.get_tree(only_mesh=True)
 
     def test_set_trees_empty(self, sample, tree):
-        sample.features.set_trees({0.0: tree})
+        sample.set_trees({0.0: tree})
 
     def test_set_trees(self, sample_with_tree: Sample, tree):
         with pytest.raises(KeyError):
-            sample_with_tree.features.set_trees({0.0: tree})
+            sample_with_tree.set_trees({0.0: tree})
 
     def test_add_tree_empty(self, sample_with_tree: Sample):
         with pytest.raises(ValueError):
-            sample_with_tree.features.add_tree([])
+            sample_with_tree.add_tree([])
 
     def test_add_tree(self, sample: Sample, tree):
-        sample.features.add_tree(tree)
-        sample.features.add_tree(tree)
-        sample.features.add_tree(tree, time=0.2)
+        sample.add_tree(tree)
+        sample.add_tree(tree)
+        sample.add_tree(tree, time=0.2)
 
     def test_add_tree_in_place_true_mutates_input_tree(self, sample: Sample, tree):
         base_path = CGU.getPathsByTypeSet(tree, ["CGNSBase_t"])[0]
         base_node = CGU.getNodeByPath(tree, base_path)
         assert CGU.getValueByPath(base_node, "Time/TimeValues") is None
 
-        sample.features.add_tree(tree, in_place=True)
+        sample.add_tree(tree, in_place=True)
 
         # With in_place=True, the same object may be reused internally.
         assert CGU.getValueByPath(base_node, "Time/TimeValues") is not None
@@ -360,38 +360,38 @@ class Test_Sample:
         base_node = CGU.getNodeByPath(tree, base_path)
         assert CGU.getValueByPath(base_node, "Time/TimeValues") is None
 
-        sample.features.add_tree(tree, in_place=False)
+        sample.add_tree(tree, in_place=False)
 
         # With in_place=False, the input tree is deep-copied first.
         assert CGU.getValueByPath(base_node, "Time/TimeValues") is None
-        added_base_node = sample.features.get_base(time=0.0)
+        added_base_node = sample.get_base(time=0.0)
         assert CGU.getValueByPath(added_base_node, "Time/TimeValues") is not None
 
     def test_del_tree(self, sample, tree):
-        sample.features.add_tree(tree)
-        sample.features.add_tree(tree, time=0.2)
+        sample.add_tree(tree)
+        sample.add_tree(tree, time=0.2)
 
-        assert isinstance(sample.features.del_tree(0.2), list)
-        assert list(sample.features.data.keys()) == [0.0]
+        assert isinstance(sample.del_tree(0.2), list)
+        assert list(sample.data.keys()) == [0.0]
 
-        assert isinstance(sample.features.del_tree(0.0), list)
-        assert list(sample.features.data.keys()) == []
+        assert isinstance(sample.del_tree(0.0), list)
+        assert list(sample.data.keys()) == []
 
     def test_on_error_del_tree(self, sample, tree):
         with pytest.raises(KeyError):
-            sample.features.del_tree(0.0)
+            sample.del_tree(0.0)
 
-        sample.features.add_tree(tree)
-        sample.features.add_tree(tree, time=0.2)
+        sample.add_tree(tree)
+        sample.add_tree(tree, time=0.2)
         with pytest.raises(KeyError):
-            sample.features.del_tree(0.7)
+            sample.del_tree(0.7)
 
     # -------------------------------------------------------------------------#
     def test_init_base(self, sample: Sample, base_name, topological_dim, physical_dim):
         sample.init_base(topological_dim, physical_dim, base_name)
         # check dims getters
-        assert sample.features.get_topological_dim(base_name) == topological_dim
-        assert sample.features.get_physical_dim(base_name) == physical_dim
+        assert sample.get_topological_dim(base_name) == topological_dim
+        assert sample.get_physical_dim(base_name) == physical_dim
 
     def test_del_base_existing_base(
         self, sample: Sample, base_name, topological_dim, physical_dim
@@ -401,40 +401,40 @@ class Test_Sample:
         sample.init_base(topological_dim, physical_dim, second_base_name)
 
         # Delete first base
-        updated_cgns_tree = sample.features.del_base(base_name, 0.0)
+        updated_cgns_tree = sample.del_base(base_name, 0.0)
         assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
 
         # Testing the resulting tree
         new_sample = Sample()
-        new_sample.features.add_tree(updated_cgns_tree, 0.1)
-        assert new_sample.features.get_topological_dim() == topological_dim
-        assert new_sample.features.get_physical_dim() == physical_dim
-        assert new_sample.features.get_base_names() == [second_base_name]
+        new_sample.add_tree(updated_cgns_tree, 0.1)
+        assert new_sample.get_topological_dim() == topological_dim
+        assert new_sample.get_physical_dim() == physical_dim
+        assert new_sample.get_base_names() == [second_base_name]
 
         # Add 2 bases and delete one base at time 0.2
         sample.init_base(topological_dim, physical_dim, "tree", 0.2)
         sample.init_base(topological_dim, physical_dim, base_name, 0.2)
-        updated_cgns_tree = sample.features.del_base("tree", 0.2)
-        assert sample.features.get_base("tree", 0.2) is None
-        assert sample.features.get_base(base_name, 0.2) is not None
-        assert sample.features.get_base(second_base_name) is not None
+        updated_cgns_tree = sample.del_base("tree", 0.2)
+        assert sample.get_base("tree", 0.2) is None
+        assert sample.get_base(base_name, 0.2) is not None
+        assert sample.get_base(second_base_name) is not None
         assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
 
         # Testing the resulting from time 0.2
         new_sample = Sample()
-        new_sample.features.add_tree(updated_cgns_tree)
-        assert new_sample.features.get_topological_dim() == topological_dim
-        assert new_sample.features.get_physical_dim() == physical_dim
-        assert new_sample.features.get_base_names() == [base_name]
+        new_sample.add_tree(updated_cgns_tree)
+        assert new_sample.get_topological_dim() == topological_dim
+        assert new_sample.get_physical_dim() == physical_dim
+        assert new_sample.get_base_names() == [base_name]
 
         # Deleting the last base at time 0.0
-        updated_cgns_tree = sample.features.del_base(second_base_name, 0.0)
-        assert sample.features.get_base(second_base_name) is None
+        updated_cgns_tree = sample.del_base(second_base_name, 0.0)
+        assert sample.get_base(second_base_name) is None
         assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
 
         # Deleting the last base at time 0.2
-        updated_cgns_tree = sample.features.del_base(base_name, 0.2)
-        assert sample.features.get_base(base_name) is None
+        updated_cgns_tree = sample.del_base(base_name, 0.2)
+        assert sample.get_base(base_name) is None
         assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
 
     def test_del_base_nonexistent_base_nonexistent_time(
@@ -442,13 +442,13 @@ class Test_Sample:
     ):
         sample.init_base(topological_dim, physical_dim, base_name, time=1.0)
         with pytest.raises(KeyError):
-            sample.features.del_base(base_name, time=2.0)
+            sample.del_base(base_name, time=2.0)
         with pytest.raises(KeyError):
-            sample.features.del_base("unknown", time=1.0)
+            sample.del_base("unknown", time=1.0)
 
     def test_del_base_no_cgns_tree(self, sample):
         with pytest.raises(KeyError):
-            sample.features.del_base("unknwon", 0.0)
+            sample.del_base("unknwon", 0.0)
 
     def test_init_base_no_base_name(
         self, sample: Sample, topological_dim, physical_dim
@@ -457,52 +457,52 @@ class Test_Sample:
 
         # check dims getters
         assert (
-            sample.features.get_topological_dim(
+            sample.get_topological_dim(
                 f"Base_{topological_dim}_{physical_dim}"
             )
             == topological_dim
         )
         assert (
-            sample.features.get_physical_dim(f"Base_{topological_dim}_{physical_dim}")
+            sample.get_physical_dim(f"Base_{topological_dim}_{physical_dim}")
             == physical_dim
         )
 
         # check setting default base
         sample.set_default_base(f"Base_{topological_dim}_{physical_dim}")
-        assert sample.features.get_topological_dim() == topological_dim
-        assert sample.features.get_physical_dim() == physical_dim
+        assert sample.get_topological_dim() == topological_dim
+        assert sample.get_physical_dim() == physical_dim
 
     def test_get_base_names(self, sample: Sample):
-        assert sample.features.get_base_names() == []
+        assert sample.get_base_names() == []
         sample.init_base(3, 3, "base_name_1")
         sample.init_base(3, 3, "base_name_2")
-        assert sample.features.get_base_names() == ["base_name_1", "base_name_2"]
-        assert sample.features.get_base_names(full_path=True) == [
+        assert sample.get_base_names() == ["base_name_1", "base_name_2"]
+        assert sample.get_base_names(full_path=True) == [
             "/base_name_1",
             "/base_name_2",
         ]
         # check dims getters
-        assert sample.features.get_topological_dim("base_name_1") == 3
-        assert sample.features.get_physical_dim("base_name_1") == 3
-        assert sample.features.get_topological_dim("base_name_2") == 3
-        assert sample.features.get_physical_dim("base_name_2") == 3
+        assert sample.get_topological_dim("base_name_1") == 3
+        assert sample.get_physical_dim("base_name_1") == 3
+        assert sample.get_topological_dim("base_name_2") == 3
+        assert sample.get_physical_dim("base_name_2") == 3
 
     def test_get_base(self, sample: Sample, base_name):
-        sample.features.init_tree()
-        assert sample.features.get_base() is None
+        sample.init_tree()
+        assert sample.get_base() is None
         sample.init_base(3, 3, base_name)
-        assert sample.features.get_base(base_name) is not None
-        assert sample.features.get_base() is not None
+        assert sample.get_base(base_name) is not None
+        assert sample.get_base() is not None
         sample.init_base(3, 3, "other_base_name")
-        assert sample.features.get_base(base_name) is not None
-        assert sample.features.get_base(time=1.0) is None
+        assert sample.get_base(base_name) is not None
+        assert sample.get_base(time=1.0) is None
         with pytest.raises(KeyError):
-            sample.features.get_base()
+            sample.get_base()
         # check dims getters
-        assert sample.features.get_topological_dim(base_name) == 3
-        assert sample.features.get_physical_dim(base_name) == 3
-        assert sample.features.get_topological_dim("other_base_name") == 3
-        assert sample.features.get_physical_dim("other_base_name") == 3
+        assert sample.get_topological_dim(base_name) == 3
+        assert sample.get_physical_dim(base_name) == 3
+        assert sample.get_topological_dim("other_base_name") == 3
+        assert sample.get_physical_dim("other_base_name") == 3
 
     # -------------------------------------------------------------------------#
     def test_init_zone(self, sample: Sample, base_name, zone_name, zone_shape):
@@ -512,8 +512,8 @@ class Test_Sample:
         sample.init_zone(zone_shape, CGK.Structured_s, zone_name, base=base_name)
         sample.init_zone(zone_shape, CGK.Unstructured_s, zone_name, base=base_name)
         # check dims getters
-        assert sample.features.get_topological_dim(base_name) == 3
-        assert sample.features.get_physical_dim(base_name) == 3
+        assert sample.get_topological_dim(base_name) == 3
+        assert sample.get_physical_dim(base_name) == 3
 
     def test_init_zone_defaults_names(self, sample: Sample, zone_shape):
         sample.init_base(3, 3)
@@ -532,13 +532,13 @@ class Test_Sample:
         )
 
         # Delete first zone
-        updated_cgns_tree = sample.features.del_zone(zone_name, base_name, 0.0)
+        updated_cgns_tree = sample.del_zone(zone_name, base_name, 0.0)
         assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
 
         # Testing the resulting tree
         new_sample = Sample()
-        new_sample.features.add_tree(updated_cgns_tree, 0.1)
-        assert new_sample.features.get_zone_names() == [second_zone_name]
+        new_sample.add_tree(updated_cgns_tree, 0.1)
+        assert new_sample.get_zone_names() == [second_zone_name]
 
         # Add 2 zones and delete one zone at time 0.2
         sample.init_base(topological_dim, physical_dim, base_name, 0.2)
@@ -549,25 +549,25 @@ class Test_Sample:
             zone_shape, CGK.Unstructured_s, "test", base=base_name, time=0.2
         )
 
-        updated_cgns_tree = sample.features.del_zone("test", base_name, 0.2)
-        assert sample.features.get_zone("tree", base_name, 0.2) is None
-        assert sample.features.get_zone(zone_name, base_name, 0.2) is not None
-        assert sample.features.get_zone(second_zone_name, base_name) is not None
+        updated_cgns_tree = sample.del_zone("test", base_name, 0.2)
+        assert sample.get_zone("tree", base_name, 0.2) is None
+        assert sample.get_zone(zone_name, base_name, 0.2) is not None
+        assert sample.get_zone(second_zone_name, base_name) is not None
         assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
 
         # Testing the resulting from time 0.2
         new_sample = Sample()
-        new_sample.features.add_tree(updated_cgns_tree)
-        assert new_sample.features.get_zone_names(base_name) == [zone_name]
+        new_sample.add_tree(updated_cgns_tree)
+        assert new_sample.get_zone_names(base_name) == [zone_name]
 
         # Deleting the last zone at time 0.0
-        updated_cgns_tree = sample.features.del_zone(second_zone_name, base_name, 0.0)
-        assert sample.features.get_zone(second_zone_name, base_name) is None
+        updated_cgns_tree = sample.del_zone(second_zone_name, base_name, 0.0)
+        assert sample.get_zone(second_zone_name, base_name) is None
         assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
 
         # Deleting the last zone at time 0.2
-        updated_cgns_tree = sample.features.del_zone(zone_name, base_name, 0.2)
-        assert sample.features.get_zone(zone_name, base_name) is None
+        updated_cgns_tree = sample.del_zone(zone_name, base_name, 0.2)
+        assert sample.get_zone(zone_name, base_name) is None
         assert updated_cgns_tree is not None and isinstance(updated_cgns_tree, list)
 
     def test_del_zone_nonexistent_zone_nonexistent_time(
@@ -579,23 +579,23 @@ class Test_Sample:
             zone_shape, CGK.Structured_s, zone_name, base=base_name, time=1.0
         )
         with pytest.raises(KeyError):
-            sample.features.del_zone(zone_name, base_name, 2.0)
+            sample.del_zone(zone_name, base_name, 2.0)
         with pytest.raises(KeyError):
-            sample.features.del_zone("unknown", base_name, 1.0)
+            sample.del_zone("unknown", base_name, 1.0)
 
     def test_del_zone_no_cgns_tree(self, sample: Sample):
         sample.init_base(2, 3, "only_base")
         with pytest.raises(KeyError):
-            sample.features.del_zone("unknwon", "only_base", 0.0)
+            sample.del_zone("unknwon", "only_base", 0.0)
 
     def test_has_zone(self, sample, base_name, zone_name):
         sample.init_base(3, 3, base_name)
         sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
         sample.show_tree()
-        assert sample.features.has_zone(zone_name, base_name)
-        assert not sample.features.has_zone("not_present_zone_name", base_name)
-        assert not sample.features.has_zone(zone_name, "not_present_base_name")
-        assert not sample.features.has_zone(
+        assert sample.has_zone(zone_name, base_name)
+        assert not sample.has_zone("not_present_zone_name", base_name)
+        assert not sample.has_zone(zone_name, "not_present_base_name")
+        assert not sample.has_zone(
             "not_present_zone_name", "not_present_base_name"
         )
 
@@ -611,45 +611,45 @@ class Test_Sample:
             zone="zone_name_2",
             base=base_name,
         )
-        assert sample.features.get_zone_names(base_name) == [
+        assert sample.get_zone_names(base_name) == [
             "zone_name_1",
             "zone_name_2",
         ]
-        assert sorted(sample.features.get_zone_names(base_name, unique=True)) == sorted(
+        assert sorted(sample.get_zone_names(base_name, unique=True)) == sorted(
             ["zone_name_1", "zone_name_2"]
         )
-        assert sample.features.get_zone_names(base_name, full_path=True) == [
+        assert sample.get_zone_names(base_name, full_path=True) == [
             f"{base_name}/zone_name_1",
             f"{base_name}/zone_name_2",
         ]
 
     def test_get_zone_type(self, sample: Sample, zone_name, base_name):
         with pytest.raises(KeyError):
-            sample.features.get_zone_type(zone_name, base_name)
-        sample.features.init_tree()
+            sample.get_zone_type(zone_name, base_name)
+        sample.init_tree()
         with pytest.raises(KeyError):
-            sample.features.get_zone_type(zone_name, base_name)
+            sample.get_zone_type(zone_name, base_name)
         sample.init_base(3, 3, base_name)
         with pytest.raises(KeyError):
-            sample.features.get_zone_type(zone_name, base_name)
+            sample.get_zone_type(zone_name, base_name)
         sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
-        assert sample.features.get_zone_type(zone_name, base_name) == CGK.Unstructured_s
+        assert sample.get_zone_type(zone_name, base_name) == CGK.Unstructured_s
 
     def test_get_zone(self, sample: Sample, zone_name, base_name):
-        assert sample.features.get_zone(zone_name, base_name) is None
+        assert sample.get_zone(zone_name, base_name) is None
         sample.init_base(3, 3, base_name)
-        assert sample.features.get_zone(zone_name, base_name) is None
+        assert sample.get_zone(zone_name, base_name) is None
         sample.init_zone(np.array([[5, 3, 0]]), zone=zone_name, base=base_name)
-        assert sample.features.get_zone() is not None
-        assert sample.features.get_zone(zone_name, base_name) is not None
+        assert sample.get_zone() is not None
+        assert sample.get_zone(zone_name, base_name) is not None
         sample.init_zone(
             np.array([[5, 3, 0]]),
             zone="other_zone_name",
             base=base_name,
         )
-        assert sample.features.get_zone(zone_name, base_name) is not None
+        assert sample.get_zone(zone_name, base_name) is not None
         with pytest.raises(KeyError):
-            assert sample.features.get_zone() is not None
+            assert sample.get_zone() is not None
 
     # -------------------------------------------------------------------------#
     def test_get_scalar_names(self, sample: Sample):
@@ -741,10 +741,10 @@ class Test_Sample:
 
     # -------------------------------------------------------------------------#
     def test_get_nodal_tags_empty(self, sample):
-        assert sample.features.get_nodal_tags() == {}
+        assert sample.get_nodal_tags() == {}
 
     def test_get_nodal_tags(self, sample_with_tree, nodal_tags):
-        assert np.all(sample_with_tree.features.get_nodal_tags()["tag"] == nodal_tags)
+        assert np.all(sample_with_tree.get_nodal_tags()["tag"] == nodal_tags)
 
     def test_get_element_tags_empty(self, sample):
         assert sample.get_element_tags() == {}
@@ -781,7 +781,7 @@ class Test_Sample:
     # ):
     #     sample.init_base(2, 2, base_name)
     #     sample.init_zone(np.array([3, 0, 0]), zone=zone_name, base=base_name)
-    #     zone_node = sample.features.get_zone(zone=zone_name, base=base_name)
+    #     zone_node = sample.get_zone(zone=zone_name, base=base_name)
     #     gc_node = CGU.getNodeByPath(zone_node, "GridCoordinates")
     #     assert gc_node is not None
     #     CGU.nodeDelete(zone_node, gc_node)
@@ -810,13 +810,13 @@ class Test_Sample:
 
     # -------------------------------------------------------------------------#
     def test_get_elements_empty(self, sample: Sample):
-        assert sample.features.get_elements() == {}
+        assert sample.get_elements() == {}
 
     def test_get_elements(self, sample_with_tree: Sample, triangles):
-        assert list(sample_with_tree.features.get_elements().keys()) == ["TRI_3"]
+        assert list(sample_with_tree.get_elements().keys()) == ["TRI_3"]
         print(f"{triangles=}")
-        print(f"{sample_with_tree.features.get_elements()=}")
-        assert np.all(sample_with_tree.features.get_elements()["TRI_3"] == triangles)
+        print(f"{sample_with_tree.get_elements()=}")
+        assert np.all(sample_with_tree.get_elements()["TRI_3"] == triangles)
 
     # -------------------------------------------------------------------------#
     def test_get_field_names(self, sample: Sample):
@@ -1058,7 +1058,7 @@ class Test_Sample:
         sample.init_base(2, 2, base_name)
         sample.init_zone(np.array([3, 0, 0]), zone=zone_name, base=base_name)
 
-        zone_node = sample.features.get_zone(zone=zone_name, base=base_name)
+        zone_node = sample.get_zone(zone=zone_name, base=base_name)
         udd = CGL.newUserDefinedData(zone_node, "ItgPointData")
         CGL.newDataArray(
             udd,
@@ -1226,7 +1226,7 @@ class Test_Sample:
 
         # Testing new tree on field 'test_elem_field_2'
         new_sample = Sample()
-        new_sample.features.add_tree(new_tree)
+        new_sample.add_tree(new_tree)
 
         assert (
             new_sample.get_field(
@@ -1254,7 +1254,7 @@ class Test_Sample:
 
         # Testing new tree on field 'test_elem_field_1'
         new_sample = Sample()
-        new_sample.features.add_tree(new_tree)
+        new_sample.add_tree(new_tree)
 
         assert (
             new_sample.get_field(

@@ -1038,13 +1038,13 @@ class PlaidDatasetService:
     def list_time_values(self, ref: SampleRef) -> list[float]:
         """Return the sorted list of time values available for a sample.
 
-        Thin wrapper around :meth:`plaid.Sample.features.get_all_time_values`
+        Thin wrapper around :meth:`plaid.Sample.get_all_time_values`
         that always returns a ``list[float]`` (it may be empty for static
         samples).
         """
         sample = self.load_sample(ref)
         try:
-            times = sample.features.get_all_time_values()
+            times = sample.get_all_time_values()
         except Exception:  # noqa: BLE001 - defensive, PLAID shouldn't raise
             return []
         return sorted(float(t) for t in times)
@@ -1120,7 +1120,7 @@ class PlaidDatasetService:
 
         Performs a single :meth:`load_sample` call (which goes through
         the in-memory LRU) and then iterates over every time value
-        exposed by :meth:`plaid.Sample.features.get_all_time_values`,
+        exposed by :meth:`plaid.Sample.get_all_time_values`,
         building a ``{time: [globals_entries]}`` snapshot. The trame
         playback loop can then refresh the globals panel by indexing
         into this dict instead of triggering a fresh service call (and
@@ -1139,7 +1139,7 @@ class PlaidDatasetService:
         sample = self.load_sample(ref)
         static = self._describe_globals_for_sample(sample, time=None)
         try:
-            times = sample.features.get_all_time_values()
+            times = sample.get_all_time_values()
         except Exception:  # noqa: BLE001 - defensive, PLAID shouldn't raise
             times = []
         by_time: dict[float, list[dict[str, object]]] = {}
@@ -1176,7 +1176,7 @@ class PlaidDatasetService:
             from CGNS.PAT import cgnsutils as CU  # noqa: PLC0415
         except ImportError:  # pragma: no cover - defensive
             return {}
-        tree = sample.features.data[times[0]]
+        tree = sample.data[times[0]]
         summary: dict[str, list[dict[str, object]]] = {}
         for base_node in (
             CU.hasChildType(tree, CK.CGNSBase_ts) or []
@@ -1354,7 +1354,7 @@ class PlaidDatasetService:
 
     @staticmethod
     def _time_keys(sample) -> list[float]:
-        data = getattr(sample.features, "data", None)
+        data = getattr(sample, "data", None)
         if not data:
             return []
         return sorted(float(t) for t in data.keys())
@@ -1367,7 +1367,7 @@ class PlaidDatasetService:
         fields_by_base: dict[str, list[str]] = {}
         if not times:
             return bases, zones_by_base, fields_by_base
-        tree = sample.features.data[times[0]]
+        tree = sample.data[times[0]]
         # Deferred import - CGNS helpers live inside pyCGNS.
         try:
             from CGNS.PAT import cgnskeywords as CK  # noqa: PLC0415

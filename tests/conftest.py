@@ -160,7 +160,7 @@ def tree(muscat_mesh):
 def sample_with_tree(tree: CGNSTree) -> Sample:
     """Generate a Sample objects with a tree."""
     sample = Sample()
-    sample.features.add_tree(tree)
+    sample.add_tree(tree)
     return sample
 
 

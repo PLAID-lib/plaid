@@ -115,7 +115,7 @@ def _write_series_sidecar(
 
 
 def _collect_time_values(sample) -> list[float]:
-    data = getattr(sample.features, "data", None)
+    data = getattr(sample, "data", None)
     if not data:
         return []
     return sorted(float(t) for t in data.keys())

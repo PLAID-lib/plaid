@@ -185,8 +185,7 @@ def test_describe_non_visual_bases_lists_zoneless_bases_only(
     ]
     tree = ["CGNSTree", None, [visual_base, aux_base], "CGNSTree_t"]
 
-    features = types.SimpleNamespace(data={0.0: tree})
-    sample = types.SimpleNamespace(features=features)
+    sample = types.SimpleNamespace(data={0.0: tree})
 
     dataset_dict = {"train": _FakeDataset(range(1))}
     converter_dict = {"train": _FakeConverter({0: sample})}
@@ -1133,10 +1132,11 @@ class _SummarySample:
     def __init__(self, report: str = "warning") -> None:
         import types
 
-        self.features = types.SimpleNamespace(
-            data={}, get_all_time_values=lambda: [2, 1]
-        )
+        self.data = {}
         self._report = report
+
+    def get_all_time_values(self):
+        return [2, 1]
 
     def get_scalar_names(self):
         return ["s"]
@@ -1196,7 +1196,7 @@ def test_describe_globals_all_times_indexes_each_timestep(
     2. The returned ``static`` listing matches what
        ``describe_globals(ref)`` returns with ``time=None``.
     3. ``by_time`` exposes a deterministic ``{float: [...]}`` mapping
-       keyed on every value reported by ``sample.features.get_all_time_values``.
+       keyed on every value reported by ``sample.get_all_time_values``.
     4. ``IterationValues`` / ``TimeValues`` bookkeeping arrays are
        filtered out at every timestep.
     """
@@ -1206,11 +1206,12 @@ def test_describe_globals_all_times_indexes_each_timestep(
 
     class _TimeAwareSample:
         def __init__(self) -> None:
-            self.features = types.SimpleNamespace(
-                data={},
-                get_all_time_values=lambda: [1.0, 2.0],
-            )
+            self.data={}
             self.calls: list[float | None] = []
+
+        def get_all_time_values(self):
+            return [1.0, 2.0]
+
 
         # CGNS bookkeeping arrays must be filtered out by the service
         # at every requested time, just like the time-less path.
@@ -1256,7 +1257,7 @@ def test_describe_globals_all_times_empty_when_no_time_axis(
     """Static (time-less) samples produce an empty ``by_time`` mapping."""
     _make_dataset_dir(tmp_path, "ds")
     sample = _SummarySample()
-    sample.features.get_all_time_values = lambda: []
+    sample.get_all_time_values = lambda: []
     _install_fake_init_from_disk(
         monkeypatch,
         {
@@ -1280,7 +1281,7 @@ def test_describe_globals_all_times_ignores_time_lookup_errors(
     """A broken time-axis lookup should still return static globals."""
     _make_dataset_dir(tmp_path, "ds")
     sample = _SummarySample()
-    sample.features.get_all_time_values = lambda: (_ for _ in ()).throw(
+    sample.get_all_time_values = lambda: (_ for _ in ()).throw(
         RuntimeError("bad times")
     )
     _install_fake_init_from_disk(
@@ -1309,7 +1310,7 @@ def test_time_globals_and_validation_error_branches(
     class BadTimes(_SummarySample):
         def __init__(self):
             super().__init__("error: bad")
-            self.features.get_all_time_values = lambda: (_ for _ in ()).throw(
+            self.get_all_time_values = lambda: (_ for _ in ()).throw(
                 RuntimeError("bad")
             )
 
@@ -1435,7 +1436,7 @@ def test_time_keys_describe_tree_empty_and_cached_service(tmp_path: Path) -> Non
         CK.CGNSBase_ts,
     ]
     tree = ["CGNSTree", None, [visual_base], "CGNSTree_t"]
-    sample = types.SimpleNamespace(features=types.SimpleNamespace(data={0.0: tree}))
+    sample = types.SimpleNamespace(data={0.0: tree})
     assert PlaidDatasetService._describe_tree(sample, [0.0]) == (  # noqa: SLF001
         ["Base"],
         {"Base": ["Zone"]},
