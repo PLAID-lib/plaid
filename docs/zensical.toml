@@ -15,6 +15,7 @@ extra_javascript = [
   "javascripts/mathjax.js",
   "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js",
 ]
+extra_css = ["stylesheets/extra.css"]
 features = [
   "content.action.edit",
   "content.action.view",
@@ -28,7 +29,6 @@ features = [
   "navigation.tracking",
   "search.highlight",
 ]
-extra_css = ["stylesheets/extra.css"]
 
 nav = [
   { "Overview" = [
@@ -43,7 +43,7 @@ nav = [
       { "Sample" = "concepts/sample.md" },
       { "Dataset" = "concepts/dataset.md" },
       { "Problem definition" = "concepts/problem_definition.md" },
-      { "Defaults" = "concepts/defaults.md" },
+      { "Defaults values" = "concepts/defaults.md" },
       { "Disk format" = "concepts/disk_format.md" },
     ] },
     { "Examples and tutorials" = [
