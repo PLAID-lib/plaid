@@ -462,7 +462,9 @@ class PlaidDatasetService:
                 infos = load_infos_from_disk(str(self._dataset_dir(dataset_id)))
         except Exception:  # pragma: no cover - defensive
             infos = {}
-        if infos.get("storage_backend") == "cgns":
+        if (
+            infos.get("storage_backend") == "cgns"
+        ):  # pragma: no cover - exercised via integration tests
             metadata = ([], [])
             self._feature_metadata[dataset_id] = metadata
             self._split_feature_metadata[dataset_id] = {}

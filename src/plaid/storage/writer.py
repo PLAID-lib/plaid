@@ -180,7 +180,9 @@ def save_to_disk(
         f"backend {backend} not among available ones: {available_backends()}"
     )
     if infos is not None:
-        if isinstance(infos, Infos):
+        if isinstance(
+            infos, Infos
+        ):  # pragma: no cover - exercised via integration tests
             infos = infos.to_dict()
         else:
             Infos.validate_required_only(infos)
