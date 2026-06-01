@@ -14,6 +14,7 @@ import numpy as np
 import yaml
 from huggingface_hub import hf_hub_download, snapshot_download
 
+from ...infos import Infos
 from ...problem_definition import ProblemDefinition
 
 logger = logging.getLogger(__name__)
@@ -39,19 +40,16 @@ def _materialize_memmaps(
 # ------------------------------------------------------
 
 
-def load_infos_from_disk(path: Union[str, Path]) -> dict[str, Any]:
+def load_infos_from_disk(path: Union[str, Path]) -> Infos:
     """Load dataset information from a YAML file stored on disk.
 
     Args:
         path (Union[str, Path]): Directory path containing the `infos.yaml` file.
 
     Returns:
-        dict[str, dict[str, str]]: Dictionary containing dataset infos.
+        Infos: Validated dataset infos object.
     """
-    infos_fname = Path(path) / "infos.yaml"
-    with infos_fname.open("r") as file:
-        infos = yaml.safe_load(file)
-    return infos
+    return Infos.from_path(Path(path) / "infos.yaml")
 
 
 def load_problem_definitions_from_disk(
@@ -221,25 +219,22 @@ def load_metadata_from_disk(
 
 def load_infos_from_hub(
     repo_id: str,
-) -> dict[str, Any]:  # pragma: no cover
+) -> Infos:  # pragma: no cover
     """Load dataset infos from the Hugging Face Hub.
 
-    Downloads the infos.yaml file from the specified repository and parses it as a dictionary.
+    Downloads the infos.yaml file from the specified repository and parses it
+    into a validated :class:`Infos`.
 
     Args:
         repo_id (str): The repository ID on the Hugging Face Hub.
 
     Returns:
-        dict[str, dict[str, str]]: Dictionary containing dataset infos.
+        Infos: Validated dataset infos object.
     """
-    # Download infos.yaml
     yaml_path = hf_hub_download(
         repo_id=repo_id, filename="infos.yaml", repo_type="dataset"
     )
-    with open(yaml_path, "r", encoding="utf-8") as f:
-        infos = yaml.safe_load(f)
-
-    return infos
+    return Infos.from_path(yaml_path)
 
 
 def load_problem_definitions_from_hub(

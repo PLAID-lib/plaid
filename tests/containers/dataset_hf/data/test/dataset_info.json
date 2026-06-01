@@ -1,0 +1,63 @@
+{
+  "builder_name": "generator",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "generator",
+  "dataset_size": 2294280,
+  "description": "",
+  "download_size": 0,
+  "features": {
+    "Base_2_3/Zone/Elements_TRI_3/ElementConnectivity": {
+      "feature": {
+        "dtype": "int64",
+        "_type": "Value"
+      },
+      "_type": "List"
+    },
+    "Base_2_3/Zone/GridCoordinates/CoordinateX": {
+      "feature": {
+        "dtype": "float32",
+        "_type": "Value"
+      },
+      "_type": "List"
+    },
+    "Base_2_3/Zone/GridCoordinates/CoordinateY": {
+      "feature": {
+        "dtype": "float32",
+        "_type": "Value"
+      },
+      "_type": "List"
+    },
+    "Base_2_3/Zone/GridCoordinates/CoordinateZ": {
+      "feature": {
+        "dtype": "float32",
+        "_type": "Value"
+      },
+      "_type": "List"
+    },
+    "Base_2_3/Zone/VertexFields/pressure": {
+      "feature": {
+        "dtype": "float32",
+        "_type": "Value"
+      },
+      "_type": "List"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 2294280,
+  "splits": {
+    "test": {
+      "name": "test",
+      "num_bytes": 2294280,
+      "num_examples": 10,
+      "dataset_name": "generator"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}

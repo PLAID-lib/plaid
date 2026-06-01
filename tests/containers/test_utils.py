@@ -10,7 +10,7 @@ from plaid.containers.utils import (
     get_number_of_samples,
     get_sample_ids,
 )
-from plaid.info import Info
+from plaid.infos import Infos
 
 # %% Fixtures
 
@@ -25,19 +25,19 @@ def current_directory():
 
 class Test_Container_Utils:
     def test_get_sample_ids(self, current_directory):
-        dataset_path = current_directory / "dataset" / "data" / "test"
+        dataset_path = current_directory / "dataset_cgns" / "data" / "test"
         assert get_sample_ids(dataset_path) == list(np.arange(0, 10))
 
     def test_get_number_of_samples(self, current_directory):
-        dataset_path = current_directory / "dataset" / "data" / "test"
+        dataset_path = current_directory / "dataset_cgns" / "data" / "test"
         assert get_number_of_samples(dataset_path) == 10
 
     def test_get_sample_ids_with_str(self, current_directory):
-        dataset_path = current_directory / "dataset" / "data" / "test"
+        dataset_path = current_directory / "dataset_cgns" / "data" / "test"
         assert get_sample_ids(str(dataset_path)) == list(np.arange(0, 10))
 
     def test_get_number_of_samples_with_str(self, current_directory):
-        dataset_path = current_directory / "dataset" / "data" / "test"
+        dataset_path = current_directory / "dataset_cgns" / "data" / "test"
         assert get_number_of_samples(str(dataset_path)) == 10
 
     @pytest.mark.parametrize(
@@ -146,7 +146,7 @@ class Test_Container_Utils:
         infos = {
             "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
         }
-        Info.validate_required_only(infos)
+        Infos.validate_required_only(infos)
 
         infos_missing_license = {
             "legal": {
@@ -154,4 +154,4 @@ class Test_Container_Utils:
             },
         }
         with pytest.raises(ValueError):
-            Info.validate_required_only(infos_missing_license)
+            Infos.validate_required_only(infos_missing_license)

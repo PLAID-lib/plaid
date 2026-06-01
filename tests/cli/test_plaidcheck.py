@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pytest
 import yaml
 
 from plaid.cli import plaidcheck
@@ -18,34 +19,39 @@ from plaid.cli.plaidcheck import (
     main,
 )
 
+_REFERENCE_DATASETS = ("dataset_cgns", "dataset_hf")
 
-def _copy_reference_dataset(tmp_path: Path) -> Path:
-    """Copy the small reference dataset used by container tests.
+
+def _copy_reference_dataset(tmp_path: Path, name: str = "dataset_cgns") -> Path:
+    """Copy a reference dataset (CGNS or HF) used by container tests.
 
     Args:
         tmp_path: Temporary pytest directory.
+        name: Reference dataset directory name under ``tests/containers``.
 
     Returns:
         Path to the copied dataset root.
     """
-    src = Path(__file__).resolve().parent.parent / "containers" / "dataset"
+    src = Path(__file__).resolve().parent.parent / "containers" / name
     dst = tmp_path / "dataset"
     shutil.copytree(src, dst)
     return dst
 
 
-def test_check_dataset_valid_reference(tmp_path: Path) -> None:
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_check_dataset_valid_reference(tmp_path: Path, dataset_name: str) -> None:
     """Reference dataset should pass with no errors."""
-    dataset_path = _copy_reference_dataset(tmp_path)
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
 
     report = check_dataset(dataset_path)
     print(report)
     assert not report.has_errors()
 
 
-def test_check_dataset_missing_infos(tmp_path: Path) -> None:
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_check_dataset_missing_infos(tmp_path: Path, dataset_name: str) -> None:
     """Missing infos.yaml should be reported as an error."""
-    dataset_path = _copy_reference_dataset(tmp_path)
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
     (dataset_path / "infos.yaml").unlink()
 
     report = check_dataset(dataset_path)
@@ -54,9 +60,10 @@ def test_check_dataset_missing_infos(tmp_path: Path) -> None:
     assert any(msg.code == "MISSING_PATH" for msg in report.messages)
 
 
-def test_check_dataset_num_samples_mismatch(tmp_path: Path) -> None:
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_check_dataset_num_samples_mismatch(tmp_path: Path, dataset_name: str) -> None:
     """Tampering with num_samples should raise split mismatch errors."""
-    dataset_path = _copy_reference_dataset(tmp_path)
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
     infos_path = dataset_path / "infos.yaml"
     infos = yaml.safe_load(infos_path.read_text(encoding="utf-8"))
     infos["num_samples"]["train"] = 1
@@ -67,9 +74,12 @@ def test_check_dataset_num_samples_mismatch(tmp_path: Path) -> None:
     assert any(msg.code == "SPLIT_COUNT_MISMATCH" for msg in report.messages)
 
 
-def test_main_json_output_and_exit_code(tmp_path: Path, capsys) -> None:
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_main_json_output_and_exit_code(
+    tmp_path: Path, capsys, dataset_name: str
+) -> None:
     """CLI should output JSON and return expected status code."""
-    dataset_path = _copy_reference_dataset(tmp_path)
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
 
     code = main(
         [
@@ -85,9 +95,10 @@ def test_main_json_output_and_exit_code(tmp_path: Path, capsys) -> None:
     assert "messages" in payload
 
 
-def test_main_strict_fails_on_warning(tmp_path: Path) -> None:
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_main_strict_fails_on_warning(tmp_path: Path, dataset_name: str) -> None:
     """In strict mode, warnings should make the command fail."""
-    dataset_path = _copy_reference_dataset(tmp_path)
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
     infos_path = dataset_path / "infos.yaml"
     infos = yaml.safe_load(infos_path.read_text(encoding="utf-8"))
     infos["num_samples"]["train"] = 11

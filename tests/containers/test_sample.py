@@ -180,13 +180,13 @@ class Test_Sample:
     # -------------------------------------------------------------------------#
     def test___init__(self, current_directory):
         sample_path_1 = (
-            current_directory / "dataset" / "data" / "test" / "sample_000000000"
+            current_directory / "dataset_cgns" / "data" / "test" / "sample_000000000"
         )
         sample_path_2 = (
-            current_directory / "dataset" / "data" / "test" / "sample_000000001"
+            current_directory / "dataset_cgns" / "data" / "test" / "sample_000000001"
         )
         sample_path_3 = (
-            current_directory / "dataset" / "data" / "test" / "sample_000000002"
+            current_directory / "dataset_cgns" / "data" / "test" / "sample_000000002"
         )
         sample_already_filled_1 = Sample(path=sample_path_1)
         sample_already_filled_2 = Sample(path=sample_path_2)
@@ -203,7 +203,7 @@ class Test_Sample:
     def test__init__file_provided(self, current_directory):
         sample_path = (
             current_directory
-            / "dataset"
+            / "dataset_cgns"
             / "data"
             / "test"
             / "sample_000000000"
@@ -215,7 +215,7 @@ class Test_Sample:
 
     def test__init__path(self, current_directory):
         sample_path = (
-            current_directory / "dataset" / "data" / "test" / "sample_000000000"
+            current_directory / "dataset_cgns" / "data" / "test" / "sample_000000000"
         )
         Sample(path=sample_path)
 
