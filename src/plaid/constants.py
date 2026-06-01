@@ -5,7 +5,6 @@ It includes:
 - ``AUTHORIZED_TASKS``: List of supported task types, such as regression and classification.
 - ``AUTHORIZED_FEATURE_TYPES``: List of supported feature types, such as scalar, field, and nodes.
 - ``AUTHORIZED_FEATURE_INFOS``: Dictionary specifying allowed metadata keys for feature types.
-- ``AUTHORIZED_INFO_KEYS``: Dictionary specifying allowed metadata keys for information sections.
 - ``CGNS_FIELD_LOCATIONS``: List of valid field locations as defined by the CGNS standard.
 - ``CGNS_ELEMENT_NAMES``: List of CGNS element names representing mesh element types.
 
@@ -30,33 +29,6 @@ AUTHORIZED_FEATURE_INFOS = {
     "nodes": ["zone", "base", "time"],
 }
 
-# Information keys for dataset metadata
-AUTHORIZED_INFO_KEYS = {
-    "legal": ["owner", "license"],
-    "data_production": [
-        "owner",
-        "license",
-        "type",
-        "physics",
-        "simulator",
-        "hardware",
-        "computation_duration",
-        "script",
-        "contact",
-        "location",
-    ],
-    "data_description": [
-        "number_of_samples",
-        "number_of_splits",
-        "DOE",
-        "inputs",
-        "outputs",
-    ],
-}
-
-REQUIRED_INFOS_KEYS = {
-    "legal": ["owner", "license"],
-}
 
 # See https://cgns.org/standard/SIDS/grid.html#flow-solution-structure-definition-flowsolution-t
 CGNS_FIELD_LOCATIONS = [

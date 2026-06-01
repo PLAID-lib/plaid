@@ -28,7 +28,7 @@ from plaid.storage.registry import available_backends, get_backend
 
 from ..containers.sample import Sample
 from ..problem_definition import ProblemDefinition
-from ..utils.info import validate_required_infos
+from ..info import Info
 from .common.preprocessor import preprocess
 from .common.reader import (
     load_infos_from_disk,
@@ -180,7 +180,7 @@ def save_to_disk(
         f"backend {backend} not among available ones: {available_backends()}"
     )
     if infos:
-        validate_required_infos(infos)
+        Info.validate_required_only(infos)
 
     # ---- validate ids: must be sliceable sequences ---------------------------
     for split_name, split_ids in ids.items():
@@ -272,7 +272,7 @@ def push_to_hub(
     """
     infos = load_infos_from_disk(local_dir)
 
-    validate_required_infos(infos)
+    Info.validate_required_only(infos)
 
     backend = infos["storage_backend"]
 

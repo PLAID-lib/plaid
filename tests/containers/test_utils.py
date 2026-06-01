@@ -10,7 +10,7 @@ from plaid.containers.utils import (
     get_number_of_samples,
     get_sample_ids,
 )
-from plaid.utils.info import validate_required_infos
+from plaid.info import Info
 
 # %% Fixtures
 
@@ -142,11 +142,11 @@ class Test_Container_Utils:
     def test_get_feature_details_from_path(self, url, expected):
         assert get_feature_details_from_path(url) == expected
 
-    def test_validate_required_infos(self):
+    def test_validate_required_only(self):
         infos = {
             "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
         }
-        validate_required_infos(infos)
+        Info.validate_required_only(infos)
 
         infos_missing_license = {
             "legal": {
@@ -154,4 +154,4 @@ class Test_Container_Utils:
             },
         }
         with pytest.raises(ValueError):
-            validate_required_infos(infos_missing_license)
+            Info.validate_required_only(infos_missing_license)
