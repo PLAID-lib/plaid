@@ -8,7 +8,7 @@ tests/problem_definition/split.csv
 
 # Heavy data
 *.cgns
-!tests/post/**/*.cgns
+!tests/containers/**/*.cgns
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
