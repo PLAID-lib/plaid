@@ -1,3 +1,0 @@
-# `plaid.info`
-
-::: plaid.info

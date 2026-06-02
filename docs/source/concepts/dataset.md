@@ -19,9 +19,9 @@ objects.
 
 Persistent backends currently used for disk and Hub workflows are:
 
-- `hf_datasets`, with power zero-copy instatiation,
-- `cgns`, the human-readable backend (samples can by open with Paraview),
-- `zarr`, with powerfull large-scale capabilities.
+- `hf_datasets`, with efficient zero-copy instatiation,
+- `cgns`, the human-readable backend (samples can by opened with Paraview),
+- `zarr`, with powerful large-scale capabilities.
 
 
 ## Save a dataset
@@ -107,28 +107,45 @@ sample = converter.to_plaid(
 ## Metadata and problem definitions
 
 `save_to_disk(...)` writes shared metadata (`infos.yaml`, schemas, CGNS types,
-constants) and can also persist one or more `ProblemDefinition` objects:
+constants) and can also persist one or more `ProblemDefinition` objects.
+
+The dataset-level `infos.yaml` payload is represented by
+[`Infos`](infos.md). It stores metadata such as legal ownership, licensing,
+data production context, data description, split sample counts, and the storage
+backend. The `infos` argument accepts either an `Infos` instance or a plain
+dictionary with the same schema:
 
 ```python
 from plaid import ProblemDefinition
+from plaid.infos import DataDescription, Infos, Legal
 from plaid.storage import save_to_disk
 
 pb_def = ProblemDefinition(name="regression_1")
+infos = Infos(
+    legal=Legal(owner="CompanyX", license="proprietary"),
+    data_description=DataDescription(number_of_samples=3),
+    num_samples={"train": 3},
+)
 
 save_to_disk(
     "my_plaid_dataset",
     sample_constructor=sample_constructor,
     ids={"train": [0, 1, 2]},
-    infos={"legal": {"owner": "CompanyX", "license": "proprietary"}},
+    infos=infos,
     pb_defs=pb_def,
 )
 ```
 
-Problem definitions can be loaded later with:
+The metadata and problem definitions can be loaded later with:
 
 ```python
+from plaid.infos import Infos
 from plaid.storage import load_problem_definitions_from_disk
 
+infos = Infos.from_path("my_plaid_dataset")
 pb_defs = load_problem_definitions_from_disk("my_plaid_dataset")
 pb_def = pb_defs["regression_1"]
 ```
+
+See also [Infos](infos.md) and [Problem definition](problem_definition.md) for
+details on each metadata object.

@@ -445,9 +445,30 @@ class PlaidDatasetService:
             return self._feature_metadata[dataset_id]
         # Deferred imports so the module stays importable without PLAID.
         from plaid.storage.common.reader import (  # noqa: PLC0415
+            load_infos_from_disk,
+            load_infos_from_hub,
             load_metadata_from_disk,
             load_metadata_from_hub,
         )
+
+        # The CGNS backend stores self-contained samples and intentionally
+        # writes no derived constant/variable schema metadata. Detect it
+        # from ``infos.yaml`` and return empty feature catalogues so the
+        # viewer falls back to inspecting samples directly.
+        try:
+            if self._is_hub_dataset(dataset_id):
+                infos = load_infos_from_hub(dataset_id)
+            else:
+                infos = load_infos_from_disk(str(self._dataset_dir(dataset_id)))
+        except Exception:  # pragma: no cover - defensive
+            infos = {}
+        if (
+            infos.get("storage_backend") == "cgns"
+        ):  # pragma: no cover - exercised via integration tests
+            metadata = ([], [])
+            self._feature_metadata[dataset_id] = metadata
+            self._split_feature_metadata[dataset_id] = {}
+            return metadata
 
         if self._is_hub_dataset(dataset_id):
             _flat_cst, variable_schema, constant_schema, _cgns_types = (
@@ -458,6 +479,7 @@ class PlaidDatasetService:
             _flat_cst, variable_schema, constant_schema, _cgns_types = (
                 load_metadata_from_disk(str(base))
             )
+
         constant_keys: set[str] = set()
         for split_const in (constant_schema or {}).values():
             constant_keys.update(split_const.keys())

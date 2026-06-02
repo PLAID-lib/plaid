@@ -23,6 +23,8 @@ dataset_root/
 └── problem_definitions/
 ```
 
+The CGNS backend only contains `infos.yaml`, `data/` and `problem_definitions/`, since all samples are complete.
+
 ## Root metadata
 
 - `infos.yaml`: global dataset metadata (including storage backend and number of

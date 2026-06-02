@@ -8,7 +8,6 @@ if sys.version_info >= (3, 11):
 else:  # pragma: no cover
     from typing_extensions import TypeAlias
 
-
 # A CGNSTree is simply the root CGNSNode
 # CGNSTree: TypeAlias = CGNSNode
 

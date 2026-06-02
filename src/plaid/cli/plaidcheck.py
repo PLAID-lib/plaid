@@ -104,23 +104,29 @@ class CheckReport:
         return json.dumps(payload, indent=2)
 
 
-def _check_required_layout(path: Path, report: CheckReport) -> None:
+def _check_required_layout(
+    path: Path, report: CheckReport, backend: Optional[str] = None
+) -> None:
     """Validate that the dataset directory has the required PLAID layout.
 
     Args:
         path: Dataset directory to inspect.
         report: Report updated with missing path errors.
+        backend: Storage backend identifier. The CGNS backend stores
+            self-contained samples and intentionally omits the derived
+            ``constants/``, ``variable_schema.yaml`` and ``cgns_types.yaml``
+            metadata produced by other backends.
 
     Returns:
         None.
     """
-    required_paths = [
-        "infos.yaml",
-        "variable_schema.yaml",
-        "cgns_types.yaml",
-        "constants",
-        "data",
-    ]
+    required_paths = ["infos.yaml", "data"]
+    if backend != "cgns":
+        required_paths += [
+            "variable_schema.yaml",
+            "cgns_types.yaml",
+            "constants",
+        ]
     for rel in required_paths:
         p = path / rel
         if not p.exists():
@@ -241,25 +247,46 @@ def check_dataset(
     """
     report = CheckReport(messages=[])
 
-    # First verify the dataset has the required on-disk files and folders.
-    # Later checks rely on these paths being present and readable.
-    _check_required_layout(path, report)
-    if report.has_errors():
+    # Load infos first so we can branch on the declared backend.
+    if not (path / "infos.yaml").exists():
+        report.add(
+            "error",
+            "MISSING_PATH",
+            "infos.yaml",
+            "Missing file/path path: infos.yaml",
+        )
         return report
-
-    # Load dataset descriptors and metadata before touching sample payloads.
-    # Each loading step is isolated so the report points to the failing layer.
     try:
         infos = load_infos_from_disk(path)
     except Exception as exc:
         report.add("error", "INFOS_READ_ERROR", "infos.yaml", str(exc))
         return report
 
-    try:
-        flat_cst, variable_schema, constant_schema, _ = load_metadata_from_disk(path)
-    except Exception as exc:
-        report.add("error", "METADATA_READ_ERROR", str(path), str(exc))
+    declared_backend_for_layout = infos.get("storage_backend")
+    if not isinstance(declared_backend_for_layout, str):
+        declared_backend_for_layout = None
+
+    # Verify the dataset has the required on-disk files and folders for the
+    # detected backend. Later checks rely on these paths being present and
+    # readable.
+    _check_required_layout(path, report, backend=declared_backend_for_layout)
+    if report.has_errors():
         return report
+
+    # Load metadata when the backend defines it. The CGNS backend stores
+    # self-contained samples and intentionally writes no derived metadata.
+    if declared_backend_for_layout == "cgns":
+        flat_cst: dict = {}
+        variable_schema: dict = {}
+        constant_schema: dict = {}
+    else:
+        try:
+            flat_cst, variable_schema, constant_schema, _ = load_metadata_from_disk(
+                path
+            )
+        except Exception as exc:
+            report.add("error", "METADATA_READ_ERROR", str(path), str(exc))
+            return report
 
     try:
         datasetdict, converterdict = init_from_disk(path)
@@ -314,21 +341,22 @@ def check_dataset(
                 f"Expected {expected_n} samples from infos.yaml, found {actual_n}",
             )
 
-        if split not in constant_schema:
-            report.add(
-                "error",
-                "MISSING_CONSTANT_SCHEMA",
-                split,
-                "No constant schema for split",
-            )
+        if declared_backend_for_layout != "cgns":
+            if split not in constant_schema:
+                report.add(
+                    "error",
+                    "MISSING_CONSTANT_SCHEMA",
+                    split,
+                    "No constant schema for split",
+                )
 
-        if split not in flat_cst:
-            report.add(
-                "error",
-                "MISSING_CONSTANT_VALUES",
-                split,
-                "No constant values for split",
-            )
+            if split not in flat_cst:
+                report.add(
+                    "error",
+                    "MISSING_CONSTANT_VALUES",
+                    split,
+                    "No constant values for split",
+                )
 
         # Deep-check to validate content and detect non valide data in fields (nan inf)
         for idx in range(actual_n):
@@ -429,25 +457,32 @@ def check_dataset(
         all_features = set(variable_schema.keys())
         for split_cst in flat_cst.values():
             all_features.update(split_cst.keys())
+        # The CGNS backend stores self-contained samples and writes no
+        # derived feature schema, so we have no authoritative catalogue
+        # to validate problem-definition feature paths against. Skip the
+        # feature-name checks in that case (split / index checks below
+        # still run).
+        validate_pb_def_features = declared_backend_for_layout != "cgns"
 
         for pb_name, pb_def in pb_defs.items():
-            for feat in pb_def.input_features:
-                if feat not in all_features:
-                    report.add(
-                        "error",
-                        "PB_DEF_UNKNOWN_INPUT",
-                        f"problem_definitions/{pb_name}",
-                        f"Unknown input feature: {feat}",
-                    )
+            if validate_pb_def_features:
+                for feat in pb_def.input_features:
+                    if feat not in all_features:
+                        report.add(
+                            "error",
+                            "PB_DEF_UNKNOWN_INPUT",
+                            f"problem_definitions/{pb_name}",
+                            f"Unknown input feature: {feat}",
+                        )
 
-            for feat in pb_def.output_features:
-                if feat not in all_features:
-                    report.add(
-                        "error",
-                        "PB_DEF_UNKNOWN_OUTPUT",
-                        f"problem_definitions/{pb_name}",
-                        f"Unknown output feature: {feat}",
-                    )
+                for feat in pb_def.output_features:
+                    if feat not in all_features:
+                        report.add(
+                            "error",
+                            "PB_DEF_UNKNOWN_OUTPUT",
+                            f"problem_definitions/{pb_name}",
+                            f"Unknown output feature: {feat}",
+                        )
 
             for split_dict_name in ["train_split", "test_split"]:
                 split_dict = getattr(pb_def, split_dict_name)

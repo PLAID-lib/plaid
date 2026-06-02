@@ -6,14 +6,6 @@ title: Conversion tutorial
 
 End‑to‑end workflows for creating, saving, and loading PLAID datasets with the three storage backends: **hf_datasets**, **cgns**, and **zarr**.
 
-## Backend capabilities
-
-| Backend | Persistent on disk | Hub download/push | Streaming from Hub | Feature selection notes |
-| --- | --- | --- | --- | --- |
-| `hf_datasets` | yes | yes | yes | streaming can pass selected columns; local download currently downloads backend data as parquet |
-| `cgns` | yes | yes | yes | sample selection is supported; feature filtering is handled at conversion time where applicable |
-| `zarr` | yes | yes | yes | supports selected sample ids and selected variable features for download/streaming |
-
 ## Storage concepts
 
 - **`sample_constructor`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
@@ -21,6 +13,20 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 - **`save_to_disk`** writes a dataset locally; **`push_to_hub`** uploads it to Hugging Face Hub.
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
 - Backend converters turn raw backend samples into PLAID `Sample` objects.
+
+## Choosing a backend
+
+Extensible backend interface: integrate the storage system that best fits your
+workflow with minimal changes to your PLAID code.
+
+| Capability | CGNS | Hugging Face Datasets | Zarr |
+| --- | --- | --- | --- |
+| **Feature-wise streaming** |  | :material-check: | :material-check: |
+| **Human-readable** | :material-check: |  |  |
+| **Zero-copy instantiation** |  | :material-check: |  |
+| **Extremely large simulations** |  |  | :material-check: |
+| **Parallel writing and reading** | :material-check: | :material-check: | :material-check: |
+| **Recommended usage** | Sample visualization | Low to medium scale | Large-scale frontier |
 
 
 ## How to create data and save to disk/push to hub
@@ -332,7 +338,40 @@ for backend in all_backends:
 
 ```
 
-### Indexed extraction with `indexers`
+
+## How to change a dataset backend (read then write in another backend)
+
+```python
+from plaid.storage import init_from_disk, save_to_disk, load_infos_from_disk, load_problem_definitions_from_disk
+
+FOLDER = "tests/containers/dataset_cgns"
+
+ds, conv = init_from_disk(FOLDER)
+infos = load_infos_from_disk(FOLDER)
+pb_defs = load_problem_definitions_from_disk(FOLDER)
+
+ids = {}
+for split in ds.keys():
+    ids[split] = [(split, i) for i in range(len(ds[split]))]
+
+def sample_constructor(id_):
+    split, index = id_[0], id_[1]
+    return conv[split].to_plaid(ds[split], index)
+
+if __name__ == "__main__":
+    save_to_disk(output_folder="tests/containers/dataset_hf",
+        sample_constructor=sample_constructor,
+        ids=ids,
+        backend="hf_datasets",
+        infos=infos,
+        pb_defs=pb_defs,
+        num_proc=1,
+        overwrite=True,
+        verbose=True)
+```
+
+
+## Indexed extraction with `indexers`
 
 `converter.to_dict(...)` and `converter.to_plaid(...)` accept an optional
 `indexers` argument:
@@ -351,7 +390,7 @@ sample = converter.to_plaid(
 - This enables a “read less + one gathered output copy” behavior:
   - **zarr**: partial chunk reads + gathered output
   - **hf_datasets**: Arrow/NumPy best-effort gather + gathered output
-- `cgns` backend does not use this mechanism.
+- **cgns** backend does not use this mechanism.
 
 
 ```python

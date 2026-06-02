@@ -29,7 +29,6 @@ AUTHORIZED_FEATURE_INFOS = {
     "nodes": ["zone", "base", "time"],
 }
 
-
 # See https://cgns.org/standard/SIDS/grid.html#flow-solution-structure-definition-flowsolution-t
 CGNS_FIELD_LOCATIONS = [
     "Vertex",
