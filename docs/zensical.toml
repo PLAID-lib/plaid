@@ -53,7 +53,7 @@ nav = [
       { "Problem definition" = "notebooks/problem_definition_example.md" },
       { "Infos" = "notebooks/infos_example.md" },
       { "Downloadable samples" = "notebooks/downloadable_example/sample_example.md" },
-      { "Storage tutorial" = "tutorials/storage.md" },
+      { "Conversion tutorial" = "tutorials/storage.md" },
     ] },
     { "Viewer" = "concepts/viewer.md" },
     # >>> AUTO-GENERATED API REFERENCE START

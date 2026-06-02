@@ -16,4 +16,4 @@ You can find here detailed examples for different parts of plaid, explained in J
 
 ## Tutorials
 
-* [Storage tutorial](tutorials/storage.md)
+* [Conversion tutorial](tutorials/storage.md)
