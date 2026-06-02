@@ -5,34 +5,27 @@ and Hugging Face Datasets format. It includes utilities for feature type convers
 dataset generation from PLAID objects, and sample reconstruction.
 """
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from functools import partial
 from typing import Any, Callable, Generator, Optional
 
 import datasets
 import numpy as np
 import pyarrow as pa
-from datasets import Features, Sequence, Value
+from datasets import Dataset, DatasetDict, Features, Sequence, Value
 
-from plaid import Sample
 from plaid.storage.common.preprocessor import build_sample_dict
-from plaid.types import IndexType
+
+from ...containers.sample import Sample
 
 
-def convert_dtype_to_hf_feature(feature_type: dict[str, Any]):
+def convert_dtype_to_hf_feature(feature_type: dict[str, Any]) -> Any:
     """Convert a PLAID feature type dict to Hugging Face Feature.
 
     Args:
         feature_type (dict): Dictionary with 'dtype' and 'ndim' keys.
 
     Returns:
-        Features or Sequence: The corresponding HF feature type.
+        Any: The corresponding HF feature type (``Features`` or ``Sequence``).
     """
     base_dtype = feature_type["dtype"]
     ndim = feature_type["ndim"]
@@ -43,7 +36,7 @@ def convert_dtype_to_hf_feature(feature_type: dict[str, Any]):
     return feature
 
 
-def convert_to_hf_feature(variable_schema: dict[str, dict]):
+def convert_to_hf_feature(variable_schema: dict[str, dict]) -> Features:
     """Convert a PLAID variable schema to Hugging Face Features.
 
     Args:
@@ -61,10 +54,10 @@ def generator_to_datasetdict(
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     variable_schema: dict,
     cache_dir: str,
-    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     processes_number: int = 1,
     writer_batch_size: int = 1,
-) -> datasets.DatasetDict:
+) -> DatasetDict:
     """Convert PLAID dataset generators into a Hugging Face `datasets.DatasetDict`.
 
     This function takes generator functions that yield PLAID samples and converts them
@@ -83,7 +76,7 @@ def generator_to_datasetdict(
         cache_dir (str):
             Directory path used as cache directory for the Hugging Face
             dataset generation process.
-        gen_kwargs (dict[str, dict[str, list[IndexType]]], optional):
+        gen_kwargs (dict[str, dict[str, IndexArrayType]], optional):
             Optional mapping from split names to dictionaries of keyword arguments
             to be passed to each generator function. Useful for passing split-specific
             parameters like sample indices. Default is None, which creates empty
@@ -152,15 +145,14 @@ def generator_to_datasetdict(
             writer_batch_size=writer_batch_size,
             split=datasets.splits.NamedSplit(split_name),
         )
-    return datasets.DatasetDict(_dict)
+    return DatasetDict(_dict)
 
 
 def to_var_sample_dict(
-    ds: datasets.Dataset,
+    ds: Dataset,
     i: int,
     features: Optional[list[str]] = None,
     indexers: Optional[dict[str, Any]] = None,
-    enforce_shapes: bool = True,
 ) -> dict[str, Optional[np.ndarray]]:
     """Convert a Hugging Face dataset row to a variable sample dict containing the features that vary in the dataset.
 
@@ -170,7 +162,6 @@ def to_var_sample_dict(
         features: Iterable of feature names (keys) to extract from the dataset.
         indexers: Optional mapping ``feature_path -> indexer`` used to select
             feature values along the last axis.
-        enforce_shapes (bool): Whether to enforce consistent shapes.
 
     Returns:
         dict[str, Optional[np.ndarray]]: The variable sample dictionary.
@@ -187,37 +178,27 @@ def to_var_sample_dict(
 
     var_sample_dict = {}
     indexers = indexers or {}
-    if not enforce_shapes:
-        for name in selected_features:
+
+    for name in selected_features:
+        if isinstance(table[name][i], pa.NullScalar):
+            var_sample_dict[name] = None  # pragma: no cover
+        else:
             value = table[name][i].values
             if value is None:
                 var_sample_dict[name] = None  # pragma: no cover
             else:
-                arr = value.to_numpy(zero_copy_only=False)
                 if name in indexers:
-                    arr = _apply_indexer(arr, indexers[name], name)
-                var_sample_dict[name] = arr
-    else:
-        for name in selected_features:
-            if isinstance(table[name][i], pa.NullScalar):
-                var_sample_dict[name] = None  # pragma: no cover
-            else:
-                value = table[name][i].values
-                if value is None:
-                    var_sample_dict[name] = None  # pragma: no cover
+                    var_sample_dict[name] = _extract_indexed_arrow(
+                        value, indexers[name], name
+                    )
+                elif isinstance(value, pa.ListArray):
+                    var_sample_dict[name] = np.stack(
+                        value.to_numpy(zero_copy_only=False)
+                    )
+                elif isinstance(value, pa.StringArray):  # pragma: no cover
+                    var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
                 else:
-                    if name in indexers:
-                        var_sample_dict[name] = _extract_indexed_arrow(
-                            value, indexers[name], name
-                        )
-                    elif isinstance(value, pa.ListArray):
-                        var_sample_dict[name] = np.stack(
-                            value.to_numpy(zero_copy_only=False)
-                        )
-                    elif isinstance(value, pa.StringArray):  # pragma: no cover
-                        var_sample_dict[name] = value.to_numpy(zero_copy_only=False)
-                    else:
-                        var_sample_dict[name] = value.to_numpy(zero_copy_only=True)
+                    var_sample_dict[name] = value.to_numpy(zero_copy_only=True)
 
     return var_sample_dict
 

@@ -11,17 +11,9 @@ Key features:
 - Sample conversion between storage formats and PLAID objects
 """
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
 
-from plaid import Sample
 from plaid.storage.common.bridge import (
     plaid_to_sample_dict,
     to_plaid_sample,
@@ -41,6 +33,8 @@ from plaid.storage.common.writer import (
 )
 from plaid.storage.registry import get_backend
 from plaid.utils.cgns_helper import update_features_for_CGNS_compatibility
+
+from ..containers.sample import Sample
 
 
 class Converter:
@@ -102,7 +96,7 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.to_var_sample_dict is None:
+        if self.backend_spec.to_var_sample_dict is None:  # pragma: no cover
             raise ValueError(
                 f"Converter.to_dict not available for {self.backend} backend"
             )
@@ -157,19 +151,23 @@ class Converter:
         Returns:
             Sample: A PLAID Sample object.
         """
-        if features:
-            features = update_features_for_CGNS_compatibility(
-                features,
-                self.constant_features,
-                self.variable_features,
-            )
+        # Note: we deliberately do NOT call
+        # ``update_features_for_CGNS_compatibility`` here. ``to_dict`` runs it
+        # once for non-CGNS backends, and the CGNS branch ignores ``features``
+        # entirely. Calling the helper twice used to break feature filtering
+        # because its missing-key check only validates the *input* list while
+        # the helper itself appends auxiliary paths (parent FlowSolution,
+        # ``GridLocation``, ``Base_times``, ``ZoneType``, ...) that may not
+        # be declared in ``constant_features`` / ``variable_features``. On
+        # the second call those additions look "missing" and the helper
+        # raises ``KeyError("Missing features in dataset/converter: ...")``.
         if self.backend != "cgns":
             sample_dict = self.to_dict(dataset, idx, features, indexers=indexers)
             return to_plaid_sample(sample_dict, self.cgns_types)
         else:
             return dataset[idx]
 
-    def sample_to_dict(self, sample: Sample) -> dict[float, dict[str, Any]]:
+    def sample_to_dict(self, sample: Any) -> dict[float, dict[str, Any]]:
         """Convert a PLAID Sample to dictionary format.
 
         Args:
@@ -181,14 +179,14 @@ class Converter:
         Raises:
             ValueError: If called with CGNS backend.
         """
-        if self.backend_spec.sample_to_var_sample_dict is None:
+        if self.backend_spec.sample_to_var_sample_dict is None:  # pragma: no cover
             raise ValueError(
                 f"Converter.sample_to_var_sample_dict not available for {self.backend} backend"
             )
         var_sample_dict = self.backend_spec.sample_to_var_sample_dict(sample)
         return to_sample_dict(var_sample_dict, self.flat_cst, self.cgns_types)
 
-    def sample_to_plaid(self, sample: Sample) -> Sample:
+    def sample_to_plaid(self, sample: Any) -> Sample:
         """Convert a sample to PLAID format (identity function for most backends).
 
         Args:
@@ -244,19 +242,27 @@ def init_from_disk(
         tuple: A tuple containing (datasetdict, converterdict) where datasetdict maps
             split names to dataset objects and converterdict maps split names to Converter objects.
     """
-    flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_disk(
-        local_dir
-    )
     infos = load_infos_from_disk(local_dir)
 
     backend = infos["storage_backend"]
     num_samples = infos["num_samples"]
 
-    backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_from_disk(local_dir)
+    datasetdict = get_backend(backend).init_from_disk(path=local_dir)
 
     if splits is None:
         splits = list(datasetdict.keys())
+
+    if backend == "cgns":
+        # CGNS samples are self-contained: no derived metadata is written or
+        # consumed for this backend.
+        flat_cst = {str(s): {} for s in splits}
+        variable_schema = {}
+        constant_schema = {str(s): {} for s in splits}
+        cgns_types = {}
+    else:
+        flat_cst, variable_schema, constant_schema, cgns_types = (
+            load_metadata_from_disk(local_dir)
+        )
 
     converterdict = {}
     for split in splits:
@@ -290,9 +296,6 @@ def download_from_hub(
         features: Optional list of features to download.
         overwrite: If True, overwrites existing local directory.
     """
-    flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(
-        repo_id
-    )
     infos = load_infos_from_hub(repo_id)
     pb_defs = load_problem_definitions_from_hub(repo_id)
 
@@ -301,9 +304,13 @@ def download_from_hub(
     backend_spec = get_backend(backend)
     backend_spec.download_from_hub(repo_id, local_dir, split_ids, features, overwrite)
 
-    save_metadata_to_disk(
-        local_dir, flat_cst, variable_schema, constant_schema, cgns_types
-    )
+    if backend != "cgns":
+        flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(
+            repo_id
+        )
+        save_metadata_to_disk(
+            local_dir, flat_cst, variable_schema, constant_schema, cgns_types
+        )
     save_infos_to_disk(local_dir, infos)
     if pb_defs is not None:
         save_problem_definitions_to_disk(local_dir, pb_defs)
@@ -337,7 +344,9 @@ def init_streaming_from_hub(
     num_samples = infos["num_samples"]
 
     backend_spec = get_backend(backend)
-    datasetdict = backend_spec.init_streaming_from_hub(repo_id, split_ids, features)
+    datasetdict = backend_spec.init_datasetdict_streaming_from_hub(
+        repo_id, split_ids, features
+    )
 
     converterdict = {}
     for split in datasetdict.keys():

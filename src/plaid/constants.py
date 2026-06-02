@@ -1,61 +1,32 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-"""This module defines common constants used throughout the PLAID library.
+"""Define common constants used throughout the PLAID library.
 
 It includes:
-- AUTHORIZED_TASKS: List of supported task types (e.g., regression, classification).
-- AUTHORIZED_FEATURE_TYPES: List of supported feature types (e.g., scalar, field, nodes).
-- AUTHORIZED_FEATURE_INFOS: Dictionary specifying allowed metadata keys for various feature types.
-- AUTHORIZED_INFO_KEYS: Dictionary specifying allowed metadata keys for various information sections.
-- CGNS_FIELD_LOCATIONS: List of valid field locations as defined by the CGNS standard.
-- CGNS_ELEMENT_NAMES: List of CGNS element names representing different mesh element types.
+
+- ``AUTHORIZED_TASKS``: List of supported task types, such as regression and classification.
+- ``AUTHORIZED_FEATURE_TYPES``: List of supported feature types, such as scalar, field, and nodes.
+- ``AUTHORIZED_FEATURE_INFOS``: Dictionary specifying allowed metadata keys for feature types.
+- ``CGNS_FIELD_LOCATIONS``: List of valid field locations as defined by the CGNS standard.
+- ``CGNS_ELEMENT_NAMES``: List of CGNS element names representing mesh element types.
 
 These constants help standardize metadata, task types, and mesh element references across the PLAID codebase.
 """
 
-AUTHORIZED_TASKS = ["regression", "classification"]
+from typing import Literal, get_args
 
-AUTHORIZED_SCORE_FUNCTIONS = ["RRMSE"]
+AUTHORIZED_TASKS_T = Literal["regression", "classification"]
+AUTHORIZED_TASKS = get_args(AUTHORIZED_TASKS_T)
 
-AUTHORIZED_FEATURE_TYPES = ["scalar", "field", "nodes"]
+
+AUTHORIZED_SCORE_FUNCTIONS_T = Literal["RRMSE"]
+AUTHORIZED_SCORE_FUNCTIONS = get_args(AUTHORIZED_SCORE_FUNCTIONS_T)
+
+AUTHORIZED_FEATURE_TYPES_T = Literal["scalar", "field", "nodes"]
+AUTHORIZED_FEATURE_TYPES = get_args(AUTHORIZED_FEATURE_TYPES_T)
 
 AUTHORIZED_FEATURE_INFOS = {
     "scalar": ["name"],
-    "field": ["name", "location", "zone_name", "base_name", "time"],
-    "nodes": ["zone_name", "base_name", "time"],
-}
-
-# Information keys for dataset metadata
-# key ["plaid"]["version"] is not included as it is managed internally
-AUTHORIZED_INFO_KEYS = {
-    "legal": ["owner", "license"],
-    "data_production": [
-        "owner",
-        "license",
-        "type",
-        "physics",
-        "simulator",
-        "hardware",
-        "computation_duration",
-        "script",
-        "contact",
-        "location",
-    ],
-    "data_description": [
-        "number_of_samples",
-        "number_of_splits",
-        "DOE",
-        "inputs",
-        "outputs",
-    ],
-}
-
-REQUIRED_INFOS_KEYS = {
-    "legal": ["owner", "license"],
+    "field": ["name", "location", "zone", "base", "time"],
+    "nodes": ["zone", "base", "time"],
 }
 
 # See https://cgns.org/standard/SIDS/grid.html#flow-solution-structure-definition-flowsolution-t
@@ -67,6 +38,7 @@ CGNS_FIELD_LOCATIONS = [
     "JFaceCenter",
     "KFaceCenter",
     "EdgeCenter",
+    "IntegrationPoint",
 ]
 
 CGNS_ELEMENT_NAMES = [

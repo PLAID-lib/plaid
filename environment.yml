@@ -12,19 +12,16 @@ dependencies:
   - pycgns-core
   - zarr
 #---# SciML
-  - scikit-learn
   - datasets
   - numpy
-  - matplotlib-base
 #---# data validation
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs
   - muscat-core>=2.5.1
+  - vtk
 #---# base
   - rich
-#---# optim
-  - optuna
 #---# testing
   - pytest
   - pytest-cov
@@ -33,11 +30,12 @@ dependencies:
 #---# dev
   - pre-commit
 #---# doc
-  - sphinx
-  - sphinx-autoapi
-  - sphinx-tabs
-  - sphinxcontrib-bibtex
-  - myst-nb
-  - myst-parser
-  - furo
+  - zensical
   - jupytext
+  - mkdocstrings
+  - nbconvert
+  - ipykernel
+##### VIEWER #####
+  - trame
+  - trame-vtk
+  - trame-vuetify

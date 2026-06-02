@@ -1,12 +1,5 @@
 """Utility functions for working with CGNS trees and nodes."""
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 from copy import copy
 from typing import Any, Iterable, Optional
 
@@ -48,7 +41,7 @@ def get_base_names(
         return base_paths
 
 
-def get_time_values(tree: CGNSTree) -> np.ndarray:
+def get_time_values(tree: CGNSTree) -> float:
     """Get consistent time values from CGNSBase_t nodes in a CGNSTree.
 
     Args:
@@ -64,14 +57,17 @@ def get_time_values(tree: CGNSTree) -> np.ndarray:
     time_values = []
     for bp in base_paths:
         base_node = CGU.getNodeByPath(tree, bp)
-        time_values.append(CGU.getValueByPath(base_node, "Time/TimeValues")[0])
+        timedata = CGU.getValueByPath(base_node, "Time/TimeValues")
+        if len(timedata) > 1:
+            raise RuntimeError("more than one time in this CGNSTree")
+        time_values.append(timedata[0])
     assert time_values.count(time_values[0]) == len(time_values), (
         "times values are not consistent in bases"
     )
-    return time_values[0]
+    return float(time_values[0])
 
 
-def show_cgns_tree(pyTree: CGNSTree, pre: str = ""):
+def show_cgns_tree(pyTree: Any, pre: str = "") -> Any:
     """Pretty print for CGNS Tree.
 
     Args:
@@ -276,14 +272,14 @@ def compare_leaves(d1: Any, d2: Any) -> bool:
     # Both arrays
     if isinstance(d1, np.ndarray) and isinstance(d2, np.ndarray):
         if np.issubdtype(d1.dtype, np.floating) or np.issubdtype(d2.dtype, np.floating):
-            return np.allclose(d1, d2, rtol=1e-7, atol=0)
+            return bool(np.allclose(d1, d2, rtol=1e-7, atol=0))
         else:
-            return np.array_equal(d1, d2)
+            return bool(np.array_equal(d1, d2))
 
     # Scalars (int/float/str/None)
     if isinstance(d1, float) or isinstance(d2, float):
-        return np.isclose(d1, d2, rtol=1e-7, atol=0)
-    return d1 == d2
+        return bool(np.isclose(d1, d2, rtol=1e-7, atol=0))
+    return bool(d1 == d2)
 
 
 def compare_cgns_trees_no_types(
@@ -348,7 +344,7 @@ def compare_cgns_trees_no_types(
     return True
 
 
-def summarize_cgns_tree(pyTree: CGNSTree, verbose=True) -> str:
+def summarize_cgns_tree(pyTree: CGNSTree, verbose=True) -> None:
     """Provide a summary of a CGNS tree's contents.
 
     Args:
@@ -418,6 +414,7 @@ def summarize_cgns_tree(pyTree: CGNSTree, verbose=True) -> str:
                 summary.append(f"  {base_name}/{zone_name}/{sol_name}/{field_name}")
 
     print("\n".join(summary))
+    return None
 
 
 def flatten_cgns_tree(
@@ -441,6 +438,10 @@ def flatten_cgns_tree(
             name, data, children, cgns_type = node
             new_path = f"{path}/{name}" if path else name
 
+            if new_path in flat:  # pragma: no cover
+                raise RuntimeError(
+                    f"Error: Non unique path for every entity. The path '{new_path}' points to multiple data. Try changing the name of your fields"
+                )
             flat[new_path] = data
             cgns_types[new_path] = cgns_type
 
@@ -538,7 +539,7 @@ def update_features_for_CGNS_compatibility(
     features: list[str],
     context_constant_features: Iterable[str],
     context_variable_features: Iterable[str],
-):
+) -> list[str]:
     """Expand a list of feature paths to include all CGNS hierarchy nodes and metadata required for compatibility.
 
     This function takes a list of requested features and expands it to include all necessary
@@ -556,12 +557,9 @@ def update_features_for_CGNS_compatibility(
             context (e.g., flow solution fields, time-varying parameters).
 
     Returns:
-        list[str]: Expanded list of feature paths including:
-            - Original requested features
-            - Parent nodes in the CGNS hierarchy
-            - Associated metadata nodes (GridLocation, ZoneType, FamilyName)
-            - Temporal information (_times suffix for all features)
-            - Related structural elements (coordinates, elements, boundary conditions)
+        list[str]: Expanded list of feature paths, including original requested
+            features, parent nodes in the CGNS hierarchy, associated metadata nodes,
+            temporal information, and related structural elements.
 
     Raises:
         KeyError: If any requested feature is not found in the combined context features.

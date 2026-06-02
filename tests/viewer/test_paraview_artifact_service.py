@@ -151,9 +151,10 @@ def test_collect_time_values_empty() -> None:
         )
         == []
     )
-    assert _collect_time_values(
-        types.SimpleNamespace(features=types.SimpleNamespace(data={2: None, 1: None}))
-    ) == [1.0, 2.0]
+    assert _collect_time_values(types.SimpleNamespace(data={2: None, 1: None})) == [
+        1.0,
+        2.0,
+    ]
 
 
 def test_ensure_artifact_raises_when_sample_writes_no_cgns(

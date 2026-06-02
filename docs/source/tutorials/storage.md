@@ -1,12 +1,12 @@
 ---
-title: Storage backends
+title: Conversion tutorial
 ---
 
-# Storage tutorial
+# Conversion tutorial
 
 End‑to‑end workflows for creating, saving, and loading PLAID datasets with the three storage backends: **hf_datasets**, **cgns**, and **zarr**.
 
-## Key concepts
+## Storage concepts
 
 - **`sample_constructor`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
 - **`ids`** is a dictionary mapping split names to **sliceable sequences** of identifiers — anything with `__getitem__` and `__len__` (list, tuple, numpy array, …). PLAID handles iteration, generator creation, and parallel sharding internally.
@@ -14,11 +14,19 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
 - Backend converters turn raw backend samples into PLAID `Sample` objects.
 
-## Notes
+## Choosing a backend
 
-- The example uses external tools (`plyfile`, `Muscat`) to build meshes — these are not PLAID runtime dependencies.
-- Set `datasets.config.HF_DATASETS_CACHE` to a dedicated folder when using the HF backend.
-- Loading metadata from **local disk** keeps numeric constants as `np.memmap` for memory efficiency; loading from the **Hub** materializes them into in-memory arrays to avoid lifetime issues with temporary download folders.
+Extensible backend interface: integrate the storage system that best fits your
+workflow with minimal changes to your PLAID code.
+
+| Capability | CGNS | Hugging Face Datasets | Zarr |
+| --- | --- | --- | --- |
+| **Feature-wise streaming** |  | :material-check: | :material-check: |
+| **Human-readable** | :material-check: |  |  |
+| **Zero-copy instantiation** |  | :material-check: |  |
+| **Extremely large simulations** |  |  | :material-check: |
+| **Parallel writing and reading** | :material-check: | :material-check: | :material-check: |
+| **Recommended usage** | Sample visualization | Low to medium scale | Large-scale frontier |
 
 
 ## How to create data and save to disk/push to hub
@@ -30,7 +38,6 @@ import shutil
 
 import numpy as np
 
-from datasets import config
 from plaid import Sample, ProblemDefinition
 from plaid.storage import save_to_disk, push_to_hub
 
@@ -39,11 +46,6 @@ from plyfile import PlyData
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools.MeshCreationTools import CreateMeshOf
 import Muscat.MeshContainers.ElementsDescription as ED
-
-
-# Use a dedicated temporary cache folder
-tmp_cache_dir = "hf_tmp_cache"
-config.HF_DATASETS_CACHE = tmp_cache_dir
 
 
 N_PROC = 6 # number of parallel processes (set to 1 for sequential execution)
@@ -99,10 +101,6 @@ infos = {"legal": {"owner": "NeuralOperator (https://zenodo.org/records/13993629
                             "script": "Converted to PLAID format for standardized access; no changes to data content."},
     }
 
-constant_features = [
-"Base_2_3/Zone/Elements_TRI_3/ElementRange",
-]
-
 input_features = [
 "Base_2_3/Zone/Elements_TRI_3/ElementConnectivity",
 "Base_2_3/Zone/GridCoordinates/CoordinateX",
@@ -115,15 +113,11 @@ output_features = [
 ]
 
 
-pb_def = ProblemDefinition()
-pb_def.add_in_features_identifiers(input_features)
-pb_def.add_out_features_identifiers(output_features)
-pb_def.add_constant_features_identifiers(constant_features)
-pb_def.set_task("regression")
-pb_def.set_name("regression_1")
-pb_def.set_score_function("RRMSE")
-pb_def.set_train_split({"train":"all"})
-pb_def.set_test_split({"test":"all"})
+pb_def = ProblemDefinition(name="regression_1")
+pb_def.add_input_features(input_features)
+pb_def.add_output_features(output_features)
+pb_def.train_split = {"train":"all"}
+pb_def.test_split = {"test":"all"}
 
 #---------------------------------------------------------------
 # Define a simple function that takes a single identifier and returns a Sample.
@@ -189,6 +183,8 @@ for backend in all_backends:
                 illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
     print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
 
+# Note: for maximal compatibility, you may need to call the `save_to_disk` and `push_to_hub` under the `if __name__ == "__main__":` context;
+
 if Path(tmp_cache_dir).exists():
     shutil.rmtree(Path(tmp_cache_dir))
 ```
@@ -217,8 +213,8 @@ split = "train"
 
 # Load problem definitions and define features as all the input and output features
 pb_defs = load_problem_definitions_from_disk(f"{BASE_DOWNLOADED_DATA_FOLDER}/{all_backends[0]}_dataset")
-pb_def = pb_defs[0]
-features = pb_def.get_in_features_identifiers() + pb_def.get_out_features_identifiers()
+pb_def = next(iter(pb_defs.values()))
+features = pb_def.input_features + pb_def.output_features
 
 print("----------------------------------------------------")
 print("-- Download datasets -------------------------------")
@@ -277,9 +273,9 @@ for backend in all_backends:
 
     # generic way to read all features for all time steps
     for t in plaid_sample.get_all_time_values():
-        for path in pb_def.get_in_features_identifiers():
+        for path in pb_def.input_features:
             plaid_sample.get_feature_by_path(path=path, time=t)
-        for path in pb_def.get_out_features_identifiers():
+        for path in pb_def.output_features:
             plaid_sample.get_feature_by_path(path=path, time=t)
 
     # generic way to return the data as a dict containing all constant and variable features
@@ -329,7 +325,7 @@ for backend in all_backends:
             # efficient plaid sample reconstruction
             plaid_sample = converter.to_plaid(dataset, idx)
             # generic way of retrieving features and send them to GPU
-            for time_ in plaid_sample.get_all_mesh_times():
+            for time_ in plaid_sample.get_all_time_values():
                 torch_sample = {}
                 for path in features:
                     value = plaid_sample.get_feature_by_path(path=path, time=time_)
@@ -342,7 +338,40 @@ for backend in all_backends:
 
 ```
 
-### Indexed extraction with `indexers`
+
+## How to change a dataset backend (read then write in another backend)
+
+```python
+from plaid.storage import init_from_disk, save_to_disk, load_infos_from_disk, load_problem_definitions_from_disk
+
+FOLDER = "tests/containers/dataset_cgns"
+
+ds, conv = init_from_disk(FOLDER)
+infos = load_infos_from_disk(FOLDER)
+pb_defs = load_problem_definitions_from_disk(FOLDER)
+
+ids = {}
+for split in ds.keys():
+    ids[split] = [(split, i) for i in range(len(ds[split]))]
+
+def sample_constructor(id_):
+    split, index = id_[0], id_[1]
+    return conv[split].to_plaid(ds[split], index)
+
+if __name__ == "__main__":
+    save_to_disk(output_folder="tests/containers/dataset_hf",
+        sample_constructor=sample_constructor,
+        ids=ids,
+        backend="hf_datasets",
+        infos=infos,
+        pb_defs=pb_defs,
+        num_proc=1,
+        overwrite=True,
+        verbose=True)
+```
+
+
+## Indexed extraction with `indexers`
 
 `converter.to_dict(...)` and `converter.to_plaid(...)` accept an optional
 `indexers` argument:
@@ -361,9 +390,10 @@ sample = converter.to_plaid(
 - This enables a “read less + one gathered output copy” behavior:
   - **zarr**: partial chunk reads + gathered output
   - **hf_datasets**: Arrow/NumPy best-effort gather + gathered output
-- `cgns` backend does not use this mechanism.
+- **cgns** backend does not use this mechanism.
 
 
+```python
 print("----------------------------------------------------")
 print("-- Streaming test ----------------------------------")
 print("----------------------------------------------------")

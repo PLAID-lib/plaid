@@ -11,31 +11,24 @@ Key features:
 - Dataset card configuration and updating
 """
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
 import gc
 import logging
 import tempfile
 from pathlib import Path
-from typing import Callable, Generator, Optional, Union
+from typing import Any, Callable, Generator, Optional, Union
 
-import datasets
 import yaml
 from huggingface_hub import DatasetCard, hf_hub_download
 
-from plaid import Sample
 from plaid.storage.hf_datasets.bridge import generator_to_datasetdict
 from plaid.storage.hf_datasets.reader import init_datasetdict_from_disk
-from plaid.types import IndexType
+
+from ...containers.sample import Sample
 
 logger = logging.getLogger(__name__)
 
 
-def _compute_num_shards(hf_dataset_dict: datasets.DatasetDict) -> dict[str, int]:
+def _compute_num_shards(hf_dataset_dict: Any) -> dict[str, int]:
     """Computes the number of shards for each split in a DatasetDict.
 
     Args:
@@ -64,7 +57,7 @@ def _compute_num_shards(hf_dataset_dict: datasets.DatasetDict) -> dict[str, int]
 
 
 def save_datasetdict_to_disk(
-    path: Union[str, Path], hf_datasetdict: datasets.DatasetDict, **kwargs
+    path: Union[str, Path], hf_datasetdict: Any, **kwargs: Any
 ) -> None:
     """Save a Hugging Face DatasetDict to disk.
 
@@ -101,7 +94,7 @@ def generate_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     variable_schema: dict[str, dict],
-    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,  # noqa: ARG001
 ) -> None:
@@ -112,7 +105,7 @@ def generate_datasetdict_to_disk(
         generators (dict[str, Callable[..., Generator[Sample, None, None]]]):
             Dictionary of split names to generator functions.
         variable_schema (dict[str, dict]): Schema describing variables.
-        gen_kwargs (Optional[dict[str, dict[str, list[IndexType]]]]): Optional
+        gen_kwargs (Optional[dict[str, dict[str, IndexArrayType]]]): Optional
             generator arguments for parallel processing.
         num_proc (int): Number of processes for generation.
         verbose (bool): Whether to enable verbose output.
@@ -131,7 +124,7 @@ def generate_datasetdict_to_disk(
 
 
 def push_datasetdict_to_hub(
-    repo_id: str, hf_datasetdict: datasets.DatasetDict, **kwargs
+    repo_id: str, hf_datasetdict: Any, **kwargs: Any
 ) -> None:  # pragma: no cover
     """Push a Hugging Face `DatasetDict` to the Hugging Face Hub.
 
@@ -212,7 +205,6 @@ def configure_dataset_card(
         infos (dict[str, dict[str, str]]): Dictionary containing dataset metadata,
             including legal information like license.
         local_dir (Optional[Union[str, Path]]): Unused parameter for local directory path.
-        variable_schema (Optional[dict]): Unused parameter for variable schema.
         viewer (bool): Whether to enable the dataset viewer. Defaults to False, which
             sets 'viewer: false' in the card.
         pretty_name (Optional[str]): A human-readable name for the dataset to
@@ -319,7 +311,7 @@ for sample_raw in dataset:
     plaid_sample = converter.sample_to_plaid(sample_raw)
 ```
 
-Plaid samples' features can be retrieved like the following:
+Sample features can then be retrieved as follows:
 ```python
 from plaid.storage import load_problem_definitions_from_disk
 local_folder = "downloaded_dataset"
@@ -336,10 +328,12 @@ pb_def = pb_defs[0]
 plaid_sample = ... # use a method from above to instantiate a plaid sample
 
 for t in plaid_sample.get_all_time_values():
-    for path in pb_def.get_in_features_identifiers():
-        plaid_sample.get_feature_by_path(path=path, time=t)
-    for path in pb_def.get_out_features_identifiers():
-        plaid_sample.get_feature_by_path(path=path, time=t)
+    for path in pb_def.input_features:
+        feature = plaid_sample.get_feature_by_path(path=path, time=t)
+        ...
+    for path in pb_def.output_features:
+        feature = plaid_sample.get_feature_by_path(path=path, time=t)
+        ...
 ```
 
 For those familiar with HF's `datasets` library, raw data can be retrieved without using the `plaid` library:

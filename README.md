@@ -5,19 +5,17 @@
 | | |
 | --- | --- |
 | Testing | [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml) [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest) [![Coverage](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list) ![Last Commit](https://img.shields.io/github/last-commit/PLAID-lib/plaid/main) |
-| Package | [![Conda Latest Release](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/plaid) [![PyPI Latest Release](https://img.shields.io/pypi/v/pyplaid.svg)](https://pypi.org/project/pyplaid/) [![PyPI Downloads](https://static.pepy.tech/badge/pyplaid)](https://pepy.tech/projects/pyplaid) ![Platform](https://img.shields.io/badge/platform-any-blue) ![Python Version](https://img.shields.io/pypi/pyversions/pyplaid)  |
+| | Package | [![Conda Latest Release](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/plaid) [![PyPI Latest Release](https://img.shields.io/pypi/v/pyplaid.svg)](https://pypi.org/project/pyplaid/) [![PyPI Downloads](https://static.pepy.tech/badge/pyplaid)](https://pepy.tech/projects/pyplaid) ![Platform](https://img.shields.io/badge/platform-POSIX-blue) ![Python Version](https://img.shields.io/pypi/pyversions/pyplaid)  |
 | Other | [![License - BSD 3-Clause](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt) ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social) [![JOSS status](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg)](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e) |
 
 
 <!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/pyplaid.svg?label=PyPI%20downloads)](https://pypi.org/project/pyplaid/) -->
 
 
-# Physics Learning AI Datamodel (PLAID)
-
-</div>
+# Physics Learning AI Data Model (PLAID)
 
 
-- [Physics Learning AI Datamodel (PLAID)](#physics-learning-ai-datamodel-plaid)
+- [Physics Learning AI Data Model (PLAID)](#physics-learning-ai-data-model-plaid)
   - [1. Description](#1-description)
   - [2. Getting started](#2-getting-started)
   - [3. Call for Contributions](#3-call-for-contributions)
@@ -26,15 +24,15 @@
 
 ## 1. Description
 
-This library proposes an implementation for a datamodel tailored for AI and ML learning of physics problems.
-It has been developped at SafranTech, the research center of [Safran group](https://www.safran-group.com/).
+This library proposes an implementation for a data model tailored for AI and ML learning of physics problems.
+It has been developed at SafranTech, the research center of [Safran group](https://www.safran-group.com/).
 
 - **Documentation:** https://plaid-lib.readthedocs.io/
 - **Source code:** https://github.com/PLAID-lib/plaid
 - **Contributing:** https://github.com/PLAID-lib/plaid/blob/main/CONTRIBUTING.md
 - **License:** https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt
 - **Bug reports:** https://github.com/PLAID-lib/plaid/issues
-- **Report a security vulnerability:** https://github.com/PLAID-lib/plaid/issues
+- **Report a security vulnerability:** https://github.com/PLAID-lib/plaid/security/advisories/new
 
 
 ## 2. Getting started
@@ -44,19 +42,19 @@ It has been developped at SafranTech, the research center of [Safran group](http
 
 To use the library, the simplest way is to install it from the packages available:
 
-- on conda-forge for Windows, macOS and Linux:
+- on conda-forge for Linux, macOS, and Windows:
   ```bash
   conda install -c conda-forge plaid
   ```
 
-- or on PyPi for Linux:
+- or on PyPI for Linux:
   ```bash
   pip install pyplaid
   ```
 
 **Note**
 
-- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled pyCGNS dependency. In other situations, which we have not tested, pyCGNS must be installed separately beforehand.
+- Conda-forge packages for all supported operating systems (Linux, macOS, and Windows) and the Linux PyPI package include a bundled pyCGNS dependency. In other situations, which we have not tested, pyCGNS must be installed separately beforehand.
 - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 
@@ -101,11 +99,12 @@ run_examples.bat      # [win]
 
 #### 2.2.3 Documentation
 
-To compile locally the documentation, you can run:
+The documentation is built with [Zensical](https://zensical.org/) and
+[mkdocstrings](https://mkdocstrings.github.io/). To compile it locally, run:
 
 ```bash
 cd docs
-make html
+bash generate_doc.sh
 ```
 
 Various notebooks are executed during compilation. The documentation can then be explored in ``docs/_build/html``.

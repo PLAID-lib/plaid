@@ -5,26 +5,20 @@ for storage, including flattening CGNS trees, inferring data types, and handling
 parallel processing of sample shards.
 """
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import hashlib
+import logging
 import multiprocessing as mp
-import sys
-import traceback
 from queue import Empty
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Any, Callable, Generator, Optional, Sequence, Union
 
 import numpy as np
 from tqdm import tqdm
 
-from plaid import Sample
-from plaid.types import IndexType
 from plaid.utils.cgns_helper import flatten_cgns_tree
+
+from ...containers.sample import Sample
+
+logger = logging.getLogger(__name__)
 
 
 def infer_dtype(value: Any) -> dict[str, int | str]:
@@ -48,6 +42,8 @@ def infer_dtype(value: Any) -> dict[str, int | str]:
             dt = "int64"
         elif np.issubdtype(dtype, np.str_):
             dt = "string"
+        elif np.issubdtype(dtype, np.dtype("S1")):
+            dt = "S1"
         else:  # pragma: no cover
             raise ValueError(f"Unrecognized scalar dtype: {dtype}")
         return {"dtype": dt, "ndim": arr.ndim}
@@ -62,7 +58,7 @@ def build_sample_dict(
 ) -> tuple[dict[str, Any], set[str], dict[str, str]]:
     """Flatten a PLAID Sample's CGNS trees into Hugging Face–compatible arrays and metadata.
 
-    The function traverses every CGNS tree stored in sample.features.data (keyed by time),
+    The function traverses every CGNS tree stored in sample.data (keyed by time),
     produces a flattened mapping path -> primitive value for each time, and then builds
     compact numpy arrays suitable for storage in a Hugging Face Dataset. Repeated value
     blocks that are identical across times are deduplicated and referenced by start/end
@@ -71,7 +67,7 @@ def build_sample_dict(
 
     Args:
         sample (Sample): A PLAID Sample whose features contain one or more CGNS trees
-            (sample.features.data maps time -> CGNSTree).
+            (sample.data maps time -> CGNSTree).
 
     Returns:
         tuple:
@@ -97,7 +93,7 @@ def build_sample_dict(
     all_paths = set()
 
     # --- Flatten CGNS trees ---
-    for time, tree in sample.features.data.items():
+    for time, tree in sample.data.items():
         flat, cgns_types = flatten_cgns_tree(tree)
         sample_flat_trees[time] = flat
 
@@ -189,7 +185,8 @@ def _hash_value(value: Any) -> str:
         str: The MD5 hash of the value.
     """
     if isinstance(value, np.ndarray):
-        return hashlib.md5(value.view(np.uint8)).hexdigest()
+        contiguous_value = np.ascontiguousarray(value)
+        return hashlib.md5(contiguous_value.tobytes(order="C")).hexdigest()
     return hashlib.md5(str(value).encode("utf-8")).hexdigest()
 
 
@@ -197,12 +194,12 @@ def process_shard(
     generator_fn: Callable[..., Any],
     progress: Any,
     n_proc: int,
-    shard_ids: Optional[list[IndexType]] = None,
+    shard_ids: Optional[Sequence[Any]] = None,
 ) -> tuple[
     set[str],
     dict[str, str],
     dict[str, Any],
-    dict[str, dict[str, Union[str, bool, int]]],
+    dict[str, dict[str, Union[str, bool, int, set]]],
     int,
 ]:
     """Process a single shard of sample ids and collect per-shard metadata.
@@ -217,7 +214,7 @@ def process_shard(
     - updates progress (either a multiprocessing.Queue or a tqdm progress bar).
 
     Args:
-        shard_ids (list[IndexType]): Sequence of sample ids (a single shard) to process.
+        shard_ids (IndexArrayType): Sequence of sample ids (a single shard) to process.
         generator_fn (Callable): Generator function accepting a list of shard id sequences
             and yielding Sample objects for those ids.
         progress (Any): Progress reporter; either a multiprocessing.Queue (for parallel
@@ -298,7 +295,7 @@ def _process_shard_debug(
     generator_fn: Callable[..., Any],
     progress_queue: Any,
     n_proc: int,
-    shard_ids: Optional[list[IndexType]],
+    shard_ids: Optional[Sequence[Any]],
 ) -> Any:  # pragma: no cover
     """Debug wrapper for process_shard that prints exceptions.
 
@@ -314,8 +311,7 @@ def _process_shard_debug(
     try:
         return process_shard(generator_fn, progress_queue, n_proc, shard_ids)
     except Exception as e:
-        print(f"Exception in worker for shards {shard_ids}: {e}", file=sys.stderr)
-        traceback.print_exc()
+        logger.exception("Exception in worker for shards %s: %s", shard_ids, e)
         raise  # re-raise to propagate to main process
 
 
@@ -347,7 +343,7 @@ def preprocess_splits(
         generators (dict[str, Callable]):
             Mapping from split name to a generator function. Each generator must
             accept a single argument (a sequence of shard ids) and yield PLAID samples.
-        gen_kwargs (dict[str, dict[str, list[IndexType]]]):
+        gen_kwargs (dict[str, dict[str, list[IndexArrayType]]]):
             Per-split kwargs used to drive generator invocation (e.g. {"train": {"shards_ids": [...]}}).
         num_proc (int, optional):
             Number of worker processes to use for shard-level parallelism. Defaults to 1.
@@ -479,19 +475,26 @@ def preprocess_splits(
 
         split_n_samples[split_name] = n_samples_total
 
-        # Determine truly constant paths (same hash across all samples)
-        constant_paths = [
-            p
-            for p, entry in split_constant_hashes.items()
-            if len(entry["hashes"]) == 1 and entry["count"] == n_samples_total
-        ]
-
         # Retrieve **values** only for constant paths from first sample
         if gen_kwargs:
             first_sample = next(generator_fn([shards_ids_list[0]]))  # pragma: no cover
         else:
             first_sample = next(generator_fn())
         sample_dict, _, _ = build_sample_dict(first_sample)
+
+        # Determine truly constant paths (same hash across all samples). A split
+        # with a single sample has no cross-sample repetition to prove that a
+        # value is constant. Keep only None-valued structural paths as constants
+        # so sample-based backends still have typed per-sample data columns.
+        # this make possible to work with dataset with only one sample
+        if n_samples_total <= 1:
+            constant_paths = [p for p, value in sample_dict.items() if value is None]
+        else:
+            constant_paths = [
+                p
+                for p, entry in split_constant_hashes.items()
+                if len(entry["hashes"]) == 1 and entry["count"] == n_samples_total
+            ]
 
         split_flat_cst[split_name] = {p: sample_dict[p] for p in sorted(constant_paths)}
         split_var_path[split_name] = {
@@ -519,7 +522,13 @@ def preprocess(
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = True,
-):
+) -> tuple[
+    dict[str, dict[str, Any]],
+    dict[str, Any],
+    dict[str, dict[str, Any]],
+    dict[str, int],
+    dict[str, str],
+]:
     """Preprocess generators to extract schemas and metadata.
 
     Args:
@@ -529,7 +538,8 @@ def preprocess(
         verbose: Whether to show progress.
 
     Returns:
-        tuple: (split_flat_cst, variable_schema, constant_schema, split_n_samples, global_cgns_types)
+        tuple: A 5-tuple ``(split_flat_cst, variable_schema, constant_schema,
+            split_n_samples, global_cgns_types)``.
     """
     (
         split_all_paths,
@@ -542,10 +552,10 @@ def preprocess(
 
     # --- build features ---
     var_features = sorted(list(set().union(*split_var_path.values())))
-    if len(var_features) == 0:  # pragma: no cover
-        raise ValueError(
-            "no variable feature found, is your dataset variable through samples?"
-        )
+    # if len(var_features) == 0:  # pragma: no cover
+    #    raise ValueError(
+    #        "no variable feature found, is your dataset variable through samples?"
+    #    )
 
     for split_name in split_flat_cst.keys():
         for path in var_features:

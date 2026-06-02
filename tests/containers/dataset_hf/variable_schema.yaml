@@ -1,0 +1,15 @@
+Base_2_3/Zone/Elements_TRI_3/ElementConnectivity:
+  dtype: int64
+  ndim: 1
+Base_2_3/Zone/GridCoordinates/CoordinateX:
+  dtype: float32
+  ndim: 1
+Base_2_3/Zone/GridCoordinates/CoordinateY:
+  dtype: float32
+  ndim: 1
+Base_2_3/Zone/GridCoordinates/CoordinateZ:
+  dtype: float32
+  ndim: 1
+Base_2_3/Zone/VertexFields/pressure:
+  dtype: float32
+  ndim: 1

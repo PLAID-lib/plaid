@@ -8,7 +8,7 @@ tests/problem_definition/split.csv
 
 # Heavy data
 *.cgns
-!tests/post/**/*.cgns
+!tests/containers/**/*.cgns
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -64,11 +64,9 @@ report.xml
 **/.vscode
 *-jvsc-*.ipynb
 
-# Sphinx documentation
+# Documentation
 docs/_build/
-docs/api_reference/
-docs/autoapi/
-docs/_extra/
+docs/source/api
 docs/source/notebooks
 
 ###############################################################################

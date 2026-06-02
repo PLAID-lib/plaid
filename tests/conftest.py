@@ -7,14 +7,8 @@ import pytest
 from Muscat.Bridges.CGNSBridge import MeshToCGNS
 from Muscat.MeshTools import MeshCreationTools as MCT
 
-from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.types import CGNSTree
-
-
-@pytest.fixture()
-def dataset():
-    return Dataset()
 
 
 @pytest.fixture()
@@ -28,24 +22,22 @@ def generate_samples_no_string(nb: int, zone_name: str, base_name: str) -> list[
     for i in range(nb):
         sample = Sample()
         sample.init_base(3, 3, base_name)
-        sample.init_zone(
-            np.array([[17, 10, 0]]), zone_name=zone_name, base_name=base_name
-        )
-        sample.add_scalar("test_scalar", float(i))
-        sample.add_scalar("test_scalar_2", float(i**2))
+        sample.init_zone(np.array([[17, 10, 0]]), zone=zone_name, base=base_name)
+        sample.add_global("test_scalar", float(i))
+        sample.add_global("test_scalar_2", float(i**2))
         sample.add_global("global_0", 0.5 + np.ones((2, 3)))
         sample.add_global("global_1", 1.5 + i + np.ones((2, 3, 2)))
         sample.add_field(
             name="test_field_same_size",
             field=float(i**4) * np.ones(17),
-            zone_name=zone_name,
-            base_name=base_name,
+            zone=zone_name,
+            base=base_name,
         )
         sample.add_field(
             name="test_field_2785",
             field=float(i**5) * np.ones(10),
-            zone_name=zone_name,
-            base_name=base_name,
+            zone=zone_name,
+            base=base_name,
             location="CellCenter",
         )
         sample_list.append(sample)
@@ -168,7 +160,7 @@ def tree(muscat_mesh):
 def sample_with_tree(tree: CGNSTree) -> Sample:
     """Generate a Sample objects with a tree."""
     sample = Sample()
-    sample.features.add_tree(tree)
+    sample.add_tree(tree)
     return sample
 
 
@@ -199,55 +191,3 @@ def scalar_names(nb_scalars):
 @pytest.fixture
 def empty_sample():
     return Sample()
-
-
-@pytest.fixture()
-def empty_dataset():
-    return Dataset()
-
-
-@pytest.fixture()
-def dataset_with_samples(dataset, samples, infos):
-    dataset.add_samples(samples)
-    dataset.set_infos(infos)
-    return dataset
-
-
-@pytest.fixture()
-def dataset_with_samples_with_tree(samples_with_tree, infos):
-    dataset = Dataset()
-    dataset.add_samples(samples_with_tree)
-    dataset.set_infos(infos)
-    return dataset
-
-
-@pytest.fixture()
-def other_dataset_with_samples(other_samples):
-    other_dataset = Dataset()
-    other_dataset.add_samples(other_samples)
-    return other_dataset
-
-
-@pytest.fixture()
-def heterogeneous_dataset(dataset_with_samples_with_tree):
-    dataset = dataset_with_samples_with_tree.copy()
-    dataset.add_sample(Sample())
-    sample_with_scalar = Sample()
-    sample_with_scalar.add_scalar("scalar", 1.0)
-    dataset.add_sample(sample_with_scalar)
-    sample_with_ts = Sample()
-    dataset.add_sample(sample_with_ts)
-    return dataset
-
-
-@pytest.fixture()
-def scalar_dataset():
-    dataset = Dataset()
-    sample = Sample()
-    sample.add_scalar("test_scalar", 0.0)
-    dataset.add_sample(sample)
-    sample2 = Sample()
-    for i in range(8):
-        sample2.add_scalar(f"scalar_{i}", float(i))
-    dataset.add_sample(sample2)
-    return dataset

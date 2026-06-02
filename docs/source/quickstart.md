@@ -1,53 +1,75 @@
-# Quickstart
+# :material-rocket-launch-outline:{ .lg .middle } Quickstart
 
-Everything you need to start using PLAID and contributing effectively.
-
----
-
-- [1 Using the library](#1-using-the-library)
-- [2 Core concepts](#2-core-concepts)
-- [3 Going further](#3-going-further)
-
----
-
-
-## 1 Using the library
+## 1. Using the library
 
 To use the library, the simplest way is to install it from the packages available:
 
-- on conda-forge for Windows, macOS and Linux:
+- on conda-forge for Linux, macOS, and Windows:
   ```bash
   conda install -c conda-forge plaid
   ```
 
-- or on PyPi for Linux:
+- or on PyPI for Linux:
   ```bash
   pip install pyplaid
   ```
 
 **Note**
 
-- Only the conda-forge packages (all operating systems) and the Linux PyPI package include a bundled pyCGNS dependency. In other situations, which we have not tested, pyCGNS must be installed separately beforehand.
+- Conda-forge packages for all supported operating systems (Linux, macOS, and Windows) and the Linux PyPI package include a bundled pyCGNS dependency. In other situations, which we have not tested, pyCGNS must be installed separately beforehand.
 - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
 
 
-## 2 Core concepts
+## 2. Core concepts
 
-- {doc}`core_concepts/sample` → API: {py:class}`plaid.containers.sample.Sample`
-- {doc}`core_concepts/dataset` → API: {py:class}`plaid.containers.dataset.Dataset`
-- {doc}`core_concepts/problem_definition` → API: {py:class}`plaid.problem_definition.ProblemDefinition`
-- {doc}`core_concepts/feature_identifiers` → API: {py:class}`plaid.types.feature_types.FeatureIdentifier`
-- {doc}`core_concepts/defaults`
-- {doc}`core_concepts/disk_format`
-- {doc}`core_concepts/interoperability`
+The main classes of `plaid` are `Sample`, `ProblemDefinition` and `Infos`. There is no public top-level dataset container class. Datasets are accessed through backend-specific collections and `Converter` objects, so users typically materialize individual `Sample` objects only when needed instead of loading a whole dataset as one in-memory PLAID object.
 
-## 3 Going further
+The main use case is efficient, backend-agnostic access to heterogeneous PLAID samples in ML pipelines. The reading API is therefore centered on backend datasets and converters:
 
-Explore {doc}`example examples_tutorials <examples_tutorials>` for practical use cases and advanced techniques.
+```python
+from plaid.storage import init_from_disk
 
-The {doc}`API documentation <../autoapi/plaid/index>` provides detailed information on all available classes and methods.
+datasetdict, converterdict = init_from_disk(local_folder)
 
-Two companion libraries extend the `plaid` standard to support machine-learning workflows in physics:
+dataset = datasetdict[split]
+converter = converterdict[split]
 
-- [plaid-bridges](https://github.com/PLAID-lib/plaid-bridges): integrations with popular ML frameworks such as PyTorch Geometric.
-- [plaid-ops](https://github.com/PLAID-lib/plaid-ops): standardized operations on PLAID samples and datasets, including advanced mesh processing (some requiring a finite-element engine) powered by [muscat](https://gitlab.com/drti/muscat).
+for i in range(len(dataset)):
+    plaid_sample = converter.to_plaid(dataset, i)
+```
+
+Sample features can then be retrieved as follows:
+
+```python
+from plaid.storage import load_problem_definitions_from_disk
+
+pb_defs = load_problem_definitions_from_disk(local_folder)
+pb_def = pb_defs["my_pb_def"]
+
+plaid_sample = ... # see above to instantiate a plaid sample
+
+for t in plaid_sample.get_all_time_values():
+    for path in pb_def.input_features:
+        feature = plaid_sample.get_feature_by_path(path=path, time=t)
+        ...
+    for path in pb_def.output_features:
+        feature = plaid_sample.get_feature_by_path(path=path, time=t)
+        ...
+```
+
+These instructions are valid regardless of the storage backend or the heterogeneity of the data.
+
+The package also ships two command-line tools:
+
+```bash
+plaid-check /path/to/plaid_dataset
+plaid-viewer --datasets-root /path/to/datasets
+```
+
+These concepts are described in more detail in [Concepts](concepts.md), including efficient dataset generation and writing.
+
+## 3. Going further
+
+Explore [Examples & Tutorials](examples_tutorials.md) for practical use cases and advanced techniques.
+
+The [API Reference](api/index.md) provides detailed information on all available classes and methods.

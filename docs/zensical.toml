@@ -1,0 +1,215 @@
+[project]
+site_name = "plaid"
+site_description = "Physics Learning AI Data Model documentation"
+site_author = "Safran"
+site_url = "https://plaid-lib.github.io/"
+docs_dir = "source"
+site_dir = "_build/html"
+use_directory_urls = false
+repo_url = "https://github.com/PLAID-lib/plaid"
+repo_name = "PLAID-lib/plaid"
+edit_uri = "edit/main/docs/source/"
+copyright = "Copyright &copy; 2023-2026, Safran"
+language = "en"
+extra_javascript = [
+  "javascripts/mathjax.js",
+  "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js",
+]
+extra_css = ["stylesheets/extra.css"]
+features = [
+  "content.action.edit",
+  "content.action.view",
+  "content.code.copy",
+  "navigation.footer",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+]
+
+nav = [
+  { "Overview" = [
+    { "Home" = "index.md" },
+    { "Quickstart" = "quickstart.md" },
+    { "Citation" = "citation.md" },
+    { "Contributing" = "contributing.md" },
+  ] },
+  { "User guide" = [
+    { "Concepts" = [
+      { "Overview" = "concepts.md" },
+      { "Sample" = "concepts/sample.md" },
+      { "Problem definition" = "concepts/problem_definition.md" },
+      { "Infos" = "concepts/infos.md" },
+      { "Dataset" = "concepts/dataset.md" },
+      { "Default values" = "concepts/defaults.md" },
+      { "Disk format" = "concepts/disk_format.md" },
+    ] },
+    { "Examples and tutorials" = [
+      { "Overview" = "examples_tutorials.md" },
+      { "Sample" = "notebooks/containers/sample_example.md" },
+      { "Problem definition" = "notebooks/problem_definition_example.md" },
+      { "Infos" = "notebooks/infos_example.md" },
+      { "Downloadable samples" = "notebooks/downloadable_example/sample_example.md" },
+      { "Conversion tutorial" = "tutorials/storage.md" },
+    ] },
+    { "Viewer" = "concepts/viewer.md" },
+    # >>> AUTO-GENERATED API REFERENCE START
+    # The block below is overwritten by `python docs/generate_api_stubs.py`.
+    # Edit that script (or the markers) instead of changing this section by hand.
+    { "API reference" = [
+      { "constants" = "api/constants.md" },
+      { "infos" = "api/infos.md" },
+      { "problem_definition" = "api/problem_definition.md" },
+      { "cli" = [
+        { "plaidcheck" = "api/cli/plaidcheck.md" },
+      ] },
+      { "containers" = [
+        { "sample" = "api/containers/sample.md" },
+        { "utils" = "api/containers/utils.md" },
+        { "managers" = [
+          { "default_manager" = "api/containers/managers/default_manager.md" },
+        ] },
+      ] },
+      { "downloadable_examples" = [
+        { "__init__" = "api/downloadable_examples/index.md" },
+        { "config" = "api/downloadable_examples/config.md" },
+      ] },
+      { "storage" = [
+        { "backend_api" = "api/storage/backend_api.md" },
+        { "reader" = "api/storage/reader.md" },
+        { "registry" = "api/storage/registry.md" },
+        { "writer" = "api/storage/writer.md" },
+        { "cgns" = [
+          { "__init__" = "api/storage/cgns/index.md" },
+          { "reader" = "api/storage/cgns/reader.md" },
+          { "writer" = "api/storage/cgns/writer.md" },
+        ] },
+        { "common" = [
+          { "bridge" = "api/storage/common/bridge.md" },
+          { "preprocessor" = "api/storage/common/preprocessor.md" },
+          { "reader" = "api/storage/common/reader.md" },
+          { "writer" = "api/storage/common/writer.md" },
+        ] },
+        { "hf_datasets" = [
+          { "__init__" = "api/storage/hf_datasets/index.md" },
+          { "bridge" = "api/storage/hf_datasets/bridge.md" },
+          { "reader" = "api/storage/hf_datasets/reader.md" },
+          { "writer" = "api/storage/hf_datasets/writer.md" },
+        ] },
+        { "zarr" = [
+          { "__init__" = "api/storage/zarr/index.md" },
+          { "bridge" = "api/storage/zarr/bridge.md" },
+          { "reader" = "api/storage/zarr/reader.md" },
+          { "writer" = "api/storage/zarr/writer.md" },
+        ] },
+      ] },
+      { "utils" = [
+        { "base" = "api/utils/base.md" },
+        { "cgns_helper" = "api/utils/cgns_helper.md" },
+      ] },
+      { "viewer" = [
+        { "cache" = "api/viewer/cache.md" },
+        { "cli" = "api/viewer/cli.md" },
+        { "config" = "api/viewer/config.md" },
+        { "models" = "api/viewer/models.md" },
+        { "preferences" = "api/viewer/preferences.md" },
+        { "services" = [
+          { "paraview_artifact_service" = "api/viewer/services/paraview_artifact_service.md" },
+          { "plaid_dataset_service" = "api/viewer/services/plaid_dataset_service.md" },
+        ] },
+        { "trame_app" = [
+          { "server" = "api/viewer/trame_app/server.md" },
+        ] },
+      ] },
+    ] },
+    # <<< AUTO-GENERATED API REFERENCE END
+  ] },
+  { "Ecosystem & Benchmarks" = [
+    { "CGNS Standard" = "https://cgns.org/" },
+    { "Muscat library" = "https://muscat.readthedocs.io/" },
+    { "PLAID Benchmarks" = "plaid_benchmarks.md" },
+  ] },
+]
+
+[project.plugins.mkdocstrings.config]
+default_handler = "python"
+
+[project.plugins.mkdocstrings.config.handlers.python]
+paths = ["../src"]
+
+[project.plugins.mkdocstrings.config.handlers.python.options]
+# --- structure / navigation ---
+group_by_category = true
+show_symbol_type_heading = true
+show_symbol_type_toc = true
+show_root_toc_entry = true
+heading_level = 2
+
+# --- what is shown for each object ---
+docstring_style = "google"
+docstring_section_style = "list"
+show_source = true
+show_bases = false
+show_signature = true
+show_signature_annotations = false
+separate_signature = true
+show_root_heading = true
+show_attributes = true
+
+# --- display module path / imports ---
+show_root_full_path = true
+show_object_full_path = true
+show_if_no_docstring = false
+
+# --- ordering and style ---
+# Render members inherited via base classes. ``Sample`` declares itself
+# (inside a ``TYPE_CHECKING`` block in ``plaid.containers.sample``) as
+# inheriting from ``SampleFeatures`` so that the public methods delegated
+# at runtime by ``@delegate_methods("features", SampleFeatures)`` show up
+# on its documentation page. Without this, the ``Sample`` page would only
+# list the few methods literally defined inside ``class Sample`` and hide
+# most of the actual API surface a user calls on a sample.
+inherited_members = true
+members_order = "source"
+merge_init_into_class = true
+
+[project.theme]
+favicon = "images/plaid_logo.png"
+logo = "images/plaid_logo.png"
+
+[[project.theme.palette]]
+scheme = "default"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+scheme = "slate"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to light mode"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/PLAID-lib/plaid"
+name = "PLAID on GitHub"
+
+[[project.extra.social]]
+icon = "simple/pypi"
+link = "https://pypi.org/project/pyplaid/"
+name = "pyplaid on PyPI"
+
+[[project.extra.social]]
+icon = "simple/anaconda"
+link = "https://anaconda.org/conda-forge/plaid"
+name = "plaid on conda-forge"
+
+[project.validation]
+# Notebook text outputs contain CGNS tree dumps with square brackets (e.g.
+# ``[1 2 3]``) that are valid rendered content but look like reference-style
+# Markdown links to the validator. Keep the build quiet while preserving those
+# outputs verbatim in the generated documentation.
+unresolved_references = false
+
+# [project.markdown_extensions.footnotes]

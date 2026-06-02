@@ -5,24 +5,16 @@ It includes utilities for generating datasets from sample generators, saving to 
 uploading to Hugging Face Hub, and configuring dataset cards.
 """
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import multiprocessing as mp
 from pathlib import Path
-from typing import Callable, Generator, Optional, Union
+from typing import Any, Callable, Generator, Optional, Union
 
 import yaml
 from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
-from plaid import Sample
-from plaid.types import IndexType
+from ...containers.sample import Sample
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +44,7 @@ def generate_datasetdict_to_disk(
     output_folder: Union[str, Path],
     generators: dict[str, Callable[..., Generator[Sample, None, None]]],
     variable_schema: Optional[dict[str, dict]] = None,  # noqa: ARG001
-    gen_kwargs: Optional[dict[str, dict[str, list[IndexType]]]] = None,
+    gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
 ) -> None:
@@ -178,8 +170,6 @@ def configure_dataset_card(
             including legal information like license.
         local_dir (Union[str, Path]): Path to the local directory containing the
             dataset files, expected to have a 'data' subdirectory with split folders.
-        variable_schema (Optional[dict]): Schema describing the variables/features
-            in the dataset, used to generate the features section in the card.
         viewer (Optional[bool]): Unused parameter for viewer configuration.
         pretty_name (Optional[str]): A human-readable name for the dataset to
             display in the card.
@@ -321,7 +311,7 @@ for sample_raw in dataset:
     plaid_sample = converter.sample_to_plaid(sample_raw)
 ```
 
-Plaid samples' features can be retrieved like the following:
+Sample features can then be retrieved as follows:
 ```python
 from plaid.storage import load_problem_definitions_from_disk
 local_folder = "downloaded_dataset"
@@ -338,10 +328,12 @@ pb_def = pb_defs[0]
 plaid_sample = ... # use a method from above to instantiate a plaid sample
 
 for t in plaid_sample.get_all_time_values():
-    for path in pb_def.get_in_features_identifiers():
-        plaid_sample.get_feature_by_path(path=path, time=t)
-    for path in pb_def.get_out_features_identifiers():
-        plaid_sample.get_feature_by_path(path=path, time=t)
+    for path in pb_def.input_features:
+        feature = plaid_sample.get_feature_by_path(path=path, time=t)
+        ...
+    for path in pb_def.output_features:
+        feature = plaid_sample.get_feature_by_path(path=path, time=t)
+        ...
 ```
 """
     str__ += "This dataset was generated in [PLAID](https://plaid-lib.readthedocs.io/), we refer to this documentation for additional details on how to extract data from `sample` objects.\n"

@@ -1,25 +1,23 @@
 # .readthedocs.yml
 # Read the Docs configuration file
 # See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+#
+# The PLAID documentation is built with Zensical (mkdocstrings handler),
+# so we drive the build through ``docs/generate_doc.sh`` using the
+# ``build.commands`` escape hatch.
 
 version: 2
-
-sphinx:
-  configuration: docs/conf.py
-
-conda:
-  environment: environment.yml
 
 build:
   os: "ubuntu-24.04"
   tools:
-    python: "mambaforge-latest"
-  jobs:
-    pre_build:
-      - git fetch origin --unshallow
-      - git rev-list --count HEAD
-
-python:
-  install:
-    - method: pip
-      path: .
+    python: "3.12"
+  commands:
+    - git fetch origin --unshallow || true
+    - asdf plugin add uv || true
+    - asdf install uv latest
+    - asdf global uv latest
+    - uv sync --dev --extra viewer
+    - cd docs && uv run bash generate_doc.sh
+    - mkdir -p $READTHEDOCS_OUTPUT/html
+    - cp -R docs/_build/html/. $READTHEDOCS_OUTPUT/html/

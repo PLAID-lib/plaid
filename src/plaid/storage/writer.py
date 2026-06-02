@@ -11,27 +11,11 @@ Key features:
 - Hub integration with dataset cards and metadata
 """
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import logging
 import shutil
 from pathlib import Path
-from typing import Any, Callable, Generator, Mapping, Optional, Sequence, Union
+from typing import Any, Callable, Generator, Mapping, Optional, Union
 
-from packaging.version import Version
-
-import plaid
-from plaid import ProblemDefinition, Sample
-from plaid.containers.utils import validate_required_infos
-from plaid.storage.common.preprocessor import preprocess
-from plaid.storage.common.reader import (
-    load_infos_from_disk,
-)
 from plaid.storage.common.writer import (
     push_infos_to_hub,
     push_local_metadata_to_hub,
@@ -41,6 +25,14 @@ from plaid.storage.common.writer import (
     save_problem_definitions_to_disk,
 )
 from plaid.storage.registry import available_backends, get_backend
+
+from ..containers.sample import Sample
+from ..infos import Infos
+from ..problem_definition import ProblemDefinition
+from .common.preprocessor import preprocess
+from .common.reader import (
+    load_infos_from_disk,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +71,7 @@ class _SampleFuncGenerator:
 
 
 def _build_gen_kwargs(
-    ids: Mapping[str, Sequence],
+    ids: Mapping[str, Any],
     num_proc: int,
 ) -> dict[str, dict[str, Any]]:
     """Build ``gen_kwargs`` by sharding the ids for each split.
@@ -125,9 +117,9 @@ def _check_folder(output_folder: Path, overwrite: bool) -> None:
 def save_to_disk(
     output_folder: Union[str, Path],
     sample_constructor: Callable[[Any], Sample],
-    ids: Mapping[str, Sequence],
+    ids: Mapping[str, Any],
     backend: str = "hf_datasets",
-    infos: Optional[dict[str, Any]] = None,
+    infos: Optional[Union[Infos, dict[str, Any]]] = None,
     pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
     num_proc: int = 1,
     verbose: bool = False,
@@ -187,8 +179,13 @@ def save_to_disk(
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
     )
-    if infos:
-        validate_required_infos(infos)
+    if infos is not None:
+        if isinstance(
+            infos, Infos
+        ):  # pragma: no cover - exercised via integration tests
+            infos = infos.to_dict()
+        else:
+            Infos.validate_required_only(infos)
 
     # ---- validate ids: must be sliceable sequences ---------------------------
     for split_name, split_ids in ids.items():
@@ -219,18 +216,28 @@ def save_to_disk(
     output_folder = Path(output_folder)
     _check_folder(output_folder, overwrite)
 
+    # The derivation of constant and variable parts is always computed: it
+    # validates the generated samples and yields the per-split sample counts
+    # recorded in ``infos.yaml``. For the CGNS backend the resulting
+    # constant / variable / cgns_types catalogues are intentionally NOT
+    # written to disk: CGNS samples are stored in full (not split between
+    # a per-split constants/ payload and a variable arrow/zarr column
+    # store), so those derived schemas are not needed at read time.
     flat_cst, variable_schema, constant_schema, num_samples, cgns_types = preprocess(
         generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
     )
 
-    save_metadata_to_disk(
-        output_folder, flat_cst, variable_schema, constant_schema, cgns_types
-    )
+    if backend != "cgns":
+        save_metadata_to_disk(
+            output_folder, flat_cst, variable_schema, constant_schema, cgns_types
+        )
 
+    # Inject the actual on-disk storage backend / sample counts so the
+    # written ``infos.yaml`` always reflects how the dataset was saved,
+    # overriding any inherited values from the input ``infos``.
     infos = infos.copy() if infos else {}
-    infos.setdefault("num_samples", num_samples)
-    infos.setdefault("storage_backend", backend)
-    infos.setdefault("plaid", {"version": str(Version(plaid.__version__))})
+    infos["num_samples"] = num_samples
+    infos["storage_backend"] = backend
 
     save_infos_to_disk(output_folder, infos)
 
@@ -281,8 +288,6 @@ def push_to_hub(
     """
     infos = load_infos_from_disk(local_dir)
 
-    validate_required_infos(infos)
-
     backend = infos["storage_backend"]
 
     backend_spec = get_backend(backend)
@@ -299,7 +304,8 @@ def push_to_hub(
         arxiv_paper_urls,
     )
 
-    push_local_metadata_to_hub(repo_id, local_dir)
+    if backend != "cgns":
+        push_local_metadata_to_hub(repo_id, local_dir)
 
     push_infos_to_hub(repo_id, infos)
 

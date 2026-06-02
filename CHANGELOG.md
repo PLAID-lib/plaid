@@ -9,19 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add files to support mybinder.org
+- (plaid-check) add a simple app to check the integrity of a plaid database
 - (dataset-viewer) add a trame app for dataset visual exploration.
 - (sample/features) add_field: check field size consistency with geometrical support.
 - (sample) add `set_trees` to `Sample` delegated methods: `sample.set_trees(...)` now works as a direct proxy to `SampleFeatures.set_trees`, consistent with other delegated tree methods.
 
 ### Changed
 
-- (docs) update logos.
+- (infos) add an infos.py file with a pydantic Info class at the same level as ProblemDefinition.
+- (cgns_backend) remove constant/variable mechanism in reading and writing paths for the cgns_backend.
+- (docs) update logos and migrate to Zensical.
+- (problem_definition) rename add_(in/out)_features_identifiers to add_(in/out)put_features. Impose order in yaml keys.
 
 ### Fixes
 
 - (constants) fix memmaps types correctly, by inferring from constant_schema.
 
 ### Removed
+
+- (examples) remove downloadable_example from run_examples scripts to prevent crash when huggingface services are not fully operational.
 
 ## [0.1.15] - 2026-03-25
 

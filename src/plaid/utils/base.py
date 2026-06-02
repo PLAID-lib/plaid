@@ -1,15 +1,5 @@
 """Base utilities."""
-
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # %% Imports
-
-from functools import wraps
 
 import numpy as np
 
@@ -50,25 +40,6 @@ def safe_len(obj):
         The length of the object if it defines `__len__`, otherwise 0.
     """
     return len(obj) if hasattr(obj, "__len__") else 0
-
-
-def delegate_methods(to: str, methods: list[str]):
-    """Class decorator to forward specific methods from a delegate attribute."""
-
-    def wrapper(cls):
-        for name in methods:
-
-            def make_delegate(name):
-                @wraps(getattr(getattr(cls, to, None), name, lambda *_, **__: None))
-                def method(self, *args, **kwargs):
-                    return getattr(getattr(self, to), name)(*args, **kwargs)
-
-                return method
-
-            setattr(cls, name, make_delegate(name))
-        return cls
-
-    return wrapper
 
 
 class NotAllowedError(Exception):

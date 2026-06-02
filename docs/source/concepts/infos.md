@@ -1,0 +1,87 @@
+---
+title: Infos
+---
+
+# Infos
+
+`Infos` defines the structured metadata stored in the `infos.yaml` file at the
+root of a PLAID dataset.
+
+In the current API, infos stores:
+
+- `legal`, with required `owner` and `license` entries
+- `data_production`, for optional production context such as simulator,
+  hardware, contact, or location
+- `data_description`, for optional dataset description entries such as the
+  number of samples, DOE, inputs, and outputs
+- `num_samples`, as a dictionary keyed by split name
+- `storage_backend`
+
+## Basic usage
+
+```python
+from plaid.infos import DataProduction, Infos, Legal
+
+infos = Infos(
+    legal=Legal(owner="Safran", license="proprietary"),
+    data_production=DataProduction(
+        type="simulation",
+        physics="fluid dynamics",
+        simulator="ExampleSolver",
+    ),
+    data_description="ExampleDescription",
+)
+```
+
+Infos can also be built from a plain mapping, for instance after reading YAML:
+
+```python
+infos = Infos.from_mapping(
+    {
+        "legal": {
+            "owner": "Safran",
+            "license": "proprietary",
+        },
+    }
+)
+```
+
+## Loading from disk
+
+Load infos from a dataset path or directly from an `infos.yaml` file:
+
+```python
+infos = Infos.from_path("/path/to/plaid_dataset")
+```
+
+When a directory is provided, `Infos.from_path(...)` looks for `infos.yaml`
+inside that directory.
+
+## Saving
+
+Save to YAML:
+
+```python
+infos.save_to_file("/path/to/plaid_dataset/infos.yaml")
+```
+
+If a directory path is provided, the file is saved as `infos.yaml` inside that
+directory.
+
+## Mapping-style access
+
+`Infos` provides read-only mapping-style helpers for compatibility with code
+expecting a YAML-like dictionary:
+
+```python
+owner = infos["legal"]["owner"]
+backend = infos.get("storage_backend")
+payload = infos.to_dict()
+```
+
+## Notes
+
+- `legal.owner` and `legal.license` are required when validating complete infos.
+- `num_samples` and `storage_backend` are automatically filled when `save_to_disk(..., infos=...)` is called before writing `infos.yaml`.
+- Unknown keys are rejected during validation.
+- `save_to_file(...)` writes YAML using the standard infos key order.

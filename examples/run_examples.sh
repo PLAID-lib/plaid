@@ -1,10 +1,9 @@
 #!/bin/bash
 
-if [[ "$(uname)" == "Linux" ]]; then
-    FILES="*.py examples/*.py bridges/*.py utils/*.py containers/*.py post/*.py pipelines/*.py"
-else
-    FILES="*.py examples/*.py utils/*.py containers/*.py post/*.py"
-fi
+FILES="*.py containers/*.py"
+
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
 
 for file in $FILES
 do

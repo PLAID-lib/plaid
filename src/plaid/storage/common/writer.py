@@ -5,16 +5,10 @@ and other auxiliary files to disk or uploading them to Hugging Face Hub. It hand
 serialization of infos, problem definitions, and dataset tree structures.
 """
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import io
 import json
 import logging
+import tempfile
 from pathlib import Path
 from typing import Any, Union
 
@@ -22,7 +16,8 @@ import numpy as np
 import yaml
 from huggingface_hub import HfApi
 
-from plaid import ProblemDefinition
+from ...infos import Infos
+from ...problem_definition import ProblemDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -33,18 +28,18 @@ logger = logging.getLogger(__name__)
 
 
 def save_infos_to_disk(
-    path: Union[str, Path], infos: dict[str, dict[str, str]]
+    path: Union[str, Path], infos: Union[Infos, dict[str, Any]]
 ) -> None:
     """Save dataset infos as a YAML file to disk.
 
     Args:
-        path (Union[str, Path]): The directory path where the infos file will be saved.
-        infos (dict[str, dict[str, str]]): Dictionary containing dataset infos.
+        path (Union[str, Path]): The directory path where ``infos.yaml`` will be saved.
+        infos (Union[Infos, dict[str, Any]]): Dataset infos. Plain mappings are
+            validated through :class:`Infos` before being written.
     """
-    infos_fname = Path(path) / "infos.yaml"
-    infos_fname.parent.mkdir(parents=True, exist_ok=True)
-    with open(infos_fname, "w") as file:
-        yaml.dump(infos, file, default_flow_style=False, sort_keys=False)
+    if not isinstance(infos, Infos):
+        infos = Infos.from_mapping(infos)
+    infos.save_to_file(Path(path) / "infos.yaml")
 
 
 def save_problem_definitions_to_disk(
@@ -58,7 +53,7 @@ def save_problem_definitions_to_disk(
         pb_defs (Union[dict[str, ProblemDefinition], ProblemDefinition]): The problem definitions to save.
     """
     if isinstance(pb_defs, ProblemDefinition):
-        pb_defs = {pb_defs.get_name(): pb_defs}
+        pb_defs = {pb_defs.name: pb_defs}
 
     target_dir = Path(path) / "problem_definitions"
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -71,7 +66,11 @@ def save_problem_definitions_to_disk(
         pb_def.save_to_file(target_dir / name)
 
 
-def save_constants_to_disk(path, constant_schema, flat_cst):
+def save_constants_to_disk(
+    path: Union[str, Path],
+    constant_schema: dict[str, Any],
+    flat_cst: dict[str, Any],
+) -> None:
     """Write constant features to disk under <path>/constants/.
 
     For each split in flat_cst this creates a directory:
@@ -93,7 +92,7 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
         flat_cst (dict): Mapping split -> {constant_name: numpy array | None} containing values to save.
 
     Returns:
-        None
+        None: This function does not return a value.
 
     Raises:
         AssertionError: if a numeric array does not match the expected ndim.
@@ -182,7 +181,8 @@ def save_constants_to_disk(path, constant_schema, flat_cst):
 
                 offset += nbytes
 
-        json.dump(layout, open(cst_path / "layout.json", "w"), indent=2)
+        with open(cst_path / "layout.json", "w") as f:
+            json.dump(layout, f, indent=2)
 
         with open(cst_path / "constant_schema.yaml", "w", encoding="utf-8") as f:
             yaml.dump(constant_schema[split], f, sort_keys=False)
@@ -229,38 +229,41 @@ def save_metadata_to_disk(
 
 
 def push_infos_to_hub(
-    repo_id: str, infos: dict[str, dict[str, str]]
+    repo_id: str, infos: Union[Infos, dict[str, Any]]
 ) -> None:  # pragma: no cover (not tested in unit tests)
     """Upload dataset infos.yaml to a Hugging Face dataset repository.
 
-    Serializes the provided `infos` mapping to YAML and uploads it as `infos.yaml`
-    to the target `repo_id` using the HfApi.
+    Serializes the provided ``infos`` to YAML using :class:`Infos` and uploads
+    it as ``infos.yaml`` to the target ``repo_id`` using the HfApi.
 
     Args:
         repo_id (str): Hugging Face dataset repository identifier (e.g. "user/repo").
-        infos (dict[str, dict[str, str]]): Dataset infos mapping to serialize and upload.
+        infos (Union[Infos, dict[str, Any]]): Dataset infos. Plain mappings are
+            validated through :class:`Infos` before being uploaded.
 
     Raises:
-        ValueError: If `infos` is empty.
+        ValueError: If ``infos`` is an empty mapping.
         OSError / IOError: If the upload fails due to I/O errors or network problems.
-
-    Notes:
-        - The function uses HfApi.upload_file and constructs the file contents in-memory.
-        - Not covered by unit tests (pragma: no cover).
     """
-    if len(infos) > 0:
-        api = HfApi()
-        yaml_str = yaml.dump(infos)
-        yaml_buffer = io.BytesIO(yaml_str.encode("utf-8"))
-        api.upload_file(
-            path_or_fileobj=yaml_buffer,
-            path_in_repo="infos.yaml",
-            repo_id=repo_id,
-            repo_type="dataset",
-            commit_message="Upload infos.yaml",
-        )
-    else:
+    if isinstance(infos, dict) and len(infos) == 0:
         raise ValueError("'infos' must not be empty")
+
+    if not isinstance(infos, Infos):
+        infos = Infos.from_mapping(infos)
+
+    api = HfApi()
+    with tempfile.TemporaryDirectory(prefix="plaid_infos_") as tmp_dir:
+        tmp_path = Path(tmp_dir) / "infos.yaml"
+        infos.save_to_file(tmp_path)
+        with open(tmp_path, "rb") as f:
+            yaml_buffer = io.BytesIO(f.read())
+    api.upload_file(
+        path_or_fileobj=yaml_buffer,
+        path_in_repo="infos.yaml",
+        repo_id=repo_id,
+        repo_type="dataset",
+        commit_message="Upload infos.yaml",
+    )
 
 
 def push_local_problem_definitions_to_hub(
@@ -274,6 +277,7 @@ def push_local_problem_definitions_to_hub(
     ``HfApi.upload_folder``.
 
     Expected local layout:
+
         <path>/
             problem_definitions/
                 <name_1>
@@ -340,7 +344,8 @@ def push_local_metadata_to_hub(
     (e.g. via ``save_metadata_to_disk``). This function performs no validation,
     transformation, or serialization; it strictly uploads existing files.
 
-    Expected local layout:
+    Expected local layout::
+
         <path>/
             constants/
                 <split>/

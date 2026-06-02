@@ -4,13 +4,6 @@ This module provides common utilities for reading dataset metadata, problem defi
 and other auxiliary files from disk or downloading them from Hugging Face Hub.
 """
 
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 import json
 import logging
 import tempfile
@@ -21,7 +14,8 @@ import numpy as np
 import yaml
 from huggingface_hub import hf_hub_download, snapshot_download
 
-from plaid import ProblemDefinition
+from ...infos import Infos
+from ...problem_definition import ProblemDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -46,19 +40,16 @@ def _materialize_memmaps(
 # ------------------------------------------------------
 
 
-def load_infos_from_disk(path: Union[str, Path]) -> dict[str, Any]:
+def load_infos_from_disk(path: Union[str, Path]) -> Infos:
     """Load dataset information from a YAML file stored on disk.
 
     Args:
         path (Union[str, Path]): Directory path containing the `infos.yaml` file.
 
     Returns:
-        dict[str, dict[str, str]]: Dictionary containing dataset infos.
+        Infos: Validated dataset infos object.
     """
-    infos_fname = Path(path) / "infos.yaml"
-    with infos_fname.open("r") as file:
-        infos = yaml.safe_load(file)
-    return infos
+    return Infos.from_path(Path(path) / "infos.yaml")
 
 
 def load_problem_definitions_from_disk(
@@ -93,7 +84,9 @@ def load_problem_definitions_from_disk(
         ValueError:
             If the ``problem_definitions/`` directory does not exist.
     """
-    pb_def_dir = Path(path) / Path("problem_definitions")
+    pb_def_dir = Path(path).absolute()
+    if pb_def_dir.name != "problem_definitions":
+        pb_def_dir /= Path("problem_definitions")
 
     if pb_def_dir.is_dir():
         pb_defs = {}
@@ -101,33 +94,36 @@ def load_problem_definitions_from_disk(
             if p.is_file():
                 pb_def = ProblemDefinition()
                 pb_def._load_from_file_(pb_def_dir / Path(p.name))
-                pb_defs[pb_def.get_name()] = pb_def
+                pb_name = pb_def.name if isinstance(pb_def.name, str) else p.stem
+                pb_defs[pb_name] = pb_def
         return pb_defs
     else:
-        raise ValueError("No problem definitions found on disk.")  # pragma: no cover
+        raise ValueError(
+            f"No problem definitions found on disk. path '{pb_def_dir}'"
+        )  # pragma: no cover
 
 
-def load_constants_from_disk(path):
+def load_constants_from_disk(
+    path: Union[str, Path],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     """Load constant features stored under a dataset's "constants" directory.
 
-    The function expects the following layout under <path>/constants/:
-      - one folder per split (e.g. "train", "test", ...)
-        each containing:
-          * layout.json            : mapping constant_name -> {'offset': int, 'shape': [..]} or None
-          * constant_schema.yaml   : YAML describing dtype for each constant (dtype string or "string")
-          * data.mmap              : raw bytes memory-mapped file containing packed constant data
+    The function expects the following layout under <path>/constants/. One folder per split (e.g. "train", "test", ...)
+    each containing:
+    - layout.json            : mapping constant_name -> {'offset': int, 'shape': [..]} or None
+    - constant_schema.yaml   : YAML describing dtype for each constant (dtype string or "string")
+    - data.mmap              : raw bytes memory-mapped file containing packed constant data
 
     Args:
         path (str | Path): Root dataset directory that contains the "constants" folder.
 
     Returns:
-        tuple:
-            flat_cst (dict[str, dict[str, Any]]): Mapping split -> {constant_name: numpy array | None}.
-                - Numeric constants are returned as ``np.memmap`` arrays backed by
-                  ``data.mmap`` in the dataset directory.
-                - String constants are returned as 1-element numpy arrays of Python str decoded using ASCII.
-                - If layout entry for a key is None, the value is returned as None.
-            constant_schema (dict[str, dict[str, Any]]): Mapping split -> loaded constant schema (from YAML).
+        tuple: A 2-tuple ``(flat_cst, constant_schema)`` where ``flat_cst`` and
+            ``constant_schema`` are both ``dict[str, dict[str, Any]]``. Numeric
+            constants are returned as ``np.memmap`` arrays backed by ``data.mmap``.
+            String constants are returned as one-element numpy arrays of Python
+            strings decoded using ASCII. If a layout entry is ``None``, the
+            returned value is ``None``.
 
     Raises:
         FileNotFoundError: If the expected "constants" directory or required files are missing.
@@ -223,25 +219,22 @@ def load_metadata_from_disk(
 
 def load_infos_from_hub(
     repo_id: str,
-) -> dict[str, Any]:  # pragma: no cover
+) -> Infos:  # pragma: no cover
     """Load dataset infos from the Hugging Face Hub.
 
-    Downloads the infos.yaml file from the specified repository and parses it as a dictionary.
+    Downloads the infos.yaml file from the specified repository and parses it
+    into a validated :class:`Infos`.
 
     Args:
         repo_id (str): The repository ID on the Hugging Face Hub.
 
     Returns:
-        dict[str, dict[str, str]]: Dictionary containing dataset infos.
+        Infos: Validated dataset infos object.
     """
-    # Download infos.yaml
     yaml_path = hf_hub_download(
         repo_id=repo_id, filename="infos.yaml", repo_type="dataset"
     )
-    with open(yaml_path, "r", encoding="utf-8") as f:
-        infos = yaml.safe_load(f)
-
-    return infos
+    return Infos.from_path(yaml_path)
 
 
 def load_problem_definitions_from_hub(

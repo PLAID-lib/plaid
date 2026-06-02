@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-#
-
 # %% Imports
 
 import json
@@ -16,7 +9,6 @@ import numpy as np
 import pytest
 import yaml
 
-from plaid.containers.dataset import Dataset
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.storage import (
@@ -158,17 +150,14 @@ def current_directory():
 
 # %% Fixtures
 @pytest.fixture()
-def dataset(samples, infos) -> Dataset:
+def samples_with_extra_global(samples) -> list[Sample]:
     samples_ = []
     for i, sample in enumerate(samples):
         sample_ = deepcopy(sample)
         if i == 0 or i == 2:
-            sample_.add_scalar("toto", 1.0)
+            sample_.add_global("toto", 1.0)
         samples_.append(sample_)
-
-    dataset = Dataset(samples=samples_)
-    dataset.set_infos(infos)
-    return dataset
+    return samples_
 
 
 @pytest.fixture()
@@ -179,35 +168,70 @@ def main_splits() -> dict:
 @pytest.fixture()
 def problem_definition(main_splits) -> ProblemDefinition:
     problem_definition = ProblemDefinition()
-    problem_definition.set_task("regression")
-    problem_definition.add_input_scalars_names(["feature_name_1", "feature_name_2"])
-    problem_definition.set_split(main_splits)
+    problem_definition.add_input_features(["feature_name_1", "feature_name_2"])
+    problem_definition.train_split = {"train": main_splits["train"]}
+    problem_definition.test_split = {"test": main_splits["test"]}
     return problem_definition
 
 
 @pytest.fixture()
-def sample_constructor(dataset):
+def sample_constructor(samples_with_extra_global):
     """A simple function that takes an id and returns a Sample."""
 
     def _sample_constructor(id):
-        return dataset[id]
+        return samples_with_extra_global[id]
 
     return _sample_constructor
 
 
 @pytest.fixture()
 def split_ids(problem_definition) -> dict:
-    return problem_definition.get_split()
+    return {
+        "train": problem_definition.get_train_split_indices(),
+        "test": problem_definition.get_test_split_indices(),
+    }
 
 
 class Test_Storage:
     def assert_sample(self, sample):
         assert isinstance(sample, Sample)
-        sorted_names = sorted(sample.get_scalar_names())
+        sorted_names = sorted(sample.get_global_names())
         for i in range(4):
             assert sorted_names[i] == f"global_{i}"
         assert "test_field_same_size" in sample.get_field_names()
         assert sample.get_field("test_field_same_size").shape[0] == 17
+
+    @pytest.mark.parametrize("backend", ["cgns", "hf_datasets", "zarr"])
+    def test_single_sample_dataset_roundtrip(
+        self,
+        backend,
+        tmp_path,
+        samples_with_extra_global,
+        infos,
+    ):
+        """HF datasets and Zarr backends support splits with one sample."""
+        test_dir = tmp_path / f"test_single_sample_{backend}"
+
+        def single_sample_constructor(sample_id) -> Sample:
+            return samples_with_extra_global[sample_id]
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=single_sample_constructor,
+            ids={"train": [0]},
+            backend=backend,
+            infos=infos,
+            overwrite=True,
+        )
+
+        datasetdict, converterdict = init_from_disk(test_dir)
+        dataset = datasetdict["train"]
+        converter = converterdict["train"]
+
+        assert len(dataset) == 1
+        assert converter.num_samples == 1
+        self.assert_sample(converter.to_plaid(dataset, 0))
+        self.assert_sample(converter.sample_to_plaid(dataset[0]))
 
     # ------------------------------------------------------------------------------
     #     HUGGING FACE BRIDGE (with tree flattening and pyarrow tables)
@@ -246,7 +270,7 @@ class Test_Storage:
             )
 
         with pytest.raises(ValueError):
-            problem_definition.set_name(None)
+            problem_definition.name = None
             save_to_disk(
                 output_folder=test_dir,
                 sample_constructor=sample_constructor,
@@ -295,13 +319,7 @@ class Test_Storage:
 
         converter.plaid_to_dict(plaid_sample)
 
-        hf_bridge.to_var_sample_dict(hf_dataset, 0, enforce_shapes=False)
-
-        for t in plaid_sample.get_all_time_values():
-            for path in problem_definition.get_in_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
-            for path in problem_definition.get_out_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
+        hf_bridge.to_var_sample_dict(hf_dataset, 0)
 
         converter.to_dict(hf_dataset, 0)
         converter.sample_to_dict(hf_dataset[0])
@@ -367,12 +385,6 @@ class Test_Storage:
         zarr_dataset.zarr_group
         zarr_dataset.toto = 1.0
         print(zarr_dataset)
-
-        for t in plaid_sample.get_all_time_values():
-            for path in problem_definition.get_in_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
-            for path in problem_definition.get_out_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
 
         converter.to_dict(zarr_dataset, 0)
         converter.sample_to_dict(zarr_dataset[0])
@@ -563,13 +575,12 @@ class Test_Storage:
 
         field_path = "Base_Name/Zone_Name/VertexFields/test_field_same_size"
 
-        # cover enforce_shapes=False + indexed branch
+        # cover indexed branch
         out = hf_bridge.to_var_sample_dict(
             hf_dataset,
             0,
             features=[field_path],
             indexers={field_path: [0, 2, 4]},
-            enforce_shapes=False,
         )
         assert out[field_path].shape == (3,)
 
@@ -635,12 +646,6 @@ class Test_Storage:
         self.assert_sample(plaid_sample)
 
         converter.plaid_to_dict(plaid_sample)
-
-        for t in plaid_sample.get_all_time_values():
-            for path in problem_definition.get_in_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
-            for path in problem_definition.get_out_features_identifiers():
-                plaid_sample.get_feature_by_path(path=path, time=t)
 
         with pytest.raises(ValueError):
             converter.to_dict(cgns_dataset, 0)
@@ -787,7 +792,7 @@ class Test_Storage:
 
     def test_save_to_disk_with_string_ids(
         self,
-        dataset,
+        samples_with_extra_global,
         tmp_path,
         infos,
         problem_definition,
@@ -796,7 +801,7 @@ class Test_Storage:
         id_map = {"sample_a": 0, "sample_b": 2, "sample_c": 1, "sample_d": 3}
 
         def sample_constructor(str_id):
-            return dataset[id_map[str_id]]
+            return samples_with_extra_global[id_map[str_id]]
 
         save_to_disk(
             output_folder=tmp_path / "test_string_ids",
@@ -876,10 +881,10 @@ class Test_Storage:
         # Verify auto-sharding was triggered
         assert len(build_called) == 1
 
-    def test_cgns_generate_no_gen_kwargs(self, tmp_path, dataset):
+    def test_cgns_generate_no_gen_kwargs(self, tmp_path, samples_with_extra_global):
         """Cover cgns writer else branch: gen_func() called without batch_ids_list."""
         test_dir = tmp_path / "test_cgns_no_kwargs"
-        samples_to_yield = [dataset[0], dataset[1]]
+        samples_to_yield = [samples_with_extra_global[0], samples_with_extra_global[1]]
 
         def my_generator():
             yield from samples_to_yield
@@ -949,13 +954,15 @@ class Test_Storage:
         assert sample_groups[1] == "sample_000000001"
 
     def test_cgns_generate_parallel(
-        self, tmp_path, dataset, split_ids, infos, problem_definition
+        self, tmp_path, samples_with_extra_global, split_ids, infos, problem_definition
     ):
         """Cover cgns writer parallel branch with num_proc=2."""
         test_dir = tmp_path / "test_cgns_parallel"
 
         # Pre-build samples list so the picklable generator can index into it
-        all_samples = [dataset[i] for i in range(len(dataset))]
+        all_samples = [
+            samples_with_extra_global[i] for i in range(len(samples_with_extra_global))
+        ]
         gen = _PicklableSampleLookup(all_samples)
 
         save_to_disk(
@@ -975,12 +982,14 @@ class Test_Storage:
         assert len(written) == 2
 
     def test_zarr_generate_parallel(
-        self, tmp_path, dataset, split_ids, infos, problem_definition
+        self, tmp_path, samples_with_extra_global, split_ids, infos, problem_definition
     ):
         """Cover zarr writer parallel branch with num_proc=2."""
         test_dir = tmp_path / "test_zarr_parallel"
 
-        all_samples = [dataset[i] for i in range(len(dataset))]
+        all_samples = [
+            samples_with_extra_global[i] for i in range(len(samples_with_extra_global))
+        ]
         gen = _PicklableSampleLookup(all_samples)
 
         save_to_disk(

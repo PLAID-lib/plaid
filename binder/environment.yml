@@ -1,0 +1,45 @@
+name: plaid-dev
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python>=3.11
+##### RUN #####
+#---# base
+  - tqdm
+#---# io
+  - pyyaml
+#---# storage backends
+  - pycgns-core
+  - zarr
+#---# SciML
+  - datasets
+  - numpy
+#---# data validation
+  - pydantic
+##### DEV/TESTS/EXAMPLES #####
+#---# mesh/graph libs
+  - muscat-core>=2.5.1
+  - vtk
+#---# base
+  - rich
+#---# testing
+  - pytest
+  - pytest-cov
+#---# code formatters
+  - ruff
+#---# dev
+  - pre-commit
+#---# doc
+  - zensical
+  - jupytext
+  - mkdocstrings
+  - nbconvert
+  - ipykernel
+##### VIEWER #####
+  - trame
+  - trame-vtk
+  - trame-vuetify
+  - pip
+  - pip:
+    - pyplaid@git+https://github.com/PLAID-lib/plaid.git@BinderSupport

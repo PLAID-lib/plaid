@@ -32,10 +32,8 @@ dependencies = [
   "pyyaml>=6,<7",
   "pycgns>=6.3,<7",
   "zarr>=3.1,<4",
-  "scikit-learn>=1.4,<2",
   "datasets>=2.18,<5",
-  "numpy>=1.26,<3",
-  "matplotlib>=3.8,<4",
+  "numpy>=2.0,<3",
   "pydantic>=2.6,<3",
 ]
 [project.optional-dependencies]
@@ -62,6 +60,10 @@ files=["LICENSE.txt"]
 file="README.md"
 content-type = "text/markdown"
 
+[project.scripts]
+plaid-check = "plaid.cli.plaidcheck:main"
+plaid-viewer = "plaid.viewer.cli:main"
+
 [tool.setuptools]
 platforms = [
     "Linux",
@@ -75,28 +77,21 @@ include = ["plaid*"]
 
 [dependency-groups]
 dev = [
-    "furo>=2025.12.19",
-    "jupytext>=1.19.1",
+    "ipykernel>=6.29.0",
+    "jupytext>=1.19.3",
     "muscat[storage]>=2.5.1",
-    "myst-nb>=1.4.0",
-    "myst-parser>=5.0.0",
-    "optuna>=4.7.0",
+    "mkdocstrings[python]>=0.27.0",
+    "nbconvert>=7.16.0",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
     "rich>=14.3.3",
     "ruff>=0.15.4",
-    "sphinx>=9.0.4",
-    "sphinx-autoapi>=3.7.0",
-    "sphinx-tabs>=3.4.7",
-    "sphinxcontrib-bibtex>=2.6.5",
+    "zensical>=0.0.38",
 ]
 
 [tool.coverage.run]
-omit = ["src/plaid/examples/*"]
+omit = ["src/plaid/downloadable_examples/*"]
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"
-
-[project.scripts]
-plaid-viewer = "plaid.viewer.cli:main"

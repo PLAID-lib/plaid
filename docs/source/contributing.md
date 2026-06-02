@@ -1,24 +1,5 @@
 # Contributing
 
-- [1. Contributor License Agreement (CLA)](#1-contributor-license-agreement-cla)
-- [2. How to contribute](#2-how-to-contribute)
-  - [2.1. Coding Standards](#21-coding-standards)
-  - [2.2. Contributing Process](#22-contributing-process)
-  - [2.3. Issue Guidelines](#23-issue-guidelines)
-- [3. Development setup](#3-development-setup)
-  - [3.1. Prerequisites](#31-prerequisites)
-  - [3.2. Installation Steps](#32-installation-steps)
-  - [3.3. Important Note](#33-important-note)
-- [4. Tests and examples](#4-tests-and-examples)
-- [5. Documentation](#5-documentation)
-- [6. Formatting and linting with Ruff](#6-formatting-and-linting-with-ruff)
-- [7. Setting up pre-commit](#7-setting-up-pre-commit)
-- [8. Backward-compatibility guidelines](#8-backward-compatibility-guidelines)
-- [9. Release process](#9-release-process)
-  - [9.1. Github](#91-github)
-  - [9.2. conda-forge](#92-conda-forge)
-  - [9.3. Readthedocs](#93-readthedocs)
-
 ## 1. Contributor License Agreement (CLA)
 
 When you make your first contribution to this project, you will be automatically prompted to sign our Contributor License Agreement (CLA) through GitHub. This is a one-time process that you'll need to complete before your contributions can be accepted.
@@ -36,16 +17,14 @@ The agreement will be presented automatically through GitHub's interface when yo
 ### 2.1. Coding Standards
 - Follow PEP 8 and PEP 257 guidelines
 - Use snake_case naming convention
-- Keep lines under 80 characters
 - Prefer one class per file
 - Aim for simple and flexible API design
 - Maintain 100% test coverage
 
 ### 2.2. Contributing Process
-1. Review the backward-compatibility guidelines
-2. Write local/unit tests for your changes
-3. Include examples when adding new features
-4. Submit a pull request with your changes
+- Write local/unit tests for your changes
+- Include examples when adding new features
+- Submit a pull request with your changes
 
 ### 2.3. Issue Guidelines
 When reporting issues:
@@ -65,31 +44,30 @@ For feature requests:
 
 - Git
 - Python (`>=3.10, <3.14`)
-- Conda package manager
+- Conda or uv package manager
 
 ### 3.2. Installation Steps
 
 1. Clone the repository:
 
-    ```bash
-    git clone https://github.com/PLAID-lib/plaid.git
-    ```
+   ```bash
+   git clone https://github.com/PLAID-lib/plaid.git
+   ```
 
 2. Configure the development environment:
 
-   - Using conda (Windows, macOS and Linux):
+    - Using conda (Windows, macOS and Linux):
 
-    ```bash
-    conda env create -n plaid-dev python=3.12 -f environment.yml
-    pip install -e . --no-deps
-    ```
+      ```bash
+      conda env create -n plaid-dev python=3.12 -f environment.yml
+      pip install -e . --no-deps
+      ```
 
-   - Using uv (Linux):
+    - Using uv (Linux):
 
-    ```bash
-    uv sync --dev
-    ```
-
+      ```bash
+      uv sync --dev --extra viewer
+      ```
 
 ## 4. Tests and examples
 
@@ -109,14 +87,31 @@ run_examples.bat      # [win]
 
 ## 5. Documentation
 
-To compile locally the documentation, you can run:
+The documentation is built with [Zensical](https://zensical.org/) and the
+[mkdocstrings](https://mkdocstrings.github.io/) Python handler. To compile it
+locally, run:
 
 ```bash
 cd docs
-make html
+bash generate_doc.sh
 ```
 
-Various notebooks are executed during compilation. The documentation can then be explored in ``docs/_build/html``.
+Various notebooks are executed during compilation. The documentation can then
+be explored in ``docs/_build/html``.
+
+When you add, rename, or remove a Python module under ``src/plaid``, regenerate
+the API reference:
+
+```bash
+python docs/generate_api_stubs.py
+```
+
+The script writes minimal mkdocstrings stubs under ``docs/source/api`` and
+rewrites the ``API reference`` ``nav`` block in ``docs/zensical.toml`` (between
+the ``AUTO-GENERATED API REFERENCE`` markers). CI (`Documentation` workflow)
+re-runs the script and fails if the working tree is not clean, so both the
+stubs and the navigation stay in sync with the source layout. The script is
+also invoked automatically at the start of ``bash docs/generate_doc.sh``.
 
 ## 6. Formatting and linting with Ruff
 
@@ -153,56 +148,64 @@ You can also run (once):
 pre-commit install
 ```
 
-## 8. Backward-compatibility guidelines
+## 8. Release process
 
-Follow these concrete rules to preserve retro-compatibility for both the public API and on-disk formats.
-
-- Public API
-  - Prefer additive changes: add new functions, methods or keyword-only arguments instead of changing existing call signatures.
-  - Mark any removed or renamed public function/method/argument with the `@deprecated` utilities and document the replacement and planned removal version.
-  - When changing return types, keep a migration path (helper converting old format to new) and emit a deprecation warning for callers of the old format.
-  - Add unit tests that exercise the old behaviour and the migration path.
-  - Update the changelog and the release notes with clear migration steps and examples.
-
-- On-disk formats (YAML/JSON/CSV, etc.)
-  - Version any written problem/dataset metadata with a `version` field. When loading, accept older versions and migrate them in-memory.
-  - Keep readers tolerant: accept both previous keys and new keys (using deprecation warnings when reading old keys). Don't break on extra unknown keys.
-  - Write automated migration code for disk formats when the format changes. Prefer writing newer-format files while still supporting read of older files.
-  - Add round-trip tests: save a structure with the current writer, then read it back; and also read legacy files and compare expected migrated structure.
-
-- General process
-  - Open an issue describing the compatibility impact for any breaking change and link it to the PR.
-  - Add deprecation warnings at least one minor release before removal.
-  - Keep `examples/` and `docs/` updated with migration examples and sample commands.
-
-These guidelines help keep PLAID users' code and datasets working across releases. See `docs/` and issues `#97`, `#14` for past discussions and examples of migrations.
-
-## 9. Release process
-
-### 9.1. Github
+### 8.1. Github
 
 - Create a new release branch from `main` called e.g. `release_0.1.10`
 - Update the CHANGELOG
-  - Rename the section [Unreleased] to the new version number (e.g., [0.1.10]) followed by the release date (YYYY-MM-DD)
-  - Update links at the end of the file
+
+    - Rename the section [Unreleased] to the new version number (e.g., [0.1.10]) followed by the release date (YYYY-MM-DD)
+    - Update links at the end of the file
+
 - Create a pull request and request reviews
 - Once approved, merge the pull request
 - Tag the release (e.g., `git tag 0.1.10`). Important: pull the recently updated `main` branch before creating the tag.
 - Create a new release on GitHub
-  - Click `Generate release notes`
-  - Include a link to the CHANGELOG file at the release tag, e.g.: `https://github.com/PLAID-lib/plaid/blob/0.1.10/CHANGELOG.md`
+
+    - Click `Generate release notes`
+    - Include a link to the CHANGELOG file at the release tag, e.g.: `https://github.com/PLAID-lib/plaid/blob/0.1.10/CHANGELOG.md`
+
 - Create a new pull request to add a new `Unreleased` section to the CHANGELOG, with sub-sections `Added`, `Changed`, `Fixes`, `Removed`
 
-### 9.2. conda-forge
+### 8.2. conda-forge
 
 - Create a fork of https://github.com/conda-forge/plaid-feedstock or sync with the latest changes if you already have a fork
 - Update the conda-forge recipe `plaid-feedstock/recipe/meta.yaml`
-  - Update the `version` field to the new version number (line 1)
-  - Update the SHA256 checksum for the new version (line 9), you can find it in the GitHub action: https://github.com/PLAID-lib/plaid/actions/workflows/checksum_release.yml, don’t take the one in `Digest` section of `Artifacts`, but take the one in the download button
-  - Update requirements section if they change in the new version
+
+    - Update the `version` field to the new version number (line 1)
+    - Update the SHA256 checksum for the new version (line 9), you can find it in the GitHub action: https://github.com/PLAID-lib/plaid/actions/workflows/checksum_release.yml, don’t take the one in `Digest` section of `Artifacts`, but take the one in the download button
+    - Update requirements section if they change in the new version
+
 - Submit a pull request to the conda-forge feedstock repository
 - Follow the instructions provided in the PR message
 
-### 9.3. Readthedocs
+### 8.3. Readthedocs
 
 Just check a version was created for the release tag, it should have automatically triggered a new build on Read the Docs.
+
+## 9. Documentation consistency checks
+
+Before opening a PR that modifies docs or public APIs, run a quick consistency pass:
+
+1. **Build docs locally**
+
+   ```bash
+   cd docs
+   bash generate_doc.sh
+   ```
+
+2. **Validate API references**
+
+    - Ensure documented methods/classes exist in current source.
+    - Ensure renamed/removed APIs are either removed from docs or explicitly marked as legacy.
+
+3. **Validate code snippets/imports**
+
+    - Verify documented imports execute against the current package.
+    - Prefer snippets that reflect maintained modules under `src/plaid`.
+
+4. **Validate storage-layout claims**
+
+    - Ensure on-disk format docs match current `plaid.storage` behavior.
+    - Cross-check against tests/fixtures when updating storage documentation.

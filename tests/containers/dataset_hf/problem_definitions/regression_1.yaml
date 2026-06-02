@@ -1,0 +1,12 @@
+name: regression_1
+input_features:
+- Base_2_3/Zone/Elements_TRI_3/ElementConnectivity
+- Base_2_3/Zone/GridCoordinates/CoordinateX
+- Base_2_3/Zone/GridCoordinates/CoordinateY
+- Base_2_3/Zone/GridCoordinates/CoordinateZ
+output_features:
+- Base_2_3/Zone/VertexFields/pressure
+train_split:
+  train: all
+test_split:
+  test: all

@@ -1,0 +1,11 @@
+legal:
+  owner: NeuralOperator (https://zenodo.org/records/13993629)
+  license: cc-by-4.0
+data_production:
+  type: simulation
+  physics: CFD
+  script: Converted to PLAID format for standardized access; no changes to data content.
+num_samples:
+  test: 10
+  train: 10
+storage_backend: cgns
