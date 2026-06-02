@@ -37,7 +37,8 @@ ZENSICAL_CONFIG = DOCS_DIR / "zensical.toml"
 NAV_START = "# >>> AUTO-GENERATED API REFERENCE START"
 NAV_END = "# <<< AUTO-GENERATED API REFERENCE END"
 
-SKIP_FILES = {"_version.py"}
+SKIP_FILES = {"_version.py", "cgns_worker.py", "version.py"}
+SKIP_DIRS = {SRC_DIR / "types"}
 
 
 def module_name(path: Path) -> str:
@@ -59,13 +60,12 @@ def is_namespace_package(path: Path) -> bool:
 
 
 def _local_public_members(init_path: Path) -> list[str]:
-    """Return public names *defined* (not just re-exported) in ``__init__.py``.
+    """Return public class names *defined* (not just re-exported) in ``__init__.py``.
 
-    Top-level ``class``, ``def``, ``async def`` and assignment names are
-    collected. ``from … import …`` and ``import …`` statements are ignored on
-    purpose: those symbols already have a dedicated module page elsewhere in
-    the API reference and we do not want them duplicated on the package
-    overview.
+    Top-level ``class`` names are collected. ``from … import …`` and
+    ``import …`` statements are ignored on purpose: those symbols already have
+    a dedicated module page elsewhere in the API reference and we do not want
+    them duplicated on the package ``__init__`` page.
     """
     if not init_path.is_file():
         return []
@@ -76,16 +76,9 @@ def _local_public_members(init_path: Path) -> list[str]:
 
     names: list[str] = []
     for node in tree.body:
-        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+        if isinstance(node, ast.ClassDef):
             if not node.name.startswith("_"):
                 names.append(node.name)
-        elif isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and not target.id.startswith("_"):
-                    names.append(target.id)
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-            if not node.target.id.startswith("_"):
-                names.append(node.target.id)
 
     seen: set[str] = set()
     return [n for n in names if not (n in seen or seen.add(n))]
@@ -100,13 +93,13 @@ def stub_content(
     """Return the Markdown stub for a module page.
 
     For package ``index.md`` pages we render the package docstring and only
-    the members *literally defined* in ``__init__.py`` (classes, functions,
-    module-level assignments). Names brought in via ``from … import …`` are
-    skipped: they already have a dedicated module page (e.g. ``Sample`` is
-    documented on ``api/containers/sample.md``) and rendering them on the
-    package overview too would create duplicates. Packages whose
-    ``__init__.py`` is a pure re-export shim therefore render just the
-    package docstring (``members: false``).
+    the classes *literally defined* in ``__init__.py``. Names brought in via
+    ``from … import …`` are skipped: they already have a dedicated module page
+    (e.g. ``Sample`` is documented on ``api/containers/sample.md``) and
+    rendering them on the package ``__init__`` page too would create duplicates.
+    Packages whose ``__init__.py`` is a pure re-export shim therefore render
+    just the package docstring (``members: false``) and are omitted from the
+    generated navigation.
     """
     if not is_package_index:
         return f"# `{module}`\n\n::: {module}\n"
@@ -125,6 +118,8 @@ def stub_content(
         f"::: {module}\n"
         f"    options:\n"
         f"      members: [{member_list}]\n"
+        f"      show_if_no_docstring: true\n"
+        f"      show_source: true\n"
     )
 
 
@@ -147,6 +142,9 @@ def collect_modules() -> tuple[set[Path], dict[Path, str]]:
 
     for path in sorted(SRC_DIR.rglob("*.py")):
         if path.name in SKIP_FILES or "__pycache__" in path.parts:
+            continue
+
+        if any(path == skip_dir or skip_dir in path.parents for skip_dir in SKIP_DIRS):
             continue
 
         # Skip files living in directories that are not real packages.
@@ -255,8 +253,10 @@ def render_nav_block(base_indent: str) -> str:
         indent = base_indent + "  " * depth
         lines: list[str] = []
 
-        index_rel = "/".join(("api", *rel.parts, "index.md")) if rel.parts else "api/index.md"
-        lines.append(f'{indent}{{ "overview" = "{index_rel}" }},')
+        init_path = directory / "__init__.py"
+        if _local_public_members(init_path):
+            index_rel = "/".join(("api", *rel.parts, "index.md")) if rel.parts else "api/index.md"
+            lines.append(f'{indent}{{ "__init__" = "{index_rel}" }},')
 
         module_files = sorted(
             f for f in files
