@@ -17,18 +17,14 @@ hide:
   <a href="https://plaid-lib.readthedocs.io/en/latest/?badge=latest"><img alt="Docs" src="https://readthedocs.org/projects/plaid-lib/badge/?version=latest"></a>
   <a href="https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list"><img alt="Coverage" src="https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg"></a>
   <a href="https://github.com/PLAID-lib/plaid/commits/main"><img alt="Last Commit" src="https://img.shields.io/github/last-commit/PLAID-lib/plaid/main"></a>
-</p>
-
-<p align="center">
+  <br>
   <a href="https://anaconda.org/conda-forge/plaid"><img alt="Conda Version" src="https://anaconda.org/conda-forge/plaid/badges/version.svg"></a>
   <a href="https://anaconda.org/conda-forge/plaid"><img alt="Conda Downloads" src="https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads"></a>
   <a href="https://pypi.org/project/pyplaid/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/pyplaid.svg"></a>
   <a href="https://pepy.tech/projects/pyplaid"><img alt="PyPI Downloads" src="https://static.pepy.tech/badge/pyplaid"></a>
   <a href="https://github.com/PLAID-lib/plaid"><img alt="Platform" src="https://img.shields.io/badge/platform-POSIX-blue"></a>
   <a href="https://github.com/PLAID-lib/plaid"><img alt="Python Version" src="https://img.shields.io/pypi/pyversions/pyplaid"></a>
-</p>
-
-<p align="center">
+  <br>
   <a href="https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt"><img alt="License" src="https://anaconda.org/conda-forge/plaid/badges/license.svg"></a>
   <a href="https://github.com/PLAID-lib/plaid"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/PLAID-lib/plaid?style=social"></a>
   <a href="https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e"><img alt="JOSS paper" src="https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg"></a>
