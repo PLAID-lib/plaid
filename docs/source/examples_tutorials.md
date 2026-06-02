@@ -9,10 +9,10 @@ You can find here detailed examples for different parts of plaid, explained in J
 
 ## Notebooks
 
-* [Sample notebook](notebooks/containers/sample_example.md)
-* [Problem definition notebook](notebooks/problem_definition_example.md)
-* [Infos notebook](notebooks/infos_example.md)
-* [Downloadable samples notebook](notebooks/downloadable_example/sample_example.md)
+* [Sample](notebooks/containers/sample_example.md)
+* [Problem definition](notebooks/problem_definition_example.md)
+* [Infos](notebooks/infos_example.md)
+* [Downloadable samples](notebooks/downloadable_example/sample_example.md)
 
 ## Tutorials
 
