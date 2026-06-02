@@ -38,7 +38,7 @@ import shutil
 
 import numpy as np
 
-from plaid import Sample, ProblemDefinition
+from plaid import Sample, ProblemDefinition, Infos
 from plaid.storage import save_to_disk, push_to_hub
 
 # plyfile and Muscat not included in plaid run dependencies
@@ -96,10 +96,20 @@ curated_test_ids = curated_test_ids[:10]
 #---------------------------------------------------------------
 # infos and problem definition must be define to correctly populate the dataset's metadata
 
-infos = {"legal": {"owner": "NeuralOperator (https://zenodo.org/records/13993629)", "license": "cc-by-4.0"},
-        "data_production": {"physics": "CFD", "type": "simulation",
-                            "script": "Converted to PLAID format for standardized access; no changes to data content."},
+infos = Infos.from_mapping(
+    {
+        "legal": {
+            "owner": "NeuralOperator (https://zenodo.org/records/13993629)",
+            "license": "cc-by-4.0",
+        },
+        "data_production": {
+            "physics": "CFD",
+            "type": "simulation",
+            "script": "Converted to PLAID format for standardized access",
+        },
+        "data_description": "No changes to data content from original dataset",
     }
+)
 
 input_features = [
 "Base_2_3/Zone/Elements_TRI_3/ElementConnectivity",

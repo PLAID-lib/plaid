@@ -6,6 +6,7 @@ from typing import Any, Mapping, Optional, Union
 
 from datasets import IterableDataset
 
+from ...infos import Infos
 from .reader import (
     download_datasetdict_from_hub,
     init_datasetdict_from_disk,
@@ -80,7 +81,7 @@ class CgnsBackend:
     @staticmethod
     def configure_dataset_card(
         repo_id: str,
-        infos: dict,
+        infos: Infos,
         local_dir: Optional[Union[str, Path]] = None,
         viewer: bool = False,
         pretty_name: Optional[str] = None,

@@ -4,6 +4,7 @@ import datasets
 import numpy as np
 
 import plaid.storage.hf_datasets as hf_datasets
+from plaid.infos import Infos
 from plaid.storage.hf_datasets import HFBackend
 
 
@@ -209,7 +210,7 @@ def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
         hf_datasets, "configure_dataset_card", fake_configure_dataset_card
     )
 
-    infos = {"legal": {"owner": "owner", "license": "cc-by-4.0"}}
+    infos = Infos.from_mapping({"legal": {"owner": "owner", "license": "cc-by-4.0"}})
     HFBackend.configure_dataset_card("dummy/repo", infos)
 
     assert call == {"repo_id": "dummy/repo", "infos": infos, "local_dir": None}

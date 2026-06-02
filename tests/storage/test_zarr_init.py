@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import plaid.storage.zarr as zarr
+from plaid.infos import Infos
 from plaid.storage.zarr import ZarrBackend
 
 
@@ -175,7 +176,7 @@ def test_zarr_backend_configure_dataset_card_delegates(monkeypatch):
 
     monkeypatch.setattr(zarr, "configure_dataset_card", fake_configure_dataset_card)
 
-    infos = {"legal": {"owner": "owner", "license": "cc-by-4.0"}}
+    infos = Infos.from_mapping({"legal": {"owner": "owner", "license": "cc-by-4.0"}})
     result = ZarrBackend.configure_dataset_card("dummy/repo", infos, "/tmp/local")
 
     assert result == "configured"

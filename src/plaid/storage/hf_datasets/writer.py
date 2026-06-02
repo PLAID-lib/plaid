@@ -24,6 +24,7 @@ from plaid.storage.hf_datasets.bridge import generator_to_datasetdict
 from plaid.storage.hf_datasets.reader import init_datasetdict_from_disk
 
 from ...containers.sample import Sample
+from ...infos import Infos
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +185,7 @@ def push_local_datasetdict_to_hub(
 
 def configure_dataset_card(
     repo_id: str,
-    infos: dict[str, dict[str, str]],
+    infos: Infos,
     local_dir: Optional[Union[str, Path]] = None,  # noqa: ARG001
     viewer: bool = False,
     pretty_name: Optional[str] = None,
@@ -202,7 +203,7 @@ def configure_dataset_card(
     Args:
         repo_id (str): The Hugging Face repository ID where the dataset card is located
             and will be updated.
-        infos (dict[str, dict[str, str]]): Dictionary containing dataset metadata,
+        infos (Infos): Dataset metadata,
             including legal information like license.
         local_dir (Optional[Union[str, Path]]): Unused parameter for local directory path.
         viewer (bool): Whether to enable the dataset viewer. Defaults to False, which
@@ -220,6 +221,7 @@ def configure_dataset_card(
         None: This function does not return a value; it updates the dataset card
             directly on Hugging Face Hub.
     """
+    infos_dict = infos.to_dict()
     readme_path = hf_hub_download(
         repo_id=repo_id, filename="README.md", repo_type="dataset"
     )
@@ -238,7 +240,7 @@ def configure_dataset_card(
     lines = lines[: indices[1] + 1]
 
     count = 1
-    lines.insert(count, f"license: {infos['legal']['license']}")
+    lines.insert(count, f"license: {infos.legal.license}")
     count += 1
     if viewer is False:
         lines.insert(count, "viewer: false")
@@ -265,7 +267,9 @@ def configure_dataset_card(
             str__ += f"<img src='{url}' alt='{url}' width='1000'/>\n"
         str__ += "</p>\n\n"
 
-    str__ += f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
+    str__ += (
+        f"```yaml\n{yaml.dump(infos_dict, sort_keys=False, allow_unicode=True)}\n```"
+    )
 
     str__ += """
 This dataset was generated with [`plaid`](https://plaid-lib.readthedocs.io/), we refer to this documentation for additional details on how to extract data from `plaid_sample` objects.

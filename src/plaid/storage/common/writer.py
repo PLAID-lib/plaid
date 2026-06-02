@@ -27,18 +27,13 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------
 
 
-def save_infos_to_disk(
-    path: Union[str, Path], infos: Union[Infos, dict[str, Any]]
-) -> None:
+def save_infos_to_disk(path: Union[str, Path], infos: Infos) -> None:
     """Save dataset infos as a YAML file to disk.
 
     Args:
         path (Union[str, Path]): The directory path where ``infos.yaml`` will be saved.
-        infos (Union[Infos, dict[str, Any]]): Dataset infos. Plain mappings are
-            validated through :class:`Infos` before being written.
+        infos (Infos): Dataset infos to write.
     """
-    if not isinstance(infos, Infos):
-        infos = Infos.from_mapping(infos)
     infos.save_to_file(Path(path) / "infos.yaml")
 
 
@@ -229,7 +224,7 @@ def save_metadata_to_disk(
 
 
 def push_infos_to_hub(
-    repo_id: str, infos: Union[Infos, dict[str, Any]]
+    repo_id: str, infos: Infos
 ) -> None:  # pragma: no cover (not tested in unit tests)
     """Upload dataset infos.yaml to a Hugging Face dataset repository.
 
@@ -238,19 +233,12 @@ def push_infos_to_hub(
 
     Args:
         repo_id (str): Hugging Face dataset repository identifier (e.g. "user/repo").
-        infos (Union[Infos, dict[str, Any]]): Dataset infos. Plain mappings are
-            validated through :class:`Infos` before being uploaded.
+        infos (Infos): Dataset infos to upload.
 
     Raises:
         ValueError: If ``infos`` is an empty mapping.
         OSError / IOError: If the upload fails due to I/O errors or network problems.
     """
-    if isinstance(infos, dict) and len(infos) == 0:
-        raise ValueError("'infos' must not be empty")
-
-    if not isinstance(infos, Infos):
-        infos = Infos.from_mapping(infos)
-
     api = HfApi()
     with tempfile.TemporaryDirectory(prefix="plaid_infos_") as tmp_dir:
         tmp_path = Path(tmp_dir) / "infos.yaml"

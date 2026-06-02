@@ -7,6 +7,7 @@ from typing import Any, Optional, Union
 import numpy as np
 from datasets import Dataset, IterableDatasetDict
 
+from ...infos import Infos
 from .bridge import (
     sample_to_var_sample_dict,
     to_var_sample_dict,
@@ -85,7 +86,7 @@ class HFBackend:
     @staticmethod
     def configure_dataset_card(
         repo_id: str,
-        infos: dict,
+        infos: Infos,
         local_dir: Optional[Union[str, Path]] = None,
         viewer: bool = False,
         pretty_name: Optional[str] = None,

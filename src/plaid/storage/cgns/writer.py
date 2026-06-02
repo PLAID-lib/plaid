@@ -15,6 +15,7 @@ from huggingface_hub import DatasetCard, HfApi
 from tqdm import tqdm
 
 from ...containers.sample import Sample
+from ...infos import Infos
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +150,7 @@ def push_local_datasetdict_to_hub(
 
 def configure_dataset_card(
     repo_id: str,
-    infos: dict[str, dict[str, str]],
+    infos: Infos,
     local_dir: Union[str, Path],
     viewer: Optional[bool] = None,  # noqa: ARG001
     pretty_name: Optional[str] = None,
@@ -166,7 +167,7 @@ def configure_dataset_card(
 
     Args:
         repo_id (str): The Hugging Face repository ID where the dataset card will be pushed.
-        infos (dict[str, dict[str, str]]): Dictionary containing dataset metadata,
+        infos (Infos): Dataset metadata,
             including legal information like license.
         local_dir (Union[str, Path]): Path to the local directory containing the
             dataset files, expected to have a 'data' subdirectory with split folders.
@@ -184,6 +185,7 @@ def configure_dataset_card(
         None: This function does not return a value; it pushes the dataset card
             directly to Hugging Face Hub.
     """
+    infos_dict = infos.to_dict()
     dataset_card_str = """---
 task_categories:
 - graph-ml
@@ -222,7 +224,7 @@ tags:
     lines = lines[: indices[1] + 1]
 
     count = 6
-    lines.insert(count, f"license: {infos['legal']['license']}")
+    lines.insert(count, f"license: {infos.legal.license}")
     count += 1
     lines.insert(count, "viewer: false")
     count += 1
@@ -265,7 +267,9 @@ tags:
             str__ += f"<img src='{url}' alt='{url}' width='1000'/>\n"
         str__ += "</p>\n\n"
 
-    str__ += f"```yaml\n{yaml.dump(infos, sort_keys=False, allow_unicode=True)}\n```"
+    str__ += (
+        f"```yaml\n{yaml.dump(infos_dict, sort_keys=False, allow_unicode=True)}\n```"
+    )
 
     str__ += """
 This dataset was generated with [`plaid`](https://plaid-lib.readthedocs.io/), we refer to this documentation for additional details on how to extract data from `plaid_sample` objects.

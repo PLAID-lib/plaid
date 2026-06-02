@@ -7,7 +7,6 @@ from typing import Any
 
 import numpy as np
 import pytest
-import yaml
 
 from plaid.cli import plaidcheck
 from plaid.cli.plaidcheck import (
@@ -18,6 +17,7 @@ from plaid.cli.plaidcheck import (
     check_dataset,
     main,
 )
+from plaid.infos import Infos
 
 _REFERENCE_DATASETS = ("dataset_cgns", "dataset_hf")
 
@@ -65,9 +65,9 @@ def test_check_dataset_num_samples_mismatch(tmp_path: Path, dataset_name: str) -
     """Tampering with num_samples should raise split mismatch errors."""
     dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
     infos_path = dataset_path / "infos.yaml"
-    infos = yaml.safe_load(infos_path.read_text(encoding="utf-8"))
-    infos["num_samples"]["train"] = 1
-    infos_path.write_text(yaml.dump(infos, sort_keys=False), encoding="utf-8")
+    infos = Infos.from_path(infos_path)
+    infos.num_samples["train"] = 1
+    infos.save_to_file(infos_path)
 
     report = check_dataset(dataset_path)
 
@@ -100,9 +100,9 @@ def test_main_strict_fails_on_warning(tmp_path: Path, dataset_name: str) -> None
     """In strict mode, warnings should make the command fail."""
     dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
     infos_path = dataset_path / "infos.yaml"
-    infos = yaml.safe_load(infos_path.read_text(encoding="utf-8"))
-    infos["num_samples"]["train"] = 11
-    infos_path.write_text(yaml.dump(infos, sort_keys=False), encoding="utf-8")
+    infos = Infos.from_path(infos_path)
+    infos.num_samples["train"] = 11
+    infos.save_to_file(infos_path)
 
     code = main([str(dataset_path), "--strict"])
 
