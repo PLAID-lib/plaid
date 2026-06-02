@@ -1,25 +1,41 @@
-<div align="center">
-<img src="https://plaid-lib.github.io/assets/images/plaid_logo2.png" width="150">
-</div>
+<p align="center">
+  <img src="https://plaid-lib.github.io/assets/images/plaid_logo2.png" alt="PLAID logo" width="170">
+</p>
 
-| | |
-| --- | --- |
-| Testing | [![CI Status](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg)](https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml) [![Documentation Status](https://readthedocs.org/projects/plaid-lib/badge/?version=latest)](https://plaid-lib.readthedocs.io/en/latest/?badge=latest) [![Coverage](https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg)](https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list) ![Last Commit](https://img.shields.io/github/last-commit/PLAID-lib/plaid/main) |
-| | Package | [![Conda Latest Release](https://anaconda.org/conda-forge/plaid/badges/version.svg)](https://anaconda.org/conda-forge/plaid) [![Conda Downloads](https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads)](https://anaconda.org/conda-forge/plaid) [![PyPI Latest Release](https://img.shields.io/pypi/v/pyplaid.svg)](https://pypi.org/project/pyplaid/) [![PyPI Downloads](https://static.pepy.tech/badge/pyplaid)](https://pepy.tech/projects/pyplaid) ![Platform](https://img.shields.io/badge/platform-POSIX-blue) ![Python Version](https://img.shields.io/pypi/pyversions/pyplaid)  |
-| Other | [![License - BSD 3-Clause](https://anaconda.org/conda-forge/plaid/badges/license.svg)](https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt) ![GitHub stars](https://img.shields.io/github/stars/PLAID-lib/plaid?style=social) [![JOSS status](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg)](https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e) [![arXiv](https://img.shields.io/badge/arXiv-2505.02974-b31b1b.svg)](https://arxiv.org/abs/2505.02974) |
+<h1 align="center">PLAID</h1>
+
+<p align="center"><em>Physics Learning AI Data Model — turning complex physics simulations into AI-ready data.</em></p>
+
+<p align="center">
+  <a href="https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml"><img alt="CI Status" src="https://github.com/PLAID-lib/plaid/actions/workflows/testing.yml/badge.svg"></a>
+  <a href="https://plaid-lib.readthedocs.io/en/latest/?badge=latest"><img alt="Docs" src="https://readthedocs.org/projects/plaid-lib/badge/?version=latest"></a>
+  <a href="https://app.codecov.io/gh/plaid-lib/plaid/tree/main?search=&displayType=list"><img alt="Coverage" src="https://codecov.io/gh/plaid-lib/plaid/branch/main/graph/badge.svg"></a>
+  <a href="https://github.com/PLAID-lib/plaid/commits/main"><img alt="Last Commit" src="https://img.shields.io/github/last-commit/PLAID-lib/plaid/main"></a>
+  <br>
+  <a href="https://anaconda.org/conda-forge/plaid"><img alt="Conda Version" src="https://anaconda.org/conda-forge/plaid/badges/version.svg"></a>
+  <a href="https://anaconda.org/conda-forge/plaid"><img alt="Conda Downloads" src="https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads"></a>
+  <a href="https://pypi.org/project/pyplaid/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/pyplaid.svg"></a>
+  <a href="https://pepy.tech/projects/pyplaid"><img alt="PyPI Downloads" src="https://static.pepy.tech/badge/pyplaid"></a>
+  <a href="https://github.com/PLAID-lib/plaid"><img alt="Platform" src="https://img.shields.io/badge/platform-POSIX-blue"></a>
+  <a href="https://github.com/PLAID-lib/plaid"><img alt="Python Version" src="https://img.shields.io/pypi/pyversions/pyplaid"></a>
+  <br>
+  <a href="https://github.com/PLAID-lib/plaid/blob/main/LICENSE.txt"><img alt="License" src="https://anaconda.org/conda-forge/plaid/badges/license.svg"></a>
+  <a href="https://github.com/PLAID-lib/plaid"><img alt="GitHub Stars" src="https://img.shields.io/github/stars/PLAID-lib/plaid?style=social"></a>
+  <a href="https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e"><img alt="JOSS paper" src="https://joss.theoj.org/papers/26b2e13a9fc8e012cc997ca28a7b565e/status.svg"></a>
+  <a href="https://arxiv.org/abs/2505.02974"><img alt="JOSS paper" src="https://img.shields.io/badge/arXiv-2505.02974-b31b1b.svg"></a>
+</p>
 
 
 <!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/pyplaid.svg?label=PyPI%20downloads)](https://pypi.org/project/pyplaid/) -->
 
 
+
 # Physics Learning AI Data Model (PLAID)
 
-
-- [Physics Learning AI Data Model (PLAID)](#physics-learning-ai-data-model-plaid)
-  - [1. Description](#1-description)
-  - [2. Getting started](#2-getting-started)
-  - [3. Call for Contributions](#3-call-for-contributions)
-  - [4. Documentation](#4-documentation)
+- [1. Description](#1-description)
+- [2. Getting started](#2-getting-started)
+- [3. Call for Contributions](#3-call-for-contributions)
+- [4. Documentation](#4-documentation)
 
 
 ## 1. Description
