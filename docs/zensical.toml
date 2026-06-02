@@ -53,91 +53,74 @@ nav = [
       { "Problem definition" = "notebooks/problem_definition_example.md" },
       { "Infos" = "notebooks/infos_example.md" },
       { "Downloadable samples" = "notebooks/downloadable_example/sample_example.md" },
-      { "Storage tutorial" = "tutorials/storage.md" },
+      { "Conversion tutorial" = "tutorials/storage.md" },
     ] },
     { "Viewer" = "concepts/viewer.md" },
     # >>> AUTO-GENERATED API REFERENCE START
     # The block below is overwritten by `python docs/generate_api_stubs.py`.
     # Edit that script (or the markers) instead of changing this section by hand.
     { "API reference" = [
-      { "overview" = "api/index.md" },
       { "constants" = "api/constants.md" },
       { "infos" = "api/infos.md" },
       { "problem_definition" = "api/problem_definition.md" },
-      { "version" = "api/version.md" },
       { "cli" = [
-        { "overview" = "api/cli/index.md" },
         { "plaidcheck" = "api/cli/plaidcheck.md" },
       ] },
       { "containers" = [
-        { "overview" = "api/containers/index.md" },
         { "sample" = "api/containers/sample.md" },
         { "utils" = "api/containers/utils.md" },
         { "managers" = [
-          { "overview" = "api/containers/managers/index.md" },
           { "default_manager" = "api/containers/managers/default_manager.md" },
         ] },
       ] },
       { "downloadable_examples" = [
-        { "overview" = "api/downloadable_examples/index.md" },
+        { "__init__" = "api/downloadable_examples/index.md" },
         { "config" = "api/downloadable_examples/config.md" },
       ] },
       { "storage" = [
-        { "overview" = "api/storage/index.md" },
         { "backend_api" = "api/storage/backend_api.md" },
         { "reader" = "api/storage/reader.md" },
         { "registry" = "api/storage/registry.md" },
         { "writer" = "api/storage/writer.md" },
         { "cgns" = [
-          { "overview" = "api/storage/cgns/index.md" },
+          { "__init__" = "api/storage/cgns/index.md" },
           { "reader" = "api/storage/cgns/reader.md" },
           { "writer" = "api/storage/cgns/writer.md" },
         ] },
         { "common" = [
-          { "overview" = "api/storage/common/index.md" },
           { "bridge" = "api/storage/common/bridge.md" },
           { "preprocessor" = "api/storage/common/preprocessor.md" },
           { "reader" = "api/storage/common/reader.md" },
           { "writer" = "api/storage/common/writer.md" },
         ] },
         { "hf_datasets" = [
-          { "overview" = "api/storage/hf_datasets/index.md" },
+          { "__init__" = "api/storage/hf_datasets/index.md" },
           { "bridge" = "api/storage/hf_datasets/bridge.md" },
           { "reader" = "api/storage/hf_datasets/reader.md" },
           { "writer" = "api/storage/hf_datasets/writer.md" },
         ] },
         { "zarr" = [
-          { "overview" = "api/storage/zarr/index.md" },
+          { "__init__" = "api/storage/zarr/index.md" },
           { "bridge" = "api/storage/zarr/bridge.md" },
           { "reader" = "api/storage/zarr/reader.md" },
           { "writer" = "api/storage/zarr/writer.md" },
         ] },
       ] },
-      { "types" = [
-        { "overview" = "api/types/index.md" },
-        { "cgns_types" = "api/types/cgns_types.md" },
-        { "common" = "api/types/common.md" },
-      ] },
       { "utils" = [
-        { "overview" = "api/utils/index.md" },
         { "base" = "api/utils/base.md" },
         { "cgns_helper" = "api/utils/cgns_helper.md" },
-        { "cgns_worker" = "api/utils/cgns_worker.md" },
       ] },
       { "viewer" = [
-        { "overview" = "api/viewer/index.md" },
         { "cache" = "api/viewer/cache.md" },
         { "cli" = "api/viewer/cli.md" },
         { "config" = "api/viewer/config.md" },
         { "models" = "api/viewer/models.md" },
         { "preferences" = "api/viewer/preferences.md" },
         { "services" = [
-          { "overview" = "api/viewer/services/index.md" },
           { "paraview_artifact_service" = "api/viewer/services/paraview_artifact_service.md" },
           { "plaid_dataset_service" = "api/viewer/services/plaid_dataset_service.md" },
         ] },
         { "trame_app" = [
-          { "overview" = "api/viewer/trame_app/index.md" },
           { "server" = "api/viewer/trame_app/server.md" },
         ] },
       ] },
