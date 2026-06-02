@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 import yaml
 
+import plaid.storage.writer as writer_mod
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.storage import (
@@ -18,11 +19,6 @@ from plaid.storage import (
 )
 from plaid.storage.cgns.writer import (
     generate_datasetdict_to_disk as cgns_generate_datasetdict_to_disk,
-)
-from plaid.storage.writer import (
-    _build_gen_kwargs,
-    _SampleFuncGenerator,
-    _split_list,
 )
 from plaid.storage.zarr.writer import (
     generate_datasetdict_to_disk as zarr_generate_datasetdict_to_disk,
@@ -664,8 +660,6 @@ class Test_Storage:
         """CGNS save path must not compute constant/variable tree metadata."""
         from unittest.mock import MagicMock
 
-        import plaid.storage.writer as writer_mod
-
         preprocess_mock = MagicMock(side_effect=AssertionError("preprocess called"))
         metadata_mock = MagicMock()
         infos_mock = MagicMock()
@@ -727,7 +721,7 @@ class Test_Storage:
 
     def test_split_list_single_split(self):
         """Cover _split_list early return path (`n_splits <= 1`)."""
-        assert _split_list([0, 1, 2], 1) == [[0, 1, 2]]
+        assert writer_mod._split_list([0, 1, 2], 1) == [[0, 1, 2]]
 
     # --------------------------------------------------------------------------
     #     New sample_constructor + ids API tests
@@ -740,7 +734,7 @@ class Test_Storage:
             "test": [10, 11],
         }
 
-        gen_kwargs = _build_gen_kwargs(ids, num_proc=2)
+        gen_kwargs = writer_mod._build_gen_kwargs(ids, num_proc=2)
 
         # Check gen_kwargs structure
         assert "train" in gen_kwargs
@@ -768,7 +762,7 @@ class Test_Storage:
             collected.append(id_)
             return id_
 
-        gen = _SampleFuncGenerator(my_func)
+        gen = writer_mod._SampleFuncGenerator(my_func)
 
         # Test with shards_ids
         results = list(gen(shards_ids=[[0, 1], [2, 3]]))
@@ -783,7 +777,7 @@ class Test_Storage:
             collected.append(id_)
             return id_
 
-        gen = _SampleFuncGenerator(my_func)
+        gen = writer_mod._SampleFuncGenerator(my_func)
         # Call with no arguments — shards_ids defaults to None
         results = list(gen())
         assert results == []
@@ -884,8 +878,6 @@ class Test_Storage:
     ):
         """save_to_disk with num_proc > 1 triggers auto-sharding."""
         from unittest.mock import MagicMock
-
-        import plaid.storage.writer as writer_mod
 
         # Track whether _build_gen_kwargs was called
         original_build = writer_mod._build_gen_kwargs
