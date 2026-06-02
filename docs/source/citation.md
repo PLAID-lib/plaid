@@ -8,7 +8,7 @@ JOSS paper (under review): [![JOSS status](https://joss.theoj.org/papers/26b2e13
 
 ## PLAID: A Unified Data Model for Machine Learning on Heterogeneous Physics Simulations
 
-Presented at EuRIPS 2025 and accepted at the AI4Physics Workshop @ ICML 2026.
+Presented at EuRIPS 2025 and accepted at the AI4Physics Workshop @ ICML 2026: [![arXiv](https://img.shields.io/badge/arXiv-2505.02974-b31b1b.svg)](https://arxiv.org/abs/2505.02974)
 
 ```bibtex
 @misc{casenave2025plaid,
