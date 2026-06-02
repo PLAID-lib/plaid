@@ -19,12 +19,12 @@ from pathlib import Path
 from typing import Iterable, Iterator, Optional, Union
 
 import numpy as np
-import yaml
 from datasets import IterableDataset
 from datasets.splits import NamedSplit
-from huggingface_hub import hf_hub_download, snapshot_download
+from huggingface_hub import snapshot_download
 
 from ...containers.sample import Sample
+from ..common.reader import load_infos_from_hub
 
 logger = logging.getLogger(__name__)
 
@@ -262,13 +262,7 @@ def init_datasetdict_streaming_from_hub(
     if split_ids is not None:
         selected_ids = split_ids
     else:
-        yaml_path = hf_hub_download(
-            repo_id=repo_id,
-            filename="infos.yaml",
-            repo_type="dataset",
-        )
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            infos = yaml.safe_load(f)
+        infos = load_infos_from_hub(repo_id=repo_id)
         selected_ids = {
             split: range(n_samples) for split, n_samples in infos["num_samples"].items()
         }

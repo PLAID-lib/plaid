@@ -20,6 +20,7 @@ from datasets import IterableDataset
 if TYPE_CHECKING:
     from ..containers.dataset import Dataset
     from ..containers.sample import Sample
+    from ..infos import Infos
 
 
 @runtime_checkable
@@ -75,7 +76,7 @@ class BackendModule(Protocol):
     @staticmethod
     def configure_dataset_card(
         repo_id: str,
-        infos: dict[str, Any],
+        infos: "Infos",
         local_dir: Optional[Union[str, Path]] = None,
         viewer: bool = False,
         pretty_name: Optional[str] = None,

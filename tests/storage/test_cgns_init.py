@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 import plaid.storage.cgns as cgns
+from plaid.infos import Infos
 from plaid.storage.cgns import CgnsBackend
 
 
@@ -166,7 +167,12 @@ def test_cgns_backend_push_local_to_hub_delegates(monkeypatch):
 
 def test_cgns_backend_configure_dataset_card_requires_local_dir():
     with pytest.raises(ValueError, match="local_dir must be provided for cgns backend"):
-        CgnsBackend.configure_dataset_card(repo_id="dummy/repo", infos={})
+        CgnsBackend.configure_dataset_card(
+            repo_id="dummy/repo",
+            infos=Infos.from_mapping(
+                {"legal": {"owner": "owner", "license": "cc-by-4.0"}}
+            ),
+        )
 
 
 def test_cgns_backend_configure_dataset_card_delegates(monkeypatch):
@@ -178,9 +184,10 @@ def test_cgns_backend_configure_dataset_card_delegates(monkeypatch):
 
     monkeypatch.setattr(cgns, "configure_dataset_card", fake_configure_dataset_card)
 
+    infos = Infos.from_mapping({"legal": {"owner": "owner", "license": "cc-by-4.0"}})
     CgnsBackend.configure_dataset_card(
         repo_id="dummy/repo",
-        infos={"source": "synthetic"},
+        infos=infos,
         local_dir="/tmp/local",
         viewer=True,
         pretty_name="My Dataset",
@@ -191,7 +198,7 @@ def test_cgns_backend_configure_dataset_card_delegates(monkeypatch):
 
     assert call == {
         "repo_id": "dummy/repo",
-        "infos": {"source": "synthetic"},
+        "infos": infos,
         "local_dir": "/tmp/local",
         "viewer": True,
         "pretty_name": "My Dataset",

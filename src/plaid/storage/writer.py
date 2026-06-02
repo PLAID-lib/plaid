@@ -118,8 +118,8 @@ def save_to_disk(
     output_folder: Union[str, Path],
     sample_constructor: Callable[[Any], Sample],
     ids: Mapping[str, Any],
+    infos: Infos,
     backend: str = "hf_datasets",
-    infos: Optional[Union[Infos, dict[str, Any]]] = None,
     pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
     num_proc: int = 1,
     verbose: bool = False,
@@ -154,6 +154,9 @@ def save_to_disk(
                 "train": train_file_paths,
                 "test":  test_file_paths,
             },
+            infos=Infos(
+                legal={"owner": "owner", "license": "license"},
+            ),
             num_proc=6,
         )
 
@@ -168,7 +171,7 @@ def save_to_disk(
             strings, tuples, etc.
         backend: Storage backend to use (``'cgns'``, ``'hf_datasets'``, or
             ``'zarr'``).
-        infos: Optional additional information to save with the dataset.
+        infos: Dataset information to save with the dataset.
         pb_defs: Optional problem definitions to save.
         num_proc: Number of processes to use for parallel writing.  When
             ``num_proc > 1`` PLAID automatically shards the identifier
@@ -179,14 +182,6 @@ def save_to_disk(
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
     )
-    if infos is not None:
-        if isinstance(
-            infos, Infos
-        ):  # pragma: no cover - exercised via integration tests
-            infos = infos.to_dict()
-        else:
-            Infos.validate_required_only(infos)
-
     # ---- validate ids: must be sliceable sequences ---------------------------
     for split_name, split_ids in ids.items():
         if not (hasattr(split_ids, "__getitem__") and hasattr(split_ids, "__len__")):
@@ -235,9 +230,10 @@ def save_to_disk(
     # Inject the actual on-disk storage backend / sample counts so the
     # written ``infos.yaml`` always reflects how the dataset was saved,
     # overriding any inherited values from the input ``infos``.
-    infos = infos.copy() if infos else {}
-    infos["num_samples"] = num_samples
-    infos["storage_backend"] = backend
+    infos_data = infos.to_dict()
+    infos_data["num_samples"] = num_samples
+    infos_data["storage_backend"] = backend
+    infos = Infos.from_mapping(infos_data)
 
     save_infos_to_disk(output_folder, infos)
 
