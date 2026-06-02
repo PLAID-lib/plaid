@@ -652,6 +652,59 @@ class Test_Storage:
         with pytest.raises(ValueError):
             converter.sample_to_dict(cgns_dataset[0])
 
+    def test_cgns_save_to_disk_skips_preprocess(
+        self,
+        tmp_path,
+        sample_constructor,
+        split_ids,
+        infos,
+        problem_definition,
+        monkeypatch,
+    ):
+        """CGNS save path must not compute constant/variable tree metadata."""
+        from unittest.mock import MagicMock
+
+        import plaid.storage.writer as writer_mod
+
+        preprocess_mock = MagicMock(side_effect=AssertionError("preprocess called"))
+        metadata_mock = MagicMock()
+        infos_mock = MagicMock()
+        pb_defs_mock = MagicMock()
+        backend_mock = MagicMock()
+
+        monkeypatch.setattr(writer_mod, "preprocess", preprocess_mock)
+        monkeypatch.setattr(writer_mod, "save_metadata_to_disk", metadata_mock)
+        monkeypatch.setattr(writer_mod, "save_infos_to_disk", infos_mock)
+        monkeypatch.setattr(
+            writer_mod, "save_problem_definitions_to_disk", pb_defs_mock
+        )
+        monkeypatch.setattr(writer_mod, "get_backend", lambda _name: backend_mock)
+
+        test_dir = tmp_path / "test_cgns_skip_preprocess"
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="cgns",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        preprocess_mock.assert_not_called()
+        metadata_mock.assert_not_called()
+        infos_mock.assert_called_once()
+        pb_defs_mock.assert_called_once_with(test_dir, {"pb_def": problem_definition})
+        backend_mock.generate_to_disk.assert_called_once()
+        assert backend_mock.generate_to_disk.call_args.args[2] is None
+
+        saved_infos = infos_mock.call_args.args[1]
+        assert saved_infos.storage_backend == "cgns"
+        assert saved_infos.num_samples == {
+            split_name: len(split_ids_) for split_name, split_ids_ in split_ids.items()
+        }
+
     def test_registry(self):
         from plaid.storage import registry
 
