@@ -13,10 +13,8 @@ dependencies:
   - pycgns-core
   - zarr
 #---# SciML
-  - scikit-learn
   - datasets
   - numpy
-  - matplotlib-base
 #---# data validation
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
@@ -25,8 +23,6 @@ dependencies:
   - vtk
 #---# base
   - rich
-#---# optim
-  - optuna
 #---# testing
   - pytest
   - pytest-cov

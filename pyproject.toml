@@ -32,10 +32,8 @@ dependencies = [
   "pyyaml>=6,<7",
   "pycgns>=6.3,<7",
   "zarr>=3.1,<4",
-  "scikit-learn>=1.4,<2",
   "datasets>=2.18,<5",
-  "numpy>=1.26,<3",
-  "matplotlib>=3.8,<4",
+  "numpy>=2.0,<3",
   "pydantic>=2.6,<3",
 ]
 [project.optional-dependencies]
@@ -84,7 +82,6 @@ dev = [
     "muscat[storage]>=2.5.1",
     "mkdocstrings[python]>=0.27.0",
     "nbconvert>=7.16.0",
-    "optuna>=4.7.0",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
