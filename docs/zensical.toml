@@ -41,8 +41,9 @@ nav = [
     { "Concepts" = [
       { "Overview" = "concepts.md" },
       { "Sample" = "concepts/sample.md" },
-      { "Dataset" = "concepts/dataset.md" },
       { "Problem definition" = "concepts/problem_definition.md" },
+      { "Infos" = "concepts/infos.md" },
+      { "Dataset" = "concepts/dataset.md" },
       { "Default values" = "concepts/defaults.md" },
       { "Disk format" = "concepts/disk_format.md" },
     ] },
@@ -50,6 +51,7 @@ nav = [
       { "Overview" = "examples_tutorials.md" },
       { "Sample notebook" = "notebooks/containers/sample_example.md" },
       { "Problem definition notebook" = "notebooks/problem_definition_example.md" },
+      { "Infos notebook" = "notebooks/infos_example.md" },
       { "Downloadable samples notebook" = "notebooks/downloadable_example/sample_example.md" },
       { "Storage tutorial" = "tutorials/storage.md" },
     ] },

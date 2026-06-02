@@ -384,7 +384,7 @@ sample = converter.to_plaid(
 - This enables a “read less + one gathered output copy” behavior:
   - **zarr**: partial chunk reads + gathered output
   - **hf_datasets**: Arrow/NumPy best-effort gather + gathered output
-- `cgns` backend does not use this mechanism.
+- **cgns** backend does not use this mechanism.
 
 
 ```python

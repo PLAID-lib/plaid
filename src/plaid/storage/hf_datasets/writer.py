@@ -311,7 +311,7 @@ for sample_raw in dataset:
     plaid_sample = converter.sample_to_plaid(sample_raw)
 ```
 
-Plaid samples' features can be retrieved like the following:
+Sample features can then be retrieved as follows:
 ```python
 from plaid.storage import load_problem_definitions_from_disk
 local_folder = "downloaded_dataset"
@@ -329,9 +329,11 @@ plaid_sample = ... # use a method from above to instantiate a plaid sample
 
 for t in plaid_sample.get_all_time_values():
     for path in pb_def.input_features:
-        plaid_sample.get_feature_by_path(path=path, time=t)
+        feature = plaid_sample.get_feature_by_path(path=path, time=t)
+        ...
     for path in pb_def.output_features:
-        plaid_sample.get_feature_by_path(path=path, time=t)
+        feature = plaid_sample.get_feature_by_path(path=path, time=t)
+        ...
 ```
 
 For those familiar with HF's `datasets` library, raw data can be retrieved without using the `plaid` library:

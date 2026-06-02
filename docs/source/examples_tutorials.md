@@ -1,6 +1,6 @@
 # :material-school-outline:{ .lg .middle } Examples and Tutorials
 
-You can find here detailed examples for different parts of plaid, explained mainly in Jupyter notebooks.
+You can find here detailed examples for different parts of plaid, explained in Jupyter notebooks.
 
 !!! note
 
@@ -11,6 +11,7 @@ You can find here detailed examples for different parts of plaid, explained main
 
 * [Sample notebook](notebooks/containers/sample_example.md)
 * [Problem definition notebook](notebooks/problem_definition_example.md)
+* [Infos notebook](notebooks/infos_example.md)
 * [Downloadable samples notebook](notebooks/downloadable_example/sample_example.md)
 
 ## Tutorials

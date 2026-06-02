@@ -2,6 +2,7 @@
 
 from .containers.sample import Sample
 from .containers.utils import get_number_of_samples, get_sample_ids
+from .infos import Infos
 from .problem_definition import ProblemDefinition
 from .version import __version__
 
@@ -11,6 +12,7 @@ __all__ = [
     "get_sample_ids",
     "Sample",
     "ProblemDefinition",
+    "Infos",
 ]
 
 import logging

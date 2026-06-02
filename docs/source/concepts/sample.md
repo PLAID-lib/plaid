@@ -4,7 +4,7 @@ title: Sample
 
 # Sample
 
-`Sample` represents one observation. It contains:
+`Sample` represents one physics simulation. It contains:
 
 - globals: named scalar, string or array values stored in a dedicated CGNS base
 - meshes containing:
@@ -93,6 +93,8 @@ sample.save_to_dir("sample_000000000", overwrite=True)
 sample = Sample.load_from_dir("sample_000000000")
 ```
 
+The CGNS files can be open in Paraview for advanced visualization and post-treatment.
+
 For large samples, `save_to_dir(..., memory_safe=True)` writes CGNS files through
 a subprocess to reduce pyCGNS memory-leak risks.
 
@@ -101,4 +103,4 @@ Diagnostic helpers include:
 - `summarize()` for a detailed textual overview;
 - `check_completeness()` for a compact feature-completeness report.
 
-See also: {doc}`../examples_tutorials` for hands-on examples.
+See also: [Examples & Tutorials](../examples_tutorials.md) for hands-on examples.

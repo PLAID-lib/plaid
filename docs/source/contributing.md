@@ -22,9 +22,9 @@ The agreement will be presented automatically through GitHub's interface when yo
 - Maintain 100% test coverage
 
 ### 2.2. Contributing Process
-1. Write local/unit tests for your changes
-2. Include examples when adding new features
-3. Submit a pull request with your changes
+- Write local/unit tests for your changes
+- Include examples when adding new features
+- Submit a pull request with your changes
 
 ### 2.3. Issue Guidelines
 When reporting issues:
@@ -50,25 +50,24 @@ For feature requests:
 
 1. Clone the repository:
 
-    ```bash
-    git clone https://github.com/PLAID-lib/plaid.git
-    ```
+   ```bash
+   git clone https://github.com/PLAID-lib/plaid.git
+   ```
 
 2. Configure the development environment:
 
-   - Using conda (Windows, macOS and Linux):
+    - Using conda (Windows, macOS and Linux):
 
-    ```bash
-    conda env create -n plaid-dev python=3.12 -f environment.yml
-    pip install -e . --no-deps
-    ```
+      ```bash
+      conda env create -n plaid-dev python=3.12 -f environment.yml
+      pip install -e . --no-deps
+      ```
 
-   - Using uv (Linux):
+    - Using uv (Linux):
 
-    ```bash
-    uv sync --dev --extra viewer
-    ```
-
+      ```bash
+      uv sync --dev --extra viewer
+      ```
 
 ## 4. Tests and examples
 
@@ -155,23 +154,29 @@ pre-commit install
 
 - Create a new release branch from `main` called e.g. `release_0.1.10`
 - Update the CHANGELOG
-  - Rename the section [Unreleased] to the new version number (e.g., [0.1.10]) followed by the release date (YYYY-MM-DD)
-  - Update links at the end of the file
+
+    - Rename the section [Unreleased] to the new version number (e.g., [0.1.10]) followed by the release date (YYYY-MM-DD)
+    - Update links at the end of the file
+
 - Create a pull request and request reviews
 - Once approved, merge the pull request
 - Tag the release (e.g., `git tag 0.1.10`). Important: pull the recently updated `main` branch before creating the tag.
 - Create a new release on GitHub
-  - Click `Generate release notes`
-  - Include a link to the CHANGELOG file at the release tag, e.g.: `https://github.com/PLAID-lib/plaid/blob/0.1.10/CHANGELOG.md`
+
+    - Click `Generate release notes`
+    - Include a link to the CHANGELOG file at the release tag, e.g.: `https://github.com/PLAID-lib/plaid/blob/0.1.10/CHANGELOG.md`
+
 - Create a new pull request to add a new `Unreleased` section to the CHANGELOG, with sub-sections `Added`, `Changed`, `Fixes`, `Removed`
 
 ### 8.2. conda-forge
 
 - Create a fork of https://github.com/conda-forge/plaid-feedstock or sync with the latest changes if you already have a fork
 - Update the conda-forge recipe `plaid-feedstock/recipe/meta.yaml`
-  - Update the `version` field to the new version number (line 1)
-  - Update the SHA256 checksum for the new version (line 9), you can find it in the GitHub action: https://github.com/PLAID-lib/plaid/actions/workflows/checksum_release.yml, don’t take the one in `Digest` section of `Artifacts`, but take the one in the download button
-  - Update requirements section if they change in the new version
+
+    - Update the `version` field to the new version number (line 1)
+    - Update the SHA256 checksum for the new version (line 9), you can find it in the GitHub action: https://github.com/PLAID-lib/plaid/actions/workflows/checksum_release.yml, don’t take the one in `Digest` section of `Artifacts`, but take the one in the download button
+    - Update requirements section if they change in the new version
+
 - Submit a pull request to the conda-forge feedstock repository
 - Follow the instructions provided in the PR message
 
@@ -191,13 +196,16 @@ Before opening a PR that modifies docs or public APIs, run a quick consistency p
    ```
 
 2. **Validate API references**
-   - Ensure documented methods/classes exist in current source.
-   - Ensure renamed/removed APIs are either removed from docs or explicitly marked as legacy.
+
+    - Ensure documented methods/classes exist in current source.
+    - Ensure renamed/removed APIs are either removed from docs or explicitly marked as legacy.
 
 3. **Validate code snippets/imports**
-   - Verify documented imports execute against the current package.
-   - Prefer snippets that reflect maintained modules under `src/plaid`.
+
+    - Verify documented imports execute against the current package.
+    - Prefer snippets that reflect maintained modules under `src/plaid`.
 
 4. **Validate storage-layout claims**
-   - Ensure on-disk format docs match current `plaid.storage` behavior.
-   - Cross-check against tests/fixtures when updating storage documentation.
+
+    - Ensure on-disk format docs match current `plaid.storage` behavior.
+    - Cross-check against tests/fixtures when updating storage documentation.

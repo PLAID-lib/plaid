@@ -1,8 +1,8 @@
----
+<!-- ---
 hide:
   - navigation
   - toc
----
+--- -->
 
 <p align="center">
   <img src="https://plaid-lib.github.io/assets/images/plaid_logo2.png" alt="PLAID logo" width="170">
@@ -89,13 +89,6 @@ massive, heterogeneous datasets.
 
     Launch `plaid-viewer` to browse local or streamed datasets, inspect samples in 3D,
     select features, and visualize fields.
-
-- :material-file-document-outline:{ .lg .middle } **Learning-problem metadata**
-
-    ---
-
-    Store dataset information and one or more `ProblemDefinition` objects alongside
-    the data to make ML tasks explicit and reproducible.
 
 </div>
 

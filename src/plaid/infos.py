@@ -39,18 +39,6 @@ class DataProduction:
     computation_duration: str | None = None
     script: str | None = None
     contact: str | None = None
-    location: str | None = None
-
-
-@dataclass(config=_PD_CONFIG)
-class DataDescription:
-    """Dataset shape/DOE metadata."""
-
-    number_of_samples: int | None = None
-    number_of_splits: int | None = None
-    DOE: str | None = None
-    inputs: str | None = None
-    outputs: str | None = None
 
 
 # Order used when serializing to YAML.
@@ -70,7 +58,7 @@ class Infos(BaseModel):
 
     legal: Legal
     data_production: DataProduction | None = None
-    data_description: DataDescription | None = None
+    data_description: str | None = None
     num_samples: dict[str, int] = Field(default_factory=dict)
     storage_backend: str | None = None
 
@@ -121,7 +109,7 @@ class Infos(BaseModel):
         return model.model_dump(exclude_none=True)
 
     # ------------------------------------------------------------------
-    # Disk I/O (mirroring ProblemDefinition)
+    # Disk I/O
     # ------------------------------------------------------------------
 
     @classmethod
