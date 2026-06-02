@@ -27,7 +27,7 @@ from plaid.storage.common.writer import (
 from plaid.storage.registry import available_backends, get_backend
 
 from ..containers.sample import Sample
-from ..infos import Infos
+from ..infos import Infos, Legal
 from ..problem_definition import ProblemDefinition
 from .common.preprocessor import preprocess
 from .common.reader import (
@@ -118,7 +118,7 @@ def save_to_disk(
     output_folder: Union[str, Path],
     sample_constructor: Callable[[Any], Sample],
     ids: Mapping[str, Any],
-    infos: Infos,
+    infos: Optional[Infos] = None,
     backend: str = "hf_datasets",
     pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
     num_proc: int = 1,
@@ -171,7 +171,9 @@ def save_to_disk(
             strings, tuples, etc.
         backend: Storage backend to use (``'cgns'``, ``'hf_datasets'``, or
             ``'zarr'``).
-        infos: Dataset information to save with the dataset.
+        infos: Dataset information to save with the dataset. If ``None``, a
+            placeholder :class:`~plaid.Infos` is created with
+            ``legal=Legal(owner="unknown", license="unknown")``.
         pb_defs: Optional problem definitions to save.
         num_proc: Number of processes to use for parallel writing.  When
             ``num_proc > 1`` PLAID automatically shards the identifier
@@ -233,6 +235,8 @@ def save_to_disk(
     # Inject the actual on-disk storage backend / sample counts so the
     # written ``infos.yaml`` always reflects how the dataset was saved,
     # overriding any inherited values from the input ``infos``.
+    if infos is None:
+        infos = Infos(legal=Legal(owner="unknown", license="unknown"))
     infos_data = infos.to_dict()
     infos_data["num_samples"] = num_samples
     infos_data["storage_backend"] = backend
