@@ -76,9 +76,16 @@ def _local_public_members(init_path: Path) -> list[str]:
 
     names: list[str] = []
     for node in tree.body:
-        if isinstance(node, ast.ClassDef):
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             if not node.name.startswith("_"):
                 names.append(node.name)
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                    names.append(target.id)
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            if not node.target.id.startswith("_"):
+                names.append(node.target.id)
 
     seen: set[str] = set()
     return [n for n in names if not (n in seen or seen.add(n))]
