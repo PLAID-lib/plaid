@@ -211,18 +211,21 @@ def save_to_disk(
     output_folder = Path(output_folder)
     _check_folder(output_folder, overwrite)
 
-    # The derivation of constant and variable parts is always computed: it
-    # validates the generated samples and yields the per-split sample counts
-    # recorded in ``infos.yaml``. For the CGNS backend the resulting
-    # constant / variable / cgns_types catalogues are intentionally NOT
-    # written to disk: CGNS samples are stored in full (not split between
-    # a per-split constants/ payload and a variable arrow/zarr column
-    # store), so those derived schemas are not needed at read time.
-    flat_cst, variable_schema, constant_schema, num_samples, cgns_types = preprocess(
-        generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
-    )
-
-    if backend != "cgns":
+    # CGNS stores each sample as a complete CGNS tree. It does not need the
+    # constant/variable split used by columnar backends, so avoid the expensive
+    # preprocessing pass that flattens every generated tree and detects constant
+    # leaves.  Sample counts can be derived directly from the declared ids.
+    if backend == "cgns":
+        variable_schema = None
+        num_samples = {
+            split_name: len(split_ids) for split_name, split_ids in ids.items()
+        }
+    else:
+        flat_cst, variable_schema, constant_schema, num_samples, cgns_types = (
+            preprocess(
+                generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
+            )
+        )
         save_metadata_to_disk(
             output_folder, flat_cst, variable_schema, constant_schema, cgns_types
         )

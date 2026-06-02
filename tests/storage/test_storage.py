@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 import yaml
 
+import plaid.storage.writer as writer_mod
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.storage import (
@@ -18,11 +19,6 @@ from plaid.storage import (
 )
 from plaid.storage.cgns.writer import (
     generate_datasetdict_to_disk as cgns_generate_datasetdict_to_disk,
-)
-from plaid.storage.writer import (
-    _build_gen_kwargs,
-    _SampleFuncGenerator,
-    _split_list,
 )
 from plaid.storage.zarr.writer import (
     generate_datasetdict_to_disk as zarr_generate_datasetdict_to_disk,
@@ -652,6 +648,57 @@ class Test_Storage:
         with pytest.raises(ValueError):
             converter.sample_to_dict(cgns_dataset[0])
 
+    def test_cgns_save_to_disk_skips_preprocess(
+        self,
+        tmp_path,
+        sample_constructor,
+        split_ids,
+        infos,
+        problem_definition,
+        monkeypatch,
+    ):
+        """CGNS save path must not compute constant/variable tree metadata."""
+        from unittest.mock import MagicMock
+
+        preprocess_mock = MagicMock(side_effect=AssertionError("preprocess called"))
+        metadata_mock = MagicMock()
+        infos_mock = MagicMock()
+        pb_defs_mock = MagicMock()
+        backend_mock = MagicMock()
+
+        monkeypatch.setattr(writer_mod, "preprocess", preprocess_mock)
+        monkeypatch.setattr(writer_mod, "save_metadata_to_disk", metadata_mock)
+        monkeypatch.setattr(writer_mod, "save_infos_to_disk", infos_mock)
+        monkeypatch.setattr(
+            writer_mod, "save_problem_definitions_to_disk", pb_defs_mock
+        )
+        monkeypatch.setattr(writer_mod, "get_backend", lambda _name: backend_mock)
+
+        test_dir = tmp_path / "test_cgns_skip_preprocess"
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="cgns",
+            infos=infos,
+            pb_defs={"pb_def": problem_definition},
+            overwrite=True,
+        )
+
+        preprocess_mock.assert_not_called()
+        metadata_mock.assert_not_called()
+        infos_mock.assert_called_once()
+        pb_defs_mock.assert_called_once_with(test_dir, {"pb_def": problem_definition})
+        backend_mock.generate_to_disk.assert_called_once()
+        assert backend_mock.generate_to_disk.call_args.args[2] is None
+
+        saved_infos = infos_mock.call_args.args[1]
+        assert saved_infos.storage_backend == "cgns"
+        assert saved_infos.num_samples == {
+            split_name: len(split_ids_) for split_name, split_ids_ in split_ids.items()
+        }
+
     def test_registry(self):
         from plaid.storage import registry
 
@@ -674,7 +721,7 @@ class Test_Storage:
 
     def test_split_list_single_split(self):
         """Cover _split_list early return path (`n_splits <= 1`)."""
-        assert _split_list([0, 1, 2], 1) == [[0, 1, 2]]
+        assert writer_mod._split_list([0, 1, 2], 1) == [[0, 1, 2]]
 
     # --------------------------------------------------------------------------
     #     New sample_constructor + ids API tests
@@ -687,7 +734,7 @@ class Test_Storage:
             "test": [10, 11],
         }
 
-        gen_kwargs = _build_gen_kwargs(ids, num_proc=2)
+        gen_kwargs = writer_mod._build_gen_kwargs(ids, num_proc=2)
 
         # Check gen_kwargs structure
         assert "train" in gen_kwargs
@@ -715,7 +762,7 @@ class Test_Storage:
             collected.append(id_)
             return id_
 
-        gen = _SampleFuncGenerator(my_func)
+        gen = writer_mod._SampleFuncGenerator(my_func)
 
         # Test with shards_ids
         results = list(gen(shards_ids=[[0, 1], [2, 3]]))
@@ -730,7 +777,7 @@ class Test_Storage:
             collected.append(id_)
             return id_
 
-        gen = _SampleFuncGenerator(my_func)
+        gen = writer_mod._SampleFuncGenerator(my_func)
         # Call with no arguments — shards_ids defaults to None
         results = list(gen())
         assert results == []
@@ -831,8 +878,6 @@ class Test_Storage:
     ):
         """save_to_disk with num_proc > 1 triggers auto-sharding."""
         from unittest.mock import MagicMock
-
-        import plaid.storage.writer as writer_mod
 
         # Track whether _build_gen_kwargs was called
         original_build = writer_mod._build_gen_kwargs
