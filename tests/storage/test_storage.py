@@ -203,7 +203,6 @@ class Test_Storage:
         backend,
         tmp_path,
         samples_with_extra_global,
-        infos,
     ):
         """HF datasets and Zarr backends support splits with one sample."""
         test_dir = tmp_path / f"test_single_sample_{backend}"
@@ -216,7 +215,7 @@ class Test_Storage:
             sample_constructor=single_sample_constructor,
             ids={"train": [0]},
             backend=backend,
-            infos=infos,
+            infos=None,
             overwrite=True,
         )
 

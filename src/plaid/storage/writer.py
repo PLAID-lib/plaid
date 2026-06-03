@@ -232,7 +232,7 @@ def save_to_disk(
             output_folder, flat_cst, variable_schema, constant_schema, cgns_types
         )
 
-    # Inject the actual on-disk storage backend / sample counts so the
+    # Inject the actual on-disk storage backend and sample counts so the
     # written ``infos.yaml`` always reflects how the dataset was saved,
     # overriding any inherited values from the input ``infos``.
     if infos is None:
