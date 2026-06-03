@@ -91,7 +91,7 @@ def test_check_connection_returns_false_for_bad_status(monkeypatch, capsys):
     """A non-ok health response returns False and reports the bad status."""
     client = PlaidClient("localhost", 8000)
     monkeypatch.setattr(
-        client, "_request_json", lambda endpoint, payload: {"status": "bad"}
+        client, "_request_json", lambda _endpoint, _payload: {"status": "bad"}
     )
 
     assert client.check_connection() is False
@@ -105,7 +105,7 @@ def test_check_connection_returns_false_on_exception(monkeypatch, capsys):
     """Connection exceptions are caught and converted to False."""
     client = PlaidClient("localhost", 8000)
 
-    def raise_error(endpoint, payload):
+    def raise_error(_endpoint, _payload):
         raise RuntimeError("server unavailable")
 
     monkeypatch.setattr(client, "_request_json", raise_error)

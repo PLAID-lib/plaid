@@ -1292,6 +1292,31 @@ class Test_Sample:
 
         assert np.allclose(sample_with_tree.get_feature_by_path(path), new_field)
 
+    def test_update_value_by_path_warns_when_array_shape_differs(
+        self, sample_with_tree, caplog, monkeypatch
+    ):
+        path = "Base_2_2/Zone/VertexFields/test_node_field_1"
+        base_node = sample_with_tree.get_base("Base_2_2")
+        node = CGU.getNodeByPath(base_node, "/Zone/VertexFields/test_node_field_1")
+        original_get_value = CGU.getValue
+        calls = 0
+
+        def get_value_with_different_shape_once(current_node):
+            nonlocal calls
+            if current_node is node:
+                calls += 1
+                if calls == 1:
+                    return np.zeros(5)
+                return np.zeros((1, 5))
+            return original_get_value(current_node)
+
+        monkeypatch.setattr(CGU, "getValue", get_value_with_different_shape_once)
+
+        with caplog.at_level("WARNING", logger="plaid.containers.sample"):
+            sample_with_tree.update_value_by_path(path, np.linspace(0.0, 1.0, 5))
+
+        assert "incomming data has shape" in caplog.text
+
     def test_update_value_by_path_at_specific_time(self, sample, tree):
         path = "Base_2_2/Zone/VertexFields/test_node_field_1"
         time_0_field = np.linspace(0.0, 1.0, 5)
