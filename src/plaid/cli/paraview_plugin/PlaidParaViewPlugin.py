@@ -18,7 +18,11 @@ from paraview.util.vtkAlgorithm import VTKPythonAlgorithmBase
 from paraview.util.vtkAlgorithm import smproperty, smproxy, smhint, smdomain
 from vtkmodules.util.numpy_support import numpy_to_vtk
 from vtkmodules.vtkCommonCore import vtkPoints, vtkDoubleArray
-from vtkmodules.vtkCommonDataModel import vtkCellArray, vtkPolyVertex, vtkUnstructuredGrid
+from vtkmodules.vtkCommonDataModel import (
+    vtkCellArray,
+    vtkPolyVertex,
+    vtkUnstructuredGrid,
+)
 
 
 _ELEMENT_TYPE_TO_VTK: dict[str, tuple[int, int]] = {
@@ -43,6 +47,7 @@ def print_debug(message: str) -> None:
 
 print_debug("Loading libs")
 
+
 def find_closest_numpy(arr, target):
     # Convert input to array if it isn't one
     arr = np.asarray(arr)
@@ -54,16 +59,23 @@ def find_closest_numpy(arr, target):
 
 # 1. Define your custom base class
 class PlaidClientBase(VTKPythonAlgorithmBase):
-    def __init__(self, nInputPorts, nOutputPorts, inputType='vtkUnstructuredGrid', outputType='vtkUnstructuredGrid'):
+    def __init__(
+        self,
+        nInputPorts,
+        nOutputPorts,
+        inputType="vtkUnstructuredGrid",
+        outputType="vtkUnstructuredGrid",
+    ):
         # Correctly initialize the underlying VTK C++ layer
-        VTKPythonAlgorithmBase.__init__(self,
+        VTKPythonAlgorithmBase.__init__(
+            self,
             nInputPorts=nInputPorts,
             nOutputPorts=nOutputPorts,
             inputType=inputType,
-            outputType=outputType)
+            outputType=outputType,
+        )
         self.host: str = "127.0.0.1"
         self.port: int = 8000
-
 
     def SharedLogMethod(self, request_type):
         """A utility method available to all child filters."""
@@ -77,7 +89,9 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
             self.timestep_values_cache = None
             self.Modified()
 
-    @smproperty.intvector(name="Port", default_values=os.environ.get("PLAID_PORT","8000"))
+    @smproperty.intvector(
+        name="Port", default_values=os.environ.get("PLAID_PORT", "8000")
+    )
     def SetPort(self, value):
         value = int(value)
         if self.port != value:
@@ -85,7 +99,9 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
             self.timestep_values_cache = None
             self.Modified()
 
-    def _request_json(self, endpoint: str, payload: dict[str, object]) -> dict[str, object]:
+    def _request_json(
+        self, endpoint: str, payload: dict[str, object]
+    ) -> dict[str, object]:
 
         method = "GET"
         print(f"{endpoint}")
@@ -99,9 +115,10 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
         with request.urlopen(req, timeout=10) as response:
             return json.loads(response.read().decode("utf-8"))
 
-
     @staticmethod
-    def _find_feature_by_suffix(payload: dict[str, object], suffix: str) -> object | None:
+    def _find_feature_by_suffix(
+        payload: dict[str, object], suffix: str
+    ) -> object | None:
         for key, value in payload.items():
             if key.endswith(suffix):
                 return value
@@ -130,7 +147,7 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
 
         fields: dict[str, np.ndarray] = {}
         for key, value in sample_payload.items():
-            #print(key)
+            # print(key)
             if "/VertexFields/" not in key:
                 continue
             arr = np.asarray(value)
@@ -185,7 +202,9 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
                 continue
 
             for cell_nodes in connectivity:
-                element_entries.append((vtk_cell_type, np.asarray(cell_nodes, dtype=np.int64)))
+                element_entries.append(
+                    (vtk_cell_type, np.asarray(cell_nodes, dtype=np.int64))
+                )
 
         if element_entries:
             output.Allocate(len(element_entries))
@@ -209,6 +228,7 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
             vtk_array.SetName(name)
             output.GetPointData().AddArray(vtk_array)
 
+
 @smproxy.source(name="PlaidExplorer", label="Plaid Dataset Explorer")
 class PlaidDatasetExplorer(PlaidClientBase):
     """ParaView source plugin fetching data from Maestro serve endpoints."""
@@ -217,25 +237,27 @@ class PlaidDatasetExplorer(PlaidClientBase):
         super().__init__(
             nInputPorts=0,
             nOutputPorts=1,
-            inputType = None,
+            inputType=None,
             outputType="vtkUnstructuredGrid",
         )
 
         self.sample_id: int = 0
         self.timestep_values_cache: list[float] | None = None
         self.input_features = ""
-        self.filename_or_url =  "/home/fbw/repos/Safran/Datasets/Tensile2d/"
+        self.filename_or_url = "/home/fbw/repos/Safran/Datasets/Tensile2d/"
         self._available_splits = {}
         self._selected_split = ""
 
-
-
-    @smproperty.stringvector(name="SelectPlaidDataset", label="Dataset", default_values="/home/fbw/repos/Safran/Datasets/Tensile2d/")
+    @smproperty.stringvector(
+        name="SelectPlaidDataset",
+        label="Dataset",
+        default_values="/home/fbw/repos/Safran/Datasets/Tensile2d/",
+    )
     @smdomain.filelist()
     @smhint.xml("<Property show_directory_only='1' />")
-    def SetExternalFilePath(self, path: Union[str,None]):
+    def SetExternalFilePath(self, path: Union[str, None]):
         if path is None:
-            path  = ''
+            path = ""
         if self.filename_or_url != path:
             self.filename_or_url = path
             self._available_splits = {}
@@ -249,9 +271,13 @@ class PlaidDatasetExplorer(PlaidClientBase):
             return []
         # ParaView expects information arrays to be returned as a vtkStringArray or list
         ts_response = self._request_json(
-                "/splits",
-                {"sample_ids": [self.sample_id], "dataset": self.filename_or_url, "split":self._selected_split},
-            )
+            "/splits",
+            {
+                "sample_ids": [self.sample_id],
+                "dataset": self.filename_or_url,
+                "split": self._selected_split,
+            },
+        )
         self._available_splits = ts_response.get("splits", {})
 
         return list(self._available_splits.keys())
@@ -275,7 +301,7 @@ class PlaidDatasetExplorer(PlaidClientBase):
     @smproperty.intvector(name="SampleIdRangeInfo", information_only="1")
     def GetSampleIdRange(self):
         """Return [min, max] bounds for the SampleId slider."""
-        split_max = self._available_splits.get(self._selected_split, 0)-1
+        split_max = self._available_splits.get(self._selected_split, 0) - 1
         try:
             split_max = int(split_max)
         except (TypeError, ValueError):
@@ -305,10 +331,8 @@ class PlaidDatasetExplorer(PlaidClientBase):
             self.timestep_values_cache = None
             self.Modified()
 
-
-    #@smproperty.stringvector(name="InputFeatures", default_values="")
-    #@smhint.xml(r"<Widget type='multi_line'/>")
-
+    # @smproperty.stringvector(name="InputFeatures", default_values="")
+    # @smhint.xml(r"<Widget type='multi_line'/>")
 
     @smproperty.xml("""
           <StringVectorProperty name="InputFeatures"
@@ -326,13 +350,11 @@ class PlaidDatasetExplorer(PlaidClientBase):
     """)
     def SetInputFeatures(self, value):
         if value is None:
-            value  = ''
+            value = ""
         value = str(value)
         if self.input_features != value:
             self.input_features = value
             self.Modified()
-
-
 
     @smproperty.doublevector(
         name="TimestepValues",
@@ -340,19 +362,23 @@ class PlaidDatasetExplorer(PlaidClientBase):
         si_class="vtkSITimeStepsProperty",
     )
     def GetTimestepValues(self):
-        if self.filename_or_url in ["", None ]:
+        if self.filename_or_url in ["", None]:
             return [0.0]
 
-        if self._selected_split  in ["", None ]:
+        if self._selected_split in ["", None]:
             return [0.0]
         print(f"{self.filename_or_url=}, {self._selected_split=}")
         if self.timestep_values_cache is None:
             # Optional warmup/readability check against /sample
-            #self._request_json("/sample", {"sample_ids": [self.sample_id]})
+            # self._request_json("/sample", {"sample_ids": [self.sample_id]})
 
             ts_response = self._request_json(
                 "/timesteps",
-                {"sample_ids": [self.sample_id], "dataset": self.filename_or_url, "split":self._selected_split},
+                {
+                    "sample_ids": [self.sample_id],
+                    "dataset": self.filename_or_url,
+                    "split": self._selected_split,
+                },
             )
             entries = ts_response.get("time_steps", [])
             if not entries:
@@ -393,12 +419,17 @@ class PlaidDatasetExplorer(PlaidClientBase):
             values = self.GetTimestepValues()
             requested_time = float(values[0]) if values else 0.0
 
-        requested_time = find_closest_numpy(self.GetTimestepValues(),requested_time)
+        requested_time = find_closest_numpy(self.GetTimestepValues(), requested_time)
         endpoint = "/predict_step" if self.usePredict else "/samples_step"
-        #print(endpoint)
+        # print(endpoint)
 
-        #"angle_in":40
-        payload = {"sample_ids": [self.sample_id], "time": requested_time, "dataset": self.filename_or_url, "split":self._selected_split }
+        # "angle_in":40
+        payload = {
+            "sample_ids": [self.sample_id],
+            "time": requested_time,
+            "dataset": self.filename_or_url,
+            "split": self._selected_split,
+        }
         if len(self.input_features):
             #  {          <- this is added automaticaly
             #  toto = 5             the = is converted to : and add the "" around
@@ -407,25 +438,25 @@ class PlaidDatasetExplorer(PlaidClientBase):
             #
             #  }            <- this is added automaticaly
 
-            def ensureEncluse(string,start,end):
+            def ensureEncluse(string, start, end):
                 string = string.strip()
                 if not string.startswith(start):
                     string = start + string
                 if not string.endswith(end):
-                    string =  string + end
+                    string = string + end
                 return string
 
-            treated_input_features = self.input_features.replace("'",'"').strip()
-            treated_input_features = self.input_features.replace("=",':').strip()
+            treated_input_features = self.input_features.replace("'", '"').strip()
+            treated_input_features = self.input_features.replace("=", ":").strip()
             clean_treated_input_features = []
             for line in treated_input_features.splitlines():
-                k,v = line.split(":")
-                k = ensureEncluse(k,'"','"')
-                clean_treated_input_features.append( k+":"+v)
+                k, v = line.split(":")
+                k = ensureEncluse(k, '"', '"')
+                clean_treated_input_features.append(k + ":" + v)
 
             treated_input_features = ",".join(clean_treated_input_features)
-            treated_input_features = ensureEncluse(treated_input_features,"{","}")
-            #print(f"{treated_input_features=}")
+            treated_input_features = ensureEncluse(treated_input_features, "{", "}")
+            # print(f"{treated_input_features=}")
 
             payload["input_features"] = [json.loads(treated_input_features)]
 
@@ -435,7 +466,9 @@ class PlaidDatasetExplorer(PlaidClientBase):
         )
         sample_payload = step_response.get("samples", [None])[0]
         if sample_payload is None:
-            raise ValueError("/sample_step response does not contain a valid sample payload")
+            raise ValueError(
+                "/sample_step response does not contain a valid sample payload"
+            )
 
         output = vtkUnstructuredGrid.GetData(out_info)
         self._build_unstructured_grid(sample_payload, output)
@@ -446,7 +479,7 @@ class PlaidDatasetExplorer(PlaidClientBase):
         for key, value in sample_payload.items():
             if key.startswith("Global/") and not key.endswith("_times"):
                 scalar_array = vtkDoubleArray()
-                #scalar_array.SetName(key.split("/")[-1])
+                # scalar_array.SetName(key.split("/")[-1])
                 scalar_array.SetName(key)
                 scalar_array.SetNumberOfComponents(len(value))
                 for v in value:
@@ -463,7 +496,7 @@ class MaestroExplorer(PlaidClientBase):
         super().__init__(
             nInputPorts=0,
             nOutputPorts=1,
-            inputType = None,
+            inputType=None,
             outputType="vtkUnstructuredGrid",
         )
 
@@ -471,16 +504,20 @@ class MaestroExplorer(PlaidClientBase):
         self.timestep_values_cache: list[float] | None = None
         self.usePredict: bool = False
         self.input_features = ""
-        self.experiment =  "/home/fbw/repos/Safran/Datasets/Tensile2d/"
+        self.experiment = "/home/fbw/repos/Safran/Datasets/Tensile2d/"
         self._available_splits = {}
         self._selected_split = ""
 
-    @smproperty.stringvector(name="SelectMaestroExperiment", label="Experiment", default_values="tensile2d_transolver")
-    #@smdomain.filelist()
-    #@smhint.xml("<Property show_directory_only='1' />")
-    def SetExternalFilePath(self, path: Union[str,None]):
+    @smproperty.stringvector(
+        name="SelectMaestroExperiment",
+        label="Experiment",
+        default_values="tensile2d_transolver",
+    )
+    # @smdomain.filelist()
+    # @smhint.xml("<Property show_directory_only='1' />")
+    def SetExternalFilePath(self, path: Union[str, None]):
         if path is None:
-            path  = ''
+            path = ""
         if self.experiment != path:
             self.experiment = path
             self._available_splits = {}
@@ -494,9 +531,13 @@ class MaestroExplorer(PlaidClientBase):
             return []
         # ParaView expects information arrays to be returned as a vtkStringArray or list
         ts_response = self._request_json(
-                "/splits",
-                {"sample_ids": [self.sample_id], "dataset": self.experiment, "split":self._selected_split},
-            )
+            "/splits",
+            {
+                "sample_ids": [self.sample_id],
+                "dataset": self.experiment,
+                "split": self._selected_split,
+            },
+        )
         self._available_splits = ts_response.get("splits", {})
 
         return list(self._available_splits.keys())
@@ -520,13 +561,12 @@ class MaestroExplorer(PlaidClientBase):
     @smproperty.intvector(name="SampleIdRangeInfo", information_only="1")
     def GetSampleIdRange(self):
         """Return [min, max] bounds for the SampleId slider."""
-        split_max = self._available_splits.get(self._selected_split, 0)-1
+        split_max = self._available_splits.get(self._selected_split, 0) - 1
         try:
             split_max = int(split_max)
         except (TypeError, ValueError):
             split_max = 0
         return [0, max(0, split_max)]
-
 
     @smproperty.xml("""
           <IntVectorProperty name="SampleId"
@@ -551,7 +591,6 @@ class MaestroExplorer(PlaidClientBase):
             self.timestep_values_cache = None
             self.Modified()
 
-
     @smproperty.xml("""
           <IntVectorProperty name="Predict"
                              command="SetPredict"
@@ -564,12 +603,11 @@ class MaestroExplorer(PlaidClientBase):
               </Documentation>
           </IntVectorProperty>""")
     def SetPredict(self, value):
-        bool_value = str(value).lower() in ['true', '1']
-        #print(value, bool_value)
+        bool_value = str(value).lower() in ["true", "1"]
+        # print(value, bool_value)
         if self.usePredict != bool_value:
             self.usePredict = bool_value
             self.Modified()
-
 
     @smproperty.xml("""
           <StringVectorProperty name="InputFeatures"
@@ -587,12 +625,11 @@ class MaestroExplorer(PlaidClientBase):
     """)
     def SetInputFeatures(self, value):
         if value is None:
-            value  = ''
+            value = ""
         value = str(value)
         if self.input_features != value:
             self.input_features = value
             self.Modified()
-
 
     @smproperty.doublevector(
         name="TimestepValues",
@@ -600,19 +637,23 @@ class MaestroExplorer(PlaidClientBase):
         si_class="vtkSITimeStepsProperty",
     )
     def GetTimestepValues(self):
-        if self.experiment in ["", None ]:
+        if self.experiment in ["", None]:
             return [0.0]
 
-        if self._selected_split  in ["", None ]:
+        if self._selected_split in ["", None]:
             return [0.0]
         print(f"{self.experiment=}, {self._selected_split=}")
         if self.timestep_values_cache is None:
             # Optional warmup/readability check against /sample
-            #self._request_json("/sample", {"sample_ids": [self.sample_id]})
+            # self._request_json("/sample", {"sample_ids": [self.sample_id]})
 
             ts_response = self._request_json(
                 "/timesteps",
-                {"sample_ids": [self.sample_id], "dataset": self.experiment, "split":self._selected_split},
+                {
+                    "sample_ids": [self.sample_id],
+                    "dataset": self.experiment,
+                    "split": self._selected_split,
+                },
             )
             entries = ts_response.get("time_steps", [])
             if not entries:
@@ -653,12 +694,17 @@ class MaestroExplorer(PlaidClientBase):
             values = self.GetTimestepValues()
             requested_time = float(values[0]) if values else 0.0
 
-        requested_time = find_closest_numpy(self.GetTimestepValues(),requested_time)
+        requested_time = find_closest_numpy(self.GetTimestepValues(), requested_time)
         endpoint = "/predict_step" if self.usePredict else "/samples_step"
-        #print(endpoint)
+        # print(endpoint)
 
-        #"angle_in":40
-        payload = {"sample_ids": [self.sample_id], "time": requested_time, "dataset": self.experiment, "split":self._selected_split }
+        # "angle_in":40
+        payload = {
+            "sample_ids": [self.sample_id],
+            "time": requested_time,
+            "dataset": self.experiment,
+            "split": self._selected_split,
+        }
         if len(self.input_features):
             #  {          <- this is added automaticaly
             #  toto = 5             the = is converted to : and add the "" around
@@ -667,25 +713,25 @@ class MaestroExplorer(PlaidClientBase):
             #
             #  }            <- this is added automaticaly
 
-            def ensureEncluse(string,start,end):
+            def ensureEncluse(string, start, end):
                 string = string.strip()
                 if not string.startswith(start):
                     string = start + string
                 if not string.endswith(end):
-                    string =  string + end
+                    string = string + end
                 return string
 
-            treated_input_features = self.input_features.replace("'",'"').strip()
-            treated_input_features = self.input_features.replace("=",':').strip()
+            treated_input_features = self.input_features.replace("'", '"').strip()
+            treated_input_features = self.input_features.replace("=", ":").strip()
             clean_treated_input_features = []
             for line in treated_input_features.splitlines():
-                k,v = line.split(":")
-                k = ensureEncluse(k,'"','"')
-                clean_treated_input_features.append( k+":"+v)
+                k, v = line.split(":")
+                k = ensureEncluse(k, '"', '"')
+                clean_treated_input_features.append(k + ":" + v)
 
             treated_input_features = ",".join(clean_treated_input_features)
-            treated_input_features = ensureEncluse(treated_input_features,"{","}")
-            #print(f"{treated_input_features=}")
+            treated_input_features = ensureEncluse(treated_input_features, "{", "}")
+            # print(f"{treated_input_features=}")
 
             payload["input_features"] = [json.loads(treated_input_features)]
 
@@ -695,7 +741,9 @@ class MaestroExplorer(PlaidClientBase):
         )
         sample_payload = step_response.get("samples", [None])[0]
         if sample_payload is None:
-            raise ValueError("/sample_step response does not contain a valid sample payload")
+            raise ValueError(
+                "/sample_step response does not contain a valid sample payload"
+            )
 
         output = vtkUnstructuredGrid.GetData(out_info)
         self._build_unstructured_grid(sample_payload, output)
@@ -706,7 +754,7 @@ class MaestroExplorer(PlaidClientBase):
         for key, value in sample_payload.items():
             if key.startswith("Global/") and not key.endswith("_times"):
                 scalar_array = vtkDoubleArray()
-                #scalar_array.SetName(key.split("/")[-1])
+                # scalar_array.SetName(key.split("/")[-1])
                 scalar_array.SetName(key)
                 scalar_array.SetNumberOfComponents(len(value))
                 for v in value:

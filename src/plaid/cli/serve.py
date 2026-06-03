@@ -288,7 +288,9 @@ class ServeContext:
 
         local_path = Path(key)
         if not local_path.exists() or not local_path.is_dir():
-            raise ValueError(f"Dataset path does not exist or is not a directory: {key}")
+            raise ValueError(
+                f"Dataset path does not exist or is not a directory: {key}"
+            )
 
         try:
             datasetdict, converterdict = init_from_disk(str(local_path))
@@ -370,11 +372,14 @@ class ServeContext:
         split_key = self._resolve_split(store, split)
         print(f"get_time_steps : {split_key}")
         if split_key == None:
-            return [{
+            return [
+                {
                     "sample_id": sample_id,
                     "times": [],
                     "count": 0,
-                  } for sample_id in sample_ids]
+                }
+                for sample_id in sample_ids
+            ]
 
         dataset = store.datasetdict[split_key]
         converter = store.converterdict[split_key]
@@ -553,7 +558,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--host", default="0.0.0.0", help="Bind address.")
     parser.add_argument("--port", type=int, default=8000, help="Bind port.")
-    parser.add_argument("--ParaViewRun",  action="store_true", help="Run ParaView before the server (path from the PARAVIEW_EXEC env varialbe).")
+    parser.add_argument(
+        "--ParaViewRun",
+        action="store_true",
+        help="Run ParaView before the server (path from the PARAVIEW_EXEC env varialbe).",
+    )
     return parser
 
 
@@ -571,10 +580,12 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    if args.ParaViewRun :
+    if args.ParaViewRun:
         import os
+
         os.environ["PLAID_PORT"] = str(args.port)
         from .paraview_plugin import run_paraview_with_plugin
+
         process = run_paraview_with_plugin()
     else:
         process = None
@@ -589,6 +600,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print("Launching the server for paraview")
         import threading
+
         server_thread = threading.Thread(target=server.serve_forever, daemon=True)
         server_thread.start()
         try:
@@ -602,10 +614,8 @@ def main(argv: list[str] | None = None) -> int:
             server.server_close()
             server_thread.join(timeout=5)
 
-
     return 0
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry
-
     raise SystemExit(main())

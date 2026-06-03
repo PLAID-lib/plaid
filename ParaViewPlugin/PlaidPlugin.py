@@ -15,12 +15,16 @@ _startTime = time.time()
 debug = bool(os.environ.get("PARAVIEW_LOG_PLUGIN_VERBOSITY", False))
 
 if debug:
+
     def PrintDebug(mes):
         import time
+
         print(mes, time.time() - _startTime)
 else:
+
     def PrintDebug(mes):
         pass
+
 
 try:
     import numpy as np
@@ -31,18 +35,27 @@ try:
 
     PrintDebug("Loading libs")
     from Muscat.Bridges.vtkBridge import SetOutputMuscat
+
     PrintDebug("Loading")
 
     paraview_plugin_name = "Plaid ParaView Plugin"
     paraview_plugin_version = "5.11.1"
 
-    @smproxy.reader(name="PlaidSampleReader", label="Plaid Sample Reader", extensions="pickle", file_description="pickle ")
+    @smproxy.reader(
+        name="PlaidSampleReader",
+        label="Plaid Sample Reader",
+        extensions="pickle",
+        file_description="pickle ",
+    )
     class PlaidSampleReader(VTKPythonAlgorithmBase):
         def __init__(self):
-            VTKPythonAlgorithmBase.__init__(self, nInputPorts=0, nOutputPorts=1, outputType='vtkUnstructuredGrid')
+            VTKPythonAlgorithmBase.__init__(
+                self, nInputPorts=0, nOutputPorts=1, outputType="vtkUnstructuredGrid"
+            )
             self._filename: Optional[str] = None
-            self.timeSteps_cache = None #timesteps
+            self.timeSteps_cache = None  # timesteps
             self.cache = None  # plaid sample
+
         @smproperty.stringvector(name="FileName")
         @smdomain.filelist()
         @smhint.filechooser(extensions="pickle", file_description="pickle files")
@@ -57,19 +70,22 @@ try:
                 if name is not None:
                     self.GetTimestepValues()
 
-        @smproperty.doublevector(name="TimestepValues", information_only="1", si_class="vtkSITimeStepsProperty")
+        @smproperty.doublevector(
+            name="TimestepValues",
+            information_only="1",
+            si_class="vtkSITimeStepsProperty",
+        )
         def GetTimestepValues(self):
             if self._filename is None or self._filename == "None":
                 return None
             with open(self._filename, "rb") as f:
-                self.version  = pickle.load(f)
+                self.version = pickle.load(f)
                 if self.version == 0:
-                    self.timeSteps_cache  = pickle.load(f)
+                    self.timeSteps_cache = pickle.load(f)
                 else:
-                    self.timeSteps_cache, self.cache  = pickle.load(f)
+                    self.timeSteps_cache, self.cache = pickle.load(f)
 
             return self.timeSteps_cache
-
 
         def RequestInformation(self, request, inInfoVec, outInfoVec):
             executive = self.GetExecutive()
@@ -96,8 +112,9 @@ try:
             else:
                 time = 0
 
-            #Read pickle files
+            # Read pickle files
             import pickle
+
             if self.version == 0:
                 if self.cache == None:
                     with open(self._filename, "rb") as f:
@@ -114,10 +131,10 @@ try:
                     cgnsdata = pickle.load(f)
 
             from Muscat.Bridges.CGNSBridge import CGNSToMesh
+
             mesh = CGNSToMesh(cgnsdata, partitionedMesh=False)
             SetOutputMuscat(request, inInfoVec, outInfoVec, mesh, tagsAsFields=True)
             return 1
-
 
     PrintDebug("Plaid ParaView Plugin Loaded")
 except Exception as ex:
@@ -125,5 +142,3 @@ except Exception as ex:
     print("Muscat in the PYTHONPATH ??? ")
     if debug:
         raise ex
-
-
