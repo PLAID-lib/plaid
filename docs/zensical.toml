@@ -52,11 +52,11 @@ nav = [
       { "Sample" = "notebooks/containers/sample_example.md" },
       { "Problem definition" = "notebooks/problem_definition_example.md" },
       { "Infos" = "notebooks/infos_example.md" },
-      { "Downloadable samples" = "notebooks/downloadable_example/sample_example.md" },
+      { "Downloadable samples" = "tutorials/downloadable_example.md" },
       { "Conversion tutorial" = "tutorials/storage.md" },
     ] },
-    { "`plaid-viewer`" = "concepts/viewer.md" },
-    { "`plaid-check`" = "concepts/check.md" },
+    { "plaid-viewer" = "concepts/viewer.md" },
+    { "plaid-check" = "concepts/check.md" },
     # >>> AUTO-GENERATED API REFERENCE START
     # The block below is overwritten by `python docs/generate_api_stubs.py`.
     # Edit that script (or the markers) instead of changing this section by hand.
