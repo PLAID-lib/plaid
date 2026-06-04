@@ -12,12 +12,10 @@ else:  # pragma: no cover
 
 import logging
 from pathlib import Path
-from typing import Any, Literal, Sequence, Union, cast
+from typing import Any, Literal, Sequence, Union
 
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
-
-from .types import IndexArrayType
 
 # %% Globals
 
@@ -42,18 +40,6 @@ class ProblemDefinition(BaseModel):
     test_split: dict[str, Sequence[int] | Literal["all"]]
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any]) -> "ProblemDefinition":
-        """Build a validated :class:`ProblemDefinition` from a plain mapping.
-
-        Args:
-            data: YAML-like mapping containing one problem definition.
-
-        Returns:
-            Validated problem definition instance.
-        """
-        return cls.model_validate(data)
-
-    @classmethod
     def from_path(cls, path: str | Path) -> "ProblemDefinition":
         """Load and validate one problem definition from a YAML file.
 
@@ -76,7 +62,7 @@ class ProblemDefinition(BaseModel):
         with path.open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file) or {}
 
-        return cls.from_mapping(data)
+        return cls.model_validate(data)
 
     @field_validator("input_features", mode="before")
     @classmethod
@@ -120,49 +106,6 @@ class ProblemDefinition(BaseModel):
                 logger.warning("'%s' already exists -> data will be replaced", name)
 
         super().__setattr__(name, value)
-
-    #     # -------------------------------------------------------------------------#
-    def get_train_split_name(self) -> str:
-        """Return the name of the train split."""
-        if self.train_split is None:
-            raise ValueError("train_split is not defined.")
-        return list(self.train_split.keys())[0]
-
-    def get_train_split_indices(self) -> IndexArrayType | Literal["all"]:
-        """Return the indices associated with the train split.
-
-        Raises:
-            ValueError: If `train_split` is not defined.
-
-        Returns:
-            IndexArrayType | Literal["all"]: The indices associated with the train split.
-        """
-        if self.train_split is None:
-            raise ValueError("train_split is not defined.")
-        return cast(
-            IndexArrayType | Literal["all"], next(iter(self.train_split.values()))
-        )
-
-    def get_test_split_name(self) -> str:
-        """Return the name of the test split."""
-        if self.test_split is None:
-            raise ValueError("test_split is not defined.")
-        return list(self.test_split.keys())[0]
-
-    def get_test_split_indices(self) -> IndexArrayType | Literal["all"]:
-        """Return the indices associated with the test split.
-
-        Raises:
-            ValueError: If `test_split` is not defined.
-
-        Returns:
-            IndexArrayType | Literal["all"]: The indices associated with the test split.
-        """
-        if self.test_split is None:
-            raise ValueError("test_split is not defined.")
-        return cast(
-            IndexArrayType | Literal["all"], next(iter(self.test_split.values()))
-        )
 
     def add_input_features(self, inputs: Union[str, Sequence[str]]) -> None:
         """Add input features identifiers to the problem.

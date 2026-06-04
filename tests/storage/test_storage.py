@@ -185,8 +185,8 @@ def sample_constructor(samples_with_extra_global):
 @pytest.fixture()
 def split_ids(problem_definition) -> dict:
     return {
-        "train": problem_definition.get_train_split_indices(),
-        "test": problem_definition.get_test_split_indices(),
+        "train": problem_definition.train_split["train"],
+        "test": problem_definition.test_split["test"],
     }
 
 

@@ -24,7 +24,7 @@
 # 3. Saving and loading infos
 #
 # This notebook provides examples of using the Infos class to define dataset
-# metadata, access entries with mapping-style helpers, and save/load infos.
+# metadata, access entries with typed attributes, and save/load infos.
 #
 # **Each section is documented and explained.**
 
@@ -59,7 +59,7 @@ print(f"{infos = }")
 # ### Initialize Infos from a plain mapping
 
 # %%
-infos_from_mapping = Infos.from_mapping(
+infos_from_mapping = Infos.model_validate(
     {
         "legal": {
             "owner": "PLAID",
@@ -113,12 +113,13 @@ print(f"{infos.num_samples = }")
 print(f"{infos.storage_backend = }")
 
 # %% [markdown]
-# ### Retrieve data with mapping-style helpers
+# ### Retrieve data with Pydantic attributes
 
 # %%
-print(f"{infos['legal'] = }")
-print(f"{infos.get('storage_backend') = }")
-print(f"{infos.to_dict() = }")
+print(f"{infos.legal = }")
+print(f"{infos.legal.owner = }")
+print(f"{infos.storage_backend = }")
+print(f"{infos.model_dump(exclude_none=True) = }")
 
 # %% [markdown]
 # ## Section 3: Saving and Loading Infos

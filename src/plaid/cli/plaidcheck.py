@@ -394,6 +394,7 @@ def check_dataset(
     path: Path,
     splits: Optional[list[str]] = None,
     show_progress: bool = True,
+    problem_definitions: Optional[list[str]] = None,
 ) -> CheckReport:
     """Run integrity checks on a local PLAID dataset.
 
@@ -415,6 +416,8 @@ def check_dataset(
         path: Dataset directory.
         splits: Optional selected split names.
         show_progress: Whether to display tqdm progress bars for expensive checks.
+        problem_definitions: Optional selected problem-definition names. When
+            omitted, all discovered problem definitions are checked.
 
     Returns:
         A populated :class:`CheckReport`.
@@ -436,7 +439,7 @@ def check_dataset(
         report.add("error", "INFOS_READ_ERROR", "infos.yaml", str(exc))
         return report
 
-    declared_backend_for_layout = infos.get("storage_backend")
+    declared_backend_for_layout = infos.storage_backend
     if not isinstance(declared_backend_for_layout, str):
         declared_backend_for_layout = None
 
@@ -450,7 +453,7 @@ def check_dataset(
     # Validate top-level dataset declarations from infos.yaml before calling
     # init_from_disk(), because storage initialization indexes num_samples by
     # split and otherwise reports missing entries as opaque KeyError messages.
-    declared_backend = infos.get("storage_backend")
+    declared_backend = infos.storage_backend
     if not isinstance(declared_backend, str):
         report.add(
             "error",
@@ -459,7 +462,7 @@ def check_dataset(
             "Missing or invalid 'storage_backend' in infos.yaml",
         )
 
-    num_samples = infos.get("num_samples", {})
+    num_samples = infos.num_samples
     if not isinstance(num_samples, dict):
         report.add(
             "error", "NUM_SAMPLES_INVALID", "infos.yaml", "'num_samples' must be a dict"
@@ -663,7 +666,23 @@ def check_dataset(
         # still run).
         validate_pb_def_features = declared_backend_for_layout != "cgns"
 
+        target_pb_names = (
+            set(problem_definitions) if problem_definitions else set(pb_defs)
+        )
+        unknown_pb_names = target_pb_names - set(pb_defs)
+        for pb_name in sorted(unknown_pb_names):
+            available = " and ".join(f'"{x}"' for x in sorted(pb_defs))
+            report.add(
+                "error",
+                "PB_DEF_UNKNOWN",
+                f"problem_definitions/{pb_name}",
+                f"Problem definition not found, available are {available}",
+            )
+        target_pb_names = target_pb_names & set(pb_defs)
+
         for pb_name, pb_def in pb_defs.items():
+            if pb_name not in target_pb_names:
+                continue
             if validate_pb_def_features:
                 for feat in pb_def.input_features:
                     if feat not in all_features:
@@ -776,6 +795,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Treat warnings as failure",
     )
+    parser.add_argument(
+        "--problem-definition",
+        action="append",
+        default=None,
+        help="Problem definition to check (can be provided multiple times)",
+    )
     return parser
 
 
@@ -795,6 +820,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         path=args.path,
         splits=args.split,
         show_progress=not args.json,
+        problem_definitions=args.problem_definition,
     )
 
     if args.json:

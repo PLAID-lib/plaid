@@ -243,10 +243,10 @@ def save_to_disk(
             num_samples={},
             storage_backend=backend,
         )
-    infos_data = infos.to_dict()
+    infos_data = infos.model_dump(exclude_none=True)
     infos_data["num_samples"] = num_samples
     infos_data["storage_backend"] = backend
-    infos = Infos.from_mapping(infos_data)
+    infos = Infos.model_validate(infos_data)
 
     save_infos_to_disk(output_folder, infos)
 
@@ -297,7 +297,7 @@ def push_to_hub(
     """
     infos = load_infos_from_disk(local_dir)
 
-    backend = infos["storage_backend"]
+    backend = infos.storage_backend
 
     backend_spec = get_backend(backend)
     backend_spec.push_local_to_hub(repo_id, local_dir, num_workers=num_workers)

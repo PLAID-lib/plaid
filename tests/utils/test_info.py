@@ -80,7 +80,7 @@ def test_infos_save_and_load_roundtrip(tmp_path):
         "num_samples": {"train": 10},
         "storage_backend": "zarr",
     }
-    model = Infos.from_mapping(infos)
+    model = Infos.model_validate(infos)
 
     target = tmp_path / "infos.yaml"
     model.save_to_file(target)
@@ -98,7 +98,7 @@ def test_infos_from_path_directory(tmp_path):
         "num_samples": {"train": 10},
         "storage_backend": "zarr",
     }
-    Infos.from_mapping(infos).save_to_file(tmp_path / "infos.yaml")
+    Infos.model_validate(infos).save_to_file(tmp_path / "infos.yaml")
     reloaded = Infos.from_path(tmp_path)
     assert reloaded.legal.license == "cc-by-4.0"
 
@@ -150,74 +150,30 @@ def test_validate_required_only_missing_legal():
         Infos.validate_required_only({})
 
 
-def test_to_dict_returns_plain_mapping():
-    model = Infos.from_mapping(
+def test_model_dump_returns_plain_mapping():
+    model = Infos.model_validate(
         {
             "legal": {"owner": "o", "license": "l"},
             "num_samples": {},
             "storage_backend": "zarr",
         }
     )
-    d = model.to_dict()
+    d = model.model_dump(exclude_none=True)
     assert d["legal"] == {"owner": "o", "license": "l"}
     assert d["storage_backend"] == "zarr"
 
 
-def test_getitem_returns_plain_value_and_unwraps_nested_dataclasses():
-    model = Infos.from_mapping(
+def test_attribute_access_returns_typed_values():
+    model = Infos.model_validate(
         {
             "legal": {"owner": "o", "license": "l"},
             "num_samples": {},
             "storage_backend": "zarr",
         }
     )
-    # Plain field.
-    assert model["storage_backend"] == "zarr"
-    # Nested dataclass is returned as a dict, with None entries dropped.
-    legal_dict = model["legal"]
-    assert legal_dict == {"owner": "o", "license": "l"}
-
-
-def test_getitem_raises_key_error_for_unknown_field():
-    model = Infos.from_mapping(
-        {
-            "legal": {"owner": "o", "license": "l"},
-            "num_samples": {},
-            "storage_backend": "zarr",
-        }
-    )
-    with pytest.raises(KeyError):
-        model["does_not_exist"]
-
-
-def test_contains_handles_strings_and_non_strings():
-    model = Infos.from_mapping(
-        {
-            "legal": {"owner": "o", "license": "l"},
-            "num_samples": {},
-            "storage_backend": "zarr",
-        }
-    )
-    assert "legal" in model
-    assert "storage_backend" in model
-    # Field exists but is None -> not "in" the model.
-    assert "data_production" not in model
-    # Unknown attribute name.
-    assert "nope" not in model
-    # Non-string keys are never in the model.
-    assert (123 in model) is False
-
-
-def test_get_returns_default_when_missing():
-    model = Infos.from_mapping(
-        {
-            "legal": {"owner": "o", "license": "l"},
-            "num_samples": {},
-            "storage_backend": "zarr",
-        }
-    )
-    assert model.get("data_description", "fallback") == "fallback"
-    assert model.get("legal")["owner"] == "o"
+    assert model.storage_backend == "zarr"
+    assert model.legal.owner == "o"
+    assert model.legal.license == "l"
 
 
 def test_save_to_file_treats_suffixless_path_as_directory(tmp_path):
@@ -263,7 +219,7 @@ def test_save_to_file_preserves_unknown_future_keys(tmp_path, monkeypatch):
     from plaid import infos as infos_mod
 
     monkeypatch.setattr(infos_mod, "_KEY_ORDER", ())
-    model = Infos.from_mapping(
+    model = Infos.model_validate(
         {
             "legal": {"owner": "o", "license": "l"},
             "num_samples": {},

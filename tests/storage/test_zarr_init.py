@@ -176,7 +176,7 @@ def test_zarr_backend_configure_dataset_card_delegates(monkeypatch):
 
     monkeypatch.setattr(zarr, "configure_dataset_card", fake_configure_dataset_card)
 
-    infos = Infos.from_mapping(
+    infos = Infos.model_validate(
         {
             "legal": {"owner": "owner", "license": "cc-by-4.0"},
             "num_samples": {},

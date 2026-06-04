@@ -101,10 +101,10 @@ print(f"{problem.train_split = }")
 print(f"{problem.test_split = }")
 
 # %%
-split_names = [problem.get_train_split_name(), problem.get_test_split_name()]
+split_names = [next(iter(problem.train_split)), next(iter(problem.test_split))]
 split_indices = {
-    problem.get_train_split_name(): problem.get_train_split_indices(),
-    problem.get_test_split_name(): problem.get_test_split_indices(),
+    next(iter(problem.train_split)): next(iter(problem.train_split.values())),
+    next(iter(problem.test_split)): next(iter(problem.test_split.values())),
 }
 print(f"{split_names = }")
 print(f"{split_indices = }")

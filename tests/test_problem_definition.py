@@ -109,7 +109,7 @@ class Test_ProblemDefinition:
     # -------------------------------------------------------------------------#
 
     def test_from_mapping_validates_and_normalizes(self):
-        loaded = ProblemDefinition.from_mapping(
+        loaded = ProblemDefinition.model_validate(
             {
                 "name": "pb_single",
                 "input_features": ["in_b", "in_a"],
@@ -122,10 +122,8 @@ class Test_ProblemDefinition:
         assert loaded.name == "pb_single"
         assert loaded.input_features == ["in_a", "in_b"]
         assert loaded.output_features == ["out_a", "out_b"]
-        assert loaded.get_train_split_name() == "train_0"
-        assert loaded.get_test_split_name() == "test_0"
-        assert loaded.get_train_split_indices() == [0, 1]
-        assert loaded.get_test_split_indices() == [2]
+        assert loaded.train_split == {"train_0": [0, 1]}
+        assert loaded.test_split == {"test_0": [2]}
 
     def test_from_path_loads_single_yaml_file(self, tmp_path: Path):
         file_path = tmp_path / "problem.yaml"
@@ -145,8 +143,8 @@ class Test_ProblemDefinition:
         loaded = ProblemDefinition.from_path(file_path)
 
         assert loaded.name == "pb"
-        assert loaded.get_train_split_name() == "train"
-        assert loaded.get_test_split_name() == "test"
+        assert loaded.train_split == {"train": [0]}
+        assert loaded.test_split == {"test": [1]}
 
     def test_from_path_adds_yaml_suffix(self, tmp_path: Path):
         file_path = tmp_path / "problem.yaml"
@@ -221,24 +219,12 @@ class Test_ProblemDefinition:
 
         assert "already exists -> data will be replaced" in caplog.text
 
-    def test_get_split_paths(self, problem_definition):
+    def test_split_fields_are_plain_dictionaries(self, problem_definition):
         problem_definition.train_split = {"train_0": [0, 1, 2]}
         problem_definition.test_split = {"test_0": [3, 4]}
 
-        assert problem_definition.get_train_split_name() == "train_0"
-        assert problem_definition.get_test_split_name() == "test_0"
-        assert problem_definition.get_train_split_indices() == [0, 1, 2]
-        assert problem_definition.get_test_split_indices() == [3, 4]
-
-    def test_get_split_paths_raise_when_not_defined(self, problem_definition):
-        with pytest.raises(ValueError, match="train_split is not defined"):
-            problem_definition.get_train_split_name()
-        with pytest.raises(ValueError, match="train_split is not defined"):
-            problem_definition.get_train_split_indices()
-        with pytest.raises(ValueError, match="test_split is not defined"):
-            problem_definition.get_test_split_name()
-        with pytest.raises(ValueError, match="test_split is not defined"):
-            problem_definition.get_test_split_indices()
+        assert problem_definition.train_split == {"train_0": [0, 1, 2]}
+        assert problem_definition.test_split == {"test_0": [3, 4]}
 
     def test_add_feature_identifiers_duplicate_checks(self, problem_definition):
         problem_definition.add_input_features(["in_1", "in_2"])
@@ -278,5 +264,5 @@ class Test_ProblemDefinition:
         loaded = ProblemDefinition.from_path(file_path)
 
         assert loaded.name == "pb"
-        assert loaded.get_train_split_name() == "train"
-        assert loaded.get_test_split_name() == "test"
+        assert loaded.train_split == {"train": [0]}
+        assert loaded.test_split == {"test": [1]}

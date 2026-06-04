@@ -210,7 +210,7 @@ def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
         hf_datasets, "configure_dataset_card", fake_configure_dataset_card
     )
 
-    infos = Infos.from_mapping(
+    infos = Infos.model_validate(
         {
             "legal": {"owner": "owner", "license": "cc-by-4.0"},
             "num_samples": {},

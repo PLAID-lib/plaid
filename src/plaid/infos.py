@@ -113,11 +113,6 @@ class Infos(BaseModel):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_mapping(cls, infos: dict[str, Any]) -> "Infos":
-        """Build a validated :class:`Infos` from a plain mapping."""
-        return cls.model_validate(infos)
-
-    @classmethod
     def from_path(cls, path: Union[str, Path]) -> "Infos":
         """Load and validate an :class:`Infos` from a YAML file.
 
@@ -140,44 +135,7 @@ class Infos(BaseModel):
         with path.open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file) or {}
 
-        return cls.from_mapping(data)
-
-    # ------------------------------------------------------------------
-    # Mapping-like accessors (read-only convenience)
-    # ------------------------------------------------------------------
-
-    def to_dict(self) -> dict[str, Any]:
-        """Return a plain ``dict`` representation of these infos."""
-        return self.model_dump(exclude_none=True)
-
-    def __getitem__(self, key: str) -> Any:
-        """Return the value associated with ``key`` using mapping-style access."""
-        if not hasattr(self, key):
-            raise KeyError(key)
-        value = getattr(self, key)
-        # Unwrap nested dataclasses to plain dicts when accessed by key, so that
-        # callers expecting a YAML-like mapping continue to work transparently.
-        if hasattr(value, "__pydantic_fields__"):
-            return {
-                f: getattr(value, f)
-                for f in value.__pydantic_fields__
-                if getattr(value, f) is not None
-            }
-        return value
-
-    def __contains__(self, key: object) -> bool:
-        """Return whether ``key`` is a known field with a non-``None`` value."""
-        if not isinstance(key, str):
-            return False
-        if not hasattr(self, key):
-            return False
-        return getattr(self, key) is not None
-
-    def get(self, key: str, default: Any = None) -> Any:
-        """Return ``self[key]`` when present, otherwise ``default``."""
-        if key in self:
-            return self[key]
-        return default
+        return cls.model_validate(data)
 
     def save_to_file(self, path: Union[str, Path]) -> None:
         """Save infos to ``path`` as a YAML file.

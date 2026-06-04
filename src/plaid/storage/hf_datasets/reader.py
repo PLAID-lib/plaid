@@ -94,7 +94,7 @@ def download_datasetdict_from_hub(
             local_dir=tmp_dir,
         )
         infos = load_infos_from_hub(repo_id=repo_id)
-        split_names = list(infos["num_samples"].keys())
+        split_names = list(infos.num_samples.keys())
         base = Path(tmp_dir) / "data"
         data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
         datasetdict = load_dataset("parquet", data_files=data_files, cache_dir=tmp_dir)

@@ -17,9 +17,17 @@ from plaid.cli.plaidcheck import (
     check_dataset,
     main,
 )
-from plaid.infos import Infos
+from plaid.infos import Infos, Legal
 
 _REFERENCE_DATASETS = ("dataset_cgns", "dataset_hf")
+
+
+def _infos(num_samples: dict[str, int], storage_backend: str = "zarr") -> Infos:
+    return Infos(
+        legal=Legal(owner="owner", license="license"),
+        num_samples=num_samples,
+        storage_backend=storage_backend,
+    )
 
 
 def _copy_reference_dataset(tmp_path: Path, name: str = "dataset_cgns") -> Path:
@@ -418,7 +426,7 @@ def test_check_dataset_loader_failures_and_header_validations(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}},  # noqa: ARG005
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -449,7 +457,11 @@ def test_check_dataset_loader_failures_and_header_validations(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": 12, "num_samples": "bad"},  # noqa: ARG005
+        lambda path: Infos.model_construct(  # noqa: ARG005
+            legal=Legal(owner="owner", license="license"),
+            storage_backend=12,
+            num_samples="bad",
+        ),
     )
     report_header = check_dataset(dataset)
     assert any(msg.code == "BACKEND_MISSING" for msg in report_header.messages)
@@ -465,7 +477,7 @@ def test_check_dataset_split_and_data_warnings_and_duplicates(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 3}},  # noqa: ARG005
+        lambda path: _infos({"train": 3}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck, "load_metadata_from_disk", lambda _path: ({}, {"Var": {}}, {}, None)
@@ -521,7 +533,7 @@ def test_check_dataset_sample_conversion_error(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}},  # noqa: ARG005
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -552,7 +564,7 @@ def test_check_dataset_missing_num_samples_split_is_clear(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}},  # noqa: ARG005
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -577,7 +589,7 @@ def test_check_dataset_problem_definition_validation_paths(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 2}},  # noqa: ARG005
+        lambda path: _infos({"train": 2}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -645,10 +657,7 @@ def test_check_dataset_problem_definition_instantiates_filtered_features(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {  # noqa: ARG005
-            "storage_backend": "zarr",
-            "num_samples": {"train": 1, "test": 1},
-        },
+        lambda path: _infos({"train": 1, "test": 1}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -711,6 +720,104 @@ def test_check_dataset_problem_definition_instantiates_filtered_features(
     )
 
 
+def test_check_dataset_filters_problem_definitions(tmp_path: Path, monkeypatch) -> None:
+    """Selected problem definitions should be checked without checking others."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "problem_definitions").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Input": {}, "Output": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": _FakeDataset(1)},
+            {"train": _FakeConverter([_FakeSampleForCheck()])},
+        ),
+    )
+
+    class _PBDef:
+        def __init__(self, input_features, output_features, train_split):
+            self.input_features = input_features
+            self.output_features = output_features
+            self.train_split = train_split
+            self.test_split = None
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: {  # noqa: ARG005
+            "selected": _PBDef(["Input"], ["Output"], {"train": [0]}),
+            "skipped": _PBDef(["UnknownInput"], ["UnknownOutput"], {"ghost": [0]}),
+        },
+    )
+
+    report = check_dataset(
+        dataset,
+        show_progress=False,
+        problem_definitions=["selected"],
+    )
+
+    assert not any(
+        "problem_definitions/skipped" in msg.location for msg in report.messages
+    )
+    assert not any(msg.code == "PB_DEF_UNKNOWN_INPUT" for msg in report.messages)
+    assert not any(msg.code == "PB_DEF_UNKNOWN_SPLIT" for msg in report.messages)
+
+
+def test_check_dataset_reports_unknown_requested_problem_definition(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Unknown requested problem definitions should be reported explicitly."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "problem_definitions").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 0}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Input": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: ({"train": _FakeDataset(0)}, {"train": _FakeConverter([])}),  # noqa: ARG005
+    )
+
+    class _PBDef:
+        input_features = ["Input"]
+        output_features = []
+        train_split = {"train": []}
+        test_split = None
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: {"known": _PBDef()},  # noqa: ARG005
+    )
+
+    report = check_dataset(
+        dataset,
+        show_progress=False,
+        problem_definitions=["ghost"],
+    )
+
+    assert any(msg.code == "PB_DEF_UNKNOWN" for msg in report.messages)
+    assert any("known" in msg.message for msg in report.messages)
+
+
 def test_check_dataset_problem_definition_read_error_names_yaml_file(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -729,7 +836,7 @@ def test_check_dataset_problem_definition_read_error_names_yaml_file(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 0}},  # noqa: ARG005
+        lambda path: _infos({"train": 0}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -759,7 +866,7 @@ def test_main_strict_returns_warning_exit_code(
     monkeypatch.setattr(
         plaidcheck,
         "check_dataset",
-        lambda path, splits=None, show_progress=True: report,  # noqa: ARG005
+        lambda path, splits=None, show_progress=True, problem_definitions=None: report,  # noqa: ARG005
     )
     code = main([str(tmp_path), "--strict"])
     _ = capsys.readouterr().out
@@ -768,19 +875,26 @@ def test_main_strict_returns_warning_exit_code(
 
 
 def test_main_json_disables_progress(monkeypatch, tmp_path: Path, capsys) -> None:
-    """JSON mode should disable progress bars in check_dataset."""
-    seen: dict[str, bool] = {}
+    """JSON mode should disable progress bars and forward CLI filters."""
+    seen: dict[str, Any] = {}
     report = CheckReport(messages=[])
 
-    def _fake_check_dataset(path, splits=None, show_progress=True):  # noqa: ARG001
+    def _fake_check_dataset(
+        path,  # noqa: ARG001
+        splits=None,  # noqa: ARG001
+        show_progress=True,
+        problem_definitions=None,
+    ):
         seen["show_progress"] = show_progress
+        seen["problem_definitions"] = problem_definitions
         return report
 
     monkeypatch.setattr(plaidcheck, "check_dataset", _fake_check_dataset)
 
-    code = main([str(tmp_path), "--json"])
+    code = main([str(tmp_path), "--json", "--problem-definition", "pb"])
     payload = json.loads(capsys.readouterr().out)
 
     assert code == 0
     assert payload["counts"] == {"error": 0, "warning": 0, "info": 0}
     assert seen["show_progress"] is False
+    assert seen["problem_definitions"] == ["pb"]

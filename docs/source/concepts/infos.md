@@ -38,7 +38,7 @@ infos = Infos(
 Infos can also be built from a plain mapping, for instance after reading YAML:
 
 ```python
-infos = Infos.from_mapping(
+infos = Infos.model_validate(
     {
         "legal": {
             "owner": "Safran",
@@ -72,15 +72,15 @@ infos.save_to_file("/path/to/plaid_dataset/infos.yaml")
 If a directory path is provided, the file is saved as `infos.yaml` inside that
 directory.
 
-## Mapping-style access
+## Typed access and serialization
 
-`Infos` provides read-only mapping-style helpers for compatibility with code
-expecting a YAML-like dictionary:
+`Infos` is a Pydantic model. Access metadata through typed attributes and use
+Pydantic serialization when a plain mapping is needed:
 
 ```python
-owner = infos["legal"]["owner"]
-backend = infos.get("storage_backend")
-payload = infos.to_dict()
+owner = infos.legal.owner
+backend = infos.storage_backend
+payload = infos.model_dump(exclude_none=True)
 ```
 
 ## Notes

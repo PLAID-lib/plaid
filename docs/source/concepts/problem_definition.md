@@ -35,6 +35,21 @@ pb = ProblemDefinition(
 Feature lists are normalized by the model: entries are converted to strings,
 sorted, checked for duplicates, and rejected if empty.
 
+Problem definitions can also be validated from a plain mapping, for instance
+after reading YAML:
+
+```python
+pb = ProblemDefinition.model_validate(
+    {
+        "name": "regression_1",
+        "input_features": ["Base/Zone/GridCoordinates/CoordinateX"],
+        "output_features": ["Base/Zone/VertexFields/pressure"],
+        "train_split": {"train": [0, 1, 2]},
+        "test_split": {"test": [3, 4]},
+    }
+)
+```
+
 ## Loading from disk
 
 Load a definition from a dataset path:
@@ -64,8 +79,8 @@ pb.save_to_file("problem_definitions/regression_1.yaml")
 
 ## Notes
 
-- Input/output features are plain strings correspond to CGNS paths.
-- Splits are represented by `train_split` and `test_split` dictionaries.
+- Input/output features are plain strings corresponding to CGNS paths.
+- Splits are represented by `train_split` and `test_split` dictionaries and are accessed directly as model attributes.
 - Split values can be explicit index sequences or the string `"all"`.
 - `add_input_features(...)` and `add_output_features(...)` accept either a
   single string or a sequence of strings after initialization.

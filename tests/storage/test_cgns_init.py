@@ -169,7 +169,7 @@ def test_cgns_backend_configure_dataset_card_requires_local_dir():
     with pytest.raises(ValueError, match="local_dir must be provided for cgns backend"):
         CgnsBackend.configure_dataset_card(
             repo_id="dummy/repo",
-            infos=Infos.from_mapping(
+            infos=Infos.model_validate(
                 {
                     "legal": {"owner": "owner", "license": "cc-by-4.0"},
                     "num_samples": {},
@@ -188,7 +188,7 @@ def test_cgns_backend_configure_dataset_card_delegates(monkeypatch):
 
     monkeypatch.setattr(cgns, "configure_dataset_card", fake_configure_dataset_card)
 
-    infos = Infos.from_mapping(
+    infos = Infos.model_validate(
         {
             "legal": {"owner": "owner", "license": "cc-by-4.0"},
             "num_samples": {},

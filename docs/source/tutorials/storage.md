@@ -96,7 +96,7 @@ curated_test_ids = curated_test_ids[:10]
 #---------------------------------------------------------------
 # infos and problem definition must be define to correctly populate the dataset's metadata
 
-infos = Infos.from_mapping(
+infos = Infos.model_validate(
     {
         "legal": {
             "owner": "NeuralOperator (https://zenodo.org/records/13993629)",
