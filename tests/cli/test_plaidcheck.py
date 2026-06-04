@@ -234,12 +234,14 @@ class _FakeSampleForCheck:
         global_names: list[str] | None = None,
         tree: Any = None,
         checksum: str = "same",
+        features: dict[str, Any] | None = None,
     ) -> None:
         self._global_value = global_value
         self._field_value = field_value
         self._global_names = ["G"] if global_names is None else global_names
         self._tree = tree
         self._checksum = checksum
+        self._features = {} if features is None else features
 
     def get_zone_names(self, base: str, time: float) -> list[str]:  # noqa: ARG002
         """Return deterministic zone names for checker traversal.
@@ -266,6 +268,8 @@ class _FakeSampleForCheck:
         Returns:
             Global value payload.
         """
+        if path in self._features:
+            return self._features[path]
         return self._global_value
 
     def get_tree(self):
@@ -335,8 +339,14 @@ class _FakeConverter:
     ) -> None:
         self._samples = samples
         self._fail_indices = set() if fail_indices is None else fail_indices
+        self.feature_requests: list[list[str] | None] = []
 
-    def to_plaid(self, dataset: _FakeDataset, idx: int) -> Any:  # noqa: ARG002
+    def to_plaid(
+        self,
+        dataset: _FakeDataset,  # noqa: ARG002
+        idx: int,
+        features: list[str] | None = None,
+    ) -> Any:
         """Return fake sample or raise conversion error.
 
         Args:
@@ -346,6 +356,7 @@ class _FakeConverter:
         Returns:
             Fake sample instance.
         """
+        self.feature_requests.append(features)
         if idx in self._fail_indices:
             raise RuntimeError("boom")
         return self._samples[idx]
@@ -624,6 +635,82 @@ def test_check_dataset_problem_definition_validation_paths(
     assert any(msg.code == "PB_DEF_OUT_OF_RANGE_INDICES" for msg in report_pb.messages)
 
 
+def test_check_dataset_problem_definition_instantiates_filtered_features(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Problem definitions should instantiate exact train/test feature subsets."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "problem_definitions").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: {  # noqa: ARG005
+            "storage_backend": "zarr",
+            "num_samples": {"train": 1, "test": 1},
+        },
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": {}, "test": {}},
+            {"Input": {}, "Output": {}},
+            {"train": {}, "test": {}},
+            None,
+        ),
+    )
+
+    train_converter = _FakeConverter(
+        [
+            _FakeSampleForCheck(
+                features={"Input": np.array([1.0]), "Output": np.array([np.nan])}
+            )
+        ]
+    )
+    test_converter = _FakeConverter(
+        [
+            _FakeSampleForCheck(
+                features={"Input": np.array([2.0]), "Output": np.array([np.nan])}
+            )
+        ]
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": _FakeDataset(1), "test": _FakeDataset(1)},
+            {"train": train_converter, "test": test_converter},
+        ),
+    )
+
+    class _PBDef:
+        input_features = ["Input"]
+        output_features = ["Output"]
+        train_split = {"train": [0]}
+        test_split = {"test": [0]}
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: {"pb": _PBDef()},  # noqa: ARG005
+    )
+
+    report = check_dataset(dataset, show_progress=False)
+
+    assert train_converter.feature_requests[-1] == ["Input", "Output"]
+    assert test_converter.feature_requests[-1] == ["Input"]
+    invalid = [
+        msg for msg in report.messages if msg.code == "PB_DEF_INVALID_FEATURE_VALUE"
+    ]
+    assert any(
+        "train_split" in msg.location and "Output" in msg.location for msg in invalid
+    )
+    assert not any(
+        "test_split" in msg.location and "Output" in msg.location for msg in invalid
+    )
+
+
 def test_check_dataset_problem_definition_read_error_names_yaml_file(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -669,8 +756,31 @@ def test_main_strict_returns_warning_exit_code(
     report = CheckReport(messages=[])
     report.add("warning", "W", "loc", "msg")
 
-    monkeypatch.setattr(plaidcheck, "check_dataset", lambda path, splits=None: report)  # noqa: ARG005
+    monkeypatch.setattr(
+        plaidcheck,
+        "check_dataset",
+        lambda path, splits=None, show_progress=True: report,  # noqa: ARG005
+    )
     code = main([str(tmp_path), "--strict"])
     _ = capsys.readouterr().out
 
     assert code == 2
+
+
+def test_main_json_disables_progress(monkeypatch, tmp_path: Path, capsys) -> None:
+    """JSON mode should disable progress bars in check_dataset."""
+    seen: dict[str, bool] = {}
+    report = CheckReport(messages=[])
+
+    def _fake_check_dataset(path, splits=None, show_progress=True):  # noqa: ARG001
+        seen["show_progress"] = show_progress
+        return report
+
+    monkeypatch.setattr(plaidcheck, "check_dataset", _fake_check_dataset)
+
+    code = main([str(tmp_path), "--json"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == 0
+    assert payload["counts"] == {"error": 0, "warning": 0, "info": 0}
+    assert seen["show_progress"] is False

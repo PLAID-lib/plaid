@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
+from tqdm import tqdm
 
 from plaid.constants import CGNS_FIELD_LOCATIONS
 from plaid.storage import init_from_disk
@@ -276,6 +277,102 @@ def _is_branch_without_data_in_mapping(
     return any(name.startswith(prefix) for name in feat_map)
 
 
+def _progress(
+    iterable: Any, *, desc: str, show_progress: bool, total: int | None = None
+):
+    """Wrap an iterable in a tqdm progress bar when requested.
+
+    Args:
+        iterable: Iterable to wrap.
+        desc: Progress bar description.
+        show_progress: Whether the progress bar is enabled.
+        total: Optional total length.
+
+    Returns:
+        Iterable, possibly wrapped by :class:`tqdm.tqdm`.
+    """
+    return tqdm(iterable, desc=desc, total=total, disable=not show_progress)
+
+
+def _resolve_problem_split_indices(
+    split_ids: Any,
+    split_len: int,
+) -> list[int]:
+    """Resolve a problem-definition split declaration into concrete indices.
+
+    Args:
+        split_ids: Either the special all-samples marker or an iterable of indices.
+        split_len: Number of samples available in the referenced split.
+
+    Returns:
+        Concrete sample indices to instantiate.
+    """
+    if split_ids == "all":
+        return list(range(split_len))
+    return list(split_ids)
+
+
+def _check_problem_definition_sample_features(
+    *,
+    pb_name: str,
+    split_dict_name: str,
+    split_name: str,
+    idx: int,
+    dataset: Any,
+    converter: Any,
+    features: list[str],
+    report: CheckReport,
+) -> None:
+    """Instantiate and validate one problem-definition sample view.
+
+    The sample is instantiated with the exact feature subset requested by the
+    problem definition, then each requested feature is read back and checked for
+    invalid content (None, NaN, Inf, empty arrays, object arrays containing None).
+
+    Args:
+        pb_name: Problem-definition name.
+        split_dict_name: ``train_split`` or ``test_split``.
+        split_name: Dataset split name.
+        idx: Sample index.
+        dataset: Backend dataset object.
+        converter: Storage converter exposing ``to_plaid``.
+        features: Feature paths to request and validate.
+        report: Report updated with detected errors/warnings.
+    """
+    location = f"problem_definitions/{pb_name}/{split_dict_name}/{split_name}[{idx}]"
+    try:
+        sample = converter.to_plaid(dataset, idx, features=features)
+    except Exception as exc:
+        report.add(
+            "error",
+            "PB_DEF_SAMPLE_CONVERSION_ERROR",
+            location,
+            str(exc),
+        )
+        return
+
+    for feature in features:
+        try:
+            value = sample.get_feature_by_path(feature)
+        except Exception as exc:
+            report.add(
+                "error",
+                "PB_DEF_FEATURE_READ_ERROR",
+                f"{location} {feature}",
+                str(exc),
+            )
+            continue
+
+        issue = _check_numeric_content(value)
+        if issue is not None:
+            report.add(
+                "warning",
+                "PB_DEF_INVALID_FEATURE_VALUE",
+                f"{location} {feature}",
+                issue,
+            )
+
+
 def compute_checksum(sample: Any) -> str:
     """Compute a SHA-256 checksum for a converted sample representation.
 
@@ -296,6 +393,7 @@ def compute_checksum(sample: Any) -> str:
 def check_dataset(
     path: Path,
     splits: Optional[list[str]] = None,
+    show_progress: bool = True,
 ) -> CheckReport:
     """Run integrity checks on a local PLAID dataset.
 
@@ -316,6 +414,7 @@ def check_dataset(
     Args:
         path: Dataset directory.
         splits: Optional selected split names.
+        show_progress: Whether to display tqdm progress bars for expensive checks.
 
     Returns:
         A populated :class:`CheckReport`.
@@ -454,7 +553,12 @@ def check_dataset(
                 )
 
         # Deep-check to validate content and detect non valide data in fields (nan inf)
-        for idx in range(actual_n):
+        for idx in _progress(
+            range(actual_n),
+            desc=f"Checking split {split}",
+            show_progress=show_progress,
+            total=actual_n,
+        ):
             try:
                 sample = converter.to_plaid(dataset, idx)
             except Exception as exc:
@@ -602,9 +706,8 @@ def check_dataset(
                         f"Unknown split in {split_dict_name}: {split_name}",
                     )
                     continue
-                if split_ids == "all":
-                    continue
-                ids_list = list(split_ids)
+                split_len = len(datasetdict[split_name])
+                ids_list = _resolve_problem_split_indices(split_ids, split_len)
                 if len(ids_list) != len(set(ids_list)):
                     report.add(
                         "error",
@@ -612,7 +715,6 @@ def check_dataset(
                         f"problem_definitions/{pb_name}",
                         f"Duplicated indices in {split_dict_name}",
                     )
-                split_len = len(datasetdict[split_name])
                 bad = [i for i in ids_list if i < 0 or i >= split_len]
                 if bad:
                     report.add(
@@ -620,6 +722,31 @@ def check_dataset(
                         "PB_DEF_OUT_OF_RANGE_INDICES",
                         f"problem_definitions/{pb_name}",
                         f"Out-of-range indices in {split_dict_name} (first 10): {bad[:10]}",
+                    )
+                    continue
+
+                if split_dict_name == "train_split":
+                    features = list(pb_def.input_features) + list(
+                        pb_def.output_features
+                    )
+                else:
+                    features = list(pb_def.input_features)
+
+                for idx in _progress(
+                    ids_list,
+                    desc=f"Checking problem {pb_name} {split_dict_name}",
+                    show_progress=show_progress,
+                    total=len(ids_list),
+                ):
+                    _check_problem_definition_sample_features(
+                        pb_name=pb_name,
+                        split_dict_name=split_dict_name,
+                        split_name=split_name,
+                        idx=idx,
+                        dataset=datasetdict[split_name],
+                        converter=converterdict[split_name],
+                        features=features,
+                        report=report,
                     )
 
     return report
@@ -664,7 +791,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    report = check_dataset(path=args.path, splits=args.split)
+    report = check_dataset(
+        path=args.path,
+        splits=args.split,
+        show_progress=not args.json,
+    )
 
     if args.json:
         print(report.to_json())
