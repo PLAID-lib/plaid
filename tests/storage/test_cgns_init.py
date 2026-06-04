@@ -170,7 +170,11 @@ def test_cgns_backend_configure_dataset_card_requires_local_dir():
         CgnsBackend.configure_dataset_card(
             repo_id="dummy/repo",
             infos=Infos.from_mapping(
-                {"legal": {"owner": "owner", "license": "cc-by-4.0"}}
+                {
+                    "legal": {"owner": "owner", "license": "cc-by-4.0"},
+                    "num_samples": {},
+                    "storage_backend": "cgns",
+                }
             ),
         )
 
@@ -184,7 +188,13 @@ def test_cgns_backend_configure_dataset_card_delegates(monkeypatch):
 
     monkeypatch.setattr(cgns, "configure_dataset_card", fake_configure_dataset_card)
 
-    infos = Infos.from_mapping({"legal": {"owner": "owner", "license": "cc-by-4.0"}})
+    infos = Infos.from_mapping(
+        {
+            "legal": {"owner": "owner", "license": "cc-by-4.0"},
+            "num_samples": {},
+            "storage_backend": "cgns",
+        }
+    )
     CgnsBackend.configure_dataset_card(
         repo_id="dummy/repo",
         infos=infos,

@@ -120,7 +120,13 @@ from plaid import ProblemDefinition
 from plaid.infos import DataDescription, Infos, Legal
 from plaid.storage import save_to_disk
 
-pb_def = ProblemDefinition(name="regression_1")
+pb_def = ProblemDefinition(
+    name="regression_1",
+    input_features=["Global/input"],
+    output_features=["Base/Zone/VertexFields/pressure"],
+    train_split={"train": [0, 1, 2]},
+    test_split={"test": "all"},
+)
 infos = Infos(
     legal=Legal(owner="CompanyX", license="proprietary"),
     data_description=DataDescription(number_of_samples=3),

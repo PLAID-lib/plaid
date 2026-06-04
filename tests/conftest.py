@@ -95,6 +95,8 @@ def infos():
         {
             "legal": {"owner": "PLAID2", "license": "BSD-3"},
             "data_production": {"type": "simulation", "simulator": "Z-set"},
+            "num_samples": {},
+            "storage_backend": "zarr",
         }
     )
 

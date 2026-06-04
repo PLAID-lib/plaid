@@ -50,6 +50,8 @@ from plaid.infos import DataProduction, Infos, Legal
 print("#---# Infos")
 infos = Infos(
     legal=Legal(owner="PLAID", license="MIT"),
+    num_samples={"train": 2, "test": 2},
+    storage_backend="cgns",
 )
 print(f"{infos = }")
 
@@ -64,6 +66,8 @@ infos_from_mapping = Infos.from_mapping(
             "license": "MIT",
         },
         "data_description": "Example metadata for a PLAID dataset.",
+        "num_samples": {"train": 2, "test": 2},
+        "storage_backend": "cgns",
     }
 )
 print(f"{infos_from_mapping = }")
@@ -101,8 +105,8 @@ print(f"{infos.data_production = }")
 
 # %%
 infos.data_description = "Example dataset generated for the Infos example."
-infos.num_samples = {"train": 2, "test": 2}
-infos.storage_backend = "cgns"
+infos.num_samples = {"train": 3, "test": 1}
+infos.storage_backend = "zarr"
 
 print(f"{infos.data_description = }")
 print(f"{infos.num_samples = }")

@@ -61,6 +61,26 @@ def test_check_dataset_missing_infos(tmp_path: Path, dataset_name: str) -> None:
 
 
 @pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_check_dataset_rejects_extra_infos_key(
+    tmp_path: Path, dataset_name: str
+) -> None:
+    """Extra infos.yaml keys should be reported through infos validation."""
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
+    infos_path = dataset_path / "infos.yaml"
+    original = infos_path.read_text(encoding="utf-8")
+    infos_path.write_text(
+        f"{original}\nplaid:\n  version: 0.1.13.dev36+g21db6656e.d20260302\n",
+        encoding="utf-8",
+    )
+
+    report = check_dataset(dataset_path)
+
+    assert report.has_errors()
+    assert any(msg.code == "INFOS_READ_ERROR" for msg in report.messages)
+    assert any("plaid" in msg.message for msg in report.messages)
+
+
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
 def test_check_dataset_num_samples_mismatch(tmp_path: Path, dataset_name: str) -> None:
     """Tampering with num_samples should raise split mismatch errors."""
     dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
@@ -93,6 +113,21 @@ def test_main_json_output_and_exit_code(
     assert code == 0
     assert "counts" in payload
     assert "messages" in payload
+
+
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_main_text_success_does_not_count_ok_as_info(
+    tmp_path: Path, capsys, dataset_name: str
+) -> None:
+    """Successful text output should show OK without adding an info count."""
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
+
+    code = main([str(dataset_path)])
+    out = capsys.readouterr().out
+
+    assert code == 0
+    assert f"[OK] {dataset_path}: No issue detected" in out
+    assert "Summary: 0 error(s), 0 warning(s), 0 info message(s)" in out
 
 
 @pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
@@ -496,6 +531,31 @@ def test_check_dataset_sample_conversion_error(tmp_path: Path, monkeypatch) -> N
     assert any(msg.code == "SAMPLE_CONVERSION_ERROR" for msg in report.messages)
 
 
+def test_check_dataset_missing_num_samples_split_is_clear(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Missing split declarations should not be reported as opaque KeyErrors."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "data" / "OOD").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}},  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Var": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+
+    report = check_dataset(dataset)
+
+    assert any(msg.code == "NUM_SAMPLES_MISSING_SPLIT" for msg in report.messages)
+    assert not any(msg.code == "DATASET_INIT_ERROR" for msg in report.messages)
+    assert any("OOD" in msg.message for msg in report.messages)
+
+
 def test_check_dataset_problem_definition_validation_paths(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -562,6 +622,44 @@ def test_check_dataset_problem_definition_validation_paths(
     assert any(msg.code == "PB_DEF_UNKNOWN_SPLIT" for msg in report_pb.messages)
     assert any(msg.code == "PB_DEF_DUPLICATE_INDICES" for msg in report_pb.messages)
     assert any(msg.code == "PB_DEF_OUT_OF_RANGE_INDICES" for msg in report_pb.messages)
+
+
+def test_check_dataset_problem_definition_read_error_names_yaml_file(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Problem-definition read errors should identify the offending YAML file."""
+    dataset = _make_minimal_layout(tmp_path)
+    pb_def_dir = dataset / "problem_definitions"
+    pb_def_dir.mkdir()
+    (pb_def_dir / "bad_definition.yaml").write_text(
+        "name: bad\n"
+        "input_features: [in]\n"
+        "output_features: [out]\n"
+        "unexpected_key: value\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 0}},  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Known": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: ({"train": _FakeDataset(0)}, {"train": _FakeConverter([])}),  # noqa: ARG005
+    )
+
+    report = check_dataset(dataset)
+
+    assert any(msg.code == "PB_DEF_READ_ERROR" for msg in report.messages)
+    assert any("bad_definition.yaml" in msg.message for msg in report.messages)
+    assert any("extra_forbidden" in msg.message for msg in report.messages)
 
 
 def test_main_strict_returns_warning_exit_code(

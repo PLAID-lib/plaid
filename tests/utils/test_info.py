@@ -28,16 +28,16 @@ def test_validate_required_only_missing_required_key():
         Infos(**{"legal": {"owner": "someone"}})
 
 
-def test_normalize_infos_strips_legacy_plaid_section_and_copies():
+def test_normalize_infos_rejects_legacy_plaid_section_and_copies():
     infos = {
         "legal": {"owner": "owner", "license": "cc-by-4.0"},
         "plaid": {"version": "x"},
     }
-    normalized = Infos.normalize_mapping(infos)
 
-    # The legacy ``plaid`` section is dropped from the validated payload.
-    assert "plaid" not in normalized
-    # And the input mapping is not mutated.
+    with pytest.raises(ValidationError, match="extra_forbidden"):
+        Infos.normalize_mapping(infos)
+
+    # The input mapping is not mutated before validation raises.
     assert "plaid" in infos
 
 
@@ -95,6 +95,8 @@ def test_infos_save_and_load_roundtrip(tmp_path):
 def test_infos_from_path_directory(tmp_path):
     infos = {
         "legal": {"owner": "owner", "license": "cc-by-4.0"},
+        "num_samples": {"train": 10},
+        "storage_backend": "zarr",
     }
     Infos.from_mapping(infos).save_to_file(tmp_path / "infos.yaml")
     reloaded = Infos.from_path(tmp_path)
@@ -134,7 +136,13 @@ def test_validate_authorized_only_reraises_other_validation_errors():
 
 
 def test_validate_required_only_accepts_valid_mapping():
-    Infos.validate_required_only({"legal": {"owner": "o", "license": "l"}})
+    Infos.validate_required_only(
+        {
+            "legal": {"owner": "o", "license": "l"},
+            "num_samples": {"train": 1},
+            "storage_backend": "zarr",
+        }
+    )
 
 
 def test_validate_required_only_missing_legal():
@@ -144,7 +152,11 @@ def test_validate_required_only_missing_legal():
 
 def test_to_dict_returns_plain_mapping():
     model = Infos.from_mapping(
-        {"legal": {"owner": "o", "license": "l"}, "storage_backend": "zarr"}
+        {
+            "legal": {"owner": "o", "license": "l"},
+            "num_samples": {},
+            "storage_backend": "zarr",
+        }
     )
     d = model.to_dict()
     assert d["legal"] == {"owner": "o", "license": "l"}
@@ -155,6 +167,7 @@ def test_getitem_returns_plain_value_and_unwraps_nested_dataclasses():
     model = Infos.from_mapping(
         {
             "legal": {"owner": "o", "license": "l"},
+            "num_samples": {},
             "storage_backend": "zarr",
         }
     )
@@ -166,14 +179,24 @@ def test_getitem_returns_plain_value_and_unwraps_nested_dataclasses():
 
 
 def test_getitem_raises_key_error_for_unknown_field():
-    model = Infos.from_mapping({"legal": {"owner": "o", "license": "l"}})
+    model = Infos.from_mapping(
+        {
+            "legal": {"owner": "o", "license": "l"},
+            "num_samples": {},
+            "storage_backend": "zarr",
+        }
+    )
     with pytest.raises(KeyError):
         model["does_not_exist"]
 
 
 def test_contains_handles_strings_and_non_strings():
     model = Infos.from_mapping(
-        {"legal": {"owner": "o", "license": "l"}, "storage_backend": "zarr"}
+        {
+            "legal": {"owner": "o", "license": "l"},
+            "num_samples": {},
+            "storage_backend": "zarr",
+        }
     )
     assert "legal" in model
     assert "storage_backend" in model
@@ -186,27 +209,45 @@ def test_contains_handles_strings_and_non_strings():
 
 
 def test_get_returns_default_when_missing():
-    model = Infos.from_mapping({"legal": {"owner": "o", "license": "l"}})
-    assert model.get("storage_backend", "fallback") == "fallback"
+    model = Infos.from_mapping(
+        {
+            "legal": {"owner": "o", "license": "l"},
+            "num_samples": {},
+            "storage_backend": "zarr",
+        }
+    )
+    assert model.get("data_description", "fallback") == "fallback"
     assert model.get("legal")["owner"] == "o"
 
 
 def test_save_to_file_treats_suffixless_path_as_directory(tmp_path):
     target = tmp_path / "myinfos"
-    Infos(legal=Legal(owner="o", license="l")).save_to_file(target)
+    Infos(
+        legal=Legal(owner="o", license="l"),
+        num_samples={},
+        storage_backend="zarr",
+    ).save_to_file(target)
     # Suffix-less, non-existing paths are treated as directories that
     # will hold an ``infos.yaml``.
     assert (target / "infos.yaml").is_file()
 
 
 def test_save_to_file_into_existing_directory(tmp_path):
-    Infos(legal=Legal(owner="o", license="l")).save_to_file(tmp_path)
+    Infos(
+        legal=Legal(owner="o", license="l"),
+        num_samples={},
+        storage_backend="zarr",
+    ).save_to_file(tmp_path)
     assert (tmp_path / "infos.yaml").is_file()
 
 
 def test_save_to_file_replaces_non_yaml_suffix(tmp_path):
     target = tmp_path / "weird.txt"
-    Infos(legal=Legal(owner="o", license="l")).save_to_file(target)
+    Infos(
+        legal=Legal(owner="o", license="l"),
+        num_samples={},
+        storage_backend="zarr",
+    ).save_to_file(target)
     # ``.txt`` suffix is replaced by ``.yaml``.
     assert (tmp_path / "weird.yaml").is_file()
     assert not target.exists()
@@ -223,7 +264,11 @@ def test_save_to_file_preserves_unknown_future_keys(tmp_path, monkeypatch):
 
     monkeypatch.setattr(infos_mod, "_KEY_ORDER", ())
     model = Infos.from_mapping(
-        {"legal": {"owner": "o", "license": "l"}, "storage_backend": "zarr"}
+        {
+            "legal": {"owner": "o", "license": "l"},
+            "num_samples": {},
+            "storage_backend": "zarr",
+        }
     )
     target = tmp_path / "out.yaml"
     model.save_to_file(target)

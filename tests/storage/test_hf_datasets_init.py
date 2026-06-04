@@ -210,7 +210,13 @@ def test_hf_backend_configure_dataset_card_delegates(monkeypatch):
         hf_datasets, "configure_dataset_card", fake_configure_dataset_card
     )
 
-    infos = Infos.from_mapping({"legal": {"owner": "owner", "license": "cc-by-4.0"}})
+    infos = Infos.from_mapping(
+        {
+            "legal": {"owner": "owner", "license": "cc-by-4.0"},
+            "num_samples": {},
+            "storage_backend": "hf_datasets",
+        }
+    )
     HFBackend.configure_dataset_card("dummy/repo", infos)
 
     assert call == {"repo_id": "dummy/repo", "infos": infos, "local_dir": None}

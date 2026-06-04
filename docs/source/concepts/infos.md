@@ -14,8 +14,8 @@ In the current API, infos stores:
   hardware, contact, or location
 - `data_description`, for optional dataset description entries such as the
   number of samples, DOE, inputs, and outputs
-- `num_samples`, as a dictionary keyed by split name
-- `storage_backend`
+- `num_samples`, as a required dictionary keyed by split name
+- `storage_backend`, as a required storage backend identifier
 
 ## Basic usage
 
@@ -24,6 +24,8 @@ from plaid.infos import DataProduction, Infos, Legal
 
 infos = Infos(
     legal=Legal(owner="Safran", license="proprietary"),
+    num_samples={"train": 10, "test": 5},
+    storage_backend="zarr",
     data_production=DataProduction(
         type="simulation",
         physics="fluid dynamics",
@@ -42,6 +44,8 @@ infos = Infos.from_mapping(
             "owner": "Safran",
             "license": "proprietary",
         },
+        "num_samples": {"train": 10, "test": 5},
+        "storage_backend": "zarr",
     }
 )
 ```
@@ -81,7 +85,7 @@ payload = infos.to_dict()
 
 ## Notes
 
-- `legal.owner` and `legal.license` are required when validating complete infos.
-- `num_samples` and `storage_backend` are automatically filled when `save_to_disk(..., infos=...)` is called before writing `infos.yaml`.
+- `legal.owner`, `legal.license`, `num_samples`, and `storage_backend` are required when validating complete infos.
+- `num_samples` and `storage_backend` are overwritten with the actual saved dataset values when `save_to_disk(..., infos=...)` is called before writing `infos.yaml`.
 - Unknown keys are rejected during validation.
 - `save_to_file(...)` writes YAML using the standard infos key order.

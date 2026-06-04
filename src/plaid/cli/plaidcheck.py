@@ -158,6 +158,81 @@ def _check_numeric_content(value: Any) -> Optional[str]:
     return None
 
 
+def _format_missing_split_message(split: object) -> str:
+    """Return an actionable message for missing split declarations.
+
+    Args:
+        split: Split name/key reported by a low-level ``KeyError``.
+
+    Returns:
+        Human-readable explanation suitable for a checker error.
+    """
+    return (
+        f"Split {split!r} exists in the stored dataset or metadata but is missing "
+        "from infos.yaml > num_samples. Add this split to num_samples, or remove "
+        "the corresponding split data/metadata from the dataset."
+    )
+
+
+def _check_num_samples_declares_splits(
+    num_samples: dict[str, Any],
+    split_names: set[str],
+    report: CheckReport,
+) -> None:
+    """Validate that ``infos.yaml > num_samples`` declares known disk splits.
+
+    Args:
+        num_samples: Mapping loaded from ``infos.yaml``.
+        split_names: Split names discovered from storage files/metadata.
+        report: Report updated with missing declaration errors.
+
+    Returns:
+        None.
+    """
+    declared_splits = {str(split) for split in num_samples}
+    for split in sorted(split_names - declared_splits):
+        report.add(
+            "error",
+            "NUM_SAMPLES_MISSING_SPLIT",
+            "infos.yaml",
+            _format_missing_split_message(split),
+        )
+
+
+def _discover_split_names_from_disk(
+    path: Path,
+    backend: Optional[str],
+    flat_cst: dict[str, Any],
+    constant_schema: dict[str, Any],
+) -> set[str]:
+    """Discover split names from files/metadata without building converters.
+
+    Args:
+        path: Dataset root.
+        backend: Declared storage backend, if valid.
+        flat_cst: Flattened constants keyed by split for non-CGNS backends.
+        constant_schema: Constant schema keyed by split for non-CGNS backends.
+
+    Returns:
+        Split names discovered from the on-disk dataset structure and metadata.
+    """
+    split_names: set[str] = set()
+    data_path = path / "data"
+    if data_path.exists():
+        if backend in {"zarr", "cgns"}:
+            split_names.update(p.name for p in data_path.iterdir() if p.is_dir())
+        elif backend == "hf_datasets":
+            split_names.update(flat_cst.keys())
+            split_names.update(constant_schema.keys())
+    if backend != "cgns":
+        constants_path = path / "constants"
+        if constants_path.exists():
+            split_names.update(p.name for p in constants_path.iterdir() if p.is_dir())
+        split_names.update(flat_cst.keys())
+        split_names.update(constant_schema.keys())
+    return {str(split) for split in split_names}
+
+
 def _is_branch_without_data(sample: Any, path: str) -> bool:
     """Return True when `path` points to a branch node with no direct value.
 
@@ -273,28 +348,9 @@ def check_dataset(
     if report.has_errors():
         return report
 
-    # Load metadata when the backend defines it. The CGNS backend stores
-    # self-contained samples and intentionally writes no derived metadata.
-    if declared_backend_for_layout == "cgns":
-        flat_cst: dict = {}
-        variable_schema: dict = {}
-        constant_schema: dict = {}
-    else:
-        try:
-            flat_cst, variable_schema, constant_schema, _ = load_metadata_from_disk(
-                path
-            )
-        except Exception as exc:
-            report.add("error", "METADATA_READ_ERROR", str(path), str(exc))
-            return report
-
-    try:
-        datasetdict, converterdict = init_from_disk(path)
-    except Exception as exc:
-        report.add("error", "DATASET_INIT_ERROR", str(path), str(exc))
-        return report
-
-    # Validate top-level dataset declarations from infos.yaml.
+    # Validate top-level dataset declarations from infos.yaml before calling
+    # init_from_disk(), because storage initialization indexes num_samples by
+    # split and otherwise reports missing entries as opaque KeyError messages.
     declared_backend = infos.get("storage_backend")
     if not isinstance(declared_backend, str):
         report.add(
@@ -310,6 +366,45 @@ def check_dataset(
             "error", "NUM_SAMPLES_INVALID", "infos.yaml", "'num_samples' must be a dict"
         )
         num_samples = {}
+
+    # Load metadata when the backend defines it. The CGNS backend stores
+    # self-contained samples and intentionally writes no derived metadata.
+    if declared_backend_for_layout == "cgns":
+        flat_cst: dict = {}
+        variable_schema: dict = {}
+        constant_schema: dict = {}
+    else:
+        try:
+            flat_cst, variable_schema, constant_schema, _ = load_metadata_from_disk(
+                path
+            )
+        except Exception as exc:
+            report.add("error", "METADATA_READ_ERROR", str(path), str(exc))
+            return report
+
+    discovered_splits = _discover_split_names_from_disk(
+        path,
+        declared_backend_for_layout,
+        flat_cst,
+        constant_schema,
+    )
+    _check_num_samples_declares_splits(num_samples, discovered_splits, report)
+    if report.has_errors():
+        return report
+
+    try:
+        datasetdict, converterdict = init_from_disk(path)
+    except KeyError as exc:
+        report.add(
+            "error",
+            "NUM_SAMPLES_MISSING_SPLIT",
+            "infos.yaml",
+            _format_missing_split_message(exc.args[0] if exc.args else str(exc)),
+        )
+        return report
+    except Exception as exc:
+        report.add("error", "DATASET_INIT_ERROR", str(path), str(exc))
+        return report
 
     # Resolve the user-requested splits against the splits actually available.
     dataset_splits = set(datasetdict.keys())
@@ -527,9 +622,6 @@ def check_dataset(
                         f"Out-of-range indices in {split_dict_name} (first 10): {bad[:10]}",
                     )
 
-    # Emit an explicit success message when no errors or warnings were found.
-    if not report.messages:
-        report.add("info", "OK", str(path), "No issue detected")
     return report
 
 
@@ -577,8 +669,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.json:
         print(report.to_json())
     else:
-        for msg in report.messages:
-            print(f"[{msg.severity.upper()}] {msg.code} {msg.location}: {msg.message}")
+        if not report.messages:
+            print(f"[OK] {args.path}: No issue detected")
+        else:
+            for msg in report.messages:
+                print(
+                    f"[{msg.severity.upper()}] {msg.code} {msg.location}: {msg.message}"
+                )
         counts = report.counts()
         print(
             f"Summary: {counts['error']} error(s), "

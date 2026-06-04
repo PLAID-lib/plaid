@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import copy
 import logging
 from pathlib import Path
 from typing import Any, Union
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 from pydantic.dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -59,26 +58,25 @@ class Infos(BaseModel):
     legal: Legal
     data_production: DataProduction | None = None
     data_description: str | None = None
-    num_samples: dict[str, int] = Field(default_factory=dict)
-    storage_backend: str | None = None
-
-    @classmethod
-    def _normalize_top_level(cls, infos: dict[str, Any]) -> dict[str, Any]:
-        # Drop legacy/unsupported top-level sections silently before validation.
-        normalized = copy.deepcopy(infos)
-        normalized.pop("plaid", None)
-        return normalized
+    num_samples: dict[str, int]
+    storage_backend: str
 
     @classmethod
     def validate_authorized_only(cls, infos: dict[str, Any]) -> "Infos":
         """Validate schema/authorized keys without enforcing required sections."""
-        normalized = cls._normalize_top_level(infos)
+        normalized = dict(infos)
         had_legal = "legal" in normalized
+        had_num_samples = "num_samples" in normalized
+        had_storage_backend = "storage_backend" in normalized
         if not had_legal:
             normalized["legal"] = {
                 "owner": "__placeholder__",
                 "license": "__placeholder__",
             }
+        if not had_num_samples:
+            normalized["num_samples"] = {}
+        if not had_storage_backend:
+            normalized["storage_backend"] = "__placeholder__"
         try:
             model = cls.model_validate(normalized)
         except ValidationError as exc:
@@ -93,19 +91,21 @@ class Infos(BaseModel):
 
         if not had_legal:
             model.legal = Legal(owner="", license="")
+        if not had_num_samples:
+            model.num_samples = {}
+        if not had_storage_backend:
+            model.storage_backend = ""
         return model
 
     @classmethod
     def validate_required_only(cls, infos: dict[str, Any]) -> None:
         """Validate required entries using pydantic-required fields."""
-        normalized = cls._normalize_top_level(infos)
-        cls.model_validate(normalized)
+        cls.model_validate(infos)
 
     @classmethod
     def normalize_mapping(cls, infos: dict[str, Any]) -> dict[str, Any]:
         """Validate and return a normalized deep copy of infos."""
-        normalized = cls._normalize_top_level(infos)
-        model = cls.model_validate(normalized)
+        model = cls.model_validate(infos)
         return model.model_dump(exclude_none=True)
 
     # ------------------------------------------------------------------
@@ -115,7 +115,7 @@ class Infos(BaseModel):
     @classmethod
     def from_mapping(cls, infos: dict[str, Any]) -> "Infos":
         """Build a validated :class:`Infos` from a plain mapping."""
-        return cls.model_validate(cls._normalize_top_level(infos))
+        return cls.model_validate(infos)
 
     @classmethod
     def from_path(cls, path: Union[str, Path]) -> "Infos":

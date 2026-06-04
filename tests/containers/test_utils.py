@@ -145,6 +145,8 @@ class Test_Container_Utils:
     def test_validate_required_only(self):
         infos = {
             "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
+            "num_samples": {"train": 1},
+            "storage_backend": "zarr",
         }
         Infos.validate_required_only(infos)
 
@@ -152,6 +154,8 @@ class Test_Container_Utils:
             "legal": {
                 "owner": "Joh Doe",
             },
+            "num_samples": {"train": 1},
+            "storage_backend": "zarr",
         }
         with pytest.raises(ValueError):
             Infos.validate_required_only(infos_missing_license)

@@ -14,7 +14,13 @@ from plaid.problem_definition import ProblemDefinition
 
 @pytest.fixture()
 def problem_definition() -> ProblemDefinition:
-    return ProblemDefinition()
+    return ProblemDefinition.model_construct(
+        name=None,
+        input_features=[],
+        output_features=[],
+        train_split=None,
+        test_split=None,
+    )
 
 
 @pytest.fixture()
@@ -77,153 +83,131 @@ class Test_ProblemDefinition:
     def test__init__(self, problem_definition):
         print(problem_definition)
 
-    def test__init__both_path_and_directory_path(self, current_directory):
-        d_path = current_directory / "problem_definition"
-        with pytest.raises(ValueError):
-            ProblemDefinition(path=d_path, directory_path=d_path)
+    def test_required_fields(self):
+        with pytest.raises(ValidationError, match="Field required"):
+            ProblemDefinition()
+
+    def test_feature_lists_must_not_be_empty(self):
+        base = {
+            "name": "pb",
+            "train_split": {"train": "all"},
+            "test_split": {"test": "all"},
+        }
+        with pytest.raises(ValidationError, match="input_features must not be empty"):
+            ProblemDefinition(
+                **base,
+                input_features=[],
+                output_features=["out"],
+            )
+        with pytest.raises(ValidationError, match="output_features must not be empty"):
+            ProblemDefinition(
+                **base,
+                input_features=["in"],
+                output_features=[],
+            )
 
     # -------------------------------------------------------------------------#
 
-    def test_from_path_single_definition(self, monkeypatch, tmp_path):
-        expected = ProblemDefinition(
-            name="pb_single",
-            input_features=["in_a"],
-            output_features=["out_a"],
-            train_split={"train_0": [0, 1]},
-            test_split={"test_0": [2]},
+    def test_from_mapping_validates_and_normalizes(self):
+        loaded = ProblemDefinition.from_mapping(
+            {
+                "name": "pb_single",
+                "input_features": ["in_b", "in_a"],
+                "output_features": ["out_b", "out_a"],
+                "train_split": {"train_0": [0, 1]},
+                "test_split": {"test_0": [2]},
+            }
         )
 
-        def fake_loader(path):
-            assert path == tmp_path
-            return {"pb_single": expected}
-
-        monkeypatch.setattr(
-            "plaid.storage.load_problem_definitions_from_disk", fake_loader
-        )
-
-        loaded = ProblemDefinition.from_path(tmp_path)
         assert loaded.name == "pb_single"
-        assert loaded.input_features == ["in_a"]
-        assert loaded.output_features == ["out_a"]
+        assert loaded.input_features == ["in_a", "in_b"]
+        assert loaded.output_features == ["out_a", "out_b"]
         assert loaded.get_train_split_name() == "train_0"
         assert loaded.get_test_split_name() == "test_0"
         assert loaded.get_train_split_indices() == [0, 1]
         assert loaded.get_test_split_indices() == [2]
 
-    def test_from_path_single_definition_with_override(self, monkeypatch, tmp_path):
-        expected = ProblemDefinition(
-            name="pb_single",
-            input_features=["in_a"],
-            output_features=["out_a"],
-            train_split={"train_0": [0, 1]},
-            test_split={"test_0": [2]},
+    def test_from_path_loads_single_yaml_file(self, tmp_path: Path):
+        file_path = tmp_path / "problem.yaml"
+        file_path.write_text(
+            "name: pb\n"
+            "input_features:\n"
+            "  - in_1\n"
+            "output_features:\n"
+            "  - out_1\n"
+            "train_split:\n"
+            "  train: [0]\n"
+            "test_split:\n"
+            "  test: [1]\n",
+            encoding="utf-8",
         )
 
-        monkeypatch.setattr(
-            "plaid.storage.load_problem_definitions_from_disk",
-            lambda path: {"pb_single": expected},  # noqa: ARG005
+        loaded = ProblemDefinition.from_path(file_path)
+
+        assert loaded.name == "pb"
+        assert loaded.get_train_split_name() == "train"
+        assert loaded.get_test_split_name() == "test"
+
+    def test_from_path_adds_yaml_suffix(self, tmp_path: Path):
+        file_path = tmp_path / "problem.yaml"
+        file_path.write_text(
+            "name: pb\n"
+            "input_features: [in_1]\n"
+            "output_features: [out_1]\n"
+            "train_split:\n"
+            "  train: all\n"
+            "test_split:\n"
+            "  test: all\n",
+            encoding="utf-8",
         )
 
-        loaded = ProblemDefinition.from_path(tmp_path)
-        assert loaded.name == "pb_single"
+        loaded = ProblemDefinition.from_path(tmp_path / "problem")
 
-    def test_from_path_named_definition_and_override(self, monkeypatch, tmp_path):
-        pb_1 = ProblemDefinition(
-            name="pb_1",
-            input_features=["in_a"],
-            output_features=["out_a"],
-            train_split={"train_0": [0, 1]},
-            test_split={"test_0": [2]},
-        )
-        pb_2 = ProblemDefinition(
-            name="pb_2",
-            input_features=["in_b"],
-            output_features=["out_b"],
-            train_split={"train_1": [3, 4]},
-            test_split={"test_1": [5]},
-        )
+        assert loaded.name == "pb"
 
-        def fake_loader(path):
-            assert path == tmp_path
-            return {"pb_1": pb_1, "pb_2": pb_2}
-
-        monkeypatch.setattr(
-            "plaid.storage.load_problem_definitions_from_disk", fake_loader
+    def test_from_path_unknown_key_raises(self, tmp_path: Path):
+        file_path = tmp_path / "problem_with_unknown.yaml"
+        file_path.write_text(
+            "name: pb\n"
+            "input_features: [in_1]\n"
+            "output_features: [out_1]\n"
+            "train_split:\n"
+            "  train: all\n"
+            "test_split:\n"
+            "  test: all\n"
+            "unknown_key: value\n",
+            encoding="utf-8",
         )
 
-        loaded = ProblemDefinition.from_path(
-            tmp_path,
-            name="pb_2",
-        )
-        assert loaded.name == "pb_2"
+        with pytest.raises(ValidationError, match="extra_forbidden"):
+            ProblemDefinition.from_path(file_path)
 
-    def test_from_path_unknown_name_raises(self, monkeypatch, tmp_path):
-        pb = ProblemDefinition(
-            name="existing",
-            input_features=["in_a"],
-            output_features=["out_a"],
-            train_split={"train_0": [0, 1]},
-            test_split={"test_0": [2]},
-        )
-
-        monkeypatch.setattr(
-            "plaid.storage.load_problem_definitions_from_disk",
-            lambda path: {"existing": pb},  # noqa: ARG005
-        )
-
-        with pytest.raises(ValueError, match="Problem definition 'missing' not found"):
-            ProblemDefinition.from_path(tmp_path, name="missing")
-
-    def test_from_path_requires_name_when_multiple(self, monkeypatch, tmp_path):
-        pb_1 = ProblemDefinition(
-            name="pb_1",
-            input_features=["in_a"],
-            output_features=["out_a"],
-            train_split={"train_0": [0, 1]},
-            test_split={"test_0": [2]},
-        )
-        pb_2 = ProblemDefinition(
-            name="pb_2",
-            input_features=["in_b"],
-            output_features=["out_b"],
-            train_split={"train_1": [3, 4]},
-            test_split={"test_1": [5]},
-        )
-
-        monkeypatch.setattr(
-            "plaid.storage.load_problem_definitions_from_disk",
-            lambda path: {"pb_1": pb_1, "pb_2": pb_2},  # noqa: ARG005
-        )
-
-        with pytest.raises(RuntimeError, match="more than one Problem definition"):
-            ProblemDefinition.from_path(tmp_path)
-
-    def test_from_path_error_lists_sorted_available_names(self, monkeypatch, tmp_path):
-        pb_a = ProblemDefinition(
-            name="a", input_features=["in"], output_features=["out"]
-        )
-        pb_b = ProblemDefinition(
-            name="b", input_features=["in"], output_features=["out"]
-        )
-
-        monkeypatch.setattr(
-            "plaid.storage.load_problem_definitions_from_disk",
-            lambda path: {"b": pb_b, "a": pb_a},  # noqa: ARG005
-        )
-
-        with pytest.raises(ValueError, match="Available definitions: a, b"):
-            ProblemDefinition.from_path(tmp_path, name="missing")
+    def test_from_path_non_existing_file(self):
+        with pytest.raises(FileNotFoundError):
+            ProblemDefinition.from_path(Path("non_existing_path"))
 
     def test_feature_validators_reject_duplicates(self):
         with pytest.raises(
             ValidationError, match="duplicated values in input_features"
         ):
-            ProblemDefinition(input_features=["a", "a"])
+            ProblemDefinition(
+                name="pb",
+                input_features=["a", "a"],
+                output_features=["out"],
+                train_split={"train": "all"},
+                test_split={"test": "all"},
+            )
 
         with pytest.raises(
             ValidationError, match="duplicated values in output_features"
         ):
-            ProblemDefinition(output_features=["a", "a"])
+            ProblemDefinition(
+                name="pb",
+                input_features=["in"],
+                output_features=["a", "a"],
+                train_split={"train": "all"},
+                test_split={"test": "all"},
+            )
 
     def test_non_overwritable_attributes_raise(self, problem_definition):
         problem_definition.name = "problem_a"
@@ -280,34 +264,6 @@ class Test_ProblemDefinition:
         assert problem_definition.train_split == {"train_0": [0, 1, 2]}
         assert problem_definition.test_split == {"test-1": [3, 4]}
 
-    def test__load_from_file_(
-        self, problem_definition_full: ProblemDefinition, tmp_path: Path
-    ):
-
-        path = tmp_path / "pb_def"
-        problem_definition_full.save_to_file(path)
-        problem = ProblemDefinition()
-        problem._load_from_file_(path)
-        assert set(problem.input_features) == set(
-            [
-                "Base_2_2/Zone/PointData/sig12",
-                "Base_2_2/Zone/PointData/U1",
-                "Base_2_2/Zone/PointData/U2",
-                "Global/predict_feature",
-                "Global/test_feature",
-                "Global/feature",
-            ]
-        )
-        assert set(problem.output_features) == set(
-            [
-                "Global/predict_feature",
-                "Base_2_2/Zone/PointData/sig12",
-                "Global/feature",
-                "Base_2_2/Zone/PointData/U2",
-                "Global/test_feature",
-            ]
-        )
-
     def test_save_and_load_keep_yaml_suffix(self, tmp_path: Path):
         problem = ProblemDefinition(
             name="pb",
@@ -319,36 +275,8 @@ class Test_ProblemDefinition:
         file_path = tmp_path / "problem.yaml"
         problem.save_to_file(file_path)
 
-        loaded = ProblemDefinition()
-        loaded._load_from_file_(file_path)
+        loaded = ProblemDefinition.from_path(file_path)
 
         assert loaded.name == "pb"
         assert loaded.get_train_split_name() == "train"
         assert loaded.get_test_split_name() == "test"
-
-    def test__load_from_file__unknown_field_warns_and_raises(
-        self, tmp_path: Path, caplog
-    ):
-        file_path = tmp_path / "problem_with_unknown.yaml"
-        file_path.write_text(
-            "name: pb\n"
-            "task: regression\n"
-            "input_features:\n"
-            "  - in_1\n"
-            "output_features:\n"
-            "  - out_1\n"
-            "unknown_key: value\n",
-            encoding="utf-8",
-        )
-
-        problem = ProblemDefinition()
-        with caplog.at_level("WARNING"):
-            problem._load_from_file_(file_path)
-
-        assert "Data ignored! : unknown_key: value" in caplog.text
-
-    def test__load_from_file__non_existing_file(self):
-        problem = ProblemDefinition()
-        non_existing_path = Path("non_existing_path")
-        with pytest.raises(FileNotFoundError):
-            problem._load_from_file_(non_existing_path)

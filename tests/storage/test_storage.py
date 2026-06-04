@@ -163,11 +163,13 @@ def main_splits() -> dict:
 
 @pytest.fixture()
 def problem_definition(main_splits) -> ProblemDefinition:
-    problem_definition = ProblemDefinition()
-    problem_definition.add_input_features(["feature_name_1", "feature_name_2"])
-    problem_definition.train_split = {"train": main_splits["train"]}
-    problem_definition.test_split = {"test": main_splits["test"]}
-    return problem_definition
+    return ProblemDefinition(
+        name="problem_definition",
+        input_features=["feature_name_1", "feature_name_2"],
+        output_features=["feature_name_1"],
+        train_split={"train": main_splits["train"]},
+        test_split={"test": main_splits["test"]},
+    )
 
 
 @pytest.fixture()

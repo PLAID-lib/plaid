@@ -156,6 +156,8 @@ def save_to_disk(
             },
             infos=Infos(
                 legal={"owner": "owner", "license": "license"},
+                num_samples={},
+                storage_backend="hf_datasets",
             ),
             num_proc=6,
         )
@@ -236,7 +238,11 @@ def save_to_disk(
     # written ``infos.yaml`` always reflects how the dataset was saved,
     # overriding any inherited values from the input ``infos``.
     if infos is None:
-        infos = Infos(legal=Legal(owner="unknown", license="unknown"))
+        infos = Infos(
+            legal=Legal(owner="unknown", license="unknown"),
+            num_samples={},
+            storage_backend=backend,
+        )
     infos_data = infos.to_dict()
     infos_data["num_samples"] = num_samples
     infos_data["storage_backend"] = backend

@@ -12,10 +12,10 @@ else:  # pragma: no cover
 
 import logging
 from pathlib import Path
-from typing import Any, Literal, Optional, Sequence, Union, cast
+from typing import Any, Literal, Sequence, Union, cast
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from .types import IndexArrayType
 
@@ -35,66 +35,55 @@ class ProblemDefinition(BaseModel):
         revalidate_instances="always", validate_assignment=True, extra="forbid"
     )
 
-    name: Optional[str] = Field(default=None)
-    input_features: list[str] = Field(default_factory=list)
-    output_features: list[str] = Field(default_factory=list)
-    train_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(
-        default=None
-    )
-    test_split: Optional[dict[str, Sequence[int] | Literal["all"]]] = Field(
-        default=None
-    )
+    name: str
+    input_features: list[str]
+    output_features: list[str]
+    train_split: dict[str, Sequence[int] | Literal["all"]]
+    test_split: dict[str, Sequence[int] | Literal["all"]]
 
-    @staticmethod
-    def from_path(
-        path: str | Path, name: str | None = None, **overrides: Any
-    ) -> "ProblemDefinition":
-        """Load a problem definition from a YAML file located at the specified path.
-
-        The YAML file should contain one or more problem definitions, and the desired definition can be selected by its name.
+    @classmethod
+    def from_mapping(cls, data: dict[str, Any]) -> "ProblemDefinition":
+        """Build a validated :class:`ProblemDefinition` from a plain mapping.
 
         Args:
-            path (str | Path): The file path to the YAML file containing problem definitions.
-            name (str | None, optional): The name of the problem definition to load. If None, it will attempt to load the
-                only problem definition available in the file. Defaults to None.
-            **overrides: Additional keyword arguments to override specific fields in the loaded problem definition.
-
-        Raises:
-            ValueError: If the specified name is not found in the YAML file.
-            RuntimeError: If multiple problem definitions are present without a specified name.
+            data: YAML-like mapping containing one problem definition.
 
         Returns:
-            ProblemDefinition: The loaded problem definition.
+            Validated problem definition instance.
         """
-        from plaid.storage import load_problem_definitions_from_disk
+        return cls.model_validate(data)
 
-        all_pb_def = load_problem_definitions_from_disk(path=Path(path))
-        available = ", ".join(sorted(all_pb_def))
-        if name is not None:
-            if name not in all_pb_def:
-                raise ValueError(
-                    f"Problem definition '{name}' not found in {path}. "
-                    f"Available definitions: {available}"
-                )
-            data2 = all_pb_def[name].model_dump()
-            data2.update(overrides)
-            data = data2
-        else:
-            if len(all_pb_def) > 1:
-                raise RuntimeError(
-                    f"Non name specified, but more than one Problem definition. Available definitions: {available}"
-                )
-            else:
-                data2 = next(iter(all_pb_def.values())).model_dump()
-                data2.update(overrides)
-                data = data2
+    @classmethod
+    def from_path(cls, path: str | Path) -> "ProblemDefinition":
+        """Load and validate one problem definition from a YAML file.
 
-        return ProblemDefinition(**data)
+        Args:
+            path: Path to the problem-definition YAML file. If no suffix is
+                provided, ``.yaml`` is appended.
+
+        Returns:
+            Validated problem definition instance.
+
+        Raises:
+            FileNotFoundError: If the resolved YAML file does not exist.
+        """
+        path = Path(path)
+        if path.suffix != ".yaml":
+            path = path.with_suffix(".yaml")
+        if not path.exists():
+            raise FileNotFoundError(f'File "{path}" does not exist. Abort')
+
+        with path.open("r", encoding="utf-8") as file:
+            data = yaml.safe_load(file) or {}
+
+        return cls.from_mapping(data)
 
     @field_validator("input_features", mode="before")
     @classmethod
     def normalize_input_features(cls, v):
         """Normalize input features identifiers by ensuring they are unique and sorted."""
+        if not v:
+            raise ValueError("input_features must not be empty")
         if len(set(v)) != len(v):
             raise ValueError("duplicated values in input_features")
         return _normalize_list(v)
@@ -103,6 +92,8 @@ class ProblemDefinition(BaseModel):
     @classmethod
     def normalize_output_features(cls, v):
         """Normalize output features identifiers by ensuring they are unique and sorted."""
+        if not v:
+            raise ValueError("output_features must not be empty")
         if len(set(v)) != len(v):
             raise ValueError("duplicated values in output_features")
         return _normalize_list(v)
@@ -186,7 +177,13 @@ class ProblemDefinition(BaseModel):
             .. code-block:: python
 
                 from plaid.problem_definition import ProblemDefinition
-                problem = ProblemDefinition()
+                problem = ProblemDefinition(
+                    name="example",
+                    input_features=["angle"],
+                    output_features=["pressure"],
+                    train_split={"train": "all"},
+                    test_split={"test": "all"},
+                )
                 input_features = ['omega', 'pressure']
                 problem.add_input_features(input_features)
 
@@ -222,7 +219,13 @@ class ProblemDefinition(BaseModel):
             .. code-block:: python
 
                 from plaid.problem_definition import ProblemDefinition
-                problem = ProblemDefinition()
+                problem = ProblemDefinition(
+                    name="example",
+                    input_features=["angle"],
+                    output_features=["pressure"],
+                    train_split={"train": "all"},
+                    test_split={"test": "all"},
+                )
                 output_features = ['omega', 'pressure']
                 problem.add_output_features(output_features)
 
@@ -255,7 +258,13 @@ class ProblemDefinition(BaseModel):
             .. code-block:: python
 
                 from plaid import ProblemDefinition
-                problem = ProblemDefinition()
+                problem = ProblemDefinition(
+                    name="example",
+                    input_features=["angle"],
+                    output_features=["pressure"],
+                    train_split={"train": "all"},
+                    test_split={"test": "all"},
+                )
                 problem.save_to_file("/path/to/save_file")
         """
         path = Path(path)
@@ -285,37 +294,3 @@ class ProblemDefinition(BaseModel):
                 sort_keys=False,
                 allow_unicode=True,
             )
-
-    def _load_from_file_(self, path: Union[str, Path]) -> None:
-        """Load problem information, inputs, outputs, and split from the specified file in YAML format.
-
-        Args:
-            path (Union[str,Path]): The filepath from which to load the problem information.
-
-        Raises:
-            FileNotFoundError: Triggered if the provided file does not exist.
-
-        Example:
-            .. code-block:: python
-
-                from plaid import ProblemDefinition
-                problem = ProblemDefinition()
-                problem._load_from_file_("/path/to/load_file")
-        """
-        path = Path(path)
-
-        if path.suffix != ".yaml":
-            path = path.with_suffix(".yaml")
-
-        if not path.exists():
-            raise FileNotFoundError(f'File "{path}" does not exist. Abort')
-
-        with path.open("r") as file:
-            data = yaml.safe_load(file)
-
-        model_fields = type(self).model_fields.keys()
-        for key, value in data.items():
-            if key in model_fields:
-                setattr(self, key, value)
-            else:
-                logger.warning(f" Data ignored! : {key}: {value}")

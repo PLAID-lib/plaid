@@ -123,11 +123,13 @@ output_features = [
 ]
 
 
-pb_def = ProblemDefinition(name="regression_1")
-pb_def.add_input_features(input_features)
-pb_def.add_output_features(output_features)
-pb_def.train_split = {"train":"all"}
-pb_def.test_split = {"test":"all"}
+pb_def = ProblemDefinition(
+    name="regression_1",
+    input_features=input_features,
+    output_features=output_features,
+    train_split={"train": "all"},
+    test_split={"test": "all"},
+)
 
 #---------------------------------------------------------------
 # Define a simple function that takes a single identifier and returns a Sample.
