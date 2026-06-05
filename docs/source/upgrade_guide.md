@@ -262,7 +262,7 @@ your read/write code against the current
 
 - **`plaid.infos`** — a dedicated pydantic `Infos` class, now living at the same
   level as `ProblemDefinition` (see [Infos](concepts/infos.md)).
-- **`plaid.viewer`** — an interactive [trame](https://kitware.github.io/trame/)
+- **`plaid-viewer`** — an interactive [trame](https://kitware.github.io/trame/)
   application for visual dataset exploration (see [Viewer](concepts/viewer.md)).
 - **`plaid-check`** — a CLI tool that validates the integrity of a local PLAID
   dataset (on-disk layout, `infos.yaml`, splits, sample conversion, invalid
