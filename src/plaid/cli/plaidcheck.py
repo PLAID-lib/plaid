@@ -331,8 +331,14 @@ def _check_problem_definition_sample_features(
     """Instantiate and validate one problem-definition sample view.
 
     The sample is instantiated with the exact feature subset requested by the
-    problem definition, then each requested feature is read back and checked for
-    invalid content (None, NaN, Inf, empty arrays, object arrays containing None).
+    problem definition, then each requested feature is read back to validate
+    that the requested feature paths can actually be resolved.
+
+    Numeric content (NaN, Inf, None, empty arrays, ...) is intentionally not
+    re-checked here: the per-split loop in :func:`check_dataset` already walks
+    every sample's globals and fields and reports such issues with the
+    ``INVALID_DATA_VALUE A`` code. Re-checking them in this loop would only
+    produce duplicate warnings under a different code/location.
 
     Args:
         pb_name: Problem-definition name.
@@ -358,23 +364,13 @@ def _check_problem_definition_sample_features(
 
     for feature in features:
         try:
-            value = sample.get_feature_by_path(feature)
+            sample.get_feature_by_path(feature)
         except Exception as exc:
             report.add(
                 "error",
                 "PB_DEF_FEATURE_READ_ERROR",
                 f"{location} {feature}",
                 str(exc),
-            )
-            continue
-
-        issue = _check_numeric_content(value)
-        if issue is not None:
-            report.add(
-                "warning",
-                "PB_DEF_INVALID_FEATURE_VALUE",
-                f"{location} {feature}",
-                issue,
             )
 
 

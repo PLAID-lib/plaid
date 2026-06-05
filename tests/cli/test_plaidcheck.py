@@ -480,12 +480,10 @@ def test_check_problem_definition_sample_reports_feature_read_error_and_continue
         and msg.message == "cannot read Unreadable"
         for msg in report.messages
     )
-    assert any(
-        msg.severity == "warning"
-        and msg.code == "PB_DEF_INVALID_FEATURE_VALUE"
-        and msg.location == "problem_definitions/pb/test_split/test[0] BadValue"
-        and msg.message == "contains NaN"
-        for msg in report.messages
+    # Numeric content is intentionally not re-checked here: it is already
+    # validated by the per-split loop in `check_dataset`.
+    assert not any(
+        msg.code == "PB_DEF_INVALID_FEATURE_VALUE" for msg in report.messages
     )
 
 
@@ -847,14 +845,10 @@ def test_check_dataset_problem_definition_instantiates_filtered_features(
 
     assert train_converter.feature_requests[-1] == ["Input", "Output"]
     assert test_converter.feature_requests[-1] == ["Input"]
-    invalid = [
-        msg for msg in report.messages if msg.code == "PB_DEF_INVALID_FEATURE_VALUE"
-    ]
-    assert any(
-        "train_split" in msg.location and "Output" in msg.location for msg in invalid
-    )
+    # The pb-def loop no longer re-checks numeric content; it only verifies that
+    # the requested feature subset can be converted and read back.
     assert not any(
-        "test_split" in msg.location and "Output" in msg.location for msg in invalid
+        msg.code == "PB_DEF_INVALID_FEATURE_VALUE" for msg in report.messages
     )
 
 
