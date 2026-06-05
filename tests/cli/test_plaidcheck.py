@@ -71,6 +71,26 @@ def test_check_dataset_missing_infos(tmp_path: Path, dataset_name: str) -> None:
 
 
 @pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_check_dataset_missing_required_layout_after_valid_infos(
+    tmp_path: Path, dataset_name: str
+) -> None:
+    """Missing layout file (other than infos.yaml) should short-circuit checks."""
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
+    if dataset_name == "dataset_cgns":
+        # CGNS backend only requires infos.yaml + data/.
+        shutil.rmtree(dataset_path / "data")
+    else:
+        (dataset_path / "variable_schema.yaml").unlink()
+
+    report = check_dataset(dataset_path)
+
+    assert report.has_errors()
+    assert any(msg.code == "MISSING_PATH" for msg in report.messages)
+    # The early return on missing layout means we never reach init-related codes.
+    assert not any(msg.code == "DATASET_INIT_ERROR" for msg in report.messages)
+
+
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
 def test_check_dataset_rejects_extra_infos_key(
     tmp_path: Path, dataset_name: str
 ) -> None:
@@ -641,6 +661,35 @@ def test_check_dataset_sample_conversion_error(tmp_path: Path, monkeypatch) -> N
     report = check_dataset(dataset, splits=["train"])
 
     assert any(msg.code == "SAMPLE_CONVERSION_ERROR" for msg in report.messages)
+
+
+def test_check_dataset_init_keyerror_reported_as_missing_split(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """KeyError raised by `init_from_disk` should map to NUM_SAMPLES_MISSING_SPLIT."""
+    dataset = _make_minimal_layout(tmp_path)
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Var": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+
+    def _raise_key_error(path):  # noqa: ARG001
+        raise KeyError("ghost_split")
+
+    monkeypatch.setattr(plaidcheck, "init_from_disk", _raise_key_error)
+
+    report = check_dataset(dataset)
+
+    assert any(msg.code == "NUM_SAMPLES_MISSING_SPLIT" for msg in report.messages)
+    assert any("ghost_split" in msg.message for msg in report.messages)
+    assert not any(msg.code == "DATASET_INIT_ERROR" for msg in report.messages)
 
 
 def test_check_dataset_missing_num_samples_split_is_clear(

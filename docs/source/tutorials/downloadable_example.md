@@ -4,6 +4,8 @@ title: Downloadable samples
 
 # Downloadable samples
 
+## First retrieval
+
 Retrieving sample examples is as easy as:
 
 ```python
@@ -13,4 +15,8 @@ print(AVAILABLE_EXAMPLES)
 print("samples.vki_ls59:", samples.vki_ls59)
 ```
 
-The first call to `samples.vki_ls59` triggers a download and takes a few seconds, whereas subsequent calls are instantaneous because they reuse the cached sample.
+The first call to `samples.vki_ls59` triggers a download and takes a few seconds.
+
+## Cached retrieval
+
+Subsequent calls are instantaneous because they reuse the cached sample.
