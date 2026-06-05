@@ -21,6 +21,20 @@ see the [`CHANGELOG.md`](https://github.com/PLAID-lib/plaid/blob/main/CHANGELOG.
     series is **`0.1.15`**; the sections below describe the jump from `0.1.x` to
     `1.0.0`.
 
+!!! info "Related documentation"
+    This guide focuses on *what changed* and *how to migrate*. For *how the new
+    API works*, see:
+
+    - [Quickstart](quickstart.md) — the new read/write pattern in a nutshell.
+    - [Concepts](concepts.md) — [Sample](concepts/sample.md),
+      [Problem definition](concepts/problem_definition.md),
+      [Infos](concepts/infos.md), [Dataset](concepts/dataset.md),
+      [Disk format](concepts/disk_format.md).
+    - [Conversion tutorial](tutorials/storage.md) — end-to-end storage workflow
+      (save, load, backends, Hub, parallel I/O).
+    - [API reference](api/index.md) — in particular
+      [`plaid.storage`](api/storage/backend_api.md).
+
 ---
 
 ## Upgrade to v1.0.0 from 0.1.x
@@ -30,8 +44,11 @@ listed below, with before/after examples.
 
 ### Top-level imports
 
-The `Dataset` class is no longer re-exported from the top-level `plaid` package,
-a new `Infos` object is exported, and the version string moved module.
+The single biggest change is that **the `Dataset` class has been removed**: it is
+no longer exported from the top-level `plaid` package *and no longer exists as a
+module either*. A new `Infos` object is exported, and the version string moved
+module. See [Removing the `Dataset` class](#removing-the-dataset-class-use-plaidstorage)
+below for the full migration.
 
 ```python
 # Before (0.1.x)
@@ -41,11 +58,125 @@ from plaid import __version__            # backed by plaid._version
 # After (1.0.0)
 from plaid import Sample, ProblemDefinition, Infos
 from plaid import __version__            # backed by plaid.version
-from plaid.containers.dataset import Dataset   # import Dataset from its module
+# `Dataset` no longer exists — there is no `plaid.containers.dataset` module.
+# Use the storage helpers instead:
+from plaid.storage import save_to_disk, init_from_disk
 ```
 
 The helpers `get_number_of_samples` and `get_sample_ids` are still exported from
 the top-level package.
+
+### Removing the `Dataset` class: use `plaid.storage`
+
+In the `0.1.x` series, `plaid.Dataset` was a **monolithic, in-memory container**:
+you built one `Dataset` object, appended every `Sample` to it, kept the whole
+collection in RAM, and called `save_to_dir` / `load` on that object.
+
+In `v1.0.0` this class is **removed entirely** — there is no public high-level
+dataset container class anymore, and there is no `plaid.containers.dataset`
+module to import from. The data model is now centered on three objects —
+[`Sample`](concepts/sample.md), [`ProblemDefinition`](concepts/problem_definition.md)
+and [`Infos`](concepts/infos.md) — plus the storage helpers in
+[`plaid.storage`](api/storage/backend_api.md). A dataset on disk is a shared
+metadata layout plus backend-specific sample payloads; loading it back gives you,
+**per split**, a backend dataset object and a `Converter` that materializes
+individual `Sample` objects lazily.
+
+This is a deliberate shift away from "load the whole dataset into one in-memory
+object" toward **backend-agnostic, lazy, per-sample access**, so that large
+datasets that do not fit in memory can be streamed sample by sample into ML
+pipelines. The concepts are introduced in [Quickstart](quickstart.md) and the
+[Dataset concept page](concepts/dataset.md); the end-to-end workflow is in the
+[Conversion tutorial](tutorials/storage.md).
+
+#### Writing: build-then-append → `save_to_disk(sample_constructor, ids)`
+
+Instead of building a `Dataset` and appending samples, you provide a
+`sample_constructor(id) -> Sample` callable plus an `ids` mapping of split names
+to sliceable id sequences. PLAID handles iteration, generator creation and
+parallel sharding internally, and writes directly to the chosen backend.
+
+```python
+# Before (0.1.x) — everything in memory, then dumped
+from plaid import Dataset, Sample
+
+dataset = Dataset()
+for raw in raw_items:
+    sample = Sample()
+    # fill the sample: add_tree, add_field, ...
+    dataset.add_sample(sample)
+dataset.save_to_dir("my_plaid_dataset")
+
+# After (1.0.0) — lazy, per-sample, backend-aware
+from plaid import Sample
+from plaid.storage import save_to_disk
+
+def sample_constructor(sample_id):
+    sample = Sample()
+    # fill the sample: add_tree, add_field, ...
+    return sample
+
+save_to_disk(
+    "my_plaid_dataset",
+    sample_constructor=sample_constructor,
+    ids={"train": [0, 1, 2], "test": [3, 4]},
+    backend="zarr",   # one of "hf_datasets", "cgns", "zarr"
+)
+```
+
+See the [Conversion tutorial](tutorials/storage.md) for a complete example
+(including `num_proc` parallel writing and `push_to_hub`) and the
+[writer API](api/storage/writer.md).
+
+#### Reading: `Dataset.load(...)` → `init_from_disk(...)` + converter
+
+Loading no longer returns a single object you index into. It returns a
+dictionary of backend datasets and a dictionary of converters, one per split.
+You materialize a `Sample` on demand with `converter.to_plaid(dataset, idx)`.
+
+```python
+# Before (0.1.x)
+from plaid import Dataset
+
+dataset = Dataset()
+dataset.load("my_plaid_dataset")
+sample = dataset[0]
+n = len(dataset)
+
+# After (1.0.0)
+from plaid.storage import init_from_disk
+
+datasetdict, converterdict = init_from_disk("my_plaid_dataset")
+dataset = datasetdict["train"]
+converter = converterdict["train"]
+
+sample = converter.to_plaid(dataset, 0)   # materialize one Sample lazily
+n = len(dataset)
+```
+
+The same shape is used for the Hub (`download_from_hub`,
+`init_streaming_from_hub`). See the [Dataset concept page](concepts/dataset.md),
+the [reader API](api/storage/reader.md), and the [backend API](api/storage/backend_api.md).
+
+#### Operation-by-operation map
+
+| `0.1.x` — `Dataset` method | `1.0.0` — replacement |
+| --- | --- |
+| `Dataset()` + `add_sample` / `add_samples` / `from_list_of_samples` | `save_to_disk(sample_constructor=..., ids=...)` |
+| `Dataset.save_to_dir(path)` / `add_to_dir` | `save_to_disk(path, sample_constructor=..., ids=...)` |
+| `Dataset.load(path)` | `init_from_disk(path)` → `(datasetdict, converterdict)` |
+| `dataset[i]` / `get_samples()` | `converter.to_plaid(dataset, i)` |
+| `len(dataset)` / `get_number_of_samples()` | `len(dataset)` (per-split backend object) |
+| `dataset.set_infos(...)` / `get_infos()` | pass [`Infos`](concepts/infos.md) to `save_to_disk(infos=...)`; read back with `Infos.from_path(path)` |
+| persisting a `ProblemDefinition` with the dataset | `save_to_disk(..., pb_defs=...)`; read back with `load_problem_definitions_from_disk(path)` |
+| `Dataset.add_features_from_tabular` (ex-`from_tabular`) | build the corresponding `Sample` objects in `sample_constructor` |
+| `Dataset.extract_dataset_from_identifier` | request features at read time: `converter.to_plaid(dataset, i, features=[...])` |
+| `Dataset.get_tabular_from_stacked_identifiers` | gather features yourself from the materialized `Sample` objects |
+| change backend (e.g. CGNS → HF) | `init_from_disk` then `save_to_disk` with the new `backend` (see the [Conversion tutorial](tutorials/storage.md)) |
+
+If you only need a subset of features or spatial indices, the converter supports
+`features=[...]` and `indexers={...}` for partial reads on the `hf_datasets` and
+`zarr` backends — see the [Conversion tutorial](tutorials/storage.md#indexed-extraction-with-indexers).
 
 ### `plaid.types`
 
@@ -117,14 +248,21 @@ The public surface of `ProblemDefinition` in `1.0.0` is intentionally small:
 train/test split accessors (`get_train_split_name`, `get_train_split_indices`,
 `get_test_split_name`, `get_test_split_indices`). The previous
 `constant_features_identifiers` accessors were removed together with the
-in/out identifier accessors.
+in/out identifier accessors. See the
+[Problem definition concept page](concepts/problem_definition.md) and the
+[`problem_definition` API](api/problem_definition.md).
 
 ### Storage / CGNS backend
 
 The constant/variable mechanism used in the CGNS backend reading and writing
 paths was removed. If you relied on that distinction at the storage level, review
 your read/write code against the current
-[storage API](api/storage/backend_api.md).
+[backend API](api/storage/backend_api.md) and the
+[CGNS backend API](api/storage/cgns/index.md). The on-disk layout written by
+`save_to_disk` (shared metadata + per-backend payloads) is described in the
+[Disk format concept page](concepts/disk_format.md), and the three backends
+(`hf_datasets`, `cgns`, `zarr`) are compared in the
+[Conversion tutorial](tutorials/storage.md#choosing-a-backend).
 
 ### New in v1.0.0
 
