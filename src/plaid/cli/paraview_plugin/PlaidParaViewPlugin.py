@@ -10,8 +10,9 @@ import json
 import os
 import time
 from urllib import request
-from typing import Union
+from typing import Union, Any, List, Optional
 import logging
+import base64
 
 import numpy as np
 from paraview.util.vtkAlgorithm import VTKPythonAlgorithmBase
@@ -23,7 +24,32 @@ from vtkmodules.vtkCommonDataModel import (
     vtkPolyVertex,
     vtkUnstructuredGrid,
 )
+import vtk
 
+try:
+    from plaid.utils.cgns_vtk import CGNSTreeToVtk
+    from plaid.utils.cgns_json import cgns_tree_from_json_payload
+except:
+    pass
+
+#this line is to inlcude the import to make the plugin selfcontain
+#do not modify this line
+# ##INCLUDE PLACEHOLDER##
+
+def _decode_time(value: Any) -> float:
+    """Decode a serialized time value to float.
+
+    Args:
+        value: Encoded JSON scalar time.
+
+    Returns:
+        Time as float.
+    """
+    if not isinstance(value, (int, float)):
+        raise ValueError("Sample JSON time entries must be numeric")
+    return float(value)
+
+##//////////////////////////////////////////////////////////
 
 _ELEMENT_TYPE_TO_VTK: dict[str, tuple[int, int]] = {
     "BAR_2": (3, 2),
@@ -100,15 +126,18 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
             self.Modified()
 
     def _request_json(
-        self, endpoint: str, payload: dict[str, object]
+        self, endpoint: str, payload: dict[str, object] = None
     ) -> dict[str, object]:
 
-        method = "GET"
-        print(f"{endpoint}")
-        print(json.dumps(payload))
+        method = "POST"
+        if payload is not None:
+            data = json.dumps(payload).encode("utf-8")
+        else:
+            data = None
+
         req = request.Request(
             url=f"http://{self.host}:{self.port}{endpoint}",
-            data=json.dumps(payload).encode("utf-8"),
+            data=data,
             headers={"Content-Type": "application/json"},
             method=method,
         )
@@ -127,10 +156,12 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
     def _extract_points_and_fields(
         self,
         sample_payload: dict[str, object],
+        base:str
     ) -> tuple[np.ndarray, dict[str, np.ndarray]]:
-        x = self._find_feature_by_suffix(sample_payload, "/GridCoordinates/CoordinateX")
-        y = self._find_feature_by_suffix(sample_payload, "/GridCoordinates/CoordinateY")
-        z = self._find_feature_by_suffix(sample_payload, "/GridCoordinates/CoordinateZ")
+        zone = "Zone"
+        x = self._find_feature_by_suffix(sample_payload, base+"/"+zone+"/GridCoordinates/CoordinateX")
+        y = self._find_feature_by_suffix(sample_payload, base+"/"+zone+"/GridCoordinates/CoordinateY")
+        z = self._find_feature_by_suffix(sample_payload, base+"/"+zone+"/GridCoordinates/CoordinateZ")
 
         if x is None or y is None:
             raise ValueError("Could not find coordinate arrays in sample payload")
@@ -147,7 +178,6 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
 
         fields: dict[str, np.ndarray] = {}
         for key, value in sample_payload.items():
-            # print(key)
             if "/VertexFields/" not in key:
                 continue
             arr = np.asarray(value)
@@ -159,333 +189,264 @@ class PlaidClientBase(VTKPythonAlgorithmBase):
 
         return points, fields
 
-    def _build_unstructured_grid(
-        self,
-        sample_payload: dict[str, object],
-        output: vtkUnstructuredGrid,
-    ) -> None:
-        points_np, fields = self._extract_points_and_fields(sample_payload)
 
-        vtk_points = vtkPoints()
-        vtk_points.SetData(numpy_to_vtk(points_np, deep=True))
-        output.SetPoints(vtk_points)
+# @smproxy.source(name="PlaidExplorer", label="Plaid Dataset Explorer")
+# class PlaidDatasetExplorer(PlaidClientBase):
+#     """ParaView source plugin fetching data from Maestro serve endpoints."""
 
-        n_points = points_np.shape[0]
+#     def __init__(self):
+#         super().__init__(
+#             nInputPorts=0,
+#             nOutputPorts=1,
+#             inputType=None,
+#             outputType="vtkUnstructuredGrid",
+#         )
 
-        element_entries: list[tuple[int, np.ndarray]] = []
-        for key, value in sample_payload.items():
-            if not key.endswith("/ElementConnectivity"):
-                continue
-            element_node = key.split("/")[-2]
-            element_type_name = element_node.removeprefix("Elements_").upper()
-            element_spec = _ELEMENT_TYPE_TO_VTK.get(element_type_name)
-            if element_spec is None:
-                continue
+#         self.sample_id: int = 0
+#         self.timestep_values_cache: list[float] | None = None
+#         self.input_features = ""
+#         self.filename_or_url = "/home/fbw/repos/Safran/Datasets/Tensile2d/"
+#         self._available_splits = {}
+#         self._selected_split = ""
 
-            vtk_cell_type, n_vertices_per_element = element_spec
-            connectivity = np.asarray(value, dtype=np.int64)
-            if connectivity.size == 0:
-                continue
-            if connectivity.ndim == 1:
-                if connectivity.size % n_vertices_per_element != 0:
-                    continue
-                connectivity = connectivity.reshape(-1, n_vertices_per_element)
-            elif connectivity.ndim != 2:
-                continue
-            elif connectivity.shape[1] != n_vertices_per_element:
-                continue
+#     @smproperty.stringvector(
+#         name="SelectPlaidDataset",
+#         label="Dataset",
+#         default_values="/home/fbw/repos/Safran/Datasets/Tensile2d/",
+#     )
+#     @smdomain.filelist()
+#     @smhint.xml("<Property show_directory_only='1' />")
+#     def SetExternalFilePath(self, path: Union[str, None]):
+#         if path is None:
+#             path = ""
+#         if self.filename_or_url != path:
+#             self.filename_or_url = path
+#             self._available_splits = {}
+#             self._selected_split = None
+#             self.Modified()
 
-            if connectivity.min() >= 1:
-                connectivity = connectivity - 1
+#     # Step 2: Create an Information Property to leak the server list to the GUI client
+#     @smproperty.stringvector(name="AvailableSplitsInfo", information_only="1")
+#     def GetAvailableSplits(self):
+#         if len(self.filename_or_url) == 0:
+#             return []
+#         # ParaView expects information arrays to be returned as a vtkStringArray or list
+#         ts_response = self._request_json(
+#             "/splits",
+#             {
+#                 "sample_ids": [self.sample_id],
+#                 "dataset": self.filename_or_url,
+#                 "split": self._selected_split,
+#             },
+#         )
+#         self._available_splits = ts_response.get("splits", {})
 
-            if connectivity.min() < 0 or connectivity.max() >= n_points:
-                continue
+#         return list(self._available_splits.keys())
 
-            for cell_nodes in connectivity:
-                element_entries.append(
-                    (vtk_cell_type, np.asarray(cell_nodes, dtype=np.int64))
-                )
+#     # Step 3: Create the user-facing Dropdown that dynamically copies the server list
 
-        if element_entries:
-            output.Allocate(len(element_entries))
-            for vtk_cell_type, cell_nodes in element_entries:
-                output.InsertNextCell(
-                    int(vtk_cell_type),
-                    int(cell_nodes.size),
-                    cell_nodes.astype(np.int64),
-                )
-        else:
-            cells = vtkCellArray()
-            poly_vertex = vtkPolyVertex()
-            poly_vertex.GetPointIds().SetNumberOfIds(n_points)
-            for i in range(n_points):
-                poly_vertex.GetPointIds().SetId(i, i)
-            cells.InsertNextCell(poly_vertex)
-            output.SetCells(poly_vertex.GetCellType(), cells)
+#     # 1. Define the user-facing dropdown property
+#     @smproperty.stringvector(name="SelectSplit", default_values="")
+#     @smdomain.xml("""
+#         <StringListDomain name="array_list">
+#             <RequiredProperties>
+#                 <Property name="AvailableSplitsInfo" function="ArrayList" />
+#             </RequiredProperties>
+#         </StringListDomain>
+#     """)
+#     def SetSelectedSplit(self, value):
+#         if self._selected_split != value:
+#             self._selected_split = value
+#             self.Modified()
 
-        for name, array in fields.items():
-            vtk_array = numpy_to_vtk(np.asarray(array), deep=True)
-            vtk_array.SetName(name)
-            output.GetPointData().AddArray(vtk_array)
+#     @smproperty.intvector(name="SampleIdRangeInfo", information_only="1")
+#     def GetSampleIdRange(self):
+#         """Return [min, max] bounds for the SampleId slider."""
+#         split_max = self._available_splits.get(self._selected_split, 0) - 1
+#         try:
+#             split_max = int(split_max)
+#         except (TypeError, ValueError):
+#             split_max = 0
+#         return [0, max(0, split_max)]
 
+#     @smproperty.xml("""
+#           <IntVectorProperty name="SampleId"
+#                              command="SetSampleId"
+#                              number_of_elements="1"
+#                              default_values="0">
+#             <IntRangeDomain name="range">
+#               <RequiredProperties>
+#                 <Property name="SampleIdRangeInfo" function="RangeInfo" />
+#               </RequiredProperties>
+#             </IntRangeDomain>
+#             <Hints>
+#               <Widget type="slider" />
+#             </Hints>
+#           </IntVectorProperty>""")
+#     def SetSampleId(self, value):
+#         value = int(value)
+#         max_value = self.GetSampleIdRange()[1]
+#         value = max(0, min(value, max_value))
+#         if self.sample_id != value:
+#             self.sample_id = value
+#             self.timestep_values_cache = None
+#             self.Modified()
 
-@smproxy.source(name="PlaidExplorer", label="Plaid Dataset Explorer")
-class PlaidDatasetExplorer(PlaidClientBase):
-    """ParaView source plugin fetching data from Maestro serve endpoints."""
+#     # @smproperty.stringvector(name="InputFeatures", default_values="")
+#     # @smhint.xml(r"<Widget type='multi_line'/>")
 
-    def __init__(self):
-        super().__init__(
-            nInputPorts=0,
-            nOutputPorts=1,
-            inputType=None,
-            outputType="vtkUnstructuredGrid",
-        )
+#     @smproperty.xml("""
+#           <StringVectorProperty name="InputFeatures"
+#                                 command="SetInputFeatures"
+#                                 number_of_elements="1"
+#                                 default_values="">
+#               <Hints>
+#                   <Widget type="multi_line" />
+#               </Hints>
+#           </StringVectorProperty>
 
-        self.sample_id: int = 0
-        self.timestep_values_cache: list[float] | None = None
-        self.input_features = ""
-        self.filename_or_url = "/home/fbw/repos/Safran/Datasets/Tensile2d/"
-        self._available_splits = {}
-        self._selected_split = ""
+#           <PropertyGroup label="Feature Settings">
+#               <Property name="InputFeatures" />
+#           </PropertyGroup>
+#     """)
+#     def SetInputFeatures(self, value):
+#         if value is None:
+#             value = ""
+#         value = str(value)
+#         if self.input_features != value:
+#             self.input_features = value
+#             self.Modified()
 
-    @smproperty.stringvector(
-        name="SelectPlaidDataset",
-        label="Dataset",
-        default_values="/home/fbw/repos/Safran/Datasets/Tensile2d/",
-    )
-    @smdomain.filelist()
-    @smhint.xml("<Property show_directory_only='1' />")
-    def SetExternalFilePath(self, path: Union[str, None]):
-        if path is None:
-            path = ""
-        if self.filename_or_url != path:
-            self.filename_or_url = path
-            self._available_splits = {}
-            self._selected_split = None
-            self.Modified()
+#     @smproperty.doublevector(
+#         name="TimestepValues",
+#         information_only="1",
+#         si_class="vtkSITimeStepsProperty",
+#     )
+#     def GetTimestepValues(self):
+#         if self.filename_or_url in ["", None]:
+#             return [0.0]
 
-    # Step 2: Create an Information Property to leak the server list to the GUI client
-    @smproperty.stringvector(name="AvailableSplitsInfo", information_only="1")
-    def GetAvailableSplits(self):
-        if len(self.filename_or_url) == 0:
-            return []
-        # ParaView expects information arrays to be returned as a vtkStringArray or list
-        ts_response = self._request_json(
-            "/splits",
-            {
-                "sample_ids": [self.sample_id],
-                "dataset": self.filename_or_url,
-                "split": self._selected_split,
-            },
-        )
-        self._available_splits = ts_response.get("splits", {})
+#         if self._selected_split in ["", None]:
+#             return [0.0]
+#         print(f"{self.filename_or_url=}, {self._selected_split=}")
+#         if self.timestep_values_cache is None:
+#             # Optional warmup/readability check against /sample
+#             # self._request_json("/sample", {"sample_ids": [self.sample_id]})
 
-        return list(self._available_splits.keys())
+#             ts_response = self._request_json(
+#                 "/timesteps",
+#                 {
+#                     "sample_ids": [self.sample_id],
+#                     "dataset": self.filename_or_url,
+#                     "split": self._selected_split,
+#                 },
+#             )
+#             entries = ts_response.get("time_steps", [])
+#             if not entries:
+#                 self.timestep_values_cache = [0.0]
+#             else:
+#                 first = entries[0]
+#                 times = first.get("times", [0.0]) if isinstance(first, dict) else [0.0]
+#                 self.timestep_values_cache = [float(t) for t in times]
 
-    # Step 3: Create the user-facing Dropdown that dynamically copies the server list
+#         return self.timestep_values_cache
 
-    # 1. Define the user-facing dropdown property
-    @smproperty.stringvector(name="SelectSplit", default_values="")
-    @smdomain.xml("""
-        <StringListDomain name="array_list">
-            <RequiredProperties>
-                <Property name="AvailableSplitsInfo" function="ArrayList" />
-            </RequiredProperties>
-        </StringListDomain>
-    """)
-    def SetSelectedSplit(self, value):
-        if self._selected_split != value:
-            self._selected_split = value
-            self.Modified()
+#     def RequestInformation(self, request, in_info_vec, out_info_vec):
+#         executive = self.GetExecutive()
+#         out_info = out_info_vec.GetInformationObject(0)
 
-    @smproperty.intvector(name="SampleIdRangeInfo", information_only="1")
-    def GetSampleIdRange(self):
-        """Return [min, max] bounds for the SampleId slider."""
-        split_max = self._available_splits.get(self._selected_split, 0) - 1
-        try:
-            split_max = int(split_max)
-        except (TypeError, ValueError):
-            split_max = 0
-        return [0, max(0, split_max)]
+#         time_steps = self.GetTimestepValues()
+#         if len(time_steps) == 0:
+#             return 1
 
-    @smproperty.xml("""
-          <IntVectorProperty name="SampleId"
-                             command="SetSampleId"
-                             number_of_elements="1"
-                             default_values="0">
-            <IntRangeDomain name="range">
-              <RequiredProperties>
-                <Property name="SampleIdRangeInfo" function="RangeInfo" />
-              </RequiredProperties>
-            </IntRangeDomain>
-            <Hints>
-              <Widget type="slider" />
-            </Hints>
-          </IntVectorProperty>""")
-    def SetSampleId(self, value):
-        value = int(value)
-        max_value = self.GetSampleIdRange()[1]
-        value = max(0, min(value, max_value))
-        if self.sample_id != value:
-            self.sample_id = value
-            self.timestep_values_cache = None
-            self.Modified()
+#         out_info.Remove(executive.TIME_STEPS())
+#         out_info.Remove(executive.TIME_RANGE())
 
-    # @smproperty.stringvector(name="InputFeatures", default_values="")
-    # @smhint.xml(r"<Widget type='multi_line'/>")
+#         if len(time_steps) > 1:
+#             for t in time_steps:
+#                 out_info.Append(executive.TIME_STEPS(), t)
+#             out_info.Append(executive.TIME_RANGE(), time_steps[0])
+#             out_info.Append(executive.TIME_RANGE(), time_steps[-1])
 
-    @smproperty.xml("""
-          <StringVectorProperty name="InputFeatures"
-                                command="SetInputFeatures"
-                                number_of_elements="1"
-                                default_values="">
-              <Hints>
-                  <Widget type="multi_line" />
-              </Hints>
-          </StringVectorProperty>
+#         return 1
 
-          <PropertyGroup label="Feature Settings">
-              <Property name="InputFeatures" />
-          </PropertyGroup>
-    """)
-    def SetInputFeatures(self, value):
-        if value is None:
-            value = ""
-        value = str(value)
-        if self.input_features != value:
-            self.input_features = value
-            self.Modified()
+#     def RequestData(self, request, in_info_vec, out_info_vec):
+#         out_info = out_info_vec.GetInformationObject(0)
+#         executive = self.GetExecutive()
 
-    @smproperty.doublevector(
-        name="TimestepValues",
-        information_only="1",
-        si_class="vtkSITimeStepsProperty",
-    )
-    def GetTimestepValues(self):
-        if self.filename_or_url in ["", None]:
-            return [0.0]
+#         if out_info.Has(executive.UPDATE_TIME_STEP()):
+#             requested_time = float(out_info.Get(executive.UPDATE_TIME_STEP()))
+#         else:
+#             values = self.GetTimestepValues()
+#             requested_time = float(values[0]) if values else 0.0
 
-        if self._selected_split in ["", None]:
-            return [0.0]
-        print(f"{self.filename_or_url=}, {self._selected_split=}")
-        if self.timestep_values_cache is None:
-            # Optional warmup/readability check against /sample
-            # self._request_json("/sample", {"sample_ids": [self.sample_id]})
+#         requested_time = find_closest_numpy(self.GetTimestepValues(), requested_time)
+#         endpoint = "/predict_step" if self.usePredict else "/samples_step"
+#         # print(endpoint)
 
-            ts_response = self._request_json(
-                "/timesteps",
-                {
-                    "sample_ids": [self.sample_id],
-                    "dataset": self.filename_or_url,
-                    "split": self._selected_split,
-                },
-            )
-            entries = ts_response.get("time_steps", [])
-            if not entries:
-                self.timestep_values_cache = [0.0]
-            else:
-                first = entries[0]
-                times = first.get("times", [0.0]) if isinstance(first, dict) else [0.0]
-                self.timestep_values_cache = [float(t) for t in times]
+#         # "angle_in":40
+#         payload = {
+#             "sample_ids": [self.sample_id],
+#             "time": requested_time,
+#             "dataset": self.filename_or_url,
+#             "split": self._selected_split,
+#         }
+#         if len(self.input_features):
+#             #  {          <- this is added automaticaly
+#             #  toto = 5             the = is converted to : and add the "" around
+#             # 'tata' : 6            the ' are converted to "
+#             # "titi" : 3.5
+#             #
+#             #  }            <- this is added automaticaly
 
-        return self.timestep_values_cache
+#             def ensureEncluse(string, start, end):
+#                 string = string.strip()
+#                 if not string.startswith(start):
+#                     string = start + string
+#                 if not string.endswith(end):
+#                     string = string + end
+#                 return string
 
-    def RequestInformation(self, request, in_info_vec, out_info_vec):
-        executive = self.GetExecutive()
-        out_info = out_info_vec.GetInformationObject(0)
+#             treated_input_features = self.input_features.replace("'", '"').strip()
+#             treated_input_features = self.input_features.replace("=", ":").strip()
+#             clean_treated_input_features = []
+#             for line in treated_input_features.splitlines():
+#                 k, v = line.split(":")
+#                 k = ensureEncluse(k, '"', '"')
+#                 clean_treated_input_features.append(k + ":" + v)
 
-        time_steps = self.GetTimestepValues()
-        if len(time_steps) == 0:
-            return 1
+#             treated_input_features = ",".join(clean_treated_input_features)
+#             treated_input_features = ensureEncluse(treated_input_features, "{", "}")
+#             # print(f"{treated_input_features=}")
 
-        out_info.Remove(executive.TIME_STEPS())
-        out_info.Remove(executive.TIME_RANGE())
+#             payload["input_features"] = [json.loads(treated_input_features)]
 
-        if len(time_steps) > 1:
-            for t in time_steps:
-                out_info.Append(executive.TIME_STEPS(), t)
-            out_info.Append(executive.TIME_RANGE(), time_steps[0])
-            out_info.Append(executive.TIME_RANGE(), time_steps[-1])
+#         step_response = self._request_json(
+#             endpoint,
+#             payload,
+#         )
+#         sample_payload = step_response.get("samples", [None])[0]
+#         if sample_payload is None:
+#             raise ValueError(
+#                 "/sample_step response does not contain a valid sample payload"
+#             )
 
-        return 1
+#         output = vtkUnstructuredGrid.GetData(out_info)
+#         self._build_unstructured_grid(sample_payload, output)
 
-    def RequestData(self, request, in_info_vec, out_info_vec):
-        out_info = out_info_vec.GetInformationObject(0)
-        executive = self.GetExecutive()
+#         # 2. Get the field data object
+#         field_data = output.GetFieldData()
 
-        if out_info.Has(executive.UPDATE_TIME_STEP()):
-            requested_time = float(out_info.Get(executive.UPDATE_TIME_STEP()))
-        else:
-            values = self.GetTimestepValues()
-            requested_time = float(values[0]) if values else 0.0
-
-        requested_time = find_closest_numpy(self.GetTimestepValues(), requested_time)
-        endpoint = "/predict_step" if self.usePredict else "/samples_step"
-        # print(endpoint)
-
-        # "angle_in":40
-        payload = {
-            "sample_ids": [self.sample_id],
-            "time": requested_time,
-            "dataset": self.filename_or_url,
-            "split": self._selected_split,
-        }
-        if len(self.input_features):
-            #  {          <- this is added automaticaly
-            #  toto = 5             the = is converted to : and add the "" around
-            # 'tata' : 6            the ' are converted to "
-            # "titi" : 3.5
-            #
-            #  }            <- this is added automaticaly
-
-            def ensureEncluse(string, start, end):
-                string = string.strip()
-                if not string.startswith(start):
-                    string = start + string
-                if not string.endswith(end):
-                    string = string + end
-                return string
-
-            treated_input_features = self.input_features.replace("'", '"').strip()
-            treated_input_features = self.input_features.replace("=", ":").strip()
-            clean_treated_input_features = []
-            for line in treated_input_features.splitlines():
-                k, v = line.split(":")
-                k = ensureEncluse(k, '"', '"')
-                clean_treated_input_features.append(k + ":" + v)
-
-            treated_input_features = ",".join(clean_treated_input_features)
-            treated_input_features = ensureEncluse(treated_input_features, "{", "}")
-            # print(f"{treated_input_features=}")
-
-            payload["input_features"] = [json.loads(treated_input_features)]
-
-        step_response = self._request_json(
-            endpoint,
-            payload,
-        )
-        sample_payload = step_response.get("samples", [None])[0]
-        if sample_payload is None:
-            raise ValueError(
-                "/sample_step response does not contain a valid sample payload"
-            )
-
-        output = vtkUnstructuredGrid.GetData(out_info)
-        self._build_unstructured_grid(sample_payload, output)
-
-        # 2. Get the field data object
-        field_data = output.GetFieldData()
-
-        for key, value in sample_payload.items():
-            if key.startswith("Global/") and not key.endswith("_times"):
-                scalar_array = vtkDoubleArray()
-                # scalar_array.SetName(key.split("/")[-1])
-                scalar_array.SetName(key)
-                scalar_array.SetNumberOfComponents(len(value))
-                for v in value:
-                    scalar_array.InsertNextValue(v)
-                field_data.AddArray(scalar_array)
-        return 1
+#         for key, value in sample_payload.items():
+#             if key.startswith("Global/") and not key.endswith("_times"):
+#                 scalar_array = vtkDoubleArray()
+#                 # scalar_array.SetName(key.split("/")[-1])
+#                 scalar_array.SetName(key)
+#                 scalar_array.SetNumberOfComponents(len(value))
+#                 for v in value:
+#                     scalar_array.InsertNextValue(v)
+#                 field_data.AddArray(scalar_array)
+#         return 1
 
 
 @smproxy.source(name="MaestroExplorer", label="Maestro Explorer")
@@ -504,43 +465,16 @@ class MaestroExplorer(PlaidClientBase):
         self.timestep_values_cache: list[float] | None = None
         self.usePredict: bool = False
         self.input_features = ""
-        self.experiment = "/home/fbw/repos/Safran/Datasets/Tensile2d/"
-        self._available_splits = {}
-        self._selected_split = ""
 
-    @smproperty.stringvector(
-        name="SelectMaestroExperiment",
-        label="Experiment",
-        default_values="tensile2d_transolver",
-    )
-    # @smdomain.filelist()
-    # @smhint.xml("<Property show_directory_only='1' />")
-    def SetExternalFilePath(self, path: Union[str, None]):
-        if path is None:
-            path = ""
-        if self.experiment != path:
-            self.experiment = path
-            self._available_splits = {}
-            self._selected_split = None
-            self.Modified()
+        self._selected_split = ""
+        self._problem_definition = None
+        self._infos = None
 
     # Step 2: Create an Information Property to leak the server list to the GUI client
     @smproperty.stringvector(name="AvailableSplitsInfo", information_only="1")
     def GetAvailableSplits(self):
-        if len(self.experiment) == 0:
-            return []
-        # ParaView expects information arrays to be returned as a vtkStringArray or list
-        ts_response = self._request_json(
-            "/splits",
-            {
-                "sample_ids": [self.sample_id],
-                "dataset": self.experiment,
-                "split": self._selected_split,
-            },
-        )
-        self._available_splits = ts_response.get("splits", {})
-
-        return list(self._available_splits.keys())
+        self.GetInfos()
+        return list(self._infos["num_samples"].keys())
 
     # Step 3: Create the user-facing Dropdown that dynamically copies the server list
 
@@ -557,16 +491,21 @@ class MaestroExplorer(PlaidClientBase):
         if self._selected_split != value:
             self._selected_split = value
             self.Modified()
+            if isinstance(self._selected_split,str):
+                max_sample_id = self.GetSampleIdRange()[1]
+                self.sample_id = max(0, min(self.sample_id, max_sample_id))
+                self.Modified()
+
 
     @smproperty.intvector(name="SampleIdRangeInfo", information_only="1")
     def GetSampleIdRange(self):
         """Return [min, max] bounds for the SampleId slider."""
-        split_max = self._available_splits.get(self._selected_split, 0) - 1
-        try:
-            split_max = int(split_max)
-        except (TypeError, ValueError):
-            split_max = 0
-        return [0, max(0, split_max)]
+        self.GetInfos()
+        if self._infos is None or self._selected_split not in self._infos["num_samples"]:
+            return (0, 0)
+        num_samples = int(self._infos["num_samples"][self._selected_split])
+        return (0, max(0, num_samples - 1))
+
 
     @smproperty.xml("""
           <IntVectorProperty name="SampleId"
@@ -576,6 +515,7 @@ class MaestroExplorer(PlaidClientBase):
             <IntRangeDomain name="range">
               <RequiredProperties>
                 <Property name="SampleIdRangeInfo" function="RangeInfo" />
+                <Property name="SelectSplit" function="GetSelectSplit" />
               </RequiredProperties>
             </IntRangeDomain>
             <Hints>
@@ -591,6 +531,12 @@ class MaestroExplorer(PlaidClientBase):
             self.timestep_values_cache = None
             self.Modified()
 
+    @smproperty.stringvector(name="ReadOnly", panel_visibility="default", information_only="1", repeatable="1", number_of_elements_per_command="2")
+    def GetSomeTable(self):
+        self.GetInfos()
+        return ['Split Name', 'Nb Samples']+[  [str(k),str(v)]  for k, v in self._infos["num_samples"].items() ]
+
+
     @smproperty.xml("""
           <IntVectorProperty name="Predict"
                              command="SetPredict"
@@ -604,72 +550,90 @@ class MaestroExplorer(PlaidClientBase):
           </IntVectorProperty>""")
     def SetPredict(self, value):
         bool_value = str(value).lower() in ["true", "1"]
-        # print(value, bool_value)
         if self.usePredict != bool_value:
             self.usePredict = bool_value
             self.Modified()
 
-    @smproperty.xml("""
-          <StringVectorProperty name="InputFeatures"
-                                command="SetInputFeatures"
-                                number_of_elements="1"
-                                default_values="">
-              <Hints>
-                  <Widget type="multi_line" />
-              </Hints>
-          </StringVectorProperty>
+    # @smproperty.xml("""
+    #       <StringVectorProperty name="InputFeatures"
+    #                             command="SetInputFeatures"
+    #                             number_of_elements="1"
+    #                             default_values="">
+    #           <Hints>
+    #               <Widget type="multi_line" />
+    #           </Hints>
+    #       </StringVectorProperty>
 
-          <PropertyGroup label="Feature Settings">
-              <Property name="InputFeatures" />
-          </PropertyGroup>
-    """)
-    def SetInputFeatures(self, value):
-        if value is None:
-            value = ""
-        value = str(value)
-        if self.input_features != value:
-            self.input_features = value
-            self.Modified()
+    #       <PropertyGroup label="Feature Settings">
+    #           <Property name="InputFeatures" />
+    #       </PropertyGroup>
+    # """)
+    # def SetInputFeatures(self, value):
+    #     if value is None:
+    #         value = ""
+    #     value = str(value)
+        # if self.input_features != value:
+        #     def ensureEncluse(string, start, end):
+        #         string = string.strip()
+        #         if not string.startswith(start):
+        #             string = start + string
+        #         if not string.endswith(end):
+        #             string = string + end
+        #         return string
 
-    @smproperty.doublevector(
-        name="TimestepValues",
-        information_only="1",
-        si_class="vtkSITimeStepsProperty",
-    )
-    def GetTimestepValues(self):
-        if self.experiment in ["", None]:
-            return [0.0]
+        #     treated_input_features = value.replace("'", '"').strip()
+        #     treated_input_features = value.replace("=", ":").strip()
+        #     clean_treated_input_features = []
+        #     for line in treated_input_features.splitlines():
+        #         k, v = line.split(":")
+        #         k = ensureEncluse(k, '"', '"')
+        #         clean_treated_input_features.append(k + ":" + v)
 
-        if self._selected_split in ["", None]:
-            return [0.0]
-        print(f"{self.experiment=}, {self._selected_split=}")
-        if self.timestep_values_cache is None:
-            # Optional warmup/readability check against /sample
-            # self._request_json("/sample", {"sample_ids": [self.sample_id]})
+        #     treated_input_features = ",".join(clean_treated_input_features)
+        #     treated_input_features = ensureEncluse(treated_input_features, "{", "}")
+        #     self.input_features = treated_input_features
+        #     self.Modified()
 
-            ts_response = self._request_json(
-                "/timesteps",
-                {
-                    "sample_ids": [self.sample_id],
-                    "dataset": self.experiment,
-                    "split": self._selected_split,
-                },
-            )
-            entries = ts_response.get("time_steps", [])
-            if not entries:
-                self.timestep_values_cache = [0.0]
-            else:
-                first = entries[0]
-                times = first.get("times", [0.0]) if isinstance(first, dict) else [0.0]
-                self.timestep_values_cache = [float(t) for t in times]
+    # @smproperty.doublevector(
+    #     name="TimestepValues",
+    #     information_only="1",
+    #     si_class="vtkSITimeStepsProperty",
+    # )
+    # def GetTimestepValues(self):
+    #     if self.experiment in ["", None]:
+    #         return [0.0]
 
-        return self.timestep_values_cache
+    #     if self._selected_split in ["", None]:
+    #         return [0.0]
+    #     print(f"{self.experiment=}, {self._selected_split=}")
+    #     if self.timestep_values_cache is None:
+    #         # Optional warmup/readability check against /sample
+    #         # self._request_json("/sample", {"sample_ids": [self.sample_id]})
+
+    #         ts_response = self._request_json(
+    #             "/timesteps",
+    #             {
+    #                 "sample_ids": [self.sample_id],
+    #                 "dataset": self.experiment,
+    #                 "split": self._selected_split,
+    #             },
+    #         )
+    #         entries = ts_response.get("time_steps", [])
+    #         if not entries:
+    #             self.timestep_values_cache = [0.0]
+    #         else:
+    #             first = entries[0]
+    #             times = first.get("times", [0.0]) if isinstance(first, dict) else [0.0]
+    #             self.timestep_values_cache = [float(t) for t in times]
+
+    #     return self.timestep_values_cache
 
     def RequestInformation(self, request, in_info_vec, out_info_vec):
         executive = self.GetExecutive()
         out_info = out_info_vec.GetInformationObject(0)
 
-        time_steps = self.GetTimestepValues()
+        #time_steps = self.GetTimestepValues()
+        time_steps = [0]
         if len(time_steps) == 0:
             return 1
 
@@ -684,6 +648,33 @@ class MaestroExplorer(PlaidClientBase):
 
         return 1
 
+    def GetProblemDefinition(self):
+        if self._problem_definition is None:
+            self._problem_definition = self._request_json("/problem_definition")
+
+    #{"input_features": ["Base_2_2/Zone/Elements_TRI_3/ElementConnectivity", "Base_2_2/Zone/Elements_TRI_3/ElementRange", "Base_2_2/Zone/GridCoordinates/CoordinateX", "Base_2_2/Zone/GridCoordinates/CoordinateY", "Base_2_2/Zone/ZoneBC/Bottom/PointList", "Base_2_2/Zone/ZoneBC/BottomLeft/PointList", "Base_2_2/Zone/ZoneBC/Top/PointList", "Global/P", "Global/p1", "Global/p2", "Global/p3", "Global/p4", "Global/p5"],
+    # "output_features": ["Base_2_2/Zone/VertexFields/U1", "Base_2_2/Zone/VertexFields/U2", "Base_2_2/Zone/VertexFields/sig11", "Base_2_2/Zone/VertexFields/sig12", "Base_2_2/Zone/VertexFields/sig22", "Global/max_U2_top", "Global/max_sig22_top", "Global/max_von_mises"],
+    #"passthrough_features": [],
+    # "training_split": ["train", "all"],
+    # "evaluation_split": ["test", "all"]}
+
+
+
+    def GetInfos(self):
+        if self._infos is None:
+            self._infos = self._request_json("/infos")
+        # {
+        #     "legal":
+        #         {"owner": "Safran", "license": "cc-by-sa-4.0"},
+        #     "data_production":
+        #         {"owner": null, "license": null, "type": "simulation", "physics": "2D quasistatic non-linear structural mechanics, small deformations, plane strain", "simulator": null, "hardware": null, "computation_duration": null, "script": null, "contact": null},
+        #     "data_description": null,
+        #     "num_samples": {"OOD": 2, "test": 200, "train": 500},
+        #     "storage_backend": "hf_datasets"
+        # }
+
+
+
     def RequestData(self, request, in_info_vec, out_info_vec):
         out_info = out_info_vec.GetInformationObject(0)
         executive = self.GetExecutive()
@@ -691,20 +682,22 @@ class MaestroExplorer(PlaidClientBase):
         if out_info.Has(executive.UPDATE_TIME_STEP()):
             requested_time = float(out_info.Get(executive.UPDATE_TIME_STEP()))
         else:
-            values = self.GetTimestepValues()
-            requested_time = float(values[0]) if values else 0.0
+            #values = self.GetTimestepValues()
+            #requested_time = float(values[0]) if values else 0.0
+            requested_time = 0.0
 
-        requested_time = find_closest_numpy(self.GetTimestepValues(), requested_time)
-        endpoint = "/predict_step" if self.usePredict else "/samples_step"
-        # print(endpoint)
+
+        #requested_time = find_closest_numpy(self.GetTimestepValues(), requested_time)
+        endpoint = "/predict" if self.usePredict else "/samples"
+
 
         # "angle_in":40
         payload = {
             "sample_ids": [self.sample_id],
-            "time": requested_time,
-            "dataset": self.experiment,
             "split": self._selected_split,
         }
+
+
         if len(self.input_features):
             #  {          <- this is added automaticaly
             #  toto = 5             the = is converted to : and add the "" around
@@ -713,51 +706,26 @@ class MaestroExplorer(PlaidClientBase):
             #
             #  }            <- this is added automaticaly
 
-            def ensureEncluse(string, start, end):
-                string = string.strip()
-                if not string.startswith(start):
-                    string = start + string
-                if not string.endswith(end):
-                    string = string + end
-                return string
+            payload["input_features"] = [json.loads(self.input_features)]
 
-            treated_input_features = self.input_features.replace("'", '"').strip()
-            treated_input_features = self.input_features.replace("=", ":").strip()
-            clean_treated_input_features = []
-            for line in treated_input_features.splitlines():
-                k, v = line.split(":")
-                k = ensureEncluse(k, '"', '"')
-                clean_treated_input_features.append(k + ":" + v)
-
-            treated_input_features = ",".join(clean_treated_input_features)
-            treated_input_features = ensureEncluse(treated_input_features, "{", "}")
-            # print(f"{treated_input_features=}")
-
-            payload["input_features"] = [json.loads(treated_input_features)]
-
-        step_response = self._request_json(
+        response = self._request_json(
             endpoint,
             payload,
         )
-        sample_payload = step_response.get("samples", [None])[0]
-        if sample_payload is None:
-            raise ValueError(
-                "/sample_step response does not contain a valid sample payload"
-            )
+        sample_payload = response.get("samples", [None])[0].get("trees")
+        sample_data = {}
 
-        output = vtkUnstructuredGrid.GetData(out_info)
-        self._build_unstructured_grid(sample_payload, output)
+        requested_time = find_closest_numpy(np.array([_decode_time(e["time"]) for e in sample_payload]), requested_time)
+        for entry in sample_payload:
+            time_value = _decode_time(entry["time"])
+            if requested_time == time_value:
+                sample_data[time_value] = cgns_tree_from_json_payload(entry["tree"])
+            else:
+                continue
 
-        # 2. Get the field data object
-        field_data = output.GetFieldData()
+        new_output= CGNSTreeToVtk(sample_data[time_value])
+        info = out_info_vec.GetInformationObject(0)
 
-        for key, value in sample_payload.items():
-            if key.startswith("Global/") and not key.endswith("_times"):
-                scalar_array = vtkDoubleArray()
-                # scalar_array.SetName(key.split("/")[-1])
-                scalar_array.SetName(key)
-                scalar_array.SetNumberOfComponents(len(value))
-                for v in value:
-                    scalar_array.InsertNextValue(v)
-                field_data.AddArray(scalar_array)
+
+        info.Set(vtk.vtkDataObject.DATA_OBJECT(), new_output)
         return 1
