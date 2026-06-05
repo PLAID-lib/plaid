@@ -98,10 +98,8 @@ curated_test_ids = curated_test_ids[:10]
 
 infos = Infos.model_validate(
     {
-        "legal": {
-            "owner": "NeuralOperator (https://zenodo.org/records/13993629)",
-            "license": "cc-by-4.0",
-        },
+        "owner": "NeuralOperator (https://zenodo.org/records/13993629)",
+        "license": "cc-by-4.0",
         "data_production": {
             "physics": "CFD",
             "type": "simulation",

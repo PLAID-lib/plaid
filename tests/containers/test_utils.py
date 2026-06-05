@@ -144,16 +144,15 @@ class Test_Container_Utils:
 
     def test_validate_required_only(self):
         infos = {
-            "legal": {"owner": "Joh Doe", "license": "cc-by-sa-4.0"},
+            "owner": "Joh Doe",
+            "license": "cc-by-sa-4.0",
             "num_samples": {"train": 1},
             "storage_backend": "zarr",
         }
         Infos.validate_required_only(infos)
 
         infos_missing_license = {
-            "legal": {
-                "owner": "Joh Doe",
-            },
+            "owner": "Joh Doe",
             "num_samples": {"train": 1},
             "storage_backend": "zarr",
         }

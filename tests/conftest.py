@@ -93,7 +93,8 @@ def other_samples(nb_samples: int, zone_name: str, base_name: str) -> list[Sampl
 def infos():
     return Infos.model_validate(
         {
-            "legal": {"owner": "PLAID2", "license": "BSD-3"},
+            "owner": "PLAID2",
+            "license": "BSD-3",
             "data_production": {"type": "simulation", "simulator": "Z-set"},
             "num_samples": {},
             "storage_backend": "zarr",

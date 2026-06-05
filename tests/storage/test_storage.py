@@ -265,7 +265,7 @@ class Test_Storage:
                 overwrite=False,
             )
 
-        with pytest.raises(TypeError, match="dict\[str, ProblemDefinition\]"):
+        with pytest.raises(TypeError, match=r"dict\[str, ProblemDefinition\]"):
             save_to_disk(
                 output_folder=test_dir,
                 sample_constructor=sample_constructor,

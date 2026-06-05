@@ -155,7 +155,9 @@ def test_validate_authorized_only_reraises_other_validation_errors():
     # validation error that is *not* of the unauthorized-key kind, so it
     # must be re-raised as ValidationError.
     with pytest.raises(ValidationError):
-        Infos.validate_authorized_only({"owner": "o", "license": "l", "num_samples": "nope"})
+        Infos.validate_authorized_only(
+            {"owner": "o", "license": "l", "num_samples": "nope"}
+        )
 
 
 def test_validate_required_only_accepts_valid_mapping():
@@ -205,20 +207,26 @@ def test_attribute_access_returns_typed_values():
 
 def test_save_to_file_treats_suffixless_path_as_directory(tmp_path):
     target = tmp_path / "myinfos"
-    Infos(owner="o", license="l", num_samples={}, storage_backend="zarr").save_to_file(target)
+    Infos(owner="o", license="l", num_samples={}, storage_backend="zarr").save_to_file(
+        target
+    )
     # Suffix-less, non-existing paths are treated as directories that
     # will hold an ``infos.yaml``.
     assert (target / "infos.yaml").is_file()
 
 
 def test_save_to_file_into_existing_directory(tmp_path):
-    Infos(owner="o", license="l", num_samples={}, storage_backend="zarr").save_to_file(tmp_path)
+    Infos(owner="o", license="l", num_samples={}, storage_backend="zarr").save_to_file(
+        tmp_path
+    )
     assert (tmp_path / "infos.yaml").is_file()
 
 
 def test_save_to_file_replaces_non_yaml_suffix(tmp_path):
     target = tmp_path / "weird.txt"
-    Infos(owner="o", license="l", num_samples={}, storage_backend="zarr").save_to_file(target)
+    Infos(owner="o", license="l", num_samples={}, storage_backend="zarr").save_to_file(
+        target
+    )
     # ``.txt`` suffix is replaced by ``.yaml``.
     assert (tmp_path / "weird.yaml").is_file()
     assert not target.exists()

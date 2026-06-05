@@ -24,7 +24,12 @@ _REFERENCE_DATASETS = ("dataset_cgns", "dataset_hf")
 
 
 def _infos(num_samples: dict[str, int], storage_backend: str = "zarr") -> Infos:
-    return Infos(owner="owner", license="license")
+    return Infos(
+        owner="owner",
+        license="license",
+        num_samples=num_samples,
+        storage_backend=storage_backend,
+    )
 
 
 def _copy_reference_dataset(tmp_path: Path, name: str = "dataset_cgns") -> Path:
@@ -541,7 +546,8 @@ def test_check_dataset_loader_failures_and_header_validations(
         plaidcheck,
         "load_infos_from_disk",
         lambda path: Infos.model_construct(  # noqa: ARG005
-            legal=Legal(owner="owner", license="license"),
+            owner="owner",
+            license="license",
             storage_backend=12,
             num_samples="bad",
         ),
@@ -909,9 +915,7 @@ def test_check_dataset_problem_definition_read_error_names_yaml_file(
     pb_def_dir = dataset / "problem_definitions"
     pb_def_dir.mkdir()
     (pb_def_dir / "bad_definition.yaml").write_text(
-        "input_features: [in]\n"
-        "output_features: [out]\n"
-        "unexpected_key: value\n",
+        "input_features: [in]\noutput_features: [out]\nunexpected_key: value\n",
         encoding="utf-8",
     )
 

@@ -117,7 +117,7 @@ dictionary with the same schema:
 
 ```python
 from plaid import ProblemDefinition
-from plaid.infos import DataDescription, Infos, Legal
+from plaid.infos import DataDescription, Infos
 from plaid.storage import save_to_disk
 
 pb_def = ProblemDefinition(
@@ -127,7 +127,8 @@ pb_def = ProblemDefinition(
     test_split={"test": "all"},
 )
 infos = Infos(
-    legal=Legal(owner="CompanyX", license="proprietary"),
+    owner="CompanyX",
+    license="proprietary",
     data_description=DataDescription(number_of_samples=3),
     num_samples={"train": 3},
 )

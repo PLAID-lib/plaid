@@ -36,7 +36,7 @@ import numpy as np
 
 # %%
 # Import necessary libraries and classes
-from plaid.infos import DataProduction, Infos, Legal
+from plaid.infos import DataProduction, Infos
 
 # %% [markdown]
 # ## Section 1: Initializing Infos
@@ -49,7 +49,8 @@ from plaid.infos import DataProduction, Infos, Legal
 # %%
 print("#---# Infos")
 infos = Infos(
-    legal=Legal(owner="PLAID", license="MIT"),
+    owner="PLAID",
+    license="MIT",
 )
 print(f"{infos = }")
 
@@ -59,10 +60,8 @@ print(f"{infos = }")
 # %%
 infos_from_mapping = Infos.model_validate(
     {
-        "legal": {
-            "owner": "PLAID",
-            "license": "MIT",
-        },
+        "owner": "PLAID",
+        "license": "MIT",
         "data_description": "Example metadata for a PLAID dataset.",
     }
 )
@@ -75,11 +74,13 @@ print(f"{infos_from_mapping = }")
 # metadata.
 
 # %% [markdown]
-# ### Set legal metadata
+# ### Set owner and license metadata
 
 # %%
-infos.legal = Legal(owner="Safran", license="proprietary")
-print(f"{infos.legal = }")
+infos.owner = "Safran"
+infos.license = "proprietary"
+print(f"{infos.owner = }")
+print(f"{infos.license = }")
 
 # %% [markdown]
 # ### Set data production metadata
@@ -110,8 +111,8 @@ print(f"{infos.storage_backend = }")  # Populated by save_to_disk for saved data
 # ### Retrieve data with Pydantic attributes
 
 # %%
-print(f"{infos.legal = }")
-print(f"{infos.legal.owner = }")
+print(f"{infos.owner = }")
+print(f"{infos.license = }")
 print(f"{infos.storage_backend = }")
 print(f"{infos.model_dump(exclude_none=True) = }")
 

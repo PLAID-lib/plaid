@@ -66,7 +66,9 @@ class Infos(BaseModel):
         if "num_samples" not in self.model_fields_set:
             raise ValueError("Missing required persisted infos field: 'num_samples'")
         if "storage_backend" not in self.model_fields_set or not self.storage_backend:
-            raise ValueError("Missing required persisted infos field: 'storage_backend'")
+            raise ValueError(
+                "Missing required persisted infos field: 'storage_backend'"
+            )
         return self
 
     @classmethod
@@ -128,7 +130,9 @@ class Infos(BaseModel):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_path(cls, path: Union[str, Path], require_persisted: bool = True) -> "Infos":
+    def from_path(
+        cls, path: Union[str, Path], require_persisted: bool = True
+    ) -> "Infos":
         """Load and validate an :class:`Infos` from a YAML file.
 
         Args:

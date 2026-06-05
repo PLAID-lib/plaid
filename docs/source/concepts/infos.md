@@ -9,7 +9,8 @@ root of a PLAID dataset.
 
 In the current API, infos stores:
 
-- `legal`, with required `owner` and `license` entries
+- `owner` and `license`, required string entries describing the dataset
+  ownership and licensing
 - `data_production`, for optional production context such as simulator,
   hardware, contact, or location
 - `data_description`, for optional dataset description entries such as the
@@ -20,10 +21,11 @@ In the current API, infos stores:
 ## Basic usage
 
 ```python
-from plaid.infos import DataProduction, Infos, Legal
+from plaid.infos import DataProduction, Infos
 
 infos = Infos(
-    legal=Legal(owner="Safran", license="proprietary"),
+    owner="Safran",
+    license="proprietary",
     data_production=DataProduction(
         type="simulation",
         physics="fluid dynamics",
@@ -38,10 +40,8 @@ Infos can also be built from a plain mapping, for instance after reading YAML:
 ```python
 infos = Infos.model_validate(
     {
-        "legal": {
-            "owner": "Safran",
-            "license": "proprietary",
-        },
+        "owner": "Safran",
+        "license": "proprietary",
     }
 )
 ```
@@ -85,14 +85,14 @@ directory.
 Pydantic serialization when a plain mapping is needed:
 
 ```python
-owner = infos.legal.owner
+owner = infos.owner
 backend = infos.storage_backend
 payload = infos.model_dump(exclude_none=True)
 ```
 
 ## Notes
 
-- `legal.owner` and `legal.license` are required when creating infos.
+- `owner` and `license` are required when creating infos.
 - `num_samples` and `storage_backend` are required when loading persisted dataset infos.
 - `num_samples` and `storage_backend` are overwritten with the actual saved dataset values when `save_to_disk(..., infos=...)` is called before writing `infos.yaml`.
 - Unknown keys are rejected during validation.
