@@ -1211,7 +1211,7 @@ class Sample(BaseModel):
 
         if zone_node is None:
             raise KeyError(
-                f"there is no base/zone <{base}/{zone}>, you should first create one with `Sample.init_zone({zone=},{base=})`"
+                f"There is no base/zone <{base}/{zone}>, you should first create one with `Sample.init_zone({zone=},{base=})`."
             )
         return CGU.getValueByPath(zone_node, "ZoneType").tobytes().decode()
 

@@ -321,7 +321,7 @@ def init_datasetdict_streaming_from_hub(
     else:
         infos = load_infos_from_hub(repo_id=repo_id)
         selected_ids = {
-            split: range(n_samples) for split, n_samples in infos["num_samples"].items()
+            split: range(n_samples) for split, n_samples in infos.num_samples.items()
         }
 
     return {

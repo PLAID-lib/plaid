@@ -117,12 +117,18 @@ dictionary with the same schema:
 
 ```python
 from plaid import ProblemDefinition
-from plaid.infos import DataDescription, Infos, Legal
+from plaid.infos import DataDescription, Infos
 from plaid.storage import save_to_disk
 
-pb_def = ProblemDefinition(name="regression_1")
+pb_def = ProblemDefinition(
+    input_features=["Global/input"],
+    output_features=["Base/Zone/VertexFields/pressure"],
+    train_split={"train": [0, 1, 2]},
+    test_split={"test": "all"},
+)
 infos = Infos(
-    legal=Legal(owner="CompanyX", license="proprietary"),
+    owner="CompanyX",
+    license="proprietary",
     data_description=DataDescription(number_of_samples=3),
     num_samples={"train": 3},
 )
@@ -132,7 +138,7 @@ save_to_disk(
     sample_constructor=sample_constructor,
     ids={"train": [0, 1, 2]},
     infos=infos,
-    pb_defs=pb_def,
+    pb_defs={"regression_1": pb_def},
 )
 ```
 

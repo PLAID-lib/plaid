@@ -455,15 +455,16 @@ class PlaidDatasetService:
         # writes no derived constant/variable schema metadata. Detect it
         # from ``infos.yaml`` and return empty feature catalogues so the
         # viewer falls back to inspecting samples directly.
+        infos = None
         try:
             if self._is_hub_dataset(dataset_id):
                 infos = load_infos_from_hub(dataset_id)
             else:
                 infos = load_infos_from_disk(str(self._dataset_dir(dataset_id)))
         except Exception:  # pragma: no cover - defensive
-            infos = {}
+            pass
         if (
-            infos.get("storage_backend") == "cgns"
+            infos is not None and infos.storage_backend == "cgns"
         ):  # pragma: no cover - exercised via integration tests
             metadata = ([], [])
             self._feature_metadata[dataset_id] = metadata

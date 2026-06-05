@@ -12,6 +12,7 @@ from plaid.cli import plaidcheck
 from plaid.cli.plaidcheck import (
     CheckReport,
     _check_numeric_content,
+    _check_problem_definition_sample_features,
     _is_branch_without_data,
     _is_branch_without_data_in_mapping,
     check_dataset,
@@ -20,6 +21,15 @@ from plaid.cli.plaidcheck import (
 from plaid.infos import Infos
 
 _REFERENCE_DATASETS = ("dataset_cgns", "dataset_hf")
+
+
+def _infos(num_samples: dict[str, int], storage_backend: str = "zarr") -> Infos:
+    return Infos(
+        owner="owner",
+        license="license",
+        num_samples=num_samples,
+        storage_backend=storage_backend,
+    )
 
 
 def _copy_reference_dataset(tmp_path: Path, name: str = "dataset_cgns") -> Path:
@@ -61,6 +71,46 @@ def test_check_dataset_missing_infos(tmp_path: Path, dataset_name: str) -> None:
 
 
 @pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_check_dataset_missing_required_layout_after_valid_infos(
+    tmp_path: Path, dataset_name: str
+) -> None:
+    """Missing layout file (other than infos.yaml) should short-circuit checks."""
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
+    if dataset_name == "dataset_cgns":
+        # CGNS backend only requires infos.yaml + data/.
+        shutil.rmtree(dataset_path / "data")
+    else:
+        (dataset_path / "variable_schema.yaml").unlink()
+
+    report = check_dataset(dataset_path)
+
+    assert report.has_errors()
+    assert any(msg.code == "MISSING_PATH" for msg in report.messages)
+    # The early return on missing layout means we never reach init-related codes.
+    assert not any(msg.code == "DATASET_INIT_ERROR" for msg in report.messages)
+
+
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_check_dataset_rejects_extra_infos_key(
+    tmp_path: Path, dataset_name: str
+) -> None:
+    """Extra infos.yaml keys should be reported through infos validation."""
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
+    infos_path = dataset_path / "infos.yaml"
+    original = infos_path.read_text(encoding="utf-8")
+    infos_path.write_text(
+        f"{original}\nplaid:\n  version: 0.1.13.dev36+g21db6656e.d20260302\n",
+        encoding="utf-8",
+    )
+
+    report = check_dataset(dataset_path)
+
+    assert report.has_errors()
+    assert any(msg.code == "INFOS_READ_ERROR" for msg in report.messages)
+    assert any("plaid" in msg.message for msg in report.messages)
+
+
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
 def test_check_dataset_num_samples_mismatch(tmp_path: Path, dataset_name: str) -> None:
     """Tampering with num_samples should raise split mismatch errors."""
     dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
@@ -93,6 +143,21 @@ def test_main_json_output_and_exit_code(
     assert code == 0
     assert "counts" in payload
     assert "messages" in payload
+
+
+@pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
+def test_main_text_success_does_not_count_ok_as_info(
+    tmp_path: Path, capsys, dataset_name: str
+) -> None:
+    """Successful text output should show OK without adding an info count."""
+    dataset_path = _copy_reference_dataset(tmp_path, dataset_name)
+
+    code = main([str(dataset_path)])
+    out = capsys.readouterr().out
+
+    assert code == 0
+    assert f"[OK] {dataset_path}: No issue detected" in out
+    assert "Summary: 0 error(s), 0 warning(s), 0 info message(s)" in out
 
 
 @pytest.mark.parametrize("dataset_name", _REFERENCE_DATASETS)
@@ -199,12 +264,14 @@ class _FakeSampleForCheck:
         global_names: list[str] | None = None,
         tree: Any = None,
         checksum: str = "same",
+        features: dict[str, Any] | None = None,
     ) -> None:
         self._global_value = global_value
         self._field_value = field_value
         self._global_names = ["G"] if global_names is None else global_names
         self._tree = tree
         self._checksum = checksum
+        self._features = {} if features is None else features
 
     def get_zone_names(self, base: str, time: float) -> list[str]:  # noqa: ARG002
         """Return deterministic zone names for checker traversal.
@@ -231,6 +298,8 @@ class _FakeSampleForCheck:
         Returns:
             Global value payload.
         """
+        if path in self._features:
+            return self._features[path]
         return self._global_value
 
     def get_tree(self):
@@ -300,8 +369,14 @@ class _FakeConverter:
     ) -> None:
         self._samples = samples
         self._fail_indices = set() if fail_indices is None else fail_indices
+        self.feature_requests: list[list[str] | None] = []
 
-    def to_plaid(self, dataset: _FakeDataset, idx: int) -> Any:  # noqa: ARG002
+    def to_plaid(
+        self,
+        dataset: _FakeDataset,  # noqa: ARG002
+        idx: int,
+        features: list[str] | None = None,
+    ) -> Any:
         """Return fake sample or raise conversion error.
 
         Args:
@@ -311,9 +386,34 @@ class _FakeConverter:
         Returns:
             Fake sample instance.
         """
+        self.feature_requests.append(features)
         if idx in self._fail_indices:
             raise RuntimeError("boom")
         return self._samples[idx]
+
+
+class _FakeSampleWithFeatureFailure:
+    """Sample-like object that fails for selected feature paths."""
+
+    def __init__(self, values: dict[str, Any], failing_features: set[str]) -> None:
+        self._values = values
+        self._failing_features = failing_features
+
+    def get_feature_by_path(self, path: str) -> Any:
+        """Return configured values or raise for configured paths.
+
+        Args:
+            path: Feature path to read.
+
+        Returns:
+            Configured feature value.
+
+        Raises:
+            RuntimeError: If the path is configured as failing.
+        """
+        if path in self._failing_features:
+            raise RuntimeError(f"cannot read {path}")
+        return self._values[path]
 
 
 def test_check_numeric_content_all_remaining_branches() -> None:
@@ -324,6 +424,66 @@ def test_check_numeric_content_all_remaining_branches() -> None:
     assert (
         _check_numeric_content(np.array([None, "x"], dtype=object))
         == "contains None in object array"
+    )
+
+
+def test_check_problem_definition_sample_reports_conversion_error() -> None:
+    """Problem-definition sample conversion failures should be reported."""
+    report = CheckReport(messages=[])
+    converter = _FakeConverter([_FakeSampleForCheck()], fail_indices={0})
+
+    _check_problem_definition_sample_features(
+        pb_name="pb",
+        split_dict_name="train_split",
+        split_name="train",
+        idx=0,
+        dataset=_FakeDataset(1),
+        converter=converter,
+        features=["Input"],
+        report=report,
+    )
+
+    assert len(report.messages) == 1
+    msg = report.messages[0]
+    assert msg.severity == "error"
+    assert msg.code == "PB_DEF_SAMPLE_CONVERSION_ERROR"
+    assert msg.location == "problem_definitions/pb/train_split/train[0]"
+    assert msg.message == "boom"
+
+
+def test_check_problem_definition_sample_reports_feature_read_error_and_continues() -> (
+    None
+):
+    """Feature read failures should be reported without stopping later checks."""
+    report = CheckReport(messages=[])
+    sample = _FakeSampleWithFeatureFailure(
+        values={"Good": np.array([1.0]), "BadValue": np.array([np.nan])},
+        failing_features={"Unreadable"},
+    )
+    converter = _FakeConverter([sample])
+
+    _check_problem_definition_sample_features(
+        pb_name="pb",
+        split_dict_name="test_split",
+        split_name="test",
+        idx=0,
+        dataset=_FakeDataset(1),
+        converter=converter,
+        features=["Unreadable", "Good", "BadValue"],
+        report=report,
+    )
+
+    assert any(
+        msg.severity == "error"
+        and msg.code == "PB_DEF_FEATURE_READ_ERROR"
+        and msg.location == "problem_definitions/pb/test_split/test[0] Unreadable"
+        and msg.message == "cannot read Unreadable"
+        for msg in report.messages
+    )
+    # Numeric content is intentionally not re-checked here: it is already
+    # validated by the per-split loop in `check_dataset`.
+    assert not any(
+        msg.code == "PB_DEF_INVALID_FEATURE_VALUE" for msg in report.messages
     )
 
 
@@ -372,7 +532,7 @@ def test_check_dataset_loader_failures_and_header_validations(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}},  # noqa: ARG005
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -403,7 +563,12 @@ def test_check_dataset_loader_failures_and_header_validations(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": 12, "num_samples": "bad"},  # noqa: ARG005
+        lambda path: Infos.model_construct(  # noqa: ARG005
+            owner="owner",
+            license="license",
+            storage_backend=12,
+            num_samples="bad",
+        ),
     )
     report_header = check_dataset(dataset)
     assert any(msg.code == "BACKEND_MISSING" for msg in report_header.messages)
@@ -419,7 +584,7 @@ def test_check_dataset_split_and_data_warnings_and_duplicates(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 3}},  # noqa: ARG005
+        lambda path: _infos({"train": 3}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck, "load_metadata_from_disk", lambda _path: ({}, {"Var": {}}, {}, None)
@@ -475,7 +640,7 @@ def test_check_dataset_sample_conversion_error(tmp_path: Path, monkeypatch) -> N
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 1}},  # noqa: ARG005
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -496,6 +661,60 @@ def test_check_dataset_sample_conversion_error(tmp_path: Path, monkeypatch) -> N
     assert any(msg.code == "SAMPLE_CONVERSION_ERROR" for msg in report.messages)
 
 
+def test_check_dataset_init_keyerror_reported_as_missing_split(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """KeyError raised by `init_from_disk` should map to NUM_SAMPLES_MISSING_SPLIT."""
+    dataset = _make_minimal_layout(tmp_path)
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Var": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+
+    def _raise_key_error(path):  # noqa: ARG001
+        raise KeyError("ghost_split")
+
+    monkeypatch.setattr(plaidcheck, "init_from_disk", _raise_key_error)
+
+    report = check_dataset(dataset)
+
+    assert any(msg.code == "NUM_SAMPLES_MISSING_SPLIT" for msg in report.messages)
+    assert any("ghost_split" in msg.message for msg in report.messages)
+    assert not any(msg.code == "DATASET_INIT_ERROR" for msg in report.messages)
+
+
+def test_check_dataset_missing_num_samples_split_is_clear(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Missing split declarations should not be reported as opaque KeyErrors."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "data" / "OOD").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Var": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+
+    report = check_dataset(dataset)
+
+    assert any(msg.code == "NUM_SAMPLES_MISSING_SPLIT" for msg in report.messages)
+    assert not any(msg.code == "DATASET_INIT_ERROR" for msg in report.messages)
+    assert any("OOD" in msg.message for msg in report.messages)
+
+
 def test_check_dataset_problem_definition_validation_paths(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -506,7 +725,7 @@ def test_check_dataset_problem_definition_validation_paths(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: {"storage_backend": "zarr", "num_samples": {"train": 2}},  # noqa: ARG005
+        lambda path: _infos({"train": 2}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
@@ -564,6 +783,208 @@ def test_check_dataset_problem_definition_validation_paths(
     assert any(msg.code == "PB_DEF_OUT_OF_RANGE_INDICES" for msg in report_pb.messages)
 
 
+def test_check_dataset_problem_definition_instantiates_filtered_features(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Problem definitions should instantiate exact train/test feature subsets."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "problem_definitions").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 1, "test": 1}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": {}, "test": {}},
+            {"Input": {}, "Output": {}},
+            {"train": {}, "test": {}},
+            None,
+        ),
+    )
+
+    train_converter = _FakeConverter(
+        [
+            _FakeSampleForCheck(
+                features={"Input": np.array([1.0]), "Output": np.array([np.nan])}
+            )
+        ]
+    )
+    test_converter = _FakeConverter(
+        [
+            _FakeSampleForCheck(
+                features={"Input": np.array([2.0]), "Output": np.array([np.nan])}
+            )
+        ]
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": _FakeDataset(1), "test": _FakeDataset(1)},
+            {"train": train_converter, "test": test_converter},
+        ),
+    )
+
+    class _PBDef:
+        input_features = ["Input"]
+        output_features = ["Output"]
+        train_split = {"train": [0]}
+        test_split = {"test": [0]}
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: {"pb": _PBDef()},  # noqa: ARG005
+    )
+
+    report = check_dataset(dataset, show_progress=False)
+
+    assert train_converter.feature_requests[-1] == ["Input", "Output"]
+    assert test_converter.feature_requests[-1] == ["Input"]
+    # The pb-def loop no longer re-checks numeric content; it only verifies that
+    # the requested feature subset can be converted and read back.
+    assert not any(
+        msg.code == "PB_DEF_INVALID_FEATURE_VALUE" for msg in report.messages
+    )
+
+
+def test_check_dataset_filters_problem_definitions(tmp_path: Path, monkeypatch) -> None:
+    """Selected problem definitions should be checked without checking others."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "problem_definitions").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 1}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Input": {}, "Output": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": _FakeDataset(1)},
+            {"train": _FakeConverter([_FakeSampleForCheck()])},
+        ),
+    )
+
+    class _PBDef:
+        def __init__(self, input_features, output_features, train_split):
+            self.input_features = input_features
+            self.output_features = output_features
+            self.train_split = train_split
+            self.test_split = None
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: {  # noqa: ARG005
+            "selected": _PBDef(["Input"], ["Output"], {"train": [0]}),
+            "skipped": _PBDef(["UnknownInput"], ["UnknownOutput"], {"ghost": [0]}),
+        },
+    )
+
+    report = check_dataset(
+        dataset,
+        show_progress=False,
+        problem_definitions=["selected"],
+    )
+
+    assert not any(
+        "problem_definitions/skipped" in msg.location for msg in report.messages
+    )
+    assert not any(msg.code == "PB_DEF_UNKNOWN_INPUT" for msg in report.messages)
+    assert not any(msg.code == "PB_DEF_UNKNOWN_SPLIT" for msg in report.messages)
+
+
+def test_check_dataset_reports_unknown_requested_problem_definition(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Unknown requested problem definitions should be reported explicitly."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "problem_definitions").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 0}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Input": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: ({"train": _FakeDataset(0)}, {"train": _FakeConverter([])}),  # noqa: ARG005
+    )
+
+    class _PBDef:
+        input_features = ["Input"]
+        output_features = []
+        train_split = {"train": []}
+        test_split = None
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: {"known": _PBDef()},  # noqa: ARG005
+    )
+
+    report = check_dataset(
+        dataset,
+        show_progress=False,
+        problem_definitions=["ghost"],
+    )
+
+    assert any(msg.code == "PB_DEF_UNKNOWN" for msg in report.messages)
+    assert any("known" in msg.message for msg in report.messages)
+
+
+def test_check_dataset_problem_definition_read_error_names_yaml_file(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Problem-definition read errors should identify the offending YAML file."""
+    dataset = _make_minimal_layout(tmp_path)
+    pb_def_dir = dataset / "problem_definitions"
+    pb_def_dir.mkdir()
+    (pb_def_dir / "bad_definition.yaml").write_text(
+        "input_features: [in]\noutput_features: [out]\nunexpected_key: value\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 0}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Known": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: ({"train": _FakeDataset(0)}, {"train": _FakeConverter([])}),  # noqa: ARG005
+    )
+
+    report = check_dataset(dataset)
+
+    assert any(msg.code == "PB_DEF_READ_ERROR" for msg in report.messages)
+    assert any("bad_definition.yaml" in msg.message for msg in report.messages)
+    assert any("extra_forbidden" in msg.message for msg in report.messages)
+
+
 def test_main_strict_returns_warning_exit_code(
     monkeypatch, tmp_path: Path, capsys
 ) -> None:
@@ -571,8 +992,38 @@ def test_main_strict_returns_warning_exit_code(
     report = CheckReport(messages=[])
     report.add("warning", "W", "loc", "msg")
 
-    monkeypatch.setattr(plaidcheck, "check_dataset", lambda path, splits=None: report)  # noqa: ARG005
+    monkeypatch.setattr(
+        plaidcheck,
+        "check_dataset",
+        lambda path, splits=None, show_progress=True, problem_definitions=None: report,  # noqa: ARG005
+    )
     code = main([str(tmp_path), "--strict"])
     _ = capsys.readouterr().out
 
     assert code == 2
+
+
+def test_main_json_disables_progress(monkeypatch, tmp_path: Path, capsys) -> None:
+    """JSON mode should disable progress bars and forward CLI filters."""
+    seen: dict[str, Any] = {}
+    report = CheckReport(messages=[])
+
+    def _fake_check_dataset(
+        path,  # noqa: ARG001
+        splits=None,  # noqa: ARG001
+        show_progress=True,
+        problem_definitions=None,
+    ):
+        seen["show_progress"] = show_progress
+        seen["problem_definitions"] = problem_definitions
+        return report
+
+    monkeypatch.setattr(plaidcheck, "check_dataset", _fake_check_dataset)
+
+    code = main([str(tmp_path), "--json", "--problem-definition", "pb"])
+    payload = json.loads(capsys.readouterr().out)
+
+    assert code == 0
+    assert payload["counts"] == {"error": 0, "warning": 0, "info": 0}
+    assert seen["show_progress"] is False
+    assert seen["problem_definitions"] == ["pb"]

@@ -18,7 +18,7 @@
 #
 # This Jupyter Notebook demonstrates the usage of the ProblemDefinition class for defining machine learning problems using the PLAID library. It includes examples of:
 #
-# 1. Initializing an empty ProblemDefinition
+# 1. Initializing a complete ProblemDefinition
 # 2. Configuring problem characteristics and retrieve data
 # 3. Saving and loading problem definitions
 #
@@ -37,38 +37,42 @@ import numpy as np
 from plaid import ProblemDefinition
 
 # %% [markdown]
-# ## Section 1: Initializing an Empty ProblemDefinition
+# ## Section 1: Initializing a ProblemDefinition
 #
 # This section demonstrates how to initialize a ProblemDefinition and add
 # input/output feature identifiers with the current API.
 
 # %% [markdown]
-# ### Initialize and print ProblemDefinition
+# ### Initialize feature identifiers
 
 # %%
-print("#---# Empty ProblemDefinition")
-problem = ProblemDefinition()
-print(f"{problem = }")
-
-# %%
-# ### Initialize some feature identifiers
 scalar_1_feat_id = "Global/scalar_1"
 scalar_2_feat_id = "Global/scalar_2"
 scalar_3_feat_id = "Global/scalar_3"
 field_1_feat_id = "Base_2_2/Zone/CellCenterFields/field_1"
 field_2_feat_id = "Base_2_2/Zone/VertexFields/field_2"
 
+# %%
+print("#---# ProblemDefinition")
+problem = ProblemDefinition(
+    input_features=[scalar_3_feat_id, field_1_feat_id],
+    output_features=[field_2_feat_id],
+    train_split={"train": [0, 1]},
+    test_split={"test": [2, 3]},
+)
+print(f"{problem = }")
+
 # %% [markdown]
 # ### Add inputs / outputs to a Problem Definition
 
 # %%
-# Add unique input and output feature identifiers
+# Add unique input and output feature identifiers after initialization
 #problem.add_input_features(scalar_1_feat_id)
 #problem.add_output_features(scalar_2_feat_id)
 
 # or Add list of input and output feature identifiers
-problem.add_input_features([scalar_3_feat_id, field_1_feat_id])
-problem.add_output_features([field_2_feat_id])
+problem.add_input_features([scalar_1_feat_id])
+problem.add_output_features([scalar_2_feat_id])
 
 print(f"{problem.input_features = }")
 print(
@@ -81,28 +85,25 @@ print(
 # This section demonstrates how to handle and configure ProblemDefinition objects and access data.
 
 # %% [markdown]
-# ### Set Problem Definition name
-
-# %%
-problem.name = "my_problem_definition"
-print(f"{problem.name = }")
+# ### Problem Definition identifier
+#
+# ProblemDefinition has no stored name. When saved in a dataset, its identifier
+# is the YAML filename stem or the key in a `dict[str, ProblemDefinition]`.
 
 # %% [markdown]
 # ### Set Problem Definition split
 
 # %%
-# Current API uses `train_split` and `test_split` fields.
+# Current API uses required `train_split` and `test_split` fields.
 # Note: each split field currently expects a dictionary with a single entry.
-problem.train_split = {"train": [0, 1]}
-problem.test_split = {"test": [2, 3]}
 print(f"{problem.train_split = }")
 print(f"{problem.test_split = }")
 
 # %%
-split_names = [problem.get_train_split_name(), problem.get_test_split_name()]
+split_names = [next(iter(problem.train_split)), next(iter(problem.test_split))]
 split_indices = {
-    problem.get_train_split_name(): problem.get_train_split_indices(),
-    problem.get_test_split_name(): problem.get_test_split_indices(),
+    next(iter(problem.train_split)): next(iter(problem.train_split.values())),
+    next(iter(problem.test_split)): next(iter(problem.test_split.values())),
 }
 print(f"{split_names = }")
 print(f"{split_indices = }")
@@ -136,6 +137,5 @@ problem.save_to_file(pb_def_save_fname)
 # ### Load a ProblemDefinition from a YAML file
 
 # %%
-problem = ProblemDefinition()
-problem._load_from_file_(pb_def_save_fname)
+problem = ProblemDefinition.from_path(pb_def_save_fname)
 print(problem)

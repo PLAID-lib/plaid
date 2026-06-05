@@ -244,8 +244,8 @@ def init_from_disk(
     """
     infos = load_infos_from_disk(local_dir)
 
-    backend = infos["storage_backend"]
-    num_samples = infos["num_samples"]
+    backend = infos.storage_backend
+    num_samples = infos.num_samples
 
     datasetdict = get_backend(backend).init_from_disk(path=local_dir)
 
@@ -299,7 +299,7 @@ def download_from_hub(
     infos = load_infos_from_hub(repo_id)
     pb_defs = load_problem_definitions_from_hub(repo_id)
 
-    backend = infos["storage_backend"]
+    backend = infos.storage_backend
 
     backend_spec = get_backend(backend)
     backend_spec.download_from_hub(repo_id, local_dir, split_ids, features, overwrite)
@@ -340,8 +340,8 @@ def init_streaming_from_hub(
     )
     infos = load_infos_from_hub(repo_id)
 
-    backend = infos["storage_backend"]
-    num_samples = infos["num_samples"]
+    backend = infos.storage_backend
+    num_samples = infos.num_samples
 
     backend_spec = get_backend(backend)
     datasetdict = backend_spec.init_datasetdict_streaming_from_hub(

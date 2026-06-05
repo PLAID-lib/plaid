@@ -12,8 +12,8 @@ You can find here detailed examples for different parts of plaid, explained in J
 * [Sample](notebooks/containers/sample_example.md)
 * [Problem definition](notebooks/problem_definition_example.md)
 * [Infos](notebooks/infos_example.md)
-* [Downloadable samples](notebooks/downloadable_example/sample_example.md)
 
 ## Tutorials
 
+* [Downloadable samples](tutorials/downloadable_example.md)
 * [Conversion tutorial](tutorials/storage.md)
