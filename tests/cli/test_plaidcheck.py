@@ -12,6 +12,7 @@ from plaid.cli import plaidcheck
 from plaid.cli.plaidcheck import (
     CheckReport,
     _check_numeric_content,
+    _check_problem_definition_sample_features,
     _is_branch_without_data,
     _is_branch_without_data_in_mapping,
     check_dataset,
@@ -370,6 +371,30 @@ class _FakeConverter:
         return self._samples[idx]
 
 
+class _FakeSampleWithFeatureFailure:
+    """Sample-like object that fails for selected feature paths."""
+
+    def __init__(self, values: dict[str, Any], failing_features: set[str]) -> None:
+        self._values = values
+        self._failing_features = failing_features
+
+    def get_feature_by_path(self, path: str) -> Any:
+        """Return configured values or raise for configured paths.
+
+        Args:
+            path: Feature path to read.
+
+        Returns:
+            Configured feature value.
+
+        Raises:
+            RuntimeError: If the path is configured as failing.
+        """
+        if path in self._failing_features:
+            raise RuntimeError(f"cannot read {path}")
+        return self._values[path]
+
+
 def test_check_numeric_content_all_remaining_branches() -> None:
     """Numeric checker should report all remaining invalid content cases."""
     assert _check_numeric_content([]) == "value is empty"
@@ -378,6 +403,68 @@ def test_check_numeric_content_all_remaining_branches() -> None:
     assert (
         _check_numeric_content(np.array([None, "x"], dtype=object))
         == "contains None in object array"
+    )
+
+
+def test_check_problem_definition_sample_reports_conversion_error() -> None:
+    """Problem-definition sample conversion failures should be reported."""
+    report = CheckReport(messages=[])
+    converter = _FakeConverter([_FakeSampleForCheck()], fail_indices={0})
+
+    _check_problem_definition_sample_features(
+        pb_name="pb",
+        split_dict_name="train_split",
+        split_name="train",
+        idx=0,
+        dataset=_FakeDataset(1),
+        converter=converter,
+        features=["Input"],
+        report=report,
+    )
+
+    assert len(report.messages) == 1
+    msg = report.messages[0]
+    assert msg.severity == "error"
+    assert msg.code == "PB_DEF_SAMPLE_CONVERSION_ERROR"
+    assert msg.location == "problem_definitions/pb/train_split/train[0]"
+    assert msg.message == "boom"
+
+
+def test_check_problem_definition_sample_reports_feature_read_error_and_continues() -> (
+    None
+):
+    """Feature read failures should be reported without stopping later checks."""
+    report = CheckReport(messages=[])
+    sample = _FakeSampleWithFeatureFailure(
+        values={"Good": np.array([1.0]), "BadValue": np.array([np.nan])},
+        failing_features={"Unreadable"},
+    )
+    converter = _FakeConverter([sample])
+
+    _check_problem_definition_sample_features(
+        pb_name="pb",
+        split_dict_name="test_split",
+        split_name="test",
+        idx=0,
+        dataset=_FakeDataset(1),
+        converter=converter,
+        features=["Unreadable", "Good", "BadValue"],
+        report=report,
+    )
+
+    assert any(
+        msg.severity == "error"
+        and msg.code == "PB_DEF_FEATURE_READ_ERROR"
+        and msg.location == "problem_definitions/pb/test_split/test[0] Unreadable"
+        and msg.message == "cannot read Unreadable"
+        for msg in report.messages
+    )
+    assert any(
+        msg.severity == "warning"
+        and msg.code == "PB_DEF_INVALID_FEATURE_VALUE"
+        and msg.location == "problem_definitions/pb/test_split/test[0] BadValue"
+        and msg.message == "contains NaN"
+        for msg in report.messages
     )
 
 
