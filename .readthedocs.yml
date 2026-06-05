@@ -21,7 +21,3 @@ build:
     - cd docs && uv run bash generate_doc.sh
     - mkdir -p $READTHEDOCS_OUTPUT/html
     - cp -R docs/_build/html/. $READTHEDOCS_OUTPUT/html/
-
-addons:
-  search:
-    enabled: false
