@@ -17,6 +17,6 @@ print("samples.vki_ls59:", samples.vki_ls59)
 
 The first call to `samples.vki_ls59` triggers a download and takes a few seconds.
 
-## Cached retrieval
+## Cached retrievals
 
 Subsequent calls are instantaneous because they reuse the cached sample.
