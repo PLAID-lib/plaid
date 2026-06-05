@@ -36,7 +36,6 @@ nav = [
     { "Quickstart" = "quickstart.md" },
     { "Citation" = "citation.md" },
     { "Contributing" = "contributing.md" },
-    { "Upgrade guide" = "upgrade_guide.md" },
   ] },
   { "User guide" = [
     { "Concepts" = [
@@ -58,6 +57,7 @@ nav = [
     ] },
     { "plaid-viewer" = "concepts/viewer.md" },
     { "plaid-check" = "concepts/check.md" },
+    { "Upgrade guide" = "upgrade_guide.md" },
     # >>> AUTO-GENERATED API REFERENCE START
     # The block below is overwritten by `python docs/generate_api_stubs.py`.
     # Edit that script (or the markers) instead of changing this section by hand.

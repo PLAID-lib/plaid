@@ -9,7 +9,7 @@ This page explains how to upgrade an existing code base to **PLAID v1.0.0**.
 PLAID follows [Semantic Versioning](https://semver.org/). The `v1.0.0` release is
 the first major release: it consolidates the data model, removes deprecated and
 out-of-scope modules, and simplifies several public APIs. As a major release, it
-contains **breaking changes** compared to the `0.1.x` series.
+contains **breaking changes**.
 
 The guide is organized by **version jump**. Read the section that matches the
 version you are upgrading *from*. For the exhaustive, change-by-change history,
@@ -172,37 +172,12 @@ the [reader API](api/storage/reader.md), and the [backend API](api/storage/backe
 | `Dataset.add_features_from_tabular` (ex-`from_tabular`) | build the corresponding `Sample` objects in `sample_constructor` |
 | `Dataset.extract_dataset_from_identifier` | request features at read time: `converter.to_plaid(dataset, i, features=[...])` |
 | `Dataset.get_tabular_from_stacked_identifiers` | gather features yourself from the materialized `Sample` objects |
+| `plaid.examples` | `plaid.downloadable_examples` |
 | change backend (e.g. CGNS → HF) | `init_from_disk` then `save_to_disk` with the new `backend` (see the [Conversion tutorial](tutorials/storage.md)) |
 
 If you only need a subset of features or spatial indices, the converter supports
 `features=[...]` and `indexers={...}` for partial reads on the `hf_datasets` and
 `zarr` backends — see the [Conversion tutorial](tutorials/storage.md#indexed-extraction-with-indexers).
-
-### `plaid.types`
-
-Several type aliases were removed and a few were renamed.
-
-| Removed in 1.0.0 | Notes / replacement |
-| --- | --- |
-| `Scalar`, `Field`, `TimeSequence`, `Feature` | feature-level aliases removed |
-| `SklearnBlock` | tied to the removed `pipelines` module |
-| `FeatureIdentifier` | import from `plaid.containers.feature_identifier` if needed |
-| `ArrayDType` | replaced by `ScalarDType` |
-| `IndexType` | replaced by `IndexArrayType` |
-
-The public aliases now exported from `plaid.types` are:
-
-```python
-from plaid.types import (
-    Array,
-    ScalarDType,
-    IndexArrayType,
-    ScalarOrArray,
-    ScalarOrArrayOrStr,
-    CGNSNode,
-    CGNSTree,
-)
-```
 
 ### Removed modules
 
@@ -218,7 +193,6 @@ either out of the scope of the data model or superseded:
 | `plaid.utils.interpolation` | use an external interpolation routine |
 | `plaid.utils.init_with_tabular` | construct samples explicitly |
 | `plaid.utils.deprecation`, `plaid.utils.base` | internal helpers, no public replacement |
-| `plaid.examples` | see the examples and tutorials in the documentation |
 
 If you imported any of these, remove the import and move the corresponding logic
 into your own project, or rely on the supported data-model APIs.
@@ -226,8 +200,10 @@ into your own project, or rely on the supported data-model APIs.
 ### `ProblemDefinition`
 
 `ProblemDefinition` was rewritten as a compact [pydantic](https://docs.pydantic.dev/)
-model. The many `*_features_identifiers` accessors were replaced by two methods,
-and YAML key order is now enforced.
+model with four required fields — `input_features`, `output_features`,
+`train_split` and `test_split`. The many `*_features_identifiers` accessors were
+collapsed into two methods, splits became plain model attributes, and YAML key
+order is now enforced on save.
 
 ```python
 # Before (0.1.x)
@@ -237,18 +213,34 @@ pb.set_in_features_identifiers([...])
 pb.set_out_features_identifiers([...])
 pb.get_in_features_identifiers()
 pb.get_out_features_identifiers()
+pb.get_split("train")            # split accessors
 
 # After (1.0.0)
+from plaid import ProblemDefinition
+
+pb = ProblemDefinition(
+    input_features=["Base/Zone/GridCoordinates/CoordinateX"],
+    output_features=["Base/Zone/VertexFields/pressure"],
+    train_split={"train": [0, 1, 2]},
+    test_split={"test": [3, 4]},
+)
 pb.add_input_features([...])
 pb.add_output_features([...])
+pb.train_split                   # direct attribute access
+pb.test_split
 ```
 
 The public surface of `ProblemDefinition` in `1.0.0` is intentionally small:
-`from_path`, `add_input_features`, `add_output_features`, `save_to_file`, and the
-train/test split accessors (`get_train_split_name`, `get_train_split_indices`,
-`get_test_split_name`, `get_test_split_indices`). The previous
-`constant_features_identifiers` accessors were removed together with the
-in/out identifier accessors. See the
+`from_path`, `model_validate`, `add_input_features`, `add_output_features`,
+`save_to_file`, and the four model fields (`input_features`, `output_features`,
+`train_split`, `test_split`). The previous `constant_features_identifiers`
+accessors and the `get_*_split_*` / `set_*_split_*` helpers were removed
+together with the in/out identifier accessors; splits are now read and assigned
+directly via the `train_split` / `test_split` attributes, and feature lists are
+normalized (stringified, sorted, deduplicated, non-empty) by pydantic
+validators. The problem name is no longer stored in the model — on disk it is
+the YAML filename stem, in memory it is the dictionary key returned by
+`load_problem_definitions_from_disk`. See the
 [Problem definition concept page](concepts/problem_definition.md) and the
 [`problem_definition` API](api/problem_definition.md).
 
@@ -272,6 +264,10 @@ your read/write code against the current
   level as `ProblemDefinition` (see [Infos](concepts/infos.md)).
 - **`plaid.viewer`** — an interactive [trame](https://kitware.github.io/trame/)
   application for visual dataset exploration (see [Viewer](concepts/viewer.md)).
+- **`plaid-check`** — a CLI tool that validates the integrity of a local PLAID
+  dataset (on-disk layout, `infos.yaml`, splits, sample conversion, invalid
+  numeric values, duplicated samples, and optional problem definitions); see
+  [Dataset check](concepts/check.md).
 
 ---
 
