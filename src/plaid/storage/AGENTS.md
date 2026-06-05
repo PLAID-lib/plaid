@@ -9,6 +9,7 @@ Storage follows a **Registry pattern**:
 ```
 storage/
 ├── registry.py        <- Dispatches to the correct backend based on format
+├── backend_api.py     <- Backend contract (BackendModule Protocol)
 ├── reader.py          <- Public read API (delegates to backend readers)
 ├── writer.py          <- Public write API (delegates to backend writers)
 ├── common/            <- Abstract interfaces and shared utilities
@@ -23,15 +24,20 @@ storage/
 
 ## How it works
 
-1. The **registry** (`registry.py`) maps format identifiers to backend modules.
+1. The **registry** (`registry.py`) holds a `BACKENDS` dict mapping each format name
+   (`"cgns"`, `"hf_datasets"`, `"zarr"`) to its backend class, exposed through
+   `get_backend(name)` and `available_backends()`.
 2. The public `reader.py` and `writer.py` at the top level accept a format parameter and delegate to the appropriate backend.
-3. Each backend implements the interfaces defined in `common/reader.py` and `common/writer.py`.
+3. Each backend exposes a backend class (e.g. `ZarrBackend`, `HFBackend`, `CgnsBackend`)
+   that conforms to the `BackendModule` Protocol in `backend_api.py`, and implements the
+   read/write logic in its `reader.py` and `writer.py`.
 
 ## Adding a new backend
 
 1. Create a new subdirectory under `storage/` (e.g., `storage/my_format/`).
-2. Implement `reader.py` and `writer.py` following the interfaces in `common/`.
-3. Register the new backend in `registry.py`.
+2. Implement a backend class conforming to the `BackendModule` Protocol
+   (`backend_api.py`), with its `reader.py` and `writer.py` following the interfaces in `common/`.
+3. Register the new backend by adding it to the `BACKENDS` dict in `registry.py`.
 4. Add round-trip tests (write then read) to verify data integrity.
 
 ## Design constraints

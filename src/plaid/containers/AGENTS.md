@@ -1,28 +1,37 @@
 # AGENTS.md -- plaid/containers
 
-This module defines the core data containers of the PLAID data model.
+This module defines the core data container of the PLAID data model.
 
 ## Key classes
 
 | Class | File | Description |
 |-------|------|-------------|
-| `Dataset` | `dataset.py` | Ordered collection of `Sample` objects sharing a common `ProblemDefinition`. Main entry point for loading and manipulating simulation data. |
-| `Sample` | `sample.py` | Single simulation snapshot containing mesh coordinates and field values as `Features`. |
-| `Features` | `features.py` | Named tensor-like container with shape and dtype metadata. Wraps numpy arrays. |
-| `FeatureIdentifier` | `feature_identifier.py` | Immutable key (name + location) used to uniquely identify a feature across samples. |
-| `DefaultManager` | `managers/default_manager.py` | Manages default values and missing data for features within a dataset. |
+| `Sample` | `sample.py` | Single simulation snapshot containing mesh coordinates and field values. Implemented as a pydantic `BaseModel`. This is the main data container exposed by plaid. |
+| `DefaultManager` | `managers/default_manager.py` | Manages default values and missing data for features within a sample. |
+
+Helper functions live in `utils.py` (e.g. `get_number_of_samples`, `get_sample_ids`)
+and are re-exported at the top level of the `plaid` package.
+
+> Note: the v1.0.0 reorganization removed the `Dataset`, `Features` and
+> `FeatureIdentifier` classes. A collection of samples is now read/written through the
+> `storage` layer rather than a dedicated `Dataset` class. See `docs/source/upgrade_guide.md`.
 
 ## Design constraints
 
-- `Dataset` is a **large class** (~1800 lines). Avoid adding new responsibilities to it. Prefer extracting logic into helper functions or dedicated modules.
-- `Sample` and `Features` are **value objects** -- they should remain simple, with minimal business logic.
-- `FeatureIdentifier` is **immutable and hashable** -- it is used as dictionary keys throughout the codebase. Do not add mutable state.
-- All containers must support **serialization** through the storage backends (zarr, hf_datasets, cgns).
+- `Sample` is a **value object** built on pydantic -- keep it focused on holding mesh
+  and field data, with minimal business logic. Prefer extracting heavy logic into
+  helper functions or dedicated modules.
+- `DefaultManager` centralizes default/missing-data handling -- do not duplicate this
+  logic inside `Sample`.
+- All containers must support **serialization** through the storage backends
+  (zarr, hf_datasets, cgns).
 
 ## Downstream impact
 
-These classes are the public API surface consumed by downstream libraries and end users. Any signature change is a **breaking change** that requires a major version bump.
+`Sample` is part of the public API surface consumed by downstream libraries and end
+users. Any signature change is a **breaking change** that requires a major version bump.
 
 ## Testing
 
-Tests are in `tests/`. When modifying a container class, verify that storage round-trips (write then read) still produce identical data.
+Tests are in `tests/`. When modifying a container class, verify that storage round-trips
+(write then read) still produce identical data.

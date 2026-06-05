@@ -48,7 +48,7 @@ issues, or documentation).
 - **Build backend**: setuptools with setuptools-scm (dynamic versioning)
 - **Linter/formatter**: ruff
 - **Test framework**: pytest
-- **Documentation**: Sphinx (ReadTheDocs)
+- **Documentation**: Zensical (with mkdocstrings for the API reference), published on ReadTheDocs
 - **CI/CD**: GitHub Actions
 
 ## Project structure
@@ -61,20 +61,24 @@ issues, or documentation).
 ├── CHANGELOG.md               <- Version history
 ├── CONTRIBUTING.md            <- Contribution guidelines
 ├── src/plaid/                 <- Source code
-│   ├── __init__.py
+│   ├── __init__.py            <- Public API: Sample, Infos, ProblemDefinition
 │   ├── constants.py           <- Global constants
 │   ├── problem_definition.py  <- ProblemDefinition (core concept)
-│   ├── containers/            <- Dataset, Sample, Features (see nested AGENTS.md)
+│   ├── infos.py               <- Infos (dataset/problem metadata)
+│   ├── containers/            <- Sample container + helpers (see nested AGENTS.md)
 │   ├── storage/               <- Storage backends: zarr, hf_datasets, cgns (see nested AGENTS.md)
-│   ├── bridges/               <- HuggingFace bridge utilities
-│   ├── pipelines/             <- sklearn-compatible processing blocks
-│   ├── post/                  <- Post-processing (metrics, bisection)
-│   └── examples/              <- Built-in example datasets
+│   ├── types/                 <- Shared type aliases and definitions
+│   ├── cli/                   <- Command-line entry points (e.g. plaidcheck)
+│   ├── viewer/                <- Dataset visualization services
+│   └── downloadable_examples/ <- Built-in downloadable example datasets
 ├── tests/                     <- Test suite
 ├── docs/                      <- Sphinx documentation source
-├── examples/                  <- Usage examples
-└── benchmarks/                <- Performance benchmarks
+└── examples/                  <- Usage examples
 ```
+
+> Note: the v1.0.0 reorganization removed the top-level `Dataset` re-export and the
+> `bridges/`, `pipelines/`, `post/` and `examples/` source packages. Data is now handled
+> through `Sample` objects and the `storage` layer. See `docs/source/upgrade_guide.md`.
 
 ## Architecture and key concepts
 
@@ -83,16 +87,21 @@ issues, or documentation).
 | Concept | Module | Description |
 |---------|--------|-------------|
 | `ProblemDefinition` | `problem_definition.py` | Declares fields, meshes, and their roles (input/output/context) for a physics problem |
-| `Sample` | `containers/sample.py` | One simulation snapshot: mesh + field values |
-| `Dataset` | `containers/dataset.py` | Ordered collection of Samples with shared ProblemDefinition |
-| `Features` | `containers/features.py` | Named tensor-like data with metadata |
-| `FeatureIdentifier` | `containers/feature_identifier.py` | Unique key to identify a feature across samples |
+| `Infos` | `infos.py` | Metadata describing a dataset/problem (legal, data production, etc.) |
+| `Sample` | `containers/sample.py` | One simulation snapshot: mesh + field values (a pydantic `BaseModel`) |
+
+`Sample`, `Infos` and `ProblemDefinition` are re-exported at the top level of the
+`plaid` package, together with the helpers `get_number_of_samples` and `get_sample_ids`
+from `containers/utils.py`.
 
 ### Storage pattern
 
 Storage uses a **Registry pattern** (`storage/registry.py`) to dispatch read/write
 operations to the correct backend (zarr, hf_datasets, cgns). Each backend implements
-a `reader.py` and `writer.py` following a common interface defined in `storage/common/`.
+a `reader.py` and `writer.py` following the backend contract defined in
+`storage/backend_api.py` and the shared interfaces in `storage/common/`.
+Reading/writing a collection of samples is done through this storage layer rather
+than through a dedicated `Dataset` class.
 
 ## Code conventions
 
@@ -182,7 +191,7 @@ uv run ruff check --fix .
 uv run ruff format .
 
 # Build documentation
-cd docs && make html
+bash docs/generate_doc.sh
 ```
 
 ## Contribution workflow
