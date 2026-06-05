@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (docs) add an upgrade guide describing breaking changes when migrating from the `0.1.x` series to `v1.0.0`.
 - Add files to support mybinder.org
 - (plaid-check) add a simple app to check the integrity of a plaid database
 - (dataset-viewer) add a trame app for dataset visual exploration.

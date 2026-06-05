@@ -36,6 +36,7 @@ nav = [
     { "Quickstart" = "quickstart.md" },
     { "Citation" = "citation.md" },
     { "Contributing" = "contributing.md" },
+    { "Upgrade guide" = "upgrade_guide.md" },
   ] },
   { "User guide" = [
     { "Concepts" = [
