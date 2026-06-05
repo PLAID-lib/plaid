@@ -8,10 +8,12 @@ title: Problem definition
 
 In the current API, a problem definition stores:
 
-- `name` (`str`, required)
 - `input_features` (`list[str]`, required and non-empty)
 - `output_features` (`list[str]`, required and non-empty)
 - `train_split` and `test_split` (required)
+
+The problem identifier is not stored in the model. On disk, it is the YAML
+filename stem; in memory, it is the dictionary key used for the definition.
 
 ## Basic usage
 
@@ -19,7 +21,6 @@ In the current API, a problem definition stores:
 from plaid import ProblemDefinition
 
 pb = ProblemDefinition(
-    name="regression_1",
     input_features=[
         "Base/Zone/GridCoordinates/CoordinateX",
         "Base/Zone/GridCoordinates/CoordinateY",
@@ -41,7 +42,6 @@ after reading YAML:
 ```python
 pb = ProblemDefinition.model_validate(
     {
-        "name": "regression_1",
         "input_features": ["Base/Zone/GridCoordinates/CoordinateX"],
         "output_features": ["Base/Zone/VertexFields/pressure"],
         "train_split": {"train": [0, 1, 2]},
@@ -60,7 +60,7 @@ pb = ProblemDefinition.from_path(
 )
 ```
 
-At storage level, problem definitions are loaded as a dictionary keyed by name:
+At storage level, problem definitions are loaded as a dictionary keyed by YAML filename stem:
 
 ```python
 from plaid.storage import load_problem_definitions_from_disk
@@ -76,6 +76,9 @@ Save to YAML:
 ```python
 pb.save_to_file("problem_definitions/regression_1.yaml")
 ```
+
+This writes no `name:` key; `regression_1` is inferred from the filename by the
+storage loader.
 
 ## Notes
 

@@ -27,7 +27,7 @@ from plaid.storage.common.writer import (
 from plaid.storage.registry import available_backends, get_backend
 
 from ..containers.sample import Sample
-from ..infos import Infos, Legal
+from ..infos import Infos
 from ..problem_definition import ProblemDefinition
 from .common.preprocessor import preprocess
 from .common.reader import (
@@ -120,7 +120,7 @@ def save_to_disk(
     ids: Mapping[str, Any],
     infos: Optional[Infos] = None,
     backend: str = "hf_datasets",
-    pb_defs: Optional[Union[dict[str, ProblemDefinition], ProblemDefinition]] = None,
+    pb_defs: Optional[dict[str, ProblemDefinition]] = None,
     num_proc: int = 1,
     verbose: bool = False,
     overwrite: bool = False,
@@ -155,9 +155,8 @@ def save_to_disk(
                 "test":  test_file_paths,
             },
             infos=Infos(
-                legal={"owner": "owner", "license": "license"},
-                num_samples={},
-                storage_backend="hf_datasets",
+                owner="owner",
+                license="license",
             ),
             num_proc=6,
         )
@@ -175,8 +174,8 @@ def save_to_disk(
             ``'zarr'``).
         infos: Dataset information to save with the dataset. If ``None``, a
             placeholder :class:`~plaid.Infos` is created with
-            ``legal=Legal(owner="unknown", license="unknown")``.
-        pb_defs: Optional problem definitions to save.
+            ``owner="unknown", license="unknown"``.
+        pb_defs: Optional mapping from problem definition identifiers to definitions.
         num_proc: Number of processes to use for parallel writing.  When
             ``num_proc > 1`` PLAID automatically shards the identifier
             sequences and distributes work across workers.
@@ -239,14 +238,13 @@ def save_to_disk(
     # overriding any inherited values from the input ``infos``.
     if infos is None:
         infos = Infos(
-            legal=Legal(owner="unknown", license="unknown"),
-            num_samples={},
-            storage_backend=backend,
+            owner="unknown",
+            license="unknown",
         )
     infos_data = infos.model_dump(exclude_none=True)
     infos_data["num_samples"] = num_samples
     infos_data["storage_backend"] = backend
-    infos = Infos.model_validate(infos_data)
+    infos = Infos.validate_persisted(infos_data)
 
     save_infos_to_disk(output_folder, infos)
 
@@ -298,6 +296,8 @@ def push_to_hub(
     infos = load_infos_from_disk(local_dir)
 
     backend = infos.storage_backend
+    if backend is None:
+        raise ValueError("Missing 'storage_backend' in persisted infos")
 
     backend_spec = get_backend(backend)
     backend_spec.push_local_to_hub(repo_id, local_dir, num_workers=num_workers)

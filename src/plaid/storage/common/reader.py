@@ -62,7 +62,7 @@ def load_problem_definitions_from_disk(
     into ``ProblemDefinition`` objects.
 
     Each file is loaded using ``ProblemDefinition.from_path`` and inserted into
-    a dictionary keyed by the problem definition name.
+    a dictionary keyed by the YAML filename stem.
 
     Expected local layout:
         <path>/
@@ -77,7 +77,7 @@ def load_problem_definitions_from_disk(
 
     Returns:
         dict[str, ProblemDefinition]:
-            Mapping from problem definition names to loaded ``ProblemDefinition``
+            Mapping from problem definition filename stems to loaded ``ProblemDefinition``
             objects.
 
     Raises:
@@ -100,8 +100,7 @@ def load_problem_definitions_from_disk(
                         f"Failed to load problem definition file "
                         f"'{pb_def_path.name}': {exc}"
                     ) from exc
-                pb_name = pb_def.name if isinstance(pb_def.name, str) else p.stem
-                pb_defs[pb_name] = pb_def
+                pb_defs[p.stem] = pb_def
         return pb_defs
     else:
         raise ValueError(

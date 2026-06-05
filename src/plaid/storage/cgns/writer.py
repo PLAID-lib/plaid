@@ -224,7 +224,7 @@ tags:
     lines = lines[: indices[1] + 1]
 
     count = 6
-    lines.insert(count, f"license: {infos.legal.license}")
+    lines.insert(count, f"license: {infos.license}")
     count += 1
     lines.insert(count, "viewer: false")
     count += 1

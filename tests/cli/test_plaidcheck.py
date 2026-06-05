@@ -18,17 +18,13 @@ from plaid.cli.plaidcheck import (
     check_dataset,
     main,
 )
-from plaid.infos import Infos, Legal
+from plaid.infos import Infos
 
 _REFERENCE_DATASETS = ("dataset_cgns", "dataset_hf")
 
 
 def _infos(num_samples: dict[str, int], storage_backend: str = "zarr") -> Infos:
-    return Infos(
-        legal=Legal(owner="owner", license="license"),
-        num_samples=num_samples,
-        storage_backend=storage_backend,
-    )
+    return Infos(owner="owner", license="license")
 
 
 def _copy_reference_dataset(tmp_path: Path, name: str = "dataset_cgns") -> Path:
@@ -913,7 +909,6 @@ def test_check_dataset_problem_definition_read_error_names_yaml_file(
     pb_def_dir = dataset / "problem_definitions"
     pb_def_dir.mkdir()
     (pb_def_dir / "bad_definition.yaml").write_text(
-        "name: bad\n"
         "input_features: [in]\n"
         "output_features: [out]\n"
         "unexpected_key: value\n",

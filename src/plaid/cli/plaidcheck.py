@@ -11,12 +11,17 @@ import numpy as np
 from tqdm import tqdm
 
 from plaid.constants import CGNS_FIELD_LOCATIONS
+from plaid.infos import Infos
 from plaid.storage import init_from_disk
 from plaid.storage.common.reader import (
-    load_infos_from_disk,
     load_metadata_from_disk,
     load_problem_definitions_from_disk,
 )
+
+
+def load_infos_from_disk(path: Path) -> Infos:
+    """Load infos for checker diagnostics without persisted-field enforcement."""
+    return Infos.from_path(path, require_persisted=False)
 
 
 @dataclass

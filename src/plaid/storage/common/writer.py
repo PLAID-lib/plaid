@@ -39,25 +39,30 @@ def save_infos_to_disk(path: Union[str, Path], infos: Infos) -> None:
 
 def save_problem_definitions_to_disk(
     path: Union[str, Path],
-    pb_defs: Union[dict[str, ProblemDefinition], ProblemDefinition],
+    pb_defs: dict[str, ProblemDefinition],
 ) -> None:
     """Save ProblemDefinitions to disk.
 
     Args:
         path (Union[str, Path]): The directory path for saving.
-        pb_defs (Union[dict[str, ProblemDefinition], ProblemDefinition]): The problem definitions to save.
+        pb_defs (dict[str, ProblemDefinition]): Mapping from problem definition identifiers to definitions.
     """
     if isinstance(pb_defs, ProblemDefinition):
-        pb_defs = {pb_defs.name: pb_defs}
+        raise TypeError(
+            "pb_defs must be a dict[str, ProblemDefinition]; "
+            "use the dictionary key as the problem identifier."
+        )
+    if not isinstance(pb_defs, dict):
+        raise TypeError("pb_defs must be a dict[str, ProblemDefinition]")
 
     target_dir = Path(path) / "problem_definitions"
     target_dir.mkdir(parents=True, exist_ok=True)
 
     for name, pb_def in pb_defs.items():
-        if name is None:
-            raise ValueError(
-                "At least one of the provided pb_defs has no initialized name."
-            )
+        if not isinstance(name, str) or not name:
+            raise TypeError("Problem definition identifiers must be non-empty strings")
+        if not isinstance(pb_def, ProblemDefinition):
+            raise TypeError("pb_defs values must be ProblemDefinition instances")
         pb_def.save_to_file(target_dir / name)
 
 

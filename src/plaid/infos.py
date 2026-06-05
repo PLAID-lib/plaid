@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Union
 
 import yaml
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic.dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -15,14 +15,6 @@ logger = logging.getLogger(__name__)
 _PD_CONFIG = ConfigDict(
     extra="forbid", str_strip_whitespace=True, validate_assignment=True
 )
-
-
-@dataclass(config=_PD_CONFIG)
-class Legal:
-    """Legal ownership and licensing metadata."""
-
-    owner: str
-    license: str
 
 
 @dataclass(config=_PD_CONFIG)
@@ -42,7 +34,8 @@ class DataProduction:
 
 # Order used when serializing to YAML.
 _KEY_ORDER = (
-    "legal",
+    "owner",
+    "license",
     "data_production",
     "data_description",
     "num_samples",
@@ -55,24 +48,39 @@ class Infos(BaseModel):
 
     model_config = _PD_CONFIG
 
-    legal: Legal
+    owner: str
+    license: str
     data_production: DataProduction | None = None
     data_description: str | None = None
-    num_samples: dict[str, int]
-    storage_backend: str
+    num_samples: dict[str, int] = Field(default_factory=dict)
+    storage_backend: str | None = None
+
+    def require_persisted(self) -> "Infos":
+        """Validate fields that must exist in persisted dataset infos.
+
+        ``num_samples`` and ``storage_backend`` are derived by storage writers
+        when a dataset is saved, so they are optional while users prepare an
+        ``Infos`` object.  Once infos are loaded from disk or the Hub, however,
+        readers need both fields to select the backend and split sizes.
+        """
+        if "num_samples" not in self.model_fields_set:
+            raise ValueError("Missing required persisted infos field: 'num_samples'")
+        if "storage_backend" not in self.model_fields_set or not self.storage_backend:
+            raise ValueError("Missing required persisted infos field: 'storage_backend'")
+        return self
 
     @classmethod
     def validate_authorized_only(cls, infos: dict[str, Any]) -> "Infos":
         """Validate schema/authorized keys without enforcing required sections."""
         normalized = dict(infos)
-        had_legal = "legal" in normalized
+        had_owner = "owner" in normalized
+        had_license = "license" in normalized
         had_num_samples = "num_samples" in normalized
         had_storage_backend = "storage_backend" in normalized
-        if not had_legal:
-            normalized["legal"] = {
-                "owner": "__placeholder__",
-                "license": "__placeholder__",
-            }
+        if not had_owner:
+            normalized["owner"] = "__placeholder__"
+        if not had_license:
+            normalized["license"] = "__placeholder__"
         if not had_num_samples:
             normalized["num_samples"] = {}
         if not had_storage_backend:
@@ -89,8 +97,10 @@ class Infos(BaseModel):
                     raise KeyError(f"Unauthorized infos key: {loc!r}") from exc
             raise
 
-        if not had_legal:
-            model.legal = Legal(owner="", license="")
+        if not had_owner:
+            model.owner = ""
+        if not had_license:
+            model.license = ""
         if not had_num_samples:
             model.num_samples = {}
         if not had_storage_backend:
@@ -99,8 +109,13 @@ class Infos(BaseModel):
 
     @classmethod
     def validate_required_only(cls, infos: dict[str, Any]) -> None:
-        """Validate required entries using pydantic-required fields."""
-        cls.model_validate(infos)
+        """Validate entries required for persisted dataset infos."""
+        cls.model_validate(infos).require_persisted()
+
+    @classmethod
+    def validate_persisted(cls, infos: dict[str, Any]) -> "Infos":
+        """Validate and return complete infos loaded from persisted storage."""
+        return cls.model_validate(infos).require_persisted()
 
     @classmethod
     def normalize_mapping(cls, infos: dict[str, Any]) -> dict[str, Any]:
@@ -113,12 +128,14 @@ class Infos(BaseModel):
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_path(cls, path: Union[str, Path]) -> "Infos":
+    def from_path(cls, path: Union[str, Path], require_persisted: bool = True) -> "Infos":
         """Load and validate an :class:`Infos` from a YAML file.
 
         Args:
             path: Path to the YAML file (typically ``infos.yaml``) or to a
                 directory containing it.
+            require_persisted: When True, require storage-derived metadata
+                fields expected in a complete on-disk dataset.
 
         Returns:
             Validated :class:`Infos` instance.
@@ -135,7 +152,10 @@ class Infos(BaseModel):
         with path.open("r", encoding="utf-8") as file:
             data = yaml.safe_load(file) or {}
 
-        return cls.model_validate(data)
+        infos = cls.model_validate(data)
+        if require_persisted:
+            infos.require_persisted()
+        return infos
 
     def save_to_file(self, path: Union[str, Path]) -> None:
         """Save infos to ``path`` as a YAML file.
@@ -155,7 +175,7 @@ class Infos(BaseModel):
 
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        data = self.model_dump(exclude_none=True)
+        data = self.model_dump(exclude_none=True, exclude_unset=True)
         ordered_data = {key: data[key] for key in _KEY_ORDER if key in data}
         # Preserve any future fields.
         for key, value in data.items():

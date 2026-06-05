@@ -50,8 +50,6 @@ from plaid.infos import DataProduction, Infos, Legal
 print("#---# Infos")
 infos = Infos(
     legal=Legal(owner="PLAID", license="MIT"),
-    num_samples={"train": 2, "test": 2},
-    storage_backend="cgns",
 )
 print(f"{infos = }")
 
@@ -66,8 +64,6 @@ infos_from_mapping = Infos.model_validate(
             "license": "MIT",
         },
         "data_description": "Example metadata for a PLAID dataset.",
-        "num_samples": {"train": 2, "test": 2},
-        "storage_backend": "cgns",
     }
 )
 print(f"{infos_from_mapping = }")
@@ -101,16 +97,14 @@ infos.data_production = DataProduction(
 print(f"{infos.data_production = }")
 
 # %% [markdown]
-# ### Set data description, sample counts, and storage backend
+# ### Set data description
 
 # %%
 infos.data_description = "Example dataset generated for the Infos example."
-infos.num_samples = {"train": 3, "test": 1}
-infos.storage_backend = "zarr"
 
 print(f"{infos.data_description = }")
-print(f"{infos.num_samples = }")
-print(f"{infos.storage_backend = }")
+print(f"{infos.num_samples = }")  # Populated by save_to_disk for saved datasets.
+print(f"{infos.storage_backend = }")  # Populated by save_to_disk for saved datasets.
 
 # %% [markdown]
 # ### Retrieve data with Pydantic attributes
@@ -144,12 +138,12 @@ infos.save_to_file(infos_save_fname)
 # ### Load Infos from a YAML file
 
 # %%
-loaded_infos = Infos.from_path(infos_save_fname)
+loaded_infos = Infos.from_path(infos_save_fname, require_persisted=False)
 print(loaded_infos)
 
 # %% [markdown]
 # ### Load Infos from a directory containing infos.yaml
 
 # %%
-loaded_infos_from_dir = Infos.from_path(test_pth)
+loaded_infos_from_dir = Infos.from_path(test_pth, require_persisted=False)
 print(loaded_infos_from_dir)

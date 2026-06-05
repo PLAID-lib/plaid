@@ -121,7 +121,6 @@ from plaid.infos import DataDescription, Infos, Legal
 from plaid.storage import save_to_disk
 
 pb_def = ProblemDefinition(
-    name="regression_1",
     input_features=["Global/input"],
     output_features=["Base/Zone/VertexFields/pressure"],
     train_split={"train": [0, 1, 2]},
@@ -138,7 +137,7 @@ save_to_disk(
     sample_constructor=sample_constructor,
     ids={"train": [0, 1, 2]},
     infos=infos,
-    pb_defs=pb_def,
+    pb_defs={"regression_1": pb_def},
 )
 ```
 

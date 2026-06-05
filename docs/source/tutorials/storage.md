@@ -124,7 +124,6 @@ output_features = [
 
 
 pb_def = ProblemDefinition(
-    name="regression_1",
     input_features=input_features,
     output_features=output_features,
     train_split={"train": "all"},
@@ -180,7 +179,7 @@ for backend in all_backends:
                 ids=ids,
                 backend=backend,
                 infos=infos,
-                pb_defs=pb_def,
+                pb_defs={"regression_1": pb_def},
                 num_proc=N_PROC,
                 overwrite=True,
                 verbose=True)

@@ -55,7 +55,6 @@ field_2_feat_id = "Base_2_2/Zone/VertexFields/field_2"
 # %%
 print("#---# ProblemDefinition")
 problem = ProblemDefinition(
-    name="my_problem_definition",
     input_features=[scalar_3_feat_id, field_1_feat_id],
     output_features=[field_2_feat_id],
     train_split={"train": [0, 1]},
@@ -86,10 +85,10 @@ print(
 # This section demonstrates how to handle and configure ProblemDefinition objects and access data.
 
 # %% [markdown]
-# ### Set Problem Definition name
-
-# %%
-print(f"{problem.name = }")
+# ### Problem Definition identifier
+#
+# ProblemDefinition has no stored name. When saved in a dataset, its identifier
+# is the YAML filename stem or the key in a `dict[str, ProblemDefinition]`.
 
 # %% [markdown]
 # ### Set Problem Definition split

@@ -33,7 +33,6 @@ class ProblemDefinition(BaseModel):
         revalidate_instances="always", validate_assignment=True, extra="forbid"
     )
 
-    name: str
     input_features: list[str]
     output_features: list[str]
     train_split: dict[str, Sequence[int] | Literal["all"]]
@@ -85,17 +84,7 @@ class ProblemDefinition(BaseModel):
         return _normalize_list(v)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        """Override the default attribute setting behavior to enforce immutability for certain fields and log warnings for others."""
-        # to set the name, task, score_function only once and oly once
-        if name in ["name"]:
-            current_value = getattr(self, name, None)
-            if (
-                current_value is not None
-                and value is not None
-                and current_value != value
-            ):
-                raise AttributeError(f"'{name}' is already set and cannot be changed.")
-        # warning if set
+        """Override attribute setting to log warnings when split fields are replaced."""
         if name in ["train_split", "test_split"]:
             current_value = getattr(self, name, None)
             if (
@@ -121,7 +110,6 @@ class ProblemDefinition(BaseModel):
 
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition(
-                    name="example",
                     input_features=["angle"],
                     output_features=["pressure"],
                     train_split={"train": "all"},
@@ -163,7 +151,6 @@ class ProblemDefinition(BaseModel):
 
                 from plaid.problem_definition import ProblemDefinition
                 problem = ProblemDefinition(
-                    name="example",
                     input_features=["angle"],
                     output_features=["pressure"],
                     train_split={"train": "all"},
@@ -202,7 +189,6 @@ class ProblemDefinition(BaseModel):
 
                 from plaid import ProblemDefinition
                 problem = ProblemDefinition(
-                    name="example",
                     input_features=["angle"],
                     output_features=["pressure"],
                     train_split={"train": "all"},
@@ -219,7 +205,6 @@ class ProblemDefinition(BaseModel):
         data = self.model_dump()
 
         key_order = [
-            "name",
             "input_features",
             "output_features",
             "train_split",

@@ -240,7 +240,7 @@ def configure_dataset_card(
     lines = lines[: indices[1] + 1]
 
     count = 1
-    lines.insert(count, f"license: {infos.legal.license}")
+    lines.insert(count, f"license: {infos.license}")
     count += 1
     if viewer is False:
         lines.insert(count, "viewer: false")
