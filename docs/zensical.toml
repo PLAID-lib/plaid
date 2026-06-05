@@ -181,6 +181,9 @@ merge_init_into_class = true
 [project.theme]
 favicon = "images/plaid_logo.png"
 logo = "images/plaid_logo.png"
+features = [
+    "search.highlight"
+]
 
 [[project.theme.palette]]
 scheme = "default"
