@@ -221,7 +221,7 @@ def configure_dataset_card(
         None: This function does not return a value; it updates the dataset card
             directly on Hugging Face Hub.
     """
-    infos_dict = infos.to_dict()
+    infos_dict = infos.model_dump(exclude_none=True)
     readme_path = hf_hub_download(
         repo_id=repo_id, filename="README.md", repo_type="dataset"
     )
@@ -240,7 +240,7 @@ def configure_dataset_card(
     lines = lines[: indices[1] + 1]
 
     count = 1
-    lines.insert(count, f"license: {infos.legal.license}")
+    lines.insert(count, f"license: {infos.license}")
     count += 1
     if viewer is False:
         lines.insert(count, "viewer: false")

@@ -1,4 +1,3 @@
-name: regression_1
 input_features:
 - Base_2_3/Zone/Elements_TRI_3/ElementConnectivity
 - Base_2_3/Zone/GridCoordinates/CoordinateX

@@ -1,6 +1,5 @@
-legal:
-  owner: NeuralOperator (https://zenodo.org/records/13993629)
-  license: cc-by-4.0
+owner: NeuralOperator (https://zenodo.org/records/13993629)
+license: cc-by-4.0
 data_production:
   type: simulation
   physics: CFD

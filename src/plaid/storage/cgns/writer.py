@@ -185,7 +185,7 @@ def configure_dataset_card(
         None: This function does not return a value; it pushes the dataset card
             directly to Hugging Face Hub.
     """
-    infos_dict = infos.to_dict()
+    infos_dict = infos.model_dump(exclude_none=True)
     dataset_card_str = """---
 task_categories:
 - graph-ml
@@ -224,7 +224,7 @@ tags:
     lines = lines[: indices[1] + 1]
 
     count = 6
-    lines.insert(count, f"license: {infos.legal.license}")
+    lines.insert(count, f"license: {infos.license}")
     count += 1
     lines.insert(count, "viewer: false")
     count += 1

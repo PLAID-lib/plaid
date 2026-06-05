@@ -24,7 +24,7 @@
 # 3. Saving and loading infos
 #
 # This notebook provides examples of using the Infos class to define dataset
-# metadata, access entries with mapping-style helpers, and save/load infos.
+# metadata, access entries with typed attributes, and save/load infos.
 #
 # **Each section is documented and explained.**
 
@@ -36,7 +36,7 @@ import numpy as np
 
 # %%
 # Import necessary libraries and classes
-from plaid.infos import DataProduction, Infos, Legal
+from plaid.infos import DataProduction, Infos
 
 # %% [markdown]
 # ## Section 1: Initializing Infos
@@ -49,7 +49,8 @@ from plaid.infos import DataProduction, Infos, Legal
 # %%
 print("#---# Infos")
 infos = Infos(
-    legal=Legal(owner="PLAID", license="MIT"),
+    owner="PLAID",
+    license="MIT",
 )
 print(f"{infos = }")
 
@@ -57,12 +58,10 @@ print(f"{infos = }")
 # ### Initialize Infos from a plain mapping
 
 # %%
-infos_from_mapping = Infos.from_mapping(
+infos_from_mapping = Infos.model_validate(
     {
-        "legal": {
-            "owner": "PLAID",
-            "license": "MIT",
-        },
+        "owner": "PLAID",
+        "license": "MIT",
         "data_description": "Example metadata for a PLAID dataset.",
     }
 )
@@ -75,11 +74,13 @@ print(f"{infos_from_mapping = }")
 # metadata.
 
 # %% [markdown]
-# ### Set legal metadata
+# ### Set owner and license metadata
 
 # %%
-infos.legal = Legal(owner="Safran", license="proprietary")
-print(f"{infos.legal = }")
+infos.owner = "Safran"
+infos.license = "proprietary"
+print(f"{infos.owner = }")
+print(f"{infos.license = }")
 
 # %% [markdown]
 # ### Set data production metadata
@@ -97,24 +98,23 @@ infos.data_production = DataProduction(
 print(f"{infos.data_production = }")
 
 # %% [markdown]
-# ### Set data description, sample counts, and storage backend
+# ### Set data description
 
 # %%
 infos.data_description = "Example dataset generated for the Infos example."
-infos.num_samples = {"train": 2, "test": 2}
-infos.storage_backend = "cgns"
 
 print(f"{infos.data_description = }")
-print(f"{infos.num_samples = }")
-print(f"{infos.storage_backend = }")
+print(f"{infos.num_samples = }")  # Populated by save_to_disk for saved datasets.
+print(f"{infos.storage_backend = }")  # Populated by save_to_disk for saved datasets.
 
 # %% [markdown]
-# ### Retrieve data with mapping-style helpers
+# ### Retrieve data with Pydantic attributes
 
 # %%
-print(f"{infos['legal'] = }")
-print(f"{infos.get('storage_backend') = }")
-print(f"{infos.to_dict() = }")
+print(f"{infos.owner = }")
+print(f"{infos.license = }")
+print(f"{infos.storage_backend = }")
+print(f"{infos.model_dump(exclude_none=True) = }")
 
 # %% [markdown]
 # ## Section 3: Saving and Loading Infos
@@ -139,12 +139,12 @@ infos.save_to_file(infos_save_fname)
 # ### Load Infos from a YAML file
 
 # %%
-loaded_infos = Infos.from_path(infos_save_fname)
+loaded_infos = Infos.from_path(infos_save_fname, require_persisted=False)
 print(loaded_infos)
 
 # %% [markdown]
 # ### Load Infos from a directory containing infos.yaml
 
 # %%
-loaded_infos_from_dir = Infos.from_path(test_pth)
+loaded_infos_from_dir = Infos.from_path(test_pth, require_persisted=False)
 print(loaded_infos_from_dir)

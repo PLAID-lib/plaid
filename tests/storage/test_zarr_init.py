@@ -176,7 +176,14 @@ def test_zarr_backend_configure_dataset_card_delegates(monkeypatch):
 
     monkeypatch.setattr(zarr, "configure_dataset_card", fake_configure_dataset_card)
 
-    infos = Infos.from_mapping({"legal": {"owner": "owner", "license": "cc-by-4.0"}})
+    infos = Infos.model_validate(
+        {
+            "owner": "owner",
+            "license": "cc-by-4.0",
+            "num_samples": {},
+            "storage_backend": "zarr",
+        }
+    )
     result = ZarrBackend.configure_dataset_card("dummy/repo", infos, "/tmp/local")
 
     assert result == "configured"

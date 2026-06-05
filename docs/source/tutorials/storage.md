@@ -34,7 +34,6 @@ workflow with minimal changes to your PLAID code.
 ```python
 import time
 from pathlib import Path
-import shutil
 
 import numpy as np
 
@@ -50,16 +49,15 @@ import Muscat.MeshContainers.ElementsDescription as ED
 
 N_PROC = 6 # number of parallel processes (set to 1 for sequential execution)
 
-# raw data dowloaded from https://zenodo.org/records/13993629
+# raw data downloaded from https://zenodo.org/records/13993629
 # set the folder where the raw data has been downloaded:
 BASE_RAW_DATA_FOLDER = "/path/to/raw" # TO UPDATE
 # set the folder where the data converted to plaid will be saved locally
 BASE_GENERATED_DATA_FOLDER = "/path/to/generated" # TO UPDATE
-# set the Huggging Face's repo_id where the datasets will be uploaded
+# set the Hugging Face's repo_id where the datasets will be uploaded
 BASE_REPO_ID = "channel/ShapeNetCar" # TO UPDATE
-
-
-all_backends = ["hf_datasets", "cgns", "zarr"]
+# set the folder where the downloaded data will be saved locally
+BASE_DOWNLOADED_DATA_FOLDER = "/path/to/downloaded" # TO UPDATE
 
 #---------------------------------------------------------------
 # define some functions to handle ShapeNetCar data
@@ -80,36 +78,26 @@ tri_folders = [p for p in base_dir.iterdir() if p.is_dir()]
 curated_train_ids = []
 curated_test_ids = []
 
-count = 0
-for folder in tri_folders:
+for count, folder in enumerate(tri_folders):
     id_ = int(folder.name)
     if id_ in train_ids:
         curated_train_ids.append(count)
     else:
         curated_test_ids.append(count)
-    count+=1
 
 # we can reduced the number of samples in each split for faster execution
 curated_train_ids = curated_train_ids[:10]
 curated_test_ids = curated_test_ids[:10]
 
 #---------------------------------------------------------------
-# infos and problem definition must be define to correctly populate the dataset's metadata
+# infos and problem definition can be defined to correctly populate the dataset's metadata (they are not mandatory)
 
-infos = Infos.from_mapping(
-    {
-        "legal": {
-            "owner": "NeuralOperator (https://zenodo.org/records/13993629)",
-            "license": "cc-by-4.0",
-        },
-        "data_production": {
-            "physics": "CFD",
-            "type": "simulation",
-            "script": "Converted to PLAID format for standardized access",
-        },
-        "data_description": "No changes to data content from original dataset",
-    }
+infos = Infos(
+    owner="NeuralOperator (https://zenodo.org/records/13993629)",
+    license="cc-by-4.0",
+    data_description="No changes to data content from original dataset",
 )
+
 
 input_features = [
 "Base_2_3/Zone/Elements_TRI_3/ElementConnectivity",
@@ -122,12 +110,12 @@ output_features = [
 "Base_2_3/Zone/VertexFields/pressure",
 ]
 
-
-pb_def = ProblemDefinition(name="regression_1")
-pb_def.add_input_features(input_features)
-pb_def.add_output_features(output_features)
-pb_def.train_split = {"train":"all"}
-pb_def.test_split = {"test":"all"}
+pb_def = ProblemDefinition(
+    input_features=input_features,
+    output_features=output_features,
+    train_split={"train": "all"},
+    test_split={"test": "all"},
+)
 
 #---------------------------------------------------------------
 # Define a simple function that takes a single identifier and returns a Sample.
@@ -163,40 +151,31 @@ def sample_constructor(i):
 ids = {"train": curated_train_ids,
        "test": curated_test_ids}
 
-for backend in all_backends:
+local_folder = f"{BASE_GENERATED_DATA_FOLDER}/hf_dataset"
 
-    print("--------------------------------------")
-    print(f"Backend: {backend}, N_PROC: {N_PROC}")
+# DISK
+start = time.time()
+save_to_disk(output_folder=local_folder,
+            sample_constructor=sample_constructor,
+            ids=ids,
+            backend="hf_datasets",
+            infos=infos,
+            pb_defs={"regression_1": pb_def},
+            num_proc=N_PROC,
+            overwrite=True,
+            verbose=True)
+print(f"duration generate with num_proc={N_PROC} is {time.time()-start} s")
 
-    repo_id = f"{BASE_REPO_ID}_{backend}"
-    local_folder = f"{BASE_GENERATED_DATA_FOLDER}/{backend}_dataset"
+# HUB
+start = time.time()
+push_to_hub(repo_id=BASE_REPO_ID,
+            local_dir=local_folder,
+            num_workers=N_PROC,
+            viewer=True,
+            illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
+print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
 
-    # DISK
-    start = time.time()
-    save_to_disk(output_folder=local_folder,
-                sample_constructor=sample_constructor,
-                ids=ids,
-                backend=backend,
-                infos=infos,
-                pb_defs=pb_def,
-                num_proc=N_PROC,
-                overwrite=True,
-                verbose=True)
-    print(f"duration generate with num_proc={N_PROC} is {time.time()-start} s")
-
-    # HUB
-    start = time.time()
-    push_to_hub(repo_id=repo_id,
-                local_dir=local_folder,
-                num_workers=N_PROC,
-                viewer=backend == "hf_datasets",
-                illustration_urls=["https://i.ibb.co/3mGHsHMk/Shape-Net-Car-samples.png"])
-    print(f"duration push to hub N_PROC={N_PROC} is {time.time()-start} s")
-
-# Note: for maximal compatibility, you may need to call the `save_to_disk` and `push_to_hub` under the `if __name__ == "__main__":` context;
-
-if Path(tmp_cache_dir).exists():
-    shutil.rmtree(Path(tmp_cache_dir))
+# Note: for maximal compatibility, you may need to call `save_to_disk` and `push_to_hub` under an `if __name__ == "__main__":` guard.
 ```
 
 ## How to read data from disk/hub
@@ -213,90 +192,75 @@ from plaid.storage import init_from_disk, download_from_hub, init_streaming_from
 from plaid.storage import load_problem_definitions_from_disk
 
 
-# set the Huggging Face's repo_id from which the datasets will be downloaded
-BASE_REPO_ID = "channel/ShapeNetCar" # TO UPDATE
-# set the folder where the downloaded data will be saved locally
-BASE_DOWNLOADED_DATA_FOLDER = "/mnt/e/converted_datasets/ShapeNet-Car" # TO UPDATE
-
-all_backends = ["hf_datasets", "cgns", "zarr"]
 split = "train"
-
-# Load problem definitions and define features as all the input and output features
-pb_defs = load_problem_definitions_from_disk(f"{BASE_DOWNLOADED_DATA_FOLDER}/{all_backends[0]}_dataset")
-pb_def = next(iter(pb_defs.values()))
-features = pb_def.input_features + pb_def.output_features
 
 print("----------------------------------------------------")
 print("-- Download datasets -------------------------------")
 print("----------------------------------------------------")
 
-# download datasets
-for backend in all_backends:
-    repo_id = f"{BASE_REPO_ID}_{backend}"
-    download_folder = f"{BASE_DOWNLOADED_DATA_FOLDER}/downloaded_{backend}_dataset"
+# download dataset
+download_folder = f"{BASE_DOWNLOADED_DATA_FOLDER}/downloaded_hf_dataset"
 
-    # depending on the backends, one can download a subset of the samples and features. We keep them all here
-    split_ids_ = None
-    features_ = None
+# depending on the backends, one can download a subset of the samples and features. We keep them all here
+split_ids_ = None
+features_ = None
 
-    download_from_hub(repo_id, download_folder, split_ids = split_ids_, features = features_, overwrite = True)
+download_from_hub(BASE_REPO_ID, download_folder, split_ids=split_ids_, features=features_, overwrite=True)
+
+# Load problem definitions and define features as all the input and output features
+pb_defs = load_problem_definitions_from_disk(download_folder)
+pb_def = next(iter(pb_defs.values()))
+features = pb_def.input_features + pb_def.output_features
 
 
 print("-------------------------------------------------------")
 print("-- Dataset local read and plaid sample instantiation --")
 print("-------------------------------------------------------")
 
-for backend in all_backends:
+datasetdict, converterdict = init_from_disk(download_folder)
 
-    datasetdict, converterdict = init_from_disk(f"{BASE_DOWNLOADED_DATA_FOLDER}/downloaded_{backend}_dataset")
+# specify one dataset/converter pair for one split
+dataset = datasetdict[split]
+converter = converterdict[split]
 
-    # specify one dataset/converter pair for one split
-    dataset = datasetdict[split]
-    converter = converterdict[split]
+# generic way to instantiate all the samples
+start = time.time()
+for i in range(len(dataset)):
+    plaid_sample = converter.to_plaid(dataset, i)
+print(f"duration {time.time()-start}")
 
-    print("backend: ", converter.backend)
+# Optional: extract only selected indices inside specific variable features
+# (currently supported for hf_datasets and zarr backends).
+field_path = "Base_2_3/Zone/VertexFields/pressure"
+selected_idx = [0, 10, 20, 30]
+plaid_sample_sub = converter.to_plaid(
+    dataset,
+    0,
+    features=[field_path],
+    indexers={field_path: selected_idx},
+)
 
-    # generic way to instantiate all the samples
-    start = time.time()
-    for i in range(len(dataset)):
-        plaid_sample = converter.to_plaid(dataset, i)
-    print(f"duration {time.time()-start}")
+# raw backend record for the first sample (format is backend-specific, no PLAID instantiation)
+sample = dataset[0]
+# alternative way to instantiate a plaid sample (much slower for hf_datasets)
+plaid_sample = converter.sample_to_plaid(dataset[0])
 
-    # Optional: extract only selected indices inside specific variable features
-    # (currently supported for hf_datasets and zarr backends).
-    field_path = "Base_2_3/Zone/VertexFields/pressure"
-    selected_idx = [0, 10, 20, 30]
-    plaid_sample_sub = converter.to_plaid(
-        dataset,
-        0,
-        features=[field_path],
-        indexers={field_path: selected_idx},
-    )
+# save a plaid sample in a CGNS that can be opened in paraview
+plaid_sample.save_to_dir(f"{BASE_DOWNLOADED_DATA_FOLDER}/sample_0_hf", overwrite = True)
 
-    # instantiate the first sample, depends on the backend
-    sample = dataset[0]
-    # alternative way instantiate a plaid sample (much slower for hf_datasets)
-    plaid_sample = converter.sample_to_plaid(dataset[0])
+# generic way to access all features for all time steps (values are returned but not stored here)
+for t in plaid_sample.get_all_time_values():
+    for path in pb_def.input_features:
+        _ = plaid_sample.get_feature_by_path(path=path, time=t)
+    for path in pb_def.output_features:
+        _ = plaid_sample.get_feature_by_path(path=path, time=t)
 
-    # save a plaid sample in a CGNS that can be opened in paraview
-    plaid_sample.save_to_dir(f"{BASE_DOWNLOADED_DATA_FOLDER}/sample_0_{backend}", overwrite = True)
+# generic way to return the data as a dict containing all constant and variable features
+sample_dict = converter.to_dict(dataset, 0)
+sample_dict = converter.sample_to_dict(dataset[0])
 
-    # generic way to read all features for all time steps
-    for t in plaid_sample.get_all_time_values():
-        for path in pb_def.input_features:
-            plaid_sample.get_feature_by_path(path=path, time=t)
-        for path in pb_def.output_features:
-            plaid_sample.get_feature_by_path(path=path, time=t)
-
-    # generic way to return the data as a dict containing all constant and variable features
-    if backend != "cgns":
-        sample_dict = converter.to_dict(dataset, 0)
-        sample_dict = converter.sample_to_dict(dataset[0])
-
-    # alternative way to return the data as a dict containing all constant and variable features from a plaid sample
-    sample_dict = converter.plaid_to_dict(plaid_sample)
-
-    print("----------")
+# alternative way to return the data as a dict containing all constant and variable features from a plaid sample
+sample_dict = converter.plaid_to_dict(plaid_sample)
 
 
 print("----------------------------------------------------")
@@ -314,37 +278,34 @@ class IndexDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         return idx
 
-for backend in all_backends:
-    datasetdict, converterdict = init_from_disk(f"{BASE_DOWNLOADED_DATA_FOLDER}/{backend}_dataset")
-    dataset = datasetdict[split]
-    converter = converterdict[split]
+datasetdict, converterdict = init_from_disk(download_folder)
+dataset = datasetdict[split]
+converter = converterdict[split]
 
-    # define a torch dataloader directly from this IndexDataset class
-    loader = DataLoader(
-        IndexDataset(len(dataset)),
-        batch_size=10,
-        shuffle=False,
-        num_workers=12,
-        pin_memory=True,
-        persistent_workers=True
-    )
-    print("backend: ", converter.backend)
-    start = time.time()
-    for batch in loader:
-        for idx in batch:
-            # efficient plaid sample reconstruction
-            plaid_sample = converter.to_plaid(dataset, idx)
-            # generic way of retrieving features and send them to GPU
-            for time_ in plaid_sample.get_all_time_values():
-                torch_sample = {}
-                for path in features:
-                    value = plaid_sample.get_feature_by_path(path=path, time=time_)
-                    if value is not None:
-                        if not value.flags.writeable:
-                            value = value.copy()
-                        torch_sample[path] = torch.as_tensor(value).to("cuda", non_blocking=True)
-    print(f"duration {time.time()-start}")
-    print("----------")
+# define a torch dataloader directly from this IndexDataset class
+loader = DataLoader(
+    IndexDataset(len(dataset)),
+    batch_size=10,
+    shuffle=False,
+    num_workers=N_PROC,
+    pin_memory=True,
+    persistent_workers=True
+)
+start = time.time()
+for batch in loader:
+    for idx in batch:
+        # efficient plaid sample reconstruction
+        plaid_sample = converter.to_plaid(dataset, idx)
+        # generic way of retrieving features and send them to GPU
+        for time_ in plaid_sample.get_all_time_values():
+            torch_sample = {}
+            for path in features:
+                value = plaid_sample.get_feature_by_path(path=path, time=time_)
+                if value is not None:
+                    if not value.flags.writeable:
+                        value = value.copy()
+                    torch_sample[path] = torch.as_tensor(value).to("cuda", non_blocking=True)
+print(f"duration {time.time()-start}")
 
 ```
 
@@ -409,17 +370,15 @@ print("-- Streaming test ----------------------------------")
 print("----------------------------------------------------")
 
 
-for backend in all_backends:
+datasetdict, converterdict = init_streaming_from_hub(BASE_REPO_ID)
 
-    datasetdict, converterdict = init_streaming_from_hub(f"{BASE_REPO_ID}_{backend}")
+dataset = datasetdict[split]
+converter = converterdict[split]
 
-    dataset = datasetdict[split]
-    converter = converterdict[split]
+# dataset here is an IterableDataset, retrieving one sample and converting it to plaid
+raw_sample = next(iter(dataset))
+plaid_sample = converter.sample_to_plaid(raw_sample)
 
-    # dataset here is an IterableDataset, retrieving one sample and converting it to plaid
-    raw_sample = next(iter(dataset))
-    plaid_sample = converter.sample_to_plaid(raw_sample)
-
-    # utility to print a summary of the CGNS tree from the plaid sample
-    show_cgns_tree(plaid_sample.get_tree(0.))
+# utility to print a summary of the CGNS tree from the plaid sample
+show_cgns_tree(plaid_sample.get_tree(0.))
 ```

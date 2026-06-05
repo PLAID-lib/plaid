@@ -163,11 +163,12 @@ def main_splits() -> dict:
 
 @pytest.fixture()
 def problem_definition(main_splits) -> ProblemDefinition:
-    problem_definition = ProblemDefinition()
-    problem_definition.add_input_features(["feature_name_1", "feature_name_2"])
-    problem_definition.train_split = {"train": main_splits["train"]}
-    problem_definition.test_split = {"test": main_splits["test"]}
-    return problem_definition
+    return ProblemDefinition(
+        input_features=["feature_name_1", "feature_name_2"],
+        output_features=["feature_name_1"],
+        train_split={"train": main_splits["train"]},
+        test_split={"test": main_splits["test"]},
+    )
 
 
 @pytest.fixture()
@@ -183,8 +184,8 @@ def sample_constructor(samples_with_extra_global):
 @pytest.fixture()
 def split_ids(problem_definition) -> dict:
     return {
-        "train": problem_definition.get_train_split_indices(),
-        "test": problem_definition.get_test_split_indices(),
+        "train": problem_definition.train_split["train"],
+        "test": problem_definition.test_split["test"],
     }
 
 
@@ -264,8 +265,7 @@ class Test_Storage:
                 overwrite=False,
             )
 
-        with pytest.raises(ValueError):
-            problem_definition.name = None
+        with pytest.raises(TypeError, match=r"dict\[str, ProblemDefinition\]"):
             save_to_disk(
                 output_folder=test_dir,
                 sample_constructor=sample_constructor,
@@ -287,7 +287,8 @@ class Test_Storage:
             verbose=True,
         )
 
-        load_problem_definitions_from_disk(test_dir)
+        loaded_pb_defs = load_problem_definitions_from_disk(test_dir)
+        assert set(loaded_pb_defs) == {"pb_def"}
         with pytest.raises(ValueError):
             load_problem_definitions_from_disk("dummy")
 

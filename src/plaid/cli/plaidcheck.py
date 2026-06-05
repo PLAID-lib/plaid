@@ -8,14 +8,20 @@ from typing import Any, Optional
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
+from tqdm import tqdm
 
 from plaid.constants import CGNS_FIELD_LOCATIONS
+from plaid.infos import Infos
 from plaid.storage import init_from_disk
 from plaid.storage.common.reader import (
-    load_infos_from_disk,
     load_metadata_from_disk,
     load_problem_definitions_from_disk,
 )
+
+
+def load_infos_from_disk(path: Path) -> Infos:
+    """Load infos for checker diagnostics without persisted-field enforcement."""
+    return Infos.from_path(path, require_persisted=False)
 
 
 @dataclass
@@ -158,6 +164,81 @@ def _check_numeric_content(value: Any) -> Optional[str]:
     return None
 
 
+def _format_missing_split_message(split: object) -> str:
+    """Return an actionable message for missing split declarations.
+
+    Args:
+        split: Split name/key reported by a low-level ``KeyError``.
+
+    Returns:
+        Human-readable explanation suitable for a checker error.
+    """
+    return (
+        f"Split {split!r} exists in the stored dataset or metadata but is missing "
+        "from infos.yaml > num_samples. Add this split to num_samples, or remove "
+        "the corresponding split data/metadata from the dataset."
+    )
+
+
+def _check_num_samples_declares_splits(
+    num_samples: dict[str, Any],
+    split_names: set[str],
+    report: CheckReport,
+) -> None:
+    """Validate that ``infos.yaml > num_samples`` declares known disk splits.
+
+    Args:
+        num_samples: Mapping loaded from ``infos.yaml``.
+        split_names: Split names discovered from storage files/metadata.
+        report: Report updated with missing declaration errors.
+
+    Returns:
+        None.
+    """
+    declared_splits = {str(split) for split in num_samples}
+    for split in sorted(split_names - declared_splits):
+        report.add(
+            "error",
+            "NUM_SAMPLES_MISSING_SPLIT",
+            "infos.yaml",
+            _format_missing_split_message(split),
+        )
+
+
+def _discover_split_names_from_disk(
+    path: Path,
+    backend: Optional[str],
+    flat_cst: dict[str, Any],
+    constant_schema: dict[str, Any],
+) -> set[str]:
+    """Discover split names from files/metadata without building converters.
+
+    Args:
+        path: Dataset root.
+        backend: Declared storage backend, if valid.
+        flat_cst: Flattened constants keyed by split for non-CGNS backends.
+        constant_schema: Constant schema keyed by split for non-CGNS backends.
+
+    Returns:
+        Split names discovered from the on-disk dataset structure and metadata.
+    """
+    split_names: set[str] = set()
+    data_path = path / "data"
+    if data_path.exists():
+        if backend in {"zarr", "cgns"}:
+            split_names.update(p.name for p in data_path.iterdir() if p.is_dir())
+        elif backend == "hf_datasets":
+            split_names.update(flat_cst.keys())
+            split_names.update(constant_schema.keys())
+    if backend != "cgns":
+        constants_path = path / "constants"
+        if constants_path.exists():
+            split_names.update(p.name for p in constants_path.iterdir() if p.is_dir())
+        split_names.update(flat_cst.keys())
+        split_names.update(constant_schema.keys())
+    return {str(split) for split in split_names}
+
+
 def _is_branch_without_data(sample: Any, path: str) -> bool:
     """Return True when `path` points to a branch node with no direct value.
 
@@ -201,6 +282,98 @@ def _is_branch_without_data_in_mapping(
     return any(name.startswith(prefix) for name in feat_map)
 
 
+def _progress(
+    iterable: Any, *, desc: str, show_progress: bool, total: int | None = None
+):
+    """Wrap an iterable in a tqdm progress bar when requested.
+
+    Args:
+        iterable: Iterable to wrap.
+        desc: Progress bar description.
+        show_progress: Whether the progress bar is enabled.
+        total: Optional total length.
+
+    Returns:
+        Iterable, possibly wrapped by :class:`tqdm.tqdm`.
+    """
+    return tqdm(iterable, desc=desc, total=total, disable=not show_progress)
+
+
+def _resolve_problem_split_indices(
+    split_ids: Any,
+    split_len: int,
+) -> list[int]:
+    """Resolve a problem-definition split declaration into concrete indices.
+
+    Args:
+        split_ids: Either the special all-samples marker or an iterable of indices.
+        split_len: Number of samples available in the referenced split.
+
+    Returns:
+        Concrete sample indices to instantiate.
+    """
+    if split_ids == "all":
+        return list(range(split_len))
+    return list(split_ids)
+
+
+def _check_problem_definition_sample_features(
+    *,
+    pb_name: str,
+    split_dict_name: str,
+    split_name: str,
+    idx: int,
+    dataset: Any,
+    converter: Any,
+    features: list[str],
+    report: CheckReport,
+) -> None:
+    """Instantiate and validate one problem-definition sample view.
+
+    The sample is instantiated with the exact feature subset requested by the
+    problem definition, then each requested feature is read back to validate
+    that the requested feature paths can actually be resolved.
+
+    Numeric content (NaN, Inf, None, empty arrays, ...) is intentionally not
+    re-checked here: the per-split loop in :func:`check_dataset` already walks
+    every sample's globals and fields and reports such issues with the
+    ``INVALID_DATA_VALUE A`` code. Re-checking them in this loop would only
+    produce duplicate warnings under a different code/location.
+
+    Args:
+        pb_name: Problem-definition name.
+        split_dict_name: ``train_split`` or ``test_split``.
+        split_name: Dataset split name.
+        idx: Sample index.
+        dataset: Backend dataset object.
+        converter: Storage converter exposing ``to_plaid``.
+        features: Feature paths to request and validate.
+        report: Report updated with detected errors/warnings.
+    """
+    location = f"problem_definitions/{pb_name}/{split_dict_name}/{split_name}[{idx}]"
+    try:
+        sample = converter.to_plaid(dataset, idx, features=features)
+    except Exception as exc:
+        report.add(
+            "error",
+            "PB_DEF_SAMPLE_CONVERSION_ERROR",
+            location,
+            str(exc),
+        )
+        return
+
+    for feature in features:
+        try:
+            sample.get_feature_by_path(feature)
+        except Exception as exc:
+            report.add(
+                "error",
+                "PB_DEF_FEATURE_READ_ERROR",
+                f"{location} {feature}",
+                str(exc),
+            )
+
+
 def compute_checksum(sample: Any) -> str:
     """Compute a SHA-256 checksum for a converted sample representation.
 
@@ -221,6 +394,8 @@ def compute_checksum(sample: Any) -> str:
 def check_dataset(
     path: Path,
     splits: Optional[list[str]] = None,
+    show_progress: bool = True,
+    problem_definitions: Optional[list[str]] = None,
 ) -> CheckReport:
     """Run integrity checks on a local PLAID dataset.
 
@@ -241,6 +416,9 @@ def check_dataset(
     Args:
         path: Dataset directory.
         splits: Optional selected split names.
+        show_progress: Whether to display tqdm progress bars for expensive checks.
+        problem_definitions: Optional selected problem-definition names. When
+            omitted, all discovered problem definitions are checked.
 
     Returns:
         A populated :class:`CheckReport`.
@@ -262,7 +440,7 @@ def check_dataset(
         report.add("error", "INFOS_READ_ERROR", "infos.yaml", str(exc))
         return report
 
-    declared_backend_for_layout = infos.get("storage_backend")
+    declared_backend_for_layout = infos.storage_backend
     if not isinstance(declared_backend_for_layout, str):
         declared_backend_for_layout = None
 
@@ -272,6 +450,25 @@ def check_dataset(
     _check_required_layout(path, report, backend=declared_backend_for_layout)
     if report.has_errors():
         return report
+
+    # Validate top-level dataset declarations from infos.yaml before calling
+    # init_from_disk(), because storage initialization indexes num_samples by
+    # split and otherwise reports missing entries as opaque KeyError messages.
+    declared_backend = infos.storage_backend
+    if not isinstance(declared_backend, str):
+        report.add(
+            "error",
+            "BACKEND_MISSING",
+            "infos.yaml",
+            "Missing or invalid 'storage_backend' in infos.yaml",
+        )
+
+    num_samples = infos.num_samples
+    if not isinstance(num_samples, dict):
+        report.add(
+            "error", "NUM_SAMPLES_INVALID", "infos.yaml", "'num_samples' must be a dict"
+        )
+        num_samples = {}
 
     # Load metadata when the backend defines it. The CGNS backend stores
     # self-contained samples and intentionally writes no derived metadata.
@@ -288,28 +485,29 @@ def check_dataset(
             report.add("error", "METADATA_READ_ERROR", str(path), str(exc))
             return report
 
+    discovered_splits = _discover_split_names_from_disk(
+        path,
+        declared_backend_for_layout,
+        flat_cst,
+        constant_schema,
+    )
+    _check_num_samples_declares_splits(num_samples, discovered_splits, report)
+    if report.has_errors():
+        return report
+
     try:
         datasetdict, converterdict = init_from_disk(path)
+    except KeyError as exc:
+        report.add(
+            "error",
+            "NUM_SAMPLES_MISSING_SPLIT",
+            "infos.yaml",
+            _format_missing_split_message(exc.args[0] if exc.args else str(exc)),
+        )
+        return report
     except Exception as exc:
         report.add("error", "DATASET_INIT_ERROR", str(path), str(exc))
         return report
-
-    # Validate top-level dataset declarations from infos.yaml.
-    declared_backend = infos.get("storage_backend")
-    if not isinstance(declared_backend, str):
-        report.add(
-            "error",
-            "BACKEND_MISSING",
-            "infos.yaml",
-            "Missing or invalid 'storage_backend' in infos.yaml",
-        )
-
-    num_samples = infos.get("num_samples", {})
-    if not isinstance(num_samples, dict):
-        report.add(
-            "error", "NUM_SAMPLES_INVALID", "infos.yaml", "'num_samples' must be a dict"
-        )
-        num_samples = {}
 
     # Resolve the user-requested splits against the splits actually available.
     dataset_splits = set(datasetdict.keys())
@@ -359,7 +557,12 @@ def check_dataset(
                 )
 
         # Deep-check to validate content and detect non valide data in fields (nan inf)
-        for idx in range(actual_n):
+        for idx in _progress(
+            range(actual_n),
+            desc=f"Checking split {split}",
+            show_progress=show_progress,
+            total=actual_n,
+        ):
             try:
                 sample = converter.to_plaid(dataset, idx)
             except Exception as exc:
@@ -464,7 +667,23 @@ def check_dataset(
         # still run).
         validate_pb_def_features = declared_backend_for_layout != "cgns"
 
+        target_pb_names = (
+            set(problem_definitions) if problem_definitions else set(pb_defs)
+        )
+        unknown_pb_names = target_pb_names - set(pb_defs)
+        for pb_name in sorted(unknown_pb_names):
+            available = " and ".join(f'"{x}"' for x in sorted(pb_defs))
+            report.add(
+                "error",
+                "PB_DEF_UNKNOWN",
+                f"problem_definitions/{pb_name}",
+                f"Problem definition not found, available are {available}",
+            )
+        target_pb_names = target_pb_names & set(pb_defs)
+
         for pb_name, pb_def in pb_defs.items():
+            if pb_name not in target_pb_names:
+                continue
             if validate_pb_def_features:
                 for feat in pb_def.input_features:
                     if feat not in all_features:
@@ -507,9 +726,8 @@ def check_dataset(
                         f"Unknown split in {split_dict_name}: {split_name}",
                     )
                     continue
-                if split_ids == "all":
-                    continue
-                ids_list = list(split_ids)
+                split_len = len(datasetdict[split_name])
+                ids_list = _resolve_problem_split_indices(split_ids, split_len)
                 if len(ids_list) != len(set(ids_list)):
                     report.add(
                         "error",
@@ -517,7 +735,6 @@ def check_dataset(
                         f"problem_definitions/{pb_name}",
                         f"Duplicated indices in {split_dict_name}",
                     )
-                split_len = len(datasetdict[split_name])
                 bad = [i for i in ids_list if i < 0 or i >= split_len]
                 if bad:
                     report.add(
@@ -526,10 +743,32 @@ def check_dataset(
                         f"problem_definitions/{pb_name}",
                         f"Out-of-range indices in {split_dict_name} (first 10): {bad[:10]}",
                     )
+                    continue
 
-    # Emit an explicit success message when no errors or warnings were found.
-    if not report.messages:
-        report.add("info", "OK", str(path), "No issue detected")
+                if split_dict_name == "train_split":
+                    features = list(pb_def.input_features) + list(
+                        pb_def.output_features
+                    )
+                else:
+                    features = list(pb_def.input_features)
+
+                for idx in _progress(
+                    ids_list,
+                    desc=f"Checking problem {pb_name} {split_dict_name}",
+                    show_progress=show_progress,
+                    total=len(ids_list),
+                ):
+                    _check_problem_definition_sample_features(
+                        pb_name=pb_name,
+                        split_dict_name=split_dict_name,
+                        split_name=split_name,
+                        idx=idx,
+                        dataset=datasetdict[split_name],
+                        converter=converterdict[split_name],
+                        features=features,
+                        report=report,
+                    )
+
     return report
 
 
@@ -557,6 +796,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Treat warnings as failure",
     )
+    parser.add_argument(
+        "--problem-definition",
+        action="append",
+        default=None,
+        help="Problem definition to check (can be provided multiple times)",
+    )
     return parser
 
 
@@ -572,13 +817,23 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
 
-    report = check_dataset(path=args.path, splits=args.split)
+    report = check_dataset(
+        path=args.path,
+        splits=args.split,
+        show_progress=not args.json,
+        problem_definitions=args.problem_definition,
+    )
 
     if args.json:
         print(report.to_json())
     else:
-        for msg in report.messages:
-            print(f"[{msg.severity.upper()}] {msg.code} {msg.location}: {msg.message}")
+        if not report.messages:
+            print(f"[OK] {args.path}: No issue detected")
+        else:
+            for msg in report.messages:
+                print(
+                    f"[{msg.severity.upper()}] {msg.code} {msg.location}: {msg.message}"
+                )
         counts = report.counts()
         print(
             f"Summary: {counts['error']} error(s), "
