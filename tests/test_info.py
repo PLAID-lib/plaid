@@ -162,6 +162,7 @@ def test_infos_save_and_load_roundtrip(tmp_path):
     model.save_to_file(target)
     assert target.is_file()
 
+    reloaded = Infos.from_path(tmp_path / "infos")
     reloaded = Infos.from_path(target)
     assert reloaded.owner == "owner"
     assert reloaded.license == "cc-by-4.0"
