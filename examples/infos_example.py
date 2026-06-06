@@ -36,7 +36,7 @@ import numpy as np
 
 # %%
 # Import necessary libraries and classes
-from plaid.infos import DataProduction, Infos
+from plaid.infos import Infos
 
 # %% [markdown]
 # ## Section 1: Initializing Infos
@@ -51,51 +51,25 @@ print("#---# Infos")
 infos = Infos(
     owner="PLAID",
     license="MIT",
+    data_production={
+        "type": "simulation",
+        "physics": "fluid dynamics",
+        "simulator": "ExampleSolver",
+    },
+    data_description="ExampleDescription",
 )
 print(f"{infos = }")
 
 # %% [markdown]
-# ### Initialize Infos from a plain mapping
+# ### Print available Infos fields
 
 # %%
-infos_from_mapping = Infos.model_validate(
-    {
-        "owner": "PLAID",
-        "license": "MIT",
-        "data_description": "Example metadata for a PLAID dataset.",
-    }
-)
-print(f"{infos_from_mapping = }")
+Infos.print_available_fields()
 
 # %% [markdown]
-# ## Section 2: Configuring Infos and retrieve data
+# ## Section 2: Modifying Infos and retrieve data
 #
-# This section demonstrates how to handle and configure Infos objects and access
-# metadata.
-
-# %% [markdown]
-# ### Set owner and license metadata
-
-# %%
-infos.owner = "Safran"
-infos.license = "proprietary"
-print(f"{infos.owner = }")
-print(f"{infos.license = }")
-
-# %% [markdown]
-# ### Set data production metadata
-
-# %%
-infos.data_production = DataProduction(
-    type="simulation",
-    physics="fluid dynamics",
-    simulator="ExampleSolver",
-    hardware="ExampleCluster",
-    computation_duration="1 hour",
-    script="run_simulation.py",
-    contact="contact@example.com",
-)
-print(f"{infos.data_production = }")
+# This section demonstrates how to handle Infos objects and access metadata.
 
 # %% [markdown]
 # ### Set data description
@@ -119,8 +93,7 @@ print(f"{infos.model_dump(exclude_none=True) = }")
 # %% [markdown]
 # ## Section 3: Saving and Loading Infos
 #
-# This section demonstrates how to save and load Infos from a directory or YAML
-# file.
+# This section demonstrates how to save and load Infos from a YAML file.
 
 # %% [markdown]
 # ### Save Infos to a YAML file
@@ -131,20 +104,22 @@ test_pth = Path(
 )
 infos_save_fname = test_pth / "infos.yaml"
 test_pth.mkdir(parents=True, exist_ok=True)
-print(f"saving path: {infos_save_fname}")
 
+print(f"saving path: {infos_save_fname}")
+infos.num_samples = {"train": 0}
+infos.storage_backend = "zarr"
 infos.save_to_file(infos_save_fname)
 
 # %% [markdown]
 # ### Load Infos from a YAML file
 
 # %%
-loaded_infos = Infos.from_path(infos_save_fname, require_persisted=False)
+loaded_infos = Infos.from_path(infos_save_fname)
 print(loaded_infos)
 
 # %% [markdown]
-# ### Load Infos from a directory containing infos.yaml
+# ### Load Infos from an explicit infos.yaml path
 
 # %%
-loaded_infos_from_dir = Infos.from_path(test_pth, require_persisted=False)
-print(loaded_infos_from_dir)
+loaded_infos_from_explicit_path = Infos.from_path(test_pth / "infos.yaml")
+print(loaded_infos_from_explicit_path)

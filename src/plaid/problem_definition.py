@@ -21,6 +21,13 @@ from pydantic import BaseModel, field_validator
 
 logger = logging.getLogger(__name__)
 
+_KEY_ORDER = [
+    "input_features",
+    "output_features",
+    "train_split",
+    "test_split",
+]
+
 
 def _normalize_list(v):
     return sorted(map(str, v))
@@ -34,10 +41,6 @@ class ProblemDefinition(
     extra="forbid",
 ):
     """Defines the input and output features for a machine learning problem."""
-
-    # model_config = ConfigDict(
-    #     revalidate_instances="always", validate_assignment=True, extra="forbid"
-    # )
 
     input_features: list[str]
     output_features: list[str]
@@ -57,8 +60,13 @@ class ProblemDefinition(
 
         Raises:
             FileNotFoundError: If the resolved YAML file does not exist.
+            IsADirectoryError: If ``path`` points to a directory.
         """
         path = Path(path)
+        if path.is_dir():
+            raise IsADirectoryError(
+                f'Expected a YAML file path, got directory "{path}"'
+            )
         if path.suffix != ".yaml":
             path = path.with_suffix(".yaml")
         if not path.exists():
@@ -203,21 +211,18 @@ class ProblemDefinition(
                 problem.save_to_file("/path/to/save_file")
         """
         path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_dir():
+            raise IsADirectoryError(
+                f'Expected a YAML file path, got directory "{path}"'
+            )
 
         if path.suffix != ".yaml":
             path = path.with_suffix(".yaml")
 
+        path.parent.mkdir(parents=True, exist_ok=True)
+
         data = self.model_dump()
-
-        key_order = [
-            "input_features",
-            "output_features",
-            "train_split",
-            "test_split",
-        ]
-
-        ordered_data = {key: data[key] for key in key_order if key in data}
+        ordered_data = {key: data[key] for key in _KEY_ORDER if key in data}
 
         # Save infos
         with path.open("w") as file:

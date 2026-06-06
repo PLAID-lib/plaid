@@ -21,29 +21,24 @@ In the current API, infos stores:
 ## Basic usage
 
 ```python
-from plaid.infos import DataProduction, Infos
+from plaid import Infos
 
 infos = Infos(
     owner="Safran",
     license="proprietary",
-    data_production=DataProduction(
-        type="simulation",
-        physics="fluid dynamics",
-        simulator="ExampleSolver",
-    ),
+    data_production={
+        "type": "simulation",
+        "physics": "fluid dynamics",
+        "simulator": "ExampleSolver",
+    },
     data_description="ExampleDescription",
 )
 ```
 
-Infos can also be built from a plain mapping, for instance after reading YAML:
+To inspect the public constructor fields accepted by `Infos`, use:
 
 ```python
-infos = Infos.model_validate(
-    {
-        "owner": "Safran",
-        "license": "proprietary",
-    }
-)
+Infos.print_available_fields()
 ```
 
 `num_samples` and `storage_backend` are derived from the chosen storage backend
@@ -60,13 +55,7 @@ infos = Infos.from_path("/path/to/plaid_dataset")
 ```
 
 When a directory is provided, `Infos.from_path(...)` looks for `infos.yaml`
-inside that directory. By default, loading from disk requires the persisted
-storage metadata (`num_samples` and `storage_backend`) to be present. To load a
-draft infos file that has not been produced by `save_to_disk(...)`, use:
-
-```python
-infos = Infos.from_path("/path/to/draft/infos.yaml", require_persisted=False)
-```
+inside that directory.
 
 ## Saving
 
@@ -77,7 +66,10 @@ infos.save_to_file("/path/to/plaid_dataset/infos.yaml")
 ```
 
 If a directory path is provided, the file is saved as `infos.yaml` inside that
-directory.
+directory. Direct YAML writing requires complete persisted metadata: `owner`,
+`license`, `num_samples`, and `storage_backend`. When using
+`save_to_disk(..., infos=...)`, PLAID fills `num_samples` and `storage_backend`
+automatically before writing `infos.yaml`.
 
 ## Typed access and serialization
 
