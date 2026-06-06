@@ -55,9 +55,10 @@ Messages are reported with a severity, a stable code, a location and a short
 description.  Errors return exit code `1`; warnings return exit code `2` only in
 strict mode.
 
-## Notes
+## Validation notes
 
-- For CGNS datasets, only `infos.yaml` and `data/` are required at the root.
-- For other backends, metadata files and `constants/` are checked as well.
-- Without `--problem-definition`, all discovered problem definitions are checked.
-- In JSON mode, progress bars are disabled to keep the output parseable.
+!!! note "Dataset validation behavior"
+    - For CGNS datasets, only `infos.yaml` and `data/` are required at the root.
+    - For other backends, metadata files and `constants/` are checked as well.
+    - Without `--problem-definition`, all discovered problem definitions are checked.
+    - In JSON mode, progress bars are disabled to keep the output parseable.

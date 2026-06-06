@@ -133,6 +133,7 @@ nav = [
     { "CGNS Standard" = "https://cgns.org/" },
     { "Muscat library" = "https://muscat.readthedocs.io/" },
     { "PLAID Benchmarks" = "plaid_benchmarks.md" },
+    { "PhysArena" = "physarena.md" },
   ] },
 ]
 
@@ -209,6 +210,16 @@ name = "pyplaid on PyPI"
 icon = "simple/anaconda"
 link = "https://anaconda.org/conda-forge/plaid"
 name = "plaid on conda-forge"
+
+[[project.extra.social]]
+icon = "simple/arxiv"
+link = "https://arxiv.org/abs/2505.02974"
+name = "PLAID paper on arXiv"
+
+[[project.extra.social]]
+icon = "simple/huggingface"
+link = "https://huggingface.co/PhysArena"
+name = "PhysArena on Hugging Face"
 
 [project.validation]
 # Notebook text outputs contain CGNS tree dumps with square brackets (e.g.

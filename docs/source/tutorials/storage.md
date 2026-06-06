@@ -356,12 +356,13 @@ sample = converter.to_plaid(
 )
 ```
 
-- `indexers` is a mapping `feature_path -> indexer` (list/array of indices or slice).
-- Indexing is applied on the **last axis** of each indexed feature.
-- This enables a “read less + one gathered output copy” behavior:
-  - **zarr**: partial chunk reads + gathered output
-  - **hf_datasets**: Arrow/NumPy best-effort gather + gathered output
-- **cgns** backend does not use this mechanism.
+!!! info "Indexer behavior"
+    - `indexers` is a mapping `feature_path -> indexer` (list/array of indices or slice).
+    - Indexing is applied on the **last axis** of each indexed feature.
+    - This enables a “read less + one gathered output copy” behavior:
+        - **zarr**: partial chunk reads + gathered output
+        - **hf_datasets**: Arrow/NumPy best-effort gather + gathered output
+    - **cgns** backend does not use this mechanism.
 
 
 ```python

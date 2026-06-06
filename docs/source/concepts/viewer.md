@@ -154,12 +154,14 @@ The viewer can open data from two places:
 
 When streaming is active, a `streaming` chip appears in the toolbar.
 
-## Tips
 
-- If the 3D view is empty, first select a **Base** in step 4.
-- If the field dropdown is empty, load fields with **Load all** or by selecting
-  features in step 5.
-- If the viewer feels slow on a large dataset, load only one base and a small
-  number of fields.
-- The message at the bottom of the side panel reports the latest action or
-  error.
+## Troubleshooting
+
+!!! tip "Viewer tips"
+    - If the 3D view is empty, first select a **Base** in step 4.
+    - If the field dropdown is empty, load fields with **Load all** or by selecting
+      features in step 5.
+    - If the viewer feels slow on a large dataset, load only one base and a small
+      number of fields.
+    - The message at the bottom of the side panel reports the latest action or
+      error.

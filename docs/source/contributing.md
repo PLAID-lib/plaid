@@ -190,10 +190,10 @@ Before opening a PR that modifies docs or public APIs, run a quick consistency p
 
 1. **Build docs locally**
 
-   ```bash
-   cd docs
-   bash generate_doc.sh
-   ```
+    ```bash
+    cd docs
+    bash generate_doc.sh
+    ```
 
 2. **Validate API references**
 
