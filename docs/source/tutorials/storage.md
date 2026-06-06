@@ -96,9 +96,11 @@ infos = Infos(
     owner="NeuralOperator (https://zenodo.org/records/13993629)",
     license="cc-by-4.0",
     data_description="No changes to data content from original dataset",
-    type="simulation",
-    physics="phase-field fracture models for brittle fracture",
-    script="Subset 'res-SENS' of the initial dataset, 1/5th time steps, converted to PLAID format for standardized access; no changes to data content."
+    data_production={
+        "type": "simulation",
+        "physics": "phase-field fracture models for brittle fracture",
+        "script": "Subset 'res-SENS' of the initial dataset, 1/5th time steps, converted to PLAID format for standardized access; no changes to data content.",
+    },
 )
 
 

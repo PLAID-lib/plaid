@@ -12,9 +12,8 @@ In the current API, infos stores:
 - `owner` and `license`, required string entries describing the dataset
   ownership and licensing
 - `data_production`, for optional production context such as simulator,
-  hardware, contact, or location
-- `data_description`, for optional dataset description entries such as the
-  number of samples, DOE, inputs, and outputs
+  hardware, computation duration, script, or contact
+- `data_description`, for an optional free-form dataset description string
 - `num_samples`, as a dictionary keyed by split name, populated by storage writers
 - `storage_backend`, as a storage backend identifier, populated by storage writers
 
@@ -48,14 +47,19 @@ writing `infos.yaml`.
 
 ## Loading from disk
 
-Load infos from a complete dataset path or directly from an `infos.yaml` file:
+Load infos directly from an `infos.yaml` file:
 
 ```python
-infos = Infos.from_path("/path/to/plaid_dataset")
+infos = Infos.from_path("/path/to/plaid_dataset/infos.yaml")
 ```
 
-When a directory is provided, `Infos.from_path(...)` looks for `infos.yaml`
-inside that directory.
+Use `Infos.from_path(...)` when you have the YAML file path. Use
+`plaid.storage.load_infos_from_disk("/path/to/plaid_dataset")` when you have the
+dataset root directory.
+
+When the path has no suffix, `Infos.from_path(...)` appends `.yaml`. For
+example, `Infos.from_path("/path/to/plaid_dataset/infos")` reads
+`/path/to/plaid_dataset/infos.yaml`. Existing directories are rejected.
 
 ## Saving
 
@@ -65,11 +69,12 @@ Save to YAML:
 infos.save_to_file("/path/to/plaid_dataset/infos.yaml")
 ```
 
-If a directory path is provided, the file is saved as `infos.yaml` inside that
-directory. Direct YAML writing requires complete persisted metadata: `owner`,
-`license`, `num_samples`, and `storage_backend`. When using
-`save_to_disk(..., infos=...)`, PLAID fills `num_samples` and `storage_backend`
-automatically before writing `infos.yaml`.
+When the path has no suffix, `save_to_file(...)` appends `.yaml`; if a non-YAML
+suffix is provided, it is replaced with `.yaml`. Existing directories are
+rejected. Direct YAML writing requires complete persisted metadata: `owner`,
+`license`, `num_samples`, and `storage_backend`. When using `save_to_disk(...,
+infos=...)`, PLAID fills `num_samples` and `storage_backend` automatically before
+writing `infos.yaml`.
 
 ## Typed access and serialization
 

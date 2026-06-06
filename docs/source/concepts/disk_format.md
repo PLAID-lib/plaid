@@ -69,10 +69,8 @@ plaid-check /path/to/plaid_dataset --split train --json
 plaid-check /path/to/plaid_dataset --strict
 ```
 
-The minimal required layout checked by the CLI is:
+The minimal required layout checked by the CLI depends on the declared backend:
 
-- `infos.yaml`
-- `variable_schema.yaml`
-- `cgns_types.yaml`
-- `constants/`
-- `data/`
+- for `cgns`: `infos.yaml` and `data/`;
+- for non-CGNS backends: `infos.yaml`, `variable_schema.yaml`,
+  `cgns_types.yaml`, `constants/`, and `data/`.
