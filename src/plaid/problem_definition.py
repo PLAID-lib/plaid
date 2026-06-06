@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Literal, Sequence, Union
 
 import yaml
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, field_validator
 
 # %% Globals
 
@@ -26,12 +26,18 @@ def _normalize_list(v):
     return sorted(map(str, v))
 
 
-class ProblemDefinition(BaseModel):
+class ProblemDefinition(
+    BaseModel,
+    revalidate_instances="always",
+    str_strip_whitespace=True,
+    validate_assignment=True,
+    extra="forbid",
+):
     """Defines the input and output features for a machine learning problem."""
 
-    model_config = ConfigDict(
-        revalidate_instances="always", validate_assignment=True, extra="forbid"
-    )
+    # model_config = ConfigDict(
+    #     revalidate_instances="always", validate_assignment=True, extra="forbid"
+    # )
 
     input_features: list[str]
     output_features: list[str]

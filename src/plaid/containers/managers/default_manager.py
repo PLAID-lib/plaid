@@ -83,7 +83,7 @@ class DefaultManager:
             .. code-block:: python
 
                 from plaid import Sample
-                sample = Sample("path_to_plaid_sample")
+                sample = Sample.load_from_dir("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
                 print(sample.show_tree(0.5))
@@ -122,7 +122,7 @@ class DefaultManager:
             .. code-block:: python
 
                 from plaid import Sample
-                sample = Sample("path_to_plaid_sample")
+                sample = Sample.load_from_dir("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
                 print(sample.get_physical_dim("BaseA", 0.5))
@@ -173,7 +173,7 @@ class DefaultManager:
             .. code-block:: python
 
                 from plaid import Sample
-                sample = Sample("path_to_plaid_sample")
+                sample = Sample.load_from_dir("path_to_plaid_sample")
                 print(sample)
                 >>> Sample(2 scalars, 1 timestamp, 5 fields)
                 print(sample.get_zone_type("ZoneX", "BaseA", 0.5))

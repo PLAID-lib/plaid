@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (sample) **Breaking**: remove the `path` constructor argument from `Sample`; use `Sample.load_from_dir(path)` or `sample.load(path)` for explicit disk loading.
 - (infos) add an infos.py file with a pydantic Info class at the same level as ProblemDefinition.
 - (cgns_backend) remove constant/variable mechanism in reading and writing paths for the cgns_backend.
 - (docs) update logos and migrate to Zensical.

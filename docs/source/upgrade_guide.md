@@ -165,6 +165,7 @@ the [reader API](api/storage/reader.md), and the [backend API](api/storage/backe
 | `Dataset()` + `add_sample` / `add_samples` / `from_list_of_samples` | `save_to_disk(sample_constructor=..., ids=...)` |
 | `Dataset.save_to_dir(path)` / `add_to_dir` | `save_to_disk(path, sample_constructor=..., ids=...)` |
 | `Dataset.load(path)` | `init_from_disk(path)` → `(datasetdict, converterdict)` |
+| `Sample(path=sample_dir)` | `Sample.load_from_dir(sample_dir)` or `sample = Sample(); sample.load(sample_dir)` |
 | `dataset[i]` / `get_samples()` | `converter.to_plaid(dataset, i)` |
 | `len(dataset)` / `get_number_of_samples()` | `len(dataset)` (per-split backend object) |
 | `dataset.set_infos(...)` / `get_infos()` | pass [`Infos`](concepts/infos.md) to `save_to_disk(infos=...)`; read back with `Infos.from_path(path)` |

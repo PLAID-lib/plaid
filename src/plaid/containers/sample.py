@@ -20,7 +20,7 @@ import shutil
 import subprocess
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
@@ -28,7 +28,7 @@ import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
 from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, model_validator
 from pydantic import Field as PydanticField
 
 from ..constants import (
@@ -48,35 +48,24 @@ logger = logging.getLogger(__name__)
 CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
 
 
-class Sample(BaseModel):
+class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
 
-    By default, the sample is empty but:
-        - You can provide a path to a folder containing the sample data, and it will be loaded during initialization.
+    By default, the sample is empty. Use :meth:`Sample.load_from_dir` or
+    :meth:`Sample.load` to load sample data from disk.
 
     Note:
         Mesh/field/global operations are directly implemented on ``Sample`` via
         inheritance from internal feature operations.
     """
 
-    # Pydantic configuration
-    # TODO(FB) check why arbitrary_types_allowed is needed, and if it can be removed
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True, revalidate_instances="always", extra="forbid"
-    )
-
     # Attributes
-    path: Optional[Union[str, Path]] = PydanticField(
-        None,
-        description="Path to the folder containing the sample data. If provided, the sample will be loaded from this path during initialization. Defaults to None.",
-    )
-
     data: dict[float, CGNSTree] = PydanticField(
         default_factory=dict,
         description="A dictionary mapping time steps to CGNS trees.",
     )
 
-    defaults: DefaultManager = PydanticField(
+    defaults: Optional[DefaultManager] = PydanticField(
         default=None,
         exclude=True,
         repr=False,
@@ -89,13 +78,6 @@ class Sample(BaseModel):
         if self.defaults is None:
             self.defaults = DefaultManager(self)
         return self
-
-    def model_post_init(self, _context: Any) -> None:
-        """Run post-initialization hooks (e.g. load sample from path)."""
-        # Load if path is provided
-        if self.path is not None:
-            path = Path(self.path)
-            self.load(path)
 
     def copy(self) -> Self:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Create a deep copy of the current `Sample` instance.

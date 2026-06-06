@@ -93,6 +93,10 @@ sample.save_to_dir("sample_000000000", overwrite=True)
 sample = Sample.load_from_dir("sample_000000000")
 ```
 
+`Sample()` creates an empty in-memory sample. Loading from disk is explicit:
+use `Sample.load_from_dir(path)` to create a loaded sample, or instantiate an
+empty sample and call `sample.load(path)`.
+
 The CGNS files can be open in Paraview for advanced visualization and post-treatment.
 
 For large samples, `save_to_dir(..., memory_safe=True)` writes CGNS files through

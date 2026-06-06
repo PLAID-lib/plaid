@@ -7,18 +7,18 @@ from pathlib import Path
 from typing import Any, Union
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
-from pydantic.dataclasses import dataclass
+from pydantic import BaseModel, Field, ValidationError
 
 logger = logging.getLogger(__name__)
 
-_PD_CONFIG = ConfigDict(
-    extra="forbid", str_strip_whitespace=True, validate_assignment=True
-)
 
-
-@dataclass(config=_PD_CONFIG)
-class DataProduction:
+class DataProduction(
+    BaseModel,
+    revalidate_instances="always",
+    str_strip_whitespace=True,
+    validate_assignment=True,
+    extra="forbid",
+):
     """Dataset production context metadata."""
 
     owner: str | None = None
@@ -43,10 +43,16 @@ _KEY_ORDER = (
 )
 
 
-class Infos(BaseModel):
+class Infos(
+    BaseModel,
+    revalidate_instances="always",
+    str_strip_whitespace=True,
+    validate_assignment=True,
+    extra="forbid",
+):
     """Structured representation of a PLAID dataset ``infos`` payload."""
 
-    model_config = _PD_CONFIG
+    # model_config = _PD_CONFIG
 
     owner: str
     license: str
