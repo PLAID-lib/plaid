@@ -327,7 +327,7 @@ repo_id = "channel/dataset"
 pb_defs = load_problem_definitions_from_hub(repo_id)
 
 
-pb_def = pb_defs[0]
+pb_def = next(iter(pb_defs.values()))
 
 plaid_sample = ... # use a method from above to instantiate a plaid sample
 
