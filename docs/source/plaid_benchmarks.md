@@ -61,7 +61,7 @@ As of August 5, 2025
 
 The code to reproduce these results is available in [this repository](https://github.com/PLAID-lib/plaid-benchmarks).
 
-!!! note
+!!! note "Benchmark interpretation notes"
 
     - MMGP does not support variable mesh topologies, which limits its applicability to certain datasets and often necessitates custom preprocessing for new cases. However, when morphing is either unnecessary or inexpensive, it offers a highly efficient solution, combining fast training with good accuracy (e.g., `Tensile2d` and `Rotor37`).
     - MARIO is computationally expensive to train but achieves consistently a very strong performance across most datasets. Its result on `2D_MultiScHypEl` is slightly worse than other tested methods, which may reflect the challenge of capturing complex shape variability in these cases.
