@@ -170,6 +170,40 @@ def test_infos_save_and_load_roundtrip(tmp_path):
     assert reloaded.num_samples == {"train": 10}
 
 
+def test_infos_save_to_file_sorts_num_samples_keys(tmp_path):
+    model = Infos.model_validate(
+        _valid_infos(
+            num_samples={
+                "validation": 3,
+                "test_b": 2,
+                "train_b": 5,
+                "other": 1,
+                "test_a": 4,
+                "train_a": 6,
+                "train": 7,
+                "test": 8,
+            }
+        )
+    )
+
+    target = tmp_path / "infos.yaml"
+    model.save_to_file(target)
+    lines = target.read_text(encoding="utf-8").splitlines()
+
+    start = lines.index("num_samples:") + 1
+    end = lines.index("storage_backend: zarr")
+    assert lines[start:end] == [
+        "  train: 7",
+        "  train_a: 6",
+        "  train_b: 5",
+        "  test: 8",
+        "  test_a: 4",
+        "  test_b: 2",
+        "  other: 1",
+        "  validation: 3",
+    ]
+
+
 def test_infos_from_path_rejects_directory(tmp_path):
     Infos.model_validate(_valid_infos()).save_to_file(tmp_path / "infos.yaml")
 

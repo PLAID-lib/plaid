@@ -41,6 +41,22 @@ _KEY_ORDER = (
 )
 
 
+def _num_samples_sort_key(key: str) -> tuple[int, str]:
+    """Return the serialization sort key for ``num_samples`` split names."""
+    if key.startswith("train"):
+        return (0, key)
+    if key.startswith("test"):
+        return (1, key)
+    return (2, key)
+
+
+def _sort_num_samples_keys(num_samples: dict[str, int]) -> dict[str, int]:
+    """Sort ``num_samples`` with train* keys first, then test*, then others."""
+    return {
+        key: num_samples[key] for key in sorted(num_samples, key=_num_samples_sort_key)
+    }
+
+
 class Infos(
     BaseModel,
     revalidate_instances="always",
@@ -205,6 +221,8 @@ class Infos(
         path.parent.mkdir(parents=True, exist_ok=True)
 
         data = self.model_dump(exclude_none=True, exclude_unset=True)
+        if "num_samples" in data:
+            data["num_samples"] = _sort_num_samples_keys(data["num_samples"])
         ordered_data = {key: data[key] for key in _KEY_ORDER if key in data}
 
         # Preserve any future fields.
