@@ -562,22 +562,14 @@ sample.save_to_dir(sample_save_fname)
 # #### Load a Sample from a directory via the Sample class
 
 # %%
-new_sample = Sample.load_from_dir(sample_save_fname)
+new_sample_from_dir = Sample.load_from_dir(sample_save_fname)
 
-print(sample.summarize())
-
-# %% [markdown]
-# #### Load a Sample from a directory via the Sample class
-
-# %%
-new_sample_2 = Sample.load_from_dir(test_pth / "test")
-
-print(sample.summarize())
+print(new_sample_from_dir.summarize())
 
 # %% [markdown]
 # #### Load the Sample from a directory via a Sample instance
 
 # %%
-new_sample = Sample()
-new_sample.load(sample_save_fname)
-print(sample.summarize())
+new_sample_via_instance = Sample()
+new_sample_via_instance.load(sample_save_fname)
+print(new_sample_via_instance.summarize())

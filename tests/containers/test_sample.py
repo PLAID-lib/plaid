@@ -178,7 +178,7 @@ def current_directory() -> Path:
 
 class Test_Sample:
     # -------------------------------------------------------------------------#
-    def test_load_from_dir(self, current_directory):
+    def test_load_from_dir_multiple_samples(self, current_directory):
         sample_path_1 = (
             current_directory / "dataset_cgns" / "data" / "test" / "sample_000000000"
         )
@@ -1349,7 +1349,7 @@ class Test_Sample:
             save_dir, overwrite=True, memory_safe=True
         )
 
-    def test_load_from_dir_2(self, sample_with_tree_and_scalar, tmp_path):
+    def test_load_from_dir(self, sample_with_tree_and_scalar, tmp_path):
         save_dir = tmp_path / "test_dir"
         sample_with_tree_and_scalar.save_to_dir(save_dir)
         new_sample = Sample.load_from_dir(save_dir)
