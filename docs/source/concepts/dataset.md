@@ -106,18 +106,19 @@ sample = converter.to_plaid(
 
 ## Metadata and problem definitions
 
-`save_to_disk(...)` writes shared metadata (`infos.yaml`, schemas, CGNS types,
-constants) and can also persist one or more `ProblemDefinition` objects.
+`save_to_disk(...)` writes `infos.yaml` and can also persist one or more
+`ProblemDefinition` objects. For non-CGNS backends, it also writes shared
+schemas, CGNS types, and constants. The CGNS backend stores self-contained
+samples and therefore does not write these derived metadata files.
 
 The dataset-level `infos.yaml` payload is represented by
 [`Infos`](infos.md). It stores metadata such as legal ownership, licensing,
 data production context, data description, split sample counts, and the storage
-backend. The `infos` argument accepts either an `Infos` instance or a plain
-dictionary with the same schema:
+backend. The `infos` argument accepts an `Infos` instance:
 
 ```python
 from plaid import ProblemDefinition
-from plaid.infos import DataDescription, Infos
+from plaid.infos import Infos
 from plaid.storage import save_to_disk
 
 pb_def = ProblemDefinition(
@@ -129,8 +130,7 @@ pb_def = ProblemDefinition(
 infos = Infos(
     owner="CompanyX",
     license="proprietary",
-    data_description=DataDescription(number_of_samples=3),
-    num_samples={"train": 3},
+    data_description="Example dataset with three training samples.",
 )
 
 save_to_disk(
@@ -148,7 +148,7 @@ The metadata and problem definitions can be loaded later with:
 from plaid.infos import Infos
 from plaid.storage import load_problem_definitions_from_disk
 
-infos = Infos.from_path("my_plaid_dataset")
+infos = Infos.from_path("my_plaid_dataset/infos.yaml")
 pb_defs = load_problem_definitions_from_disk("my_plaid_dataset")
 pb_def = pb_defs["regression_1"]
 ```

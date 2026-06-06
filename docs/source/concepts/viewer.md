@@ -10,13 +10,19 @@ the mesh and fields interactively.
 From a terminal, run:
 
 ```bash
+plaid-viewer
+```
+
+From a `uv`-managed development checkout, use `uv run plaid-viewer` instead.
+
+```bash
 uv run plaid-viewer
 ```
 
 You can also start directly from a local datasets folder:
 
 ```bash
-uv run plaid-viewer --datasets-root /path/to/datasets
+plaid-viewer --datasets-root /path/to/datasets
 ```
 
 Then open the address shown by the command, usually:
