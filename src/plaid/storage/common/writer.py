@@ -304,13 +304,16 @@ def push_local_problem_definitions_to_hub(
 
     api = HfApi()
 
-    api.upload_folder(
-        folder_path=path / Path("problem_definitions"),
-        repo_id=repo_id,
-        repo_type="dataset",
-        path_in_repo="problem_definitions",
-        commit_message="Upload problem_definitions",
-    )
+    try:
+        api.upload_folder(
+            folder_path=path / Path("problem_definitions"),
+            repo_id=repo_id,
+            repo_type="dataset",
+            path_in_repo="problem_definitions",
+            commit_message="Upload problem_definitions",
+        )
+    except ValueError:
+        logger.info(f"No problem definition in folder {path}")
 
 
 def push_local_metadata_to_hub(

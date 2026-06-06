@@ -289,8 +289,6 @@ class Test_Storage:
 
         loaded_pb_defs = load_problem_definitions_from_disk(test_dir)
         assert set(loaded_pb_defs) == {"pb_def"}
-        with pytest.raises(ValueError):
-            load_problem_definitions_from_disk("dummy")
 
         datasetdict, converterdict = init_from_disk(test_dir, splits=["train"])
         datasetdict, converterdict = init_from_disk(test_dir)
