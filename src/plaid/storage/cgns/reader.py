@@ -75,7 +75,7 @@ class CGNSDataset:
             Sample: A PLAID Sample object.
         """
         assert idx in self.ids
-        return Sample(path=self.path / f"sample_{idx:09d}")
+        return Sample.load_from_dir(self.path / f"sample_{idx:09d}")
 
     def __len__(self) -> int:
         """Get the number of samples in the dataset.
@@ -122,12 +122,9 @@ def sample_generator(
                 allow_patterns=[f"data/{split}/sample_{idx:09d}/"],
                 local_dir=temp_folder,
             )
-            sample = Sample(
-                path=Path(temp_folder) / "data" / f"{split}" / f"sample_{idx:09d}"
+            sample = Sample.load_from_dir(
+                Path(temp_folder) / "data" / f"{split}" / f"sample_{idx:09d}"
             )
-            # Sample data are eagerly loaded in memory during initialization;
-            # clear the transient on-disk path before leaving the temp dir.
-            sample.path = None
         yield sample
 
 

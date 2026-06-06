@@ -208,7 +208,7 @@ def to_plaid_sample(
     for time, flat_tree in sample_dict.items():
         sample_data[time] = unflatten_cgns_tree(flat_tree, cgns_types)
 
-    return Sample(path=None, data=sample_data)
+    return Sample(data=sample_data)
 
 
 def plaid_to_sample_dict(

@@ -178,7 +178,7 @@ def current_directory() -> Path:
 
 class Test_Sample:
     # -------------------------------------------------------------------------#
-    def test___init__(self, current_directory):
+    def test_load_from_dir(self, current_directory):
         sample_path_1 = (
             current_directory / "dataset_cgns" / "data" / "test" / "sample_000000000"
         )
@@ -188,19 +188,19 @@ class Test_Sample:
         sample_path_3 = (
             current_directory / "dataset_cgns" / "data" / "test" / "sample_000000002"
         )
-        sample_already_filled_1 = Sample(path=sample_path_1)
-        sample_already_filled_2 = Sample(path=sample_path_2)
-        sample_already_filled_3 = Sample(path=sample_path_3)
+        sample_already_filled_1 = Sample.load_from_dir(sample_path_1)
+        sample_already_filled_2 = Sample.load_from_dir(sample_path_2)
+        sample_already_filled_3 = Sample.load_from_dir(sample_path_3)
         assert sample_already_filled_1
         assert sample_already_filled_2
         assert sample_already_filled_3
 
-    def test__init__unknown_directory(self, current_directory):
+    def test_load_from_dir_unknown_directory(self, current_directory):
         sample_path = current_directory / "dataset" / "samples" / "sample_000000298"
         with pytest.raises(FileNotFoundError):
-            Sample(path=sample_path)
+            Sample.load_from_dir(sample_path)
 
-    def test__init__file_provided(self, current_directory):
+    def test_load_from_dir_file_provided(self, current_directory):
         sample_path = (
             current_directory
             / "dataset_cgns"
@@ -211,13 +211,13 @@ class Test_Sample:
             / "mesh_000000000.cgns"
         )
         with pytest.raises(FileExistsError):
-            Sample(path=sample_path)
+            Sample.load_from_dir(sample_path)
 
-    def test__init__path(self, current_directory):
+    def test_load_from_dir_path(self, current_directory):
         sample_path = (
             current_directory / "dataset_cgns" / "data" / "test" / "sample_000000000"
         )
-        Sample(path=sample_path)
+        Sample.load_from_dir(sample_path)
 
     def test_copy(self, sample_with_tree_and_scalar):
         sample_with_tree_and_scalar.copy()

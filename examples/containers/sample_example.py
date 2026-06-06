@@ -559,10 +559,10 @@ print(f"saving path: {sample_save_fname}")
 sample.save_to_dir(sample_save_fname)
 
 # %% [markdown]
-# #### Load a Sample from a directory via initialization
+# #### Load a Sample from a directory via the Sample class
 
 # %%
-new_sample = Sample(path=sample_save_fname)
+new_sample = Sample.load_from_dir(sample_save_fname)
 
 print(sample.summarize())
 
