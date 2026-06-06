@@ -435,7 +435,7 @@ def check_dataset(
         )
         return report
     try:
-        infos = load_infos_from_disk(path)
+        infos = load_infos_from_disk(path / "infos.yaml")
     except Exception as exc:
         report.add("error", "INFOS_READ_ERROR", "infos.yaml", str(exc))
         return report

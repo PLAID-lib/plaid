@@ -190,6 +190,10 @@ class Test_ProblemDefinition:
         with pytest.raises(FileNotFoundError):
             ProblemDefinition.from_path(Path("non_existing_path"))
 
+    def test_from_path_rejects_directory(self, tmp_path: Path):
+        with pytest.raises(IsADirectoryError, match="Expected a YAML file path"):
+            ProblemDefinition.from_path(tmp_path)
+
     def test_feature_validators_reject_duplicates(self):
         with pytest.raises(
             ValidationError, match="duplicated values in input_features"
@@ -265,3 +269,14 @@ class Test_ProblemDefinition:
         assert "name:" not in saved_text
         assert loaded.train_split == {"train": [0]}
         assert loaded.test_split == {"test": [1]}
+
+    def test_save_to_file_rejects_directory(self, tmp_path: Path):
+        problem = ProblemDefinition(
+            input_features=["in_1"],
+            output_features=["out_1"],
+            train_split={"train": [0]},
+            test_split={"test": [1]},
+        )
+
+        with pytest.raises(IsADirectoryError, match="Expected a YAML file path"):
+            problem.save_to_file(tmp_path)

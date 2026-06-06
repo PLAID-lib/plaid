@@ -21,8 +21,6 @@ class DataProduction(
 ):
     """Dataset production context metadata."""
 
-    owner: str | None = None
-    license: str | None = None
     type: str | None = None
     physics: str | None = None
     simulator: str | None = None
@@ -52,14 +50,25 @@ class Infos(
 ):
     """Structured representation of a PLAID dataset ``infos`` payload."""
 
-    # model_config = _PD_CONFIG
-
     owner: str
     license: str
     data_production: DataProduction | None = None
     data_description: str | None = None
     num_samples: dict[str, int] = Field(default_factory=dict)
     storage_backend: str | None = None
+
+    @classmethod
+    def print_available_fields(cls) -> None:
+        """Print the public constructor fields accepted by :class:`Infos`."""
+        print("Infos fields:")
+        for field_name in cls.model_fields:
+            print(f"  - {field_name}")
+            if field_name in {"num_samples", "storage_backend"}:
+                print("    note: automatically filled when calling save_to_disk")
+            if field_name == "data_production":
+                print("    subfields:")
+                for subfield_name in DataProduction.model_fields:
+                    print(f"      - {subfield_name}")
 
     def require_persisted(self) -> "Infos":
         """Validate fields that must exist in persisted dataset infos.
@@ -142,8 +151,8 @@ class Infos(
         """Load and validate an :class:`Infos` from a YAML file.
 
         Args:
-            path: Path to the YAML file (typically ``infos.yaml``) or to a
-                directory containing it.
+            path: Path to the YAML file (typically ``infos.yaml``). If no
+                suffix is provided, ``.yaml`` is appended.
             require_persisted: When True, require storage-derived metadata
                 fields expected in a complete on-disk dataset.
 
@@ -152,10 +161,15 @@ class Infos(
 
         Raises:
             FileNotFoundError: If the resolved YAML file does not exist.
+            IsADirectoryError: If ``path`` points to a directory.
         """
         path = Path(path)
         if path.is_dir():
-            path = path / "infos.yaml"
+            raise IsADirectoryError(
+                f'Expected a YAML file path, got directory "{path}"'
+            )
+        if path.suffix != ".yaml":
+            path = path.with_suffix(".yaml")
         if not path.exists():
             raise FileNotFoundError(f'File "{path}" does not exist. Abort')
 
@@ -171,15 +185,20 @@ class Infos(
         """Save infos to ``path`` as a YAML file.
 
         Args:
-            path: File path (or directory) where the YAML will be written. If
-                ``path`` is a directory it will be extended with ``infos.yaml``.
+            path: File path where the YAML will be written. If no suffix is
+                provided, ``.yaml`` is appended.
+
+        Raises:
+            IsADirectoryError: If ``path`` points to a directory.
         """
+        self.require_persisted()
+
         path = Path(path)
-        if path.suffix == "" and not path.exists():
-            # Treat suffix-less paths as directories.
-            path = path / "infos.yaml"
-        elif path.is_dir():
-            path = path / "infos.yaml"
+        if path.is_dir():
+            raise IsADirectoryError(
+                f'Expected a YAML file path, got directory "{path}"'
+            )
+
         if path.suffix != ".yaml":
             path = path.with_suffix(".yaml")
 
@@ -187,6 +206,7 @@ class Infos(
 
         data = self.model_dump(exclude_none=True, exclude_unset=True)
         ordered_data = {key: data[key] for key in _KEY_ORDER if key in data}
+
         # Preserve any future fields.
         for key, value in data.items():
             if key not in ordered_data:
