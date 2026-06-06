@@ -26,7 +26,13 @@ def _normalize_list(v):
     return sorted(map(str, v))
 
 
-class ProblemDefinition(BaseModel, revalidate_instances="always", str_strip_whitespace=True, validate_assignment=True, extra="forbid"):
+class ProblemDefinition(
+    BaseModel,
+    revalidate_instances="always",
+    str_strip_whitespace=True,
+    validate_assignment=True,
+    extra="forbid",
+):
     """Defines the input and output features for a machine learning problem."""
 
     # model_config = ConfigDict(

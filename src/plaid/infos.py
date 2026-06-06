@@ -11,7 +11,14 @@ from pydantic import BaseModel, Field, ValidationError
 
 logger = logging.getLogger(__name__)
 
-class DataProduction(BaseModel, revalidate_instances="always", str_strip_whitespace=True, validate_assignment=True, extra="forbid"):
+
+class DataProduction(
+    BaseModel,
+    revalidate_instances="always",
+    str_strip_whitespace=True,
+    validate_assignment=True,
+    extra="forbid",
+):
     """Dataset production context metadata."""
 
     owner: str | None = None
@@ -36,7 +43,13 @@ _KEY_ORDER = (
 )
 
 
-class Infos(BaseModel, revalidate_instances="always", str_strip_whitespace=True, validate_assignment=True, extra="forbid"):
+class Infos(
+    BaseModel,
+    revalidate_instances="always",
+    str_strip_whitespace=True,
+    validate_assignment=True,
+    extra="forbid",
+):
     """Structured representation of a PLAID dataset ``infos`` payload."""
 
     # model_config = _PD_CONFIG
