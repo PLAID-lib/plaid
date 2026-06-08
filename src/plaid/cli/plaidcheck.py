@@ -601,16 +601,14 @@ def check_dataset(
 
                 # Record the observed shape of this Global so we can later
                 # detect dimension mismatches across all checked samples
-                # (across splits).
+                # (across splits). At this point ``_check_numeric_content``
+                # already coerced ``value`` through ``np.asarray`` without
+                # error, so the same call here is safe.
                 if value is not None:
-                    try:
-                        shape = tuple(np.asarray(value).shape)
-                    except Exception:
-                        shape = None
-                    if shape is not None:
-                        global_shape_observations.setdefault(
-                            global_name, {}
-                        ).setdefault(shape, []).append(f"{split}[{idx}]")
+                    shape = tuple(np.asarray(value).shape)
+                    global_shape_observations.setdefault(global_name, {}).setdefault(
+                        shape, []
+                    ).append(f"{split}[{idx}]")
 
             for time in sample.get_all_time_values():
                 local_bases = sample.get_base_names(time=time)
