@@ -524,6 +524,10 @@ def check_dataset(
     target_splits = target_splits & dataset_splits
 
     checksum_report = {}
+    # Track shape of each Global feature across all checked splits/samples to
+    # detect inconsistencies (e.g. a Global stored as a scalar in one sample
+    # and as a vector in another).
+    global_shape_observations: dict[str, dict[tuple, list[str]]] = {}
     for split in sorted(target_splits):
         dataset = datasetdict[split]
         converter = converterdict[split]
@@ -595,6 +599,17 @@ def check_dataset(
                         issue,
                     )
 
+                # Record the observed shape of this Global so we can later
+                # detect dimension mismatches across all checked samples
+                # (across splits). At this point ``_check_numeric_content``
+                # already coerced ``value`` through ``np.asarray`` without
+                # error, so the same call here is safe.
+                if value is not None:
+                    shape = tuple(np.asarray(value).shape)
+                    global_shape_observations.setdefault(global_name, {}).setdefault(
+                        shape, []
+                    ).append(f"{split}[{idx}]")
+
             for time in sample.get_all_time_values():
                 local_bases = sample.get_base_names(time=time)
                 for base in local_bases:
@@ -624,6 +639,25 @@ def check_dataset(
                                         f"{split}[{idx}][{time}] {base}/{zone}/{location}/{f_name}",
                                         issue,
                                     )
+
+    # Report Globals whose dimension/shape is not consistent across all
+    # checked samples (across splits).
+    for global_name, shape_to_locations in global_shape_observations.items():
+        if len(shape_to_locations) <= 1:
+            continue
+        details = "; ".join(
+            f"shape={shape} at {locations[:5]}"
+            + (f" (+{len(locations) - 5} more)" if len(locations) > 5 else "")
+            for shape, locations in sorted(
+                shape_to_locations.items(), key=lambda kv: str(kv[0])
+            )
+        )
+        report.add(
+            "error",
+            "GLOBAL_SHAPE_MISMATCH",
+            f"global/{global_name}",
+            f"Global '{global_name}' has inconsistent shapes across samples: {details}",
+        )
 
     # Compare checksums from every checked sample to flag identical sample data.
     checksum_values = list(checksum_report.values())
