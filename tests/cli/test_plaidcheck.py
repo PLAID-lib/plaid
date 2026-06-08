@@ -633,6 +633,43 @@ def test_check_dataset_split_and_data_warnings_and_duplicates(
     assert any(msg.code == "DUPLICATED_DATA" for msg in report.messages)
 
 
+def test_check_dataset_reports_global_shape_mismatch(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Globals with inconsistent shapes across samples should be reported."""
+    dataset = _make_minimal_layout(tmp_path)
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_infos_from_disk",
+        lambda path: _infos({"train": 2}),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: ({"train": {}}, {"Var": {}}, {"train": {}}, None),  # noqa: ARG005
+    )
+    samples = [
+        _FakeSampleForCheck(global_value=np.array(1.0)),
+        _FakeSampleForCheck(global_value=np.array([1.0, 2.0])),
+    ]
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": _FakeDataset(2)},
+            {"train": _FakeConverter(samples)},
+        ),
+    )
+
+    report = check_dataset(dataset, splits=["train"])
+
+    mismatch_msgs = [m for m in report.messages if m.code == "GLOBAL_SHAPE_MISMATCH"]
+    assert len(mismatch_msgs) == 1
+    assert mismatch_msgs[0].severity == "error"
+    assert "G" in mismatch_msgs[0].location
+
+
 def test_check_dataset_sample_conversion_error(tmp_path: Path, monkeypatch) -> None:
     """Checker should emit conversion errors when converter fails on an index."""
     dataset = _make_minimal_layout(tmp_path)
