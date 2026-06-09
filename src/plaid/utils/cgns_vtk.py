@@ -308,6 +308,17 @@ def CGNSTreeToVtk(treeNode: list):
     field_data = new_output.GetFieldData()
 
     for key, value in globals.items():
+        if value.dtype == "|S1":
+            from vtkmodules.vtkCommonCore import vtkStringArray
+
+            labels = vtkStringArray()
+            labels.SetName(key)
+            labels.SetNumberOfValues(len(value))
+            for v in value:
+                labels.SetValue(v)
+            field_data.AddArray(labels)
+            continue
+
         array = numpy_support.numpy_to_vtk(value)
         array.SetName(key)
         field_data.AddArray(array)
