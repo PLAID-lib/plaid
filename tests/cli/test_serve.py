@@ -6,6 +6,7 @@ import json
 import threading
 from collections.abc import Generator
 from http.client import HTTPConnection
+from pathlib import Path
 
 import pytest
 
@@ -52,6 +53,35 @@ def _get_json(url_base: str, path: str) -> tuple[int, dict[str, object]]:
     return response.status, payload
 
 
+def _post_json(
+    url_base: str,
+    path: str,
+    payload: dict[str, object] | None = None,
+) -> tuple[int, dict[str, object]]:
+    """Perform a POST request and decode the JSON payload.
+
+    Args:
+        url_base: Host/port string.
+        path: HTTP path.
+        payload: JSON payload sent in the request body.
+
+    Returns:
+        Tuple of status code and JSON-decoded object.
+    """
+    body = json.dumps(payload or {}).encode("utf-8")
+    connection = HTTPConnection(url_base)
+    connection.request(
+        "POST",
+        path,
+        body=body,
+        headers={"Content-Type": "application/json"},
+    )
+    response = connection.getresponse()
+    response_payload = json.loads(response.read().decode("utf-8"))
+    connection.close()
+    return response.status, response_payload
+
+
 def test_health_entry_point_returns_ok(serve_url: str) -> None:
     """Health route should return status OK."""
     status, payload = _get_json(serve_url, "/health")
@@ -80,3 +110,54 @@ def test_unknown_route_returns_not_found(serve_url: str) -> None:
 
     assert status == 404
     assert payload == {"GET error": "Not Found"}
+
+
+def test_post_health_entry_point_returns_ok(serve_url: str) -> None:
+    """POST health route should match the Maestro serve interface."""
+    status, payload = _post_json(serve_url, "/health")
+
+    assert status == 200
+    assert payload == {"status": "ok"}
+
+
+def test_post_predict_returns_not_implemented(serve_url: str) -> None:
+    """POST predict route should be explicit but unsupported by PLAID serve."""
+    status, payload = _post_json(serve_url, "/predict")
+
+    assert status == 501
+    assert payload == {"error": "Endpoint /predict is not supported by PLAID serve"}
+
+
+def test_post_unknown_route_returns_not_found(serve_url: str) -> None:
+    """Unknown POST routes should return a 404 payload."""
+    status, payload = _post_json(serve_url, "/unknown")
+
+    assert status == 404
+    assert payload == {"POST error": "Not Found"}
+
+
+def test_post_infos_returns_dataset_infos(serve_url: str) -> None:
+    """POST infos route should load dataset infos from the provided dataset."""
+    dataset = Path("datamain/PhysArena_Tensile2d")
+
+    status, payload = _post_json(serve_url, "/infos", {"dataset": str(dataset)})
+
+    assert status == 200
+    assert payload["storage_backend"] == "hf_datasets"
+    assert payload["num_samples"] == {"OOD": 2, "test": 200, "train": 500}
+
+
+def test_post_problem_definition_returns_selected_definition(serve_url: str) -> None:
+    """POST problem_definition route should load the requested definition."""
+    dataset = Path("datamain/PhysArena_Tensile2d")
+
+    status, payload = _post_json(
+        serve_url,
+        "/problem_definition",
+        {"dataset": str(dataset), "problem_definition": "regression_8"},
+    )
+
+    assert status == 200
+    assert payload["name"] == "regression_8"
+    assert isinstance(payload["input_features"], list)
+    assert isinstance(payload["output_features"], list)

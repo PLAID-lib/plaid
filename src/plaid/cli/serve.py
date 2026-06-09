@@ -93,6 +93,11 @@ import numpy as np
 from plaid.containers import Sample
 from plaid.storage import init_from_disk
 from plaid.storage.common.preprocessor import build_sample_dict
+from plaid.storage.common.reader import (
+    load_infos_from_disk,
+    load_problem_definitions_from_disk,
+)
+from plaid.utils.sample_json import sample_to_json_payload
 
 log = logging.getLogger(__name__)
 
@@ -163,6 +168,31 @@ def _parse_request_payload(handler: BaseHTTPRequestHandler) -> dict[str, object]
     return cast(dict[str, object], payload)
 
 
+def _parse_optional_request_payload(
+    handler: BaseHTTPRequestHandler,
+) -> dict[str, object]:
+    """Parse an optional JSON request payload from an HTTP handler.
+
+    Args:
+        handler: Request handler exposing headers and input stream.
+
+    Returns:
+        Parsed JSON object, or an empty dictionary when no body is provided.
+
+    Raises:
+        ValueError: If a provided body is invalid or not a JSON object.
+    """
+    content_length = int(handler.headers.get("Content-Length", "0"))
+    if content_length <= 0:
+        return {}
+
+    raw = handler.rfile.read(content_length)
+    payload = json.loads(raw.decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("Request body must be a JSON object")
+    return cast(dict[str, object], payload)
+
+
 def _parse_dataset_uri(request: dict[str, object]) -> str:
     """Extract dataset location from a request payload.
 
@@ -182,6 +212,30 @@ def _parse_dataset_uri(request: dict[str, object]) -> str:
         if isinstance(value, str) and value.strip():
             return value.strip()
     raise ValueError("dataset path/URI is required (dataset or uri)")
+
+
+def _resolve_dataset_uri(
+    request: dict[str, object],
+    default_dataset_uri: str | None,
+) -> str:
+    """Resolve dataset URI from request payload or server default.
+
+    Args:
+        request: Parsed JSON payload.
+        default_dataset_uri: Optional dataset configured at server start.
+
+    Returns:
+        Dataset path/URI string.
+
+    Raises:
+        ValueError: If no dataset can be resolved.
+    """
+    try:
+        return _parse_dataset_uri(request)
+    except ValueError:
+        if default_dataset_uri is not None and default_dataset_uri.strip():
+            return default_dataset_uri.strip()
+        raise
 
 
 def _parse_split(request: dict[str, object]) -> str | None:
@@ -268,7 +322,19 @@ class _DatasetStore:
 class ServeContext:
     """Serving context shared by all HTTP handlers."""
 
+    default_dataset_uri: str | None = None
     stores: dict[str, _DatasetStore] = field(default_factory=dict)
+
+    def resolve_dataset_uri(self, request: dict[str, object]) -> str:
+        """Resolve dataset URI from a request or the server default.
+
+        Args:
+            request: Parsed JSON payload.
+
+        Returns:
+            Dataset path/URI string.
+        """
+        return _resolve_dataset_uri(request, self.default_dataset_uri)
 
     def _get_store(self, dataset_uri: str) -> _DatasetStore:
         """Load and cache a PLAID dataset from disk.
@@ -371,7 +437,7 @@ class ServeContext:
         store = self._get_store(dataset_uri)
         split_key = self._resolve_split(store, split)
         print(f"get_time_steps : {split_key}")
-        if split_key == None:
+        if split_key is None:
             return [
                 {
                     "sample_id": sample_id,
@@ -433,6 +499,79 @@ class ServeContext:
             )
         return payloads
 
+    def get_sample_objects(
+        self,
+        dataset_uri: str,
+        split: str | None,
+        sample_ids: list[int],
+    ) -> list[Sample]:
+        """Return source samples from a PLAID dataset.
+
+        Args:
+            dataset_uri: Dataset path/URI.
+            split: Requested split.
+            sample_ids: Existing sample IDs.
+
+        Returns:
+            PLAID sample objects.
+        """
+        store = self._get_store(dataset_uri)
+        split_key = self._resolve_split(store, split)
+        dataset = store.datasetdict[split_key]
+        converter = store.converterdict[split_key]
+
+        return [converter.to_plaid(dataset, sample_id) for sample_id in sample_ids]
+
+    @staticmethod
+    def get_infos(dataset_uri: str) -> dict[str, object]:
+        """Return dataset infos in Maestro-compatible JSON shape.
+
+        Args:
+            dataset_uri: Dataset path/URI.
+
+        Returns:
+            Serialized dataset infos.
+        """
+        return cast(dict[str, object], load_infos_from_disk(dataset_uri).model_dump())
+
+    @staticmethod
+    def get_problem_definition(
+        dataset_uri: str,
+        name: str | None = None,
+    ) -> dict[str, object]:
+        """Return one problem definition in Maestro-compatible JSON shape.
+
+        Args:
+            dataset_uri: Dataset path/URI.
+            name: Optional problem definition name to select.
+
+        Returns:
+            Serialized problem definition.
+
+        Raises:
+            ValueError: If the requested definition is unavailable.
+        """
+        problem_definitions = load_problem_definitions_from_disk(dataset_uri)
+        if name is not None:
+            if name not in problem_definitions:
+                raise ValueError(
+                    f"Problem definition {name!r} not found; available definitions: "
+                    f"{sorted(problem_definitions)}"
+                )
+            return cast(dict[str, object], problem_definitions[name].model_dump())
+
+        if "PLAID_benchmark" in problem_definitions:
+            return cast(
+                dict[str, object],
+                problem_definitions["PLAID_benchmark"].model_dump(),
+            )
+        if len(problem_definitions) == 1:
+            problem_definition = next(iter(problem_definitions.values()))
+            return cast(dict[str, object], problem_definition.model_dump())
+
+        first_name = sorted(problem_definitions)[0]
+        return cast(dict[str, object], problem_definitions[first_name].model_dump())
+
 
 class _Handler(BaseHTTPRequestHandler):
     """HTTP handler for PLAID dataset requests."""
@@ -449,89 +588,72 @@ class _Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def do_GET(self) -> None:  # noqa: N802
+
+    def do_POST(self) -> None:  # noqa: N802
+        """Handle Maestro-compatible POST serve API requests."""
         parsed = urlparse(self.path)
+
         if parsed.path == "/health":
             self._send_json({"status": "ok"})
             return
 
-        if parsed.path == "/entry_points":
+        if parsed.path == "/predict":
             self._send_json(
-                {
-                    "samples_step": True,
-                    "predict": False,
-                    "splits": True,
-                    "timesteps": True,
-                    "samples": True,
-                }
+                {"error": "Endpoint /predict is not supported by PLAID serve"},
+                status=HTTPStatus.NOT_IMPLEMENTED,
             )
             return
 
         if parsed.path not in {
-            "/splits",
-            "/timesteps",
             "/samples",
-            "/samples_time",
+            "/problem_definition",
+            "/infos",
         }:
-            self._send_json({"GET error": "Not Found"}, status=HTTPStatus.NOT_FOUND)
+            self._send_json({"POST error": "Not Found"}, status=HTTPStatus.NOT_FOUND)
             return
 
         try:
-            request_payload = _parse_request_payload(self)
-            dataset_uri = _parse_dataset_uri(request_payload)
-            split = _parse_split(request_payload)
+            request_payload = _parse_optional_request_payload(self)
             server = cast("_ServeHTTPServer", self.server)
+            dataset_uri = server.context.resolve_dataset_uri(request_payload)
 
-            if parsed.path == "/splits":
-                splits = server.context.get_splits(dataset_uri)
-                self._send_json({"splits": splits})
-                return
-
-            sample_ids, include_features = _validate_sample_request(request_payload)
-
-            if parsed.path == "/timesteps":
-                time_steps = server.context.get_time_steps(
-                    dataset_uri=dataset_uri,
-                    split=split,
-                    sample_ids=sample_ids,
+            if parsed.path == "/problem_definition":
+                problem_definition_name = request_payload.get(
+                    "problem_definition",
+                    request_payload.get("problem_definition_name"),
                 )
-                self._send_json({"time_steps": time_steps})
-                return
-
-            if parsed.path == "/samples":
-                samples = server.context.get_samples(
-                    dataset_uri=dataset_uri,
-                    split=split,
-                    sample_ids=sample_ids,
-                    include_features=include_features,
+                if problem_definition_name is not None and not isinstance(
+                    problem_definition_name, str
+                ):
+                    raise ValueError("problem_definition must be a string")
+                self._send_json(
+                    server.context.get_problem_definition(
+                        dataset_uri,
+                        name=problem_definition_name,
+                    )
                 )
-                self._send_json({"samples": samples})
                 return
 
-            time_value = request_payload.get("time", None)
-            if time_value is None:
-                raise ValueError("time is required for /samples_time")
-            if not isinstance(time_value, int | float):
-                raise ValueError("time must be an integer or float")
-            if len(sample_ids) != 1:
-                raise ValueError("/samples_time requires exactly one sample_id")
+            if parsed.path == "/infos":
+                self._send_json(server.context.get_infos(dataset_uri))
+                return
 
-            samples = server.context.get_samples(
+            sample_ids, _ = _validate_sample_request(request_payload)
+            split = _parse_split(request_payload)
+            samples = server.context.get_sample_objects(
                 dataset_uri=dataset_uri,
                 split=split,
                 sample_ids=sample_ids,
-                include_features=include_features,
-                time=float(time_value),
             )
-            self._send_json({"samples": samples, "time": float(time_value)})
+            self._send_json(
+                {"samples": [sample_to_json_payload(sample) for sample in samples]}
+            )
             return
 
         except ValueError as exc:
-            print(exc)
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
         except Exception as exc:  # pragma: no cover - defensive path
-            print(exc)
-            log.exception("Request failed")
+            log.exception("Serve API request failed")
             self._send_json(
                 {"error": f"Internal server error: {exc}"},
                 status=HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -558,6 +680,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--host", default="0.0.0.0", help="Bind address.")
     parser.add_argument("--port", type=int, default=8000, help="Bind port.")
+    parser.add_argument(
+        "--dataset",
+        default=None,
+        help="Default dataset path used by Maestro-compatible POST endpoints.",
+    )
     parser.add_argument(
         "--ParaViewRun",
         action="store_true",
@@ -590,7 +717,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         process = None
 
-    context = ServeContext()
+    context = ServeContext(default_dataset_uri=args.dataset)
     server = _ServeHTTPServer((str(args.host), int(args.port)), context)
     log.info("PLAID data API listening on http://%s:%s", args.host, args.port)
 
