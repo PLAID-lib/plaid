@@ -1284,12 +1284,101 @@ class Test_Sample:
             is not None
         )
 
+    def test_update_value_by_path(self, sample_with_tree):
+        path = "Base_2_2/Zone/VertexFields/test_node_field_1"
+        new_field = np.linspace(0.0, 1.0, 5)
+
+        sample_with_tree.update_value_by_path(path, new_field)
+
+        assert np.allclose(sample_with_tree.get_feature_by_path(path), new_field)
+
+    def test_update_value_by_path_at_specific_time(self, sample, tree):
+        path = "Base_2_2/Zone/VertexFields/test_node_field_1"
+        time_0_field = np.linspace(0.0, 1.0, 5)
+        time_1_field = np.linspace(10.0, 14.0, 5)
+
+        sample.add_tree(copy.deepcopy(tree), time=0.0)
+        sample.add_tree(copy.deepcopy(tree), time=1.0)
+        sample.update_value_by_path(path, time_0_field, time=0.0)
+        sample.update_value_by_path(path, time_1_field, time=1.0)
+
+        assert np.allclose(sample.get_feature_by_path(path, time=0.0), time_0_field)
+        assert np.allclose(sample.get_feature_by_path(path, time=1.0), time_1_field)
+
+    def test_update_value_by_path_rejects_unknown_path(self, sample_with_tree):
+        with pytest.raises(KeyError, match="There is no node at path"):
+            sample_with_tree.update_value_by_path(
+                "Base_2_2/Zone/VertexFields/missing_field",
+                np.zeros(5),
+            )
+
+    def test_update_value_by_path_rejects_incompatible_shape(self, sample_with_tree):
+        with pytest.raises(ValueError, match="incomming data has shape"):
+            sample_with_tree.update_value_by_path(
+                "Base_2_2/Zone/VertexFields/test_node_field_1",
+                np.zeros(6),
+            )
+
     def test_update_features_by_path(self, sample_with_tree_and_scalar):
-        sample_with_tree_and_scalar.update_features_by_path(
+        original_value = sample_with_tree_and_scalar.get_feature_by_path(
+            "Global/test_scalar_1"
+        )
+
+        updated_sample = sample_with_tree_and_scalar.update_features_by_path(
             "Global/test_scalar_1",
             features=3.141592,
             in_place=False,
         )
+
+        assert updated_sample is not sample_with_tree_and_scalar
+        assert updated_sample.get_feature_by_path("Global/test_scalar_1") == 3.141592
+        assert (
+            sample_with_tree_and_scalar.get_feature_by_path("Global/test_scalar_1")
+            == original_value
+        )
+
+    def test_update_features_by_path_in_place(self, sample_with_tree_and_scalar):
+        updated_sample = sample_with_tree_and_scalar.update_features_by_path(
+            "Global/test_scalar_1",
+            features=2.718281,
+            in_place=True,
+        )
+
+        assert updated_sample is sample_with_tree_and_scalar
+        assert sample_with_tree_and_scalar.get_feature_by_path(
+            "Global/test_scalar_1"
+        ) == pytest.approx(2.718281)
+
+    def test_update_features_by_path_updates_multiple_features(
+        self, sample_with_tree_and_scalar
+    ):
+        new_field = np.linspace(10.0, 14.0, 5)
+
+        updated_sample = sample_with_tree_and_scalar.update_features_by_path(
+            [
+                "Global/test_scalar_1",
+                "Base_2_2/Zone/VertexFields/test_node_field_1",
+            ],
+            [42.0, new_field],
+            in_place=False,
+        )
+
+        assert updated_sample.get_feature_by_path("Global/test_scalar_1") == 42.0
+        assert np.allclose(
+            updated_sample.get_feature_by_path(
+                "Base_2_2/Zone/VertexFields/test_node_field_1"
+            ),
+            new_field,
+        )
+
+    def test_update_features_by_path_rejects_mismatched_lengths(
+        self, sample_with_tree_and_scalar
+    ):
+        with pytest.raises(AssertionError):
+            sample_with_tree_and_scalar.update_features_by_path(
+                ["Global/test_scalar_1", "Global/r"],
+                [1.0],
+            )
 
     def test_get_all_features_by_type(self, sample_with_tree_and_scalar):
 
