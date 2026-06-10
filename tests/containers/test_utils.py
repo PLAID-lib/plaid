@@ -56,6 +56,7 @@ class Test_Container_Utils:
                     "name": "IterationValues",
                 },
             ),
+            ("Global/Time", {"type": "global", "sub_type": "time"}),
             (
                 "Global/Mach",
                 {"type": "global", "sub_type": "scalar", "name": "Mach"},
@@ -129,6 +130,65 @@ class Test_Container_Utils:
                 },
             ),
             (
+                "Base_2_2/Zone/CellCenterFields/cell_pressure",
+                {
+                    "base": "Base_2_2",
+                    "zone": "Zone",
+                    "type": "field",
+                    "location": "CellCenter",
+                    "name": "cell_pressure",
+                },
+            ),
+            (
+                "Base_2_2/Zone/SurfaceData/wall_flux",
+                {
+                    "base": "Base_2_2",
+                    "zone": "Zone",
+                    "type": "field",
+                    "location": "FaceCenter",
+                    "name": "wall_flux",
+                },
+            ),
+            (
+                "Base_2_2/Zone/gauss_IntegrationPointFields/strain",
+                {
+                    "base": "Base_2_2",
+                    "zone": "Zone",
+                    "type": "field",
+                    "location": "IntegrationPoint",
+                    "name": "strain",
+                },
+            ),
+            (
+                "Base_2_2/Zone/ZoneBC/inlet",
+                {
+                    "base": "Base_2_2",
+                    "zone": "Zone",
+                    "type": "boundary_condition",
+                    "name": "inlet",
+                    "sub_type": "bc",
+                },
+            ),
+            (
+                "Base_2_2/Zone/ZoneBC/inlet/PointList",
+                {
+                    "base": "Base_2_2",
+                    "zone": "Zone",
+                    "type": "boundary_condition",
+                    "name": "inlet",
+                    "sub_type": "PointList",
+                },
+            ),
+            (
+                "Base_2_2/Zone/Elements_QUAD_4/UnexpectedLeaf",
+                {
+                    "base": "Base_2_2",
+                    "zone": "Zone",
+                    "type": "elements",
+                    "element_type": "QUAD_4",
+                },
+            ),
+            (
                 "Base_2_2/Zone/Time/IterationValues",
                 {
                     "base": "Base_2_2",
@@ -141,6 +201,10 @@ class Test_Container_Utils:
     )
     def test_get_feature_details_from_path(self, url, expected):
         assert get_feature_details_from_path(url) == expected
+
+    def test_get_feature_details_from_path_rejects_unknown_base(self):
+        with pytest.raises(AssertionError, match="path not recognized"):
+            get_feature_details_from_path("NotABase/Zone/VertexFields/field")
 
     def test_validate_required_only(self):
         infos = {
