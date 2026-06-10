@@ -9,14 +9,21 @@ To use the library, the simplest way is to install it from the packages availabl
   conda install -c conda-forge plaid
   ```
 
-- or on PyPI for Linux:
+- on PyPI for Linux:
   ```bash
   pip install pyplaid
   ```
 
+- on Spack for Linux, macOS, and Windows:
+  ```bash
+  spack install py-plaid
+  ```
+
 !!! note "Installation notes"
-    - Conda-forge packages for all supported operating systems (Linux, macOS, and Windows) and the Linux PyPI package include a bundled pyCGNS dependency. In other situations, which we have not tested, pyCGNS must be installed separately beforehand.
-    - On Apple Silicon, users can force an osx-64 conda environment using CONDA_SUBDIR=osx-64, allowing installation of the existing macOS-64 builds under Rosetta.
+    - Conda-forge packages for Linux, macOS, and Windows, as well as the Linux PyPI package, include a bundled pyCGNS dependency. Non-Linux PyPI installations require a separate pyCGNS installation and are untested.
+    - A Spack package recipe is available for Linux, macOS, and Windows, but has only been tested on Linux.
+    - On Apple Silicon, users can force an `osx-64` conda environment with `CONDA_SUBDIR=osx-64` to install the existing macOS-64 builds under Rosetta.
+
 
 
 ## 2. Core concepts
