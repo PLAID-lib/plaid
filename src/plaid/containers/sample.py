@@ -1946,3 +1946,38 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
 
         if self.data is not None:
             CGH.show_cgns_tree(self.data.get(time))
+
+    def update_value_by_path(self, path: str, field: np.ndarray, time:float = None) -> None:
+        """Update a field in the CGNS tree by its path.
+
+        Args:
+            path (str): The path to the field node in the CGNS tree.
+            field (np.ndarray): The new field data to be set at the specified path.
+            time (float, optional): The time associated with the field. Defaults to None, which will use the default time.
+
+        Raises:
+            KeyError: Raised if the specified path does not exist in the CGNS tree.
+        """
+        # init_tree will look for default time
+        self.init_tree(None)
+        path_parts = path.strip("/").split("/")
+
+        root_node = self.get_base(base=path_parts[0], time=time)
+        node_path = "/" + "/".join(path_parts[1:])
+        node = CGU.getNodeByPath(root_node, node_path)
+
+        if node is None:
+            raise KeyError(f"There is no node at path '{node_path}' in the CGNS tree for time {time}.")
+
+        field = np.asarray(field)
+        try:
+            field.shape = CGU.getValue(node).shape
+        except Exception as ex:
+            raise ValueError(f"value of node {path} has shape : {np.asarray(CGU.getValue(node)).shape} but incomming data has shape {np.asarray(field).shape}") from ex
+
+        if np.asarray(CGU.getValue(node)).shape != np.asarray(field).shape:
+            print(field)
+            print(CGU.getValue(node))
+            logger.warning(f"value of node {path} has shape : {np.asarray(CGU.getValue(node)).shape} but incomming data has shape {np.asarray(field).shape}")
+
+        CGU.setValue(node, np.asfortranarray(field))
