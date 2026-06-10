@@ -4,6 +4,7 @@ This fuction do not require any class of plaid.
 Please keep this module free of plaid dependencies to make it usable in
 the ParaView plugin without forcing users to install plaid.
 """
+
 from typing import Any, List, Optional
 
 import numpy as np
@@ -11,14 +12,14 @@ import numpy as np
 # Direct CGNS -> VTK conversion tables.  These maps deliberately use only CGNS
 # element numbers and VTK cell numbers so the converter below does not depend on
 CGNSNumberToVtkNumber = {
-    2: 1,    # NODE     -> VTK_VERTEX
-    3: 3,    # BAR_2    -> VTK_LINE
-    4: 21,   # BAR_3    -> VTK_QUADRATIC_EDGE
-    5: 5,    # TRI_3    -> VTK_TRIANGLE
-    6: 22,   # TRI_6    -> VTK_QUADRATIC_TRIANGLE
-    7: 9,    # QUAD_4   -> VTK_QUAD
-    8: 23,   # QUAD_8   -> VTK_QUADRATIC_QUAD
-    9: 28,   # QUAD_9   -> VTK_BIQUADRATIC_QUAD
+    2: 1,  # NODE     -> VTK_VERTEX
+    3: 3,  # BAR_2    -> VTK_LINE
+    4: 21,  # BAR_3    -> VTK_QUADRATIC_EDGE
+    5: 5,  # TRI_3    -> VTK_TRIANGLE
+    6: 22,  # TRI_6    -> VTK_QUADRATIC_TRIANGLE
+    7: 9,  # QUAD_4   -> VTK_QUAD
+    8: 23,  # QUAD_8   -> VTK_QUADRATIC_QUAD
+    9: 28,  # QUAD_9   -> VTK_BIQUADRATIC_QUAD
     10: 10,  # TETRA_4  -> VTK_TETRA
     11: 24,  # TETRA_10 -> VTK_QUADRATIC_TETRA
     12: 14,  # PYRA_5   -> VTK_PYRAMID
@@ -57,12 +58,39 @@ CGNSNumberOfNodes = {
 # used here.  The entries below cover the higher-order cells for which Muscat's
 # CGNS bridge already documents an ordering difference and VTK supports the cell.
 CGNSNumberToVtkPermutation = {
-    15:   [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 9, 10, 11],
-    16:   [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 9, 10, 11, 15, 16, 17],
-    18:   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19, 12, 13, 14, 15],
-    19:   [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19, 12, 13, 14, 15, 24, 22, 21, 23, 20, 25, 26]
+    15: [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 9, 10, 11],
+    16: [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 9, 10, 11, 15, 16, 17],
+    18: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 18, 19, 12, 13, 14, 15],
+    19: [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        16,
+        17,
+        18,
+        19,
+        12,
+        13,
+        14,
+        15,
+        24,
+        22,
+        21,
+        23,
+        20,
+        25,
+        26,
+    ],
 }
-
 
 
 def _cgns_children_by_label(node: list, label: str) -> List[list]:
@@ -87,7 +115,11 @@ def _cgns_value_as_string(node: Optional[list]) -> Optional[str]:
         return value
     array = np.asarray(value)
     if array.dtype.kind in ["S", "U"]:
-        return b"".join(np.asarray(array, dtype="|S1").ravel(order="F").tolist()).decode("ascii", errors="ignore").strip("\x00 ")
+        return (
+            b"".join(np.asarray(array, dtype="|S1").ravel(order="F").tolist())
+            .decode("ascii", errors="ignore")
+            .strip("\x00 ")
+        )
     return str(value)
 
 
@@ -111,10 +143,19 @@ def _import_vtk_for_direct_cgns():
             vtkStructuredGrid,
             vtkUnstructuredGrid,
         )
-    return vtkStructuredGrid, vtkUnstructuredGrid, vtkPoints, vtkCellArray, vtkMultiBlockDataSet, numpy_support
+    return (
+        vtkStructuredGrid,
+        vtkUnstructuredGrid,
+        vtkPoints,
+        vtkCellArray,
+        vtkMultiBlockDataSet,
+        numpy_support,
+    )
 
 
-def _cgns_zone_points_to_vtk_points(zoneNode: list, physicalDim: int, numpy_support, vtkPoints):
+def _cgns_zone_points_to_vtk_points(
+    zoneNode: list, physicalDim: int, numpy_support, vtkPoints
+):
     """Read GridCoordinates_t from one CGNS zone and return vtkPoints plus coordinate shape."""
     gridCoordinatesNodes = _cgns_children_by_label(zoneNode, "GridCoordinates_t")
     if not gridCoordinatesNodes:
@@ -144,7 +185,9 @@ def _cgns_zone_points_to_vtk_points(zoneNode: list, physicalDim: int, numpy_supp
     return points, x.shape
 
 
-def _cgns_add_numpy_array_to_vtk_attributes(attributes, name: str, data: np.ndarray, numberOfTuples: int, numpy_support) -> bool:
+def _cgns_add_numpy_array_to_vtk_attributes(
+    attributes, name: str, data: np.ndarray, numberOfTuples: int, numpy_support
+) -> bool:
     """Add one numeric CGNS DataArray_t value to VTK attributes if its size is compatible."""
     array = np.asarray(data)
     if array.dtype.kind in ["S", "U", "O"] or numberOfTuples <= 0:
@@ -158,7 +201,9 @@ def _cgns_add_numpy_array_to_vtk_attributes(attributes, name: str, data: np.ndar
     if numberOfComponents == 1:
         vtkArray = numpy_support.numpy_to_vtk(flat, deep=True)
     else:
-        vtkArray = numpy_support.numpy_to_vtk(flat.reshape((numberOfTuples, numberOfComponents)), deep=True)
+        vtkArray = numpy_support.numpy_to_vtk(
+            flat.reshape((numberOfTuples, numberOfComponents)), deep=True
+        )
         vtkArray.SetNumberOfComponents(numberOfComponents)
     vtkArray.SetName(name)
     attributes.AddArray(vtkArray)
@@ -189,7 +234,9 @@ def _cgns_add_flow_solutions_to_vtk(zoneNode: list, vtkObject, numpy_support) ->
         for dataNode in _cgns_children_by_label(flow, "DataArray_t"):
             if dataNode[1] is None:
                 continue
-            _cgns_add_numpy_array_to_vtk_attributes(attributes, dataNode[0], dataNode[1], numberOfTuples, numpy_support)
+            _cgns_add_numpy_array_to_vtk_attributes(
+                attributes, dataNode[0], dataNode[1], numberOfTuples, numpy_support
+            )
 
 
 def _cgns_element_connectivity_node(elementsNode: list) -> Optional[list]:
@@ -203,7 +250,9 @@ def _cgns_element_connectivity_node(elementsNode: list) -> Optional[list]:
     return None
 
 
-def _cgns_insert_cells_from_elements_node(elementsNode: list, cellTypes: list, offsets: list, connectivity: list) -> None:
+def _cgns_insert_cells_from_elements_node(
+    elementsNode: list, cellTypes: list, offsets: list, connectivity: list
+) -> None:
     """Append VTK cell type/connectivity data from one CGNS Elements_t node."""
     cgnsElementType = int(np.asarray(elementsNode[1]).ravel()[0])
     connectivityNode = _cgns_element_connectivity_node(elementsNode)
@@ -216,10 +265,15 @@ def _cgns_insert_cells_from_elements_node(elementsNode: list, cellTypes: list, o
         while cursor < cgnsConnectivity.size:
             localCgnsType = int(cgnsConnectivity[cursor])
             cursor += 1
-            if localCgnsType not in CGNSNumberToVtkNumber or localCgnsType not in CGNSNumberOfNodes:
-                raise NotImplementedError(f"CGNS element type {localCgnsType} is not supported by direct VTK conversion")
+            if (
+                localCgnsType not in CGNSNumberToVtkNumber
+                or localCgnsType not in CGNSNumberOfNodes
+            ):
+                raise NotImplementedError(
+                    f"CGNS element type {localCgnsType} is not supported by direct VTK conversion"
+                )
             numberOfNodes = CGNSNumberOfNodes[localCgnsType]
-            localConnectivity = cgnsConnectivity[cursor:cursor + numberOfNodes] - 1
+            localConnectivity = cgnsConnectivity[cursor : cursor + numberOfNodes] - 1
             cursor += numberOfNodes
             permutation = CGNSNumberToVtkPermutation.get(localCgnsType, None)
             if permutation is not None:
@@ -229,8 +283,13 @@ def _cgns_insert_cells_from_elements_node(elementsNode: list, cellTypes: list, o
             connectivity.extend(localConnectivity.tolist())
         return
 
-    if cgnsElementType not in CGNSNumberToVtkNumber or cgnsElementType not in CGNSNumberOfNodes:
-        raise NotImplementedError(f"CGNS element type {cgnsElementType} is not supported by direct VTK conversion")
+    if (
+        cgnsElementType not in CGNSNumberToVtkNumber
+        or cgnsElementType not in CGNSNumberOfNodes
+    ):
+        raise NotImplementedError(
+            f"CGNS element type {cgnsElementType} is not supported by direct VTK conversion"
+        )
 
     numberOfNodes = CGNSNumberOfNodes[cgnsElementType]
     localConnectivity = cgnsConnectivity.reshape((-1, numberOfNodes)) - 1
@@ -249,7 +308,9 @@ def _cgns_structured_zone_to_vtk(zoneNode: list, physicalDim: int):
     """Convert one CGNS structured Zone_t node directly to vtkStructuredGrid."""
     vtkStructuredGrid, _, vtkPoints, _, _, numpy_support = _import_vtk_for_direct_cgns()
     output = vtkStructuredGrid()
-    points, _ = _cgns_zone_points_to_vtk_points(zoneNode, physicalDim, numpy_support, vtkPoints)
+    points, _ = _cgns_zone_points_to_vtk_points(
+        zoneNode, physicalDim, numpy_support, vtkPoints
+    )
     output.SetPoints(points)
 
     zsize = np.asarray(zoneNode[1])
@@ -263,26 +324,37 @@ def _cgns_structured_zone_to_vtk(zoneNode: list, physicalDim: int):
 
 def _cgns_unstructured_zone_to_vtk(zoneNode: list, physicalDim: int):
     """Convert one CGNS unstructured Zone_t node directly to vtkUnstructuredGrid."""
-    _, vtkUnstructuredGrid, vtkPoints, vtkCellArray, _, numpy_support = _import_vtk_for_direct_cgns()
+    _, vtkUnstructuredGrid, vtkPoints, vtkCellArray, _, numpy_support = (
+        _import_vtk_for_direct_cgns()
+    )
     output = vtkUnstructuredGrid()
-    points, _ = _cgns_zone_points_to_vtk_points(zoneNode, physicalDim, numpy_support, vtkPoints)
+    points, _ = _cgns_zone_points_to_vtk_points(
+        zoneNode, physicalDim, numpy_support, vtkPoints
+    )
     output.SetPoints(points)
 
     cellTypes = []
     offsets = [0]
     connectivity = []
     for elementsNode in _cgns_children_by_label(zoneNode, "Elements_t"):
-        _cgns_insert_cells_from_elements_node(elementsNode, cellTypes, offsets, connectivity)
+        _cgns_insert_cells_from_elements_node(
+            elementsNode, cellTypes, offsets, connectivity
+        )
 
     if cellTypes:
-        vtkOffsets = numpy_support.numpy_to_vtkIdTypeArray(np.asarray(offsets, dtype=np.int64), deep=True)
-        vtkConnectivity = numpy_support.numpy_to_vtkIdTypeArray(np.asarray(connectivity, dtype=np.int64), deep=True)
+        vtkOffsets = numpy_support.numpy_to_vtkIdTypeArray(
+            np.asarray(offsets, dtype=np.int64), deep=True
+        )
+        vtkConnectivity = numpy_support.numpy_to_vtkIdTypeArray(
+            np.asarray(connectivity, dtype=np.int64), deep=True
+        )
         cellArray = vtkCellArray()
         cellArray.SetData(vtkOffsets, vtkConnectivity)
         output.SetCells(cellTypes, cellArray)
 
     _cgns_add_flow_solutions_to_vtk(zoneNode, output, numpy_support)
     return output
+
 
 def CGNSBaseExtractGlobals(baseNode: list) -> dict:
     """Extract global fields from a CGNSBase_t node as a dictionary of name -> numpy array.
@@ -299,6 +371,7 @@ def CGNSBaseExtractGlobals(baseNode: list) -> dict:
         if xNode[1] is not None:
             globals[xNode[0]] = np.asarray(xNode[1])
     return globals
+
 
 def CGNSTreeToVtk(treeNode: list):
     """Convert a full CGNS tree to VTK objects, one per base, and return either the single base or a multi-block of bases.
@@ -336,18 +409,18 @@ def CGNSTreeToVtk(treeNode: list):
     for key, value in globals.items():
         if value.dtype == "|S1":
             from vtkmodules.vtkCommonCore import vtkStringArray
+
             labels = vtkStringArray()
             labels.SetName(key)
             labels.SetNumberOfValues(len(value))
-            for i,v in enumerate(value):
-                labels.SetValue(i,v)
+            for i, v in enumerate(value):
+                labels.SetValue(i, v)
             field_data.AddArray(labels)
             continue
 
         array = numpy_support.numpy_to_vtk(value)
         array.SetName(key)
         field_data.AddArray(array)
-
 
     if len(baseVtkObjects) == 1:
         return baseVtkObjects[0]
@@ -375,7 +448,11 @@ def CGNSBaseToVtk(baseNode: list):
         representation of the base. A single-zone base returns the zone object;
         a multi-zone base returns one block per zone.
     """
-    if not isinstance(baseNode, list) or len(baseNode) < 4 or baseNode[3] != "CGNSBase_t":
+    if (
+        not isinstance(baseNode, list)
+        or len(baseNode) < 4
+        or baseNode[3] != "CGNSBase_t"
+    ):
         raise ValueError("CGNSBaseToVtk expects a CGNSBase_t node")
     if baseNode[1] is None:
         raise ValueError(f"CGNS base '{baseNode[0]}' has no base dimensionality value")
@@ -388,14 +465,18 @@ def CGNSBaseToVtk(baseNode: list):
 
     zoneVtkObjects = []
     for zoneNode in zones:
-        zoneType = _cgns_value_as_string(_cgns_child_by_name(zoneNode, "ZoneType")) or "Unstructured"
+        zoneType = (
+            _cgns_value_as_string(_cgns_child_by_name(zoneNode, "ZoneType"))
+            or "Unstructured"
+        )
         if zoneType == "Structured":
             zoneVtkObjects.append(_cgns_structured_zone_to_vtk(zoneNode, physicalDim))
         elif zoneType == "Unstructured":
             zoneVtkObjects.append(_cgns_unstructured_zone_to_vtk(zoneNode, physicalDim))
         else:
-            raise NotImplementedError(f"CGNS ZoneType '{zoneType}' is not supported by direct VTK conversion")
-
+            raise NotImplementedError(
+                f"CGNS ZoneType '{zoneType}' is not supported by direct VTK conversion"
+            )
 
     if len(zoneVtkObjects) == 1:
         return zoneVtkObjects[0]
@@ -407,5 +488,3 @@ def CGNSBaseToVtk(baseNode: list):
         multiBlock.SetBlock(i, zoneVtkObject)
         multiBlock.GetMetaData(i).Set(multiBlock.NAME(), zoneNode[0])
     return multiBlock
-
-

@@ -7,9 +7,11 @@ from pathlib import Path
 
 paraview_exec = "paraview"
 
+
 def get_ParaView_plugin_path():
     """Returns the path to the ParaView plugin directory."""
     return Path(__file__).parent
+
 
 def get_ParaView_plugin_path_one_file():
     """Returns the path to a temporary directory containing the plugin as a single file.
@@ -22,15 +24,19 @@ def get_ParaView_plugin_path_one_file():
         plugin_content = f.read()
 
     import plaid.utils.cgns_json as cgns_json
+
     with open(Path(cgns_json.__file__), "r") as f:
         sample_json_content = f.read()
 
     import plaid.utils.cgns_vtk as cgns_vtk
+
     with open(Path(cgns_vtk.__file__), "r") as f:
         cgns_vtk_content = f.read()
 
-    plugin_content = plugin_content.replace("# ##INCLUDE PLACEHOLDER##",sample_json_content + cgns_vtk_content)
-    plugin_content = plugin_content.replace("from __future__ import annotations","")
+    plugin_content = plugin_content.replace(
+        "# ##INCLUDE PLACEHOLDER##", sample_json_content + cgns_vtk_content
+    )
+    plugin_content = plugin_content.replace("from __future__ import annotations", "")
 
     tmpdir = tempfile.mkdtemp()
     file_path = os.path.join(tmpdir, "PlaidParaViewPlugin.py")
@@ -40,12 +46,14 @@ def get_ParaView_plugin_path_one_file():
         f.write(plugin_content)
     return tmpdir
 
+
 def convert_wsl_to_win(wsl_path: str) -> str:
     r"""Converts a WSL path (e.g., /mnt/c/Users) to Windows (C:\\Users)."""
     result = subprocess.run(
         ["wslpath", "-w", wsl_path], capture_output=True, text=True, check=True
     )
     return result.stdout.strip()
+
 
 def run_paraview_with_plugin():
     """Launches ParaView with environment variables set to load the plugin."""

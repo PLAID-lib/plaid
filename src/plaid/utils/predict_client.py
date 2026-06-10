@@ -90,7 +90,6 @@ class PlaidClient:
         """
         return self._request_json("problem_definition", {})
 
-
     def infos(self):
         """Get the infos from the server.
 

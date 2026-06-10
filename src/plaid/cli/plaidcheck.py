@@ -136,7 +136,9 @@ def _check_required_layout(
     for rel in required_paths:
         p = path / rel
         if not p.exists():
-            report.add("error", "MISSING_PATH", rel, f"Missing file/path path: {rel}")   # pragma: no cover
+            report.add(
+                "error", "MISSING_PATH", rel, f"Missing file/path path: {rel}"
+            )  # pragma: no cover
 
 
 def _check_numeric_content(value: Any) -> Optional[str]:
