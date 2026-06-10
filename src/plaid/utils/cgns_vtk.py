@@ -1,3 +1,9 @@
+"""Direct CGNS -> VTK conversion functions.
+
+This fuction do not require any class of plaid.
+Please keep this module free of plaid dependencies to make it usable in
+the ParaView plugin without forcing users to install plaid.
+"""
 from typing import Any, List, Optional
 
 import numpy as np
@@ -279,6 +285,15 @@ def _cgns_unstructured_zone_to_vtk(zoneNode: list, physicalDim: int):
     return output
 
 def CGNSBaseExtractGlobals(baseNode: list) -> dict:
+    """Extract global fields from a CGNSBase_t node as a dictionary of name -> numpy array.
+
+    Arguments:
+        baseNode (list): CGNS ``CGNSBase_t`` node.
+
+    Returns:
+        dict: A dictionary mapping field names to numpy arrays.
+
+    """
     globals = {}
     for xNode in baseNode[2]:
         if xNode[1] is not None:
@@ -286,6 +301,17 @@ def CGNSBaseExtractGlobals(baseNode: list) -> dict:
     return globals
 
 def CGNSTreeToVtk(treeNode: list):
+    """Convert a full CGNS tree to VTK objects, one per base, and return either the single base or a multi-block of bases.
+
+    Arguments:
+        treeNode (list): CGNS tree as read by cgns_tree_from_json_payload.
+
+    Returns:
+        vtkStructuredGrid, vtkUnstructuredGrid, or vtkMultiBlockDataSet: the VTK
+        representation of the tree. A single-zone base returns the zone object;
+        a multi-zone base returns one block per zone; a multi-base tree returns
+        one block per base.
+    """
     _, _, _, _, vtkMultiBlockDataSet, numpy_support = _import_vtk_for_direct_cgns()
 
     bases = _cgns_children_by_label(treeNode, "CGNSBase_t")

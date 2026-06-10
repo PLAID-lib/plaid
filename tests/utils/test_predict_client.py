@@ -152,6 +152,22 @@ def test_problem_definition_requests_problem_definition_endpoint(monkeypatch):
     assert calls == [("problem_definition", {})]
 
 
+def test_infos_requests_infos_endpoint(monkeypatch):
+    """Infos requests are delegated to their configured endpoint."""
+    client = PlaidClient("localhost", 8000)
+    expected = {"name": "dataset", "num_samples": {"train": 3}}
+    calls = []
+
+    def fake_request_json(endpoint, payload):
+        calls.append((endpoint, payload))
+        return expected
+
+    monkeypatch.setattr(client, "_request_json", fake_request_json)
+
+    assert client.infos() == expected
+    assert calls == [("infos", {})]
+
+
 def test_samples_sends_selection_payload_and_decodes_samples(
     monkeypatch, sample_with_tree
 ):

@@ -1,11 +1,8 @@
-#
-# This file is subject to the terms and conditions defined in
-# file 'LICENSE.txt', which is part of this source code package.
-#
-# exec(open("C:/Users/User/paraview/ParaViewPlugin.py","r").read())
-# This file is intended to be used inside ParaView as a plugin
-# compatible with ParaView 5.7+
+"""Plaid ParaView Plugin.
 
+This file is intended to be used inside ParaView as a plugin
+compatible with ParaView 5.11+
+"""
 import json
 import os
 import time
@@ -14,6 +11,7 @@ from urllib import request
 
 import numpy as np
 import vtk
+
 try:
     from paraview.util.vtkAlgorithm import (
         VTKPythonAlgorithmBase,
@@ -107,6 +105,7 @@ class PlaidDataSetBase(VTKPythonAlgorithmBase):
         </StringListDomain>
     """)
     def SetSelectedSplit(self, value):
+        """Set the currently selected data split (e.g., 'training', 'validation', 'test')."""
         if self._selected_split != value:
             self._selected_split = value
             self.Modified()
@@ -129,16 +128,18 @@ class PlaidDataSetBase(VTKPythonAlgorithmBase):
 
     @smproperty.stringvector(name="AvailableSplitsInfo", information_only="1")
     def GetAvailableSplits(self):
+        """Return a list of available data splits (e.g., 'training', 'validation', 'test') for the current dataset."""
         info = self.GetInfos()
         if self._selected_split is None and len(info["num_samples"].keys()) :
             self.SetSelectedSplit(list(info["num_samples"])[0] )
-        print_debug(f"GetAvailableSplits {list(info["num_samples"].keys())}")
+        print_debug(f"GetAvailableSplits {list(info['num_samples'].keys())}")
         return list(info["num_samples"].keys())
 
     @smproperty.stringvector(name="ReadOnly", panel_visibility="default", information_only="1", repeatable="1", number_of_elements_per_command="2")
     def GetSomeTable(self):
+        """Return a table of information about the dataset, such as the number of samples in each split."""
         info = self.GetInfos()
-        print_debug(f"GetSomeTable {['Split Name', 'Nb Samples']+[  [str(k),str(v)]  for k, v in info["num_samples"].items() ]}")
+        print_debug(f"GetSomeTable {['Split Name', 'Nb Samples']+[  [str(k),str(v)]  for k, v in info['num_samples'].items() ]}")
         return ['Split Name', 'Nb Samples']+[  [str(k),str(v)]  for k, v in info["num_samples"].items() ]
 
     @smproperty.intvector(name="SampleId", default_values="0",  panel_visibility="default", immediate_update="1")
@@ -150,6 +151,7 @@ class PlaidDataSetBase(VTKPythonAlgorithmBase):
            </IntRangeDomain>
         """)
     def SetSampleId(self, value):
+        """Set the current sample ID to view, with bounds checking against the available sample range."""
         value = int(value)
         max_value = self.GetSampleIdRange()[1]
         value = max(0, min(value, max_value))
@@ -159,7 +161,8 @@ class PlaidDataSetBase(VTKPythonAlgorithmBase):
             self._sample_cache = None
             self.Modified()
 
-    def RequestInformation(self, request, in_info_vec, out_info_vec):
+    def RequestInformation(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Provide time step information to ParaView based on the currently selected sample and split."""
         executive = self.GetExecutive()
         out_info = out_info_vec.GetInformationObject(0)
 
@@ -180,7 +183,8 @@ class PlaidDataSetBase(VTKPythonAlgorithmBase):
         return 1
 
 
-    def RequestData(self, request, in_info_vec, out_info_vec):
+    def RequestData(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Fetch the CGNS tree for the currently requested time step and convert it to a VTK object for visualization."""
         out_info = out_info_vec.GetInformationObject(0)
         executive = self.GetExecutive()
 
@@ -211,7 +215,8 @@ class PlaidDataSetBase(VTKPythonAlgorithmBase):
         information_only="1",
     )
     def GetTimestepValues(self):
-        if (self._timestep_values_cache is None) and (self._selected_split is not '' and  self._selected_split is not None ) and  self.sample_id > -1:
+        """Return a list of available time steps for the currently selected sample and split, with caching."""
+        if (self._timestep_values_cache is None) and (self._selected_split != '' and  self._selected_split is not None ) and  self.sample_id > -1:
             print_debug(f"{self._timestep_values_cache=}")
             print_debug(f"{self._selected_split=}{type(self._selected_split)}")
             print_debug(f"{self.sample_id=}{type(self.sample_id)}")
@@ -226,6 +231,7 @@ class PlaidDataSetBase(VTKPythonAlgorithmBase):
 
 
 class PlaidClientBase(PlaidDataSetBase):
+    """Base class for Plaid clients, providing common properties and methods for interacting with a server."""
     def __init__(
         self,
         nInputPorts,
@@ -235,8 +241,8 @@ class PlaidClientBase(PlaidDataSetBase):
     ):
         # Correctly initialize the underlying VTK C++ layer
         super().__init__(
-            nInputPorts=0,
-            nOutputPorts=1,
+            nInputPorts=nInputPorts,
+            nOutputPorts=nOutputPorts,
             inputType=inputType,
             outputType=outputType,
         )
@@ -249,6 +255,7 @@ class PlaidClientBase(PlaidDataSetBase):
 
     @smproperty.stringvector(name="Host", default_values="127.0.0.1")
     def SetHost(self, value):
+        """Set the server host address to connect to for fetching dataset information and samples."""
         value = str(value)
         if self.host != value:
             self.host = value
@@ -258,6 +265,7 @@ class PlaidClientBase(PlaidDataSetBase):
         name="Port", default_values=os.environ.get("PLAID_PORT", "8000")
     )
     def SetPort(self, value):
+        """Set the server port to connect to for fetching dataset information and samples."""
         value = int(value)
         if self.port != value:
             self.port = value
@@ -279,12 +287,14 @@ class PlaidClientBase(PlaidDataSetBase):
             return json.loads(response.read().decode("utf-8"))
 
     def GetProblemDefinition(self):
+        """Fetch the problem definition from the server, with caching."""
         if self._problem_definition_cache is None:
             self._problem_definition_cache = self._request_json("/problem_definition")
 
         return self._problem_definition_cache
 
     def GetInfos(self):
+        """Fetch general information about the dataset from the server, with caching."""
         if self._info_cache is None:
             self._info_cache = self._request_json("/infos")
         return self._info_cache
@@ -307,10 +317,12 @@ class MaestroExplorer(PlaidClientBase):
 
     @smproperty.stringvector(name="Host", default_values="127.0.0.1")
     def SetHost(self, value):
+        """Set the server host address to connect to for fetching dataset information and samples."""
         return super().SetHost(value)
 
     @smproperty.intvector(name="Port", default_values=os.environ.get("PLAID_PORT", "8000"))
     def SetPort(self, value):
+        """Set the server port to connect to for fetching dataset information and samples."""
         return super().SetPort(value)
 
     @smproperty.stringvector(name="SelectSplit", default_values="", immediate_update="1")
@@ -322,15 +334,18 @@ class MaestroExplorer(PlaidClientBase):
         </StringListDomain>
     """)
     def SetSelectedSplit(self, value):
+        """Set the currently selected data split (e.g., 'training', 'validation', 'test')."""
         print_debug(f"SetSelectedSplit {value}")
         return super().SetSelectedSplit(value)
 
     @smproperty.intvector(name="SampleIdRangeInfo", information_only="1")
     def GetSampleIdRange(self):
+        """Return [min, max] bounds for the SampleId slider."""
         return super().GetSampleIdRange()
 
     @smproperty.stringvector(name="AvailableSplitsInfo", information_only="1")
     def GetAvailableSplits(self):
+        """Return a list of available data splits (e.g., 'training', 'validation', 'test') for the current dataset."""
         return super().GetAvailableSplits()
 
     @smproperty.doublevector(
@@ -338,6 +353,7 @@ class MaestroExplorer(PlaidClientBase):
         information_only="1",
     )
     def GetTimestepValues(self):
+        """Return a list of available time steps for the currently selected sample and split, with caching."""
         return super().GetTimestepValues()
 
     # """
@@ -371,11 +387,13 @@ class MaestroExplorer(PlaidClientBase):
            </IntRangeDomain>
         """)
     def SetSampleId(self, value):
+        """Set the current sample ID to view, with bounds checking against the available sample range."""
         print_debug(f"SetSampleId {value}")
         return super().SetSampleId(value)
 
     @smproperty.stringvector(name="ReadOnly", panel_visibility="default", information_only="1", repeatable="1", number_of_elements_per_command="2")
     def GetSomeTable(self):
+        """Return a table of information about the dataset, such as the number of samples in each split."""
         return super().GetSomeTable()
 
     @smproperty.xml("""
@@ -390,8 +408,7 @@ class MaestroExplorer(PlaidClientBase):
               </Documentation>
           </IntVectorProperty>""")
     def SetPredict(self, value):
-        """Set whether to use the /predict endpoint instead of /sample. This is a boolean property.
-        """
+        """Set whether to use the /predict endpoint instead of /sample. This is a boolean property."""
         bool_value = str(value).lower() in ["true", "1"]
         if self.usePredict != bool_value:
             self.usePredict = bool_value
@@ -434,7 +451,7 @@ class MaestroExplorer(PlaidClientBase):
 # paraview.servermanager.LoadPlugin("/home/fbw/repos/Safran/plaid/src/plaid/cli/paraview_plugin/PlaidParaViewPlugin.py")
 try:
     # try to load the reader if plaid is locally available
-    from plaid.storage.reader import load_infos_from_disk, init_from_disk
+    from plaid.storage.reader import init_from_disk, load_infos_from_disk
 
 
    #<SourceProxy name="PXDMFReader"  label="PXDMFReader"
@@ -451,6 +468,7 @@ try:
         filename_patterns="*"
     )
     class PlaidDataSetReader(PlaidDataSetBase):
+        """ParaView reader plugin for reading Plaid datasets from disk."""
         def __init__(self):
             super().__init__(
                 nInputPorts=0, nOutputPorts=1, outputType="vtkUnstructuredGrid"
@@ -490,14 +508,17 @@ try:
             </StringListDomain>
         """)
         def SetSelectedSplit(self, value):
+            """Set the currently selected data split (e.g., 'training', 'validation', 'test')."""
             return super().SetSelectedSplit(value)
 
         @smproperty.intvector(name="SampleIdRangeInfo", information_only="1")
         def GetSampleIdRange(self):
+            """Return [min, max] bounds for the SampleId slider."""
             return super().GetSampleIdRange()
 
         @smproperty.stringvector(name="AvailableSplitsInfo", information_only="1")
         def GetAvailableSplits(self):
+            """Return a list of available data splits (e.g., 'training', 'validation', 'test') for the current dataset."""
             return super().GetAvailableSplits()
 
         @smproperty.intvector(name="SampleId", default_values="0", immediate_update="1")
@@ -509,10 +530,12 @@ try:
            </IntRangeDomain>
         """)
         def SetSampleId(self, value):
+            """Set the current sample ID to view, with bounds checking against the available sample range."""
             return super().SetSampleId(value)
 
         @smproperty.stringvector(name="ReadOnly", panel_visibility="default", information_only="1", repeatable="1", number_of_elements_per_command="2")
         def GetSomeTable(self):
+            """Return a table of information about the dataset, such as the number of samples in each split."""
             return super().GetSomeTable()
 
         @smproperty.doublevector(
@@ -520,9 +543,11 @@ try:
             information_only="1",
         )
         def GetTimestepValues(self):
+            """Return a list of available time steps for the currently selected sample and split, with caching."""
             return super().GetTimestepValues()
 
         def GetInfos(self):
+            """Fetch general information about the dataset from disk, with caching."""
             if self._info_cache is not None :
                 return self._info_cache
 
@@ -535,6 +560,7 @@ try:
             return self._info_cache
 
         def GetSampleData(self) -> dict[float,list]:
+            """Fetch sample data for the currently selected split and sample ID from disk, with caching."""
             if self._sample_cache is None:
                 if self.datasetdict_cache is None:
                     self.datasetdict_cache, self.converterdict_cache = init_from_disk(self._filename)

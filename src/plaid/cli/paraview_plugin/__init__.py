@@ -2,8 +2,8 @@
 
 import os
 import subprocess
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 paraview_exec = "paraview"
 
@@ -12,7 +12,11 @@ def get_ParaView_plugin_path():
     return Path(__file__).parent
 
 def get_ParaView_plugin_path_one_file():
+    """Returns the path to a temporary directory containing the plugin as a single file.
 
+    all the helper module are included in the plugin file to make it self contained and
+    avoid the need of copying multiple file in the temporary directory.
+    """
     plugin_path = Path(__file__).parent / "PlaidParaViewPlugin.py"
     with open(plugin_path, "r") as f:
         plugin_content = f.read()
