@@ -14,13 +14,16 @@ def get_ParaView_plugin_path():
 def get_ParaView_plugin_path_one_file():
 
     plugin_path = Path(__file__).parent / "PlaidParaViewPlugin.py"
-    plugin_content = open(plugin_path,"r").read()
+    with open(plugin_path, "r") as f:
+        plugin_content = f.read()
 
     import plaid.utils.cgns_json as cgns_json
-    sample_json_content = open(Path(cgns_json.__file__),"r").read()
+    with open(Path(cgns_json.__file__), "r") as f:
+        sample_json_content = f.read()
 
     import plaid.utils.cgns_vtk as cgns_vtk
-    cgns_vtk_content = open(Path(cgns_vtk.__file__),"r").read()
+    with open(Path(cgns_vtk.__file__), "r") as f:
+        cgns_vtk_content = f.read()
 
     plugin_content = plugin_content.replace("# ##INCLUDE PLACEHOLDER##",sample_json_content + cgns_vtk_content)
     plugin_content = plugin_content.replace("from __future__ import annotations","")
