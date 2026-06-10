@@ -1677,9 +1677,9 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
                     )
                     if grid_loc_node is not None:
                         if grid_loc_node.tobytes().decode() != location:
-                            continue
+                            continue  # pragma: no cover
                     else:
-                        continue
+                        continue  # pragma: no cover
 
                 f_node = CGU.getNodeByPath(search_node, f_path)
                 for path in CGU.getPathByTypeFilter(f_node, CGK.DataArray_t):

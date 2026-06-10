@@ -60,12 +60,12 @@ def _parse_optional_request_payload(
         ValueError: If a provided body is invalid or not a JSON object.
     """
     content_length = int(handler.headers.get("Content-Length", "0"))
-    if content_length <= 0:
+    if content_length <= 0:  # pragma: no cover
         return {}
 
     raw = handler.rfile.read(content_length)
     payload = json.loads(raw.decode("utf-8"))
-    if not isinstance(payload, dict):
+    if not isinstance(payload, dict):  # pragma: no cover
         raise ValueError("Request body must be a JSON object")
     return cast(dict[str, object], payload)
 

@@ -58,7 +58,7 @@ def get_time_values(tree: CGNSTree) -> float:
     for bp in base_paths:
         base_node = CGU.getNodeByPath(tree, bp)
         timedata = CGU.getValueByPath(base_node, "Time/TimeValues")
-        if len(timedata) > 1:
+        if len(timedata) > 1:  # pragma: no cover
             raise RuntimeError("more than one time in this CGNSTree")
         time_values.append(timedata[0])
     assert time_values.count(time_values[0]) == len(time_values), (

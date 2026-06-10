@@ -8,6 +8,8 @@ import pytest
 from plaid.containers.sample import Sample
 from plaid.utils.cgns_helper import compare_cgns_trees
 from plaid.utils.sample_json import (
+    _decode_time,
+    _encode_time,
     sample_from_json,
     sample_from_json_payload,
     sample_to_json,
@@ -108,3 +110,21 @@ def test_sample_json_rejects_invalid_payloads():
                 "trees": [{"time": 0.0}],
             }
         )
+
+
+def test_encode_time_accepts_numpy_numeric_scalars():
+    """NumPy scalar time keys should be converted to Python JSON scalars."""
+    assert _encode_time(np.int64(2)) == 2
+    assert _encode_time(np.float64(2.5)) == 2.5
+
+
+def test_encode_time_rejects_unsupported_time_key_type():
+    """Non-numeric sample time keys cannot be represented in Sample JSON."""
+    with pytest.raises(TypeError, match="Unsupported time key type"):
+        _encode_time("not-numeric")
+
+
+def test_decode_time_rejects_non_numeric_values():
+    """Decoded sample time values must be numeric."""
+    with pytest.raises(ValueError, match="time entries must be numeric"):
+        _decode_time("not-numeric")

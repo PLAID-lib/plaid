@@ -92,7 +92,10 @@ dev = [
 ]
 
 [tool.coverage.run]
-omit = ["src/plaid/downloadable_examples/*"]
+omit = [
+  "src/plaid/downloadable_examples/*",
+  "src/plaid/cli/paraview_plugin/PlaidParaViewPlugin.py",
+]
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"

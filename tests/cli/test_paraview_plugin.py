@@ -1,5 +1,6 @@
 """Tests for the ParaView plugin CLI helper module."""
 
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -43,53 +44,71 @@ def test_convert_wsl_to_win_uses_wslpath(monkeypatch):
     ]
 
 
-def test_run_paraview_with_plugin_uses_default_executable(monkeypatch):
-    """Launching ParaView sets plugin-related environment variables."""
-    popen_calls = []
-
-    def fake_popen(args, env):
-        process = SimpleNamespace(args=args, env=env)
-        popen_calls.append(process)
-        return process
-
-    monkeypatch.delenv("PARAVIEW_EXEC", raising=False)
-    monkeypatch.setattr(paraview_plugin.subprocess, "Popen", fake_popen)
-
-    process = paraview_plugin.run_paraview_with_plugin()
-    popen_call = popen_calls[0]
-
-    assert process is popen_call
-    assert popen_call.args == [paraview_plugin.paraview_exec]
-    assert popen_call.env["PV_PLUGIN_PATH"] == str(
-        paraview_plugin.get_ParaView_plugin_path()
-    )
-    assert popen_call.env["PARAVIEW_LOG_PLUGIN_VERBOSITY"] == "ON"
-
-
-def test_run_paraview_with_plugin_uses_configured_windows_executable(
+def test_get_paraview_plugin_path_one_file_writes_bundled_plugin(
     monkeypatch,
+    tmp_path,
 ):
-    """A WSL-mounted ParaView executable enables WSLENV path propagation."""
-    popen_calls = []
+    """The bundled plugin should include helper modules in a temporary file."""
+    monkeypatch.setattr(paraview_plugin.tempfile, "mkdtemp", lambda: str(tmp_path))
+
+    plugin_directory = paraview_plugin.get_ParaView_plugin_path_one_file()
+
+    plugin_file = Path(plugin_directory) / "PlaidParaViewPlugin.py"
+    content = plugin_file.read_text()
+    assert Path(plugin_directory) == tmp_path
+    assert plugin_file.exists()
+    assert "# ##INCLUDE PLACEHOLDER##" not in content
+    assert "def CGNSTreeToVtk" in content
+    assert "def cgns_tree_to_json_payload" in content
+    assert "from __future__ import annotations" not in content
+
+
+def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
+    """Launching ParaView should pass plugin-related environment variables."""
+    calls = []
 
     def fake_popen(args, env):
-        process = SimpleNamespace(args=args, env=env)
-        popen_calls.append(process)
-        return process
+        calls.append({"args": args, "env": env})
+        return SimpleNamespace(pid=1234)
 
-    paraview_exec = "/mnt/c/Program Files/ParaView/bin/paraview.exe"
-    monkeypatch.setenv("PARAVIEW_EXEC", paraview_exec)
+    monkeypatch.setattr(
+        paraview_plugin,
+        "get_ParaView_plugin_path_one_file",
+        lambda: tmp_path,
+    )
     monkeypatch.setattr(paraview_plugin.subprocess, "Popen", fake_popen)
+    monkeypatch.setenv("PARAVIEW_EXEC", "custom-paraview")
 
     process = paraview_plugin.run_paraview_with_plugin()
-    popen_call = popen_calls[0]
 
-    assert process is popen_call
-    assert popen_call.args == [paraview_exec]
-    assert popen_call.env["PV_PLUGIN_PATH"] == str(
-        paraview_plugin.get_ParaView_plugin_path()
+    assert process.pid == 1234
+    assert calls[0]["args"] == ["custom-paraview"]
+    assert calls[0]["env"]["PV_PLUGIN_PATH"] == str(tmp_path)
+    assert calls[0]["env"]["PARAVIEW_LOG_PLUGIN_VERBOSITY"] == "ON"
+    assert os.environ["PARAVIEW_EXEC"] == "custom-paraview"
+
+
+def test_run_paraview_with_plugin_sets_wslenv_for_windows_paraview(
+    monkeypatch,
+    tmp_path,
+):
+    """WSL launches should propagate plugin variables to Windows ParaView."""
+    calls = []
+
+    monkeypatch.setattr(
+        paraview_plugin,
+        "get_ParaView_plugin_path_one_file",
+        lambda: tmp_path,
     )
-    assert popen_call.env["PARAVIEW_LOG_PLUGIN_VERBOSITY"] == "ON"
-    assert (
-        popen_call.env["WSLENV"] == "PV_PLUGIN_PATH/p:PARAVIEW_LOG_PLUGIN_VERBOSITY/p"
+    monkeypatch.setattr(
+        paraview_plugin.subprocess,
+        "Popen",
+        lambda args, env: calls.append({"args": args, "env": env}) or object(),
+    )
+    monkeypatch.setenv("PARAVIEW_EXEC", "/mnt/c/ParaView/bin/paraview.exe")
+
+    paraview_plugin.run_paraview_with_plugin()
+
+    assert calls[0]["env"]["WSLENV"] == (
+        "PV_PLUGIN_PATH/p:PARAVIEW_LOG_PLUGIN_VERBOSITY/p"
     )
