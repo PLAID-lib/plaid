@@ -13,9 +13,8 @@
   <a href="https://github.com/PLAID-lib/plaid/commits/main"><img alt="Last Commit" src="https://img.shields.io/github/last-commit/PLAID-lib/plaid/main"></a>
   <br>
   <a href="https://anaconda.org/conda-forge/plaid"><img alt="Conda Version" src="https://anaconda.org/conda-forge/plaid/badges/version.svg"></a>
-  <a href="https://anaconda.org/conda-forge/plaid"><img alt="Conda Downloads" src="https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads"></a>
   <a href="https://pypi.org/project/pyplaid/"><img alt="PyPI Version" src="https://img.shields.io/pypi/v/pyplaid.svg"></a>
-  <a href="https://pepy.tech/projects/pyplaid"><img alt="PyPI Downloads" src="https://static.pepy.tech/badge/pyplaid"></a>
+  <a href="https://packages.spack.io/package.html?name=py-plaid"><img alt="Spack Version" src="https://img.shields.io/spack/v/py-plaid"></a>
   <a href="https://github.com/PLAID-lib/plaid"><img alt="Platform" src="https://img.shields.io/badge/platform-POSIX-blue"></a>
   <a href="https://github.com/PLAID-lib/plaid"><img alt="Python Version" src="https://img.shields.io/pypi/pyversions/pyplaid"></a>
   <br>
@@ -25,6 +24,12 @@
   <a href="https://arxiv.org/abs/2505.02974"><img alt="JOSS paper" src="https://img.shields.io/badge/arXiv-2505.02974-b31b1b.svg"></a>
 </p>
 
+
+
+
+<!-- <a href="https://anaconda.org/conda-forge/plaid"><img alt="Conda Downloads" src="https://img.shields.io/conda/dn/conda-forge/plaid.svg?label=Conda%20downloads"></a>
+<a href="https://pepy.tech/projects/pyplaid"><img alt="PyPI Downloads" src="https://static.pepy.tech/badge/pyplaid"></a>
+   -->
 
 <!-- [![PyPI Downloads](https://img.shields.io/pypi/dm/pyplaid.svg?label=PyPI%20downloads)](https://pypi.org/project/pyplaid/) -->
 
@@ -63,9 +68,14 @@ To use the library, the simplest way is to install it from the packages availabl
   conda install -c conda-forge plaid
   ```
 
-- or on PyPI for Linux:
+- on PyPI for Linux:
   ```bash
   pip install pyplaid
+  ```
+
+- on Spack for Linux, macOS, and Windows:
+  ```bash
+  spack add py-plaid && spack install
   ```
 
 **Note**

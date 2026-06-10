@@ -9,9 +9,14 @@ To use the library, the simplest way is to install it from the packages availabl
   conda install -c conda-forge plaid
   ```
 
-- or on PyPI for Linux:
+- on PyPI for Linux:
   ```bash
   pip install pyplaid
+  ```
+
+- on Spack for Linux, macOS, and Windows:
+  ```bash
+  spack add py-plaid && spack install
   ```
 
 !!! note "Installation notes"
