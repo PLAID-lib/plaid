@@ -43,6 +43,7 @@ def test_plaid_client_initializes_default_configuration():
     assert client.endpoints == {
         "health": "/health",
         "predict": "/predict",
+        "infos": "/infos",
         "problem_definition": "/problem_definition",
         "samples": "/samples",
     }
@@ -157,7 +158,7 @@ def test_samples_sends_selection_payload_and_decodes_samples(
     """Sample retrieval sends ids/split and reconstructs all returned samples."""
     client = PlaidClient("localhost", 8000)
     first_sample = sample_with_tree.copy()
-    second_sample = Sample(path=None)
+    second_sample = Sample()
     calls = []
 
     def fake_request_json(endpoint, payload):

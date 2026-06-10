@@ -6,7 +6,6 @@ import json
 import threading
 from collections.abc import Generator
 from http.client import HTTPConnection
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -203,31 +202,52 @@ def test_post_unknown_route_returns_not_found(serve_url: str) -> None:
     assert payload == {"POST error": "Not Found"}
 
 
-def test_post_infos_returns_dataset_infos(serve_url: str) -> None:
+def test_post_infos_returns_dataset_infos(monkeypatch, serve_url: str) -> None:
     """POST infos route should load dataset infos from the provided dataset."""
-    dataset = Path("datamain/PhysArena_Tensile2d")
+    monkeypatch.setattr(
+        ServeContext,
+        "get_infos",
+        staticmethod(lambda dataset_uri: {"dataset_uri": dataset_uri}),
+    )
 
-    status, payload = _post_json(serve_url, "/infos", {"dataset": str(dataset)})
+    status, payload = _post_json(serve_url, "/infos", {"dataset": "memory://dataset"})
 
     assert status == 200
-    assert payload["storage_backend"] == "hf_datasets"
-    assert payload["num_samples"] == {"OOD": 2, "test": 200, "train": 500}
+    assert payload == {"dataset_uri": "memory://dataset"}
 
 
-def test_post_problem_definition_returns_selected_definition(serve_url: str) -> None:
+def test_post_problem_definition_returns_selected_definition(
+    monkeypatch,
+    serve_url: str,
+) -> None:
     """POST problem_definition route should load the requested definition."""
-    dataset = Path("datamain/PhysArena_Tensile2d")
+    calls = []
+
+    def fake_get_problem_definition(dataset_uri, name=None):
+        calls.append({"dataset_uri": dataset_uri, "name": name})
+        return {
+            "name": name,
+            "input_features": [],
+            "output_features": [],
+        }
+
+    monkeypatch.setattr(
+        ServeContext,
+        "get_problem_definition",
+        staticmethod(fake_get_problem_definition),
+    )
 
     status, payload = _post_json(
         serve_url,
         "/problem_definition",
-        {"dataset": str(dataset), "problem_definition": "regression_8"},
+        {"dataset": "memory://dataset", "problem_definition": "regression_8"},
     )
 
     assert status == 200
     assert payload["name"] == "regression_8"
     assert isinstance(payload["input_features"], list)
     assert isinstance(payload["output_features"], list)
+    assert calls == [{"dataset_uri": "memory://dataset", "name": "regression_8"}]
 
 
 def test_post_samples_rejects_missing_sample_ids(serve_url: str) -> None:

@@ -141,8 +141,7 @@ class _FakeStringArray:
         self.name = name
 
     def SetNumberOfValues(self, number_of_values):  # noqa: N802
-        _ = number_of_values
-        self.values = []
+        self.values = [None]*number_of_values
 
     def SetValue(self, *args):  # noqa: N802
         if len(args) == 1:
