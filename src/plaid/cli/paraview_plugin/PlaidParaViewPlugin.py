@@ -29,7 +29,7 @@ except ImportError:
 try:
     from plaid.utils.cgns_json import cgns_tree_from_json_payload
     from plaid.utils.cgns_vtk import CGNSTreeToVtk
-except:
+except ImportError:
     pass
 
 #this line is to inlcude the import to make the plugin selfcontain
