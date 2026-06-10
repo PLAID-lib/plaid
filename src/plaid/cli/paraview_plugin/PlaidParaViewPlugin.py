@@ -9,7 +9,7 @@
 import json
 import os
 import time
-from typing import Any, Optional
+from typing import Optional
 from urllib import request
 
 import numpy as np
