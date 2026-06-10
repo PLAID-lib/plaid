@@ -8,8 +8,17 @@ from plaid.containers.sample import Sample
 from plaid.utils.sample_json import sample_from_json_payload, sample_to_json_payload
 
 
-class PlaidClient():
+class PlaidClient:
+    """Client for making requests to a PLAID prediction server."""
+
     def __init__(self, host, port):
+        """Initialize a prediction server client.
+
+        Args:
+            host: Hostname or IP address of the prediction server.
+            port: Port number used by the prediction server.
+
+        """
         self.host = host
         self.port = port
         self.endpoints = {
@@ -19,9 +28,21 @@ class PlaidClient():
             "samples": "/samples",
         }
         self.protocol = "http"
-        self.timeout = 100 # timeout for the response
+        self.timeout = 100  # timeout for the response
 
-    def _request_json(self, endpoint: str, payload: dict[str, object]) -> dict[str, object]:
+    def _request_json(
+        self, endpoint: str, payload: dict[str, object]
+    ) -> dict[str, object]:
+        """Send a JSON POST request to an endpoint and decode the response.
+
+        Args:
+            endpoint: Endpoint key configured in ``self.endpoints``.
+            payload: JSON-serializable payload to send in the request body.
+
+        Returns:
+            Decoded JSON response payload.
+
+        """
         req = request.Request(
             url=f"{self.protocol}://{self.host}:{self.port}{self.endpoints[endpoint]}",
             data=json.dumps(payload).encode("utf-8"),
@@ -32,6 +53,7 @@ class PlaidClient():
             return json.loads(response.read().decode("utf-8"))
 
     def check_connection(self) -> bool:
+        """Check if the server is healthy by querying the health endpoint."""
         try:
             data = self._request_json("health", {}).get("status", "payload missing")
             if data != "ok":
@@ -44,14 +66,42 @@ class PlaidClient():
             return False
 
     def predict(self, sample: Sample) -> Sample:
-        payload : dict [str,Any] = {"sample": sample_to_json_payload(sample) }
+        """Send a sample to the predict endpoint and return the predicted sample.
+
+        The input sample is converted to a JSON payload, sent to the server, and the response is converted back to a Sample.
+
+        Args:
+            sample: A Sample object containing the input data for prediction.
+
+        Returns:
+            A Sample object containing the predicted output from the server.
+
+        """
+        payload: dict[str, Any] = {"sample": sample_to_json_payload(sample)}
         response = self._request_json("predict", payload)
         return sample_from_json_payload(response["samples"][0])
 
     def problem_definition(self):
+        """Get the problem definition from the server.
+
+        Returns:
+            A dictionary containing the problem definition as provided by the server.
+        """
         return self._request_json("problem_definition", {})
 
     def samples(self, sample_ids: list[int], split: str) -> list[Sample]:
-        payload : dict [str,Any] = {"sample_ids": sample_ids, "split": split}
+        """Request samples from the server by sample IDs and split.
+
+        Args:
+            sample_ids: A list of integers representing the IDs of the samples to request.
+            split: A string indicating the data split (e.g., "training", "validation", "test") from which to request the samples.
+
+        Returns:
+            A list of Sample objects corresponding to the requested sample IDs and split.
+        """
+        payload: dict[str, Any] = {"sample_ids": sample_ids, "split": split}
         response = self._request_json("samples", payload)
-        return [sample_from_json_payload(sample_payload) for sample_payload in response["samples"]]
+        return [
+            sample_from_json_payload(sample_payload)
+            for sample_payload in response["samples"]
+        ]

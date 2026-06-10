@@ -60,9 +60,7 @@ def sample_from_json_payload(payload: dict[str, Any]) -> Sample:
     if payload.get("format") != FORMAT_NAME:
         raise ValueError(f"Unsupported Sample JSON format: {payload.get('format')!r}")
     if payload.get("version") != FORMAT_VERSION:
-        raise ValueError(
-            f"Unsupported Sample JSON version: {payload.get('version')!r}"
-        )
+        raise ValueError(f"Unsupported Sample JSON version: {payload.get('version')!r}")
 
     trees = payload.get("trees")
     if not isinstance(trees, list):
@@ -75,7 +73,9 @@ def sample_from_json_payload(payload: dict[str, Any]) -> Sample:
         if not isinstance(entry, dict):
             raise ValueError("Each Sample JSON tree entry must be a dictionary")
         if "time" not in entry or "tree" not in entry:
-            raise ValueError("Each Sample JSON tree entry must contain 'time' and 'tree'")
+            raise ValueError(
+                "Each Sample JSON tree entry must contain 'time' and 'tree'"
+            )
 
         time_value = _decode_time(entry["time"])
         sample.data[time_value] = cgns_tree_from_json_payload(entry["tree"])
