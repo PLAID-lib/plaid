@@ -422,45 +422,7 @@ class MaestroExplorer(PlaidClientBase):
 
         return self._sample_cache
 
-    # @smproperty.xml("""
-    #       <StringVectorProperty name="InputFeatures"
-    #                             command="SetInputFeatures"
-    #                             number_of_elements="1"
-    #                             default_values="">
-    #           <Hints>
-    #               <Widget type="multi_line" />
-    #           </Hints>
-    #       </StringVectorProperty>
 
-    #       <PropertyGroup label="Feature Settings">
-    #           <Property name="InputFeatures" />
-    #       </PropertyGroup>
-    # """)
-    # def SetInputFeatures(self, value):
-    #     if value is None:
-    #         value = ""
-    #     value = str(value)
-        # if self.input_features != value:
-        #     def ensureEncluse(string, start, end):
-        #         string = string.strip()
-        #         if not string.startswith(start):
-        #             string = start + string
-        #         if not string.endswith(end):
-        #             string = string + end
-        #         return string
-
-        #     treated_input_features = value.replace("'", '"').strip()
-        #     treated_input_features = value.replace("=", ":").strip()
-        #     clean_treated_input_features = []
-        #     for line in treated_input_features.splitlines():
-        #         k, v = line.split(":")
-        #         k = ensureEncluse(k, '"', '"')
-        #         clean_treated_input_features.append(k + ":" + v)
-
-        #     treated_input_features = ",".join(clean_treated_input_features)
-        #     treated_input_features = ensureEncluse(treated_input_features, "{", "}")
-        #     self.input_features = treated_input_features
-        #     self.Modified()
 
 
 
