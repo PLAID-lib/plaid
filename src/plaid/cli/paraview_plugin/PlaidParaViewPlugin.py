@@ -544,7 +544,7 @@ try:
 
 
     print_debug("Reader PlaidSampleReader Loaded")
-except ImportError:
-    pass
+except ImportError as exc:
+    print_debug(f"PlaidDatasetReader not loaded because optional plaid.storage.reader import failed: {exc}")
 
 print_debug("Plaid ParaView Plugin Loaded")
