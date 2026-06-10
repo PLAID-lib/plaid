@@ -180,6 +180,7 @@ members_order = "source"
 merge_init_into_class = true
 
 [project.theme]
+custom_dir = "overrides"
 favicon = "images/plaid_logo.png"
 logo = "images/plaid_logo.png"
 features = [
