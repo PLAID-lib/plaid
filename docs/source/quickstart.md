@@ -16,7 +16,7 @@ To use the library, the simplest way is to install it from the packages availabl
 
 - on Spack for Linux, macOS, and Windows:
   ```bash
-  spack add py-plaid && spack install
+  spack install py-plaid
   ```
 
 !!! note "Installation notes"
