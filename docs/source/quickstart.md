@@ -58,10 +58,11 @@ for t in plaid_sample.get_all_time_values():
 
 These instructions are valid regardless of the storage backend or the heterogeneity of the data.
 
-The package also ships two command-line tools:
+The package also ships three command-line tools:
 
 ```bash
 plaid-check /path/to/plaid_dataset
+plaid-serve --dataset /path/to/plaid_dataset
 plaid-viewer --datasets-root /path/to/datasets
 ```
 
