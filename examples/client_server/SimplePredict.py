@@ -17,7 +17,7 @@
 # Import required libraries
 
 from typing import Any
-
+import time
 import sys
 import numpy as np
 from matplotlib import pyplot as plt
@@ -38,6 +38,9 @@ else:
 
 pb = plaidserver.problem_definition()
 print(pb)
+
+infos = plaidserver.infos()
+print(infos)
 
 # %% [markdown]
 # # Load a sample for modification
@@ -121,7 +124,7 @@ print(cost_fuction([-45]))
 # # Call the predictor for a range of
 
 # %%
-
+stime = time.time()
 nb_calls = 50
 x = np.empty(nb_calls)
 y = np.empty(nb_calls)
@@ -130,6 +133,7 @@ for i,v in enumerate(np.linspace(minmax[active_input_feature][0],minmax[active_i
     x[i] = v
     #sample.del_global(active_output_features)
     y[i] = cost_fuction([v])
+print(f"{nb_calls} calls of predict in {time.time()-stime} s")
 
 # %% [markdown]
 # # Plot output
@@ -141,5 +145,5 @@ plt.xlabel(active_input_feature)
 plt.ylabel(active_output_feature)
 plt.title(f"{active_input_feature} vs {active_output_feature}")
 plt.grid()
-plt.show()
+#plt.show()
 # %%

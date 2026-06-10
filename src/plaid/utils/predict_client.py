@@ -25,6 +25,7 @@ class PlaidClient:
             "health": "/health",
             "predict": "/predict",
             "problem_definition": "/problem_definition",
+            "infos": "/infos",
             "samples": "/samples",
         }
         self.protocol = "http"
@@ -88,6 +89,15 @@ class PlaidClient:
             A dictionary containing the problem definition as provided by the server.
         """
         return self._request_json("problem_definition", {})
+
+
+    def infos(self):
+        """Get the infos from the server.
+
+        Returns:
+            A dictionary containing the infos as provided by the server.
+        """
+        return self._request_json("infos", {})
 
     def samples(self, sample_ids: list[int], split: str) -> list[Sample]:
         """Request samples from the server by sample IDs and split.

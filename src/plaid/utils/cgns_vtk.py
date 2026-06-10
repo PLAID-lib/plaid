@@ -310,12 +310,11 @@ def CGNSTreeToVtk(treeNode: list):
     for key, value in globals.items():
         if value.dtype == "|S1":
             from vtkmodules.vtkCommonCore import vtkStringArray
-
             labels = vtkStringArray()
             labels.SetName(key)
             labels.SetNumberOfValues(len(value))
-            for v in value:
-                labels.SetValue(v)
+            for i,v in enumerate(value):
+                labels.SetValue(i,v)
             field_data.AddArray(labels)
             continue
 

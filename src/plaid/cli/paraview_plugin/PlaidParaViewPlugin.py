@@ -527,7 +527,7 @@ try:
                 return self._info_cache
 
             if (self._info_cache is None) and (self._filename is not None and self._filename != "None" ):
-                self._info_cache = load_infos_from_disk(self._filename)
+                self._info_cache = load_infos_from_disk(self._filename).model_dump()
                 self.Modified()
             else:
                 return {"num_samples":{}}

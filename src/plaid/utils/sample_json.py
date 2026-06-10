@@ -68,7 +68,7 @@ def sample_from_json_payload(payload: dict[str, Any]) -> Sample:
 
     from ..containers.sample import Sample
 
-    sample = Sample(path=None)
+    sample = Sample()
     for entry in trees:
         if not isinstance(entry, dict):
             raise ValueError("Each Sample JSON tree entry must be a dictionary")
