@@ -213,6 +213,16 @@ def test_encode_decode_value_roundtrips_bytes():
     assert _decode_value(encoded) == value
 
 
+def test_decode_value_decodes_nested_lists():
+    """List payloads are decoded recursively."""
+    encoded_bytes = _encode_value(b"nested bytes")
+
+    assert _decode_value([encoded_bytes, [1, encoded_bytes]]) == [
+        b"nested bytes",
+        [1, b"nested bytes"],
+    ]
+
+
 def test_encode_value_rejects_unsupported_values():
     """Unsupported value types raise a TypeError with a clear message."""
     with pytest.raises(TypeError, match="Unsupported CGNS value type"):

@@ -25,7 +25,7 @@ try:
 except ImportError:
     from vtk.util.vtkAlgorithm import VTKPythonAlgorithmBase
 
-## this inport are in a try because for some cases the plaid library is not available (clien server)
+## this import are in a try because for some cases the plaid library is not available (clien server)
 try:
     from plaid.utils.cgns_json import cgns_tree_from_json_payload
     from plaid.utils.cgns_vtk import CGNSTreeToVtk
@@ -33,7 +33,7 @@ except:
     pass
 
 #this line is to inlcude the import to make the plugin selfcontain
-#do not modify this line
+#do not modify the next line (see file function get_ParaView_plugin_path_one_file for the use case)
 # ##INCLUDE PLACEHOLDER##
 
 ## utility funcitons

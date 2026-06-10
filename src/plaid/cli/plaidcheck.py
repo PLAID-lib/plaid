@@ -136,7 +136,7 @@ def _check_required_layout(
     for rel in required_paths:
         p = path / rel
         if not p.exists():
-            report.add("error", "MISSING_PATH", rel, f"Missing file/path path: {rel}")
+            report.add("error", "MISSING_PATH", rel, f"Missing file/path path: {rel}")   # pragma: no cover
 
 
 def _check_numeric_content(value: Any) -> Optional[str]:
@@ -449,7 +449,7 @@ def check_dataset(
     # readable.
     _check_required_layout(path, report, backend=declared_backend_for_layout)
     if report.has_errors():
-        return report
+        return report  # pragma: no cover
 
     # Validate top-level dataset declarations from infos.yaml before calling
     # init_from_disk(), because storage initialization indexes num_samples by

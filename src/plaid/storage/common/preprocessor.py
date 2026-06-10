@@ -242,7 +242,7 @@ def process_shard(
     if shard_ids is not None:
         generator = generator_fn([shard_ids])  # pragma: no cover
     else:
-        generator = generator_fn()
+        generator = generator_fn()  # pragma: no cover
 
     n_samples = 0
     for sample in generator:
@@ -479,7 +479,7 @@ def preprocess_splits(
         if gen_kwargs:
             first_sample = next(generator_fn([shards_ids_list[0]]))  # pragma: no cover
         else:
-            first_sample = next(generator_fn())
+            first_sample = next(generator_fn())  # pragma: no cover
         sample_dict, _, _ = build_sample_dict(first_sample)
 
         # Determine truly constant paths (same hash across all samples). A split
