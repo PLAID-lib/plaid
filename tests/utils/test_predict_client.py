@@ -1,11 +1,11 @@
-"""Tests for the PLAID prediction HTTP client."""
+"""Tests for the PLAID procession HTTP client."""
 
 import json
 from types import SimpleNamespace
 
 from plaid.containers.sample import Sample
 from plaid.utils.cgns_helper import compare_cgns_trees
-from plaid.utils.predict_client import PlaidClient
+from plaid.utils.process_client import PlaidClient
 from plaid.utils.sample_json import sample_to_json_payload
 
 
@@ -42,7 +42,7 @@ def test_plaid_client_initializes_default_configuration():
     assert client.timeout == 100
     assert client.endpoints == {
         "health": "/health",
-        "predict": "/predict",
+        "process": "/process",
         "infos": "/infos",
         "problem_definition": "/problem_definition",
         "samples": "/samples",
@@ -58,7 +58,7 @@ def test_request_json_posts_payload_and_decodes_response(monkeypatch):
         calls.append(SimpleNamespace(req=req, timeout=timeout))
         return _FakeResponse(response_payload)
 
-    monkeypatch.setattr("plaid.utils.predict_client.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("plaid.utils.process_client.request.urlopen", fake_urlopen)
     client = PlaidClient("example.test", 1234)
 
     result = client._request_json("health", {"ping": True})
@@ -116,10 +116,10 @@ def test_check_connection_returns_false_on_exception(monkeypatch, capsys):
     assert "Connection check failed: server unavailable" in capsys.readouterr().out
 
 
-def test_predict_sends_sample_payload_and_decodes_first_sample(
+def test_process_sends_sample_payload_and_decodes_first_sample(
     monkeypatch, sample_with_tree
 ):
-    """Prediction serializes one sample and returns the first sample in response."""
+    """Process serializes one sample and returns the first sample in response."""
     client = PlaidClient("localhost", 8000)
     response_sample = sample_with_tree.copy()
     calls = []
@@ -130,10 +130,10 @@ def test_predict_sends_sample_payload_and_decodes_first_sample(
 
     monkeypatch.setattr(client, "_request_json", fake_request_json)
 
-    predicted = client.predict(sample_with_tree)
+    processed = client.process(sample_with_tree)
 
-    assert calls == [("predict", {"sample": sample_to_json_payload(sample_with_tree)})]
-    _assert_same_sample_content(response_sample, predicted)
+    assert calls == [("process", {"sample": sample_to_json_payload(sample_with_tree)})]
+    _assert_same_sample_content(response_sample, processed)
 
 
 def test_problem_definition_requests_problem_definition_endpoint(monkeypatch):

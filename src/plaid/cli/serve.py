@@ -34,14 +34,14 @@ log = logging.getLogger(__name__)
 HEALTH_PAYLOAD: dict[str, object] = {"status": "ok"}
 ENTRY_POINTS_PAYLOAD: dict[str, object] = {
     "samples_step": True,
-    "predict": False,
+    "process": False,
     "splits": True,
     "timesteps": True,
     "samples": True,
 }
 POST_DATASET_ROUTES = {"/samples", "/problem_definition", "/infos"}
-PREDICT_UNSUPPORTED_PAYLOAD: dict[str, object] = {
-    "error": "Endpoint /predict is not supported by PLAID serve"
+PROCESS_UNSUPPORTED_PAYLOAD: dict[str, object] = {
+    "error": "Endpoint /process is not supported by PLAID serve"
 }
 
 
@@ -364,9 +364,9 @@ class _Handler(BaseHTTPRequestHandler):
             self._send_json(HEALTH_PAYLOAD)
             return
 
-        if parsed.path == "/predict":
+        if parsed.path == "/process":
             self._send_json(
-                PREDICT_UNSUPPORTED_PAYLOAD,
+                PROCESS_UNSUPPORTED_PAYLOAD,
                 status=HTTPStatus.NOT_IMPLEMENTED,
             )
             return

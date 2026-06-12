@@ -1,4 +1,4 @@
-"""Class to use the /predict capability of a server."""
+"""Class to use the /process capability of a server."""
 
 import json
 from typing import Any
@@ -9,21 +9,21 @@ from plaid.utils.sample_json import sample_from_json_payload, sample_to_json_pay
 
 
 class PlaidClient:
-    """Client for making requests to a PLAID prediction server."""
+    """Client for making requests to a PLAID process server."""
 
     def __init__(self, host, port):
-        """Initialize a prediction server client.
+        """Initialize a process server client.
 
         Args:
-            host: Hostname or IP address of the prediction server.
-            port: Port number used by the prediction server.
+            host: Hostname or IP address of the process server.
+            port: Port number used by the process server.
 
         """
         self.host = host
         self.port = port
         self.endpoints = {
             "health": "/health",
-            "predict": "/predict",
+            "process": "/process",
             "problem_definition": "/problem_definition",
             "infos": "/infos",
             "samples": "/samples",
@@ -66,20 +66,20 @@ class PlaidClient:
             print(f"Connection check failed: {e}")
             return False
 
-    def predict(self, sample: Sample) -> Sample:
-        """Send a sample to the predict endpoint and return the predicted sample.
+    def process(self, sample: Sample) -> Sample:
+        """Send a sample to the process endpoint and return the processed sample.
 
         The input sample is converted to a JSON payload, sent to the server, and the response is converted back to a Sample.
 
         Args:
-            sample: A Sample object containing the input data for prediction.
+            sample: A Sample object containing the input data for process task.
 
         Returns:
-            A Sample object containing the predicted output from the server.
+            A Sample object containing the processed output from the server.
 
         """
         payload: dict[str, Any] = {"sample": sample_to_json_payload(sample)}
-        response = self._request_json("predict", payload)
+        response = self._request_json("process", payload)
         return sample_from_json_payload(response["samples"][0])
 
     def problem_definition(self):

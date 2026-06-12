@@ -41,7 +41,7 @@ except ImportError:
 ##//////////////////////////////////////////////////////////
 
 _start_time = time.time()
-debug = bool(os.environ.get("PARAVIEW_LOG_PLUGIN_VERBOSITY", True))
+debug = bool(os.environ.get("PARAVIEW_LOG_PLUGIN_VERBOSITY", False))
 
 
 def print_debug(message: str) -> None:
@@ -333,18 +333,18 @@ class PlaidClientBase(PlaidDataSetBase):
         return self._info_cache
 
 
-print_debug("Loading MaestroExplorer")
+print_debug("Loading PlaidExplorer")
 
 
-@smproxy.source(name="MaestroExplorer", label="Maestro Explorer")
-class MaestroExplorer(PlaidClientBase):
-    """ParaView source plugin fetching data from Maestro serve endpoints."""
+@smproxy.source(name="PlaidExplorer", label="Plaid Explorer")
+class PlaidExplorer(PlaidClientBase):
+    """ParaView source plugin fetching data from Plaid serve endpoints."""
 
     def __init__(self):
         super().__init__(nInputPorts=0, nOutputPorts=1)
 
         self.timestep_values_cache: list[float] | None = None
-        self.usePredict: bool = False
+        self.useProcess: bool = False
         self.input_features = ""
 
     @smproperty.stringvector(name="Host", default_values="127.0.0.1")
@@ -439,28 +439,28 @@ class MaestroExplorer(PlaidClientBase):
         return super().GetSomeTable()
 
     @smproperty.xml("""
-          <IntVectorProperty name="Predict"
-                             command="SetPredict"
+          <IntVectorProperty name="Process"
+                             command="SetProcess"
                              number_of_elements="1"
                              default_values="0"
                             panel_visibility="default">
               <BooleanDomain name="bool"/>
               <Documentation>
-                This property indicates if we use the sample or the predict endpoint
+                This property indicates if we use the sample or the process endpoint
               </Documentation>
           </IntVectorProperty>""")
-    def SetPredict(self, value):
-        """Set whether to use the /predict endpoint instead of /sample. This is a boolean property."""
+    def SetProcess(self, value):
+        """Set whether to use the /process endpoint instead of /sample. This is a boolean property."""
         bool_value = str(value).lower() in ["true", "1"]
-        if self.usePredict != bool_value:
-            self.usePredict = bool_value
+        if self.useProcess != bool_value:
+            self.useProcess = bool_value
             self._sample_cache = None
             self.Modified()
 
     def GetSampleData(self):
         """Fetch sample data for the currently selected split and sample ID, with caching."""
         if self._sample_cache is None:
-            endpoint = "/predict" if self.usePredict else "/samples"
+            endpoint = "/process" if self.useProcess else "/samples"
             payload = {
                 "sample_ids": [self.sample_id],
                 "split": self._selected_split,

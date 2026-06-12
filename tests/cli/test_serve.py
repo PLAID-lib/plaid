@@ -163,7 +163,7 @@ def test_entry_points_route_returns_available_endpoints(serve_url: str) -> None:
     assert status == 200
     assert payload == {
         "samples_step": True,
-        "predict": False,
+        "process": False,
         "splits": True,
         "timesteps": True,
         "samples": True,
@@ -179,7 +179,7 @@ def test_unknown_route_returns_not_found(serve_url: str) -> None:
 
 
 def test_post_health_entry_point_returns_ok(serve_url: str) -> None:
-    """POST health route should match the Maestro serve interface."""
+    """POST health route should match the Plaid serve interface."""
     status, payload = _post_json(serve_url, "/health")
 
     assert status == 200
@@ -187,11 +187,11 @@ def test_post_health_entry_point_returns_ok(serve_url: str) -> None:
 
 
 def test_post_predict_returns_not_implemented(serve_url: str) -> None:
-    """POST predict route should be explicit but unsupported by PLAID serve."""
-    status, payload = _post_json(serve_url, "/predict")
+    """POST process route should be explicit but unsupported by PLAID serve."""
+    status, payload = _post_json(serve_url, "/process")
 
     assert status == 501
-    assert payload == {"error": "Endpoint /predict is not supported by PLAID serve"}
+    assert payload == {"error": "Endpoint /process is not supported by PLAID serve"}
 
 
 def test_post_unknown_route_returns_not_found(serve_url: str) -> None:
