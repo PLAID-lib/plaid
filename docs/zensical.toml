@@ -189,6 +189,7 @@ members_order = "source"
 merge_init_into_class = true
 
 [project.theme]
+custom_dir = "overrides"
 favicon = "images/plaid_logo.png"
 logo = "images/plaid_logo.png"
 features = [
@@ -219,6 +220,11 @@ name = "pyplaid on PyPI"
 icon = "simple/anaconda"
 link = "https://anaconda.org/conda-forge/plaid"
 name = "plaid on conda-forge"
+
+[[project.extra.social]]
+icon = "simple/spack"
+link = "https://packages.spack.io/package.html?name=py-plaid"
+name = "py-plaid on Spack"
 
 [[project.extra.social]]
 icon = "simple/arxiv"
