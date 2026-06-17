@@ -192,7 +192,7 @@ import time
 import torch
 from torch.utils.data import DataLoader
 
-from plaid.utils.cgns_helper import show_cgns_tree
+from plaid.utils.cgns_helper import show_cgns_tree, get_element_names
 from plaid.storage import init_from_disk, download_from_hub, init_streaming_from_hub
 from plaid.storage import load_problem_definitions_from_disk
 
@@ -387,4 +387,7 @@ plaid_sample = converter.sample_to_plaid(raw_sample)
 
 # utility to print a summary of the CGNS tree from the plaid sample
 show_cgns_tree(plaid_sample.get_tree(0.))
+
+# Utility to extract the elements from the CGNS tree of the plaid sample
+get_element_names(plaid_sample.get_tree(0.))
 ```

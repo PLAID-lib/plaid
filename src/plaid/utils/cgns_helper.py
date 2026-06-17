@@ -40,6 +40,28 @@ def get_base_names(
     else:
         return base_paths
 
+def get_element_names(tree: CGNSTree, full_path: bool = False) -> list[str]:
+    """Get a list of element names from a CGNSTree.
+
+    Args:
+        tree (CGNSTree): The CGNSTree containing the Elements_t nodes.
+        full_path (bool, optional): If True, return full element paths including '/' separators. Defaults to False.
+
+    Returns:
+        list[str]: A list of element names.
+    """
+    element_paths = []
+    if tree is not None:
+        e_paths = CGU.getPathsByTypeSet(tree, "Elements_t")
+        for pth in e_paths:
+            if full_path:
+                element_paths.append(pth)
+            else:
+                # Paths can have variable depth (e.g. /Base/Zone/Elements_HEXA_20).
+                element_paths.append(pth.rsplit("/", maxsplit=1)[-1])
+
+    return element_paths
+
 
 def get_time_values(tree: CGNSTree) -> float:
     """Get consistent time values from CGNSBase_t nodes in a CGNSTree.
