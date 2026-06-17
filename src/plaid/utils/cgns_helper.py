@@ -40,6 +40,7 @@ def get_base_names(
     else:
         return base_paths
 
+
 def get_element_names(tree: CGNSTree, full_path: bool = False) -> list[str]:
     """Get a list of element names from a CGNSTree.
 
