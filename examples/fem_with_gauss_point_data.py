@@ -289,8 +289,8 @@ def main() -> None:
         )
     )])
 
-    fig.show()
-    renderer="notebook"
+    renderer = "notebook"
+    fig.show(renderer=renderer)
 
     # %%
     from plaid.utils.cgns_vtk import CGNSTreeToVtk
