@@ -31,7 +31,6 @@ from Muscat.TestData import GetTestDataPath
 from Muscat.IO.UtReader import UtReader
 from Muscat.Bridges.CGNSBridge import AddIntegrationRuleCollection, AddIntegrationPointFlowSolution, AddMuscatIPField
 from Muscat.IO.ZsetTools import GetIntegrationRuleForZsetMesh
-from Muscat.Bridges.CGNSBridge import MuscatToCGNSNames
 from Muscat.MeshContainers.Filters.FilterObjects import ElementFilter
 from Muscat.FE.Fields.IPField import IPField
 from Muscat.MeshContainers import ElementsDescription as ED
