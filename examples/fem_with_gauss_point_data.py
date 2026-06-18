@@ -142,7 +142,6 @@ def main() -> None:
 #     # ## Loop over the fields and inject integration point data
 
     # %%
-    mesh_i = mesh.View()
     reader.atIntegrationPoints = True
 
     # keep track of fields for the check at the end of the file
