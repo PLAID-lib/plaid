@@ -41,6 +41,36 @@ issues, or documentation).
 - All interactions on this repository (issues, PRs, reviews, comments) must be in **English**.
 - Be direct and concise. Avoid compliments, flattery, or filler sentences.
 
+### Efficiency and minimalism
+
+These rules cut token usage, latency, and the volume of generated code without
+sacrificing correctness. They are distilled from the `ponytail` (minimal code) and
+`caveman` (terse communication) agent conventions.
+
+**Write the least code that works.** Climb this ladder, stop at the first rung that holds:
+
+1. Does this need to exist at all? Speculative need = skip it, say so in one line (YAGNI).
+2. Does the standard library do it? Use it.
+3. Does an already-installed dependency solve it? Use it -- never add a new dependency for what a few lines cover.
+4. Can it be one line? Make it one line.
+5. Only then: the minimum code that works.
+
+- No unrequested abstractions: no interface with a single implementation, no factory for one product, no config for a value that never changes.
+- Deletion over addition. The shortest working diff wins. Fewest files possible.
+- Mark a deliberate shortcut with a `# NOTE(shortcut):` comment naming its ceiling and upgrade trigger, e.g. `# NOTE(shortcut): O(n) scan, index it if the sample count grows`.
+- Non-trivial logic leaves one runnable check behind (an `assert`-based self-check or a small `test_*.py`) -- no heavy fixtures unless asked.
+
+**Communicate tersely.** Why over what; the diff already says what.
+
+- Drop filler, pleasantries, and hedging. Code first, then at most a few short lines: what was skipped and when to add it.
+- No tool-call narration, no decorative tables or emoji in explanations, no dumping long raw logs -- quote the shortest decisive line.
+- If the explanation is longer than the code, delete the explanation.
+
+**Never simplify away** (these override the ladder): backward compatibility, public API
+stability, input validation at trust boundaries, error handling that prevents data loss
+or corruption, security, or anything explicitly requested. In scientific computing, data
+integrity is non-negotiable -- see Decision priorities above.
+
 ## Tech stack
 
 - **Language**: Python 3.11--3.13
