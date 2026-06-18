@@ -28,7 +28,7 @@ import numpy as np
 from Muscat.Bridges.CGNSBridge import MeshToCGNS, CGNSToMesh
 from Muscat.TestData import GetTestDataPath
 from Muscat.IO.UtReader import UtReader
-from Muscat.Bridges.CGNSBridge import AddIntegrationRuleCollection, AddIntegrationPointFlowSolution, AddMuscatIPField
+from Muscat.Bridges.CGNSBridge import AddIntegrationPointFlowSolution, AddMuscatIPField
 from Muscat.IO.ZsetTools import GetIntegrationRuleForZsetMesh
 from Muscat.MeshContainers.Filters.FilterObjects import ElementFilter
 from Muscat.FE.Fields.IPField import IPField
