@@ -6,285 +6,311 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.17.3
+#       jupytext_version: 1.19.3
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: Python 3 (ipykernel)
 #     language: python
 #     name: python3
 # ---
 
 # %% [markdown]
-# # Example of converting user data into PLAID
+# # Example of converting user data into PLAID with integration point data
 #
 # This code provides an example for converting user data into the PLAID (Physics Informed AI Datamodel) format.
 
+# %% [markdown]
+# ## Imports
+
 # %%
 from pathlib import Path
-import matplotlib.pyplot as plt
 import numpy as np
-import pickle
 
 from Muscat.Bridges.CGNSBridge import MeshToCGNS, CGNSToMesh
 from Muscat.MeshTools import MeshCreationTools as MCT
+from Muscat.TestData import GetTestDataPath
+from Muscat.IO.UtReader import UtReader
+from Muscat.Bridges.CGNSBridge import AddIntegrationRuleCollection, AddIntegrationPointFlowSolution, AddMuscatIPField
+from Muscat.IO.ZsetTools import GetIntegrationRuleForZsetMesh
+from Muscat.Bridges.CGNSBridge import MuscatToCGNSNames
+from Muscat.MeshContainers.Filters.FilterObjects import ElementFilter
+from Muscat.FE.Fields.IPField import IPField
+from Muscat.MeshContainers import ElementsDescription as ED
+from Muscat.Bridges.CGNSBridge import ExtractIPField
 
 from plaid import Sample
-
-from Muscat.TestData import GetTestDataPath
-
-ut_file_path = Path(GetTestDataPath())/ 'UtExample'/ 'cube.ut'
-print(ut_file_path)
-
-from Muscat.IO.UtReader import UtReader
-
-reader = UtReader()
-reader.SetFileName(ut_file_path)
-reader.ReadMetaData()
-times = reader.GetAvailableTimes()
-print(times)
-#%%
-# we know the mesh does not change, load the mesh only ones
-reader.SetTimeToRead(times[0])
-mesh = reader.Read()
-#print(mesh)
-#exit()
-#%% clean mesh
-mesh.nodeFields = {}
-for etag in mesh.elements.GetTagsNames():
-    print(etag)
-    for el in mesh.elements:
-        if etag in el.tags:
-            el.tags.RenameTag(etag, "el_"+etag)
-print(mesh)
-
-cgns_tree = MeshToCGNS(mesh)
-#print(CGNSToMesh(cgns_tree))
-#from Muscat.MeshTools.MeshTools import IsClose
-#IsClose(mesh, CGNSToMesh(MeshToCGNS(mesh)))
-#exit()
-print(reader.node)
-print(reader.integ)
-print(reader.time)
-sample = Sample()
-for step_data in reader.time:
-    print(step_data)
-    t = step_data[4]
-    mesh_i = mesh.View()
-    reader.SetTimeToRead(t)
-    reader.atIntegrationPoints = False
-    cgns_tree = MeshToCGNS(mesh)
-
-
-    sample.features.add_tree(cgns_tree, time=t)
-    sample.set_default_time(t)
-
-    for node_field in reader.node:
-        data = reader.ReadField(fieldname= node_field)
-        sample.add_field(node_field, data, location="Vertex")
-
-    for integ_field in reader.integ:
-        data = reader.ReadField(fieldname= integ_field)
-        sample.add_field(integ_field, data, location="Vertex")
-
-    reader.atIntegrationPoints = True
-
-    from Muscat.IO.ZsetTools import GetIntegrationRuleForZsetMesh
-    from Muscat.Bridges.CGNSBridge import MuscatToCGNSNames
-    mesh_quadrature = GetIntegrationRuleForZsetMesh(mesh)
-    idToName = {}
-    ruleIdByName = {}
-    rules = {}
-
-    for i, (k,v) in enumerate(mesh_quadrature.items()):
-        #print(i,k,v)
-        name = f"zset{str(k).strip("ElementType.")}_IntRule"
-        idToName[i] = name
-        ruleIdByName[name] = i
-        rules[name] = {
-            "element_type": MuscatToCGNSNames[k],
-            "reference_space": "Parametric",
-            "integration_name": "Zset",
-            "parametric_integration_points": np.asarray(v.points, order='F'),
-                "weights": v.weights,
-        }
-
-    from Muscat.Bridges.CGNSBridge import AddIntegrationRuleCollection, AddIntegrationPointFlowSolution
-    AddIntegrationRuleCollection(
-        sample.features.get_base(),
-        collectionName="IntegrationGaussZset",
-        idToName=idToName,
-        rules=rules,
-    )
-
-    for integ_field in reader.integ:
-        data = reader.ReadField(fieldname= integ_field)
-
-        from Muscat.MeshContainers.Filters.FilterObjects import ElementFilter
-        bulk_filter = ElementFilter(dimensionality=mesh.GetElementsDimensionality())
-        from Muscat.FE.Fields.IPField import IPField
-        ipf = IPField(name=integ_field,mesh=mesh,rule = mesh_quadrature)
-        ipf.Allocate()
-        ipf.SetDataFromNumpy(data, bulk_filter)
-
-        offset = ipf.GetFlattenOffset(bulk_filter)
-        vals = ipf.Flatten(bulk_filter)
-
-        nCells = ipf.mesh.GetNumberOfElements(dim=ipf.mesh.GetElementsDimensionality())
-        itgIds = np.zeros(nCells, dtype=np.int32)
-        for selection in bulk_filter(ipf.mesh):
-            ruleName = f"zset{str(selection.elementType).strip("ElementType.")}_IntRule"
-            itgIds[selection.GetSelectionSlice()] = ruleIdByName[ruleName]
-
-        AddIntegrationPointFlowSolution(
-                sample.features.get_zone(),
-                flowName=f"{ipf.name}_IntegrationPointFields",
-                dataArrays={ipf.name: vals},
-                itgPointStartOffset=offset,
-                itgRulesPath=f"/{sample.resolve_base()}/IntegrationGaussZset",
-                itgRulesIds=itgIds,
-            )
-
-print(sample)
-
 from plaid.storage import save_to_disk
-
-keys = list(sample.features.data.keys())
-values = list(sample.features.data.values())
-
-
-sample.features.data = {}
-
-def sample_constructor(i: int):
-    sample.features.data = {}
-    sample.features.data = {keys[i]:values[i]}
-    return sample
-
-for backend in ["cgns"]:#, "hf_datasets"]:#,"zarr"]:
-    save_to_disk(
-        output_folder=f"output_dataset_with_gauss_{backend}",
-        sample_constructor=sample_constructor,
-        ids={"train": [0]},# np.arange(len(keys))},
-        backend=backend,      # or "hf_datasets" or "cgns"
-        overwrite=True,
-    )
-
-
 from plaid.storage import init_from_disk
 
 
-datasetdict, converterdict =  init_from_disk(
-    local_dir = "output_dataset_with_gauss_cgns",
-    splits =  ["train"]
-)
-sample0 = converterdict["train"].to_plaid(datasetdict["train"], 0)
-sample.features.data = {keys[0]:values[0]}
-
-print(mesh)
-mesh2 = CGNSToMesh(sample0.features.data[0.0])
-print(mesh2)
-print(set(mesh.nodesTags.keys()) - set(mesh2.nodesTags.keys()))
-
-mesh3 = CGNSToMesh(MeshToCGNS(mesh))
-print(mesh3)
-print(set(mesh.nodesTags.keys()) - set(mesh3.nodesTags.keys()))
-exit()
-
-with open("sample0", "w") as f:
-    f.write('"""from the backend"""')
-    with open("sample", "w") as f2:
-        f2.write('"""from User"""')
-        def pprint(a,b,offset=0):
-            if isinstance(a,list):
-                a_names = ((n[0],n[3]) for n in a)
-                b_names = ((n[0],n[3]) for n in b)
+# %%
+def main() -> None:
 
 
-                for n in (set(a_names) | set(b_names)):
-                    a_result = list(filter(lambda u: (u[0],u[3])== n, a))
-                    b_result = list(filter(lambda u: (u[0],u[3])== n, b))
+    # %%
+    ut_file_path = Path(GetTestDataPath())/ 'UtExample'/ 'cube.ut'
+    print(ut_file_path)
+
+    reader = UtReader()
+    reader.SetFileName(ut_file_path)
+    reader.ReadMetaData()
+    times = reader.GetAvailableTimes()
+    print(times)
+# %% [markdown]
+#     # ## We know the mesh does not change, load the mesh only ones
+
+    # %%
+    reader.SetTimeToRead(times[0])
+    mesh = reader.Read()
+    print(mesh)
+
+# %% [markdown]
+#     # ## CGNS does not support nodes Tags and Elements tags with the same name
+
+    # %%
+    mesh.nodeFields = {}
+    for etag in mesh.elements.GetTagsNames():
+
+        for el in mesh.elements:
+            if etag in el.tags:
+                el.tags.RenameTag(etag, "el_"+etag)
+                print(f"rename tag {etag} -> {'el_'+etag} ")
+
+    print(mesh)
+    saved_mesh = mesh.View()
+    # removing string field
+    mesh.elemFields = {}
 
 
-                    if len(a_result) < 1 :
-                        print (f"error {n} in a ")
-                        f.write(" "*offset+str(n)+ " not found in a \n")
-                        f2.write(" "*offset+str(b_result)+ " found in b \n")
-                        continue
-                    if len(b_result) < 1:
-                        print(b_result)
-                        f.write(" "*offset+str(a_result[0])+ " found in a \n")
-                        f2.write(" "*offset+str(n)+ " not found in b \n")
+# %% [markdown]
+#     # ## Convert mesh to cgns tree
 
-                        print( f"error {n} in b ")
-                        continue
-                    f.write(" "*offset+str(a_result[0][0])+ "\n")
-                    f.write(" "*offset+str(a_result[0][1])+ "\n")
-                    f.write(" "*offset+str(a_result[0][3])+ "\n")
+    # %%
+    cgns_tree = MeshToCGNS(mesh)
+    #print(CGNSToMesh(cgns_tree))
 
-                    f2.write(" "*offset+str(b_result[0][0])+ "\n")
-                    f2.write(" "*offset+str(b_result[0][1])+ "\n")
-                    f2.write(" "*offset+str(b_result[0][3])+ "\n")
+# %% [markdown]
+#     # ## Data  in the .ut file
 
+    # %%
+    print(reader.node)
+    print(reader.integ)
+    print(reader.time[:,-1])
 
-                    pprint(a_result[0][2],b_result[0][2], offset+2)
-            else:
-                f.write(" "*offset+str(a)+ "\n")
-                f2.write(" "*offset+str(b)+ "\n")
-            #for i in a :
-            #    f.write(str(i))
-            #for i in b :
-            #    f2.write(str(i))
-        pprint([sample0.features.data[0.0]],[sample.features.data[0.0]])
-print("cone")
-exit()
+# %% [markdown]
+#     # ## Loop over the time steps and inject the mesh
+
+    # %%
+    sample = Sample()
+    for step_data in reader.time:
+        t = step_data[4]
+        print(t)
+        mesh_i = mesh.View()
+        reader.SetTimeToRead(t)
+        reader.atIntegrationPoints = False
+        cgns_tree = MeshToCGNS(mesh)
 
 
-for f in sample.get_all_features_identifiers_by_type("field"):
-
-    field  = sample.get_field(f, "IntegrationPoint")
-    if field is not None:
-        print(f, field.shape)
-
-version = 1
-import pickle
-with open("fromUt.pickle", "wb") as f:
-    if version == 0:
-        pickle.dump(0,f)
-        pickle.dump(sample.features.get_all_time_values(),f)
-        pickle.dump(sample,f)
-
-    if version == 1:
-        timesteps = sample.features.get_all_time_values()
-        sizes = np.empty(len(timesteps)+1,dtype=int)
-        pickle.dump(1,f)
-        init = f.tell()
-        pickle.dump((timesteps,sizes),f)
-        for i in range(len(timesteps)):
-            sizes[i] = f.tell()
-            data = sample.features.data[timesteps[i]]
-            pickle.dump(data,f)
-        sample.features.data = None
-        sizes[-1] = f.tell()
-        pickle.dump(sample,f)
-        f.seek(init)
-        pickle.dump((timesteps,sizes),f)
-
-if version == 0:
-    with open("fromUt.pickle", "rb") as f:
-        # drop version
-        pickle.load(f)
-        # drop timevalues
-        pickle.load(f)
-        res  = pickle.load(f)
-
-if version == 1:
-    with open("fromUt.pickle", "rb") as f:
-        print("version", pickle.load(f))
-        timestaps , offsets = pickle.load(f)
-        data = {}
-        for i,(t,off) in enumerate(zip(timestaps,offsets)):
-            f.seek(off)
-            data[t] = pickle.load(f)
-        f.seek(offsets[-1])
-        res = pickle.load(f)
-        res.features.data = data
+        sample.add_tree(cgns_tree, time=t)
+        sample.set_default_time(t)
+    print(sample)
 
 
+    # %%
+    sample.get_field_names(time=0)
+
+# %% [markdown]
+#     # ## Loop over the time steps and inject vertex fields
+
+    # %%
+    reader.atIntegrationPoints = False
+    for step_data in reader.time:
+        t = step_data[4]
+        print(t)
+        reader.SetTimeToRead(t)
+
+        sample.set_default_time(t)
+        for node_field in reader.node:
+            data = reader.ReadField(fieldname= node_field)
+            sample.add_field(node_field, data, location="Vertex")
+
+        for integ_field in reader.integ:
+            data = reader.ReadField(fieldname= integ_field)
+            sample.add_field(integ_field, data, location="Vertex")
+    print(sample)
+
+# %% [markdown]
+#     # ## Loop over the fields and inject integration point data
+
+    # %%
+    mesh_i = mesh.View()
+    reader.atIntegrationPoints = True
+
+    # keep track of fields for the check at the end of the file
+    ipdata = {}
+    allipfs = {}
+    mesh_quadrature = GetIntegrationRuleForZsetMesh(saved_mesh)
+
+    for step_data in reader.time:
+        t = step_data[4]
+        print(t)
+        reader.SetTimeToRead(t)
+        sample.set_default_time(t)
+
+        ipfs = []
+        ipdata2  = {}
+        ipdata[t] = ipdata2
+        for integ_field in reader.integ:
+            data = reader.ReadField(fieldname= integ_field, time = t)
+            bulk_filter = ElementFilter(dimensionality=mesh.GetElementsDimensionality())
+            ipf = IPField(name=integ_field,mesh=mesh,rule = mesh_quadrature)
+            ipf.Allocate()
+            ipf.SetDataFromNumpy(data, bulk_filter)
+            ipdata2[integ_field] = data
+            ipfs.append(ipf)
+
+        ## User can export the integration point positions as ip fields
+        AddMuscatIPField(sample.get_tree(time=t), ipfs, exportLocationsPositions=True)
+
+        allipfs[t] = {i.name:i for i in ipfs}
+
+
+    # %%
+    print(sample)
+    #sample.show_tree()
+
+# %% [markdown]
+#     # ## Store one step per sample
+
+    # %%
+    keys = list(sample.data.keys())
+    values = list(sample.data.values())
+
+    def sample_constructor(i: int):
+        temp_sample = Sample()
+        temp_sample.data = {keys[i]:values[i]}
+        return temp_sample
+
+    for backend in ["cgns","hf_datasets"]:#,"zarr" for the moment zarr froze for unkwnon reason during reading
+        print(backend + "--------------------------------------------")
+
+        save_to_disk(
+            output_folder=f"output_dataset_with_gauss_{backend}_per_step",
+            sample_constructor=sample_constructor,
+            ids={"train": list(range(len(keys)))},
+            backend=backend,
+            overwrite=True,
+            num_proc=1
+        )
+
+
+# %% [markdown]
+#     # ## Store one time varing sample
+
+# %%
+
+    def sample_constructor(i: int):
+        if i > 0:
+            raise
+        return sample
+
+    for backend in ["cgns"]:# ,"hf_datasets","zarr"do not support 1 sample dataset
+        print(backend + "--------------------------------------------")
+        save_to_disk(
+            output_folder=f"output_dataset_with_gauss_{backend}_one_sample",
+            sample_constructor=sample_constructor,
+            ids={"train": [0]},
+            backend=backend,
+            overwrite=True,
+        )
+
+
+# %% [markdown]
+#     # ## Reload Data from disk and verify the integration point data is the same
+
+# %% clean mesh
+
+    for backend in ["cgns","hf_datasets"]:#,"zarr"
+        datasetdict, converterdict =  init_from_disk(local_dir = f"output_dataset_with_gauss_{backend}_per_step")
+
+        for i, t in enumerate(keys):
+            print(f"Working on backend {backend}, time {t}")
+            sample_back = converterdict["train"].to_plaid(datasetdict["train"], i)
+            print(1)
+            mesh_back = CGNSToMesh(sample_back.get_tree(time=t))
+            print(2)
+            for f in sample_back.get_field_names(location="IntegrationPoint", time=t):
+                print(f)
+                field  = sample_back.get_field(f, "IntegrationPoint", time=t)
+                if f not in ipdata[t]:
+                    check0 = np.allclose(field.shape, ipdata[t][f[0:-5]].shape)
+                    check1 = "Na"
+                    check2 = "Na"
+                else:
+                    ipField_back = ExtractIPField(sample_back.get_tree(time=t), mesh_back, f)
+                    check0 = np.allclose(field.shape, ipdata[t][f].shape)
+                    check1 = np.allclose(field,ipdata[t][f])
+                    check2 = np.allclose(ipField_back.data[ED.Hexahedron_8],allipfs[t][f].data[ED.Hexahedron_8] )
+
+                if not (check0 and check1 and check2) :
+                    print(f, check0, check1, check2              )
+                    raise
+
+        print(sample)
+    print(sample_back)
+    print("Done")
+
+
+# %% [markdown]
+#     # ## Recover position of the integration Points
+
+    # %%
+    eto11 =sample_back.get_field('eto11',"IntegrationPoint",time=keys[-1])
+    eto11_posx =sample_back.get_field('eto11_posx',"IntegrationPoint",time=keys[-1])
+    eto11_posy =sample_back.get_field('eto11_posy',"IntegrationPoint",time=keys[-1])
+    eto11_posz =sample_back.get_field('eto11_posz',"IntegrationPoint",time=keys[-1])
+
+
+    # %%
+    import pyvista as pv
+
+    point_cloud = pv.PolyData(np.vstack((eto11_posx,eto11_posy,eto11_posz)).T)
+
+    point_cloud["eto11"] = eto11
+    print(point_cloud)
+    plotter = pv.Plotter()
+    plotter.add_mesh(point_cloud, scalars="eto11", style="points", point_size=10.0)
+    plotter.show(jupyter_backend='static')
+
+    # %%
+    import plotly.graph_objects as go
+    fig = go.Figure(data=[go.Scatter3d(
+        x=eto11_posx, y=eto11_posy, z=eto11_posz,
+        mode='markers',
+        marker=dict(
+            size=8,
+            color=eto11,                # Pass numeric array here
+            colorscale='Viridis',           # Choose color palette (capitalized)
+            colorbar=dict(title="Values"),  # Shows the color legend side-bar
+        )
+    )])
+
+    fig.show()
+    renderer="notebook"
+
+    # %%
+    from plaid.utils.cgns_vtk import CGNSTreeToVtk
+    vtkmesh = CGNSTreeToVtk(sample_back.get_tree(time= keys[-1]))
+    #print(vtkmesh)
+
+    # %%
+    pv.set_jupyter_backend('static')
+    pl = pv.Plotter()
+    pl.add_mesh(vtkmesh, scalars="U1", show_edges=True)
+    pl.show()
+
+# %%
+
+# %%
+
+if __name__ == "__main__":
+    main()
