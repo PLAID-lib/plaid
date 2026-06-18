@@ -26,7 +26,6 @@ from pathlib import Path
 import numpy as np
 
 from Muscat.Bridges.CGNSBridge import MeshToCGNS, CGNSToMesh
-from Muscat.MeshTools import MeshCreationTools as MCT
 from Muscat.TestData import GetTestDataPath
 from Muscat.IO.UtReader import UtReader
 from Muscat.Bridges.CGNSBridge import AddIntegrationRuleCollection, AddIntegrationPointFlowSolution, AddMuscatIPField
