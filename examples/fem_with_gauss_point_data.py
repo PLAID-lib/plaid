@@ -102,7 +102,6 @@ def main() -> None:
     for step_data in reader.time:
         t = step_data[4]
         print(t)
-        mesh_i = mesh.View()
         reader.SetTimeToRead(t)
         reader.atIntegrationPoints = False
         cgns_tree = MeshToCGNS(mesh)
