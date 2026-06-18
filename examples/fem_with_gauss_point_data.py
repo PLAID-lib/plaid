@@ -84,8 +84,7 @@ def main() -> None:
 #     # ## Convert mesh to cgns tree
 
     # %%
-    cgns_tree = MeshToCGNS(mesh)
-    #print(CGNSToMesh(cgns_tree))
+    #print(CGNSToMesh(MeshToCGNS(mesh)))
 
 # %% [markdown]
 #     # ## Data  in the .ut file
