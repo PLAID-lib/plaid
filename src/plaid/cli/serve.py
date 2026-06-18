@@ -33,10 +33,9 @@ log = logging.getLogger(__name__)
 
 HEALTH_PAYLOAD: dict[str, object] = {"status": "ok"}
 ENTRY_POINTS_PAYLOAD: dict[str, object] = {
-    "samples_step": True,
     "process": False,
-    "splits": True,
-    "timesteps": True,
+    "problem_definition": True,
+    "infos": True,
     "samples": True,
 }
 POST_DATASET_ROUTES = {"/samples", "/problem_definition", "/infos"}

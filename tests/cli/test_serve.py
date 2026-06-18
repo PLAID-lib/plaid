@@ -162,10 +162,9 @@ def test_entry_points_route_returns_available_endpoints(serve_url: str) -> None:
 
     assert status == 200
     assert payload == {
-        "samples_step": True,
         "process": False,
-        "splits": True,
-        "timesteps": True,
+        "problem_definition": True,
+        "infos": True,
         "samples": True,
     }
 
@@ -186,7 +185,7 @@ def test_post_health_entry_point_returns_ok(serve_url: str) -> None:
     assert payload == {"status": "ok"}
 
 
-def test_post_predict_returns_not_implemented(serve_url: str) -> None:
+def test_post_process_returns_not_implemented(serve_url: str) -> None:
     """POST process route should be explicit but unsupported by PLAID serve."""
     status, payload = _post_json(serve_url, "/process")
 

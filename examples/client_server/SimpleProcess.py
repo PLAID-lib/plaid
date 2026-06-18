@@ -23,10 +23,10 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from plaid import Sample
-from plaid.utils.predict_client import PlaidClient
+from plaid.utils.process_client import PlaidClient
 
 # %% [markdown]
-# # Connecion to the prediction server
+# # Connecion to the plaid server
 
 # %%
 plaidserver = PlaidClient(host="localhost", port=8000)
@@ -72,7 +72,7 @@ print(sample)
 
 # %%
 
-#create a const function to encapsulate the prediction
+#create a const function to encapsulate the process call
 print(f"{input_features=}")
 active_input_feature = input_features[0].strip("Global/")
 print(f"{active_input_feature=}")
@@ -100,7 +100,7 @@ def cost_fuction(x: Any) -> float :
     for f,v in zip([active_input_feature], x):
         sample.update_features_by_path("Global/"+f,v)
 
-    # 2) Then send the sample for evaluation/prediction and  recover the sample
+    # 2) Then send the sample for evaluation/process and  recover the sample
     for f in output_features :
         if f.startswith("Global"):
             global_name = f.strip("Global/")
@@ -108,7 +108,7 @@ def cost_fuction(x: Any) -> float :
                 sample.del_global(global_name)
         else:
             sample.del_feature_by_path(f)
-    response: Sample = plaidserver.predict(sample)
+    response: Sample = plaidserver.process(sample)
 
     # 3) evaluate the cost function
     output: float = response.get_global(active_output_feature)
@@ -121,7 +121,7 @@ def cost_fuction(x: Any) -> float :
 print(cost_fuction([-45]))
 
 # %% [markdown]
-# # Call the predictor for a range of
+# # Call the process for a range of
 
 # %%
 stime = time.time()
@@ -133,7 +133,7 @@ for i,v in enumerate(np.linspace(minmax[active_input_feature][0],minmax[active_i
     x[i] = v
     #sample.del_global(active_output_features)
     y[i] = cost_fuction([v])
-print(f"{nb_calls} calls of predict in {time.time()-stime} s")
+print(f"{nb_calls} calls of process in {time.time()-stime} s")
 
 # %% [markdown]
 # # Plot output

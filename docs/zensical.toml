@@ -118,7 +118,7 @@ nav = [
         { "cgns_helper" = "api/utils/cgns_helper.md" },
         { "cgns_json" = "api/utils/cgns_json.md" },
         { "cgns_vtk" = "api/utils/cgns_vtk.md" },
-        { "predict_client" = "api/utils/predict_client.md" },
+        { "process_client" = "api/utils/process_client.md" },
         { "sample_json" = "api/utils/sample_json.md" },
       ] },
       { "viewer" = [
