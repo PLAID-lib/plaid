@@ -373,7 +373,7 @@ def CGNSBaseExtractGlobals(baseNode: list) -> dict:
     return globals
 
 
-def CGNSTreeToVtk(treeNode: list):
+def CGNSTreeToVtk(treeNode: list) -> Any:
     """Convert a full CGNS tree to VTK objects, one per base, and return either the single base or a multi-block of bases.
 
     Arguments:
@@ -433,7 +433,7 @@ def CGNSTreeToVtk(treeNode: list):
     return multiBlock
 
 
-def CGNSBaseToVtk(baseNode: list):
+def CGNSBaseToVtk(baseNode: list) -> Any:
     """Convert a CGNSBase_t node directly to a VTK object.
 
     This function intentionally bypasses Muscat mesh/conversion functions.  It

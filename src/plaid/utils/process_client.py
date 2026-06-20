@@ -11,7 +11,7 @@ from plaid.utils.sample_json import sample_from_json_payload, sample_to_json_pay
 class PlaidClient:
     """Client for making requests to a PLAID process server."""
 
-    def __init__(self, host, port):
+    def __init__(self, host: str, port: int):
         """Initialize a process server client.
 
         Args:
@@ -33,7 +33,7 @@ class PlaidClient:
 
     def _request_json(
         self, endpoint: str, payload: dict[str, object]
-    ) -> dict[str, object]:
+    ) -> dict[str, Any]:
         """Send a JSON POST request to an endpoint and decode the response.
 
         Args:
@@ -82,7 +82,7 @@ class PlaidClient:
         response = self._request_json("process", payload)
         return sample_from_json_payload(response["samples"][0])
 
-    def problem_definition(self):
+    def problem_definition(self) -> dict[str, Any]:
         """Get the problem definition from the server.
 
         Returns:
@@ -90,7 +90,7 @@ class PlaidClient:
         """
         return self._request_json("problem_definition", {})
 
-    def infos(self):
+    def infos(self) -> dict[str, Any]:
         """Get the infos from the server.
 
         Returns:
