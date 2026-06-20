@@ -66,19 +66,30 @@ class PlaidClient:
             print(f"Connection check failed: {e}")
             return False
 
-    def process(self, sample: Sample) -> Sample:
-        """Send a sample to the process endpoint and return the processed sample.
+    def process(self, sample: Sample | None = None, **fields: Any) -> Sample:
+        """Send a single-sample request to the process endpoint.
 
-        The input sample is converted to a JSON payload, sent to the server, and the response is converted back to a Sample.
+        The optional ``sample`` and any ``Sample`` passed as a keyword field are
+        JSON-encoded automatically. All other keyword fields are forwarded
+        verbatim, so the server operation contract stays opaque to this client.
+        The client operates on a single sample at a time.
 
         Args:
-            sample: A Sample object containing the input data for process task.
+            sample: Optional inline sample, sent as the ``sample`` field.
+            **fields: Additional request fields forwarded to the server. Any
+                ``Sample`` value is JSON-encoded before being sent.
 
         Returns:
-            A Sample object containing the processed output from the server.
+            The single ``Sample`` returned by the server.
 
         """
-        payload: dict[str, Any] = {"sample": sample_to_json_payload(sample)}
+        payload: dict[str, Any] = {
+            key: sample_to_json_payload(value) if isinstance(value, Sample) else value
+            for key, value in fields.items()
+        }
+        if sample is not None:
+            payload["sample"] = sample_to_json_payload(sample)
+
         response = self._request_json("process", payload)
         return sample_from_json_payload(response["samples"][0])
 

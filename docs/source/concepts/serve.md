@@ -172,9 +172,37 @@ if client.check_connection():
     )[0]
 ```
 
-The same client also has a `process(sample)` method for servers that implement
+The same client also has a `process(...)` method for servers that implement
 `POST /process`, but `plaid-serve` itself intentionally does not implement that
 operation.
+
+### `process`
+
+For servers that implement `POST /process`, `PlaidClient.process` works on a
+single sample at a time and returns a single `Sample`. The client is agnostic
+to the server contract: it sends the optional inline `sample` plus any extra
+keyword fields verbatim, and decodes the single sample returned by the server.
+
+```python
+# Send one sample and get one sample back.
+result = client.process(sample)
+
+# Forward extra fields (for example an operation selector defined by the
+# server). The client does not interpret these field names.
+result = client.process(operation="some_server_operation", sample=sample)
+```
+
+Any `Sample` value passed as a keyword field is JSON-encoded automatically, so
+a server that expects additional sample-valued fields can be driven without
+manual serialization:
+
+```python
+result = client.process(
+    operation="some_server_operation",
+    sample=sample,
+    source_sample=other_sample,
+)
+```
 
 ## ParaView usage
 

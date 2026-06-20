@@ -119,7 +119,7 @@ def test_check_connection_returns_false_on_exception(monkeypatch, capsys):
 def test_process_sends_sample_payload_and_decodes_first_sample(
     monkeypatch, sample_with_tree
 ):
-    """Process serializes one sample and returns the first sample in response."""
+    """Process serializes one sample and returns the single sample in response."""
     client = PlaidClient("localhost", 8000)
     response_sample = sample_with_tree.copy()
     calls = []
@@ -133,7 +133,92 @@ def test_process_sends_sample_payload_and_decodes_first_sample(
     processed = client.process(sample_with_tree)
 
     assert calls == [("process", {"sample": sample_to_json_payload(sample_with_tree)})]
+    assert isinstance(processed, Sample)
     _assert_same_sample_content(response_sample, processed)
+
+
+def test_process_forwards_extra_fields_verbatim(monkeypatch, sample_with_tree):
+    """Non-Sample keyword fields are forwarded verbatim alongside the sample."""
+    client = PlaidClient("localhost", 8000)
+    response_sample = sample_with_tree.copy()
+    calls = []
+
+    def fake_request_json(endpoint, payload):
+        calls.append((endpoint, payload))
+        return {"samples": [sample_to_json_payload(response_sample)]}
+
+    monkeypatch.setattr(client, "_request_json", fake_request_json)
+
+    processed = client.process(
+        sample=sample_with_tree,
+        operation="some_server_operation",
+        overridden_input_features=[{"Global/P": -45.0}],
+    )
+
+    assert calls == [
+        (
+            "process",
+            {
+                "operation": "some_server_operation",
+                "overridden_input_features": [{"Global/P": -45.0}],
+                "sample": sample_to_json_payload(sample_with_tree),
+            },
+        )
+    ]
+    assert isinstance(processed, Sample)
+    _assert_same_sample_content(response_sample, processed)
+
+
+def test_process_auto_encodes_sample_keyword_fields(monkeypatch, sample_with_tree):
+    """A Sample passed as a keyword field is JSON-encoded automatically."""
+    client = PlaidClient("localhost", 8000)
+    source_sample = sample_with_tree.copy()
+    response_sample = sample_with_tree.copy()
+    calls = []
+
+    def fake_request_json(endpoint, payload):
+        calls.append((endpoint, payload))
+        return {"samples": [sample_to_json_payload(response_sample)]}
+
+    monkeypatch.setattr(client, "_request_json", fake_request_json)
+
+    processed = client.process(
+        sample=sample_with_tree,
+        operation="some_server_operation",
+        source_sample=source_sample,
+    )
+
+    assert calls == [
+        (
+            "process",
+            {
+                "operation": "some_server_operation",
+                "source_sample": sample_to_json_payload(source_sample),
+                "sample": sample_to_json_payload(sample_with_tree),
+            },
+        )
+    ]
+    assert isinstance(processed, Sample)
+
+
+def test_process_without_inline_sample_only_forwards_fields(
+    monkeypatch, sample_with_tree
+):
+    """When no inline sample is given, only the keyword fields are sent."""
+    client = PlaidClient("localhost", 8000)
+    response_sample = sample_with_tree.copy()
+    calls = []
+
+    def fake_request_json(endpoint, payload):
+        calls.append((endpoint, payload))
+        return {"samples": [sample_to_json_payload(response_sample)]}
+
+    monkeypatch.setattr(client, "_request_json", fake_request_json)
+
+    processed = client.process(operation="some_server_operation")
+
+    assert calls == [("process", {"operation": "some_server_operation"})]
+    assert isinstance(processed, Sample)
 
 
 def test_problem_definition_requests_problem_definition_endpoint(monkeypatch):
