@@ -1,122 +1,118 @@
-"""Tests for the generic JSON value codec helpers."""
+"""Tests for the generic JSON value codec."""
+
+import base64
 
 import numpy as np
 import pytest
 
 from plaid.utils.json_codec import (
-    _decode_array,
+    ARRAY_ENCODING,
     decode_json_value,
-    decode_leaf_value,
     encode_json_value,
-    encode_leaf_value,
 )
 
 
-@pytest.mark.parametrize(
-    "value, expected",
-    [
-        (np.int32(7), 7),
-        (np.float64(1.25), 1.25),
-        ((np.int64(1), np.int64(2)), [1, 2]),
-    ],
-)
-def test_encode_leaf_value_normalizes_numpy_scalars_and_tuples(value, expected):
-    """NumPy scalar values and tuples are converted to JSON-compatible data."""
-    assert encode_leaf_value(value) == expected
+@pytest.mark.parametrize("value", [None, True, False, 0, 42, -1.5, "hello", ""])
+def test_scalars_round_trip_unchanged(value: object) -> None:
+    """Scalars pass through encode/decode unchanged."""
+    encoded = encode_json_value(value)
+    assert encoded == value
+    assert decode_json_value(encoded) == value
 
 
-def test_encode_decode_leaf_value_roundtrips_bytes():
-    """Bytes values are encoded as base64 objects and decoded back to bytes."""
-    value = b"CGNS bytes"
-
-    encoded = encode_leaf_value(value)
-
-    assert encoded["kind"] == "bytes"
-    assert decode_leaf_value(encoded) == value
+def test_numpy_scalar_is_encoded_as_python_scalar() -> None:
+    """NumPy scalars are encoded as their plain Python equivalents."""
+    encoded = encode_json_value(np.float64(3.5))
+    assert encoded == 3.5
+    assert isinstance(encoded, float)
 
 
-def test_decode_leaf_value_decodes_nested_lists():
-    """List payloads are decoded recursively."""
-    encoded_bytes = encode_leaf_value(b"nested bytes")
-
-    assert decode_leaf_value([encoded_bytes, [1, encoded_bytes]]) == [
-        b"nested bytes",
-        [1, b"nested bytes"],
-    ]
-
-
-def test_encode_leaf_value_rejects_unsupported_values():
-    """Unsupported value types raise a TypeError with a clear message."""
-    with pytest.raises(TypeError, match="Unsupported value type for JSON serialization"):
-        encode_leaf_value({"not": "a supported value"})
-
-
-def test_decode_leaf_value_leaves_unknown_dict_kind_unchanged():
-    """Unknown dictionary payloads are passed through unchanged."""
-    value = {"kind": "custom", "data": [1, 2, 3]}
-
-    assert decode_leaf_value(value) is value
-
-
-def test_decode_array_rejects_unknown_encoding():
-    """Only JSON and base64 ndarray encodings are supported."""
-    with pytest.raises(ValueError, match="Unsupported ndarray encoding"):
-        _decode_array(
-            {
-                "encoding": "unsupported",
-                "dtype": "<f8",
-                "shape": [0],
-                "data": "",
-            }
-        )
-
-
-def test_encode_decode_array_roundtrips_numeric_dtypes():
-    """Numeric NumPy arrays survive the base64 encode/decode roundtrip."""
-    array = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
-
-    encoded = encode_leaf_value(array)
-    decoded = decode_leaf_value(encoded)
+def test_ndarray_uses_base64_raw_bytes() -> None:
+    """NumPy arrays are encoded as base64 of raw little-endian C bytes."""
+    array = np.array([[1.0, 2.0], [3.0, 4.0]], dtype="<f8")
+    encoded = encode_json_value(array)
 
     assert encoded["kind"] == "ndarray"
-    assert np.array_equal(decoded, array)
+    assert encoded["encoding"] == ARRAY_ENCODING
+    assert encoded["shape"] == [2, 2]
+    assert encoded["order"] == "C"
+
+    expected = base64.b64encode(np.ascontiguousarray(array).tobytes(order="C")).decode(
+        "ascii"
+    )
+    assert encoded["data"] == expected
+
+
+def test_ndarray_round_trip_preserves_values_and_dtype() -> None:
+    """NumPy arrays round-trip with identical values, dtype, and shape."""
+    array = np.arange(12, dtype=np.int32).reshape(3, 4)
+    decoded = decode_json_value(encode_json_value(array))
+
+    assert isinstance(decoded, np.ndarray)
     assert decoded.dtype == array.dtype
+    assert decoded.shape == array.shape
+    np.testing.assert_array_equal(decoded, array)
 
 
-def test_encode_decode_array_roundtrips_unicode_dtype():
-    """Unicode arrays are encoded with the JSON encoding and restored."""
-    array = np.array(["alpha", "beta"], dtype="<U5")
+def test_bytes_round_trip() -> None:
+    """Raw bytes round-trip through base64 encoding."""
+    raw = b"\x00\x01\x02payload"
+    encoded = encode_json_value(raw)
 
-    encoded = encode_leaf_value(array)
-    decoded = decode_leaf_value(encoded)
-
-    assert encoded["encoding"] == "json"
-    assert np.array_equal(decoded, array)
-    assert decoded.dtype == array.dtype
-
-
-def test_encode_array_rejects_object_dtype():
-    """Object dtype arrays are intentionally not part of the portable schema."""
-    array = np.array([{"not": "portable"}], dtype=object)
-
-    with pytest.raises(TypeError, match="Object dtype arrays"):
-        encode_leaf_value(array)
-
-
-def test_encode_json_value_roundtrips_nested_structures():
-    """Nested dicts and lists with arrays survive the JSON value roundtrip."""
-    value = {
-        "scalar": 3,
-        "text": "hello",
-        "array": np.array([1, 2, 3], dtype=np.int64),
-        "nested": [np.float64(1.5), {"bytes": b"data"}],
-    }
-
-    encoded = encode_json_value(value)
+    assert encoded["kind"] == "bytes"
     decoded = decode_json_value(encoded)
+    assert decoded == raw
 
-    assert decoded["scalar"] == 3
-    assert decoded["text"] == "hello"
-    assert np.array_equal(decoded["array"], value["array"])
-    assert decoded["nested"][0] == 1.5
-    assert decoded["nested"][1]["bytes"] == b"data"
+
+def test_nested_dict_with_arrays_round_trips() -> None:
+    """Arrays nested inside dictionaries are encoded and restored."""
+    payload = {
+        "Global/P": np.array([1.0, 2.0, 3.0]),
+        "meta": {"name": "case", "id": 7},
+    }
+    decoded = decode_json_value(encode_json_value(payload))
+
+    assert decoded["meta"] == {"name": "case", "id": 7}
+    np.testing.assert_array_equal(decoded["Global/P"], np.array([1.0, 2.0, 3.0]))
+
+
+def test_nested_list_with_arrays_round_trips() -> None:
+    """Arrays nested inside lists are encoded and restored."""
+    payload = [np.array([1, 2]), {"x": np.array([3.0])}, "tag"]
+    decoded = decode_json_value(encode_json_value(payload))
+
+    np.testing.assert_array_equal(decoded[0], np.array([1, 2]))
+    np.testing.assert_array_equal(decoded[1]["x"], np.array([3.0]))
+    assert decoded[2] == "tag"
+
+
+def test_string_dtype_array_round_trips() -> None:
+    """Unicode arrays round-trip via the JSON list encoding."""
+    array = np.array(["a", "bb", "ccc"])
+    decoded = decode_json_value(encode_json_value(array))
+
+    assert isinstance(decoded, np.ndarray)
+    assert decoded.tolist() == ["a", "bb", "ccc"]
+
+
+def test_dict_keys_are_coerced_to_strings() -> None:
+    """Non-string dictionary keys are coerced to strings on encode."""
+    encoded = encode_json_value({1: "one", 2: "two"})
+    assert set(encoded) == {"1", "2"}
+
+
+def test_object_dtype_array_is_rejected() -> None:
+    """Object-dtype arrays cannot be serialized and raise TypeError."""
+    array = np.array([object()], dtype=object)
+    with pytest.raises(TypeError, match="Object dtype arrays are not supported"):
+        encode_json_value(array)
+
+
+def test_unsupported_object_raises_type_error() -> None:
+    """A plain object leaf raises TypeError on encode."""
+
+    class _Custom:
+        pass
+
+    with pytest.raises(TypeError, match="Unsupported value type"):
+        encode_json_value(_Custom())
