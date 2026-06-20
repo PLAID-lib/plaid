@@ -5,6 +5,7 @@ from typing import Any
 from urllib import request
 
 from plaid.containers.sample import Sample
+from plaid.utils.json_codec import encode_json_value
 from plaid.utils.sample_json import sample_from_json_payload, sample_to_json_payload
 
 
@@ -70,21 +71,26 @@ class PlaidClient:
         """Send a single-sample request to the process endpoint.
 
         The optional ``sample`` and any ``Sample`` passed as a keyword field are
-        JSON-encoded automatically. All other keyword fields are forwarded
-        verbatim, so the server operation contract stays opaque to this client.
-        The client operates on a single sample at a time.
+        JSON-encoded automatically. Other keyword fields are encoded with the
+        generic JSON codec, so NumPy arrays (and nested arrays in lists or
+        dicts) are sent as portable base64 payloads. The server operation
+        contract stays opaque to this client, which operates on a single sample
+        at a time.
 
         Args:
             sample: Optional inline sample, sent as the ``sample`` field.
             **fields: Additional request fields forwarded to the server. Any
-                ``Sample`` value is JSON-encoded before being sent.
+                ``Sample`` value is JSON-encoded, and any NumPy array is encoded
+                with the portable base64 schema.
 
         Returns:
             The single ``Sample`` returned by the server.
 
         """
         payload: dict[str, Any] = {
-            key: sample_to_json_payload(value) if isinstance(value, Sample) else value
+            key: sample_to_json_payload(value)
+            if isinstance(value, Sample)
+            else encode_json_value(value)
             for key, value in fields.items()
         }
         if sample is not None:

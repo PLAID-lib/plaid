@@ -2,25 +2,21 @@
 
 The helpers in this module serialize a single pyCGNS-style tree node of the
 form ``[name, value, children, label]`` to a language-neutral JSON payload.
-NumPy arrays are encoded as base64 little-endian C-contiguous bytes with
-explicit dtype and shape metadata so the payload can be decoded from Python,
-MATLAB, R, JavaScript, or any language with base64 and typed-array support.
+Node values are encoded with :mod:`plaid.utils.json_codec`, which stores NumPy
+arrays as base64 little-endian C-contiguous bytes with explicit dtype and shape
+metadata so the payload can be decoded from Python, MATLAB, R, JavaScript, or
+any language with base64 and typed-array support.
 """
 
 from __future__ import annotations
 
-import base64
 import json
 from typing import Any
 
-import numpy as np
+from .json_codec import decode_leaf_value, encode_leaf_value
 
 FORMAT_NAME = "plaid-cgns-tree-json"
 FORMAT_VERSION = 1
-ARRAY_ENCODING = "base64"
-BYTE_ORDER = "little"
-
-JSONValue = None | bool | int | float | str | list["JSONValue"] | dict[str, "JSONValue"]
 
 
 def cgns_tree_to_json_payload(tree: list[Any]) -> dict[str, Any]:
@@ -36,8 +32,6 @@ def cgns_tree_to_json_payload(tree: list[Any]) -> dict[str, Any]:
     return {
         "format": FORMAT_NAME,
         "version": FORMAT_VERSION,
-        "array_encoding": ARRAY_ENCODING,
-        "byte_order": BYTE_ORDER,
         "tree": _encode_node(tree),
     }
 
@@ -103,7 +97,7 @@ def _encode_node(node: list[Any]) -> dict[str, Any]:
     return {
         "name": str(name),
         "label": str(label),
-        "value": _encode_value(value),
+        "value": encode_leaf_value(value),
         "children": [_encode_node(child) for child in children],
     }
 
@@ -123,97 +117,7 @@ def _decode_node(node: dict[str, Any]) -> list[Any]:
 
     return [
         node["name"],
-        _decode_value(node["value"]),
+        decode_leaf_value(node["value"]),
         [_decode_node(child) for child in node["children"]],
         node["label"],
     ]
-
-
-def _encode_value(value: Any) -> Any:
-    """Encode a CGNS node value into JSON-compatible data."""
-    if value is None or isinstance(value, (bool, int, float, str)):
-        return value
-
-    if isinstance(value, bytes):
-        return {
-            "kind": "bytes",
-            "encoding": ARRAY_ENCODING,
-            "data": base64.b64encode(value).decode("ascii"),
-        }
-
-    if isinstance(value, np.generic):
-        return _encode_value(value.item())
-
-    if isinstance(value, np.ndarray):
-        return _encode_array(value)
-
-    if isinstance(value, (list, tuple)):
-        return [_encode_value(item) for item in value]
-
-    raise TypeError(
-        f"Unsupported CGNS value type for JSON serialization: {type(value)!r}"
-    )
-
-
-def _decode_value(value: Any) -> Any:
-    """Decode one JSON-compatible CGNS value."""
-    if isinstance(value, dict):
-        kind = value.get("kind")
-        if kind == "ndarray":
-            return _decode_array(value)
-        if kind == "bytes":
-            return base64.b64decode(value["data"])
-    if isinstance(value, list):
-        return [_decode_value(item) for item in value]
-    return value
-
-
-def _encode_array(value: np.ndarray) -> dict[str, Any]:
-    """Encode a NumPy array using portable metadata plus base64 bytes."""
-    array = np.asarray(value)
-
-    if array.dtype.kind == "O":
-        raise TypeError("Object dtype arrays are not supported in CGNS JSON payloads")
-
-    if array.dtype.kind == "U":
-        return {
-            "kind": "ndarray",
-            "encoding": "json",
-            "dtype": array.dtype.str,
-            "shape": list(array.shape),
-            "order": "C",
-            "byte_order": "not-applicable",
-            "data": array.tolist(),
-        }
-
-    contiguous = np.ascontiguousarray(array)
-    byte_order = "not-applicable"
-    if contiguous.dtype.byteorder not in ("|", "=") or contiguous.dtype.itemsize > 1:
-        contiguous = contiguous.astype(contiguous.dtype.newbyteorder("<"), copy=False)
-        byte_order = BYTE_ORDER
-
-    return {
-        "kind": "ndarray",
-        "encoding": ARRAY_ENCODING,
-        "dtype": contiguous.dtype.str,
-        "shape": list(contiguous.shape),
-        "order": "C",
-        "byte_order": byte_order,
-        "data": base64.b64encode(contiguous.tobytes(order="C")).decode("ascii"),
-    }
-
-
-def _decode_array(value: dict[str, Any]) -> np.ndarray:
-    """Decode an array object from the JSON payload schema."""
-    encoding = value.get("encoding")
-    dtype = np.dtype(value["dtype"])
-    shape = tuple(value["shape"])
-
-    if encoding == "json":
-        return np.array(value["data"], dtype=dtype).reshape(shape)
-
-    if encoding != ARRAY_ENCODING:
-        raise ValueError(f"Unsupported ndarray encoding: {encoding!r}")
-
-    raw = base64.b64decode(value["data"])
-    return np.frombuffer(raw, dtype=dtype).reshape(shape).copy()
