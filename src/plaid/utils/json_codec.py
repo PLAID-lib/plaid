@@ -176,4 +176,3 @@ def _decode_array(value: dict[str, Any]) -> np.ndarray:
 
     raw = base64.b64decode(value["data"])
     return np.frombuffer(raw, dtype=dtype).reshape(shape).copy()
-</content>

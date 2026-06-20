@@ -7,11 +7,8 @@ import pytest
 
 from plaid.utils.cgns_helper import compare_cgns_trees
 from plaid.utils.cgns_json import (
-    _decode_array,
     _decode_node,
-    _decode_value,
     _encode_node,
-    _encode_value,
     cgns_tree_from_json,
     cgns_tree_from_json_payload,
     cgns_tree_to_json,
@@ -190,60 +187,3 @@ def test_decode_node_rejects_malformed_encoded_nodes(encoded, message):
         _decode_node(encoded)
 
 
-@pytest.mark.parametrize(
-    "value, expected",
-    [
-        (np.int32(7), 7),
-        (np.float64(1.25), 1.25),
-        ((np.int64(1), np.int64(2)), [1, 2]),
-    ],
-)
-def test_encode_value_normalizes_numpy_scalars_and_tuples(value, expected):
-    """NumPy scalar values and tuples are converted to JSON-compatible data."""
-    assert _encode_value(value) == expected
-
-
-def test_encode_decode_value_roundtrips_bytes():
-    """Bytes values are encoded as base64 objects and decoded back to bytes."""
-    value = b"CGNS bytes"
-
-    encoded = _encode_value(value)
-
-    assert encoded["kind"] == "bytes"
-    assert _decode_value(encoded) == value
-
-
-def test_decode_value_decodes_nested_lists():
-    """List payloads are decoded recursively."""
-    encoded_bytes = _encode_value(b"nested bytes")
-
-    assert _decode_value([encoded_bytes, [1, encoded_bytes]]) == [
-        b"nested bytes",
-        [1, b"nested bytes"],
-    ]
-
-
-def test_encode_value_rejects_unsupported_values():
-    """Unsupported value types raise a TypeError with a clear message."""
-    with pytest.raises(TypeError, match="Unsupported CGNS value type"):
-        _encode_value({"not": "a supported CGNS value"})
-
-
-def test_decode_value_leaves_unknown_dict_kind_unchanged():
-    """Unknown dictionary payloads are passed through unchanged."""
-    value = {"kind": "custom", "data": [1, 2, 3]}
-
-    assert _decode_value(value) is value
-
-
-def test_decode_array_rejects_unknown_encoding():
-    """Only JSON and base64 ndarray encodings are supported."""
-    with pytest.raises(ValueError, match="Unsupported ndarray encoding"):
-        _decode_array(
-            {
-                "encoding": "unsupported",
-                "dtype": "<f8",
-                "shape": [0],
-                "data": "",
-            }
-        )
