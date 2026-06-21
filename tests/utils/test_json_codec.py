@@ -8,7 +8,9 @@ import pytest
 from plaid.utils.json_codec import (
     ARRAY_ENCODING,
     decode_json_value,
+    decode_leaf_value,
     encode_json_value,
+    encode_leaf_value,
 )
 
 
@@ -116,3 +118,24 @@ def test_unsupported_object_raises_type_error() -> None:
 
     with pytest.raises(TypeError, match="Unsupported value type"):
         encode_json_value(_Custom())
+
+
+def test_leaf_helpers_and_unknown_encoding() -> None:
+    """Cover leaf-helper list branches, numpy scalars, and bad encoding."""
+    # Non-float-subclass numpy scalar is encoded as a plain Python scalar.
+    assert encode_leaf_value(np.int32(7)) == 7
+    # encode_leaf_value on a list encodes element-wise.
+    assert encode_leaf_value([np.int32(1), 2]) == [1, 2]
+    # decode_leaf_value on a list decodes element-wise.
+    assert decode_leaf_value([{"kind": "bytes", "data": "AA=="}]) == [b"\x00"]
+    # Unknown ndarray encoding raises ValueError.
+    with pytest.raises(ValueError, match="Unsupported ndarray encoding"):
+        decode_json_value(
+            {
+                "kind": "ndarray",
+                "encoding": "bogus",
+                "dtype": "<i4",
+                "shape": [0],
+                "data": "",
+            }
+        )

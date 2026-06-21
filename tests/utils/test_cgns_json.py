@@ -185,5 +185,3 @@ def test_decode_node_rejects_malformed_encoded_nodes(encoded, message):
     """Malformed encoded node dictionaries are rejected before decoding."""
     with pytest.raises(ValueError, match=message):
         _decode_node(encoded)
-
-
