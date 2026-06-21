@@ -104,6 +104,10 @@ class Test_cgns_helper:
     def test_summarize_cgns_tree_verbose(self, tree):
         cgns_helper.summarize_cgns_tree(tree, verbose=True)
 
+    def test_get_cgns_element_paths(self, tree):
+        cgns_helper.get_element_names(tree)
+        cgns_helper.get_element_names(tree, full_path=True)
+
     def test_update_features_for_CGNS_compatibility(self):
         """Test the update_features_for_CGNS_compatibility function."""
 
