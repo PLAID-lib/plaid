@@ -101,17 +101,7 @@ def cost_fuction(x: Any) -> float:
     for f, v in zip([active_input_feature], x):
         sample.update_value_by_path(f, v)
 
-    # sample.show_tree()
-
-    # # 2) Then send the sample for evaluation/process and recover the sample
-    # for f in output_features :
-    #     if f.startswith("Global"):
-    #         global_name = f.strip("Global/")
-    #         if global_name in sample.get_global_names() :
-    #             sample.del_global(global_name)
-    #     else:
-    #         sample.del_feature_by_path(f)
-
+    # 2) let the server process the sample
     response: Sample = plaidserver.process(sample)
 
     # 3) evaluate the cost function
