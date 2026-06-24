@@ -67,6 +67,11 @@ nav = [
       { "problem_definition" = "api/problem_definition.md" },
       { "cli" = [
         { "plaidcheck" = "api/cli/plaidcheck.md" },
+        { "serve" = "api/cli/serve.md" },
+        { "paraview_plugin" = [
+          { "__init__" = "api/cli/paraview_plugin/index.md" },
+          { "PlaidParaViewPlugin" = "api/cli/paraview_plugin/PlaidParaViewPlugin.md" },
+        ] },
       ] },
       { "containers" = [
         { "sample" = "api/containers/sample.md" },
@@ -111,6 +116,11 @@ nav = [
       { "utils" = [
         { "base" = "api/utils/base.md" },
         { "cgns_helper" = "api/utils/cgns_helper.md" },
+        { "cgns_json" = "api/utils/cgns_json.md" },
+        { "cgns_vtk" = "api/utils/cgns_vtk.md" },
+        { "json_codec" = "api/utils/json_codec.md" },
+        { "process_client" = "api/utils/process_client.md" },
+        { "sample_json" = "api/utils/sample_json.md" },
       ] },
       { "viewer" = [
         { "cache" = "api/viewer/cache.md" },
