@@ -43,7 +43,7 @@ For feature requests:
 ### 3.1. Prerequisites
 
 - Git
-- Python (`>=3.10, <3.14`)
+- Python (`>=3.11, <3.14`)
 - Conda or uv package manager
 
 ### 3.2. Installation Steps
@@ -74,7 +74,7 @@ For feature requests:
 To check the installation, you can run the unit test suite:
 
 ```bash
-pytest tests
+uv run pytest tests
 ```
 
 To test further and learn about simple use cases, you can run and explore the examples:
@@ -93,7 +93,7 @@ locally, run:
 
 ```bash
 cd docs
-bash generate_doc.sh
+uv run bash generate_doc.sh
 ```
 
 Various notebooks are executed during compilation. The documentation can then
@@ -103,7 +103,7 @@ When you add, rename, or remove a Python module under ``src/plaid``, regenerate
 the API reference:
 
 ```bash
-python docs/generate_api_stubs.py
+uv run python docs/generate_api_stubs.py
 ```
 
 The script writes minimal mkdocstrings stubs under ``docs/source/api`` and
@@ -111,7 +111,7 @@ rewrites the ``API reference`` ``nav`` block in ``docs/zensical.toml`` (between
 the ``AUTO-GENERATED API REFERENCE`` markers). CI (`Documentation` workflow)
 re-runs the script and fails if the working tree is not clean, so both the
 stubs and the navigation stay in sync with the source layout. The script is
-also invoked automatically at the start of ``bash docs/generate_doc.sh``.
+also invoked automatically at the start of ``uv run bash docs/generate_doc.sh``.
 
 ## 6. Formatting and linting with Ruff
 
@@ -122,8 +122,8 @@ The configuration is defined in `ruff.toml`, and some folders like `docs/` and `
 You can run Ruff manually as follows:
 
 ```bash
-ruff --config ruff.toml check . --fix      # auto-fix linting issues
-ruff --config ruff.toml format .           # auto-format code
+uv run ruff --config ruff.toml check . --fix      # auto-fix linting issues
+uv run ruff --config ruff.toml format .           # auto-format code
 ```
 
 ## 7. Setting up pre-commit
@@ -139,18 +139,31 @@ The selected hooks are defined in the `.pre-commit-config.yaml` file.
 To run all hooks manually on the full codebase:
 
 ```bash
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 You can also run (once):
 
 ```bash
-pre-commit install
+uv run pre-commit install
 ```
 
 ## 8. Release process
 
 ### 8.1. Github
+
+PLAID builds release artifacts with `uv build` while keeping `setuptools-scm`
+as the build backend component responsible for deriving the package version from
+Git tags. This preserves automatic tag-to-package-version synchronization and
+unique development versions between releases.
+
+To build the wheel and source distribution locally from a fully synchronized
+checkout, run:
+
+```bash
+uv sync --locked
+uv build --wheel --sdist
+```
 
 - Create a new release branch from `main` called e.g. `release_0.1.10`
 - Update the CHANGELOG
@@ -192,7 +205,7 @@ Before opening a PR that modifies docs or public APIs, run a quick consistency p
 
     ```bash
     cd docs
-    bash generate_doc.sh
+    uv run bash generate_doc.sh
     ```
 
 2. **Validate API references**
