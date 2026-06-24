@@ -19,4 +19,5 @@ For practical examples, see the [Examples & Tutorials](examples_tutorials.md) pa
 * [Infos](concepts/infos.md)
 * [Default values](concepts/defaults.md)
 * [Disk format](concepts/disk_format.md)
+* [Serve API](concepts/serve.md)
 * [Viewer](concepts/viewer.md)
