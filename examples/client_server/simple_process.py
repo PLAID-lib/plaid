@@ -96,10 +96,10 @@ minmax["Global/p5"] = (50050.0, 99950.0)
 # %%
 
 
-def cost_fuction(x: Any) -> float:
+def cost_function(x: Any) -> float:
     # 1) here we recover the current optimisation point and map it to the sample.
     for f, v in zip([active_input_feature], x):
-        sample.update_value_by_path(f, v)
+        sample.update_feature_by_path(f, v)
 
     # 2) let the server process the sample
     response: Sample = plaidserver.process(sample)
@@ -125,7 +125,7 @@ print(result)
 # # Evaluate the cost function at one point
 
 # %%
-print(cost_fuction([-45]))
+print(cost_function([-45]))
 
 # %% [markdown]
 # # Call the process for a range of
@@ -143,7 +143,7 @@ for i, v in enumerate(
 ):
     x[i] = v
     # sample.del_global(active_output_features)
-    y[i] = cost_fuction([v])
+    y[i] = cost_function([v])
 print(f"{nb_calls} calls of process in {time.time() - stime} s")
 
 # %% [markdown]

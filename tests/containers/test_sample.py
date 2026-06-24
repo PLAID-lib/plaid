@@ -708,25 +708,8 @@ class Test_Sample:
         assert scalar is not None
         assert isinstance(scalar, np.ndarray)
 
-    def test_add_feature(self, sample_with_tree3d):
-        sample_with_tree3d.add_feature(
-            feature_path="Global/test_scalar_2",
-            feature=np.array([3.1415]),
-        )
-
-        sample_with_tree3d.add_feature(
-            feature_path="Base_2_3/Zone/VertexFields/pressure",
-            feature=np.arange(5),
-        )
-
-        sample_with_tree3d.add_feature(
-            feature_path="Base_2_3/Zone/GridCoordinates",
-            feature=np.zeros((5, 3)),
-        )
-
     def test_del_feature(self, sample_with_scalar: Sample, sample_with_tree3d: Sample):
         sample_with_scalar.del_feature_by_path(path="Global/test_scalar_1")
-        assert sample_with_scalar.get_all_features_identifiers_by_type("scalar") == []
         sample_with_tree3d.del_feature_by_path(
             "Base_2_3/Zone/VertexFields/test_node_field_1"
         )
@@ -1284,15 +1267,15 @@ class Test_Sample:
             is not None
         )
 
-    def test_update_value_by_path(self, sample_with_tree):
+    def test_update_feature_by_path(self, sample_with_tree):
         path = "Base_2_2/Zone/VertexFields/test_node_field_1"
-        new_field = np.linspace(0.0, 1.0, 5)
+        new_value = np.linspace(0.0, 1.0, 5)
 
-        sample_with_tree.update_value_by_path(path, new_field)
+        sample_with_tree.update_feature_by_path(path, new_value)
 
-        assert np.allclose(sample_with_tree.get_feature_by_path(path), new_field)
+        assert np.allclose(sample_with_tree.get_feature_by_path(path), new_value)
 
-    def test_update_value_by_path_warns_when_array_shape_differs(
+    def test_update_feature_by_path_warns_when_array_shape_differs(
         self, sample_with_tree, caplog, monkeypatch
     ):
         path = "Base_2_2/Zone/VertexFields/test_node_field_1"
@@ -1313,143 +1296,64 @@ class Test_Sample:
         monkeypatch.setattr(CGU, "getValue", get_value_with_different_shape_once)
 
         with caplog.at_level("WARNING", logger="plaid.containers.sample"):
-            sample_with_tree.update_value_by_path(path, np.linspace(0.0, 1.0, 5))
+            sample_with_tree.update_feature_by_path(path, np.linspace(0.0, 1.0, 5))
 
         assert "incomming data has shape" in caplog.text
 
-    def test_update_value_by_path_at_specific_time(self, sample, tree):
+    def test_update_feature_by_path_at_specific_time(self, sample, tree):
         path = "Base_2_2/Zone/VertexFields/test_node_field_1"
-        time_0_field = np.linspace(0.0, 1.0, 5)
-        time_1_field = np.linspace(10.0, 14.0, 5)
+        time_0_value = np.linspace(0.0, 1.0, 5)
+        time_1_value = np.linspace(10.0, 14.0, 5)
 
         sample.add_tree(copy.deepcopy(tree), time=0.0)
         sample.add_tree(copy.deepcopy(tree), time=1.0)
-        sample.update_value_by_path(path, time_0_field, time=0.0)
-        sample.update_value_by_path(path, time_1_field, time=1.0)
+        sample.update_feature_by_path(path, time_0_value, time=0.0)
+        sample.update_feature_by_path(path, time_1_value, time=1.0)
 
-        assert np.allclose(sample.get_feature_by_path(path, time=0.0), time_0_field)
-        assert np.allclose(sample.get_feature_by_path(path, time=1.0), time_1_field)
+        assert np.allclose(sample.get_feature_by_path(path, time=0.0), time_0_value)
+        assert np.allclose(sample.get_feature_by_path(path, time=1.0), time_1_value)
 
-    def test_update_value_by_path_rejects_unknown_path(self, sample_with_tree):
+    def test_update_feature_by_path_rejects_unknown_path(self, sample_with_tree):
         with pytest.raises(KeyError, match="There is no node at path"):
-            sample_with_tree.update_value_by_path(
+            sample_with_tree.update_feature_by_path(
                 "Base_2_2/Zone/VertexFields/missing_field",
                 np.zeros(5),
             )
 
-    def test_update_value_by_path_rejects_incompatible_shape(self, sample_with_tree):
+    def test_update_feature_by_path_rejects_incompatible_shape(self, sample_with_tree):
         with pytest.raises(ValueError, match="incomming data has shape"):
-            sample_with_tree.update_value_by_path(
+            sample_with_tree.update_feature_by_path(
                 "Base_2_2/Zone/VertexFields/test_node_field_1",
                 np.zeros(6),
             )
 
-    def test_update_features_by_path(self, sample_with_tree_and_scalar):
-        original_value = sample_with_tree_and_scalar.get_feature_by_path(
-            "Global/test_scalar_1"
-        )
+    def test_get_feature_paths_by_type(self, sample_with_tree_and_scalar):
 
-        updated_sample = sample_with_tree_and_scalar.update_features_by_path(
-            "Global/test_scalar_1",
-            features=3.141592,
-            in_place=False,
-        )
-
-        assert updated_sample is not sample_with_tree_and_scalar
-        assert updated_sample.get_feature_by_path("Global/test_scalar_1") == 3.141592
-        assert (
-            sample_with_tree_and_scalar.get_feature_by_path("Global/test_scalar_1")
-            == original_value
-        )
-
-    def test_update_features_by_path_in_place(self, sample_with_tree_and_scalar):
-        updated_sample = sample_with_tree_and_scalar.update_features_by_path(
-            "Global/test_scalar_1",
-            features=2.718281,
-            in_place=True,
-        )
-
-        assert updated_sample is sample_with_tree_and_scalar
-        assert sample_with_tree_and_scalar.get_feature_by_path(
-            "Global/test_scalar_1"
-        ) == pytest.approx(2.718281)
-
-    def test_update_features_by_path_updates_multiple_features(
-        self, sample_with_tree_and_scalar
-    ):
-        new_field = np.linspace(10.0, 14.0, 5)
-
-        updated_sample = sample_with_tree_and_scalar.update_features_by_path(
-            [
-                "Global/test_scalar_1",
-                "Base_2_2/Zone/VertexFields/test_node_field_1",
-            ],
-            [42.0, new_field],
-            in_place=False,
-        )
-
-        assert updated_sample.get_feature_by_path("Global/test_scalar_1") == 42.0
-        assert np.allclose(
-            updated_sample.get_feature_by_path(
-                "Base_2_2/Zone/VertexFields/test_node_field_1"
-            ),
-            new_field,
-        )
-
-    def test_update_features_by_path_rejects_mismatched_lengths(
-        self, sample_with_tree_and_scalar
-    ):
-        with pytest.raises(AssertionError):
-            sample_with_tree_and_scalar.update_features_by_path(
-                ["Global/test_scalar_1", "Global/r"],
-                [1.0],
-            )
-
-    def test_get_all_features_by_type(self, sample_with_tree_and_scalar):
-
-        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("field")
+        feat_paths = sample_with_tree_and_scalar.get_feature_paths_by_type("field")
         assert "Base_2_2/Zone/VertexFields/big_node_field" in feat_paths
         assert "Base_2_2/Zone/VertexFields/test_node_field_1" in feat_paths
         assert "Base_2_2/Zone/VertexFields/OriginalIds" in feat_paths
         assert "Base_2_2/Zone/CellCenterFields/test_elem_field_1" in feat_paths
         assert "Base_2_2/Zone/CellCenterFields/OriginalIds" in feat_paths
 
-        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("global")
+        feat_paths = sample_with_tree_and_scalar.get_feature_paths_by_type("global")
         assert "Global/r" in feat_paths
         assert "Global/test_scalar_1" in feat_paths
 
-        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("coordinate")
+        feat_paths = sample_with_tree_and_scalar.get_feature_paths_by_type("coordinate")
         assert "Base_2_2/Zone/GridCoordinates/CoordinateX" in feat_paths
         assert "Base_2_2/Zone/GridCoordinates/CoordinateY" in feat_paths
 
-        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type(
+        feat_paths = sample_with_tree_and_scalar.get_feature_paths_by_type(
             "boundary_condition"
         )
         assert "Base_2_2/Zone/ZoneBC/tag" in feat_paths
         assert "Base_2_2/Zone/ZoneBC/tag/PointList" in feat_paths
         assert "Base_2_2/Zone/ZoneBC/tag/GridLocation" in feat_paths
 
-        feat_paths = sample_with_tree_and_scalar.get_all_features_by_type("elements")
+        feat_paths = sample_with_tree_and_scalar.get_feature_paths_by_type("elements")
         assert "Base_2_2/Zone/Elements_TRI_3/ElementRange" in feat_paths
         assert "Base_2_2/Zone/Elements_TRI_3/ElementConnectivity" in feat_paths
-
-    def test_get_all_features_identifiers_by_type(self, sample_with_tree_and_scalar):
-        feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
-            "scalar"
-        )
-        assert len(feat_ids) == 2
-        assert "r" in feat_ids
-        assert "test_scalar_1" in feat_ids
-
-        feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
-            "field"
-        )
-        assert len(feat_ids) == 4
-
-        feat_ids = sample_with_tree_and_scalar.get_all_features_identifiers_by_type(
-            "nodes"
-        )
-        assert len(feat_ids) == 2
 
     # -------------------------------------------------------------------------#
     def test_save(self, sample_with_tree_and_scalar, tmp_path):

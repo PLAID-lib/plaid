@@ -2,10 +2,9 @@
 
 # %% Imports
 import sys
-from typing import Sequence
 
 from ..types.cgns_types import CGNSTree
-from ..types.common import ScalarDType, ScalarOrArrayOrStr
+from ..types.common import ScalarOrArrayOrStr
 
 if sys.version_info >= (3, 11):
     from typing import Self
@@ -32,14 +31,11 @@ from pydantic import BaseModel, model_validator
 from pydantic import Field as PydanticField
 
 from ..constants import (
-    AUTHORIZED_FEATURE_TYPES,
-    AUTHORIZED_FEATURE_TYPES_T,
     CGNS_ELEMENT_NAMES,
     CGNS_FIELD_LOCATIONS,
 )
 from ..types import Array, CGNSNode
 from ..utils import cgns_helper as CGH
-from ..utils.base import safe_len
 from .managers.default_manager import DefaultManager
 from .utils import _check_names, _read_index, get_feature_details_from_path
 
@@ -93,29 +89,7 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         """
         return self.model_copy(deep=True)
 
-    def get_all_features_identifiers_by_type(
-        self, feature_type: AUTHORIZED_FEATURE_TYPES_T
-    ) -> list[str]:
-        """Get all features identifiers of a given type from the sample.
-
-        Args:
-            feature_type (str): Type of features to return
-
-        Returns:
-            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
-        """
-        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
-        if feature_type == "scalar":
-            return self.get_global_names()
-        elif feature_type == "field":
-            return self.get_field_names()
-        elif feature_type == "nodes":
-            return [
-                "Coordinate" + n
-                for _, n in zip(range(self.get_physical_dim()), ["X", "Y", "Z"])
-            ]
-
-    def get_all_features_by_type(self, type: str) -> list[str]:
+    def get_feature_paths_by_type(self, type: str) -> list[str]:
         """Get the list of all CGNS paths of features of a given type (eg 'field', 'global', 'coordinate', etc...)."""
         flat_tree, _ = CGH.flatten_cgns_tree(self.get_tree())
         out = []
@@ -153,57 +127,6 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         time = self.resolve_time(time)
         return CGU.getValueByPath(self.get_tree(time), path)
 
-    def add_feature(
-        self,
-        feature_path: str,
-        feature: ScalarOrArrayOrStr,
-    ) -> Self:
-        """Add a feature to current sample.
-
-        This method applies updates to scalars, fields, or nodes
-        using feature identifiers, and corresponding feature data.
-
-        Args:
-            feature_path (str): A feature path string.
-            feature (Feature): Feature value corresponding to ``feature_path``.
-
-        Returns:
-            Self: The updated sample
-
-        Raises:
-            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
-        """
-        # feature_type, feature_details = get_feature_type_and_details_from(
-        #    feature_identifier
-        # )
-
-        from .utils import get_feature_details_from_path
-
-        feature_details = get_feature_details_from_path(feature_path)
-
-        feature_type = feature_details.pop("type")
-        _ = feature_details.pop("sub_type", None)
-
-        if feature_type == "global":
-            if safe_len(feature) == 1:
-                feature = feature[0]
-            self.add_global(**feature_details, global_array=feature)
-        elif feature_type == "field":
-            self.add_field(**feature_details, field=feature, warning_overwrite=False)
-        elif feature_type == "coordinate":
-            if feature_details.get("name", None) is not None:  # pragma: no cover
-                raise ValueError("Must set the 3 coordinate at the same time")
-            physical_dim_arg = {
-                k: v for k, v in feature_details.items() if k in ["base", "time"]
-            }
-            phys_dim = self.get_physical_dim(**physical_dim_arg)
-            self.set_nodes(**feature_details, nodes=feature.reshape((-1, phys_dim)))
-        else:  # pragma: no cover
-            print(feature_details)
-            raise RuntimeError(f"feature_type not allowed : {feature_type}")
-
-        return self
-
     def del_feature_by_path(self, path: str, time: Optional[float] = None) -> CGNSTree:
         """Delete a feature/node by CGNS-style path from the sample mesh tree.
 
@@ -236,45 +159,6 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
             raise KeyError(f"There is no field with name {path} in the specified zone.")
 
         return updated_tree
-
-    def update_features_by_path(
-        self,
-        feature_identifiers: str | Sequence[str],
-        features: Union[ScalarDType, list[ScalarDType]],
-        in_place: bool = False,
-    ) -> Self:
-        """Update one or several features of the sample by their identifier(s).
-
-        This method applies updates to scalars, fields, or nodes
-        using feature identifiers, and corresponding feature data. When `in_place=False`, a deep copy of the sample is created
-        before applying updates, ensuring full isolation from the original.
-
-        Args:
-            feature_identifiers (FeatureIdentifier or list of FeatureIdentifier): One or more feature identifiers.
-            features (dict of Feature or list of Feature): One or more features corresponding
-                to the identifiers.
-            in_place (bool, optional): If True, modifies the current sample in place.
-                If False, returns a deep copy with updated features.
-
-        Returns:
-            Self: The updated sample (either the current instance or a new copy).
-
-        Raises:
-            AssertionError: If types are inconsistent or identifiers contain unexpected keys.
-        """
-        if not isinstance(feature_identifiers, list):
-            feature_identifiers = [feature_identifiers]
-            features = [features]
-        assert len(feature_identifiers) == len(features)
-        for i_id, feat_id in enumerate(feature_identifiers):
-            feature_identifiers[i_id] = str(feat_id)
-
-        sample = self if in_place else self.copy()
-
-        for feat_id, feat in zip(feature_identifiers, features):
-            sample.add_feature(feat_id, feat)
-
-        return sample
 
     # -------------------------------------------------------------------------#
     def save_to_dir(
@@ -1947,15 +1831,15 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         if self.data is not None:
             CGH.show_cgns_tree(self.data.get(time))
 
-    def update_value_by_path(
-        self, path: str, field: np.ndarray, time: float = None
+    def update_feature_by_path(
+        self, path: str, value: np.ndarray, time: float = None
     ) -> None:
-        """Update a field in the CGNS tree by its path.
+        """Update a feature value in the CGNS tree by its path.
 
         Args:
-            path (str): The path to the field node in the CGNS tree.
-            field (np.ndarray): The new field data to be set at the specified path.
-            time (float, optional): The time associated with the field. Defaults to None, which will use the default time.
+            path (str): The path to the feature node in the CGNS tree.
+            value (np.ndarray): The new value to be set at the specified path.
+            time (float, optional): The time associated with the feature. Defaults to None, which will use the default time.
 
         Raises:
             KeyError: Raised if the specified path does not exist in the CGNS tree.
@@ -1973,17 +1857,17 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
                 f"There is no node at path '{node_path}' in the CGNS tree for time {time}."
             )
 
-        field = np.asarray(field)
+        value = np.asarray(value)
         try:
-            field.shape = CGU.getValue(node).shape
+            value.shape = CGU.getValue(node).shape
         except Exception as ex:
             raise ValueError(
-                f"value of node {path} has shape : {np.asarray(CGU.getValue(node)).shape} but incomming data has shape {np.asarray(field).shape}"
+                f"value of node {path} has shape : {np.asarray(CGU.getValue(node)).shape} but incomming data has shape {np.asarray(value).shape}"
             ) from ex
 
-        if np.asarray(CGU.getValue(node)).shape != np.asarray(field).shape:
+        if np.asarray(CGU.getValue(node)).shape != np.asarray(value).shape:
             logger.warning(
-                f"value of node {path} has shape : {np.asarray(CGU.getValue(node)).shape} but incomming data has shape {np.asarray(field).shape}"
+                f"value of node {path} has shape : {np.asarray(CGU.getValue(node)).shape} but incomming data has shape {np.asarray(value).shape}"
             )
 
-        CGU.setValue(node, np.asfortranarray(field))
+        CGU.setValue(node, np.asfortranarray(value))
