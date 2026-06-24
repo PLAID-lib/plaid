@@ -19,7 +19,7 @@ title: Sample
 Key APIs include:
 
 - Feature accessors: `get_global`, `get_field`, `get_nodes`
-- Feature updates: `add_global`, `add_field`, `set_nodes`, and path-based updates with `add_feature`
+- Feature updates: `add_global`, `add_field`, `set_nodes`, and path-based updates with `update_feature_by_path`
 - Discovery: `get_global_names`, `get_field_names`, and `get_all_features_identifiers_by_type`
 
 ## Time, base and zone defaults
@@ -75,14 +75,13 @@ For generic workflows, features can be addressed by CGNS-like paths:
 
 ```python
 value = sample.get_feature_by_path("Base/Zone/VertexFields/pressure")
-sample = sample.update_features_by_path(
+sample.update_feature_by_path(
     "Base/Zone/VertexFields/pressure",
     new_pressure,
 )
 ```
 
-Path-based updates dispatch internally to globals, fields or coordinates based on
-the path structure.
+Path-based updates replace the value stored at an existing CGNS node path.
 
 ## Save, load and diagnostics
 

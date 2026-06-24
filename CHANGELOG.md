@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- This version introduces major modifications of the library.
+
 ### Added
 
 - (utils/cgns_helper) add `get_element_names` utility to extract element names from a CGNS tree.
