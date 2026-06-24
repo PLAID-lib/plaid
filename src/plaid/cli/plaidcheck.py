@@ -376,6 +376,55 @@ def _check_problem_definition_sample_features(
             )
 
 
+def _check_problem_definition_first_sample_feature_keys(
+    *,
+    pb_name: str,
+    split_dict_name: str,
+    split_name: str,
+    idx: int,
+    dataset: Any,
+    converter: Any,
+    input_features: list[str],
+    output_features: list[str],
+    report: CheckReport,
+) -> None:
+    """Validate problem-definition feature keys on one representative sample."""
+    location = f"problem_definitions/{pb_name}/{split_dict_name}/{split_name}[{idx}]"
+    try:
+        sample = converter.to_plaid(dataset, idx)
+    except Exception as exc:
+        report.add(
+            "error",
+            "PB_DEF_FEATURE_KEY_SAMPLE_CONVERSION_ERROR",
+            location,
+            str(exc),
+        )
+        return
+
+    for kind, features in [
+        ("INPUT", input_features),
+        ("OUTPUT", output_features),
+    ]:
+        for feature in features:
+            try:
+                value = sample.get_feature_by_path(feature)
+            except Exception as exc:
+                report.add(
+                    "error",
+                    f"PB_DEF_{kind}_FEATURE_NOT_IN_SAMPLE",
+                    f"{location} {feature}",
+                    str(exc),
+                )
+                continue
+            if value is None:
+                report.add(
+                    "error",
+                    f"PB_DEF_{kind}_FEATURE_NOT_IN_SAMPLE",
+                    f"{location} {feature}",
+                    "feature value is None",
+                )
+
+
 def compute_checksum(sample: Any) -> str:
     """Compute a SHA-256 checksum for a converted sample representation.
 
@@ -780,6 +829,19 @@ def check_dataset(
                         f"Out-of-range indices in {split_dict_name} (first 10): {bad[:10]}",
                     )
                     continue
+
+                if ids_list:
+                    _check_problem_definition_first_sample_feature_keys(
+                        pb_name=pb_name,
+                        split_dict_name=split_dict_name,
+                        split_name=split_name,
+                        idx=ids_list[0],
+                        dataset=datasetdict[split_name],
+                        converter=converterdict[split_name],
+                        input_features=list(pb_def.input_features),
+                        output_features=list(pb_def.output_features),
+                        report=report,
+                    )
 
                 if split_dict_name == "train_split":
                     features = list(pb_def.input_features) + list(

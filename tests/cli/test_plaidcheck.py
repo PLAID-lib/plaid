@@ -12,6 +12,7 @@ from plaid.cli import plaidcheck
 from plaid.cli.plaidcheck import (
     CheckReport,
     _check_numeric_content,
+    _check_problem_definition_first_sample_feature_keys,
     _check_problem_definition_sample_features,
     _is_branch_without_data,
     _is_branch_without_data_in_mapping,
@@ -416,6 +417,18 @@ class _FakeSampleWithFeatureFailure:
         return self._values[path]
 
 
+class _StrictFakeSampleForCheck(_FakeSampleForCheck):
+    """Fake checker sample that raises for unknown problem-definition features."""
+
+    def get_feature_by_path(self, path: str) -> Any:
+        """Return only configured features, plus normal checker globals."""
+        if path in self._features:
+            return self._features[path]
+        if path == "Global/G":
+            return self._global_value
+        raise KeyError(path)
+
+
 def test_check_numeric_content_all_remaining_branches() -> None:
     """Numeric checker should report all remaining invalid content cases."""
     assert _check_numeric_content([]) == "value is empty"
@@ -484,6 +497,47 @@ def test_check_problem_definition_sample_reports_feature_read_error_and_continue
     # validated by the per-split loop in `check_dataset`.
     assert not any(
         msg.code == "PB_DEF_INVALID_FEATURE_VALUE" for msg in report.messages
+    )
+
+
+def test_check_problem_definition_first_sample_feature_keys_reports_errors() -> None:
+    """First-sample feature-key helper should report conversion/read/None errors."""
+    report_conversion = CheckReport(messages=[])
+    _check_problem_definition_first_sample_feature_keys(
+        pb_name="pb",
+        split_dict_name="train_split",
+        split_name="train",
+        idx=0,
+        dataset=_FakeDataset(1),
+        converter=_FakeConverter([_StrictFakeSampleForCheck()], fail_indices={0}),
+        input_features=["Input"],
+        output_features=["Output"],
+        report=report_conversion,
+    )
+    assert report_conversion.messages[0].code == (
+        "PB_DEF_FEATURE_KEY_SAMPLE_CONVERSION_ERROR"
+    )
+
+    report_features = CheckReport(messages=[])
+    _check_problem_definition_first_sample_feature_keys(
+        pb_name="pb",
+        split_dict_name="train_split",
+        split_name="train",
+        idx=0,
+        dataset=_FakeDataset(1),
+        converter=_FakeConverter([_StrictFakeSampleForCheck(features={"Input": None})]),
+        input_features=["Input", "MissingInput"],
+        output_features=["MissingOutput"],
+        report=report_features,
+    )
+    assert any(
+        msg.code == "PB_DEF_INPUT_FEATURE_NOT_IN_SAMPLE"
+        and msg.message == "feature value is None"
+        for msg in report_features.messages
+    )
+    assert any(
+        msg.code == "PB_DEF_OUTPUT_FEATURE_NOT_IN_SAMPLE"
+        for msg in report_features.messages
     )
 
 
@@ -887,6 +941,70 @@ def test_check_dataset_problem_definition_instantiates_filtered_features(
     assert not any(
         msg.code == "PB_DEF_INVALID_FEATURE_VALUE" for msg in report.messages
     )
+
+
+def test_check_dataset_problem_definition_checks_first_sample_feature_keys(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Problem features must resolve to non-None values on first split sample."""
+    dataset = _make_minimal_layout(tmp_path)
+    (dataset / "problem_definitions").mkdir()
+
+    monkeypatch.setattr(
+        plaidcheck, "load_infos_from_disk", lambda _: _infos({"train": 2})
+    )  # noqa: ARG005
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_metadata_from_disk",
+        lambda path: (  # noqa: ARG005
+            {"train": {}},
+            {"Input": {}, "NoneOutput": {}, "MissingInput": {}, "MissingOutput": {}},
+            {"train": {}},
+            None,
+        ),
+    )
+    converter = _FakeConverter(
+        [
+            _StrictFakeSampleForCheck(
+                features={"Input": np.array([1.0]), "NoneOutput": None}
+            ),
+            _StrictFakeSampleForCheck(
+                features={
+                    "Input": np.array([1.0]),
+                    "MissingInput": np.array([1.0]),
+                    "NoneOutput": np.array([1.0]),
+                    "MissingOutput": np.array([1.0]),
+                }
+            ),
+        ]
+    )
+    monkeypatch.setattr(
+        plaidcheck,
+        "init_from_disk",
+        lambda path: ({"train": _FakeDataset(2)}, {"train": converter}),  # noqa: ARG005
+    )
+
+    class _PBDef:
+        input_features = ["Input", "MissingInput"]
+        output_features = ["NoneOutput", "MissingOutput"]
+        train_split = {"train": "all"}
+        test_split = None
+
+    monkeypatch.setattr(
+        plaidcheck,
+        "load_problem_definitions_from_disk",
+        lambda path: {"pb": _PBDef()},  # noqa: ARG005
+    )
+
+    report = check_dataset(dataset, show_progress=False)
+
+    assert any(
+        msg.code == "PB_DEF_INPUT_FEATURE_NOT_IN_SAMPLE" for msg in report.messages
+    )
+    assert any(
+        msg.code == "PB_DEF_OUTPUT_FEATURE_NOT_IN_SAMPLE" for msg in report.messages
+    )
+    assert any("feature value is None" in msg.message for msg in report.messages)
 
 
 def test_check_dataset_filters_problem_definitions(tmp_path: Path, monkeypatch) -> None:
