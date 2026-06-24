@@ -215,6 +215,17 @@ class Test_ProblemDefinition:
                 test_split={"test": "all"},
             )
 
+    def test_feature_validators_reject_input_output_overlap(self):
+        with pytest.raises(
+            ValidationError, match="features cannot be both input and output"
+        ):
+            ProblemDefinition(
+                input_features=["shared"],
+                output_features=["shared"],
+                train_split={"train": "all"},
+                test_split={"test": "all"},
+            )
+
     def test_split_replacement_logs_warning(self, problem_definition, caplog):
         problem_definition.train_split = {"train_0": [0, 1]}
         with caplog.at_level("WARNING"):

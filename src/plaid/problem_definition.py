@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Literal, Sequence, Union
 
 import yaml
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 # %% Globals
 
@@ -96,6 +96,16 @@ class ProblemDefinition(
         if len(set(v)) != len(v):
             raise ValueError("duplicated values in output_features")
         return _normalize_list(v)
+
+    @model_validator(mode="after")
+    def validate_no_input_output_overlap(self) -> Self:
+        """Ensure a feature is not both an input and an output."""
+        overlap = set(self.input_features) & set(self.output_features)
+        if overlap:
+            raise ValueError(
+                f"features cannot be both input and output: {sorted(overlap)}"
+            )
+        return self
 
     def __setattr__(self, name: str, value: Any) -> None:
         """Override attribute setting to log warnings when split fields are replaced."""
