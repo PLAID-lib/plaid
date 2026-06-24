@@ -20,7 +20,7 @@ Key APIs include:
 
 - Feature accessors: `get_global`, `get_field`, `get_nodes`
 - Feature updates: `add_global`, `add_field`, `set_nodes`, and path-based updates with `update_feature_by_path`
-- Discovery: `get_global_names`, `get_field_names`, and `get_all_features_identifiers_by_type`
+- Discovery: `get_global_names`, `get_field_names`
 
 ## Time, base and zone defaults
 

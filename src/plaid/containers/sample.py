@@ -31,8 +31,6 @@ from pydantic import BaseModel, model_validator
 from pydantic import Field as PydanticField
 
 from ..constants import (
-    AUTHORIZED_FEATURE_TYPES,
-    AUTHORIZED_FEATURE_TYPES_T,
     CGNS_ELEMENT_NAMES,
     CGNS_FIELD_LOCATIONS,
 )
@@ -91,29 +89,7 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         """
         return self.model_copy(deep=True)
 
-    def get_all_features_identifiers_by_type(
-        self, feature_type: AUTHORIZED_FEATURE_TYPES_T
-    ) -> list[str]:
-        """Get all features identifiers of a given type from the sample.
-
-        Args:
-            feature_type (str): Type of features to return
-
-        Returns:
-            list[FeatureIdentifier]: A list of dictionaries containing the identifiers of a given type of all features in the sample.
-        """
-        assert feature_type in AUTHORIZED_FEATURE_TYPES, "feature_type not known"
-        if feature_type == "scalar":
-            return self.get_global_names()
-        elif feature_type == "field":
-            return self.get_field_names()
-        elif feature_type == "nodes":
-            return [
-                "Coordinate" + n
-                for _, n in zip(range(self.get_physical_dim()), ["X", "Y", "Z"])
-            ]
-
-    def get_all_features_by_type(self, type: str) -> list[str]:
+    def get_feature_paths_by_type(self, type: str) -> list[str]:
         """Get the list of all CGNS paths of features of a given type (eg 'field', 'global', 'coordinate', etc...)."""
         flat_tree, _ = CGH.flatten_cgns_tree(self.get_tree())
         out = []
