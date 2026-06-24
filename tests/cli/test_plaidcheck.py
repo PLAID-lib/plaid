@@ -12,6 +12,7 @@ from plaid.cli import plaidcheck
 from plaid.cli.plaidcheck import (
     CheckReport,
     _check_numeric_content,
+    _check_problem_definition_first_sample_feature_keys,
     _check_problem_definition_sample_features,
     _is_branch_without_data,
     _is_branch_without_data_in_mapping,
@@ -496,6 +497,47 @@ def test_check_problem_definition_sample_reports_feature_read_error_and_continue
     # validated by the per-split loop in `check_dataset`.
     assert not any(
         msg.code == "PB_DEF_INVALID_FEATURE_VALUE" for msg in report.messages
+    )
+
+
+def test_check_problem_definition_first_sample_feature_keys_reports_errors() -> None:
+    """First-sample feature-key helper should report conversion/read/None errors."""
+    report_conversion = CheckReport(messages=[])
+    _check_problem_definition_first_sample_feature_keys(
+        pb_name="pb",
+        split_dict_name="train_split",
+        split_name="train",
+        idx=0,
+        dataset=_FakeDataset(1),
+        converter=_FakeConverter([_StrictFakeSampleForCheck()], fail_indices={0}),
+        input_features=["Input"],
+        output_features=["Output"],
+        report=report_conversion,
+    )
+    assert report_conversion.messages[0].code == (
+        "PB_DEF_FEATURE_KEY_SAMPLE_CONVERSION_ERROR"
+    )
+
+    report_features = CheckReport(messages=[])
+    _check_problem_definition_first_sample_feature_keys(
+        pb_name="pb",
+        split_dict_name="train_split",
+        split_name="train",
+        idx=0,
+        dataset=_FakeDataset(1),
+        converter=_FakeConverter([_StrictFakeSampleForCheck(features={"Input": None})]),
+        input_features=["Input", "MissingInput"],
+        output_features=["MissingOutput"],
+        report=report_features,
+    )
+    assert any(
+        msg.code == "PB_DEF_INPUT_FEATURE_NOT_IN_SAMPLE"
+        and msg.message == "feature value is None"
+        for msg in report_features.messages
+    )
+    assert any(
+        msg.code == "PB_DEF_OUTPUT_FEATURE_NOT_IN_SAMPLE"
+        for msg in report_features.messages
     )
 
 
