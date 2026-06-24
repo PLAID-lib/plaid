@@ -104,7 +104,7 @@ To configure an environment:
 
 - using uv (Linux):
   ```bash
-  uv sync --dev
+  uv sync --dev --extra viewer
   ```
 
 #### 2.2.2 Tests and examples
@@ -112,7 +112,7 @@ To configure an environment:
 To check the installation, you can run the unit test suite:
 
 ```bash
-pytest tests
+uv run pytest tests
 ```
 
 To test further and learn about simple use cases, you can run and explore the examples:
@@ -130,7 +130,7 @@ The documentation is built with [Zensical](https://zensical.org/) and
 
 ```bash
 cd docs
-bash generate_doc.sh
+uv run bash generate_doc.sh
 ```
 
 Various notebooks are executed during compilation. The documentation can then be explored in ``docs/_build/html``.
@@ -144,8 +144,8 @@ The configuration is defined in `ruff.toml`, and some folders like `docs/` and `
 You can run Ruff manually as follows:
 
 ```bash
-ruff --config ruff.toml check . --fix      # auto-fix linting issues
-ruff --config ruff.toml format .           # auto-format code
+uv run ruff --config ruff.toml check . --fix      # auto-fix linting issues
+uv run ruff --config ruff.toml format .           # auto-format code
 ```
 
 #### 2.2.5 Setting up pre-commit
@@ -161,13 +161,13 @@ The selected hooks are defined in the `.pre-commit-config.yaml` file.
 To run all hooks manually on the full codebase:
 
 ```bash
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 You can also run (once):
 
 ```bash
-pre-commit install
+uv run pre-commit install
 ```
 
 This ensures that every time you commit, all the hooks are executed automatically on the staged files.

@@ -14,6 +14,11 @@ To use the library, the simplest way is to install it from the packages availabl
   pip install pyplaid
   ```
 
+  If you manage your project with uv, you can instead run:
+  ```bash
+  uv add pyplaid
+  ```
+
 - on Spack for Linux, macOS, and Windows:
   ```bash
   spack install py-plaid

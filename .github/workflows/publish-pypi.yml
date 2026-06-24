@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
+      contents: read
       id-token: write
 
     steps:
@@ -38,7 +39,7 @@ jobs:
         uses: astral-sh/setup-uv@v6
 
       - name: Install build dependencies
-        run: uv sync
+        run: uv sync --locked
 
       - name: Verify version matches tag
         id: verify-version
@@ -59,7 +60,7 @@ jobs:
       - name: Check if version already on PyPI
         run: |
           PACKAGE_VER="${{ steps.verify-version.outputs.package_ver }}"
-          echo "🔍 Checking PyPI for plaid==$PACKAGE_VER"
+          echo "🔍 Checking PyPI for pyplaid==$PACKAGE_VER"
           if curl --silent --fail "https://pypi.org/pypi/pyplaid/$PACKAGE_VER/json" > /dev/null; then
             echo "❌ Version $PACKAGE_VER already exists on PyPI"
             exit 1
