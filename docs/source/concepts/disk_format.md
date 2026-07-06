@@ -21,6 +21,7 @@ dataset_root/
 │   ├── train/
 │   └── test/
 └── problem_definitions/
+    └── regression.yaml
 ```
 
 The CGNS backend only contains `infos.yaml`, `data/` and `problem_definitions/`, since all samples are complete.
