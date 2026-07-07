@@ -48,7 +48,7 @@ def get_ParaView_plugin_path_one_file():
 
 
 def convert_wsl_to_win(wsl_path: str) -> str:
-    r"""Converts a WSL path (e.g., /mnt/c/Users) to Windows (C:\\Users)."""
+    r"""Converts a WSL path to Windows."""
     result = subprocess.run(
         ["wslpath", "-w", wsl_path], capture_output=True, text=True, check=True
     )

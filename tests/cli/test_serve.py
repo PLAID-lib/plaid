@@ -327,9 +327,9 @@ def test_parse_dataset_uri_accepts_dataset_or_uri(payload, expected):
 
 def test_resolve_dataset_uri_uses_default_when_request_has_no_dataset():
     """The serve context should fall back to its configured default dataset."""
-    context = ServeContext(default_dataset_uri=" /data/default ")
+    context = ServeContext(default_dataset_uri="/scratch/default ")
 
-    assert context.resolve_dataset_uri({}) == "/data/default"
+    assert context.resolve_dataset_uri({}) == "/scratch/default"
 
 
 def test_resolve_dataset_uri_requires_dataset_without_default():
