@@ -27,16 +27,17 @@ def test_convert_wsl_to_win_uses_wslpath(monkeypatch):
                 "check": check,
             }
         )
-        return SimpleNamespace(stdout="C:\\Users\\me\\plugin\r\n")
+        return SimpleNamespace(stdout="Z:\\Users\\me\\plugin\r\n")
 
     monkeypatch.setattr(paraview_plugin.subprocess, "run", fake_run)
 
-    converted = paraview_plugin.convert_wsl_to_win("/mnt/c/Users/me/plugin")
-
-    assert converted == "C:\\Users\\me\\plugin"
+    assert (
+        paraview_plugin.convert_wsl_to_win("/mnt/z/Users/me/plugin")
+        == "Z:\\Users\\me\\plugin"
+    )
     assert calls == [
         {
-            "args": ["wslpath", "-w", "/mnt/c/Users/me/plugin"],
+            "args": ["wslpath", "-w", "/mnt/z/Users/me/plugin"],
             "capture_output": True,
             "text": True,
             "check": True,

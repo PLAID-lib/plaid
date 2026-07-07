@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Union
 
 # execptions: commited lines of code that contain any of the following words
-EXCEPTIONS = ["huggingface"]
+EXCEPTIONS = ["huggingface.co"]
 
 
 def main(argv: Union[Sequence[str], None] = None) -> int:
