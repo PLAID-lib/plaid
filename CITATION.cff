@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "PLAID: Physics-Learning AI Datamodel"
+version: "1.0.0"
+date-released: "2026-07-07"
+license: BSD-3-Clause
+repository-code: "https://github.com/PLAID-lib/plaid"
+url: "https://plaid-lib.readthedocs.io/"
+keywords:
+  - machine learning
+  - physics
+  - data-model
+authors:
+  - name: "PLAID authors"
