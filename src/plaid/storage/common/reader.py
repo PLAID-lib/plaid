@@ -6,6 +6,7 @@ and other auxiliary files from disk or downloading them from Hugging Face Hub.
 
 import json
 import logging
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -306,3 +307,50 @@ def load_metadata_from_hub(
         cgns_types = yaml.safe_load(f)
 
     return flat_cst, variable_schema, constant_schema, cgns_types
+
+
+def _prepare_local_folder_on_disk(
+    output_folder: Path,
+    *,
+    overwrite: bool,
+) -> None:  # pragma: no cover
+    if overwrite:
+        shutil.rmtree(output_folder)
+        logger.warning(
+            "Existing %s directory has been reset.",
+            output_folder,
+        )
+    elif any(output_folder.iterdir()):
+        raise ValueError(
+            f"directory {output_folder} already exists and is not empty. "
+            "Set `overwrite` to True if needed."
+        )
+
+
+def prepare_local_folder_for_download(
+    output_folder: Path | str,
+    *,
+    overwrite: bool,
+) -> Path:
+    """Prepare local folder for dataset download.
+
+    Checks if folder is not empty and overwrite is not set to true raises
+    ValueError.
+
+    Args:
+        output_folder (Path): Path to folder to prepare.
+        overwrite (bool): Whether to overwrite existing folder.
+
+    Returns:
+        Path: Path to output folder, with simlink resolved and user dir
+              expanded.
+    """
+    output_folder = Path(output_folder).expanduser()
+
+    if output_folder.is_dir():
+        _prepare_local_folder_on_disk(  # pragma: no cover
+            output_folder,
+            overwrite=overwrite,
+        )
+
+    return output_folder

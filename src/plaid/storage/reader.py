@@ -302,18 +302,28 @@ def download_from_hub(
     backend = infos.storage_backend
 
     backend_spec = get_backend(backend)
-    backend_spec.download_from_hub(repo_id, local_dir, split_ids, features, overwrite)
+    output_dir = backend_spec.download_from_hub(
+        repo_id,
+        local_dir,
+        split_ids,
+        features,
+        overwrite,
+    )
 
     if backend != "cgns":
         flat_cst, variable_schema, constant_schema, cgns_types = load_metadata_from_hub(
             repo_id
         )
         save_metadata_to_disk(
-            local_dir, flat_cst, variable_schema, constant_schema, cgns_types
+            output_dir,
+            flat_cst,
+            variable_schema,
+            constant_schema,
+            cgns_types,
         )
-    save_infos_to_disk(local_dir, infos)
+    save_infos_to_disk(output_dir, infos)
     if pb_defs is not None:
-        save_problem_definitions_to_disk(local_dir, pb_defs)
+        save_problem_definitions_to_disk(output_dir, pb_defs)
 
 
 def init_streaming_from_hub(

@@ -13,7 +13,6 @@ Key features:
 
 import logging
 import os
-import shutil
 import tempfile
 from pathlib import Path
 from typing import Iterable, Iterator, Optional, Union
@@ -24,7 +23,10 @@ from datasets.splits import NamedSplit
 from huggingface_hub import snapshot_download
 
 from ...containers.sample import Sample
-from ..common.reader import load_infos_from_hub
+from ..common.reader import (
+    load_infos_from_hub,
+    prepare_local_folder_for_download,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -206,16 +208,10 @@ def download_datasetdict_from_hub(
     Returns:
         str: Path to the local directory where the dataset has been downloaded.
     """
-    output_folder = Path(local_dir)
-
-    if output_folder.is_dir():
-        if overwrite:
-            shutil.rmtree(local_dir)
-            logger.warning(f"Existing {local_dir} directory has been reset.")
-        elif any(output_folder.iterdir()):
-            raise ValueError(
-                f"directory {local_dir} already exists and is not empty. Set `overwrite` to True if needed."
-            )
+    output_folder = prepare_local_folder_for_download(
+        local_dir,
+        overwrite=overwrite,
+    )
 
     if split_ids is not None:
         allow_patterns = []
@@ -228,7 +224,7 @@ def download_datasetdict_from_hub(
         repo_id=repo_id,
         repo_type="dataset",
         allow_patterns=allow_patterns,
-        local_dir=local_dir,
+        local_dir=output_folder,
     )
 
 

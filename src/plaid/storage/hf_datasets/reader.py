@@ -13,7 +13,6 @@
 
 import logging
 import os
-import shutil
 import tempfile
 from pathlib import Path
 from typing import Any, Iterable, Optional, Union
@@ -22,7 +21,10 @@ import datasets
 from datasets import load_dataset, load_from_disk
 from huggingface_hub import snapshot_download
 
-from plaid.storage.common.reader import load_infos_from_hub
+from plaid.storage.common.reader import (
+    load_infos_from_hub,
+    prepare_local_folder_for_download,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +58,31 @@ def init_datasetdict_from_disk(path: Union[str, Path]) -> HFDatasetDict:
 # ------------------------------------------------------
 
 
+def _split_download(
+    *,
+    repo_id: str,
+    tmp_dir: str,
+    output_folder: Path,
+) -> None:  # pragma: no cover
+    infos = load_infos_from_hub(repo_id=repo_id)
+    split_names = list(infos.num_samples.keys())
+    base = Path(tmp_dir) / "data"
+    data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
+    datasetdict = load_dataset(
+        "parquet",
+        data_files=data_files,
+        cache_dir=tmp_dir,
+    )
+    datasetdict.save_to_disk(Path(output_folder) / "data")
+
+
 def download_datasetdict_from_hub(
     repo_id: str,
     local_dir: Union[str, Path],
     split_ids: Optional[dict[str, Iterable[int]]] = None,  # noqa: ARG001
     features: Optional[list[str]] = None,  # noqa: ARG001
     overwrite: bool = False,
-) -> str:  # pragma: no cover (not tested in unit tests)
+) -> str:
     """Downloads a dataset from Hugging Face Hub to local directory.
 
     Args:
@@ -75,16 +95,10 @@ def download_datasetdict_from_hub(
     Returns:
         str: Path to the downloaded dataset.
     """
-    output_folder = Path(local_dir)
-
-    if output_folder.is_dir():
-        if overwrite:
-            shutil.rmtree(output_folder)
-            logger.warning(f"Existing {output_folder} directory has been reset.")
-        elif any(output_folder.iterdir()):
-            raise ValueError(
-                f"directory {output_folder} already exists and is not empty. Set `overwrite` to True if needed."
-            )
+    output_folder = prepare_local_folder_for_download(
+        local_dir,
+        overwrite=overwrite,
+    )
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         snapshot_download(
@@ -93,12 +107,11 @@ def download_datasetdict_from_hub(
             allow_patterns=["data/*"],
             local_dir=tmp_dir,
         )
-        infos = load_infos_from_hub(repo_id=repo_id)
-        split_names = list(infos.num_samples.keys())
-        base = Path(tmp_dir) / "data"
-        data_files = {sn: str(base / f"{sn}*.parquet") for sn in split_names}
-        datasetdict = load_dataset("parquet", data_files=data_files, cache_dir=tmp_dir)
-        datasetdict.save_to_disk(str(Path(output_folder) / "data"))
+        _split_download(
+            repo_id=repo_id,
+            tmp_dir=tmp_dir,
+            output_folder=output_folder,
+        )
 
     return str(output_folder)
 
