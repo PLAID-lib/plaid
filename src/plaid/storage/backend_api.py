@@ -41,7 +41,7 @@ class BackendModule(Protocol):
         split_ids: Optional[dict[str, Iterable[int]]] = None,
         features: Optional[list[str]] = None,  # noqa: ARG001
         overwrite: bool = False,
-    ) -> str:
+    ) -> Path:
         """Download a dataset dictionary from a remote hub into a local folder."""
         ...
 

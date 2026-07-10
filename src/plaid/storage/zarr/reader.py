@@ -14,7 +14,6 @@ Key features:
 
 import logging
 import os
-import shutil
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Optional, Union
 
@@ -26,7 +25,10 @@ from datasets.splits import NamedSplit
 from huggingface_hub import hf_hub_download, snapshot_download
 
 from plaid.storage.common.bridge import flatten_path, unflatten_path
-from plaid.storage.common.reader import load_infos_from_hub
+from plaid.storage.common.reader import (
+    load_infos_from_hub,
+    prepare_local_folder_for_download,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +243,7 @@ def download_datasetdict_from_hub(
     split_ids: Optional[dict[str, Iterable[int]]] = None,
     features: Optional[list[str]] = None,
     overwrite: bool = False,
-) -> str:  # pragma: no cover
+) -> Path:  # pragma: no cover
     """Downloads dataset from Hugging Face Hub to local directory.
 
     Args:
@@ -254,25 +256,21 @@ def download_datasetdict_from_hub(
     Returns:
         str: Path to the local directory where the dataset has been downloaded.
     """
-    output_folder = Path(local_dir)
-
-    if output_folder.is_dir():
-        if overwrite:
-            shutil.rmtree(local_dir)
-            logger.warning(f"Existing {local_dir} directory has been reset.")
-        elif any(local_dir.iterdir()):
-            raise ValueError(
-                f"directory {local_dir} already exists and is not empty. Set `overwrite` to True if needed."
-            )
+    output_folder = prepare_local_folder_for_download(
+        local_dir,
+        overwrite=overwrite,
+    )
 
     allow_patterns, ignore_patterns = _zarr_patterns(repo_id, split_ids, features)
 
-    return snapshot_download(
-        repo_id=repo_id,
-        repo_type="dataset",
-        allow_patterns=allow_patterns,
-        ignore_patterns=ignore_patterns,
-        local_dir=local_dir,
+    return Path(
+        snapshot_download(
+            repo_id=repo_id,
+            repo_type="dataset",
+            allow_patterns=allow_patterns,
+            ignore_patterns=ignore_patterns,
+            local_dir=output_folder,
+        ),
     )
 
 

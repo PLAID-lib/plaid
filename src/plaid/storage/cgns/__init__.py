@@ -33,7 +33,7 @@ class CgnsBackend:
         split_ids: Optional[dict[str, Iterable[int]]] = None,
         features: Optional[list[str]] = None,
         overwrite: bool = False,
-    ) -> str:
+    ) -> Path:
         return download_datasetdict_from_hub(
             repo_id=repo_id,
             local_dir=local_dir,

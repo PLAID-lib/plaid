@@ -38,7 +38,7 @@ class HFBackend:
         split_ids: Optional[dict[str, Iterable[int]]] = None,
         features: Optional[list[str]] = None,  # noqa: ARG001
         overwrite: bool = False,
-    ) -> str:
+    ) -> Path:
         return download_datasetdict_from_hub(
             repo_id=repo_id,
             local_dir=local_dir,
