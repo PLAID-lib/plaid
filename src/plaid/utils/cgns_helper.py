@@ -1,6 +1,6 @@
 """Utility functions for working with CGNS trees and nodes."""
 
-from copy import copy
+from collections import defaultdict
 from typing import Any, Iterable, Optional
 
 import CGNS.PAT.cgnsutils as CGU
@@ -667,6 +667,12 @@ def update_features_for_CGNS_compatibility(
                 if root not in features:
                     features.append(root)
 
+    # Map each base to the set of zones actually selected via a field/spatial
+    # feature. Used to distinguish family nodes from zone nodes by path only.
+    selected_zones_per_base = defaultdict(set)
+    for b, z in spatial_features_b_z:
+        selected_zones_per_base[b].add(z)
+
     for b, z in spatial_features_b_z:
         features.append(f"{b}")
         features.append(f"{b}_times")
@@ -674,16 +680,24 @@ def update_features_for_CGNS_compatibility(
         features.append(f"{b}/{z}_times")
         features.append(f"{b}/{z}/ZoneType")
         features.append(f"{b}/{z}/ZoneType_times")
-        z_or_f = copy(zone_or_familly[b])
-        z_or_f.remove(z)
-        ll = len(z_or_f)
-        assert ll <= 1
-        if ll == 1:
-            f = next(iter(z_or_f))
-            features.append(f"{b}/{f}")
-            features.append(f"{b}/{f}_times")
+
+        # Include the zone's own family reference only if it exists.
+        if f"{b}/{z}/FamilyName" in context_features:
             features.append(f"{b}/{z}/FamilyName")
             features.append(f"{b}/{z}/FamilyName_times")
+
+        # Include the base-level family nodes. Families cannot be distinguished
+        # from zones by type via paths alone, so we use a path-only heuristic:
+        # any 2-level child of the base that is not a selected zone and is not a
+        # ``Time`` node is treated as a family. Over-including tiny metadata
+        # family nodes keeps the tree self-consistent and is harmless, and no
+        # sibling geometry is pulled in since coordinates/elements/BCs are
+        # gated on ``spatial_features_b_z`` above.
+        for child in zone_or_familly.get(b, set()):
+            if child in selected_zones_per_base[b] or child == "Time":
+                continue
+            features.append(f"{b}/{child}")
+            features.append(f"{b}/{child}_times")
 
     feat_times_to_append = []
     for feat in features:
