@@ -301,6 +301,9 @@ def download_from_hub(
 
     backend = infos.storage_backend
 
+    if backend is None:
+        raise ValueError("Could not determine backend from info.")
+
     backend_spec = get_backend(backend)
     output_dir = backend_spec.download_from_hub(
         repo_id,
