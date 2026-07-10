@@ -191,7 +191,7 @@ def download_datasetdict_from_hub(
     split_ids: Optional[dict[str, Iterable[int]]] = None,
     features: Optional[list[str]] = None,  # noqa: ARG001
     overwrite: bool = False,
-) -> str:  # pragma: no cover
+) -> Path:  # pragma: no cover
     """Download a CGNS dataset from Hugging Face Hub to local disk.
 
     This function downloads selected parts or the entire CGNS dataset from a Hugging Face
@@ -220,11 +220,13 @@ def download_datasetdict_from_hub(
     else:
         allow_patterns = ["data/*"]
 
-    return snapshot_download(
-        repo_id=repo_id,
-        repo_type="dataset",
-        allow_patterns=allow_patterns,
-        local_dir=output_folder,
+    return Path(
+        snapshot_download(
+            repo_id=repo_id,
+            repo_type="dataset",
+            allow_patterns=allow_patterns,
+            local_dir=output_folder,
+        ),
     )
 
 

@@ -82,7 +82,7 @@ def download_datasetdict_from_hub(
     split_ids: Optional[dict[str, Iterable[int]]] = None,  # noqa: ARG001
     features: Optional[list[str]] = None,  # noqa: ARG001
     overwrite: bool = False,
-) -> str:
+) -> Path:
     """Downloads a dataset from Hugging Face Hub to local directory.
 
     Args:
@@ -113,7 +113,7 @@ def download_datasetdict_from_hub(
             output_folder=output_folder,
         )
 
-    return str(output_folder)
+    return output_folder
 
 
 def init_datasetdict_streaming_from_hub(

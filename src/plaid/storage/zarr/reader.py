@@ -243,7 +243,7 @@ def download_datasetdict_from_hub(
     split_ids: Optional[dict[str, Iterable[int]]] = None,
     features: Optional[list[str]] = None,
     overwrite: bool = False,
-) -> str:  # pragma: no cover
+) -> Path:  # pragma: no cover
     """Downloads dataset from Hugging Face Hub to local directory.
 
     Args:
@@ -263,12 +263,14 @@ def download_datasetdict_from_hub(
 
     allow_patterns, ignore_patterns = _zarr_patterns(repo_id, split_ids, features)
 
-    return snapshot_download(
-        repo_id=repo_id,
-        repo_type="dataset",
-        allow_patterns=allow_patterns,
-        ignore_patterns=ignore_patterns,
-        local_dir=output_folder,
+    return Path(
+        snapshot_download(
+            repo_id=repo_id,
+            repo_type="dataset",
+            allow_patterns=allow_patterns,
+            ignore_patterns=ignore_patterns,
+            local_dir=output_folder,
+        ),
     )
 
 

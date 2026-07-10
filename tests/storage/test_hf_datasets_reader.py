@@ -63,4 +63,4 @@ def test_hf_datasets_download_datasetdict_split_download(
     for key, value in expected.items():
         assert call_kwargs[key] == value
 
-    assert result == str(expected["output_folder"])
+    assert result == expected["output_folder"]
