@@ -119,8 +119,8 @@ To test further and learn about simple use cases, you can run and explore the ex
 
 ```bash
 cd examples
-bash run_examples.sh  # [unix]
-run_examples.bat      # [win]
+uv run bash run_examples.sh           # [unix]
+uv run cmd /c .\run_examples.bat      # [win]
 ```
 
 #### 2.2.3 Documentation

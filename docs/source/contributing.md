@@ -49,11 +49,9 @@ For feature requests:
 ### 3.2. Installation Steps
 
 1. Clone the repository:
-
    ```bash
    git clone https://github.com/PLAID-lib/plaid.git
    ```
-
 2. Configure the development environment:
 
     - Using conda (Windows, macOS and Linux):
@@ -81,8 +79,8 @@ To test further and learn about simple use cases, you can run and explore the ex
 
 ```bash
 cd examples
-bash run_examples.sh  # [unix]
-run_examples.bat      # [win]
+uv run bash run_examples.sh           # [unix]
+uv run cmd /c .\run_examples.bat      # [win]
 ```
 
 ## 5. Documentation
