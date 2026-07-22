@@ -646,6 +646,76 @@ class Test_Storage:
         with pytest.raises(ValueError):
             converter.sample_to_dict(cgns_dataset[0])
 
+    def test_cgns_sample_callback(self, tmp_path, sample_constructor, split_ids, infos):
+        """sample_callback fires once per sample, in order, with the on-disk path."""
+        test_dir = tmp_path / "test_cgns_callback"
+
+        calls: list[tuple[str, int, Path]] = []
+
+        def callback(split_name, index, sample_path):
+            calls.append((split_name, index, sample_path))
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="cgns",
+            infos=infos,
+            overwrite=True,
+            sample_callback=callback,
+        )
+
+        # One call per sample across all splits.
+        expected_total = sum(len(ids) for ids in split_ids.values())
+        assert len(calls) == expected_total
+
+        for split_name, expected_ids in split_ids.items():
+            split_calls = [call for call in calls if call[0] == split_name]
+
+            # One call per sample in the split.
+            assert len(split_calls) == len(expected_ids)
+
+            # Indices are contiguous, zero-based and emitted in order.
+            assert [c[1] for c in split_calls] == list(range(len(expected_ids)))
+
+            for _, index, sample_path in split_calls:
+                # The reported path is the just-written, complete sample dir.
+                assert sample_path == test_dir / "data" / split_name / (
+                    f"sample_{index:09d}"
+                )
+                assert sample_path.is_dir()
+
+    def test_cgns_sample_callback_rejects_parallel(
+        self, tmp_path, sample_constructor, split_ids, infos
+    ):
+        """sample_callback is not supported with num_proc > 1 (first iteration)."""
+        with pytest.raises(NotImplementedError):
+            save_to_disk(
+                output_folder=tmp_path / "cb_parallel",
+                sample_constructor=sample_constructor,
+                ids=split_ids,
+                backend="cgns",
+                infos=infos,
+                overwrite=True,
+                num_proc=2,
+                sample_callback=lambda *_args: None,
+            )
+
+    def test_sample_callback_rejects_non_cgns_backend(
+        self, tmp_path, sample_constructor, split_ids, infos
+    ):
+        """sample_callback is scoped to the cgns backend for now."""
+        with pytest.raises(NotImplementedError):
+            save_to_disk(
+                output_folder=tmp_path / "cb_zarr",
+                sample_constructor=sample_constructor,
+                ids=split_ids,
+                backend="zarr",
+                infos=infos,
+                overwrite=True,
+                sample_callback=lambda *_args: None,
+            )
+
     def test_cgns_save_to_disk_skips_preprocess(
         self,
         tmp_path,
@@ -946,6 +1016,23 @@ class Test_Storage:
         assert len(written) == 2
         assert written[0] == "sample_000000000"
         assert written[1] == "sample_000000001"
+
+    def test_cgns_generate_sample_callback_rejects_parallel(
+        self, tmp_path, samples_with_extra_global
+    ):
+        """Direct call to the cgns writer guards sample_callback against num_proc > 1."""
+
+        def my_generator(_shards_ids=None):
+            yield from [samples_with_extra_global[0]]
+
+        with pytest.raises(NotImplementedError):
+            cgns_generate_datasetdict_to_disk(
+                output_folder=tmp_path / "cgns_writer_cb_parallel",
+                generators={"train": my_generator},
+                gen_kwargs={"train": {"shards_ids": [[0]]}},
+                num_proc=2,
+                sample_callback=lambda *_args: None,
+            )
 
     def test_zarr_generate_no_gen_kwargs(
         self, tmp_path, sample_constructor, split_ids, infos, problem_definition

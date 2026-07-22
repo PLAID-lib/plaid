@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Callable, Mapping, Optional, Union
 
 from datasets import IterableDataset
 
@@ -60,6 +60,7 @@ class CgnsBackend:
         gen_kwargs: Optional[dict[str, dict[str, list]]] = None,
         num_proc: int = 1,
         verbose: bool = False,
+        sample_callback: Optional[Callable[[str, int, Path], None]] = None,
     ) -> None:
         return generate_datasetdict_to_disk(
             output_folder=output_folder,
@@ -68,6 +69,7 @@ class CgnsBackend:
             gen_kwargs=gen_kwargs,
             num_proc=num_proc,
             verbose=verbose,
+            sample_callback=sample_callback,
         )
 
     @staticmethod

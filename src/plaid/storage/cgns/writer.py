@@ -48,6 +48,7 @@ def generate_datasetdict_to_disk(
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
+    sample_callback: Optional[Callable[[str, int, Path], None]] = None,
 ) -> None:
     """Generates and saves a dataset to disk in CGNS format.
 
@@ -58,7 +59,19 @@ def generate_datasetdict_to_disk(
         gen_kwargs: Optional generator kwargs for parallel processing.
         num_proc: Number of processes.
         verbose: Whether to show progress.
+        sample_callback: Optional callback invoked once per sample, immediately
+            after it has been fully written to disk, as
+            ``sample_callback(split_name, index, sample_path)``.  Because CGNS
+            writes each sample into a self-contained directory that is never
+            reopened, this is a safe point to postprocess the sample.
+            Only supported for ``num_proc == 1``.
     """
+    if sample_callback is not None and num_proc > 1:
+        raise NotImplementedError(
+            "sample_callback is currently only supported for num_proc == 1, "
+            f"got num_proc={num_proc}."
+        )
+
     output_folder = Path(output_folder)
 
     output_folder = output_folder / "data"
@@ -115,16 +128,18 @@ def generate_datasetdict_to_disk(
                 desc=f"Writing {split_name} split",
                 disable=not verbose,
             ) as pbar:
-                if batch_ids_list:
-                    for sample in gen_func(batch_ids_list):
-                        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
-                        sample_counter += 1
-                        pbar.update(1)
-                else:
-                    for sample in gen_func():
-                        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
-                        sample_counter += 1
-                        pbar.update(1)
+                sample_source = (
+                    gen_func(batch_ids_list) if batch_ids_list else gen_func()
+                )
+                for sample in sample_source:
+                    sample_path = split_path / f"sample_{sample_counter:09d}"
+                    sample.save_to_dir(sample_path)
+
+                    if sample_callback is not None:
+                        sample_callback(split_name, sample_counter, sample_path)
+
+                    sample_counter += 1
+                    pbar.update(1)
 
 
 def push_local_datasetdict_to_hub(

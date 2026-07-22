@@ -109,6 +109,7 @@ def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
         gen_kwargs=None,
         num_proc=1,
         verbose=False,
+        sample_callback=None,
     ):
         call["output_folder"] = output_folder
         call["generators"] = generators
@@ -116,6 +117,7 @@ def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
         call["gen_kwargs"] = gen_kwargs
         call["num_proc"] = num_proc
         call["verbose"] = verbose
+        call["sample_callback"] = sample_callback
         return
 
     monkeypatch.setattr(
@@ -131,6 +133,7 @@ def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
         gen_kwargs={"train": {"paths": ["a", "b"]}},
         num_proc=2,
         verbose=True,
+        sample_callback=None,
     )
 
     assert call == {
@@ -140,6 +143,7 @@ def test_cgns_backend_generate_to_disk_delegates(monkeypatch):
         "gen_kwargs": {"train": {"paths": ["a", "b"]}},
         "num_proc": 2,
         "verbose": True,
+        "sample_callback": None,
     }
 
 

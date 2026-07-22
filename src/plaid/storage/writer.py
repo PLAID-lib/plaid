@@ -124,6 +124,7 @@ def save_to_disk(
     num_proc: int = 1,
     verbose: bool = False,
     overwrite: bool = False,
+    sample_callback: Optional[Callable[[str, int, Path], None]] = None,
 ) -> None:
     """Save a PLAID dataset to local disk using the specified backend.
 
@@ -181,10 +182,25 @@ def save_to_disk(
             sequences and distributes work across workers.
         verbose: If True, enables verbose output during processing.
         overwrite: If True, overwrites existing output directory.
+        sample_callback: Optional callback, available for the ``'cgns'`` backend,
+            invoked once per sample after it has been fully written, as
+            ``sample_callback(split_name, index, sample_path)``.
     """
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
     )
+    # ---- validate the (optional) per-sample output hook ----------------------
+    if sample_callback is not None:
+        if backend != "cgns":
+            raise NotImplementedError(
+                f"sample_callback is currently only supported for the 'cgns' "
+                f"backend, got '{backend}'."
+            )
+        if num_proc > 1:
+            raise NotImplementedError(
+                "sample_callback is currently only supported for num_proc == 1, "
+                f"got num_proc={num_proc}."
+            )
     # ---- validate ids: must be sliceable sequences ---------------------------
     for split_name, split_ids in ids.items():
         if not (hasattr(split_ids, "__getitem__") and hasattr(split_ids, "__len__")):
@@ -251,6 +267,10 @@ def save_to_disk(
     if pb_defs is not None:
         save_problem_definitions_to_disk(output_folder, pb_defs)
 
+    backend_kwargs: dict[str, Any] = {}
+    if sample_callback is not None:
+        backend_kwargs["sample_callback"] = sample_callback
+
     backend_spec = get_backend(backend)
     backend_spec.generate_to_disk(
         output_folder,
@@ -259,6 +279,7 @@ def save_to_disk(
         gen_kwargs=gen_kwargs,
         num_proc=num_proc,
         verbose=verbose,
+        **backend_kwargs,
     )
 
 
