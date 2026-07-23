@@ -35,6 +35,14 @@ class _PicklableSampleLookup:
         return self._samples[idx]
 
 
+def _write_marker(split_name, index, sample_path):
+    """Module-level (picklable) ``sample_callback`` used by the parallel test.
+
+    Drops a marker file inside written samples.
+    """
+    (Path(sample_path) / "callback.marker").write_text(f"{split_name}\n{index}")
+
+
 def test_load_metadata_from_hub_materializes_memmaps(tmp_path, monkeypatch):
     """Hub metadata loader must return arrays independent from temp files."""
     from plaid.storage.common import reader as common_reader
@@ -685,21 +693,40 @@ class Test_Storage:
                 )
                 assert sample_path.is_dir()
 
-    def test_cgns_sample_callback_rejects_parallel(
-        self, tmp_path, sample_constructor, split_ids, infos
+    def test_cgns_sample_callback_parallel(
+        self, tmp_path, samples_with_extra_global, split_ids, infos
     ):
-        """sample_callback is not supported with num_proc > 1 (first iteration)."""
-        with pytest.raises(NotImplementedError):
-            save_to_disk(
-                output_folder=tmp_path / "cb_parallel",
-                sample_constructor=sample_constructor,
-                ids=split_ids,
-                backend="cgns",
-                infos=infos,
-                overwrite=True,
-                num_proc=2,
-                sample_callback=lambda *_args: None,
-            )
+        """sample_callback fires once per sample in parallel mode (num_proc > 1).
+
+        The callback runs inside worker processes, so each invocation is recorded
+        by dropping a marker file inside the sample directory it was handed; the
+        markers are then inspected across the process boundary.
+        """
+        test_dir = tmp_path / "test_cgns_callback_parallel"
+
+        all_samples = [
+            samples_with_extra_global[i] for i in range(len(samples_with_extra_global))
+        ]
+        gen = _PicklableSampleLookup(all_samples)
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=gen,
+            ids=split_ids,
+            backend="cgns",
+            infos=infos,
+            num_proc=2,
+            overwrite=True,
+            sample_callback=_write_marker,
+        )
+
+        # In parallel too, the callback fired once per sample:
+        # a marker lands in each expected sample dir.
+        for split_name, expected_ids in split_ids.items():
+            split_dir = test_dir / "data" / split_name
+            for index in range(len(expected_ids)):
+                marker = split_dir / f"sample_{index:09d}" / "callback.marker"
+                assert marker.read_text() == f"{split_name}\n{index}"
 
     def test_sample_callback_rejects_non_cgns_backend(
         self, tmp_path, sample_constructor, split_ids, infos
@@ -1016,23 +1043,6 @@ class Test_Storage:
         assert len(written) == 2
         assert written[0] == "sample_000000000"
         assert written[1] == "sample_000000001"
-
-    def test_cgns_generate_sample_callback_rejects_parallel(
-        self, tmp_path, samples_with_extra_global
-    ):
-        """Direct call to the cgns writer guards sample_callback against num_proc > 1."""
-
-        def my_generator(_shards_ids=None):
-            yield from [samples_with_extra_global[0]]
-
-        with pytest.raises(NotImplementedError):
-            cgns_generate_datasetdict_to_disk(
-                output_folder=tmp_path / "cgns_writer_cb_parallel",
-                generators={"train": my_generator},
-                gen_kwargs={"train": {"shards_ids": [[0]]}},
-                num_proc=2,
-                sample_callback=lambda *_args: None,
-            )
 
     def test_zarr_generate_no_gen_kwargs(
         self, tmp_path, sample_constructor, split_ids, infos, problem_definition

@@ -23,10 +23,10 @@ logger = logging.getLogger(__name__)
 def _cgns_worker_batch_job(args) -> int:  # pragma: no cover
     """Write one shard (batch) of samples to disk.
 
-    args = (split_path_str, gen_func, batch, start_index)
+    args = (split_path_str, split_name, gen_func, batch, start_index, sample_callback)
     Returns: number of samples written.
     """
-    split_path_str, gen_func, batch, start_index = args
+    split_path_str, split_name, gen_func, batch, start_index, sample_callback = args
     split_path = Path(split_path_str)
 
     sample_counter = start_index
@@ -34,7 +34,12 @@ def _cgns_worker_batch_job(args) -> int:  # pragma: no cover
 
     # Keep original semantics: generator expects a list of batches
     for sample in gen_func([batch]):
-        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
+        sample_path = split_path / f"sample_{sample_counter:09d}"
+        sample.save_to_dir(sample_path)
+
+        if sample_callback is not None:
+            sample_callback(split_name, sample_counter, sample_path)
+
         sample_counter += 1
         written += 1
 
@@ -63,15 +68,12 @@ def generate_datasetdict_to_disk(
             after it has been fully written to disk, as
             ``sample_callback(split_name, index, sample_path)``.  Because CGNS
             writes each sample into a self-contained directory that is never
-            reopened, this is a safe point to postprocess the sample.
-            Only supported for ``num_proc == 1``.
+            reopened, this is a safe point to postprocess the sample.  ``index``
+            is the contiguous, zero-based global index of the sample within its
+            split.  When ``num_proc > 1`` the callback runs inside the worker
+            processes: it must be picklable and process-safe, and it is called
+            concurrently with no guaranteed ordering across workers.
     """
-    if sample_callback is not None and num_proc > 1:
-        raise NotImplementedError(
-            "sample_callback is currently only supported for num_proc == 1, "
-            f"got num_proc={num_proc}."
-        )
-
     output_folder = Path(output_folder)
 
     output_folder = output_folder / "data"
@@ -102,7 +104,14 @@ def generate_datasetdict_to_disk(
                 s += len(batch)
 
             jobs = [
-                (str(split_path), gen_func, batch, start_idx)
+                (
+                    str(split_path),
+                    split_name,
+                    gen_func,
+                    batch,
+                    start_idx,
+                    sample_callback,
+                )
                 for batch, start_idx in zip(batch_ids_list, start_indices)
             ]
 

@@ -184,23 +184,23 @@ def save_to_disk(
         overwrite: If True, overwrites existing output directory.
         sample_callback: Optional callback, available for the ``'cgns'`` backend,
             invoked once per sample after it has been fully written, as
-            ``sample_callback(split_name, index, sample_path)``.
+            ``sample_callback(split_name, index, sample_path)``. ``index`` is the
+            contiguous, zero-based global index of the sample within its split
+            and ``sample_path`` locates the just-written sample directory.
+            When ``num_proc > 1`` the callback runs inside the worker processes,
+            so it must be picklable and process-safe; it is called concurrently
+            and with no guaranteed ordering across workers (``index`` stays
+            contiguous nonetheless).
     """
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
     )
     # ---- validate the (optional) per-sample output hook ----------------------
-    if sample_callback is not None:
-        if backend != "cgns":
-            raise NotImplementedError(
-                f"sample_callback is currently only supported for the 'cgns' "
-                f"backend, got '{backend}'."
-            )
-        if num_proc > 1:
-            raise NotImplementedError(
-                "sample_callback is currently only supported for num_proc == 1, "
-                f"got num_proc={num_proc}."
-            )
+    if sample_callback is not None and backend != "cgns":
+        raise NotImplementedError(
+            f"sample_callback is currently only supported for the 'cgns' "
+            f"backend, got '{backend}'."
+        )
     # ---- validate ids: must be sliceable sequences ---------------------------
     for split_name, split_ids in ids.items():
         if not (hasattr(split_ids, "__getitem__") and hasattr(split_ids, "__len__")):
