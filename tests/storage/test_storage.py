@@ -13,6 +13,7 @@ import plaid.storage.writer as writer_mod
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.storage import (
+    SampleCallbackContext,
     init_from_disk,
     load_problem_definitions_from_disk,
     save_to_disk,
@@ -35,12 +36,14 @@ class _PicklableSampleLookup:
         return self._samples[idx]
 
 
-def _write_marker(split_name, index, sample_path):
+def _write_marker(context: SampleCallbackContext):
     """Module-level (picklable) ``sample_callback`` used by the parallel test.
 
     Drops a marker file inside written samples.
     """
-    (Path(sample_path) / "callback.marker").write_text(f"{split_name}\n{index}")
+    context.path.joinpath("callback.marker").write_text(
+        f"{context.split_name}\n{context.index}"
+    )
 
 
 def test_load_metadata_from_hub_materializes_memmaps(tmp_path, monkeypatch):
@@ -658,10 +661,10 @@ class Test_Storage:
         """sample_callback fires once per sample, in order, with the on-disk path."""
         test_dir = tmp_path / "test_cgns_callback"
 
-        calls: list[tuple[str, int, Path]] = []
+        calls: list[SampleCallbackContext] = []
 
-        def callback(split_name, index, sample_path):
-            calls.append((split_name, index, sample_path))
+        def callback(context):
+            calls.append(context)
 
         save_to_disk(
             output_folder=test_dir,
@@ -676,22 +679,14 @@ class Test_Storage:
         # One call per sample across all splits.
         expected_total = sum(len(ids) for ids in split_ids.values())
         assert len(calls) == expected_total
-
         for split_name, expected_ids in split_ids.items():
-            split_calls = [call for call in calls if call[0] == split_name]
-
-            # One call per sample in the split.
-            assert len(split_calls) == len(expected_ids)
-
-            # Indices are contiguous, zero-based and emitted in order.
-            assert [c[1] for c in split_calls] == list(range(len(expected_ids)))
-
-            for _, index, sample_path in split_calls:
-                # The reported path is the just-written, complete sample dir.
-                assert sample_path == test_dir / "data" / split_name / (
-                    f"sample_{index:09d}"
+            split_calls = [c for c in calls if c.split_name == split_name]
+            assert [c.index for c in split_calls] == list(range(len(expected_ids)))
+            for context, expected_id in zip(split_calls, expected_ids):
+                assert context.sample is sample_constructor(expected_id)
+                assert context.path == test_dir / "data" / split_name / (
+                    f"sample_{context.index:09d}"
                 )
-                assert sample_path.is_dir()
 
     def test_cgns_sample_callback_parallel(
         self, tmp_path, samples_with_extra_global, split_ids, infos
@@ -720,12 +715,15 @@ class Test_Storage:
             sample_callback=_write_marker,
         )
 
-        # In parallel too, the callback fired once per sample:
-        # a marker lands in each expected sample dir.
         for split_name, expected_ids in split_ids.items():
-            split_dir = test_dir / "data" / split_name
             for index in range(len(expected_ids)):
-                marker = split_dir / f"sample_{index:09d}" / "callback.marker"
+                marker = (
+                    test_dir
+                    / "data"
+                    / split_name
+                    / f"sample_{index:09d}"
+                    / "callback.marker"
+                )
                 assert marker.read_text() == f"{split_name}\n{index}"
 
     def test_sample_callback_rejects_non_cgns_backend(
@@ -740,7 +738,7 @@ class Test_Storage:
                 backend="zarr",
                 infos=infos,
                 overwrite=True,
-                sample_callback=lambda *_args: None,
+                sample_callback=lambda _context: None,
             )
 
     def test_cgns_save_to_disk_skips_preprocess(

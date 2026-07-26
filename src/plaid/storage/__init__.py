@@ -1,5 +1,6 @@
 """Public API for plaid.storage."""
 
+from .callbacks import SampleCallback, SampleCallbackContext
 from .common.reader import (
     load_infos_from_disk,
     load_infos_from_hub,
@@ -34,4 +35,6 @@ __all__ = [
     "push_local_problem_definitions_to_hub",
     "save_problem_definitions_to_disk",
     "get_backend",
+    "SampleCallback",
+    "SampleCallbackContext",
 ]
