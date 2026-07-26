@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from ...containers.sample import Sample
 from ...infos import Infos
+from ..callbacks import SampleCallback, SampleCallbackContext
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,9 @@ def _cgns_worker_batch_job(args) -> int:  # pragma: no cover
         sample.save_to_dir(sample_path)
 
         if sample_callback is not None:
-            sample_callback(split_name, sample_counter, sample_path)
+            sample_callback(
+                SampleCallbackContext(sample, split_name, sample_counter, sample_path)
+            )
 
         sample_counter += 1
         written += 1
@@ -53,7 +56,7 @@ def generate_datasetdict_to_disk(
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
-    sample_callback: Optional[Callable[[str, int, Path], None]] = None,
+    sample_callback: Optional[SampleCallback] = None,
 ) -> None:
     """Generates and saves a dataset to disk in CGNS format.
 
@@ -64,15 +67,8 @@ def generate_datasetdict_to_disk(
         gen_kwargs: Optional generator kwargs for parallel processing.
         num_proc: Number of processes.
         verbose: Whether to show progress.
-        sample_callback: Optional callback invoked once per sample, immediately
-            after it has been fully written to disk, as
-            ``sample_callback(split_name, index, sample_path)``.  Because CGNS
-            writes each sample into a self-contained directory that is never
-            reopened, this is a safe point to postprocess the sample.  ``index``
-            is the contiguous, zero-based global index of the sample within its
-            split.  When ``num_proc > 1`` the callback runs inside the worker
-            processes: it must be picklable and process-safe, and it is called
-            concurrently with no guaranteed ordering across workers.
+        sample_callback: Optional callback invoked with the written sample and its
+            context. In parallel mode, it must be picklable and process-safe.
     """
     output_folder = Path(output_folder)
 
@@ -145,7 +141,11 @@ def generate_datasetdict_to_disk(
                     sample.save_to_dir(sample_path)
 
                     if sample_callback is not None:
-                        sample_callback(split_name, sample_counter, sample_path)
+                        sample_callback(
+                            SampleCallbackContext(
+                                sample, split_name, sample_counter, sample_path
+                            )
+                        )
 
                     sample_counter += 1
                     pbar.update(1)

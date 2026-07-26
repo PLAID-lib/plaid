@@ -29,6 +29,7 @@ from plaid.storage.registry import available_backends, get_backend
 from ..containers.sample import Sample
 from ..infos import Infos
 from ..problem_definition import ProblemDefinition
+from .callbacks import SampleCallback
 from .common.preprocessor import preprocess
 from .common.reader import (
     load_infos_from_disk,
@@ -124,7 +125,7 @@ def save_to_disk(
     num_proc: int = 1,
     verbose: bool = False,
     overwrite: bool = False,
-    sample_callback: Optional[Callable[[str, int, Path], None]] = None,
+    sample_callback: Optional[SampleCallback] = None,
 ) -> None:
     """Save a PLAID dataset to local disk using the specified backend.
 
@@ -183,14 +184,8 @@ def save_to_disk(
         verbose: If True, enables verbose output during processing.
         overwrite: If True, overwrites existing output directory.
         sample_callback: Optional callback, available for the ``'cgns'`` backend,
-            invoked once per sample after it has been fully written, as
-            ``sample_callback(split_name, index, sample_path)``. ``index`` is the
-            contiguous, zero-based global index of the sample within its split
-            and ``sample_path`` locates the just-written sample directory.
-            When ``num_proc > 1`` the callback runs inside the worker processes,
-            so it must be picklable and process-safe; it is called concurrently
-            and with no guaranteed ordering across workers (``index`` stays
-            contiguous nonetheless).
+            invoked with the written sample and its context. In parallel mode,
+            it must be picklable and process-safe.
     """
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
