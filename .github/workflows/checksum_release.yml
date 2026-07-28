@@ -35,3 +35,4 @@ jobs:
         with:
           name: sha256-checksum
           path: plaid-*.sha256
+          retention-days: 2
