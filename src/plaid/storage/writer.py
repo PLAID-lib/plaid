@@ -149,19 +149,22 @@ def save_to_disk(
             sample.add_tree(load_my_data(file_path))
             return sample
 
-        save_to_disk(
-            "output/",
-            sample_constructor=sample_constructor,
-            ids={
-                "train": train_file_paths,
-                "test":  test_file_paths,
-            },
-            infos=Infos(
-                owner="owner",
-                license="license",
-            ),
-            num_proc=6,
-        )
+        # When ``num_proc > 1`` protect the call with the standard main guard
+        # (see the ``num_proc`` note below).
+        if __name__ == "__main__":
+            save_to_disk(
+                "output/",
+                sample_constructor=sample_constructor,
+                ids={
+                    "train": train_file_paths,
+                    "test":  test_file_paths,
+                },
+                infos=Infos(
+                    owner="owner",
+                    license="license",
+                ),
+                num_proc=6,
+            )
 
     Args:
         output_folder: Path to the output directory where the dataset will be saved.
@@ -180,7 +183,11 @@ def save_to_disk(
         pb_defs: Optional mapping from problem definition identifiers to definitions.
         num_proc: Number of processes to use for parallel writing.  When
             ``num_proc > 1`` PLAID automatically shards the identifier
-            sequences and distributes work across workers.
+            sequences and distributes work across workers.  Under the ``spawn``
+            start method (default on macOS/Windows), the call must be protected
+            by the standard main guard (``if __name__ == "__main__":``),
+            otherwise it re-executes on worker import and recursively spawns
+            processes.
         verbose: If True, enables verbose output during processing.
         overwrite: If True, overwrites existing output directory.
         sample_callback: Optional callback, available for the ``'cgns'`` backend,
