@@ -13,6 +13,7 @@ import plaid.storage.writer as writer_mod
 from plaid.containers.sample import Sample
 from plaid.problem_definition import ProblemDefinition
 from plaid.storage import (
+    SampleCallbackContext,
     init_from_disk,
     load_problem_definitions_from_disk,
     save_to_disk,
@@ -33,6 +34,16 @@ class _PicklableSampleLookup:
 
     def __call__(self, idx):
         return self._samples[idx]
+
+
+def _write_marker(context: SampleCallbackContext):
+    """Module-level (picklable) ``sample_callback`` used by the parallel test.
+
+    Drops a marker file inside written samples.
+    """
+    context.path.joinpath("callback.marker").write_text(
+        f"{context.split_name}\n{context.index}"
+    )
 
 
 def test_load_metadata_from_hub_materializes_memmaps(tmp_path, monkeypatch):
@@ -645,6 +656,90 @@ class Test_Storage:
             converter.to_dict(cgns_dataset, 0)
         with pytest.raises(ValueError):
             converter.sample_to_dict(cgns_dataset[0])
+
+    def test_cgns_sample_callback(self, tmp_path, sample_constructor, split_ids, infos):
+        """sample_callback fires once per sample, in order, with the on-disk path."""
+        test_dir = tmp_path / "test_cgns_callback"
+
+        calls: list[SampleCallbackContext] = []
+
+        def callback(context):
+            calls.append(context)
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=sample_constructor,
+            ids=split_ids,
+            backend="cgns",
+            infos=infos,
+            overwrite=True,
+            sample_callback=callback,
+        )
+
+        # One call per sample across all splits.
+        expected_total = sum(len(ids) for ids in split_ids.values())
+        assert len(calls) == expected_total
+        for split_name, expected_ids in split_ids.items():
+            split_calls = [c for c in calls if c.split_name == split_name]
+            assert [c.index for c in split_calls] == list(range(len(expected_ids)))
+            for context, expected_id in zip(split_calls, expected_ids):
+                assert context.sample is sample_constructor(expected_id)
+                assert context.path == test_dir / "data" / split_name / (
+                    f"sample_{context.index:09d}"
+                )
+
+    def test_cgns_sample_callback_parallel(
+        self, tmp_path, samples_with_extra_global, split_ids, infos
+    ):
+        """sample_callback fires once per sample in parallel mode (num_proc > 1).
+
+        The callback runs inside worker processes, so each invocation is recorded
+        by dropping a marker file inside the sample directory it was handed; the
+        markers are then inspected across the process boundary.
+        """
+        test_dir = tmp_path / "test_cgns_callback_parallel"
+
+        all_samples = [
+            samples_with_extra_global[i] for i in range(len(samples_with_extra_global))
+        ]
+        gen = _PicklableSampleLookup(all_samples)
+
+        save_to_disk(
+            output_folder=test_dir,
+            sample_constructor=gen,
+            ids=split_ids,
+            backend="cgns",
+            infos=infos,
+            num_proc=2,
+            overwrite=True,
+            sample_callback=_write_marker,
+        )
+
+        for split_name, expected_ids in split_ids.items():
+            for index in range(len(expected_ids)):
+                marker = (
+                    test_dir
+                    / "data"
+                    / split_name
+                    / f"sample_{index:09d}"
+                    / "callback.marker"
+                )
+                assert marker.read_text() == f"{split_name}\n{index}"
+
+    def test_sample_callback_rejects_non_cgns_backend(
+        self, tmp_path, sample_constructor, split_ids, infos
+    ):
+        """sample_callback is scoped to the cgns backend for now."""
+        with pytest.raises(NotImplementedError):
+            save_to_disk(
+                output_folder=tmp_path / "cb_zarr",
+                sample_constructor=sample_constructor,
+                ids=split_ids,
+                backend="zarr",
+                infos=infos,
+                overwrite=True,
+                sample_callback=lambda _context: None,
+            )
 
     def test_cgns_save_to_disk_skips_preprocess(
         self,

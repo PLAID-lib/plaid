@@ -16,6 +16,7 @@ from tqdm import tqdm
 
 from ...containers.sample import Sample
 from ...infos import Infos
+from ..callbacks import SampleCallback, SampleCallbackContext
 
 logger = logging.getLogger(__name__)
 
@@ -23,10 +24,10 @@ logger = logging.getLogger(__name__)
 def _cgns_worker_batch_job(args) -> int:  # pragma: no cover
     """Write one shard (batch) of samples to disk.
 
-    args = (split_path_str, gen_func, batch, start_index)
+    args = (split_path_str, split_name, gen_func, batch, start_index, sample_callback)
     Returns: number of samples written.
     """
-    split_path_str, gen_func, batch, start_index = args
+    split_path_str, split_name, gen_func, batch, start_index, sample_callback = args
     split_path = Path(split_path_str)
 
     sample_counter = start_index
@@ -34,7 +35,14 @@ def _cgns_worker_batch_job(args) -> int:  # pragma: no cover
 
     # Keep original semantics: generator expects a list of batches
     for sample in gen_func([batch]):
-        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
+        sample_path = split_path / f"sample_{sample_counter:09d}"
+        sample.save_to_dir(sample_path)
+
+        if sample_callback is not None:
+            sample_callback(
+                SampleCallbackContext(sample, split_name, sample_counter, sample_path)
+            )
+
         sample_counter += 1
         written += 1
 
@@ -48,6 +56,7 @@ def generate_datasetdict_to_disk(
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
+    sample_callback: Optional[SampleCallback] = None,
 ) -> None:
     """Generates and saves a dataset to disk in CGNS format.
 
@@ -58,6 +67,8 @@ def generate_datasetdict_to_disk(
         gen_kwargs: Optional generator kwargs for parallel processing.
         num_proc: Number of processes.
         verbose: Whether to show progress.
+        sample_callback: Optional callback invoked with the written sample and its
+            context. In parallel mode, it must be picklable and process-safe.
     """
     output_folder = Path(output_folder)
 
@@ -89,7 +100,14 @@ def generate_datasetdict_to_disk(
                 s += len(batch)
 
             jobs = [
-                (str(split_path), gen_func, batch, start_idx)
+                (
+                    str(split_path),
+                    split_name,
+                    gen_func,
+                    batch,
+                    start_idx,
+                    sample_callback,
+                )
                 for batch, start_idx in zip(batch_ids_list, start_indices)
             ]
 
@@ -115,16 +133,22 @@ def generate_datasetdict_to_disk(
                 desc=f"Writing {split_name} split",
                 disable=not verbose,
             ) as pbar:
-                if batch_ids_list:
-                    for sample in gen_func(batch_ids_list):
-                        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
-                        sample_counter += 1
-                        pbar.update(1)
-                else:
-                    for sample in gen_func():
-                        sample.save_to_dir(split_path / f"sample_{sample_counter:09d}")
-                        sample_counter += 1
-                        pbar.update(1)
+                sample_source = (
+                    gen_func(batch_ids_list) if batch_ids_list else gen_func()
+                )
+                for sample in sample_source:
+                    sample_path = split_path / f"sample_{sample_counter:09d}"
+                    sample.save_to_dir(sample_path)
+
+                    if sample_callback is not None:
+                        sample_callback(
+                            SampleCallbackContext(
+                                sample, split_name, sample_counter, sample_path
+                            )
+                        )
+
+                    sample_counter += 1
+                    pbar.update(1)
 
 
 def push_local_datasetdict_to_hub(

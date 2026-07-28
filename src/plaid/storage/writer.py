@@ -29,6 +29,7 @@ from plaid.storage.registry import available_backends, get_backend
 from ..containers.sample import Sample
 from ..infos import Infos
 from ..problem_definition import ProblemDefinition
+from .callbacks import SampleCallback
 from .common.preprocessor import preprocess
 from .common.reader import (
     load_infos_from_disk,
@@ -124,6 +125,7 @@ def save_to_disk(
     num_proc: int = 1,
     verbose: bool = False,
     overwrite: bool = False,
+    sample_callback: Optional[SampleCallback] = None,
 ) -> None:
     """Save a PLAID dataset to local disk using the specified backend.
 
@@ -147,19 +149,22 @@ def save_to_disk(
             sample.add_tree(load_my_data(file_path))
             return sample
 
-        save_to_disk(
-            "output/",
-            sample_constructor=sample_constructor,
-            ids={
-                "train": train_file_paths,
-                "test":  test_file_paths,
-            },
-            infos=Infos(
-                owner="owner",
-                license="license",
-            ),
-            num_proc=6,
-        )
+        # When ``num_proc > 1`` protect the call with the standard main guard
+        # (see the ``num_proc`` note below).
+        if __name__ == "__main__":
+            save_to_disk(
+                "output/",
+                sample_constructor=sample_constructor,
+                ids={
+                    "train": train_file_paths,
+                    "test":  test_file_paths,
+                },
+                infos=Infos(
+                    owner="owner",
+                    license="license",
+                ),
+                num_proc=6,
+            )
 
     Args:
         output_folder: Path to the output directory where the dataset will be saved.
@@ -178,13 +183,26 @@ def save_to_disk(
         pb_defs: Optional mapping from problem definition identifiers to definitions.
         num_proc: Number of processes to use for parallel writing.  When
             ``num_proc > 1`` PLAID automatically shards the identifier
-            sequences and distributes work across workers.
+            sequences and distributes work across workers.  Under the ``spawn``
+            start method (default on macOS/Windows), the call must be protected
+            by the standard main guard (``if __name__ == "__main__":``),
+            otherwise it re-executes on worker import and recursively spawns
+            processes.
         verbose: If True, enables verbose output during processing.
         overwrite: If True, overwrites existing output directory.
+        sample_callback: Optional callback, available for the ``'cgns'`` backend,
+            invoked with the written sample and its context. In parallel mode,
+            it must be picklable and process-safe.
     """
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
     )
+    # ---- validate the (optional) per-sample output hook ----------------------
+    if sample_callback is not None and backend != "cgns":
+        raise NotImplementedError(
+            f"sample_callback is currently only supported for the 'cgns' "
+            f"backend, got '{backend}'."
+        )
     # ---- validate ids: must be sliceable sequences ---------------------------
     for split_name, split_ids in ids.items():
         if not (hasattr(split_ids, "__getitem__") and hasattr(split_ids, "__len__")):
@@ -251,6 +269,10 @@ def save_to_disk(
     if pb_defs is not None:
         save_problem_definitions_to_disk(output_folder, pb_defs)
 
+    backend_kwargs: dict[str, Any] = {}
+    if sample_callback is not None:
+        backend_kwargs["sample_callback"] = sample_callback
+
     backend_spec = get_backend(backend)
     backend_spec.generate_to_disk(
         output_folder,
@@ -259,6 +281,7 @@ def save_to_disk(
         gen_kwargs=gen_kwargs,
         num_proc=num_proc,
         verbose=verbose,
+        **backend_kwargs,
     )
 
 

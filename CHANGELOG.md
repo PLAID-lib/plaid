@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- (storage/writer) add optional `sample_callback` to `save_to_disk`, invoked once per sample right after it is written to disk as `sample_callback(split_name, index, sample_path)`. This lets callers process samples one by one once written instead of waiting for the whole dataset. Currently supported for the `cgns` backend, including parallel writing (`num_proc > 1`), where the callback runs inside the worker processes and must be picklable and process-safe.
+
 ### Fixed
 
 - (storage/reader) Fix HF backend split download not respecting `~` character on Linux.

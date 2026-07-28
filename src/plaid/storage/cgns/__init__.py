@@ -7,6 +7,7 @@ from typing import Any, Mapping, Optional, Union
 from datasets import IterableDataset
 
 from ...infos import Infos
+from ..callbacks import SampleCallback
 from .reader import (
     download_datasetdict_from_hub,
     init_datasetdict_from_disk,
@@ -60,6 +61,7 @@ class CgnsBackend:
         gen_kwargs: Optional[dict[str, dict[str, list]]] = None,
         num_proc: int = 1,
         verbose: bool = False,
+        sample_callback: Optional[SampleCallback] = None,
     ) -> None:
         return generate_datasetdict_to_disk(
             output_folder=output_folder,
@@ -68,6 +70,7 @@ class CgnsBackend:
             gen_kwargs=gen_kwargs,
             num_proc=num_proc,
             verbose=verbose,
+            sample_callback=sample_callback,
         )
 
     @staticmethod

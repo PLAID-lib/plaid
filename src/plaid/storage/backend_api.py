@@ -17,6 +17,8 @@ from typing import (
 import numpy as np
 from datasets import IterableDataset
 
+from .callbacks import SampleCallback
+
 if TYPE_CHECKING:
     from ..containers.dataset import Dataset
     from ..containers.sample import Sample
@@ -62,8 +64,12 @@ class BackendModule(Protocol):
         gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
         num_proc: int = 1,
         verbose: bool = False,
+        sample_callback: Optional[SampleCallback] = None,
     ) -> None:
-        """Generate and save a dataset dictionary to local storage."""
+        """Generate and save a dataset dictionary to local storage.
+
+        ``sample_callback`` is called after each CGNS sample is written.
+        """
         ...
 
     @staticmethod
