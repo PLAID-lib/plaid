@@ -98,11 +98,12 @@ integrity is non-negotiable -- see Decision priorities above.
 │   ├── containers/            <- Sample container + helpers (see nested AGENTS.md)
 │   ├── storage/               <- Storage backends: zarr, hf_datasets, cgns (see nested AGENTS.md)
 │   ├── types/                 <- Shared type aliases and definitions
-│   ├── cli/                   <- Command-line entry points (e.g. plaidcheck)
+│   ├── utils/                 <- Internal helpers: base.py, cgns_helper.py, cgns_worker.py
+│   ├── cli/                   <- Command-line entry points (e.g. plaid-check)
 │   ├── viewer/                <- Dataset visualization services
 │   └── downloadable_examples/ <- Built-in downloadable example datasets
 ├── tests/                     <- Test suite
-├── docs/                      <- Sphinx documentation source
+├── docs/                      <- Zensical (Markdown) documentation source
 └── examples/                  <- Usage examples
 ```
 
@@ -138,11 +139,12 @@ than through a dedicated `Dataset` class.
 ### Formatting and linting
 
 Ruff is configured in `ruff.toml`:
-- **Line length**: 88 characters
+- **Line length**: 88 characters -- but `E501` (line-too-long) is in the `ignore` list, so this limit is enforced by the **formatter** (`ruff format`), not checked by the linter
 - **Lint rules**: `D` (docstrings), `E`/`W` (pycodestyle), `F` (pyflakes), `ARG` (unused arguments), `I` (import sorting)
+- **Ignored rules**: `E501` (line too long) and `D107` (missing docstring in `__init__`)
 - **Docstring convention**: Google style
 - **Excluded directories**: `examples/`, `docs/`, `benchmarks/`
-- **Test files**: docstring rules (`D`) and `S101` (assert) are ignored
+- **Per-file ignores**: test files ignore docstring rules (`D`) and `S101` (assert); `__init__.py` files ignore `F401` (unused imports, to allow re-exports)
 
 ```bash
 # Check linting
@@ -232,7 +234,7 @@ When making changes:
 2. Write or update code with type hints
 3. Write unit tests for new functionality
 4. Update docstrings (Google style)
-5. Update Sphinx documentation if functionality changed
+5. Update the Zensical documentation if functionality changed
 6. Run formatter: `uv run ruff format .`
 7. Run linter: `uv run ruff check --fix .`
 8. Run tests: `uv run pytest`
