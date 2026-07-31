@@ -747,14 +747,19 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         Returns:
             int: The physical dimension of the specified base node at the given time.
         """
-        # When no base is specified and several exist, the physical dimension may still
-        # be unambiguous: it is a per-base CGNS attribute, but bases often share it.
-        # (resolve_base would raise on >1 base without a default, so we check directly.)
+        # When no base is specified, defer to the usual base resolution: an explicit
+        # base or a default base is honoured, and a single base needs no default.
+        # resolve_base only raises when several bases exist and none is set as default.
+        # In that ambiguous case the physical dimension may still be well-defined,
+        # because it is a per-base CGNS attribute that bases usually share: return the
+        # common value if all bases agree, and only raise if they genuinely differ.
         if base is None:
-            base_names = self.get_base_names(time=time)
-            if "Global" in base_names:
-                base_names.remove("Global")
-            if len(base_names) > 1:
+            try:
+                base = self.resolve_base(base, time)
+            except KeyError:
+                base_names = self.get_base_names(time=time)
+                if "Global" in base_names:
+                    base_names.remove("Global")
                 phys_dims = {
                     int(self.get_base(b, time)[1][1])  # type: ignore[index]
                     for b in base_names
@@ -765,7 +770,7 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
                     "Cannot resolve the physical dimension: bases have differing "
                     f"physical dimensions {sorted(phys_dims)} among {base_names}. "
                     "Specify a base explicitly."
-                )
+                ) from None
 
         base_node = self.get_base(base, time)
         if base_node is None:  # pragma: no cover
