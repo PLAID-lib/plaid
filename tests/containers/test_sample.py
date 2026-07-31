@@ -503,6 +503,10 @@ class Test_Sample:
         sample.init_base(2, 3, "base_a")
         sample.init_base(3, 3, "base_b")
         assert sample.get_physical_dim() == 3
+        # The "Global" base is a special container and must be ignored when checking
+        # for a common physical dimension.
+        sample.add_global("scalar", 1.0)
+        assert sample.get_physical_dim() == 3
         # The topological dimension is still ambiguous and must fail without a base.
         with pytest.raises(KeyError):
             sample.get_topological_dim()
