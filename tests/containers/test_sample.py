@@ -498,6 +498,25 @@ class Test_Sample:
         assert sample.get_topological_dim("other_base_name") == 3
         assert sample.get_physical_dim("other_base_name") == 3
 
+    def test_get_physical_dim_multibase(self, sample: Sample):
+        # Several bases sharing the same physical dimension: no default base needed.
+        sample.init_base(2, 3, "base_a")
+        sample.init_base(3, 3, "base_b")
+        assert sample.get_physical_dim() == 3
+        # The topological dimension is still ambiguous and must fail without a base.
+        with pytest.raises(KeyError):
+            sample.get_topological_dim()
+
+    def test_get_physical_dim_multibase_diverging(self, sample: Sample):
+        # Bases with differing physical dimensions: the ambiguity is real.
+        sample.init_base(1, 1, "line")
+        sample.init_base(3, 3, "volume")
+        with pytest.raises(ValueError, match="differing"):
+            sample.get_physical_dim()
+        # Specifying a base resolves it.
+        assert sample.get_physical_dim("line") == 1
+        assert sample.get_physical_dim("volume") == 3
+
     # -------------------------------------------------------------------------#
     def test_init_zone(self, sample: Sample, base_name, zone_name, zone_shape):
         with pytest.raises(KeyError):
