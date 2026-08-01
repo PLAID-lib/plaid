@@ -14,10 +14,12 @@ Key features:
 import gc
 import logging
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Generator, Optional, Union
 
 import yaml
+from datasets.utils import logging as datasets_logging
 from huggingface_hub import DatasetCard, hf_hub_download
 
 from plaid.storage.hf_datasets.bridge import generator_to_datasetdict
@@ -27,6 +29,23 @@ from ...containers.sample import Sample
 from ...infos import Infos
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def _hf_progress_bars(enabled: bool):
+    """Temporarily configure Hugging Face progress bars."""
+    was_enabled = datasets_logging.is_progress_bar_enabled()
+    if enabled:
+        datasets_logging.enable_progress_bar()
+    else:
+        datasets_logging.disable_progress_bar()
+    try:
+        yield
+    finally:
+        if was_enabled:
+            datasets_logging.enable_progress_bar()
+        else:
+            datasets_logging.disable_progress_bar()
 
 
 def _compute_num_shards(hf_dataset_dict: Any) -> dict[str, int]:
@@ -76,18 +95,14 @@ def save_datasetdict_to_disk(
         None
     """
     num_shards = _compute_num_shards(hf_datasetdict)
-    num_proc = kwargs.get("num_proc", None)
-    if num_proc is not None:  # pragma: no cover
-        min_num_shards = min(num_shards.values())
-        if min_num_shards < num_proc:
-            logger.warning(
-                f"num_proc changed from {num_proc} to 1 to safely adapt for num_shards={num_shards}"
-            )
-            num_proc = 1
-        del kwargs["num_proc"]
+    # Do not pass ``num_proc=1`` here. Hugging Face treats every non-None value
+    # as a request to spawn a process pool, and progress updates from that pool
+    # can arrive only when a complete shard has been written. The in-process
+    # path reports each Arrow write batch and therefore advances continuously.
+    kwargs.pop("num_proc", None)
 
     hf_datasetdict.save_to_disk(
-        str(Path(path) / "data"), num_shards=num_shards, num_proc=num_proc, **kwargs
+        str(Path(path) / "data"), num_shards=num_shards, num_proc=None, **kwargs
     )
 
 
@@ -97,7 +112,7 @@ def generate_datasetdict_to_disk(
     variable_schema: dict[str, dict],
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
-    verbose: bool = False,  # noqa: ARG001
+    verbose: bool = False,
 ) -> None:
     """Generates and saves a DatasetDict to disk from sample generators.
 
@@ -111,7 +126,7 @@ def generate_datasetdict_to_disk(
         num_proc (int): Number of processes for generation.
         verbose (bool): Whether to enable verbose output.
     """
-    with tempfile.TemporaryDirectory() as tmpdirname:
+    with _hf_progress_bars(verbose), tempfile.TemporaryDirectory() as tmpdirname:
         hf_datasetdict = generator_to_datasetdict(
             generators,
             variable_schema,
@@ -119,7 +134,7 @@ def generate_datasetdict_to_disk(
             gen_kwargs=gen_kwargs,
             processes_number=num_proc,
         )
-        save_datasetdict_to_disk(output_folder, hf_datasetdict, num_proc=num_proc)
+        save_datasetdict_to_disk(output_folder, hf_datasetdict)
         del hf_datasetdict
         gc.collect()
 
