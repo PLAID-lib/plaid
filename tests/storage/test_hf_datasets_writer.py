@@ -20,8 +20,11 @@ def test_save_datasetdict_uses_in_process_progress(tmp_path):
     )
 
 
+@pytest.mark.parametrize("initially_enabled", [False, True])
 @pytest.mark.parametrize("verbose", [False, True])
-def test_generate_controls_and_restores_hf_progress(monkeypatch, tmp_path, verbose):
+def test_generate_controls_and_restores_hf_progress(
+    monkeypatch, tmp_path, initially_enabled, verbose
+):
     datasetdict = MagicMock()
     observed = []
 
@@ -32,7 +35,11 @@ def test_generate_controls_and_restores_hf_progress(monkeypatch, tmp_path, verbo
     monkeypatch.setattr(writer, "generator_to_datasetdict", fake_generate)
     monkeypatch.setattr(writer, "save_datasetdict_to_disk", MagicMock())
 
-    initially_enabled = datasets_logging.is_progress_bar_enabled()
+    if initially_enabled:
+        datasets_logging.enable_progress_bar()
+    else:
+        datasets_logging.disable_progress_bar()
+
     writer.generate_datasetdict_to_disk(
         tmp_path,
         generators={"train": MagicMock()},
