@@ -95,14 +95,21 @@ def save_datasetdict_to_disk(
         None
     """
     num_shards = _compute_num_shards(hf_datasetdict)
-    # Do not pass ``num_proc=1`` here. Hugging Face treats every non-None value
-    # as a request to spawn a process pool, and progress updates from that pool
-    # can arrive only when a complete shard has been written. The in-process
-    # path reports each Arrow write batch and therefore advances continuously.
-    kwargs.pop("num_proc", None)
+    requested_num_proc = kwargs.pop("num_proc", None)
+    if requested_num_proc is None or requested_num_proc <= 1:
+        num_proc = None
+    else:
+        min_num_shards = min(num_shards.values())
+        effective_num_proc = min(requested_num_proc, min_num_shards)
+        num_proc = effective_num_proc if effective_num_proc > 1 else None
+        if effective_num_proc < requested_num_proc:
+            logger.warning(
+                f"num_proc changed from {requested_num_proc} to "
+                f"{effective_num_proc} to safely adapt for num_shards={num_shards}"
+            )
 
     hf_datasetdict.save_to_disk(
-        str(Path(path) / "data"), num_shards=num_shards, num_proc=None, **kwargs
+        str(Path(path) / "data"), num_shards=num_shards, num_proc=num_proc, **kwargs
     )
 
 
@@ -134,7 +141,7 @@ def generate_datasetdict_to_disk(
             gen_kwargs=gen_kwargs,
             processes_number=num_proc,
         )
-        save_datasetdict_to_disk(output_folder, hf_datasetdict)
+        save_datasetdict_to_disk(output_folder, hf_datasetdict, num_proc=num_proc)
         del hf_datasetdict
         gc.collect()
 

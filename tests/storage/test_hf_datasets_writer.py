@@ -6,17 +6,31 @@ from datasets.utils import logging as datasets_logging
 from plaid.storage.hf_datasets import writer
 
 
-def test_save_datasetdict_uses_in_process_progress(tmp_path):
+@pytest.mark.parametrize(
+    ("requested_num_proc", "dataset_size", "expected_num_proc"),
+    [
+        (None, 1, None),
+        (1, 1, None),
+        (4, 1, None),
+        (4, 2 * 500 * 1024 * 1024, 2),
+        (2, 4 * 500 * 1024 * 1024, 2),
+    ],
+)
+def test_save_datasetdict_adapts_parallelism(
+    tmp_path, requested_num_proc, dataset_size, expected_num_proc
+):
     datasetdict = MagicMock()
     dataset = MagicMock()
     dataset.__len__.return_value = 10
-    dataset.data.nbytes = 1
+    dataset.data.nbytes = dataset_size
     datasetdict.items.return_value = [("train", dataset)]
 
-    writer.save_datasetdict_to_disk(tmp_path, datasetdict, num_proc=4)
+    writer.save_datasetdict_to_disk(tmp_path, datasetdict, num_proc=requested_num_proc)
 
     datasetdict.save_to_disk.assert_called_once_with(
-        str(tmp_path / "data"), num_shards={"train": 1}, num_proc=None
+        str(tmp_path / "data"),
+        num_shards={"train": min(10, max(1, dataset_size // (500 * 1024 * 1024)))},
+        num_proc=expected_num_proc,
     )
 
 
