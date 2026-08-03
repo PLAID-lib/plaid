@@ -17,6 +17,7 @@ import multiprocessing as mp
 from pathlib import Path
 from typing import Any, Callable, Generator, Optional, Union
 
+import fsspec
 import numpy as np
 import yaml
 import zarr
@@ -28,6 +29,69 @@ from plaid.storage.common.preprocessor import build_sample_dict
 
 from ...containers.sample import Sample
 from ...infos import Infos
+
+
+def _is_local_target(target: Union[str, Path]) -> bool:
+    """Return whether ``target`` resolves to the local filesystem.
+
+    A plain path (absolute or relative) or a ``file://`` URL is local; any other
+    fsspec protocol (``memory://``, ``s3://``, ``gs://``, ``http://``, ...) is
+    remote.
+
+    Args:
+        target (Union[str, Path]): Output folder path or fsspec URL.
+
+    Returns:
+        bool: ``True`` if the target lives on the local filesystem.
+
+    Raises:
+        ImportError: If ``target`` uses a protocol whose fsspec handler is not
+            installed (e.g. ``s3://`` without ``s3fs``). The original fsspec
+            message is preserved so the user knows which extra to install.
+    """
+    fs, _ = fsspec.core.url_to_fs(str(target))
+    protocols = fs.protocol
+    if isinstance(protocols, str):
+        protocols = (protocols,)
+    return any(p in ("file", "local") for p in protocols)
+
+
+def _join_target(base: Union[str, Path], *parts: str) -> Union[Path, str]:
+    """Join path components, preserving fsspec URLs.
+
+    ``pathlib.Path`` collapses the ``//`` in a URL (``memory://root`` becomes
+    ``memory:/root``), silently corrupting the target. This helper keeps local
+    targets as ``Path`` (unchanged behavior) and joins remote URLs with plain
+    ``/`` so the protocol separator survives.
+
+    Args:
+        base (Union[str, Path]): Base path or fsspec URL.
+        *parts (str): Additional path components to append.
+
+    Returns:
+        Union[Path, str]: A ``Path`` for local targets, a ``str`` URL otherwise.
+    """
+    if _is_local_target(base):
+        return Path(base).joinpath(*parts)
+    return "/".join([str(base).rstrip("/"), *parts])
+
+
+def _open_split_group(split_target: str, mode: str) -> Any:
+    """Open (or create) the Zarr group for a split, local or remote.
+
+    ``zarr.open_group`` natively resolves an fsspec URL to a ``FsspecStore``, so
+    the same call works for local paths and remote URLs. This wrapper exists so
+    the parallel worker (which runs in a separate process and cannot share an
+    open handle) can reopen the exact same store from a plain string.
+
+    Args:
+        split_target (str): Local path or fsspec URL of the split root.
+        mode (str): Zarr open mode (``"w"``, ``"a"``, ...).
+
+    Returns:
+        Any: An open Zarr group.
+    """
+    return zarr.open_group(split_target, mode=mode)
 
 
 def _auto_chunks(shape: tuple[int, ...], target_n: int) -> tuple[int, ...]:
@@ -134,9 +198,12 @@ def _zarr_worker_batch_job(args) -> int:  # pragma: no cover
     """
     split_root_path, gen_func, var_features_keys, batch, start_index = args
 
-    # split_root = zarr.open_group(split_root_path, mode="a")
-    store = zarr.storage.LocalStore(split_root_path)
-    split_root = zarr.group(store=store)
+    # Reopen the split group from a plain string so it works for both local
+    # paths and fsspec URLs (memory://, s3://, ...). ``zarr.open_group`` builds
+    # a ``LocalStore`` or ``FsspecStore`` from the target automatically; the
+    # previous hardcoded ``zarr.storage.LocalStore`` silently wrote a remote URL
+    # to a literal local directory instead of the intended remote target.
+    split_root = _open_split_group(split_root_path, mode="a")
 
     sample_counter = start_index
     written = 0
@@ -185,15 +252,21 @@ def generate_datasetdict_to_disk(
         None: This function does not return a value; it writes the dataset directly
             to disk.
     """
-    output_folder = Path(output_folder) / "data"
-    output_folder.mkdir(exist_ok=True, parents=True)
+    # Build the ``data`` subfolder in a way that works for local paths and
+    # fsspec URLs alike. For local targets we keep the original ``Path`` + mkdir
+    # behavior; for remote targets we join with ``/`` (``Path`` would collapse
+    # the ``://`` separator) and skip the local ``mkdir`` — fsspec stores create
+    # keys lazily on write and have no notion of an empty directory.
+    data_target = _join_target(output_folder, "data")
+    if _is_local_target(output_folder):
+        Path(data_target).mkdir(exist_ok=True, parents=True)
 
     var_features_keys = list(variable_schema.keys())
     gen_kwargs_ = gen_kwargs or {sn: {} for sn in generators.keys()}
 
     for split_name, gen_func in generators.items():
-        split_root_path = str(output_folder / split_name)
-        _ = zarr.open_group(split_root_path, mode="w")  # create/overwrite
+        split_root_path = str(_join_target(data_target, split_name))
+        _ = _open_split_group(split_root_path, mode="w")  # create/overwrite
 
         batch_ids_list = gen_kwargs_.get(split_name, {}).get("shards_ids", [])
         total_samples = (
