@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - (storage/writer) add optional `sample_callback` to `save_to_disk`, invoked once per sample right after it is written to disk as `sample_callback(split_name, index, sample_path)`. This lets callers process samples one by one once written instead of waiting for the whole dataset. Currently supported for the `cgns` backend, including parallel writing (`num_proc > 1`), where the callback runs inside the worker processes and must be picklable and process-safe.
+- (docs) add `AGENTS.md` contributor guides at the repository root and for the `containers/` and `storage/` subpackages, following the [AGENTS.md](https://agents.md/) convention.
 
 ### Fixed
 
