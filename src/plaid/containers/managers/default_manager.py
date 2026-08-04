@@ -150,6 +150,15 @@ class DefaultManager:
             raise ValueError(f"base {base} does not exist at time {time}")
         self._default_active_base = base
 
+    def get_default_base(self) -> Optional[str]:
+        """Return the currently set default active base, if any.
+
+        Returns:
+            Optional[str]: The default active base name, or ``None`` if no default
+            base has been set.
+        """
+        return self._default_active_base
+
     def set_default_zone_base(
         self, zone: str, base: str, time: Optional[float] = None
     ) -> None:

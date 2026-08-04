@@ -521,6 +521,16 @@ class Test_Sample:
         assert sample.get_physical_dim("line") == 1
         assert sample.get_physical_dim("volume") == 3
 
+    def test_get_physical_dim_multibase_diverging_default_base(self, sample: Sample):
+        # A default base is honoured even when physical dimensions diverge: the
+        # explicit branch must not treat the diverging case as ambiguous.
+        sample.init_base(1, 1, "line")
+        sample.init_base(3, 3, "volume")
+        sample.set_default_base("volume")
+        assert sample.get_physical_dim() == 3
+        sample.set_default_base("line")
+        assert sample.get_physical_dim() == 1
+
     # -------------------------------------------------------------------------#
     def test_init_zone(self, sample: Sample, base_name, zone_name, zone_shape):
         with pytest.raises(KeyError):

@@ -477,6 +477,15 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         """
         self.defaults.set_default_base(base, time=time)
 
+    def get_default_base(self) -> Optional[str]:
+        """Get the default active base. Calls the DefaultManager to get the default base.
+
+        Returns:
+            Optional[str]: The default active base name, or ``None`` if no default
+            base has been set.
+        """
+        return self.defaults.get_default_base()
+
     def set_default_zone_base(
         self, zone: str, base: str, time: Optional[float] = None
     ) -> None:
@@ -747,19 +756,17 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         Returns:
             int: The physical dimension of the specified base node at the given time.
         """
-        # When no base is specified, defer to the usual base resolution: an explicit
-        # base or a default base is honoured, and a single base needs no default.
-        # resolve_base only raises when several bases exist and none is set as default.
-        # In that ambiguous case the physical dimension may still be well-defined,
-        # because it is a per-base CGNS attribute that bases usually share: return the
-        # common value if all bases agree, and only raise if they genuinely differ.
+        # When no base is specified, the physical dimension is usually still
+        # well-defined even if several bases exist: it is a per-base CGNS attribute,
+        # but bases typically share it. Branch explicitly on the resolution cases:
+        #   - an explicit or default base, or a single base, is unambiguous;
+        #   - several bases without a default are only ambiguous if their physical
+        #     dimensions actually differ, in which case we raise.
         if base is None:
-            try:
-                base = self.resolve_base(base, time)
-            except KeyError:
-                base_names = self.get_base_names(time=time)
-                if "Global" in base_names:
-                    base_names.remove("Global")
+            base_names = self.get_base_names(time=time)
+            if "Global" in base_names:
+                base_names.remove("Global")
+            if len(base_names) > 1 and self.get_default_base() is None:
                 phys_dims = {
                     int(self.get_base(b, time)[1][1])  # type: ignore[index]
                     for b in base_names
@@ -770,7 +777,9 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
                     "Cannot resolve the physical dimension: bases have differing "
                     f"physical dimensions {sorted(phys_dims)} among {base_names}. "
                     "Specify a base explicitly."
-                ) from None
+                )
+            # 0 or 1 base, or a default base is set: resolution is unambiguous.
+            base = self.resolve_base(base, time)
 
         base_node = self.get_base(base, time)
         if base_node is None:  # pragma: no cover
