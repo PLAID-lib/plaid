@@ -99,7 +99,7 @@ integrity is non-negotiable -- see Decision priorities above.
 │   ├── storage/               <- Storage backends: zarr, hf_datasets, cgns (see nested AGENTS.md)
 │   ├── types/                 <- Shared type aliases and definitions
 │   ├── utils/                 <- Internal helpers: base.py, cgns_helper.py, cgns_worker.py
-│   ├── cli/                   <- Command-line entry points (e.g. plaid-check)
+│   ├── cli/                   <- Command-line entry points (plaid-check, plaid-serve, plaid-viewer)
 │   ├── viewer/                <- Dataset visualization services
 │   └── downloadable_examples/ <- Built-in downloadable example datasets
 ├── tests/                     <- Test suite
@@ -108,8 +108,10 @@ integrity is non-negotiable -- see Decision priorities above.
 ```
 
 > Note: the v1.0.0 reorganization removed the top-level `Dataset` re-export and the
-> `bridges/`, `pipelines/`, `post/` and `examples/` source packages. Data is now handled
-> through `Sample` objects and the `storage` layer. See `docs/source/upgrade_guide.md`.
+> `bridges/`, `pipelines/` and `post/` source packages under `src/plaid/`. Data is now
+> handled through `Sample` objects and the `storage` layer. (The top-level `examples/`
+> directory still exists — it holds usage scripts, not an importable package.)
+> See `docs/source/upgrade_guide.md`.
 
 ## Architecture and key concepts
 

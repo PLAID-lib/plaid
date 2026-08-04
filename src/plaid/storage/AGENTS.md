@@ -10,6 +10,7 @@ Storage follows a **Registry pattern**:
 storage/
 ├── registry.py        <- Dispatches to the correct backend based on format
 ├── backend_api.py     <- Backend contract (BackendModule Protocol)
+├── callbacks.py       <- Callback contracts (SampleCallbackContext, post-write hooks)
 ├── reader.py          <- Public read API (delegates to backend readers)
 ├── writer.py          <- Public write API (delegates to backend writers)
 ├── common/            <- Abstract interfaces and shared utilities
