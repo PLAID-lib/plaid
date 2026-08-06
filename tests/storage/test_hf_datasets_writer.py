@@ -1,0 +1,65 @@
+from unittest.mock import MagicMock
+
+import pytest
+from datasets.utils import logging as datasets_logging
+
+from plaid.storage.hf_datasets import writer
+
+
+@pytest.mark.parametrize(
+    ("requested_num_proc", "dataset_size", "expected_num_proc"),
+    [
+        (None, 1, None),
+        (1, 1, None),
+        (4, 1, None),
+        (4, 2 * 500 * 1024 * 1024, 2),
+        (2, 4 * 500 * 1024 * 1024, 2),
+    ],
+)
+def test_save_datasetdict_adapts_parallelism(
+    tmp_path, requested_num_proc, dataset_size, expected_num_proc
+):
+    datasetdict = MagicMock()
+    dataset = MagicMock()
+    dataset.__len__.return_value = 10
+    dataset.data.nbytes = dataset_size
+    datasetdict.items.return_value = [("train", dataset)]
+
+    writer.save_datasetdict_to_disk(tmp_path, datasetdict, num_proc=requested_num_proc)
+
+    datasetdict.save_to_disk.assert_called_once_with(
+        str(tmp_path / "data"),
+        num_shards={"train": min(10, max(1, dataset_size // (500 * 1024 * 1024)))},
+        num_proc=expected_num_proc,
+    )
+
+
+@pytest.mark.parametrize("initially_enabled", [False, True])
+@pytest.mark.parametrize("verbose", [False, True])
+def test_generate_controls_and_restores_hf_progress(
+    monkeypatch, tmp_path, initially_enabled, verbose
+):
+    datasetdict = MagicMock()
+    observed = []
+
+    def fake_generate(*_args, **_kwargs):
+        observed.append(datasets_logging.is_progress_bar_enabled())
+        return datasetdict
+
+    monkeypatch.setattr(writer, "generator_to_datasetdict", fake_generate)
+    monkeypatch.setattr(writer, "save_datasetdict_to_disk", MagicMock())
+
+    if initially_enabled:
+        datasets_logging.enable_progress_bar()
+    else:
+        datasets_logging.disable_progress_bar()
+
+    writer.generate_datasetdict_to_disk(
+        tmp_path,
+        generators={"train": MagicMock()},
+        variable_schema={},
+        verbose=verbose,
+    )
+
+    assert observed == [verbose]
+    assert datasets_logging.is_progress_bar_enabled() is initially_enabled
