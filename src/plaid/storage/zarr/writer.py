@@ -157,6 +157,7 @@ def generate_datasetdict_to_disk(
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = False,
+    worker_initializer: Optional[Callable[[], None]] = None,
 ) -> None:
     """Generates and saves a dataset dictionary to disk in Zarr format.
 
@@ -180,6 +181,9 @@ def generate_datasetdict_to_disk(
             Defaults to 1 (sequential). Must be > 1 only when gen_kwargs is provided.
         verbose (bool, optional): Whether to display progress bars during processing.
             Defaults to False.
+        worker_initializer (callable, optional): Callable executed once when each
+            worker process starts. It must be picklable when using the ``spawn``
+            start method.
 
     Returns:
         None: This function does not return a value; it writes the dataset directly
@@ -221,7 +225,10 @@ def generate_datasetdict_to_disk(
             # If your platform/library stack is sensitive to fork, use spawn:
             # ctx = mp.get_context("spawn")
             # with ctx.Pool(processes=num_proc) as pool:
-            with mp.Pool(processes=num_proc) as pool:
+            with mp.Pool(
+                processes=num_proc,
+                initializer=worker_initializer,
+            ) as pool:
                 with tqdm(
                     total=total_samples,
                     desc=f"Writing {split_name} split",

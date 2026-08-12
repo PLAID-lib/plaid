@@ -65,6 +65,7 @@ class BackendModule(Protocol):
         num_proc: int = 1,
         verbose: bool = False,
         sample_callback: Optional[SampleCallback] = None,
+        worker_initializer: Optional[Callable[[], None]] = None,
     ) -> None:
         """Generate and save a dataset dictionary to local storage.
 

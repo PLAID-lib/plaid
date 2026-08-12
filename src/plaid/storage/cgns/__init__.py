@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Mapping, Optional, Union
+from typing import Any, Callable, Mapping, Optional, Union
 
 from datasets import IterableDataset
 
@@ -62,8 +62,9 @@ class CgnsBackend:
         num_proc: int = 1,
         verbose: bool = False,
         sample_callback: Optional[SampleCallback] = None,
+        worker_initializer: Optional[Callable[[], None]] = None,
     ) -> None:
-        return generate_datasetdict_to_disk(
+        kwargs = dict(
             output_folder=output_folder,
             generators=generators,
             variable_schema=variable_schema,
@@ -72,6 +73,9 @@ class CgnsBackend:
             verbose=verbose,
             sample_callback=sample_callback,
         )
+        if worker_initializer is not None:  # pragma: no cover
+            kwargs["worker_initializer"] = worker_initializer
+        return generate_datasetdict_to_disk(**kwargs)
 
     @staticmethod
     def push_local_to_hub(

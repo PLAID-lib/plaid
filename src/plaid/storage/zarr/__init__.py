@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import zarr
@@ -66,8 +66,9 @@ class ZarrBackend:
         gen_kwargs: Optional[dict[str, dict[str, list]]] = None,
         num_proc: int = 1,
         verbose: bool = False,
+        worker_initializer: Optional[Callable[[], None]] = None,
     ) -> Any:
-        return generate_datasetdict_to_disk(
+        kwargs = dict(
             output_folder=output_folder,
             generators=generators,
             variable_schema=variable_schema,
@@ -75,6 +76,9 @@ class ZarrBackend:
             num_proc=num_proc,
             verbose=verbose,
         )
+        if worker_initializer is not None:  # pragma: no cover
+            kwargs["worker_initializer"] = worker_initializer
+        return generate_datasetdict_to_disk(**kwargs)
 
     @staticmethod
     def push_local_to_hub(

@@ -2,7 +2,7 @@
 
 from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 from datasets import Dataset, IterableDatasetDict
@@ -65,7 +65,9 @@ class HFBackend:
         gen_kwargs: Optional[dict[str, dict[str, list]]] = None,
         num_proc: int = 1,
         verbose: bool = False,
+        worker_initializer: Optional[Callable[[], None]] = None,
     ) -> None:
+        _ = worker_initializer
         return generate_datasetdict_to_disk(
             output_folder=output_folder,
             generators=generators,

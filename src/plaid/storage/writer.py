@@ -126,6 +126,7 @@ def save_to_disk(
     verbose: bool = False,
     overwrite: bool = False,
     sample_callback: Optional[SampleCallback] = None,
+    worker_initializer: Optional[Callable[[], None]] = None,
 ) -> None:
     """Save a PLAID dataset to local disk using the specified backend.
 
@@ -193,6 +194,9 @@ def save_to_disk(
         sample_callback: Optional callback, available for the ``'cgns'`` backend,
             invoked with the written sample and its context. In parallel mode,
             it must be picklable and process-safe.
+        worker_initializer: Optional callable executed once when each worker
+            process starts. It must be picklable when using the ``spawn`` start
+            method.
     """
     assert backend in available_backends(), (
         f"backend {backend} not among available ones: {available_backends()}"
@@ -244,7 +248,11 @@ def save_to_disk(
     else:
         flat_cst, variable_schema, constant_schema, num_samples, cgns_types = (
             preprocess(
-                generators, gen_kwargs=gen_kwargs, num_proc=num_proc, verbose=verbose
+                generators,
+                gen_kwargs=gen_kwargs,
+                num_proc=num_proc,
+                verbose=verbose,
+                worker_initializer=worker_initializer,
             )
         )
         save_metadata_to_disk(
@@ -281,6 +289,7 @@ def save_to_disk(
         gen_kwargs=gen_kwargs,
         num_proc=num_proc,
         verbose=verbose,
+        worker_initializer=worker_initializer,
         **backend_kwargs,
     )
 

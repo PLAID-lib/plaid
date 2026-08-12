@@ -57,6 +57,7 @@ def generate_datasetdict_to_disk(
     num_proc: int = 1,
     verbose: bool = False,
     sample_callback: Optional[SampleCallback] = None,
+    worker_initializer: Optional[Callable[[], None]] = None,
 ) -> None:
     """Generates and saves a dataset to disk in CGNS format.
 
@@ -69,6 +70,9 @@ def generate_datasetdict_to_disk(
         verbose: Whether to show progress.
         sample_callback: Optional callback invoked with the written sample and its
             context. In parallel mode, it must be picklable and process-safe.
+        worker_initializer: Optional callable executed once when each worker
+            process starts. It must be picklable when using the ``spawn`` start
+            method.
     """
     output_folder = Path(output_folder)
 
@@ -114,7 +118,10 @@ def generate_datasetdict_to_disk(
             # If your stack is sensitive to fork, switch to spawn:
             # ctx = mp.get_context("spawn")
             # with ctx.Pool(processes=num_proc) as pool:
-            with mp.Pool(processes=num_proc) as pool:
+            with mp.Pool(
+                processes=num_proc,
+                initializer=worker_initializer,
+            ) as pool:
                 with tqdm(
                     total=total_samples,
                     desc=f"Writing {split_name} split",

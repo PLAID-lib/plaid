@@ -320,6 +320,7 @@ def preprocess_splits(
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = True,
+    worker_initializer: Optional[Callable[[], None]] = None,
 ) -> tuple[
     dict[str, set[str]],
     dict[str, dict[str, Any]],
@@ -349,6 +350,8 @@ def preprocess_splits(
             Number of worker processes to use for shard-level parallelism. Defaults to 1.
         verbose (bool, optional):
             If True, displays progress bars. Defaults to True.
+        worker_initializer (callable, optional):
+            Callable executed once when each worker process starts. Defaults to None.
 
     Returns:
         tuple:
@@ -400,7 +403,7 @@ def preprocess_splits(
             shards_data = []
 
             try:
-                with mp.Pool(n_proc) as pool:
+                with mp.Pool(n_proc, initializer=worker_initializer) as pool:
                     results = [
                         pool.apply_async(
                             _process_shard_debug,
@@ -522,6 +525,7 @@ def preprocess(
     gen_kwargs: Optional[dict[str, dict[str, Any]]] = None,
     num_proc: int = 1,
     verbose: bool = True,
+    worker_initializer: Optional[Callable[[], None]] = None,
 ) -> tuple[
     dict[str, dict[str, Any]],
     dict[str, Any],
@@ -536,6 +540,9 @@ def preprocess(
         gen_kwargs: Optional generator kwargs for parallel processing.
         num_proc: Number of processes.
         verbose: Whether to show progress.
+        worker_initializer: Optional callable executed once when each worker
+            process starts. It must be picklable when using the ``spawn`` start
+            method.
 
     Returns:
         tuple: A 5-tuple ``(split_flat_cst, variable_schema, constant_schema,
@@ -548,7 +555,13 @@ def preprocess(
         global_cgns_types,
         global_feature_types,
         split_n_samples,
-    ) = preprocess_splits(generators, gen_kwargs, num_proc, verbose)
+    ) = preprocess_splits(
+        generators,
+        gen_kwargs,
+        num_proc,
+        verbose,
+        worker_initializer,
+    )
 
     # --- build features ---
     var_features = sorted(list(set().union(*split_var_path.values())))
