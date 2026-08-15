@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (storage/zarr) make the Zarr backend write path fsspec-aware: `save_to_disk` can now write to any fsspec target (`memory://`, `s3://`, `gs://`, …) in addition to local paths, in both sequential and parallel (`num_proc > 1`) modes. Remote targets require the matching fsspec backend to be installed (e.g. `s3fs` for `s3://`); a missing backend surfaces fsspec's own install hint. No new hard dependency is added (`fsspec` is already pulled in by `zarr`). Scope is limited to the zarr write path; the read path is tracked separately.
 - (storage/writer) add optional `sample_callback` to `save_to_disk`, invoked once per sample right after it is written to disk as `sample_callback(split_name, index, sample_path)`. This lets callers process samples one by one once written instead of waiting for the whole dataset. Currently supported for the `cgns` backend, including parallel writing (`num_proc > 1`), where the callback runs inside the worker processes and must be picklable and process-safe.
 
 ### Fixed
