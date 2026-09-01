@@ -20,14 +20,23 @@ import logging
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Protocol, runtime_checkable
 
 from plaid.viewer.models import ParaviewArtifact, SampleRef
-from plaid.viewer.services.plaid_dataset_service import PlaidDatasetService
 
 logger = logging.getLogger(__name__)
 
 EXPORT_VERSION = "1"
 ARTIFACT_TYPE = "raw"
+
+
+@runtime_checkable
+class DatasetServiceProtocol(Protocol):
+    """Interface required to export a sample for ParaView."""
+
+    def load_sample(self, ref: SampleRef) -> Any:
+        """Load the sample identified by ``ref``."""
+        ...
 
 
 @dataclass(frozen=True)
@@ -136,7 +145,7 @@ class ParaviewArtifactService:
 
     def __init__(
         self,
-        dataset_service: PlaidDatasetService,
+        dataset_service: DatasetServiceProtocol,
         cache_root: Path,
         *,
         export_version: str = EXPORT_VERSION,
@@ -286,7 +295,7 @@ def ensure_paraview_artifact(
     sample_ref: SampleRef,
     *,
     cache_dir: Path,
-    dataset_service: PlaidDatasetService,
+    dataset_service: DatasetServiceProtocol,
     force: bool = False,
 ) -> ParaviewArtifact:
     """Functional wrapper around :meth:`ParaviewArtifactService.ensure_artifact`."""

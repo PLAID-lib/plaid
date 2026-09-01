@@ -17,8 +17,7 @@ from dataclasses import dataclass, field
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from subprocess import Popen
-from typing import Any, cast
+from typing import Any, Protocol, cast, runtime_checkable
 from urllib.parse import urlparse
 
 from plaid.containers import Sample
@@ -42,6 +41,41 @@ POST_DATASET_ROUTES = {"/samples", "/problem_definition", "/infos"}
 PROCESS_UNSUPPORTED_PAYLOAD: dict[str, object] = {
     "error": "Endpoint /process is not supported by PLAID serve"
 }
+
+
+@runtime_checkable
+class ServeContextProtocol(Protocol):
+    """Interface required by the HTTP request handler."""
+
+    def resolve_dataset_uri(self, request: dict[str, object]) -> str:
+        """Resolve a dataset URI from a request payload."""
+        ...
+
+    def get_sample_objects(
+        self,
+        dataset_uri: str,
+        split: str | None,
+        sample_ids: list[int],
+    ) -> list[Sample]:
+        """Return samples selected by the request."""
+        ...
+
+
+@runtime_checkable
+class ServerLifecycleProtocol(Protocol):
+    """Interface required by the server/process lifecycle helper."""
+
+    def serve_forever(self) -> None:
+        """Serve requests until shutdown."""
+        ...
+
+    def shutdown(self) -> None:
+        """Stop serving requests."""
+        ...
+
+    def server_close(self) -> None:
+        """Close the server socket."""
+        ...
 
 
 def _parse_optional_request_payload(
@@ -425,7 +459,11 @@ class _Handler(BaseHTTPRequestHandler):
 class _ServeHTTPServer(ThreadingHTTPServer):
     """HTTP server holding shared serving context."""
 
-    def __init__(self, server_address: tuple[str, int], context: ServeContext):
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        context: ServeContextProtocol,
+    ) -> None:
         super().__init__(server_address, _Handler)
         self.context = context
 
@@ -456,8 +494,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _run_server_until_process_exits(
-    server: ThreadingHTTPServer,
-    process: Popen[Any],
+    server: ServerLifecycleProtocol,
+    process: object,
 ) -> None:
     """Run the HTTP server until an external process exits.
 

@@ -1,7 +1,7 @@
 """Common types used across the PLAID library."""
 
 import sys
-from typing import Union
+from typing import TYPE_CHECKING, Any, Union
 
 if sys.version_info >= (3, 11):
     from typing import TypeAlias
@@ -10,16 +10,26 @@ else:  # pragma: no cover
 
 
 import numpy as np
-from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 # scalars
 ScalarDType = Union[np.integer, np.floating, float]
 
 # arrays
-IArray = NDArray[np.integer]
-FArray = NDArray[np.floating]
+if TYPE_CHECKING:
+    IArray = NDArray[np.integer[Any]]
+    FArray = NDArray[np.floating[Any]]
+    BytesS1Array = NDArray[np.bytes_]
+else:
+    # Keep runtime aliases simple so beartype does not interpret generic NumPy
+    # scalar types as concrete dtypes.
+    IArray = np.ndarray
+    FArray = np.ndarray
+    BytesS1Array = np.ndarray
+
 Array: TypeAlias = IArray | FArray | np.integer | np.floating
-BytesS1Array = NDArray[np.dtype("S1")]
 
 # scalar or arrays
 IScalarOrArray = int | np.integer | IArray
