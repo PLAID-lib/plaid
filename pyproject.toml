@@ -28,6 +28,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Mathematics",
 ]
 dependencies = [
+  "beartype>=0.22,<1",
   "tqdm>=4.60,<5",
   "pyyaml>=6,<7",
   "pycgns>=6.3,<7",
