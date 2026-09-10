@@ -86,6 +86,7 @@ nav = [
       ] },
       { "storage" = [
         { "backend_api" = "api/storage/backend_api.md" },
+        { "callbacks" = "api/storage/callbacks.md" },
         { "reader" = "api/storage/reader.md" },
         { "registry" = "api/storage/registry.md" },
         { "writer" = "api/storage/writer.md" },
@@ -147,13 +148,13 @@ nav = [
   ] },
 ]
 
-[project.plugins.mkdocstrings.config]
+[project.plugins.mkdocstrings]
 default_handler = "python"
 
-[project.plugins.mkdocstrings.config.handlers.python]
+[project.plugins.mkdocstrings.handlers.python]
 paths = ["../src"]
 
-[project.plugins.mkdocstrings.config.handlers.python.options]
+[project.plugins.mkdocstrings.handlers.python.options]
 # --- structure / navigation ---
 group_by_category = true
 show_symbol_type_heading = true
