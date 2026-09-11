@@ -43,7 +43,7 @@ For feature requests:
 ### 3.1. Prerequisites
 
 - Git
-- Python (`>=3.11, <3.14`)
+- Python (`>=3.11, <3.15`)
 - Conda or uv package manager
 
 ### 3.2. Installation Steps
