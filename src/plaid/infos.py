@@ -104,7 +104,19 @@ class Infos(
 
     @classmethod
     def validate_authorized_only(cls, infos: dict[str, Any]) -> "Infos":
-        """Validate schema/authorized keys without enforcing required sections."""
+        """Validate schema/authorized keys without enforcing required sections.
+
+        Args:
+            infos: Raw infos mapping to validate.
+
+        Returns:
+            Validated :class:`Infos` instance; required sections that are
+                missing from ``infos`` are filled in with empty defaults.
+
+        Raises:
+            KeyError: If ``infos`` contains keys that are not authorized by the
+                schema.
+        """
         normalized = dict(infos)
         had_owner = "owner" in normalized
         had_license = "license" in normalized
@@ -142,17 +154,43 @@ class Infos(
 
     @classmethod
     def validate_required_only(cls, infos: dict[str, Any]) -> None:
-        """Validate entries required for persisted dataset infos."""
+        """Validate entries required for persisted dataset infos.
+
+        Args:
+            infos: Raw infos mapping to validate.
+
+        Raises:
+            ValueError: If a field required for persisted infos
+                (``num_samples`` or ``storage_backend``) is missing.
+        """
         cls.model_validate(infos).require_persisted()
 
     @classmethod
     def validate_persisted(cls, infos: dict[str, Any]) -> "Infos":
-        """Validate and return complete infos loaded from persisted storage."""
+        """Validate and return complete infos loaded from persisted storage.
+
+        Args:
+            infos: Raw infos mapping loaded from persisted storage.
+
+        Returns:
+            Validated :class:`Infos` instance.
+
+        Raises:
+            ValueError: If a field required for persisted infos
+                (``num_samples`` or ``storage_backend``) is missing.
+        """
         return cls.model_validate(infos).require_persisted()
 
     @classmethod
     def normalize_mapping(cls, infos: dict[str, Any]) -> dict[str, Any]:
-        """Validate and return a normalized deep copy of infos."""
+        """Validate and return a normalized deep copy of infos.
+
+        Args:
+            infos: Raw infos mapping to validate.
+
+        Returns:
+            Normalized deep copy of the infos with ``None`` values excluded.
+        """
         model = cls.model_validate(infos)
         return model.model_dump(exclude_none=True)
 

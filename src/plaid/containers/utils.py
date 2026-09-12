@@ -146,7 +146,17 @@ def get_number_of_samples(savedir: Union[str, Path]) -> int:
 
 
 def get_feature_details_from_path(path: str) -> dict[str, str]:
-    """Retrieve semantic details from a CGNS-style path."""
+    """Retrieve semantic details from a CGNS-style path.
+
+    Args:
+        path (str): The CGNS-style path to parse, e.g.
+            ``Base_2/Zone_1/GridCoordinates``.
+
+    Returns:
+        dict[str, str]: The parsed details, including ``type``, ``sub_type``,
+            and, depending on the path, ``base``, ``zone``, ``name``, and
+            ``element_type``.
+    """
     split_path = path.split("/")
     feat: dict[str, str] = {}
 

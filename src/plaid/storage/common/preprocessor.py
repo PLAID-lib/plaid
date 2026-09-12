@@ -22,7 +22,22 @@ logger = logging.getLogger(__name__)
 
 
 def infer_dtype(value: Any) -> dict[str, int | str]:
-    """Infer canonical dtype schema from a value."""
+    """Infer canonical dtype schema from a value.
+
+    Args:
+        value (Any): The value to inspect; either ``None`` or an array-like
+            (list, tuple, or numpy array).
+
+    Returns:
+        dict[str, int | str]: The inferred schema, with the canonical
+            ``dtype`` name (e.g. ``float32``, ``int32``, ``int64``,
+            ``string``, ``S1``, or ``null``) and the array ``ndim``.
+
+    Raises:
+        ValueError: If the value is a scalar (CGNS should return arrays) or
+            has an unrecognized dtype.
+        TypeError: If the value is of an unsupported type.
+    """
     if value is None:  # pragma: no cover
         return {"dtype": "null", "ndim": 0}
 

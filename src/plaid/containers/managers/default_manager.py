@@ -27,11 +27,30 @@ class FeaturesBackend(Protocol):
     def get_zone_names(
         self, base: Optional[str] = None, *, time: Optional[float] = None
     ) -> list[str]:
-        """Get all available zone names within a base at a given time."""
+        """Get all available zone names within a base at a given time.
+
+        Args:
+            base (str, optional): The name of the base to inspect. If not
+                provided, the default base is used.
+            time (float, optional): The time at which zones are looked up. If
+                not provided, the default time is used.
+
+        Returns:
+            list[str]: The names of the available zones.
+        """
         ...
 
     def has_base(self, base: str, time: Optional[float] = None) -> bool:
-        """Check if a base exists at a given time."""
+        """Check if a base exists at a given time.
+
+        Args:
+            base (str): The name of the base to look up.
+            time (float, optional): The time at which the base is looked up.
+                If not provided, the default time is used.
+
+        Returns:
+            bool: True if the base exists at the given time.
+        """
         ...
 
     def has_zone(
@@ -40,7 +59,18 @@ class FeaturesBackend(Protocol):
         base: Optional[str] = None,
         time: Optional[float] = None,
     ) -> bool:
-        """Check if a zone exists within a base at a given time."""
+        """Check if a zone exists within a base at a given time.
+
+        Args:
+            zone (str): The name of the zone to look up.
+            base (str, optional): The name of the base containing the zone. If
+                not provided, the default base is used.
+            time (float, optional): The time at which the zone is looked up.
+                If not provided, the default time is used.
+
+        Returns:
+            bool: True if the zone exists within the base at the given time.
+        """
         ...
 
 
