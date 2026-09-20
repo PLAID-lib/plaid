@@ -121,3 +121,26 @@ def test_select_initial_dataset_id_falls_back_to_existing_dataset() -> None:
     assert _select_initial_dataset_id("missing", ["a", "b"], ["org/repo"]) == "a"
     assert _select_initial_dataset_id(None, [], ["org/repo"]) == "org/repo"
     assert _select_initial_dataset_id(None, [], []) is None
+
+
+def test_build_server_accepts_empty_datasets_root(
+    empty_datasets_root: Path, tmp_path: Path
+) -> None:
+    """Building the UI must not require a trame protocol for an empty root."""
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services import (  # noqa: PLC0415
+        ParaviewArtifactService,
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    dataset_service = PlaidDatasetService(
+        ViewerConfig(datasets_root=empty_datasets_root)
+    )
+    artifact_service = ParaviewArtifactService(dataset_service, tmp_path / "cache")
+
+    server = build_server(dataset_service, artifact_service)
+
+    assert server.protocol is None
+    assert server.state.dataset_id is None
+    assert server.state.status == "Select a dataset to start."
