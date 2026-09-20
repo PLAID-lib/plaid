@@ -70,6 +70,18 @@ def _select_initial_dataset_id(
     return hub_dataset_ids[0] if hub_dataset_ids else None
 
 
+def _update_view(server: Any, ctrl: Any) -> None:
+    """Push the current VTK frame once the trame protocol is ready.
+
+    ``build_server`` populates the initial state before ``Server.start`` creates
+    the wslink protocol. Trame 4 raises ``ValueError`` when a remote-view update
+    is requested during that window, whereas the view already schedules its own
+    update on ``on_server_ready``.
+    """
+    if server.protocol:
+        ctrl.view_update()
+
+
 def _reroute_c_stderr() -> None:  # pragma: no cover - process fd manipulation
     """Permanently redirect the process's stderr file descriptor to /dev/null.
 
@@ -865,7 +877,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.sample_index = 0
         if status is not None:
             state.status = status
-        ctrl.view_update()
+        _update_view(server, ctrl)
 
     def _refresh_samples() -> None:
         if not state.dataset_id:
@@ -930,7 +942,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             state.time_count = 0
             state.time_index = 0
             state.current_time = None
-            ctrl.view_update()
+            _update_view(server, ctrl)
             state.status = "Streaming: click Next to fetch the first sample."
             return
 
@@ -1101,7 +1113,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             state.field_options = []
             state.field = None
             state.status = "Globals only: pick a Base to load the geometrical support."
-            ctrl.view_update()
+            _update_view(server, ctrl)
             return
 
         try:
@@ -1247,7 +1259,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         )
         if reset_camera:
             pipeline.reset_camera()
-        ctrl.view_update()
+        _update_view(server, ctrl)
 
     # --- State change handlers -------------------------------------------
 

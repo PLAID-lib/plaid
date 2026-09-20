@@ -10,14 +10,6 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture
-def empty_datasets_root(tmp_path: Path) -> Path:
-    """Return an existing but empty datasets directory."""
-    root = tmp_path / "datasets"
-    root.mkdir()
-    return root
-
-
 class _FakeCGNSReader:
     def __init__(self) -> None:
         self.file_name: str | None = None
@@ -121,3 +113,27 @@ def test_select_initial_dataset_id_falls_back_to_existing_dataset() -> None:
     assert _select_initial_dataset_id("missing", ["a", "b"], ["org/repo"]) == "a"
     assert _select_initial_dataset_id(None, [], ["org/repo"]) == "org/repo"
     assert _select_initial_dataset_id(None, [], []) is None
+
+
+def test_update_view_skips_push_before_protocol_is_ready() -> None:
+    from plaid.viewer.trame_app.server import _update_view  # noqa: PLC0415
+
+    calls: list[None] = []
+    server = types.SimpleNamespace(protocol=None)
+    ctrl = types.SimpleNamespace(view_update=lambda: calls.append(None))
+
+    _update_view(server, ctrl)
+
+    assert calls == []
+
+
+def test_update_view_pushes_frame_when_protocol_is_ready() -> None:
+    from plaid.viewer.trame_app.server import _update_view  # noqa: PLC0415
+
+    calls: list[None] = []
+    server = types.SimpleNamespace(protocol=object())
+    ctrl = types.SimpleNamespace(view_update=lambda: calls.append(None))
+
+    _update_view(server, ctrl)
+
+    assert calls == [None]
