@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from plaid.utils import cgns_vtk
+from plaid.utils.cgns_json import cgns_tree_from_json_payload, cgns_tree_to_json_payload
 
 
 class _FakeVtkArray:
@@ -750,3 +751,86 @@ def test_import_vtk_for_direct_cgns_uses_vtkmodules_fallback(monkeypatch):
         "vtkMultiBlockDataSet",
         fake_numpy_support,
     )
+
+
+def test_vtk_to_cgns_tree_round_trips_unstructured_data():
+    """VTK geometry and point/cell data survive the CGNS JSON round trip."""
+    vtk = pytest.importorskip("vtk")
+    from vtk.util import numpy_support
+
+    grid = vtk.vtkUnstructuredGrid()
+    points = vtk.vtkPoints()
+    points.SetData(
+        numpy_support.numpy_to_vtk(
+            np.asarray([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+            deep=True,
+        )
+    )
+    grid.SetPoints(points)
+    triangle = vtk.vtkTriangle()
+    for index, point_id in enumerate((0, 1, 2)):
+        triangle.GetPointIds().SetId(index, point_id)
+    grid.InsertNextCell(triangle.GetCellType(), triangle.GetPointIds())
+
+    pressure = numpy_support.numpy_to_vtk(np.asarray([1.0, 2.0, 3.0]), deep=True)
+    pressure.SetName("Pressure")
+    grid.GetPointData().AddArray(pressure)
+    density = numpy_support.numpy_to_vtk(np.asarray([4.0]), deep=True)
+    density.SetName("Density")
+    grid.GetCellData().AddArray(density)
+
+    tree = cgns_vtk.VtkToCGNSTree(grid)
+    restored_tree = cgns_tree_from_json_payload(cgns_tree_to_json_payload(tree))
+    restored = cgns_vtk.CGNSTreeToVtk(restored_tree)
+
+    assert restored.GetNumberOfPoints() == 3
+    assert restored.GetNumberOfCells() == 1
+    assert restored.GetPointData().GetArray("Pressure").GetTuple1(2) == 3.0
+    assert restored.GetCellData().GetArray("Density").GetTuple1(0) == 4.0
+
+
+def test_vtk_to_cgns_tree_preserves_structured_dimensions_and_field_data():
+    """Structured dimensions and global field arrays are converted correctly."""
+    vtk = pytest.importorskip("vtk")
+    from vtk.util import numpy_support
+
+    grid = vtk.vtkStructuredGrid()
+    grid.SetDimensions(2, 2, 1)
+    points = vtk.vtkPoints()
+    points.SetData(
+        numpy_support.numpy_to_vtk(
+            np.asarray(
+                [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]]
+            ),
+            deep=True,
+        )
+    )
+    grid.SetPoints(points)
+    field = numpy_support.numpy_to_vtk(np.asarray([7], dtype=np.int32), deep=True)
+    field.SetName("CaseId")
+    grid.GetFieldData().AddArray(field)
+
+    tree = cgns_vtk.VtkToCGNSTree(grid)
+
+    assert tree[2][0][0] == "Global"
+    assert tree[2][0][2][0][0] == "CaseId"
+    assert tree[2][1][2][0][1].tolist() == [[2, 2, 1]]
+
+
+def test_vtk_to_cgns_tree_converts_vertex_cells():
+    """Supported VTK vertex cells retain their connectivity."""
+    vtk = pytest.importorskip("vtk")
+
+    grid = vtk.vtkUnstructuredGrid()
+    points = vtk.vtkPoints()
+    points.InsertNextPoint(0.0, 0.0, 0.0)
+    grid.SetPoints(points)
+    vertex = vtk.vtkVertex()
+    vertex.GetPointIds().SetId(0, 0)
+    grid.InsertNextCell(vertex.GetCellType(), vertex.GetPointIds())
+
+    tree = cgns_vtk.VtkToCGNSTree(grid)
+
+    elements = tree[2][0][2][0][2][1]
+    connectivity = elements[2][1]
+    assert connectivity[1].tolist() == [1]
