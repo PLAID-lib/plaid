@@ -43,6 +43,11 @@ logger = logging.getLogger(__name__)
 
 CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
 
+def _decode(value):
+    if isinstance(value, str):
+        return value
+    else:
+        return value.tobytes().decode()
 
 class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
     """Represents a single sample. It contains data and information related to a single observation or measurement within a dataset.
@@ -1768,11 +1773,7 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         has_FlowSolution_with_location = False
         if len(solution_paths) > 0:
             for s_path in solution_paths:
-                val_location = (
-                    CGU.getValueByPath(zone_node, f"{s_path}/GridLocation")
-                    .tobytes()
-                    .decode()
-                )
+                val_location = _decode(CGU.getValueByPath(zone_node, f"{s_path}/GridLocation"))
                 if val_location == location:
                     has_FlowSolution_with_location = True
 
@@ -1783,11 +1784,7 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         assert len(solution_paths) > 0
 
         for s_path in solution_paths:
-            val_location = (
-                CGU.getValueByPath(zone_node, f"{s_path}/GridLocation")
-                .tobytes()
-                .decode()
-            )
+            val_location = _decode(CGU.getValueByPath(zone_node, f"{s_path}/GridLocation"))
 
             if val_location != location:
                 continue
