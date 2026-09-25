@@ -9,7 +9,6 @@ from plaid.utils.cgns_helper import compare_cgns_trees
 from plaid.utils.cgns_json import (
     _decode_node,
     _encode_node,
-    _normalize_cgns_string_value,
     cgns_tree_from_json,
     cgns_tree_from_json_payload,
     cgns_tree_to_json,
@@ -147,9 +146,20 @@ def test_cgns_tree_json_decodes_c1_scalar_strings_as_character_arrays(
 
 def test_cgns_tree_json_preserves_user_defined_scalar_strings() -> None:
     """Labels without a C1 datatype retain plain JSON string values."""
-    value = _normalize_cgns_string_value("metadata", "UserDefinedData_t")
+    payload = {
+        "format": "plaid-cgns-tree-json",
+        "version": 1,
+        "tree": {
+            "name": "Metadata",
+            "label": "UserDefinedData_t",
+            "value": "metadata",
+            "children": [],
+        },
+    }
 
-    assert value == "metadata"
+    decoded = cgns_tree_from_json_payload(payload)
+
+    assert decoded[1] == "metadata"
 
 
 def test_cgns_tree_json_rejects_invalid_payloads():

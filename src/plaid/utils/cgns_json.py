@@ -14,12 +14,53 @@ import json
 from typing import Any
 
 import numpy as np
-from CGNS.PAT import cgnstypes as CGT
 
 from .json_codec import decode_leaf_value, encode_leaf_value
 
 FORMAT_NAME = "plaid-cgns-tree-json"
 FORMAT_VERSION = 1
+
+_CHARACTER_VALUE_LABELS = frozenset(
+    {
+        "AdditionalFamilyName_t",
+        "AdditionalUnits_t",
+        "ArbitraryGridMotionType_t",
+        "ArbitraryGridMotion_t",
+        "AreaType_t",
+        "AverageInterfaceType_t",
+        "BCDataSet_t",
+        "BC_t",
+        "ChemicalKineticsModel_t",
+        "DataArray_t",
+        "DataClass_t",
+        "Descriptor_t",
+        "DimensionalUnits_t",
+        "EMConductivityModel_t",
+        "EMElectricFieldModel_t",
+        "EMMagneticFieldModel_t",
+        "FamilyBCDataSet_t",
+        "FamilyBC_t",
+        "FamilyName_t",
+        "GasModel_t",
+        "GeometryFile_t",
+        "GeometryFormat_t",
+        "GoverningEquations_t",
+        "GridConnectivity1to1_t",
+        "GridConnectivityType_t",
+        "GridConnectivity_t",
+        "GridLocation_t",
+        "RigidGridMotionType_t",
+        "RigidGridMotion_t",
+        "SimulationType_t",
+        "ThermalConductivityModel_t",
+        "ThermalRelaxationModel_t",
+        "TurbulenceClosure_t",
+        "TurbulenceModel_t",
+        "ViscosityModel_t",
+        "WallFunctionType_t",
+        "ZoneType_t",
+    }
+)
 
 
 def cgns_tree_to_json_payload(tree: list[Any]) -> dict[str, Any]:
@@ -137,8 +178,8 @@ def _normalize_cgns_string_value(value: Any, label: str) -> Any:
     Some language-neutral JSON producers represent CGNS ``C1`` node values as
     plain strings instead of the explicit ndarray schema emitted by PLAID.
     pyCGNS and downstream consumers such as Muscat expect these values as
-    NumPy byte-character arrays. The pyCGNS node metadata determines whether a
-    label permits ``C1`` data, preserving scalar strings for labels such as
+    NumPy byte-character arrays. Only standard CGNS labels that permit ``C1``
+    data are normalized, preserving scalar strings for labels such as
     ``UserDefinedData_t`` that do not declare character values.
 
     Args:
@@ -149,9 +190,6 @@ def _normalize_cgns_string_value(value: Any, label: str) -> Any:
         A ``|S1`` NumPy array for scalar strings on ``C1`` labels, otherwise the
         original value.
     """
-    node_type = CGT.types.get(label)
-    if not isinstance(value, str) or node_type is None:
-        return value
-    if "C1" not in node_type.datatype:
+    if not isinstance(value, str) or label not in _CHARACTER_VALUE_LABELS:
         return value
     return np.frombuffer(value.encode("ascii"), dtype="|S1").copy()
