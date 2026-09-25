@@ -9,6 +9,7 @@ from plaid.utils.cgns_helper import compare_cgns_trees
 from plaid.utils.cgns_json import (
     _decode_node,
     _encode_node,
+    _normalize_cgns_string_value,
     cgns_tree_from_json,
     cgns_tree_from_json_payload,
     cgns_tree_to_json,
@@ -110,6 +111,45 @@ def test_cgns_tree_json_payload_roundtrip_with_json_scalars():
     decoded = cgns_tree_from_json_payload(cgns_tree_to_json_payload(tree))
 
     assert decoded == tree
+
+
+@pytest.mark.parametrize(
+    ("name", "label", "value"),
+    [
+        ("ZoneType", "ZoneType_t", "Unstructured"),
+        ("GridLocation", "GridLocation_t", "Vertex"),
+        ("Description", "Descriptor_t", "mesh description"),
+    ],
+)
+def test_cgns_tree_json_decodes_c1_scalar_strings_as_character_arrays(
+    name: str,
+    label: str,
+    value: str,
+) -> None:
+    """Plain JSON strings for CGNS C1 nodes become pyCGNS character arrays."""
+    payload = {
+        "format": "plaid-cgns-tree-json",
+        "version": 1,
+        "tree": {
+            "name": name,
+            "label": label,
+            "value": value,
+            "children": [],
+        },
+    }
+
+    decoded = cgns_tree_from_json_payload(payload)
+
+    assert isinstance(decoded[1], np.ndarray)
+    assert decoded[1].dtype == np.dtype("|S1")
+    assert decoded[1].tobytes().decode("ascii") == value
+
+
+def test_cgns_tree_json_preserves_user_defined_scalar_strings() -> None:
+    """Labels without a C1 datatype retain plain JSON string values."""
+    value = _normalize_cgns_string_value("metadata", "UserDefinedData_t")
+
+    assert value == "metadata"
 
 
 def test_cgns_tree_json_rejects_invalid_payloads():

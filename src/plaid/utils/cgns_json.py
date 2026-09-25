@@ -13,6 +13,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import numpy as np
+from CGNS.PAT import cgnstypes as CGT
+
 from .json_codec import decode_leaf_value, encode_leaf_value
 
 FORMAT_NAME = "plaid-cgns-tree-json"
@@ -115,9 +118,40 @@ def _decode_node(node: dict[str, Any]) -> list[Any]:
             f"Children of encoded CGNS node {node['name']!r} must be a list"
         )
 
+    value = _normalize_cgns_string_value(
+        decode_leaf_value(node["value"]),
+        node["label"],
+    )
+
     return [
         node["name"],
-        decode_leaf_value(node["value"]),
+        value,
         [_decode_node(child) for child in node["children"]],
         node["label"],
     ]
+
+
+def _normalize_cgns_string_value(value: Any, label: str) -> Any:
+    """Convert scalar strings to pyCGNS character arrays when required.
+
+    Some language-neutral JSON producers represent CGNS ``C1`` node values as
+    plain strings instead of the explicit ndarray schema emitted by PLAID.
+    pyCGNS and downstream consumers such as Muscat expect these values as
+    NumPy byte-character arrays. The pyCGNS node metadata determines whether a
+    label permits ``C1`` data, preserving scalar strings for labels such as
+    ``UserDefinedData_t`` that do not declare character values.
+
+    Args:
+        value: Decoded JSON node value.
+        label: CGNS node label, for example ``ZoneType_t``.
+
+    Returns:
+        A ``|S1`` NumPy array for scalar strings on ``C1`` labels, otherwise the
+        original value.
+    """
+    node_type = CGT.types.get(label)
+    if not isinstance(value, str) or node_type is None:
+        return value
+    if "C1" not in node_type.datatype:
+        return value
+    return np.frombuffer(value.encode("ascii"), dtype="|S1").copy()
