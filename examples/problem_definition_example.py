@@ -95,16 +95,12 @@ print(
 
 # %%
 # Current API uses required `train_split` and `test_split` fields.
-# Note: each split field currently expects a dictionary with a single entry.
 print(f"{problem.train_split = }")
 print(f"{problem.test_split = }")
 
 # %%
-split_names = [next(iter(problem.train_split)), next(iter(problem.test_split))]
-split_indices = {
-    next(iter(problem.train_split)): next(iter(problem.train_split.values())),
-    next(iter(problem.test_split)): next(iter(problem.test_split.values())),
-}
+split_names = [*problem.train_split, *problem.test_split]
+split_indices = {**problem.train_split, **problem.test_split}
 print(f"{split_names = }")
 print(f"{split_indices = }")
 
