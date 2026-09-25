@@ -10,7 +10,28 @@ End‑to‑end workflows for creating, saving, and loading PLAID datasets with t
 
 - **`sample_constructor`** is a simple function that takes a single identifier (of any type) and returns a PLAID `Sample`. The identifier can be an integer, a file path, a string, a tuple — anything that makes sense for your data.
 - **`ids`** is a dictionary mapping split names to **sliceable sequences** of identifiers — anything with `__getitem__` and `__len__` (list, tuple, numpy array, …). PLAID handles iteration, generator creation, and parallel sharding internally.
-- **`save_to_disk`** writes a dataset locally; **`push_to_hub`** uploads it to Hugging Face Hub.
+- **`save_to_disk`** writes a dataset to `output_folder`; **`push_to_hub`** uploads it to Hugging Face Hub.
+
+!!! info "Remote (fsspec) write targets — zarr backend"
+    With the **zarr** backend, `output_folder` may be a plain local path **or any
+    [fsspec](https://filesystem-spec.readthedocs.io/) URL** (`memory://`,
+    `s3://bucket/prefix`, `gs://…`, …), in both sequential and parallel
+    (`num_proc > 1`) modes:
+
+    ```python
+    save_to_disk(
+        output_folder="s3://my-bucket/datasets/shapenetcar",
+        sample_constructor=sample_constructor,
+        ids=ids,
+        backend="zarr",
+        num_proc=N_PROC,
+    )
+    ```
+
+    Remote targets require the matching fsspec backend to be installed
+    (`s3fs` for `s3://`, `gcsfs` for `gs://`, …); a missing backend raises an
+    `ImportError` carrying fsspec's own install hint. The other backends
+    (`cgns`, `hf_datasets`) currently expect a local `output_folder`.
 - **`init_from_disk`** / **`download_from_hub`** / **`init_streaming_from_hub`** load datasets back into PLAID.
 - Backend converters turn raw backend samples into PLAID `Sample` objects.
 
