@@ -792,80 +792,70 @@ def check_dataset(
                 split_dict = getattr(pb_def, split_dict_name)
                 if split_dict is None:
                     continue
-                # split_dict must have only one elements
-                if len(split_dict) > 1:
-                    report.add(
-                        "error",
-                        "PB_DEF_SPLIT",
-                        f"problem_definitions/{pb_name}",
-                        f"{split_dict_name} has more than 1 split: {list(split_dict.keys())}",
-                    )
-                    continue
-                split_name = next(iter(split_dict.keys()))
-                split_ids = next(iter(split_dict.values()))
-                if split_name not in dataset_splits:
-                    report.add(
-                        "error",
-                        "PB_DEF_UNKNOWN_SPLIT",
-                        f"problem_definitions/{pb_name}",
-                        f"Unknown split in {split_dict_name}: {split_name}",
-                    )
-                    continue
-                split_len = len(datasetdict[split_name])
-                ids_list = _resolve_problem_split_indices(split_ids, split_len)
-                if len(ids_list) != len(set(ids_list)):
-                    report.add(
-                        "error",
-                        "PB_DEF_DUPLICATE_INDICES",
-                        f"problem_definitions/{pb_name}",
-                        f"Duplicated indices in {split_dict_name}",
-                    )
-                bad = [i for i in ids_list if i < 0 or i >= split_len]
-                if bad:
-                    report.add(
-                        "error",
-                        "PB_DEF_OUT_OF_RANGE_INDICES",
-                        f"problem_definitions/{pb_name}",
-                        f"Out-of-range indices in {split_dict_name} (first 10): {bad[:10]}",
-                    )
-                    continue
+                for split_name, split_ids in split_dict.items():
+                    if split_name not in dataset_splits:
+                        report.add(
+                            "error",
+                            "PB_DEF_UNKNOWN_SPLIT",
+                            f"problem_definitions/{pb_name}/{split_dict_name}/{split_name}",
+                            f"Unknown split in {split_dict_name}: {split_name}",
+                        )
+                        continue
+                    split_len = len(datasetdict[split_name])
+                    ids_list = _resolve_problem_split_indices(split_ids, split_len)
+                    if len(ids_list) != len(set(ids_list)):
+                        report.add(
+                            "error",
+                            "PB_DEF_DUPLICATE_INDICES",
+                            f"problem_definitions/{pb_name}/{split_dict_name}/{split_name}",
+                            f"Duplicated indices in {split_dict_name}",
+                        )
+                    bad = [i for i in ids_list if i < 0 or i >= split_len]
+                    if bad:
+                        report.add(
+                            "error",
+                            "PB_DEF_OUT_OF_RANGE_INDICES",
+                            f"problem_definitions/{pb_name}/{split_dict_name}/{split_name}",
+                            f"Out-of-range indices in {split_dict_name} (first 10): {bad[:10]}",
+                        )
+                        continue
 
-                if ids_list:
-                    _check_problem_definition_first_sample_feature_keys(
-                        pb_name=pb_name,
-                        split_dict_name=split_dict_name,
-                        split_name=split_name,
-                        idx=ids_list[0],
-                        dataset=datasetdict[split_name],
-                        converter=converterdict[split_name],
-                        input_features=list(pb_def.input_features),
-                        output_features=list(pb_def.output_features),
-                        report=report,
-                    )
+                    if ids_list:
+                        _check_problem_definition_first_sample_feature_keys(
+                            pb_name=pb_name,
+                            split_dict_name=split_dict_name,
+                            split_name=split_name,
+                            idx=ids_list[0],
+                            dataset=datasetdict[split_name],
+                            converter=converterdict[split_name],
+                            input_features=list(pb_def.input_features),
+                            output_features=list(pb_def.output_features),
+                            report=report,
+                        )
 
-                if split_dict_name == "train_split":
-                    features = list(pb_def.input_features) + list(
-                        pb_def.output_features
-                    )
-                else:
-                    features = list(pb_def.input_features)
+                    if split_dict_name == "train_split":
+                        features = list(pb_def.input_features) + list(
+                            pb_def.output_features
+                        )
+                    else:
+                        features = list(pb_def.input_features)
 
-                for idx in _progress(
-                    ids_list,
-                    desc=f"Checking problem {pb_name} {split_dict_name}",
-                    show_progress=show_progress,
-                    total=len(ids_list),
-                ):
-                    _check_problem_definition_sample_features(
-                        pb_name=pb_name,
-                        split_dict_name=split_dict_name,
-                        split_name=split_name,
-                        idx=idx,
-                        dataset=datasetdict[split_name],
-                        converter=converterdict[split_name],
-                        features=features,
-                        report=report,
-                    )
+                    for idx in _progress(
+                        ids_list,
+                        desc=f"Checking problem {pb_name} {split_dict_name}/{split_name}",
+                        show_progress=show_progress,
+                        total=len(ids_list),
+                    ):
+                        _check_problem_definition_sample_features(
+                            pb_name=pb_name,
+                            split_dict_name=split_dict_name,
+                            split_name=split_name,
+                            idx=idx,
+                            dataset=datasetdict[split_name],
+                            converter=converterdict[split_name],
+                            features=features,
+                            report=report,
+                        )
 
     return report
 

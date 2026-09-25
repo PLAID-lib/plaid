@@ -868,7 +868,6 @@ def test_check_dataset_problem_definition_validation_paths(
 
     assert any(msg.code == "PB_DEF_UNKNOWN_INPUT" for msg in report_pb.messages)
     assert any(msg.code == "PB_DEF_UNKNOWN_OUTPUT" for msg in report_pb.messages)
-    assert any(msg.code == "PB_DEF_SPLIT" for msg in report_pb.messages)
     assert any(msg.code == "PB_DEF_UNKNOWN_SPLIT" for msg in report_pb.messages)
     assert any(msg.code == "PB_DEF_DUPLICATE_INDICES" for msg in report_pb.messages)
     assert any(msg.code == "PB_DEF_OUT_OF_RANGE_INDICES" for msg in report_pb.messages)
@@ -884,15 +883,15 @@ def test_check_dataset_problem_definition_instantiates_filtered_features(
     monkeypatch.setattr(
         plaidcheck,
         "load_infos_from_disk",
-        lambda path: _infos({"train": 1, "test": 1}),  # noqa: ARG005
+        lambda path: _infos({"train": 1, "train_extra": 1, "test": 1}),  # noqa: ARG005
     )
     monkeypatch.setattr(
         plaidcheck,
         "load_metadata_from_disk",
         lambda path: (  # noqa: ARG005
-            {"train": {}, "test": {}},
+            {"train": {}, "train_extra": {}, "test": {}},
             {"Input": {}, "Output": {}},
-            {"train": {}, "test": {}},
+            {"train": {}, "train_extra": {}, "test": {}},
             None,
         ),
     )
@@ -911,19 +910,34 @@ def test_check_dataset_problem_definition_instantiates_filtered_features(
             )
         ]
     )
+    train_extra_converter = _FakeConverter(
+        [
+            _FakeSampleForCheck(
+                features={"Input": np.array([3.0]), "Output": np.array([np.nan])}
+            )
+        ]
+    )
     monkeypatch.setattr(
         plaidcheck,
         "init_from_disk",
         lambda path: (  # noqa: ARG005
-            {"train": _FakeDataset(1), "test": _FakeDataset(1)},
-            {"train": train_converter, "test": test_converter},
+            {
+                "train": _FakeDataset(1),
+                "train_extra": _FakeDataset(1),
+                "test": _FakeDataset(1),
+            },
+            {
+                "train": train_converter,
+                "train_extra": train_extra_converter,
+                "test": test_converter,
+            },
         ),
     )
 
     class _PBDef:
         input_features = ["Input"]
         output_features = ["Output"]
-        train_split = {"train": [0]}
+        train_split = {"train": [0], "train_extra": [0]}
         test_split = {"test": [0]}
 
     monkeypatch.setattr(
@@ -934,8 +948,15 @@ def test_check_dataset_problem_definition_instantiates_filtered_features(
 
     report = check_dataset(dataset, show_progress=False)
 
-    assert train_converter.feature_requests[-1] == ["Input", "Output"]
-    assert test_converter.feature_requests[-1] == ["Input"]
+    assert [request for request in train_converter.feature_requests if request] == [
+        ["Input", "Output"]
+    ]
+    assert [
+        request for request in train_extra_converter.feature_requests if request
+    ] == [["Input", "Output"]]
+    assert [request for request in test_converter.feature_requests if request] == [
+        ["Input"]
+    ]
     # The pb-def loop no longer re-checks numeric content; it only verifies that
     # the requested feature subset can be converted and read back.
     assert not any(
