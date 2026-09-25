@@ -52,7 +52,7 @@ def test_hf_backend_download_from_hub_delegates(monkeypatch):
         call["split_ids"] = split_ids
         call["features"] = features
         call["overwrite"] = overwrite
-        return "downloaded_path"
+        return Path("downloaded_path")
 
     monkeypatch.setattr(
         hf_datasets, "download_datasetdict_from_hub", fake_download_datasetdict_from_hub
@@ -66,7 +66,7 @@ def test_hf_backend_download_from_hub_delegates(monkeypatch):
         overwrite=True,
     )
 
-    assert result == "downloaded_path"
+    assert result == Path("downloaded_path")
     assert call == {
         "repo_id": "dummy/repo",
         "local_dir": "/tmp/local",
