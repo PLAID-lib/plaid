@@ -39,13 +39,13 @@ def save_infos_to_disk(path: Union[str, Path], infos: Infos) -> None:
 
 def save_problem_definitions_to_disk(
     path: Union[str, Path],
-    pb_defs: dict[str, ProblemDefinition],
+    pb_defs: object,
 ) -> None:
     """Save ProblemDefinitions to disk.
 
     Args:
         path (Union[str, Path]): The directory path for saving.
-        pb_defs (dict[str, ProblemDefinition]): Mapping from problem definition identifiers to definitions.
+        pb_defs: Mapping from problem definition identifiers to definitions.
     """
     if isinstance(pb_defs, ProblemDefinition):
         raise TypeError(
