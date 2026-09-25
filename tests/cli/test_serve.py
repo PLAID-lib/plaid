@@ -12,6 +12,7 @@ import pytest
 
 from plaid.cli import serve
 from plaid.cli.serve import ServeContext, _ServeHTTPServer
+from plaid.containers import Sample
 
 
 @pytest.fixture()
@@ -379,11 +380,12 @@ def test_serve_context_get_store_loads_and_caches_dataset(monkeypatch, tmp_path)
     dataset = tmp_path / "dataset"
     dataset.mkdir()
     calls = []
+    sample = Sample()
 
     def fake_init_from_disk(path):
         calls.append(path)
         return {"train": ["raw"]}, {
-            "train": SimpleNamespace(to_plaid=lambda data, i: (data[i], i))
+            "train": SimpleNamespace(to_plaid=lambda _data, _i: sample)
         }
 
     monkeypatch.setattr(serve, "init_from_disk", fake_init_from_disk)
@@ -394,7 +396,7 @@ def test_serve_context_get_store_loads_and_caches_dataset(monkeypatch, tmp_path)
 
     assert first is second
     assert calls == [str(dataset)]
-    assert context.get_sample_objects(str(dataset), "train", [0]) == [("raw", 0)]
+    assert context.get_sample_objects(str(dataset), "train", [0]) == [sample]
 
 
 def test_serve_context_get_store_rejects_missing_dataset(tmp_path):
