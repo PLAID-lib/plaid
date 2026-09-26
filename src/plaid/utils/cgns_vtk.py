@@ -96,6 +96,27 @@ VtkNumberToCGNSNumber = {
     vtkNumber: cgnsNumber for cgnsNumber, vtkNumber in CGNSNumberToVtkNumber.items()
 }
 
+CGNSNumberDimension = {
+    2: 0,
+    3: 1,
+    4: 1,
+    5: 2,
+    6: 2,
+    7: 2,
+    8: 2,
+    9: 2,
+    10: 3,
+    11: 3,
+    12: 3,
+    14: 3,
+    15: 3,
+    16: 3,
+    17: 3,
+    18: 3,
+    19: 3,
+    21: 3,
+}
+
 
 def _vtk_cell_to_cgns(cell_type: int, points: np.ndarray) -> tuple[int, np.ndarray]:
     """Convert one VTK cell type and connectivity to CGNS numbering."""
@@ -121,22 +142,62 @@ def _vtk_numpy_array(array, numpy_support) -> np.ndarray:
     return np.asarray(numpy_support.vtk_to_numpy(array))
 
 
-def _vtk_attributes_to_nodes(attributes, numpy_support) -> list[list]:
-    """Convert VTK data attributes to CGNS DataArray_t nodes."""
+def _vtk_array_is_binary_tag(array, numberOfTuples: int, numpy_support) -> bool:
+    """Return whether a VTK array follows the binary character tag contract."""
+    if array is None or array.GetNumberOfComponents() != 1:
+        return False
+    if array.GetDataTypeAsString() not in ["char", "signed char", "unsigned char"]:
+        return False
+    values = _vtk_numpy_array(array, numpy_support).ravel(order="C")
+    if values.size != numberOfTuples:
+        return False
+    return bool(np.all((values == 0) | (values == 1)))
+
+
+def _vtk_attributes_to_nodes(
+    attributes,
+    numpy_support,
+    numberOfTuples: Optional[int] = None,
+) -> list[list]:
+    """Convert non-tag VTK data attributes to CGNS DataArray_t nodes."""
     nodes = []
     for index in range(attributes.GetNumberOfArrays()):
         array = attributes.GetArray(index)
         if array is None:
+            continue
+        if numberOfTuples is not None and _vtk_array_is_binary_tag(
+            array, numberOfTuples, numpy_support
+        ):
             continue
         name = array.GetName() or f"Array{index}"
         nodes.append([name, _vtk_numpy_array(array, numpy_support), [], "DataArray_t"])
     return nodes
 
 
+def _vtk_tag_masks(
+    attributes, numberOfTuples: int, numpy_support
+) -> list[tuple[str, np.ndarray]]:
+    """Return names and masks for binary character arrays in VTK attributes."""
+    tags = []
+    for index in range(attributes.GetNumberOfArrays()):
+        array = attributes.GetArray(index)
+        if not _vtk_array_is_binary_tag(array, numberOfTuples, numpy_support):
+            continue
+        name = array.GetName() or f"Array{index}"
+        mask = _vtk_numpy_array(array, numpy_support).ravel(order="C").astype(bool)
+        tags.append((name, mask))
+    return tags
+
+
 def _vtk_flow_solution(data_object, attributes_name: str, location: str, numpy_support):
     """Build a CGNS flow solution node from point or cell data."""
     attributes = getattr(data_object, attributes_name)()
-    arrays = _vtk_attributes_to_nodes(attributes, numpy_support)
+    numberOfTuples = (
+        data_object.GetNumberOfPoints()
+        if location == "Vertex"
+        else data_object.GetNumberOfCells()
+    )
+    arrays = _vtk_attributes_to_nodes(attributes, numpy_support, numberOfTuples)
     if not arrays:
         return None
     return [
@@ -169,9 +230,10 @@ def _vtk_coordinates(data_object, numpy_support, points_in_2D=False) -> list[lis
     return coordinate_nodes
 
 
-def _vtk_unstructured_elements(data_object) -> list[list]:
+def _vtk_unstructured_elements(data_object, returnCellMapping: bool = False):
     """Convert VTK unstructured cells into CGNS Elements_t nodes."""
-    grouped: dict[int, list[np.ndarray]] = {}
+    grouped: dict[int, list[tuple[int, np.ndarray]]] = {}
+    cellDimensions = np.empty(data_object.GetNumberOfCells(), dtype=np.int8)
     for cell_id in range(data_object.GetNumberOfCells()):
         cell_type = int(data_object.GetCellType(cell_id))
         cell_points = np.asarray(
@@ -182,13 +244,19 @@ def _vtk_unstructured_elements(data_object) -> list[list]:
             dtype=np.int64,
         )
         cgns_type, cell_points = _vtk_cell_to_cgns(cell_type, cell_points)
-        grouped.setdefault(cgns_type, []).append(cell_points + 1)
+        grouped.setdefault(cgns_type, []).append((cell_id, cell_points + 1))
+        cellDimensions[cell_id] = CGNSNumberDimension[cgns_type]
 
     elements = []
+    vtkToCgnsCell = np.empty(data_object.GetNumberOfCells(), dtype=np.int64)
     start = 1
-    for cgns_type, cells in grouped.items():
-        connectivity = np.concatenate(cells).astype(np.int64, copy=False)
-        end = start + len(cells) - 1
+    for cgns_type, indexedCells in grouped.items():
+        connectivity = np.concatenate([cell for _, cell in indexedCells]).astype(
+            np.int64, copy=False
+        )
+        end = start + len(indexedCells) - 1
+        for localIndex, (cellId, _) in enumerate(indexedCells):
+            vtkToCgnsCell[cellId] = start + localIndex
         elements.append(
             [
                 f"Elements_{cgns_type}",
@@ -196,7 +264,7 @@ def _vtk_unstructured_elements(data_object) -> list[list]:
                 [
                     [
                         "ElementRange",
-                        np.asarray([start, end], dtype=np.int64),
+                        np.asarray([start, end], dtype=np.int32),
                         [],
                         "IndexRange_t",
                     ],
@@ -211,12 +279,113 @@ def _vtk_unstructured_elements(data_object) -> list[list]:
             ]
         )
         start = end + 1
+    if returnCellMapping:
+        return elements, vtkToCgnsCell, cellDimensions
     return elements
 
 
-def _vtk_dataset_to_zone(data_object, name: str, numpy_support, points_in_2D=False) -> list:
+def _cgns_character_value(value: str) -> np.ndarray:
+    """Encode a CGNS character value as a one-byte NumPy array."""
+    return np.asarray(list(value), dtype="|S1")
+
+
+def _vtk_point_list(values: np.ndarray) -> list:
+    """Build a CGNS PointList node from one-based indices."""
+    pointList = np.asarray(values, dtype=np.int32).reshape((1, -1))
+    return ["PointList", pointList, [], "IndexArray_t"]
+
+
+def _vtk_bc_node(name: str, cgnsIds: np.ndarray, location: str) -> list:
+    """Build a CGNS BC_t node for a point or boundary-cell tag."""
+    return [
+        name,
+        _cgns_character_value("Null"),
+        [
+            _vtk_point_list(cgnsIds),
+            [
+                "GridLocation",
+                _cgns_character_value(location),
+                [],
+                "GridLocation_t",
+            ],
+        ],
+        "BC_t",
+    ]
+
+
+def _vtk_zone_subregion_node(
+    name: str, cgnsIds: np.ndarray, location: str, topologicalDim: int
+) -> list:
+    """Build a CGNS ZoneSubRegion_t node for an element tag."""
+    return [
+        f"{name}_ZSR",
+        np.asarray([[1, max(topologicalDim, 1)]], dtype=np.int32),
+        [
+            _vtk_point_list(cgnsIds),
+            [
+                "GridLocation",
+                _cgns_character_value(location),
+                [],
+                "GridLocation_t",
+            ],
+            [
+                "FamilyName",
+                _cgns_character_value(name),
+                [],
+                "FamilyName_t",
+            ],
+        ],
+        "ZoneSubRegion_t",
+    ]
+
+
+def _vtk_dataset_tag_nodes(
+    data_object,
+    numpy_support,
+    vtkToCgnsCell: np.ndarray,
+    cellDimensions: np.ndarray,
+) -> list[list]:
+    """Convert VTK binary character arrays into CGNS tag nodes."""
+    children = []
+    boundaryConditions = []
+    for name, mask in _vtk_tag_masks(
+        data_object.GetPointData(), data_object.GetNumberOfPoints(), numpy_support
+    ):
+        boundaryConditions.append(
+            _vtk_bc_node(name, np.flatnonzero(mask) + 1, "Vertex")
+        )
+
+    topologicalDim = int(cellDimensions.max()) if cellDimensions.size else 0
+    for name, mask in _vtk_tag_masks(
+        data_object.GetCellData(), data_object.GetNumberOfCells(), numpy_support
+    ):
+        selected = np.flatnonzero(mask)
+        selectedDimensions = cellDimensions[selected]
+        cgnsIds = vtkToCgnsCell[selected]
+        isBoundary = selected.size > 0 and np.all(
+            selectedDimensions == topologicalDim - 1
+        )
+        if isBoundary and topologicalDim == 3:
+            boundaryConditions.append(_vtk_bc_node(name, cgnsIds, "FaceCenter"))
+        elif isBoundary and topologicalDim == 2:
+            boundaryConditions.append(_vtk_bc_node(name, cgnsIds, "EdgeCenter"))
+        else:
+            children.append(
+                _vtk_zone_subregion_node(name, cgnsIds, "CellCenter", topologicalDim)
+            )
+
+    if boundaryConditions:
+        children.append(["ZoneBC", None, boundaryConditions, "ZoneBC_t"])
+    return children
+
+
+def _vtk_dataset_to_zone(
+    data_object, name: str, numpy_support, points_in_2D=False
+) -> list:
     """Convert one VTK dataset into a CGNS Zone_t node."""
-    coordinates = _vtk_coordinates(data_object, numpy_support, points_in_2D=points_in_2D)
+    coordinates = _vtk_coordinates(
+        data_object, numpy_support, points_in_2D=points_in_2D
+    )
     children = [
         [
             "GridCoordinates",
@@ -234,13 +403,21 @@ def _vtk_dataset_to_zone(data_object, name: str, numpy_support, points_in_2D=Fal
             [[dimensions[0], dimensions[1], dimensions[2]]], dtype=np.int32
         )
         zone_type = "Structured"
+        vtkToCgnsCell = np.arange(1, data_object.GetNumberOfCells() + 1, dtype=np.int64)
+        topologicalDim = max(int(np.count_nonzero(dimensions > 1)), 1)
+        cellDimensions = np.full(
+            data_object.GetNumberOfCells(), topologicalDim, dtype=np.int8
+        )
     else:
         zone_size = np.asarray(
             [[data_object.GetNumberOfPoints(), data_object.GetNumberOfCells(), 0]],
             dtype=np.int32,
         )
         zone_type = "Unstructured"
-        children.extend(_vtk_unstructured_elements(data_object))
+        elements, vtkToCgnsCell, cellDimensions = _vtk_unstructured_elements(
+            data_object, returnCellMapping=True
+        )
+        children.extend(elements)
 
     children.append(["ZoneType", zone_type, [], "ZoneType_t"])
     point_solution = _vtk_flow_solution(
@@ -253,6 +430,11 @@ def _vtk_dataset_to_zone(data_object, name: str, numpy_support, points_in_2D=Fal
         children.append(point_solution)
     if cell_solution is not None:
         children.append(cell_solution)
+    children.extend(
+        _vtk_dataset_tag_nodes(
+            data_object, numpy_support, vtkToCgnsCell, cellDimensions
+        )
+    )
     return [name, zone_size, children, "Zone_t"]
 
 
@@ -281,6 +463,7 @@ def VtkToCGNSTree(data_object, points_in_2D=False) -> list:
 
     Args:
         data_object: VTK dataset or multiblock dataset.
+        points_in_2D: If true, retain a zero-valued third coordinate array.
 
     Returns:
         A pyCGNS-style tree containing geometry, topology, and data arrays.
@@ -301,7 +484,7 @@ def VtkToCGNSTree(data_object, points_in_2D=False) -> list:
         raise TypeError("VtkToCGNSTree expects a VTK dataset or multiblock dataset")
 
     zones = [
-        _vtk_dataset_to_zone(dataset, name, numpy_support)
+        _vtk_dataset_to_zone(dataset, name, numpy_support, points_in_2D=points_in_2D)
         for name, dataset in _vtk_dataset_blocks(data_object)
     ]
     if not zones:
@@ -469,6 +652,141 @@ def _cgns_add_flow_solutions_to_vtk(zoneNode: list, vtkObject, numpy_support) ->
             )
 
 
+def _cgns_index_values(node: list, dimensions: tuple[int, ...]) -> np.ndarray:
+    """Read one-based CGNS index arrays and ranges from a node."""
+    values = []
+    for child in node[2]:
+        if child[1] is None:
+            continue
+        if child[3] == "IndexArray_t":
+            values.extend(np.asarray(child[1], dtype=np.int64).ravel(order="F"))
+        elif child[3] == "IndexRange_t":
+            indexRange = np.asarray(child[1], dtype=np.int64)
+            if indexRange.ndim == 1 and indexRange.size == 2:
+                start, end = indexRange
+                step = 1 if end >= start else -1
+                values.extend(np.arange(start, end + step, step, dtype=np.int64))
+            elif indexRange.ndim == 2 and indexRange.shape[1] == 2:
+                axes = []
+                for start, end in indexRange:
+                    step = 1 if end >= start else -1
+                    axes.append(np.arange(start, end + step, step, dtype=np.int64))
+                grids = np.meshgrid(*axes, indexing="ij")
+                zeroBased = tuple(grid.ravel(order="C") - 1 for grid in grids)
+                activeDimensions = tuple(dimensions[: len(zeroBased)])
+                linear = np.ravel_multi_index(zeroBased, activeDimensions, order="C")
+                values.extend(linear + 1)
+    return np.asarray(values, dtype=np.int64)
+
+
+def _cgns_tag_location(node: list) -> str:
+    """Return the CGNS grid location of a tag node."""
+    for child in node[2]:
+        if child[3] == "GridLocation_t":
+            return _cgns_value_as_string(child) or "Vertex"
+    return "Vertex"
+
+
+def _cgns_element_range(elementsNode: list, numberOfCells: int) -> np.ndarray:
+    """Return CGNS element numbers for cells contained in an Elements_t node."""
+    for child in elementsNode[2]:
+        if child[3] == "IndexRange_t" and child[1] is not None:
+            values = np.asarray(child[1], dtype=np.int64).ravel(order="C")
+            if values.size >= 2:
+                return np.arange(values[0], values[1] + 1, dtype=np.int64)
+    return np.arange(1, numberOfCells + 1, dtype=np.int64)
+
+
+def _cgns_add_tag_array(attributes, name: str, mask: np.ndarray, numpy_support) -> None:
+    """Add or merge a binary signed-character tag array in VTK attributes."""
+    existing = attributes.GetArray(name) if hasattr(attributes, "GetArray") else None
+    if existing is not None:
+        existingMask = np.asarray(numpy_support.vtk_to_numpy(existing)).ravel() != 0
+        mask = existingMask | mask
+        attributes.RemoveArray(name)
+    vtkArray = numpy_support.numpy_to_vtk(np.asarray(mask, dtype=np.int8), deep=True)
+    vtkArray.SetName(name)
+    attributes.AddArray(vtkArray)
+
+
+def _cgns_tag_name(node: list) -> str:
+    """Return a CGNS tag name, preferring a FamilyName_t child."""
+    for child in node[2]:
+        if child[3] == "FamilyName_t":
+            name = _cgns_value_as_string(child)
+            if name:
+                return name
+    if node[3] == "ZoneSubRegion_t" and node[0].endswith("_ZSR"):
+        return node[0][:-4]
+    return node[0]
+
+
+def _cgns_add_tags_to_vtk(
+    zoneNode: list,
+    vtkObject,
+    numpy_support,
+    cgnsElementToVtkCell: Optional[dict[int, int]] = None,
+    vtkCellDimensions: Optional[np.ndarray] = None,
+) -> None:
+    """Transfer CGNS boundary, subregion, and family tags to VTK arrays."""
+    numberOfPoints = vtkObject.GetNumberOfPoints()
+    numberOfCells = vtkObject.GetNumberOfCells()
+    coordinateShape = ()
+    coordinateNodes = _cgns_children_by_label(zoneNode, "GridCoordinates_t")
+    if coordinateNodes:
+        xNode = _cgns_child_by_name(coordinateNodes[0], "CoordinateX")
+        if xNode is not None and xNode[1] is not None:
+            coordinateShape = tuple(np.asarray(xNode[1]).shape)
+
+    if cgnsElementToVtkCell is None:
+        cgnsElementToVtkCell = {index + 1: index for index in range(numberOfCells)}
+    if vtkCellDimensions is None:
+        vtkCellDimensions = np.zeros(numberOfCells, dtype=np.int8)
+
+    def addTag(node: list) -> None:
+        location = _cgns_tag_location(node)
+        name = _cgns_tag_name(node)
+        dimensions = coordinateShape if location == "Vertex" else (numberOfCells,)
+        cgnsIds = _cgns_index_values(node, dimensions)
+        if location == "Vertex":
+            mask = np.zeros(numberOfPoints, dtype=bool)
+            vtkIds = cgnsIds - 1
+            if np.any((vtkIds < 0) | (vtkIds >= numberOfPoints)):
+                raise ValueError(f"CGNS point tag '{name}' contains invalid indices")
+            mask[vtkIds] = True
+            _cgns_add_tag_array(vtkObject.GetPointData(), name, mask, numpy_support)
+        elif location in ["CellCenter", "FaceCenter", "EdgeCenter"]:
+            mask = np.zeros(numberOfCells, dtype=bool)
+            try:
+                vtkIds = np.asarray(
+                    [cgnsElementToVtkCell[int(value)] for value in cgnsIds],
+                    dtype=np.int64,
+                )
+            except KeyError as error:
+                raise ValueError(
+                    f"CGNS cell tag '{name}' contains invalid element number {error.args[0]}"
+                ) from error
+            mask[vtkIds] = True
+            _cgns_add_tag_array(vtkObject.GetCellData(), name, mask, numpy_support)
+
+    for zoneBC in _cgns_children_by_label(zoneNode, "ZoneBC_t"):
+        for boundaryCondition in _cgns_children_by_label(zoneBC, "BC_t"):
+            addTag(boundaryCondition)
+    for subregion in _cgns_children_by_label(zoneNode, "ZoneSubRegion_t"):
+        addTag(subregion)
+
+    topologicalDim = int(vtkCellDimensions.max()) if vtkCellDimensions.size else 0
+    topologicalMask = vtkCellDimensions == topologicalDim
+    for child in zoneNode[2]:
+        if child[3] not in ["FamilyName_t", "AdditionalFamilyName_t"]:
+            continue
+        name = _cgns_value_as_string(child)
+        if name:
+            _cgns_add_tag_array(
+                vtkObject.GetCellData(), name, topologicalMask, numpy_support
+            )
+
+
 def _cgns_element_connectivity_node(elementsNode: list) -> Optional[list]:
     """Return the ElementConnectivity child from a CGNS Elements_t node."""
     child = _cgns_child_by_name(elementsNode, "ElementConnectivity")
@@ -481,16 +799,44 @@ def _cgns_element_connectivity_node(elementsNode: list) -> Optional[list]:
 
 
 def _cgns_insert_cells_from_elements_node(
-    elementsNode: list, cellTypes: list, offsets: list, connectivity: list
+    elementsNode: list,
+    cellTypes: list,
+    offsets: list,
+    connectivity: list,
+    cgnsElementToVtkCell: Optional[dict[int, int]] = None,
+    vtkCellDimensions: Optional[list[int]] = None,
 ) -> None:
-    """Append VTK cell type/connectivity data from one CGNS Elements_t node."""
+    """Append VTK cell data and optional CGNS element-number mappings."""
     cgnsElementType = int(np.asarray(elementsNode[1]).ravel()[0])
     connectivityNode = _cgns_element_connectivity_node(elementsNode)
     if connectivityNode is None or connectivityNode[1] is None:
         return
     cgnsConnectivity = np.asarray(connectivityNode[1], dtype=np.int64).ravel(order="C")
 
-    if cgnsElementType == 20:  # MIXED
+    def registerCell(localCgnsType: int) -> None:
+        vtkCellIndex = len(cellTypes) - 1
+        if vtkCellDimensions is not None:
+            vtkCellDimensions.append(CGNSNumberDimension[localCgnsType])
+        if cgnsElementToVtkCell is not None:
+            localIndex = vtkCellIndex - initialCellCount
+            if localIndex < elementNumbers.size:
+                cgnsElementToVtkCell[int(elementNumbers[localIndex])] = vtkCellIndex
+
+    initialCellCount = len(cellTypes)
+    estimatedCells = 0
+    if cgnsElementType == 20:
+        cursor = 0
+        while cursor < cgnsConnectivity.size:
+            localType = int(cgnsConnectivity[cursor])
+            if localType not in CGNSNumberOfNodes:
+                break
+            estimatedCells += 1
+            cursor += 1 + CGNSNumberOfNodes[localType]
+    elif cgnsElementType in CGNSNumberOfNodes:
+        estimatedCells = cgnsConnectivity.size // CGNSNumberOfNodes[cgnsElementType]
+    elementNumbers = _cgns_element_range(elementsNode, estimatedCells)
+
+    if cgnsElementType == 20:
         cursor = 0
         while cursor < cgnsConnectivity.size:
             localCgnsType = int(cgnsConnectivity[cursor])
@@ -511,6 +857,7 @@ def _cgns_insert_cells_from_elements_node(
             cellTypes.append(CGNSNumberToVtkNumber[localCgnsType])
             offsets.append(offsets[-1] + numberOfNodes)
             connectivity.extend(localConnectivity.tolist())
+            registerCell(localCgnsType)
         return
 
     if (
@@ -532,6 +879,7 @@ def _cgns_insert_cells_from_elements_node(
         cellTypes.append(vtkCellType)
         offsets.append(offsets[-1] + numberOfNodes)
         connectivity.extend(cellConnectivity.tolist())
+        registerCell(cgnsElementType)
 
 
 def _cgns_structured_zone_to_vtk(zoneNode: list, physicalDim: int):
@@ -549,6 +897,16 @@ def _cgns_structured_zone_to_vtk(zoneNode: list, physicalDim: int):
         dimensions[i] = int(value)
     output.SetDimensions(dimensions)
     _cgns_add_flow_solutions_to_vtk(zoneNode, output, numpy_support)
+    topologicalDim = max(sum(value > 1 for value in dimensions), 1)
+    vtkCellDimensions = np.full(
+        output.GetNumberOfCells(), topologicalDim, dtype=np.int8
+    )
+    _cgns_add_tags_to_vtk(
+        zoneNode,
+        output,
+        numpy_support,
+        vtkCellDimensions=vtkCellDimensions,
+    )
     return output
 
 
@@ -566,9 +924,16 @@ def _cgns_unstructured_zone_to_vtk(zoneNode: list, physicalDim: int):
     cellTypes = []
     offsets = [0]
     connectivity = []
+    cgnsElementToVtkCell = {}
+    vtkCellDimensions = []
     for elementsNode in _cgns_children_by_label(zoneNode, "Elements_t"):
         _cgns_insert_cells_from_elements_node(
-            elementsNode, cellTypes, offsets, connectivity
+            elementsNode,
+            cellTypes,
+            offsets,
+            connectivity,
+            cgnsElementToVtkCell,
+            vtkCellDimensions,
         )
 
     if cellTypes:
@@ -583,6 +948,13 @@ def _cgns_unstructured_zone_to_vtk(zoneNode: list, physicalDim: int):
         output.SetCells(cellTypes, cellArray)
 
     _cgns_add_flow_solutions_to_vtk(zoneNode, output, numpy_support)
+    _cgns_add_tags_to_vtk(
+        zoneNode,
+        output,
+        numpy_support,
+        cgnsElementToVtkCell,
+        np.asarray(vtkCellDimensions, dtype=np.int8),
+    )
     return output
 
 

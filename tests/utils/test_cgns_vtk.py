@@ -834,3 +834,227 @@ def test_vtk_to_cgns_tree_converts_vertex_cells():
     elements = tree[2][0][2][0][2][1]
     connectivity = elements[2][1]
     assert connectivity[1].tolist() == [1]
+
+
+def test_cgns_tree_to_vtk_transfers_boundary_and_subregion_tags():
+    """CGNS point and element tags become signed-character VTK masks."""
+    pytest.importorskip("vtk")
+    coordinates = _node(
+        "GridCoordinates",
+        None,
+        [
+            _node("CoordinateX", np.array([0.0, 1.0, 0.0, 1.0])),
+            _node("CoordinateY", np.array([0.0, 0.0, 1.0, 1.0])),
+        ],
+        label="GridCoordinates_t",
+    )
+    elements = _node(
+        "Elements_5",
+        np.array([5], dtype=np.int32),
+        [
+            _node(
+                "ElementRange",
+                np.array([1, 2], dtype=np.int32),
+                label="IndexRange_t",
+            ),
+            _node(
+                "ElementConnectivity",
+                np.array([1, 2, 3, 2, 4, 3], dtype=np.int32),
+            ),
+        ],
+        label="Elements_t",
+    )
+    zone_bc = _node(
+        "ZoneBC",
+        None,
+        [
+            _node(
+                "wall_nodes",
+                np.array(list("Null"), dtype="|S1"),
+                [
+                    _node(
+                        "PointList",
+                        np.array([[1, 3]], dtype=np.int32),
+                        label="IndexArray_t",
+                    ),
+                    _node(
+                        "GridLocation",
+                        np.array(list("Vertex"), dtype="|S1"),
+                        label="GridLocation_t",
+                    ),
+                ],
+                label="BC_t",
+            )
+        ],
+        label="ZoneBC_t",
+    )
+    subregion = _node(
+        "selected_cells_ZSR",
+        np.array([[1, 2]], dtype=np.int32),
+        [
+            _node(
+                "PointList",
+                np.array([2], dtype=np.int32),
+                label="IndexArray_t",
+            ),
+            _node(
+                "GridLocation",
+                np.array(list("CellCenter"), dtype="|S1"),
+                label="GridLocation_t",
+            ),
+            _node(
+                "FamilyName",
+                np.array(list("selected_cells"), dtype="|S1"),
+                label="FamilyName_t",
+            ),
+        ],
+        label="ZoneSubRegion_t",
+    )
+    zone = _node(
+        "Zone",
+        np.array([[4, 2, 0]], dtype=np.int32),
+        [
+            coordinates,
+            elements,
+            _node("ZoneType", "Unstructured", label="ZoneType_t"),
+            subregion,
+            zone_bc,
+        ],
+        label="Zone_t",
+    )
+    tree = _node(
+        "CGNSTree",
+        None,
+        [_node("Base", np.array([2, 2]), [zone], label="CGNSBase_t")],
+        label="CGNSTree_t",
+    )
+
+    output = cgns_vtk.CGNSTreeToVtk(tree)
+    point_tag = output.GetPointData().GetArray("wall_nodes")
+    cell_tag = output.GetCellData().GetArray("selected_cells")
+
+    assert point_tag.GetDataTypeAsString() == "signed char"
+    assert cell_tag.GetDataTypeAsString() == "signed char"
+    assert [point_tag.GetTuple1(i) for i in range(4)] == [1, 0, 1, 0]
+    assert [cell_tag.GetTuple1(i) for i in range(2)] == [0, 1]
+
+
+def test_vtk_to_cgns_tree_separates_char_tags_from_binary_float_fields():
+    """Only binary character arrays are reconstructed as CGNS tags."""
+    vtk = pytest.importorskip("vtk")
+    from vtk.util import numpy_support
+
+    grid = vtk.vtkUnstructuredGrid()
+    points = vtk.vtkPoints()
+    points.SetData(
+        numpy_support.numpy_to_vtk(
+            np.array(
+                [
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [1.0, 1.0, 0.0],
+                ]
+            ),
+            deep=True,
+        )
+    )
+    grid.SetPoints(points)
+    for point_ids in [(0, 1, 2), (1, 3, 2)]:
+        triangle = vtk.vtkTriangle()
+        for index, point_id in enumerate(point_ids):
+            triangle.GetPointIds().SetId(index, point_id)
+        grid.InsertNextCell(triangle.GetCellType(), triangle.GetPointIds())
+
+    point_tag = numpy_support.numpy_to_vtk(
+        np.array([1, 0, 1, 0], dtype=np.int8), deep=True
+    )
+    point_tag.SetName("wall_nodes")
+    grid.GetPointData().AddArray(point_tag)
+    cell_tag = numpy_support.numpy_to_vtk(np.array([0, 1], dtype=np.uint8), deep=True)
+    cell_tag.SetName("selected_cells")
+    grid.GetCellData().AddArray(cell_tag)
+    binary_field = numpy_support.numpy_to_vtk(np.array([0.0, 1.0, 0.0, 1.0]), deep=True)
+    binary_field.SetName("binary_field")
+    grid.GetPointData().AddArray(binary_field)
+
+    tree = cgns_vtk.VtkToCGNSTree(grid)
+    zone = tree[2][0][2][0]
+    zone_bc = next(child for child in zone[2] if child[3] == "ZoneBC_t")
+    subregion = next(child for child in zone[2] if child[3] == "ZoneSubRegion_t")
+    vertex_flow = next(
+        child
+        for child in zone[2]
+        if child[3] == "FlowSolution_t" and child[0] == "VertexData"
+    )
+
+    assert [child[0] for child in zone_bc[2]] == ["wall_nodes"]
+    np.testing.assert_array_equal(
+        zone_bc[2][0][2][0][1], np.array([[1, 3]], dtype=np.int32)
+    )
+    assert subregion[0] == "selected_cells_ZSR"
+    np.testing.assert_array_equal(subregion[2][0][1], np.array([[2]], dtype=np.int32))
+    assert [child[0] for child in vertex_flow[2] if child[3] == "DataArray_t"] == [
+        "binary_field"
+    ]
+
+    restored = cgns_vtk.CGNSTreeToVtk(tree)
+    restored_point_tag = restored.GetPointData().GetArray("wall_nodes")
+    restored_cell_tag = restored.GetCellData().GetArray("selected_cells")
+    assert restored_point_tag.GetDataTypeAsString() == "signed char"
+    assert restored_cell_tag.GetDataTypeAsString() == "signed char"
+    assert [restored_point_tag.GetTuple1(i) for i in range(4)] == [1, 0, 1, 0]
+    assert [restored_cell_tag.GetTuple1(i) for i in range(2)] == [0, 1]
+    assert restored.GetPointData().GetArray("binary_field") is not None
+
+
+def test_cgns_tree_to_vtk_transfers_zone_family_as_full_cell_tag():
+    """A zone family becomes a tag on all top-dimensional cells."""
+    pytest.importorskip("vtk")
+    zone = _node(
+        "Zone",
+        np.array([[3, 1, 0]], dtype=np.int32),
+        [
+            _node(
+                "GridCoordinates",
+                None,
+                [
+                    _node("CoordinateX", np.array([0.0, 1.0, 0.0])),
+                    _node("CoordinateY", np.array([0.0, 0.0, 1.0])),
+                ],
+                label="GridCoordinates_t",
+            ),
+            _node(
+                "Elements_5",
+                np.array([5], dtype=np.int32),
+                [
+                    _node(
+                        "ElementRange",
+                        np.array([1, 1], dtype=np.int32),
+                        label="IndexRange_t",
+                    ),
+                    _node("ElementConnectivity", np.array([1, 2, 3])),
+                ],
+                label="Elements_t",
+            ),
+            _node("ZoneType", "Unstructured", label="ZoneType_t"),
+            _node(
+                "FamilyName",
+                np.array(list("fluid"), dtype="|S1"),
+                label="FamilyName_t",
+            ),
+        ],
+        label="Zone_t",
+    )
+    tree = _node(
+        "CGNSTree",
+        None,
+        [_node("Base", np.array([2, 2]), [zone], label="CGNSBase_t")],
+        label="CGNSTree_t",
+    )
+
+    output = cgns_vtk.CGNSTreeToVtk(tree)
+    family_tag = output.GetCellData().GetArray("fluid")
+
+    assert family_tag.GetDataTypeAsString() == "signed char"
+    assert family_tag.GetTuple1(0) == 1
