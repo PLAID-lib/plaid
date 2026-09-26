@@ -30,9 +30,10 @@ def to_var_sample_dict(
         dict[str, Any]: Dictionary of variable features for the sample.
     """
     zarr_sample = zarr_dataset.zarr_group[f"sample_{idx:09d}"]
-
+    array_keys = list(zarr_sample.array_keys())
+    array_key_set = set(array_keys)
     if features is None:
-        features = [unflatten_path(p) for p in zarr_sample.array_keys()]
+        features = [unflatten_path(p) for p in array_keys]
 
     flattened = {feat: flatten_path(feat) for feat in features}
     # missing = set(flattened.values()) - set(zarr_sample.array_keys())
@@ -41,8 +42,9 @@ def to_var_sample_dict(
 
     indexers = indexers or {}
     out = {}
+
     for feat, flat_feat in flattened.items():
-        if flat_feat not in zarr_sample.array_keys():
+        if flat_feat not in array_key_set:
             continue
 
         arr = zarr_sample[flat_feat]
