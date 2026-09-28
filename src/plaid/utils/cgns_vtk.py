@@ -248,10 +248,93 @@ def _vtk_coordinates(data_object, numpy_support, ensure_3D_points=False) -> list
     return coordinate_nodes
 
 
+def _vtk_uniform_unstructured_elements(data_object, returnCellMapping, elementNames):
+    """Convert a uniform fixed-size VTK grid using its bulk connectivity arrays.
+
+    Args:
+        data_object: VTK unstructured grid.
+        returnCellMapping: Whether to return VTK-to-CGNS IDs and dimensions.
+        elementNames: Optional names indexed by the CGNS element type string.
+
+    Returns:
+        The same result as the per-cell converter, or None for unsupported or
+        mixed layouts so that the original converter can handle them.
+    """
+    if not hasattr(data_object, "IsA") or not data_object.IsA("vtkUnstructuredGrid"):
+        return None
+    n_cells = data_object.GetNumberOfCells()
+    if not n_cells:
+        return None
+
+    try:
+        from paraview.vtk.util import numpy_support
+    except ImportError:
+        from vtkmodules.util import numpy_support
+
+    cell_types = numpy_support.vtk_to_numpy(data_object.GetCellTypesArray())
+    if not np.all(cell_types == cell_types[0]):
+        return None
+    cgns_type = VtkNumberToCGNSNumber.get(int(cell_types[0]))
+    if cgns_type is None:
+        return None
+    cells = data_object.GetCells()
+    offsets = numpy_support.vtk_to_numpy(cells.GetOffsetsArray())
+    nodes_per_cell = CGNSNumberOfNodes[cgns_type]
+    if offsets.size != n_cells + 1 or not np.all(np.diff(offsets) == nodes_per_cell):
+        return None
+    raw_connectivity = numpy_support.vtk_to_numpy(cells.GetConnectivityArray())
+    if offsets[0] != 0 or offsets[-1] != raw_connectivity.size:
+        return None
+
+    connectivity = raw_connectivity.reshape(n_cells, nodes_per_cell)
+    permutation = CGNSNumberToVtkPermutation.get(cgns_type)
+    if permutation is not None:
+        inverse = np.argsort(np.asarray(permutation, dtype=np.int64))
+        connectivity = connectivity[:, inverse]
+    connectivity = (connectivity.ravel() + 1).astype(np.int64, copy=False)
+    elements = [
+        [
+            (elementNames or {}).get(str(cgns_type), f"Elements_{cgns_type}"),
+            np.asarray([cgns_type], dtype=np.int32),
+            [
+                [
+                    "ElementRange",
+                    np.asarray([1, n_cells], dtype=np.int32),
+                    [],
+                    "IndexRange_t",
+                ],
+                ["ElementConnectivity", connectivity, [], "DataArray_t"],
+            ],
+            "Elements_t",
+        ]
+    ]
+    if returnCellMapping:
+        return (
+            elements,
+            np.arange(1, n_cells + 1, dtype=np.int64),
+            np.full(n_cells, CGNSNumberDimension[cgns_type], dtype=np.int8),
+        )
+    return elements
+
+
 def _vtk_unstructured_elements(
     data_object, returnCellMapping: bool = False, elementNames=None
 ):
-    """Convert VTK unstructured cells into CGNS Elements_t nodes."""
+    """Convert VTK unstructured cells into CGNS Elements_t nodes.
+
+    Args:
+        data_object: VTK unstructured grid.
+        returnCellMapping: Whether to return cell IDs and dimensions.
+        elementNames: Optional original CGNS element names.
+
+    Returns:
+        Elements nodes, optionally with cell ID mapping and dimensions.
+    """
+    bulk_result = _vtk_uniform_unstructured_elements(
+        data_object, returnCellMapping, elementNames
+    )
+    if bulk_result is not None:
+        return bulk_result
     grouped: dict[int, list[tuple[int, np.ndarray]]] = {}
     cellDimensions = np.empty(data_object.GetNumberOfCells(), dtype=np.int8)
     for cell_id in range(data_object.GetNumberOfCells()):
