@@ -39,12 +39,14 @@ def get_ParaView_plugin_path_one_file(path: Path | str | None = None) -> str:
         cgns_vtk_content = f.read()
 
     plugin_content = plugin_content.replace(
-        "# ##INCLUDE PLACEHOLDER##", json_codec_content + sample_json_content + cgns_vtk_content
+        "# ##INCLUDE PLACEHOLDER##",
+        json_codec_content + sample_json_content + cgns_vtk_content,
     )
     plugin_content = plugin_content.replace("from __future__ import annotations", "")
 
     plugin_content = plugin_content.replace(
-        "from .json_codec import decode_leaf_value, encode_leaf_value", "" )
+        "from .json_codec import decode_leaf_value, encode_leaf_value", ""
+    )
 
     if path is not None:
         tmpdir = Path(path)

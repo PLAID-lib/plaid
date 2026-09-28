@@ -65,6 +65,14 @@ def test_get_paraview_plugin_path_one_file_writes_bundled_plugin(
     assert "from __future__ import annotations" not in content
 
 
+def test_get_paraview_plugin_path_one_file_uses_provided_directory(tmp_path):
+    """Write the bundled plugin into a caller-provided directory."""
+    plugin_directory = paraview_plugin.get_ParaView_plugin_path_one_file(tmp_path)
+
+    assert plugin_directory == str(tmp_path)
+    assert (tmp_path / "PlaidParaViewPlugin.py").is_file()
+
+
 def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
     """Launching ParaView should pass plugin-related environment variables."""
     calls = []
