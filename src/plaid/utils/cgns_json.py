@@ -13,10 +13,54 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import numpy as np
+
 from .json_codec import decode_leaf_value, encode_leaf_value
 
 FORMAT_NAME = "plaid-cgns-tree-json"
 FORMAT_VERSION = 1
+
+_CHARACTER_VALUE_LABELS = frozenset(
+    {
+        "AdditionalFamilyName_t",
+        "AdditionalUnits_t",
+        "ArbitraryGridMotionType_t",
+        "ArbitraryGridMotion_t",
+        "AreaType_t",
+        "AverageInterfaceType_t",
+        "BCDataSet_t",
+        "BC_t",
+        "ChemicalKineticsModel_t",
+        "DataArray_t",
+        "DataClass_t",
+        "Descriptor_t",
+        "DimensionalUnits_t",
+        "EMConductivityModel_t",
+        "EMElectricFieldModel_t",
+        "EMMagneticFieldModel_t",
+        "FamilyBCDataSet_t",
+        "FamilyBC_t",
+        "FamilyName_t",
+        "GasModel_t",
+        "GeometryFile_t",
+        "GeometryFormat_t",
+        "GoverningEquations_t",
+        "GridConnectivity1to1_t",
+        "GridConnectivityType_t",
+        "GridConnectivity_t",
+        "GridLocation_t",
+        "RigidGridMotionType_t",
+        "RigidGridMotion_t",
+        "SimulationType_t",
+        "ThermalConductivityModel_t",
+        "ThermalRelaxationModel_t",
+        "TurbulenceClosure_t",
+        "TurbulenceModel_t",
+        "ViscosityModel_t",
+        "WallFunctionType_t",
+        "ZoneType_t",
+    }
+)
 
 
 def cgns_tree_to_json_payload(tree: list[Any]) -> dict[str, Any]:
@@ -115,9 +159,37 @@ def _decode_node(node: dict[str, Any]) -> list[Any]:
             f"Children of encoded CGNS node {node['name']!r} must be a list"
         )
 
+    value = _normalize_cgns_string_value(
+        decode_leaf_value(node["value"]),
+        node["label"],
+    )
+
     return [
         node["name"],
-        decode_leaf_value(node["value"]),
+        value,
         [_decode_node(child) for child in node["children"]],
         node["label"],
     ]
+
+
+def _normalize_cgns_string_value(value: Any, label: str) -> Any:
+    """Convert scalar strings to pyCGNS character arrays when required.
+
+    Some language-neutral JSON producers represent CGNS ``C1`` node values as
+    plain strings instead of the explicit ndarray schema emitted by PLAID.
+    pyCGNS and downstream consumers such as Muscat expect these values as
+    NumPy byte-character arrays. Only standard CGNS labels that permit ``C1``
+    data are normalized, preserving scalar strings for labels such as
+    ``UserDefinedData_t`` that do not declare character values.
+
+    Args:
+        value: Decoded JSON node value.
+        label: CGNS node label, for example ``ZoneType_t``.
+
+    Returns:
+        A ``|S1`` NumPy array for scalar strings on ``C1`` labels, otherwise the
+        original value.
+    """
+    if not isinstance(value, str) or label not in _CHARACTER_VALUE_LABELS:
+        return value
+    return np.frombuffer(value.encode("ascii"), dtype="|S1").copy()

@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from plaid.utils import cgns_vtk
+from plaid.utils.cgns_json import cgns_tree_from_json_payload, cgns_tree_to_json_payload
 
 
 class _FakeVtkArray:
@@ -750,3 +751,615 @@ def test_import_vtk_for_direct_cgns_uses_vtkmodules_fallback(monkeypatch):
         "vtkMultiBlockDataSet",
         fake_numpy_support,
     )
+
+
+def test_vtk_to_cgns_tree_round_trips_unstructured_data():
+    """VTK geometry and point/cell data survive the CGNS JSON round trip."""
+    vtk = pytest.importorskip("vtk")
+    from vtk.util import numpy_support
+
+    grid = vtk.vtkUnstructuredGrid()
+    points = vtk.vtkPoints()
+    points.SetData(
+        numpy_support.numpy_to_vtk(
+            np.asarray([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]),
+            deep=True,
+        )
+    )
+    grid.SetPoints(points)
+    triangle = vtk.vtkTriangle()
+    for index, point_id in enumerate((0, 1, 2)):
+        triangle.GetPointIds().SetId(index, point_id)
+    grid.InsertNextCell(triangle.GetCellType(), triangle.GetPointIds())
+
+    pressure = numpy_support.numpy_to_vtk(np.asarray([1.0, 2.0, 3.0]), deep=True)
+    pressure.SetName("Pressure")
+    grid.GetPointData().AddArray(pressure)
+    density = numpy_support.numpy_to_vtk(np.asarray([4.0]), deep=True)
+    density.SetName("Density")
+    grid.GetCellData().AddArray(density)
+
+    tree = cgns_vtk.VtkToCGNSTree(grid)
+    restored_tree = cgns_tree_from_json_payload(cgns_tree_to_json_payload(tree))
+    restored = cgns_vtk.CGNSTreeToVtk(restored_tree)
+
+    assert restored.GetNumberOfPoints() == 3
+    assert restored.GetNumberOfCells() == 1
+    assert restored.GetPointData().GetArray("Pressure").GetTuple1(2) == 3.0
+    assert restored.GetCellData().GetArray("Density").GetTuple1(0) == 4.0
+
+
+def test_metadata_free_vtk_retains_legacy_third_coordinate_override():
+    """Metadata-free VTK input can still request a third coordinate array."""
+    vtk = pytest.importorskip("vtk")
+
+    grid = vtk.vtkUnstructuredGrid()
+    points = vtk.vtkPoints()
+    points.InsertNextPoint(0.0, 0.0, 4.0)
+    grid.SetPoints(points)
+    vertex = vtk.vtkVertex()
+    vertex.GetPointIds().SetId(0, 0)
+    grid.InsertNextCell(vertex.GetCellType(), vertex.GetPointIds())
+
+    tree = cgns_vtk.VtkToCGNSTree(grid, ensure_3D_points=True)
+    zone = tree[2][0][2][0]
+    gridCoordinates = next(
+        child for child in zone[2] if child[3] == "GridCoordinates_t"
+    )
+
+    assert [coordinate[0] for coordinate in gridCoordinates[2]] == [
+        "CoordinateX",
+        "CoordinateY",
+        "CoordinateZ",
+    ]
+    np.testing.assert_array_equal(gridCoordinates[2][2][1], np.array([4.0]))
+
+
+def test_vtk_to_cgns_tree_preserves_structured_dimensions_and_field_data():
+    """Structured dimensions and global field arrays are converted correctly."""
+    vtk = pytest.importorskip("vtk")
+    from vtk.util import numpy_support
+
+    grid = vtk.vtkStructuredGrid()
+    grid.SetDimensions(2, 2, 1)
+    points = vtk.vtkPoints()
+    points.SetData(
+        numpy_support.numpy_to_vtk(
+            np.asarray(
+                [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 1.0, 0.0]]
+            ),
+            deep=True,
+        )
+    )
+    grid.SetPoints(points)
+    field = numpy_support.numpy_to_vtk(np.asarray([7], dtype=np.int32), deep=True)
+    field.SetName("CaseId")
+    grid.GetFieldData().AddArray(field)
+
+    tree = cgns_vtk.VtkToCGNSTree(grid)
+
+    assert tree[2][0][0] == "Global"
+    assert tree[2][0][2][0][0] == "CaseId"
+    assert tree[2][1][2][0][1].tolist() == [[2, 2, 1]]
+
+
+def test_vtk_to_cgns_tree_converts_vertex_cells():
+    """Supported VTK vertex cells retain their connectivity."""
+    vtk = pytest.importorskip("vtk")
+
+    grid = vtk.vtkUnstructuredGrid()
+    points = vtk.vtkPoints()
+    points.InsertNextPoint(0.0, 0.0, 0.0)
+    grid.SetPoints(points)
+    vertex = vtk.vtkVertex()
+    vertex.GetPointIds().SetId(0, 0)
+    grid.InsertNextCell(vertex.GetCellType(), vertex.GetPointIds())
+
+    tree = cgns_vtk.VtkToCGNSTree(grid)
+
+    elements = tree[2][0][2][0][2][1]
+    connectivity = elements[2][1]
+    assert connectivity[1].tolist() == [1]
+
+
+def test_cgns_tree_to_vtk_transfers_boundary_and_subregion_tags():
+    """CGNS point and element tags become signed-character VTK masks."""
+    pytest.importorskip("vtk")
+    coordinates = _node(
+        "GridCoordinates",
+        None,
+        [
+            _node("CoordinateX", np.array([0.0, 1.0, 0.0, 1.0])),
+            _node("CoordinateY", np.array([0.0, 0.0, 1.0, 1.0])),
+        ],
+        label="GridCoordinates_t",
+    )
+    elements = _node(
+        "Elements_5",
+        np.array([5], dtype=np.int32),
+        [
+            _node(
+                "ElementRange",
+                np.array([1, 2], dtype=np.int32),
+                label="IndexRange_t",
+            ),
+            _node(
+                "ElementConnectivity",
+                np.array([1, 2, 3, 2, 4, 3], dtype=np.int32),
+            ),
+        ],
+        label="Elements_t",
+    )
+    zone_bc = _node(
+        "ZoneBC",
+        None,
+        [
+            _node(
+                "wall_nodes",
+                np.array(list("Null"), dtype="|S1"),
+                [
+                    _node(
+                        "PointList",
+                        np.array([[1, 3]], dtype=np.int32),
+                        label="IndexArray_t",
+                    ),
+                    _node(
+                        "GridLocation",
+                        np.array(list("Vertex"), dtype="|S1"),
+                        label="GridLocation_t",
+                    ),
+                ],
+                label="BC_t",
+            )
+        ],
+        label="ZoneBC_t",
+    )
+    subregion = _node(
+        "selected_cells_ZSR",
+        np.array([[1, 2]], dtype=np.int32),
+        [
+            _node(
+                "PointList",
+                np.array([2], dtype=np.int32),
+                label="IndexArray_t",
+            ),
+            _node(
+                "GridLocation",
+                np.array(list("CellCenter"), dtype="|S1"),
+                label="GridLocation_t",
+            ),
+            _node(
+                "FamilyName",
+                np.array(list("selected_cells"), dtype="|S1"),
+                label="FamilyName_t",
+            ),
+        ],
+        label="ZoneSubRegion_t",
+    )
+    zone = _node(
+        "Zone",
+        np.array([[4, 2, 0]], dtype=np.int32),
+        [
+            coordinates,
+            elements,
+            _node("ZoneType", "Unstructured", label="ZoneType_t"),
+            subregion,
+            zone_bc,
+        ],
+        label="Zone_t",
+    )
+    tree = _node(
+        "CGNSTree",
+        None,
+        [_node("Base", np.array([2, 2]), [zone], label="CGNSBase_t")],
+        label="CGNSTree_t",
+    )
+
+    output = cgns_vtk.CGNSTreeToVtk(tree)
+    point_tag = output.GetPointData().GetArray("wall_nodes")
+    cell_tag = output.GetCellData().GetArray("selected_cells")
+
+    assert point_tag.GetDataTypeAsString() == "signed char"
+    assert cell_tag.GetDataTypeAsString() == "signed char"
+    assert [point_tag.GetTuple1(i) for i in range(4)] == [1, 0, 1, 0]
+    assert [cell_tag.GetTuple1(i) for i in range(2)] == [0, 1]
+
+
+def test_vtk_to_cgns_tree_separates_char_tags_from_binary_float_fields():
+    """Only binary character arrays are reconstructed as CGNS tags."""
+    vtk = pytest.importorskip("vtk")
+    from vtk.util import numpy_support
+
+    grid = vtk.vtkUnstructuredGrid()
+    points = vtk.vtkPoints()
+    points.SetData(
+        numpy_support.numpy_to_vtk(
+            np.array(
+                [
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [1.0, 1.0, 0.0],
+                ]
+            ),
+            deep=True,
+        )
+    )
+    grid.SetPoints(points)
+    for point_ids in [(0, 1, 2), (1, 3, 2)]:
+        triangle = vtk.vtkTriangle()
+        for index, point_id in enumerate(point_ids):
+            triangle.GetPointIds().SetId(index, point_id)
+        grid.InsertNextCell(triangle.GetCellType(), triangle.GetPointIds())
+
+    point_tag = numpy_support.numpy_to_vtk(
+        np.array([1, 0, 1, 0], dtype=np.int8), deep=True
+    )
+    point_tag.SetName("wall_nodes")
+    grid.GetPointData().AddArray(point_tag)
+    cell_tag = numpy_support.numpy_to_vtk(np.array([0, 1], dtype=np.uint8), deep=True)
+    cell_tag.SetName("selected_cells")
+    grid.GetCellData().AddArray(cell_tag)
+    binary_field = numpy_support.numpy_to_vtk(np.array([0.0, 1.0, 0.0, 1.0]), deep=True)
+    binary_field.SetName("binary_field")
+    grid.GetPointData().AddArray(binary_field)
+
+    tree = cgns_vtk.VtkToCGNSTree(grid)
+    zone = tree[2][0][2][0]
+    zone_bc = next(child for child in zone[2] if child[3] == "ZoneBC_t")
+    subregion = next(child for child in zone[2] if child[3] == "ZoneSubRegion_t")
+    vertex_flow = next(
+        child
+        for child in zone[2]
+        if child[3] == "FlowSolution_t" and child[0] == "VertexData"
+    )
+
+    assert [child[0] for child in zone_bc[2]] == ["wall_nodes"]
+    np.testing.assert_array_equal(
+        zone_bc[2][0][2][0][1], np.array([[1, 3]], dtype=np.int32)
+    )
+    assert subregion[0] == "selected_cells_ZSR"
+    np.testing.assert_array_equal(subregion[2][0][1], np.array([[2]], dtype=np.int32))
+    assert [child[0] for child in vertex_flow[2] if child[3] == "DataArray_t"] == [
+        "binary_field"
+    ]
+
+    restored = cgns_vtk.CGNSTreeToVtk(tree)
+    restored_point_tag = restored.GetPointData().GetArray("wall_nodes")
+    restored_cell_tag = restored.GetCellData().GetArray("selected_cells")
+    assert restored_point_tag.GetDataTypeAsString() == "signed char"
+    assert restored_cell_tag.GetDataTypeAsString() == "signed char"
+    assert [restored_point_tag.GetTuple1(i) for i in range(4)] == [1, 0, 1, 0]
+    assert [restored_cell_tag.GetTuple1(i) for i in range(2)] == [0, 1]
+    assert restored.GetPointData().GetArray("binary_field") is not None
+
+
+def test_cgns_tree_to_vtk_transfers_zone_family_as_full_cell_tag():
+    """A zone family becomes a tag on all top-dimensional cells."""
+    pytest.importorskip("vtk")
+    zone = _node(
+        "Zone",
+        np.array([[3, 1, 0]], dtype=np.int32),
+        [
+            _node(
+                "GridCoordinates",
+                None,
+                [
+                    _node("CoordinateX", np.array([0.0, 1.0, 0.0])),
+                    _node("CoordinateY", np.array([0.0, 0.0, 1.0])),
+                ],
+                label="GridCoordinates_t",
+            ),
+            _node(
+                "Elements_5",
+                np.array([5], dtype=np.int32),
+                [
+                    _node(
+                        "ElementRange",
+                        np.array([1, 1], dtype=np.int32),
+                        label="IndexRange_t",
+                    ),
+                    _node("ElementConnectivity", np.array([1, 2, 3])),
+                ],
+                label="Elements_t",
+            ),
+            _node("ZoneType", "Unstructured", label="ZoneType_t"),
+            _node(
+                "FamilyName",
+                np.array(list("fluid"), dtype="|S1"),
+                label="FamilyName_t",
+            ),
+        ],
+        label="Zone_t",
+    )
+    tree = _node(
+        "CGNSTree",
+        None,
+        [_node("Base", np.array([2, 2]), [zone], label="CGNSBase_t")],
+        label="CGNSTree_t",
+    )
+
+    output = cgns_vtk.CGNSTreeToVtk(tree)
+    family_tag = output.GetCellData().GetArray("fluid")
+
+    assert family_tag.GetDataTypeAsString() == "signed char"
+    assert family_tag.GetTuple1(0) == 1
+
+
+def _metadata_test_zone(name: str, z_coordinate: float = 0.0) -> list:
+    """Build a triangle zone for CGNS hierarchy metadata tests.
+
+    Args:
+        name: Name of the CGNS zone.
+        z_coordinate: Constant third coordinate assigned to each point.
+
+    Returns:
+        A pyCGNS-style unstructured ``Zone_t`` node.
+    """
+    return _node(
+        name,
+        np.array([[3, 1, 0]], dtype=np.int32),
+        [
+            _node(
+                "GridCoordinates",
+                None,
+                [
+                    _node("CoordinateX", np.array([0.0, 1.0, 0.0])),
+                    _node("CoordinateY", np.array([0.0, 0.0, 1.0])),
+                    _node("CoordinateZ", np.full(3, z_coordinate)),
+                ],
+                label="GridCoordinates_t",
+            ),
+            _node(
+                "Elements_5",
+                np.array([5], dtype=np.int32),
+                [
+                    _node(
+                        "ElementRange",
+                        np.array([1, 1], dtype=np.int32),
+                        label="IndexRange_t",
+                    ),
+                    _node("ElementConnectivity", np.array([1, 2, 3])),
+                ],
+                label="Elements_t",
+            ),
+            _node("ZoneType", "Unstructured", label="ZoneType_t"),
+        ],
+        label="Zone_t",
+    )
+
+
+def test_cgns_vtk_round_trip_restores_training_flow_and_element_paths():
+    """A pre-existing VertexFields and TRI_3 section retain their CGNS paths."""
+    pytest.importorskip("vtk")
+    zone = _metadata_test_zone("TrainingZone")
+    elements = next(child for child in zone[2] if child[3] == "Elements_t")
+    elements[0] = "Elements_TRI_3"
+    zone[2].extend(
+        [
+            _node(
+                "VertexFields",
+                None,
+                [_node("existing_field", np.array([1.0, 2.0, 3.0]))],
+                label="FlowSolution_t",
+            ),
+            _node(
+                "CellFields",
+                None,
+                [
+                    _node("GridLocation", "CellCenter", label="GridLocation_t"),
+                    _node("cell_field", np.array([4.0])),
+                ],
+                label="FlowSolution_t",
+            ),
+        ]
+    )
+    tree = _node(
+        "CGNSTree",
+        None,
+        [_node("Base", np.array([2, 2]), [zone], label="CGNSBase_t")],
+        label="CGNSTree_t",
+    )
+
+    grid = cgns_vtk.CGNSTreeToVtk(tree)
+    from vtk.util import numpy_support
+
+    distance = numpy_support.numpy_to_vtk(np.array([0.2, 0.3, 0.4]), deep=True)
+    distance.SetName("distance_to_boundary")
+    grid.GetPointData().AddArray(distance)
+    restored = cgns_vtk.VtkToCGNSTree(grid)[2][0][2][0]
+
+    flows = {node[0]: node for node in restored[2] if node[3] == "FlowSolution_t"}
+    assert set(flows) == {"VertexFields", "CellFields"}
+    assert {
+        node[0] for node in flows["VertexFields"][2] if node[3] == "DataArray_t"
+    } == {"existing_field", "distance_to_boundary"}
+    np.testing.assert_array_equal(
+        next(
+            node[1] for node in flows["VertexFields"][2] if node[0] == "existing_field"
+        ),
+        [1.0, 2.0, 3.0],
+    )
+    assert [node[0] for node in restored[2] if node[3] == "Elements_t"] == [
+        "Elements_TRI_3"
+    ]
+
+
+def test_cgns_vtk_names_survive_vtk_serialization():
+    """Reserved field data survives transport through a VTK XML grid."""
+    vtk = pytest.importorskip("vtk")
+    zone = _metadata_test_zone("Zone")
+    next(child for child in zone[2] if child[3] == "Elements_t")[0] = "Elements_TRI_3"
+    zone[2].append(
+        _node(
+            "VertexFields",
+            None,
+            [_node("field", np.array([1.0, 2.0, 3.0]))],
+            label="FlowSolution_t",
+        )
+    )
+    base = _node("Base", np.array([2, 2]), [zone], label="CGNSBase_t")
+    writer = vtk.vtkXMLUnstructuredGridWriter()
+    writer.SetWriteToOutputString(True)
+    writer.SetInputData(cgns_vtk.CGNSBaseToVtk(base))
+    assert writer.Write() == 1
+    reader = vtk.vtkXMLUnstructuredGridReader()
+    reader.ReadFromInputStringOn()
+    reader.SetInputString(writer.GetOutputString())
+    reader.Update()
+
+    restored = cgns_vtk.VtkToCGNSTree(reader.GetOutput())[2][0][2][0]
+    assert "VertexFields" in [node[0] for node in restored[2]]
+    assert "Elements_TRI_3" in [node[0] for node in restored[2]]
+
+
+def test_cgns_vtk_round_trip_ambiguous_flow_names_use_generated_name():
+    """Two vertex solutions cannot map unambiguously to one VTK point data set."""
+    pytest.importorskip("vtk")
+    zone = _metadata_test_zone("Zone")
+    for name in ("First", "Second"):
+        zone[2].append(
+            _node(
+                name,
+                None,
+                [_node(name.lower(), np.array([1.0, 2.0, 3.0]))],
+                label="FlowSolution_t",
+            )
+        )
+    base = _node("Base", np.array([2, 2]), [zone], label="CGNSBase_t")
+
+    restored = cgns_vtk.VtkToCGNSTree(cgns_vtk.CGNSBaseToVtk(base))[2][0][2][0]
+    assert [node[0] for node in restored[2] if node[3] == "FlowSolution_t"] == [
+        "VertexData"
+    ]
+
+
+def test_cgns_vtk_round_trip_ambiguous_element_names_use_generated_name():
+    """Separate same-type sections merged into VTK cannot retain both names."""
+    pytest.importorskip("vtk")
+    zone = _metadata_test_zone("Zone")
+    first = next(child for child in zone[2] if child[3] == "Elements_t")
+    first[0] = "FirstTriangles"
+    second = _node(
+        "SecondTriangles",
+        np.array([5], dtype=np.int32),
+        [
+            _node("ElementRange", np.array([2, 2]), label="IndexRange_t"),
+            _node("ElementConnectivity", np.array([1, 3, 2])),
+        ],
+        label="Elements_t",
+    )
+    zone[2].append(second)
+    base = _node("Base", np.array([2, 2]), [zone], label="CGNSBase_t")
+
+    restored = cgns_vtk.VtkToCGNSTree(cgns_vtk.CGNSBaseToVtk(base))[2][0][2][0]
+    assert [node[0] for node in restored[2] if node[3] == "Elements_t"] == [
+        "Elements_5"
+    ]
+
+
+def test_cgns_vtk_round_trip_preserves_base_dimensions_and_names():
+    """Grid metadata restores base dimensions, base name, and zone name."""
+    pytest.importorskip("vtk")
+    tree = _node(
+        "CGNSTree",
+        None,
+        [
+            _node(
+                "SurfaceBase",
+                np.array([2, 3], dtype=np.int32),
+                [_metadata_test_zone("SurfaceZone", z_coordinate=2.0)],
+                label="CGNSBase_t",
+            )
+        ],
+        label="CGNSTree_t",
+    )
+
+    vtk_grid = cgns_vtk.CGNSTreeToVtk(tree)
+    field_data = vtk_grid.GetFieldData()
+    assert field_data.GetArray(cgns_vtk.PLAID_CGNS_BASE_NAME) is not None
+    assert field_data.GetArray(cgns_vtk.PLAID_CGNS_BASE_DIMENSIONS) is not None
+    assert field_data.GetArray(cgns_vtk.PLAID_CGNS_ZONE_NAME) is not None
+
+    restored = cgns_vtk.VtkToCGNSTree(vtk_grid)
+
+    assert [base[0] for base in restored[2]] == ["SurfaceBase"]
+    np.testing.assert_array_equal(restored[2][0][1], np.array([2, 3]))
+    restoredZone = restored[2][0][2][0]
+    assert restoredZone[0] == "SurfaceZone"
+    gridCoordinates = next(
+        child for child in restoredZone[2] if child[3] == "GridCoordinates_t"
+    )
+    assert [coordinate[0] for coordinate in gridCoordinates[2]] == [
+        "CoordinateX",
+        "CoordinateY",
+        "CoordinateZ",
+    ]
+    np.testing.assert_array_equal(gridCoordinates[2][2][1], np.full(3, 2.0))
+
+
+def test_stored_planar_base_dimensions_override_legacy_third_coordinate():
+    """Stored physical dimension two suppresses the legacy third coordinate."""
+    pytest.importorskip("vtk")
+    tree = _node(
+        "CGNSTree",
+        None,
+        [
+            _node(
+                "PlanarBase",
+                np.array([2, 2], dtype=np.int32),
+                [_metadata_test_zone("PlanarZone", z_coordinate=7.0)],
+                label="CGNSBase_t",
+            )
+        ],
+        label="CGNSTree_t",
+    )
+
+    vtk_grid = cgns_vtk.CGNSTreeToVtk(tree)
+    restored = cgns_vtk.VtkToCGNSTree(vtk_grid, ensure_3D_points=True)
+    restoredZone = restored[2][0][2][0]
+    gridCoordinates = next(
+        child for child in restoredZone[2] if child[3] == "GridCoordinates_t"
+    )
+
+    np.testing.assert_array_equal(restored[2][0][1], np.array([2, 2]))
+    assert [coordinate[0] for coordinate in gridCoordinates[2]] == [
+        "CoordinateX",
+        "CoordinateY",
+    ]
+
+
+def test_cgns_vtk_round_trip_groups_zones_by_stored_base_metadata():
+    """Leaf-grid metadata reconstructs multiple bases from VTK multiblocks."""
+    pytest.importorskip("vtk")
+    tree = _node(
+        "CGNSTree",
+        None,
+        [
+            _node(
+                "SurfaceBase",
+                np.array([2, 3], dtype=np.int32),
+                [
+                    _metadata_test_zone("SurfaceA"),
+                    _metadata_test_zone("SurfaceB", z_coordinate=1.0),
+                ],
+                label="CGNSBase_t",
+            ),
+            _node(
+                "PlanarBase",
+                np.array([2, 2], dtype=np.int32),
+                [_metadata_test_zone("PlanarZone")],
+                label="CGNSBase_t",
+            ),
+        ],
+        label="CGNSTree_t",
+    )
+
+    vtk_multiblock = cgns_vtk.CGNSTreeToVtk(tree)
+    restored = cgns_vtk.VtkToCGNSTree(vtk_multiblock)
+
+    assert [base[0] for base in restored[2]] == ["SurfaceBase", "PlanarBase"]
+    np.testing.assert_array_equal(restored[2][0][1], np.array([2, 3]))
+    np.testing.assert_array_equal(restored[2][1][1], np.array([2, 2]))
+    assert [zone[0] for zone in restored[2][0][2]] == ["SurfaceA", "SurfaceB"]
+    assert [zone[0] for zone in restored[2][1][2]] == ["PlanarZone"]

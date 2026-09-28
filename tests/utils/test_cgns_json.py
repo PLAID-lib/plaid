@@ -112,6 +112,56 @@ def test_cgns_tree_json_payload_roundtrip_with_json_scalars():
     assert decoded == tree
 
 
+@pytest.mark.parametrize(
+    ("name", "label", "value"),
+    [
+        ("ZoneType", "ZoneType_t", "Unstructured"),
+        ("GridLocation", "GridLocation_t", "Vertex"),
+        ("Description", "Descriptor_t", "mesh description"),
+    ],
+)
+def test_cgns_tree_json_decodes_c1_scalar_strings_as_character_arrays(
+    name: str,
+    label: str,
+    value: str,
+) -> None:
+    """Plain JSON strings for CGNS C1 nodes become pyCGNS character arrays."""
+    payload = {
+        "format": "plaid-cgns-tree-json",
+        "version": 1,
+        "tree": {
+            "name": name,
+            "label": label,
+            "value": value,
+            "children": [],
+        },
+    }
+
+    decoded = cgns_tree_from_json_payload(payload)
+
+    assert isinstance(decoded[1], np.ndarray)
+    assert decoded[1].dtype == np.dtype("|S1")
+    assert decoded[1].tobytes().decode("ascii") == value
+
+
+def test_cgns_tree_json_preserves_user_defined_scalar_strings() -> None:
+    """Labels without a C1 datatype retain plain JSON string values."""
+    payload = {
+        "format": "plaid-cgns-tree-json",
+        "version": 1,
+        "tree": {
+            "name": "Metadata",
+            "label": "UserDefinedData_t",
+            "value": "metadata",
+            "children": [],
+        },
+    }
+
+    decoded = cgns_tree_from_json_payload(payload)
+
+    assert decoded[1] == "metadata"
+
+
 def test_cgns_tree_json_rejects_invalid_payloads():
     """Invalid schema metadata and malformed nodes raise explicit errors."""
     with pytest.raises(ValueError, match="Unsupported CGNS JSON format"):

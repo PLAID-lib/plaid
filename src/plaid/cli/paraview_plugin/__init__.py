@@ -13,7 +13,7 @@ def get_ParaView_plugin_path():
     return Path(__file__).parent
 
 
-def get_ParaView_plugin_path_one_file():
+def get_ParaView_plugin_path_one_file(path: Path | str | None = None) -> str:
     """Returns the path to a temporary directory containing the plugin as a single file.
 
     all the helper module are included in the plugin file to make it self contained and
@@ -28,23 +28,36 @@ def get_ParaView_plugin_path_one_file():
     with open(Path(cgns_json.__file__), "r") as f:
         sample_json_content = f.read()
 
+    import plaid.utils.json_codec as json_codec
+
+    with open(Path(json_codec.__file__), "r") as f:
+        json_codec_content = f.read()
+
     import plaid.utils.cgns_vtk as cgns_vtk
 
     with open(Path(cgns_vtk.__file__), "r") as f:
         cgns_vtk_content = f.read()
 
     plugin_content = plugin_content.replace(
-        "# ##INCLUDE PLACEHOLDER##", sample_json_content + cgns_vtk_content
+        "# ##INCLUDE PLACEHOLDER##", json_codec_content + sample_json_content + cgns_vtk_content
     )
     plugin_content = plugin_content.replace("from __future__ import annotations", "")
 
-    tmpdir = tempfile.mkdtemp()
-    file_path = os.path.join(tmpdir, "PlaidParaViewPlugin.py")
+    plugin_content = plugin_content.replace(
+        "from .json_codec import decode_leaf_value, encode_leaf_value", "" )
+
+    if path is not None:
+        tmpdir = Path(path)
+    else:
+        tmpdir = tempfile.mkdtemp()
+
+    directory = Path(tmpdir)
+    file_path = os.path.join(directory, "PlaidParaViewPlugin.py")
 
     # Write full plugin to the temporary file
     with open(file_path, "w") as f:
         f.write(plugin_content)
-    return tmpdir
+    return str(tmpdir)
 
 
 def convert_wsl_to_win(wsl_path: str) -> str:

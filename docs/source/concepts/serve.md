@@ -153,6 +153,13 @@ The response shape is:
 The sample payloads use the same JSON representation as
 `plaid.utils.sample_json.sample_to_json_payload`.
 
+PLAID normally serializes NumPy values with explicit dtype and shape metadata.
+For interoperability with other JSON producers, deserialization also accepts a
+plain JSON string for CGNS nodes whose declared datatype includes `C1`, such as
+`ZoneType_t` and `GridLocation_t`. These values are restored as NumPy `|S1`
+character arrays, as required by pyCGNS and mesh readers such as Muscat. Scalar
+strings on non-character nodes remain Python strings.
+
 ## Python client usage
 
 `plaid.utils.process_client.PlaidClient` can query the read-only endpoints when
