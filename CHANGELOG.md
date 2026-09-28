@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- (storage/preprocessor) preserve the source floating-point dtype during schema inference.
 - (storage/reader) Fix HF backend split download not respecting `~` character on Linux.
 
 ## [1.0.0] - 2026-07-07

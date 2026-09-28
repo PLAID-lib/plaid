@@ -10,3 +10,15 @@ def test_infer_dtype_detects_single_byte_string_arrays():
     value = np.array([b"A", b"B"], dtype="S1")
 
     assert infer_dtype(value) == {"dtype": "S1", "ndim": 1}
+
+
+def test_infer_dtype_preserves_float_precision():
+    """Floating-point schemas should preserve the source dtype."""
+    assert infer_dtype(np.array([1.0], dtype=np.float32)) == {
+        "dtype": "float32",
+        "ndim": 1,
+    }
+    assert infer_dtype(np.array([1.0], dtype=np.float64)) == {
+        "dtype": "float64",
+        "ndim": 1,
+    }

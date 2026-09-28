@@ -35,7 +35,7 @@ def infer_dtype(value: Any) -> dict[str, int | str]:
         arr = np.array(value)
         dtype = arr.dtype
         if np.issubdtype(dtype, np.floating):
-            dt = "float32"
+            dt = str(dtype)
         elif np.issubdtype(dtype, np.int32):
             dt = "int32"
         elif np.issubdtype(dtype, np.int64):
