@@ -803,6 +803,54 @@ class PlaidDatasetService:
                 )
         return [SampleRefDTO.from_ref(ref) for ref in refs]
 
+    def extract_globals(self, dataset_id: str) -> dict[str, list[dict[str, object]]]:
+        """Read all Global columns for every sample in every local split.
+
+        Args:
+            dataset_id: Identifier of a disk-backed dataset.
+
+        Returns:
+            A mapping of split names to records with ``sample_id`` and
+            ``values`` (the full, unmodified Global values). The special
+            ``__default__`` key represents an unsplit dataset.
+
+        Raises:
+            ValueError: If the dataset is a forward-only stream.
+        """
+        if self._is_hub_dataset(dataset_id):
+            raise ValueError(
+                "Globals exploration is unavailable for streaming datasets."
+            )
+
+        datasets, _ = self._open(dataset_id)
+        result: dict[str, list[dict[str, object]]] = {}
+        for split, dataset in datasets.items():
+            columns = getattr(dataset, "column_names", None)
+            names = (
+                [name for name in columns if name.startswith("Global/")]
+                if columns is not None
+                else None
+            )
+            records: list[dict[str, object]] = []
+            for index in range(len(dataset)):
+                row = dataset[index]
+                if names is None and not isinstance(row, dict):
+                    # CGNS stores Sample objects instead of column dictionaries.
+                    sample = row
+                    values = {}
+                    for name in sample.get_global_names():
+                        values[f"Global/{name}"] = sample.get_global(name)
+                else:
+                    row_names = (
+                        names
+                        if names is not None
+                        else [key for key in row if key.startswith("Global/")]
+                    )
+                    values = {name: row.get(name) for name in row_names}
+                records.append({"sample_id": str(index), "values": values})
+            result[split] = records
+        return result
+
     # --------------------------------------------------- Streaming cursors
 
     def stream_cursor_position(self, dataset_id: str, split: str | None) -> int:

@@ -116,6 +116,43 @@ Choose which sample to display.
 The label under this control shows the current sample id, number of samples, or
 streaming status.
 
+## Explore Globals across splits
+
+Switch from **Sample (VTK)** to the **Globals** tab and click **Extract Globals**.
+This reads all `Global/` values in every sample of every local split; it does
+not alter the feature selection used by the sample view. Tick one or more
+splits on the left and choose **1D**, **2D**, **3D**, or **parallel**. Scatter
+plots use one, two, or three selectable numeric scalar Globals; in 1D the
+horizontal axis is the sample index. Points use different colors and shapes
+for each split. Enable **Label points** to annotate points with their sample
+ID or another Global. Numeric Global arrays with multiple values are expanded
+into scalar components named with 1-based suffixes (for example, `Global/foo_1`,
+`Global/foo_2`). These components can be selected like other Globals. For
+parallel coordinates, use the **Globals to plot**
+checkboxes to select the numeric scalar Globals to display (all are selected
+by default). Different line styles and colors distinguish the selected splits.
+Each parallel axis is scaled independently from 0 to 1 for comparison across
+different units.
+Use **Parallel renderer** to try either partial-line plotting (`lines`) or
+Plotly's interactive `Parcoords` renderer. `Parcoords` requires a complete
+numeric value for every selected Global, so samples with missing selected
+values are omitted in that mode.
+
+All four plots use interactive Plotly views. Pan, zoom, reset, and export the
+plot with the plot toolbar; rotate the 3D scatter with the mouse. In parallel
+plots, hover over a point to see the original (unnormalized) Global value.
+
+Extracted values are retained even if they are arrays or missing. Scatter
+plots skip samples with missing, non-finite, or non-scalar values on the chosen
+axes. Parallel plots show the available parts of each sample's line, leaving
+gaps for missing axes and marking isolated values; samples without any
+plottable values are skipped. Time-companion (`*_times`) columns are not plotted.
+Extraction may take time for large datasets and the plot may be dense when
+showing many samples.
+
+**Streaming Hub datasets are not supported** in the Globals tab; the extract
+button is disabled for these datasets.
+
 ## Time-dependent samples
 
 If the selected sample contains several time steps, a **Time** slider appears

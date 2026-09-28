@@ -155,6 +155,77 @@ def test_get_dataset_reports_split_counts_from_dataset_dict(
     assert detail.splits == {"train": 3, "test": 2}
 
 
+def test_extract_globals_reads_every_split_without_converting_samples(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Global columns retain raw vectors, nulls and per-split sample IDs."""
+    _make_dataset_dir(tmp_path, "ds")
+
+    class Columns(list):
+        @property
+        def column_names(self):
+            return ["Global/a", "Global/vector", "mesh"]
+
+    datasets = {
+        "train": Columns(
+            [
+                {"Global/a": 1, "Global/vector": [1, 2], "mesh": 0},
+                {"Global/a": None, "Global/vector": [3], "mesh": 1},
+            ]
+        ),
+        "test": Columns([{"Global/a": 9, "Global/vector": [], "mesh": 2}]),
+    }
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    assert service.extract_globals("ds") == {
+        "train": [
+            {"sample_id": "0", "values": {"Global/a": 1, "Global/vector": [1, 2]}},
+            {"sample_id": "1", "values": {"Global/a": None, "Global/vector": [3]}},
+        ],
+        "test": [{"sample_id": "0", "values": {"Global/a": 9, "Global/vector": []}}],
+    }
+
+
+def test_extract_globals_rejects_streaming_dataset(tmp_path: Path) -> None:
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset("org/stream")
+    with pytest.raises(ValueError, match="unavailable for streaming"):
+        service.extract_globals("org/stream")
+
+
+def test_extract_globals_supports_rows_without_column_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Zarr-style row dictionaries may expose different Globals per sample."""
+    _make_dataset_dir(tmp_path, "ds")
+    datasets = {"train": _FakeDataset([{"Global/a": 1}, {"Global/b": [2, 3]}])}
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    assert service.extract_globals("ds") == {
+        "train": [
+            {"sample_id": "0", "values": {"Global/a": 1}},
+            {"sample_id": "1", "values": {"Global/b": [2, 3]}},
+        ]
+    }
+
+
+def test_extract_globals_supports_cgns_samples(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """CGNS-backed datasets yield Sample objects rather than column rows."""
+    from plaid.containers.sample import Sample
+
+    _make_dataset_dir(tmp_path, "ds")
+    sample = Sample()
+    sample.add_global("energy", 2.5)
+    datasets = {"train": _FakeDataset([sample])}
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    values = service.extract_globals("ds")["train"][0]["values"]
+    assert "Global/energy" in values
+    assert float(values["Global/energy"]) == 2.5
+
+
 def test_describe_non_visual_bases_lists_zoneless_bases_only(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

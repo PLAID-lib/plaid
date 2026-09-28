@@ -40,6 +40,7 @@ dependencies = [
 [project.optional-dependencies]
 viewer = [
     "trame>=4.0,<5.0",
+    "trame-plotly>=3,<4",
     "trame-vtk>=2.8,<3.0",
     "trame-vuetify>=2.7,<4.0",
     "vtk>=9.6.1",
@@ -102,3 +103,4 @@ omit = [
 
 [tool.pytest.ini_options]
 filterwarnings = "ignore::DeprecationWarning"
+
