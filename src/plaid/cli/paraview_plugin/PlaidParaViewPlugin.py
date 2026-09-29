@@ -6,9 +6,10 @@ compatible with ParaView 5.11+
 
 import json
 import os
+import socket
 import time
 from typing import Optional
-from urllib import request
+from urllib import error, request
 
 import numpy as np
 import vtk
@@ -84,6 +85,11 @@ print_debug("Loading libs")
 
 paraview_plugin_name = "Plaid ParaView Plugin"
 paraview_plugin_version = "5.11.1"
+
+plaid_explorer_server_default_host = os.environ.get("PLAID_HOST", "127.0.0.1")
+plaid_explorer_server_default_port = int(os.environ.get("PLAID_PORT", "8000"))
+plaid_process_server_default_host = os.environ.get("PLAID_PROCESS_HOST", "127.0.0.1")
+plaid_process_server_default_port = int(os.environ.get("PLAID_PROCESS_PORT", "8001"))
 
 
 def find_closest_numpy(arr, target):
@@ -309,14 +315,17 @@ class PlaidClientBase(PlaidDataSetBase):
             inputType=inputType,
             outputType=outputType,
         )
-        self.host: str = "127.0.0.1"
-        self.port: int = 8000
+        self.host: str = plaid_explorer_server_default_host
+        self.port: int = plaid_explorer_server_default_port
+        self.server_ok = False
 
     def _CleanCache(self):
         super()._CleanCache()
         self.Modified()
 
-    @smproperty.stringvector(name="Host", default_values="127.0.0.1")
+    @smproperty.stringvector(
+        name="Host", default_values=plaid_explorer_server_default_host
+    )
     def SetHost(self, value):
         """Set the server host address to connect to for fetching dataset information and samples."""
         value = str(value)
@@ -325,7 +334,7 @@ class PlaidClientBase(PlaidDataSetBase):
             self._CleanCache()
 
     @smproperty.intvector(
-        name="Port", default_values=os.environ.get("PLAID_PORT", "8000")
+        name="Port", default_values=str(plaid_explorer_server_default_port)
     )
     def SetPort(self, value):
         """Set the server port to connect to for fetching dataset information and samples."""
@@ -333,6 +342,40 @@ class PlaidClientBase(PlaidDataSetBase):
         if self.port != value:
             self.port = value
             self._CleanCache()
+
+    def isServerOK(self):
+        """Check if the Plaid server is reachable and responding to health checks."""
+        self.server_ok = False
+        try:
+            with request.urlopen(
+                request.Request(
+                    url=f"http://{self.host}:{self.port}/health",
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                ),
+                timeout=2,
+            ) as response:
+                self.server_ok = (
+                    json.loads(response.read().decode("utf-8"))["status"] == "ok"
+                )
+        except error.HTTPError as exc:
+            # Server was reachable, but returned e.g. 400, 404, 500
+            print(f"HTTP error: {exc.code} {exc.reason}")
+        except error.URLError as exc:
+            # DNS failure, connection refused, unreachable host, etc.
+            if isinstance(exc.reason, socket.timeout):
+                print("Connection timed out")
+            elif isinstance(exc.reason, ConnectionRefusedError):
+                print("Connection refused")
+            else:
+                print(f"Connection failed: {exc.reason}")
+
+        except (socket.timeout, TimeoutError):
+            # Some timeout conditions may surface directly
+            print("Connection timed out")
+
+        self._CleanCache()
+        return self.server_ok
 
     def _request_json(
         self, endpoint: str, payload: Optional[dict[str, object]] = None
@@ -377,13 +420,15 @@ class PlaidExplorer(PlaidClientBase):
         self.useProcess: bool = False
         self.input_features = ""
 
-    @smproperty.stringvector(name="Host", default_values="127.0.0.1")
+    @smproperty.stringvector(
+        name="Host", default_values=plaid_explorer_server_default_host
+    )
     def SetHost(self, value):
         """Set the server host address to connect to for fetching dataset information and samples."""
         return super().SetHost(value)
 
     @smproperty.intvector(
-        name="Port", default_values=os.environ.get("PLAID_PORT", "8000")
+        name="Port", default_values=str(plaid_explorer_server_default_port)
     )
     def SetPort(self, value):
         """Set the server port to connect to for fetching dataset information and samples."""
@@ -421,27 +466,6 @@ class PlaidExplorer(PlaidClientBase):
     def GetTimestepValues(self):
         """Return a list of available time steps for the currently selected sample and split, with caching."""
         return super().GetTimestepValues()
-
-    # """
-    #             <RequiredProperties>
-    #                 <Property name="SampleIdRangeInfo" function="RangeInfo"  immediate_update="1"/>
-    #                 <Property name="SelectSplit" function="GetSelectSplit"  immediate_update="1"/>
-    #             </RequiredProperties>
-
-    # """
-    # @smproperty.xml("""
-    #         <IntVectorProperty name="SampleId"
-    #                             command="SetSampleId"
-    #                             number_of_elements="1"
-    #                             default_values="0"
-    #                      immediate_update="1">
-    #             <IntRangeDomain name="range">
-
-    #             </IntRangeDomain>
-    #             <Hints>
-    #             <Widget type="slider" />
-    #             </Hints>
-    #         </IntVectorProperty>""")
 
     @smproperty.intvector(name="SampleId", default_values="0", immediate_update="1")
     @smdomain.xml(
@@ -528,12 +552,49 @@ class PlaidProcess(VTKPythonAlgorithmBase):
         )
         self._timestep_values_cache: list[float] | None = None
         self._sample_cache = None
-        self.host: str = "127.0.0.1"
-        self.port: int = 8001
+        self.host: str = plaid_process_server_default_host
+        self.port: int = plaid_process_server_default_port
+        self.process_op = "predict"
         self.ensure_3D_points = False
 
         # Track the input used to build the cache
         self._input_mtime = None
+
+    @smproperty.intvector(
+        name="ProcessOperation",
+        default_values=0,  # Maps to "Predict" (index 3)
+        number_of_elements=1,
+    )
+    @smdomain.xml("""
+        <EnumerationDomain name="enum">
+            <Entry text="Predict" value="0" />
+            <Entry text="Transform" value="1" />
+            <Entry text="Infer" value="2" />
+            <Entry text="Inverse Transform" value="3" />
+        </EnumerationDomain>
+        <Documentation>
+            This property indicates which process mode will be used.
+        </Documentation>
+    """)
+    def SetProcessOperation(self, value):
+        """Set the operation used by the processing endpoint."""
+        # Map integers back to strings internally
+        mapping = {
+            0: "predict",
+            1: "transform",
+            2: "infer",
+            3: "inverse_transform",
+        }
+
+        op_string = mapping.get(int(value), "predict")
+        if op_string and self.process_op != op_string:
+            self.process_op = op_string
+            self._CleanCache()
+
+    def _CleanCache(self):
+        self._timestep_values_cache: list[float] | None = None
+        self._sample_cache = None
+        self.Modified()
 
     def _CheckInputChanged(self, input_data):
         if input_data is None:
@@ -562,7 +623,9 @@ class PlaidProcess(VTKPythonAlgorithmBase):
         self._InvalidateCache()
         self.Modified()
 
-    @smproperty.stringvector(name="Host", default_values="127.0.0.1")
+    @smproperty.stringvector(
+        name="Host", default_values=plaid_process_server_default_host
+    )
     def SetHost(self, value):
         """Set the server host address to connect to for fetching dataset information and samples."""
         value = str(value)
@@ -571,7 +634,7 @@ class PlaidProcess(VTKPythonAlgorithmBase):
             self._PropertyChanged()
 
     @smproperty.intvector(
-        name="Port", default_values=os.environ.get("PLAID_PORT", "8001")
+        name="Port", default_values=int(plaid_process_server_default_port)
     )
     def SetPort(self, value):
         """Set the server port to connect to for processing data."""
@@ -583,6 +646,20 @@ class PlaidProcess(VTKPythonAlgorithmBase):
     def _request_json(
         self, endpoint: str, payload: Optional[dict[str, object]] = None
     ) -> dict[str, object]:
+        """Send a JSON request to the process server.
+
+        Args:
+            endpoint: Server endpoint path.
+            payload: Optional JSON-serializable request body.
+
+        Returns:
+            Decoded JSON response from the server.
+
+        Raises:
+            HTTPError: The server rejected the request.
+            URLError: The server could not be reached.
+            TimeoutError: The request timed out.
+        """
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
 
         req = request.Request(
@@ -591,8 +668,27 @@ class PlaidProcess(VTKPythonAlgorithmBase):
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with request.urlopen(req, timeout=20) as response:
-            return json.loads(response.read().decode("utf-8"))
+        try:
+            with request.urlopen(req, timeout=5) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except error.HTTPError as exc:
+            # Server was reachable, but returned e.g. 400, 404, 500
+            print(f"HTTP error: {exc.code} {exc.reason}")
+            raise
+        except error.URLError as exc:
+            # DNS failure, connection refused, unreachable host, etc.
+            if isinstance(exc.reason, socket.timeout):
+                print("Connection timed out")
+            elif isinstance(exc.reason, ConnectionRefusedError):
+                print("Connection refused")
+            else:
+                print(f"Connection failed: {exc.reason}")
+            raise
+
+        except (socket.timeout, TimeoutError):
+            # Some timeout conditions may surface directly
+            print("Connection timed out")
+            raise
 
     def RequestData(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
         """Convert the cached CGNS tree for the requested time to VTK."""
@@ -668,7 +764,7 @@ class PlaidProcess(VTKPythonAlgorithmBase):
             endpoint = "/process"
 
             payload = {
-                "operation": "predict",
+                "operation": self.process_op,
                 "sample": vtk_to_json_payload(
                     input_data, ensure_3D_points=self.ensure_3D_points
                 ),
