@@ -6,9 +6,10 @@ compatible with ParaView 5.11+
 
 import json
 import os
+import socket
 import time
 from typing import Optional
-from urllib import request
+from urllib import error, request
 
 import numpy as np
 import vtk
@@ -25,15 +26,18 @@ except ImportError:
     from vtk.util.vtkAlgorithm import VTKPythonAlgorithmBase
 
 try:
-    from plaid.utils.cgns_json import cgns_tree_from_json_payload
-    from plaid.utils.cgns_vtk import CGNSTreeToVtk
+    from plaid.utils.cgns_json import (
+        cgns_tree_from_json_payload,
+        cgns_tree_to_json_payload,
+    )
+    from plaid.utils.cgns_vtk import CGNSTreeToVtk, VtkToCGNSTree
 except ImportError:
     # this import are in a try because for some cases the plaid library is not available (client server)
     # inthat case the body of the 2 include are injected into the plugin at run time using the function
     # get_ParaView_plugin_path_one_file
     pass
 
-# this line is to inlcude the import to make the plugin selfcontain
+# this line is to include the import to make the plugin self-contain
 # do not modify the next line (see file function get_ParaView_plugin_path_one_file for the use case)
 # ##INCLUDE PLACEHOLDER##
 
@@ -42,6 +46,33 @@ except ImportError:
 
 _start_time = time.time()
 debug = bool(os.environ.get("PARAVIEW_LOG_PLUGIN_VERBOSITY", False))
+
+
+def vtk_to_json_payload(data_object, ensure_3D_points=False):
+    """Convert a VTK data object to the existing CGNS JSON payload format.
+
+    Args:
+        data_object: VTK dataset or multiblock dataset to serialize.
+        ensure_3D_points: Whether metadata-free planar VTK input should retain a
+            third coordinate array.
+
+    Returns:
+        JSON-compatible CGNS tree payload suitable for a PLAID request.
+    """
+    trees_payload = [
+        {
+            "time": 0.0,
+            "tree": cgns_tree_to_json_payload(
+                VtkToCGNSTree(data_object, ensure_3D_points=ensure_3D_points)
+            ),
+        }
+    ]
+
+    return {
+        "format": "plaid-sample-json",
+        "version": 1,
+        "trees": trees_payload,
+    }
 
 
 def print_debug(message: str) -> None:
@@ -54,6 +85,11 @@ print_debug("Loading libs")
 
 paraview_plugin_name = "Plaid ParaView Plugin"
 paraview_plugin_version = "5.11.1"
+
+plaid_explorer_server_default_host = os.environ.get("PLAID_HOST", "127.0.0.1")
+plaid_explorer_server_default_port = int(os.environ.get("PLAID_PORT", "8000"))
+plaid_process_server_default_host = os.environ.get("PLAID_PROCESS_HOST", "127.0.0.1")
+plaid_process_server_default_port = int(os.environ.get("PLAID_PROCESS_PORT", "8001"))
 
 
 def find_closest_numpy(arr, target):
@@ -279,14 +315,17 @@ class PlaidClientBase(PlaidDataSetBase):
             inputType=inputType,
             outputType=outputType,
         )
-        self.host: str = "127.0.0.1"
-        self.port: int = 8000
+        self.host: str = plaid_explorer_server_default_host
+        self.port: int = plaid_explorer_server_default_port
+        self.server_ok = False
 
     def _CleanCache(self):
         super()._CleanCache()
         self.Modified()
 
-    @smproperty.stringvector(name="Host", default_values="127.0.0.1")
+    @smproperty.stringvector(
+        name="Host", default_values=plaid_explorer_server_default_host
+    )
     def SetHost(self, value):
         """Set the server host address to connect to for fetching dataset information and samples."""
         value = str(value)
@@ -295,7 +334,7 @@ class PlaidClientBase(PlaidDataSetBase):
             self._CleanCache()
 
     @smproperty.intvector(
-        name="Port", default_values=os.environ.get("PLAID_PORT", "8000")
+        name="Port", default_values=str(plaid_explorer_server_default_port)
     )
     def SetPort(self, value):
         """Set the server port to connect to for fetching dataset information and samples."""
@@ -303,6 +342,40 @@ class PlaidClientBase(PlaidDataSetBase):
         if self.port != value:
             self.port = value
             self._CleanCache()
+
+    def isServerOK(self):
+        """Check if the Plaid server is reachable and responding to health checks."""
+        self.server_ok = False
+        try:
+            with request.urlopen(
+                request.Request(
+                    url=f"http://{self.host}:{self.port}/health",
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                ),
+                timeout=2,
+            ) as response:
+                self.server_ok = (
+                    json.loads(response.read().decode("utf-8"))["status"] == "ok"
+                )
+        except error.HTTPError as exc:
+            # Server was reachable, but returned e.g. 400, 404, 500
+            print(f"HTTP error: {exc.code} {exc.reason}")
+        except error.URLError as exc:
+            # DNS failure, connection refused, unreachable host, etc.
+            if isinstance(exc.reason, socket.timeout):
+                print("Connection timed out")
+            elif isinstance(exc.reason, ConnectionRefusedError):
+                print("Connection refused")
+            else:
+                print(f"Connection failed: {exc.reason}")
+
+        except (socket.timeout, TimeoutError):
+            # Some timeout conditions may surface directly
+            print("Connection timed out")
+
+        self._CleanCache()
+        return self.server_ok
 
     def _request_json(
         self, endpoint: str, payload: Optional[dict[str, object]] = None
@@ -347,13 +420,15 @@ class PlaidExplorer(PlaidClientBase):
         self.useProcess: bool = False
         self.input_features = ""
 
-    @smproperty.stringvector(name="Host", default_values="127.0.0.1")
+    @smproperty.stringvector(
+        name="Host", default_values=plaid_explorer_server_default_host
+    )
     def SetHost(self, value):
         """Set the server host address to connect to for fetching dataset information and samples."""
         return super().SetHost(value)
 
     @smproperty.intvector(
-        name="Port", default_values=os.environ.get("PLAID_PORT", "8000")
+        name="Port", default_values=str(plaid_explorer_server_default_port)
     )
     def SetPort(self, value):
         """Set the server port to connect to for fetching dataset information and samples."""
@@ -391,27 +466,6 @@ class PlaidExplorer(PlaidClientBase):
     def GetTimestepValues(self):
         """Return a list of available time steps for the currently selected sample and split, with caching."""
         return super().GetTimestepValues()
-
-    # """
-    #             <RequiredProperties>
-    #                 <Property name="SampleIdRangeInfo" function="RangeInfo"  immediate_update="1"/>
-    #                 <Property name="SelectSplit" function="GetSelectSplit"  immediate_update="1"/>
-    #             </RequiredProperties>
-
-    # """
-    # @smproperty.xml("""
-    #         <IntVectorProperty name="SampleId"
-    #                             command="SetSampleId"
-    #                             number_of_elements="1"
-    #                             default_values="0"
-    #                      immediate_update="1">
-    #             <IntRangeDomain name="range">
-
-    #             </IntRangeDomain>
-    #             <Hints>
-    #             <Widget type="slider" />
-    #             </Hints>
-    #         </IntVectorProperty>""")
 
     @smproperty.intvector(name="SampleId", default_values="0", immediate_update="1")
     @smdomain.xml(
@@ -480,6 +534,257 @@ class PlaidExplorer(PlaidClientBase):
                 time_value = float(entry["time"])
                 sample_data[time_value] = cgns_tree_from_json_payload(entry["tree"])
             self._sample_cache = sample_data
+
+        return self._sample_cache
+
+
+@smproxy.filter(name="PlaidProcess", label="Plaid Process")
+@smproperty.input(name="Input", port_index=0)
+@smdomain.datatype(dataTypes=["vtkDataObject"], composite_data_supported=False)
+class PlaidProcess(VTKPythonAlgorithmBase):
+    """ParaView filter for processing samples with a Plaid serve endpoint."""
+
+    def __init__(self):
+        super().__init__(
+            nInputPorts=1,
+            nOutputPorts=1,
+            outputType="vtkUnstructuredGrid",
+        )
+        self._timestep_values_cache: list[float] | None = None
+        self._sample_cache = None
+        self.host: str = plaid_process_server_default_host
+        self.port: int = plaid_process_server_default_port
+        self.process_op = "predict"
+        self.ensure_3D_points = False
+
+        # Track the input used to build the cache
+        self._input_mtime = None
+
+    @smproperty.intvector(
+        name="ProcessOperation",
+        default_values=0,  # Maps to "Predict" (index 3)
+        number_of_elements=1,
+    )
+    @smdomain.xml("""
+        <EnumerationDomain name="enum">
+            <Entry text="Predict" value="0" />
+            <Entry text="Transform" value="1" />
+            <Entry text="Infer" value="2" />
+            <Entry text="Inverse Transform" value="3" />
+        </EnumerationDomain>
+        <Documentation>
+            This property indicates which process mode will be used.
+        </Documentation>
+    """)
+    def SetProcessOperation(self, value):
+        """Set the operation used by the processing endpoint."""
+        # Map integers back to strings internally
+        mapping = {
+            0: "predict",
+            1: "transform",
+            2: "infer",
+            3: "inverse_transform",
+        }
+
+        op_string = mapping.get(int(value), "predict")
+        if op_string and self.process_op != op_string:
+            self.process_op = op_string
+            self._CleanCache()
+
+    def _CleanCache(self):
+        self._timestep_values_cache: list[float] | None = None
+        self._sample_cache = None
+        self.Modified()
+
+    def _CheckInputChanged(self, input_data):
+        if input_data is None:
+            return False
+
+        mtime = input_data.GetMTime()
+
+        if self._input_mtime is None:
+            self._input_mtime = mtime
+            return False
+
+        if mtime != self._input_mtime:
+            print_debug(f"Input changed: {self._input_mtime} -> {mtime}")
+            self._input_mtime = mtime
+            self._InvalidateCache()
+
+            return True
+
+        return False
+
+    def _InvalidateCache(self):
+        self._timestep_values_cache = None
+        self._sample_cache = None
+
+    def _PropertyChanged(self):
+        self._InvalidateCache()
+        self.Modified()
+
+    @smproperty.stringvector(
+        name="Host", default_values=plaid_process_server_default_host
+    )
+    def SetHost(self, value):
+        """Set the server host address to connect to for fetching dataset information and samples."""
+        value = str(value)
+        if self.host != value:
+            self.host = value
+            self._PropertyChanged()
+
+    @smproperty.intvector(
+        name="Port", default_values=int(plaid_process_server_default_port)
+    )
+    def SetPort(self, value):
+        """Set the server port to connect to for processing data."""
+        value = int(value)
+        if self.port != value:
+            self.port = value
+            self._PropertyChanged()
+
+    def _request_json(
+        self, endpoint: str, payload: Optional[dict[str, object]] = None
+    ) -> dict[str, object]:
+        """Send a JSON request to the process server.
+
+        Args:
+            endpoint: Server endpoint path.
+            payload: Optional JSON-serializable request body.
+
+        Returns:
+            Decoded JSON response from the server.
+
+        Raises:
+            HTTPError: The server rejected the request.
+            URLError: The server could not be reached.
+            TimeoutError: The request timed out.
+        """
+        data = json.dumps(payload).encode("utf-8") if payload is not None else None
+
+        req = request.Request(
+            url=f"http://{self.host}:{self.port}{endpoint}",
+            data=data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with request.urlopen(req, timeout=5) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except error.HTTPError as exc:
+            # Server was reachable, but returned e.g. 400, 404, 500
+            print(f"HTTP error: {exc.code} {exc.reason}")
+            raise
+        except error.URLError as exc:
+            # DNS failure, connection refused, unreachable host, etc.
+            if isinstance(exc.reason, socket.timeout):
+                print("Connection timed out")
+            elif isinstance(exc.reason, ConnectionRefusedError):
+                print("Connection refused")
+            else:
+                print(f"Connection failed: {exc.reason}")
+            raise
+
+        except (socket.timeout, TimeoutError):
+            # Some timeout conditions may surface directly
+            print("Connection timed out")
+            raise
+
+    def RequestData(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Convert the cached CGNS tree for the requested time to VTK."""
+        out_info = out_info_vec.GetInformationObject(0)
+        executive = self.GetExecutive()
+        from vtkmodules.vtkCommonDataModel import vtkPolyData, vtkUnstructuredGrid
+
+        if out_info.Has(executive.UPDATE_TIME_STEP()):
+            requested_time = float(out_info.Get(executive.UPDATE_TIME_STEP()))
+        else:
+            # values = self.GetTimestepValues()
+            # requested_time = float(values[0]) if values else 0.0
+            requested_time = 0.0
+
+        if self._sample_cache is None:
+            input0 = vtkUnstructuredGrid.GetData(in_info_vec[0])
+            if input0 is None:
+                input0 = vtkPolyData.GetData(in_info_vec[0])
+
+            self.GetSampleData(input0)
+
+        sample_data = self._sample_cache
+
+        if sample_data == "None":
+            return 1
+
+        requested_time = find_closest_numpy(
+            np.array(list(sample_data.keys())), requested_time
+        )
+        cgnstree = sample_data[requested_time]
+
+        new_output = CGNSTreeToVtk(cgnstree)
+        info = out_info_vec.GetInformationObject(0)
+
+        info.Set(vtk.vtkDataObject.DATA_OBJECT(), new_output)
+        return 1
+
+    def RequestInformation(self, request, input_vector, out_info_vec):  # noqa: ARG002
+        """Update upstream and fetch sample time-step information."""
+        # 1. Reach upstream and force the producer to execute right now
+        input_vector[0].GetInformationObject(0)
+        upstream_algorithm = self.GetInputConnection(0, 0).GetProducer()
+        upstream_algorithm.Update()
+
+        input_data = self.GetInputDataObject(0, 0)
+
+        executive = self.GetExecutive()
+        out_info = out_info_vec.GetInformationObject(0)
+
+        self.GetSampleData(input_data)
+
+        if len(self._timestep_values_cache) == 0:
+            return 1
+
+        time_steps = self._timestep_values_cache
+        out_info.Remove(executive.TIME_STEPS())
+        out_info.Remove(executive.TIME_RANGE())
+
+        if len(time_steps) > 1:
+            for t in time_steps:
+                out_info.Append(executive.TIME_STEPS(), t)
+            out_info.Append(executive.TIME_RANGE(), time_steps[0])
+            out_info.Append(executive.TIME_RANGE(), time_steps[-1])
+
+        print_debug(f" end RequestInformation-----------------------------{time_steps}")
+        return 1
+
+    def GetSampleData(self, input_data):
+        """Fetch and cache the processed sample data."""
+        self._CheckInputChanged(input_data)
+
+        if self._sample_cache is None:
+            endpoint = "/process"
+
+            payload = {
+                "operation": self.process_op,
+                "sample": vtk_to_json_payload(
+                    input_data, ensure_3D_points=self.ensure_3D_points
+                ),
+            }
+            response = self._request_json(
+                endpoint,
+                payload,
+            )
+            sample_payload = response.get("samples", [None])[0].get("trees")
+            sample_data = {}
+
+            for entry in sample_payload:
+                time_value = float(entry["time"])
+                sample_data[time_value] = cgns_tree_from_json_payload(entry["tree"])
+            self._sample_cache = sample_data
+            self._timestep_values_cache = [float(t) for t in sample_data.keys()]
+
+            if self._timestep_values_cache is None:
+                print_debug(f"GetTimestepValues {[0]}")
+                self._timestep_values_cache = [0]
 
         return self._sample_cache
 
