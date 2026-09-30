@@ -732,6 +732,33 @@ def test_feature_catalogue_helpers_discover_cgns_bases_from_sample(
     assert service.list_base_paths("ds", "Base_2_3") == ["Base_2_3/Zone"]
 
 
+def test_cgns_catalogue_ignores_empty_and_invalid_splits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A malformed split must not prevent discovery for the dataset."""
+    import types
+
+    _make_dataset_dir(tmp_path, "ds")
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {
+            "ds": (
+                {"empty": _FakeDataset(), "broken": _FakeDataset(range(1))},
+                {"empty": _FakeConverter({}), "broken": _FakeConverter({})},
+            )
+        },
+    )
+    from plaid.storage.common import reader as reader_mod
+
+    infos = types.SimpleNamespace(storage_backend="cgns")
+    monkeypatch.setattr(reader_mod, "load_infos_from_disk", lambda *_args: infos)
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+
+    assert service.list_available_bases("ds") == []
+    assert service.list_base_paths("ds", "Base_2_3") == []
+
+
 def test_set_features_rejects_unknown_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
