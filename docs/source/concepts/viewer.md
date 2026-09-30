@@ -130,7 +130,11 @@ into scalar components named with 1-based suffixes (for example, `Global/foo_1`,
 `Global/foo_2`). These components can be selected like other Globals. For
 parallel coordinates, use the **Globals to plot**
 checkboxes to select the numeric scalar Globals to display (all are selected
-by default). Different line styles and colors distinguish the selected splits.
+by default). Enter a regular expression in **Filter Globals** to show only
+matching checkboxes; an invalid expression displays an error and matches
+nothing. **Check** and **Uncheck** affect only the visible Globals, while
+hidden selections remain unchanged. Clear the filter to show the full list
+again. Different line styles and colors distinguish the selected splits.
 Each parallel axis is scaled independently from 0 to 1 for comparison across
 different units.
 Use **Parallel renderer** to try either partial-line plotting (`lines`) or

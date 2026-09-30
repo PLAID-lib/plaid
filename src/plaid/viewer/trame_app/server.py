@@ -34,6 +34,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -68,6 +69,46 @@ def _select_initial_dataset_id(
     if local_dataset_ids:
         return local_dataset_ids[0]
     return hub_dataset_ids[0] if hub_dataset_ids else None
+
+
+def _filter_global_names(names: list[str], pattern: str) -> tuple[list[str], str]:
+    """Filter Global names by regex without changing their selection.
+
+    Args:
+        names: All plottable Global names.
+        pattern: Regular expression to search for in each name.
+
+    Returns:
+        Matching names and an error message (empty for a valid pattern).
+    """
+    try:
+        regex = re.compile(pattern)
+    except re.error as exc:
+        return [], f"Invalid regular expression: {exc}"
+    return [name for name in names if regex.search(name)], ""
+
+
+def _select_filtered_globals(
+    names: list[str], selected: list[str], filtered: list[str], check: bool
+) -> list[str]:
+    """Check or uncheck only visible Globals, preserving other selections.
+
+    Args:
+        names: All plottable Global names, in display order.
+        selected: Currently selected Global names.
+        filtered: Names visible in the filtered checklist.
+        check: Whether to check (rather than uncheck) visible names.
+
+    Returns:
+        Updated selection in display order.
+    """
+    selected_set = set(selected)
+    filtered_set = set(filtered)
+    if check:
+        selected_set.update(filtered_set)
+    else:
+        selected_set.difference_update(filtered_set)
+    return [name for name in names if name in selected_set]
 
 
 def _update_view(server: Any, ctrl: Any) -> None:
@@ -720,6 +761,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_splits", [])
     state.setdefault("explore_names", [])
     state.setdefault("explore_parallel_fields", [])
+    state.setdefault("explore_global_filter", "")
+    state.setdefault("explore_filtered_names", [])
+    state.setdefault("explore_global_filter_error", "")
     state.setdefault("explore_parallel_mode", "lines")
     state.setdefault("explore_label_names", [])
     state.setdefault("explore_plot", "1D")
@@ -1482,6 +1526,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_splits = []
         state.explore_names = []
         state.explore_parallel_fields = []
+        state.explore_global_filter = ""
+        state.explore_filtered_names = []
+        state.explore_global_filter_error = ""
         state.explore_label_names = []
         state.explore_has_plot = False
         state.explore_status = "Click Extract Globals to load all splits."
@@ -1510,6 +1557,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             names = global_names(data)
             state.explore_names = names
             state.explore_parallel_fields = list(names)
+            _refresh_explore_global_filter()
             state.explore_label_names = ["sample_id", *label_names(data)]
             state.explore_splits = list(data)
             state.explore_x = names[0] if names else None
@@ -1523,6 +1571,41 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             _render_explore_plot()
         except Exception as exc:  # noqa: BLE001
             state.explore_status = f"Failed to extract Globals: {exc}"
+
+    def _refresh_explore_global_filter() -> None:
+        """Update the visible checklist from the current regex and names."""
+        matches, error = _filter_global_names(
+            list(state.explore_names or []), state.explore_global_filter or ""
+        )
+        state.explore_filtered_names = matches
+        state.explore_global_filter_error = error
+
+    @state.change("explore_global_filter")
+    def _on_explore_global_filter(**_: object) -> None:
+        """Refresh the checklist as the user types a regular expression."""
+        _refresh_explore_global_filter()
+
+    @ctrl.set("check_filtered_globals")
+    def _check_filtered_globals() -> None:
+        """Check only Globals currently visible in the filtered checklist."""
+        _refresh_explore_global_filter()
+        state.explore_parallel_fields = _select_filtered_globals(
+            list(state.explore_names or []),
+            list(state.explore_parallel_fields or []),
+            list(state.explore_filtered_names or []),
+            True,
+        )
+
+    @ctrl.set("uncheck_filtered_globals")
+    def _uncheck_filtered_globals() -> None:
+        """Uncheck only Globals currently visible in the filtered checklist."""
+        _refresh_explore_global_filter()
+        state.explore_parallel_fields = _select_filtered_globals(
+            list(state.explore_names or []),
+            list(state.explore_parallel_fields or []),
+            list(state.explore_filtered_names or []),
+            False,
+        )
 
     def _render_explore_plot() -> None:
         """Update the plot from the selected splits and Global axes."""
@@ -2749,8 +2832,32 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     "Globals to plot",
                                     classes="text-subtitle-2 mb-1",
                                 )
+                                v3.VTextField(
+                                    label="Filter Globals (regular expression)",
+                                    v_model=("explore_global_filter",),
+                                    density="compact",
+                                    hide_details=("!explore_global_filter_error",),
+                                    error_messages=("explore_global_filter_error",),
+                                    clearable=True,
+                                )
+                                with html.Div(classes="d-flex mb-2"):
+                                    v3.VBtn(
+                                        "Check",
+                                        click=ctrl.check_filtered_globals,
+                                        density="compact",
+                                        variant="tonal",
+                                        classes="mr-2",
+                                        disabled=("!explore_filtered_names.length",),
+                                    )
+                                    v3.VBtn(
+                                        "Uncheck",
+                                        click=ctrl.uncheck_filtered_globals,
+                                        density="compact",
+                                        variant="tonal",
+                                        disabled=("!explore_filtered_names.length",),
+                                    )
                                 with html.Div(
-                                    v_for="name in explore_names", key="name"
+                                    v_for="name in explore_filtered_names", key="name"
                                 ):
                                     v3.VCheckbox(
                                         label=("name",),
