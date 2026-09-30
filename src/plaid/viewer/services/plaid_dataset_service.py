@@ -463,12 +463,14 @@ class PlaidDatasetService:
                 infos = load_infos_from_disk(str(self._dataset_dir(dataset_id)))
         except Exception:  # pragma: no cover - defensive
             pass
-        if (
-            infos is not None and infos.storage_backend == "cgns"
-        ):  # pragma: no cover - exercised via integration tests
-            metadata = ([], [])
+        if infos is not None and infos.storage_backend == "cgns":
+            # CGNS samples are self-contained and the backend deliberately
+            # does not write the derived feature metadata used by the other
+            # backends. Discover the catalogue from the first sample of each
+            # split instead, so base toggles are still available in the UI.
+            metadata, per_split = self._load_cgns_feature_metadata(dataset_id)
             self._feature_metadata[dataset_id] = metadata
-            self._split_feature_metadata[dataset_id] = {}
+            self._split_feature_metadata[dataset_id] = per_split
             return metadata
 
         if self._is_hub_dataset(dataset_id):
@@ -496,6 +498,47 @@ class PlaidDatasetService:
         }
         self._split_feature_metadata[dataset_id] = per_split
         return metadata
+
+    def _load_cgns_feature_metadata(
+        self, dataset_id: str
+    ) -> tuple[tuple[list[str], list[str]], dict[str, set[str]]]:
+        """Discover CGNS paths from the first sample of every split.
+
+        CGNS datasets keep their bases in the sample tree rather than in the
+        dataset metadata. The resulting paths intentionally use the same
+        catalogue shape as metadata-backed datasets; this keeps the existing
+        base/path helpers unchanged for callers.
+        """
+        from plaid.utils.cgns_helper import flatten_cgns_tree  # noqa: PLC0415
+
+        datasetdict, converterdict = self._open(dataset_id)
+        per_split: dict[str, set[str]] = {}
+        all_paths: set[str] = set()
+        for split, dataset in datasetdict.items():
+            try:
+                if len(dataset) == 0:
+                    per_split[split] = set()
+                    continue
+                sample = converterdict[split].to_plaid(dataset, 0)
+                bases = set(sample.get_base_names())
+                paths: set[str] = set()
+                flat_tree, _ = flatten_cgns_tree(sample.get_tree())
+                for path in flat_tree:
+                    head = path.split("/", 1)[0]
+                    if (
+                        head in bases
+                        and head != "Global"
+                        and not head.endswith("_times")
+                    ):
+                        paths.add(path)
+                per_split[split] = paths
+                all_paths.update(paths)
+            except Exception:  # noqa: BLE001 - discovery must not break dataset listing
+                logger.exception(
+                    "Failed to discover CGNS paths for %s/%s", dataset_id, split
+                )
+                per_split[split] = set()
+        return (sorted(all_paths), []), per_split
 
     def _split_feature_keys(self, dataset_id: str, split_key: str) -> set[str]:
         """Return the feature catalogue of a single split.
