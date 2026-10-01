@@ -157,6 +157,7 @@ def test_plot_uses_selected_array_component_and_parcoords_expands_components():
         (["name"], "name"),
         ("plain text", "plain text"),
         (np.array([1.23456, 7.89123]), "[1.235 7.891]"),
+        ([1, 2], "[1, 2]"),
     ],
 )
 def test_format_point_label(value, expected):
