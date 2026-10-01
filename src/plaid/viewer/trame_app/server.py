@@ -775,6 +775,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_has_plot", False)
     state.setdefault("explore_status", "Click Extract Globals to load all splits.")
     extracted_globals: dict[str, list[dict[str, object]]] = {}
+    prepared_globals: object | None = None
     # Active side-panel tab: "local" drives ``datasets_root_text`` and
     # directory browsing, "hub" drives the Hugging Face repo input. When an
     # initial Hub dataset is configured, start on the Hub tab so state and UI
@@ -1522,7 +1523,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     @state.change("dataset_id")
     def _on_dataset(**_: object) -> None:
+        nonlocal prepared_globals
         extracted_globals.clear()
+        prepared_globals = None
         state.explore_splits = []
         state.explore_names = []
         state.explore_parallel_fields = []
@@ -1538,6 +1541,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     @ctrl.set("extract_globals")
     def _extract_globals() -> None:
         """Collect Global values independently from the active mesh filter."""
+        nonlocal prepared_globals
         if not state.dataset_id or state.is_streaming:
             state.explore_status = (
                 "Globals exploration is unavailable for streaming datasets."
@@ -1546,19 +1550,18 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_status = "Extracting Globals from all splits..."
         state.explore_has_plot = False
         try:
-            from plaid.viewer.global_plots import (  # noqa: PLC0415
-                global_names,
-                label_names,
-            )
+            from plaid.viewer.global_plots import prepare_globals  # noqa: PLC0415
 
             data = dataset_service.extract_globals(state.dataset_id)
+            prepared = prepare_globals(data)
             extracted_globals.clear()
             extracted_globals.update(data)
-            names = global_names(data)
+            prepared_globals = prepared
+            names = prepared.names
             state.explore_names = names
             state.explore_parallel_fields = list(names)
             _refresh_explore_global_filter()
-            state.explore_label_names = ["sample_id", *label_names(data)]
+            state.explore_label_names = ["sample_id", *prepared.label_names]
             state.explore_splits = list(data)
             state.explore_x = names[0] if names else None
             state.explore_y = names[1] if len(names) > 1 else None
@@ -1609,7 +1612,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     def _render_explore_plot() -> None:
         """Update the plot from the selected splits and Global axes."""
-        if not extracted_globals:
+        if not extracted_globals or prepared_globals is None:
             state.explore_has_plot = False
             return
         from plaid.viewer.global_plots import build_globals_figure  # noqa: PLC0415
@@ -1617,7 +1620,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         axes = [state.explore_x, state.explore_y, state.explore_z]
         try:
             figure = build_globals_figure(
-                extracted_globals,
+                prepared_globals,
                 list(state.explore_splits or []),
                 state.explore_plot,
                 axes,

@@ -14,6 +14,7 @@ from plaid.viewer.global_plots import (
     format_point_label,
     global_names,
     label_names,
+    prepare_globals,
     scalar_value,
 )
 
@@ -53,6 +54,17 @@ def test_scalar_value_filters_missing_and_non_scalars():
     assert scalar_value(float("inf")) is None
     assert scalar_value(None) is None
     assert scalar_value("text") is None
+
+
+def test_prepared_globals_are_reused_by_figure_builder(records, monkeypatch):
+    prepared = prepare_globals(records)
+
+    def fail_if_expanded(_records):
+        raise AssertionError("prepared records must not be expanded again")
+
+    monkeypatch.setattr("plaid.viewer.global_plots._expanded_records", fail_if_expanded)
+    figure = build_globals_figure(prepared, ["train"], "1D", ["Global/a"])
+    assert figure is not None
 
 
 def test_names_include_only_plot_eligible_globals(records):

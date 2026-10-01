@@ -865,31 +865,37 @@ class PlaidDatasetService:
                 "Globals exploration is unavailable for streaming datasets."
             )
 
-        datasets, _ = self._open(dataset_id)
+        datasets, converters = self._open(dataset_id)
         result: dict[str, list[dict[str, object]]] = {}
         for split, dataset in datasets.items():
-            columns = getattr(dataset, "column_names", None)
-            names = (
-                [name for name in columns if name.startswith("Global/")]
-                if columns is not None
-                else None
+            converter = converters[split]
+            split_features = set(getattr(converter, "variable_features", set())) | set(
+                getattr(converter, "constant_features", set())
+            )
+            global_features = sorted(
+                feature
+                for feature in split_features
+                if feature.startswith("Global/")
             )
             records: list[dict[str, object]] = []
             for index in range(len(dataset)):
-                row = dataset[index]
-                if names is None and not isinstance(row, dict):
-                    # CGNS stores Sample objects instead of column dictionaries.
-                    sample = row
-                    values = {}
-                    for name in sample.get_global_names():
-                        values[f"Global/{name}"] = sample.get_global(name)
+                if getattr(converter, "backend", None) == "cgns":
+                    # CGNS currently ignores ``features`` in Converter.to_plaid.
+                    # Keep its historical path and do not claim selective I/O.
+                    sample = converter.to_plaid(dataset, index)
+                elif not global_features:
+                    # An empty feature list is not equivalent to no read: some
+                    # backends interpret it as a request for the complete sample.
+                    records.append({"sample_id": str(index), "values": {}})
+                    continue
                 else:
-                    row_names = (
-                        names
-                        if names is not None
-                        else [key for key in row if key.startswith("Global/")]
+                    sample = converter.to_plaid(
+                        dataset, index, features=global_features
                     )
-                    values = {name: row.get(name) for name in row_names}
+                values = {
+                    f"Global/{name}": sample.get_global(name)
+                    for name in sample.get_global_names()
+                }
                 records.append({"sample_id": str(index), "values": values})
             result[split] = records
         return result

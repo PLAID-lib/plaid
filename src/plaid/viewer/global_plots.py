@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import TypeAlias
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.colors import qualitative
@@ -66,6 +69,18 @@ def _component_values(
     return components
 
 
+RawGlobals: TypeAlias = dict[str, list[dict[str, object]]]
+
+
+@dataclass(frozen=True)
+class PreparedGlobals:
+    """Cached plot inputs derived once from raw extracted Global records."""
+
+    records: RawGlobals
+    names: list[str]
+    label_names: list[str]
+
+
 def _expanded_records(
     records: dict[str, list[dict[str, object]]],
 ) -> dict[str, list[dict[str, object]]]:
@@ -89,17 +104,10 @@ def _expanded_records(
     }
 
 
-def global_names(records: dict[str, list[dict[str, object]]]) -> list[str]:
-    """List Global paths with at least one plottable value.
-
-    Args:
-        records: Extracted split records.
-
-    Returns:
-        Sorted names of numeric scalar Globals (excluding time companions).
-    """
+def prepare_globals(records: RawGlobals) -> PreparedGlobals:
+    """Expand raw records and cache numeric and label names."""
     expanded = _expanded_records(records)
-    return sorted(
+    names = sorted(
         {
             name
             for rows in expanded.values()
@@ -108,9 +116,27 @@ def global_names(records: dict[str, list[dict[str, object]]]) -> list[str]:
             if scalar_value(value) is not None
         }
     )
+    labels = sorted(
+        {name for rows in expanded.values() for row in rows for name in row["values"]}
+    )
+    return PreparedGlobals(expanded, names, labels)
 
 
-def label_names(records: dict[str, list[dict[str, object]]]) -> list[str]:
+def global_names(records: RawGlobals | PreparedGlobals) -> list[str]:
+    """List Global paths with at least one plottable value.
+
+    Args:
+        records: Extracted split records.
+
+    Returns:
+        Sorted names of numeric scalar Globals (excluding time companions).
+    """
+    if isinstance(records, PreparedGlobals):
+        return records.names
+    return prepare_globals(records).names
+
+
+def label_names(records: RawGlobals | PreparedGlobals) -> list[str]:
     """List all extracted Global paths usable as point labels.
 
     Args:
@@ -119,10 +145,9 @@ def label_names(records: dict[str, list[dict[str, object]]]) -> list[str]:
     Returns:
         Sorted paths, including non-numeric values but excluding time arrays.
     """
-    expanded = _expanded_records(records)
-    return sorted(
-        {name for rows in expanded.values() for row in rows for name in row["values"]}
-    )
+    if isinstance(records, PreparedGlobals):
+        return records.label_names
+    return prepare_globals(records).label_names
 
 
 def format_point_label(value: object) -> str:
@@ -171,7 +196,7 @@ def _parallel_values(
 
 
 def build_globals_figure(
-    records: dict[str, list[dict[str, object]]],
+    records: RawGlobals | PreparedGlobals,
     splits: list[str],
     kind: str,
     axes: list[str],
@@ -194,8 +219,13 @@ def build_globals_figure(
     Returns:
         A Plotly figure, or ``None`` if there is nothing to plot.
     """
-    records = _expanded_records(records)
-    names = global_names(records)
+    prepared = (
+        records
+        if isinstance(records, PreparedGlobals)
+        else prepare_globals(records)
+    )
+    records = prepared.records
+    names = prepared.names
     dimensions = {"1D": 1, "2D": 2, "3D": 3, "parallel": len(names)}
     if kind not in dimensions:
         raise ValueError(f"Unknown plot type: {kind}")

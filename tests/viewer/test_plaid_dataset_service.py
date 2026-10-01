@@ -27,11 +27,34 @@ class _FakeDataset(list):
 
 
 class _FakeConverter:
-    def __init__(self, samples_by_index: dict[int, object]) -> None:
+    def __init__(
+        self,
+        samples_by_index: dict[int, object],
+        *,
+        backend: str = "hf_datasets",
+        variable_features: set[str] | None = None,
+        constant_features: set[str] | None = None,
+    ) -> None:
         self._samples = samples_by_index
+        self.backend = backend
+        self.variable_features = variable_features or set()
+        self.constant_features = constant_features or set()
+        self.feature_requests: list[list[str] | None] = []
 
-    def to_plaid(self, dataset, index: int):  # noqa: ARG002 - interface match
+    def to_plaid(self, dataset, index: int, features=None):  # noqa: ARG002
+        self.feature_requests.append(list(features) if features is not None else None)
         return self._samples[index]
+
+
+class _FakeGlobalSample:
+    def __init__(self, values: dict[str, object]) -> None:
+        self._values = values
+
+    def get_global_names(self):
+        return list(self._values)
+
+    def get_global(self, name: str):
+        return self._values[name]
 
 
 def _make_dataset_dir(root: Path, name: str) -> Path:
@@ -155,35 +178,46 @@ def test_get_dataset_reports_split_counts_from_dataset_dict(
     assert detail.splits == {"train": 3, "test": 2}
 
 
-def test_extract_globals_reads_every_split_without_converting_samples(
+def test_extract_globals_reads_only_split_globals_with_converter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Global columns retain raw vectors, nulls and per-split sample IDs."""
+    """Global values use selective PLAID conversion and preserve split schemas."""
     _make_dataset_dir(tmp_path, "ds")
-
-    class Columns(list):
-        @property
-        def column_names(self):
-            return ["Global/a", "Global/vector", "mesh"]
-
-    datasets = {
-        "train": Columns(
-            [
-                {"Global/a": 1, "Global/vector": [1, 2], "mesh": 0},
-                {"Global/a": None, "Global/vector": [3], "mesh": 1},
-            ]
+    datasets = {"train": _FakeDataset([0, 1]), "test": _FakeDataset([0])}
+    converters = {
+        "train": _FakeConverter(
+            {
+                0: _FakeGlobalSample({"a": 1, "vector": [1, 2]}),
+                1: _FakeGlobalSample({"a": None, "vector": [3]}),
+            },
+            variable_features={"Global/a", "Global/vector", "Field/large"},
+            constant_features={"Global/constant_train", "Mesh/coordinates"},
         ),
-        "test": Columns([{"Global/a": 9, "Global/vector": [], "mesh": 2}]),
+        "test": _FakeConverter(
+            {0: _FakeGlobalSample({"a": 9, "constant_test": "case"})},
+            variable_features={"Global/a", "Field/large"},
+            constant_features={"Global/constant_test", "Mesh/connectivity"},
+        ),
     }
-    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, converters)})
+
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     assert service.extract_globals("ds") == {
         "train": [
             {"sample_id": "0", "values": {"Global/a": 1, "Global/vector": [1, 2]}},
             {"sample_id": "1", "values": {"Global/a": None, "Global/vector": [3]}},
         ],
-        "test": [{"sample_id": "0", "values": {"Global/a": 9, "Global/vector": []}}],
+        "test": [
+            {"sample_id": "0", "values": {"Global/a": 9, "Global/constant_test": "case"}}
+        ],
     }
+    assert converters["train"].feature_requests == [
+        ["Global/a", "Global/constant_train", "Global/vector"],
+        ["Global/a", "Global/constant_train", "Global/vector"],
+    ]
+    assert converters["test"].feature_requests == [
+        ["Global/a", "Global/constant_test"]
+    ]
 
 
 def test_extract_globals_rejects_streaming_dataset(tmp_path: Path) -> None:
@@ -193,37 +227,34 @@ def test_extract_globals_rejects_streaming_dataset(tmp_path: Path) -> None:
         service.extract_globals("org/stream")
 
 
-def test_extract_globals_supports_rows_without_column_names(
+def test_extract_globals_without_globals_does_not_decode_samples(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Zarr-style row dictionaries may expose different Globals per sample."""
     _make_dataset_dir(tmp_path, "ds")
-    datasets = {"train": _FakeDataset([{"Global/a": 1}, {"Global/b": [2, 3]}])}
-    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    converter = _FakeConverter({0: RuntimeError("must not decode")})
+    datasets = {"train": _FakeDataset([0])}
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {"train": converter})})
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    assert service.extract_globals("ds") == {
-        "train": [
-            {"sample_id": "0", "values": {"Global/a": 1}},
-            {"sample_id": "1", "values": {"Global/b": [2, 3]}},
-        ]
-    }
+    assert service.extract_globals("ds") == {"train": [{"sample_id": "0", "values": {}}]}
+    assert converter.feature_requests == []
 
 
 def test_extract_globals_supports_cgns_samples(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """CGNS-backed datasets yield Sample objects rather than column rows."""
-    from plaid.containers.sample import Sample
-
+    """CGNS keeps its historical unfiltered conversion path."""
     _make_dataset_dir(tmp_path, "ds")
-    sample = Sample()
-    sample.add_global("energy", 2.5)
-    datasets = {"train": _FakeDataset([sample])}
-    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    sample = _FakeGlobalSample({"energy": 2.5})
+    converter = _FakeConverter(
+        {0: sample}, backend="cgns", variable_features={"Global/energy"}
+    )
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": ({"train": _FakeDataset([sample])}, {"train": converter})}
+    )
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     values = service.extract_globals("ds")["train"][0]["values"]
-    assert "Global/energy" in values
-    assert float(values["Global/energy"]) == 2.5
+    assert values == {"Global/energy": 2.5}
+    assert converter.feature_requests == [None]
 
 
 def test_describe_non_visual_bases_lists_zoneless_bases_only(
