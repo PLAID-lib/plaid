@@ -667,7 +667,7 @@ def _install_fake_metadata(
     variable_schema: dict[str, object],
     constant_schema: dict[str, dict[str, object]],
 ) -> None:
-    """Patch ``load_metadata_from_disk`` / ``load_metadata_from_hub``."""
+    """Patch metadata and infos readers so tests never access the network."""
     from plaid.storage.common import reader as reader_mod  # noqa: PLC0415
 
     def _fake(*_args, **_kwargs):
@@ -675,6 +675,8 @@ def _install_fake_metadata(
 
     monkeypatch.setattr(reader_mod, "load_metadata_from_disk", _fake, raising=False)
     monkeypatch.setattr(reader_mod, "load_metadata_from_hub", _fake, raising=False)
+    monkeypatch.setattr(reader_mod, "load_infos_from_disk", lambda *_a, **_k: None)
+    monkeypatch.setattr(reader_mod, "load_infos_from_hub", lambda *_a, **_k: None)
 
 
 class _FeatureAwareConverter:
