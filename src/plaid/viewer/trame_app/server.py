@@ -34,6 +34,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -68,6 +69,46 @@ def _select_initial_dataset_id(
     if local_dataset_ids:
         return local_dataset_ids[0]
     return hub_dataset_ids[0] if hub_dataset_ids else None
+
+
+def _filter_global_names(names: list[str], pattern: str) -> tuple[list[str], str]:
+    """Filter Global names by regex without changing their selection.
+
+    Args:
+        names: All plottable Global names.
+        pattern: Regular expression to search for in each name.
+
+    Returns:
+        Matching names and an error message (empty for a valid pattern).
+    """
+    try:
+        regex = re.compile(pattern)
+    except re.error as exc:
+        return [], f"Invalid regular expression: {exc}"
+    return [name for name in names if regex.search(name)], ""
+
+
+def _select_filtered_globals(
+    names: list[str], selected: list[str], filtered: list[str], check: bool
+) -> list[str]:
+    """Check or uncheck only visible Globals, preserving other selections.
+
+    Args:
+        names: All plottable Global names, in display order.
+        selected: Currently selected Global names.
+        filtered: Names visible in the filtered checklist.
+        check: Whether to check (rather than uncheck) visible names.
+
+    Returns:
+        Updated selection in display order.
+    """
+    selected_set = set(selected)
+    filtered_set = set(filtered)
+    if check:
+        selected_set.update(filtered_set)
+    else:
+        selected_set.difference_update(filtered_set)
+    return [name for name in names if name in selected_set]
 
 
 def _update_view(server: Any, ctrl: Any) -> None:
@@ -604,6 +645,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     )
     from trame.ui.vuetify3 import SinglePageWithDrawerLayout  # noqa: PLC0415
     from trame.widgets import html  # noqa: PLC0415
+    from trame.widgets import plotly as plotly_widgets  # noqa: PLC0415
     from trame.widgets import vtk as vtk_widgets  # noqa: PLC0415
     from trame.widgets import vuetify3 as v3  # noqa: PLC0415
 
@@ -715,6 +757,24 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     state.setdefault("splits", [])
     state.setdefault("split", None)
+    state.setdefault("viewer_tab", "sample")
+    state.setdefault("explore_splits", [])
+    state.setdefault("explore_names", [])
+    state.setdefault("explore_parallel_fields", [])
+    state.setdefault("explore_global_filter", "")
+    state.setdefault("explore_filtered_names", [])
+    state.setdefault("explore_global_filter_error", "")
+    state.setdefault("explore_parallel_mode", "lines")
+    state.setdefault("explore_label_names", [])
+    state.setdefault("explore_plot", "1D")
+    state.setdefault("explore_x", None)
+    state.setdefault("explore_y", None)
+    state.setdefault("explore_z", None)
+    state.setdefault("explore_labels", False)
+    state.setdefault("explore_label", "sample_id")
+    state.setdefault("explore_has_plot", False)
+    state.setdefault("explore_status", "Click Extract Globals to load all splits.")
+    extracted_globals: dict[str, list[dict[str, object]]] = {}
     # Active side-panel tab: "local" drives ``datasets_root_text`` and
     # directory browsing, "hub" drives the Hugging Face repo input. When an
     # initial Hub dataset is configured, start on the Hub tab so state and UI
@@ -1462,8 +1522,137 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     @state.change("dataset_id")
     def _on_dataset(**_: object) -> None:
+        extracted_globals.clear()
+        state.explore_splits = []
+        state.explore_names = []
+        state.explore_parallel_fields = []
+        state.explore_global_filter = ""
+        state.explore_filtered_names = []
+        state.explore_global_filter_error = ""
+        state.explore_label_names = []
+        state.explore_has_plot = False
+        state.explore_status = "Click Extract Globals to load all splits."
         _refresh_available_features()
         _refresh_splits()
+
+    @ctrl.set("extract_globals")
+    def _extract_globals() -> None:
+        """Collect Global values independently from the active mesh filter."""
+        if not state.dataset_id or state.is_streaming:
+            state.explore_status = (
+                "Globals exploration is unavailable for streaming datasets."
+            )
+            return
+        state.explore_status = "Extracting Globals from all splits..."
+        state.explore_has_plot = False
+        try:
+            from plaid.viewer.global_plots import (  # noqa: PLC0415
+                global_names,
+                label_names,
+            )
+
+            data = dataset_service.extract_globals(state.dataset_id)
+            extracted_globals.clear()
+            extracted_globals.update(data)
+            names = global_names(data)
+            state.explore_names = names
+            state.explore_parallel_fields = list(names)
+            _refresh_explore_global_filter()
+            state.explore_label_names = ["sample_id", *label_names(data)]
+            state.explore_splits = list(data)
+            state.explore_x = names[0] if names else None
+            state.explore_y = names[1] if len(names) > 1 else None
+            state.explore_z = names[2] if len(names) > 2 else None
+            state.explore_status = (
+                f"Extracted {sum(map(len, data.values()))} samples from "
+                f"{len(data)} splits. {len(names)} numeric scalar Globals. "
+                "Missing or non-scalar values leave gaps in parallel plots."
+            )
+            _render_explore_plot()
+        except Exception as exc:  # noqa: BLE001
+            state.explore_status = f"Failed to extract Globals: {exc}"
+
+    def _refresh_explore_global_filter() -> None:
+        """Update the visible checklist from the current regex and names."""
+        matches, error = _filter_global_names(
+            list(state.explore_names or []), state.explore_global_filter or ""
+        )
+        state.explore_filtered_names = matches
+        state.explore_global_filter_error = error
+
+    @state.change("explore_global_filter")
+    def _on_explore_global_filter(**_: object) -> None:
+        """Refresh the checklist as the user types a regular expression."""
+        _refresh_explore_global_filter()
+
+    @ctrl.set("check_filtered_globals")
+    def _check_filtered_globals() -> None:
+        """Check only Globals currently visible in the filtered checklist."""
+        _refresh_explore_global_filter()
+        state.explore_parallel_fields = _select_filtered_globals(
+            list(state.explore_names or []),
+            list(state.explore_parallel_fields or []),
+            list(state.explore_filtered_names or []),
+            True,
+        )
+
+    @ctrl.set("uncheck_filtered_globals")
+    def _uncheck_filtered_globals() -> None:
+        """Uncheck only Globals currently visible in the filtered checklist."""
+        _refresh_explore_global_filter()
+        state.explore_parallel_fields = _select_filtered_globals(
+            list(state.explore_names or []),
+            list(state.explore_parallel_fields or []),
+            list(state.explore_filtered_names or []),
+            False,
+        )
+
+    def _render_explore_plot() -> None:
+        """Update the plot from the selected splits and Global axes."""
+        if not extracted_globals:
+            state.explore_has_plot = False
+            return
+        from plaid.viewer.global_plots import build_globals_figure  # noqa: PLC0415
+
+        axes = [state.explore_x, state.explore_y, state.explore_z]
+        try:
+            figure = build_globals_figure(
+                extracted_globals,
+                list(state.explore_splits or []),
+                state.explore_plot,
+                axes,
+                state.explore_label if state.explore_labels else None,
+                parallel_fields=list(state.explore_parallel_fields or []),
+                parallel_mode=state.explore_parallel_mode,
+            )
+            state.explore_has_plot = False
+            if figure is not None:
+                explore_figure.update(figure)
+                state.explore_has_plot = True
+        except Exception as exc:  # noqa: BLE001
+            state.explore_has_plot = False
+            state.explore_status = f"Failed to draw Globals: {exc}"
+
+    @state.change(
+        "explore_splits",
+        "explore_parallel_fields",
+        "explore_parallel_mode",
+        "explore_plot",
+        "explore_x",
+        "explore_y",
+        "explore_z",
+        "explore_labels",
+        "explore_label",
+    )
+    def _on_explore_selection(**_: object) -> None:
+        """Rebuild the plot when the exploration controls change."""
+        _render_explore_plot()
+
+    @state.change("viewer_tab")
+    def _on_viewer_tab(**_: object) -> None:
+        """Push a fresh VTK frame when the sample panel becomes visible."""
+        if state.viewer_tab == "sample":
+            _update_view(server, ctrl)
 
     @state.change("source_tab")
     def _on_source_tab(**_: object) -> None:
@@ -2552,11 +2741,186 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             )
 
         with layout.content:
-            with v3.VContainer(fluid=True, classes="fill-height pa-0 ma-0"):
-                view = vtk_widgets.VtkRemoteView(pipeline.render_window, ref="view")
-
-                ctrl.view_update = view.update
-                ctrl.view_reset_camera = view.reset_camera
+            # VContainer.fill-height is a row-oriented flex container in
+            # Vuetify: tabs and panels become narrow columns beside each
+            # other. Stack them vertically and give the view an explicit
+            # height so the remote VTK canvas can measure its parent.
+            with html.Div(
+                style=(
+                    "width: 100%; height: calc(100vh - var(--v-layout-top) "
+                    "- var(--v-layout-bottom)); min-width: 0; min-height: 0; "
+                    "display: flex; flex-direction: column;"
+                ),
+            ):
+                with v3.VTabs(
+                    v_model=("viewer_tab",),
+                    color="primary",
+                    style="flex: 0 0 auto; width: 100%;",
+                ):
+                    v3.VTab("Sample (VTK)", value="sample")
+                    v3.VTab("Globals", value="globals")
+                with html.Div(
+                    v_show="viewer_tab === 'sample'",
+                    style="flex: 1 1 auto; min-height: 0; width: 100%;",
+                ):
+                    view = vtk_widgets.VtkRemoteView(
+                        pipeline.render_window,
+                        ref="view",
+                        style="display: block; width: 100%; height: 100%;",
+                    )
+                    ctrl.view_update = view.update
+                    ctrl.view_reset_camera = view.reset_camera
+                with html.Div(
+                    v_show="viewer_tab === 'globals'",
+                    style=(
+                        "flex: 1 1 auto; min-height: 0; width: 100%; overflow: hidden;"
+                    ),
+                ):
+                    # The drawer reduces the usable content width without
+                    # changing Vuetify's viewport breakpoint. Wrap based on
+                    # the actual panel width instead of using md/lg columns.
+                    with html.Div(
+                        style=(
+                            "display: flex; flex-wrap: nowrap; gap: 16px; padding: 16px; "
+                            "height: 100%; min-height: 0; box-sizing: border-box;"
+                        ),
+                    ):
+                        with html.Div(
+                            style="flex: 1 1 225px; max-width: 300px; min-width: 0;",
+                        ):
+                            v3.VBtn(
+                                "Extract Globals",
+                                click=ctrl.extract_globals,
+                                color="primary",
+                                block=True,
+                                disabled=("is_streaming || !dataset_id",),
+                            )
+                            html.Div(
+                                "Globals exploration is unavailable for streaming datasets.",
+                                v_if=("is_streaming",),
+                                classes="text-caption mt-2",
+                            )
+                            html.Div(
+                                "{{ explore_status }}",
+                                classes="text-caption my-2",
+                            )
+                            html.Div("Splits", classes="text-subtitle-2")
+                            with html.Div(v_for="name in splits", key="name"):
+                                v3.VCheckbox(
+                                    label=("name",),
+                                    value=("name",),
+                                    v_model=("explore_splits",),
+                                    density="compact",
+                                    hide_details=True,
+                                    disabled=("is_streaming || !explore_names.length",),
+                                )
+                            v3.VSelect(
+                                label="Plot type",
+                                v_model=("explore_plot",),
+                                items=("['1D', '2D', '3D', 'parallel']",),
+                                density="compact",
+                                classes="mt-3",
+                            )
+                            with html.Div(v_if=("explore_plot === 'parallel'",)):
+                                v3.VSelect(
+                                    label="Parallel renderer",
+                                    v_model=("explore_parallel_mode",),
+                                    items=("['lines', 'parcoords']",),
+                                    density="compact",
+                                )
+                                html.Div(
+                                    "Globals to plot",
+                                    classes="text-subtitle-2 mb-1",
+                                )
+                                v3.VTextField(
+                                    label="Filter Globals (regular expression)",
+                                    v_model=("explore_global_filter",),
+                                    density="compact",
+                                    hide_details=("!explore_global_filter_error",),
+                                    error_messages=("explore_global_filter_error",),
+                                    clearable=True,
+                                )
+                                with html.Div(classes="d-flex mb-2"):
+                                    v3.VBtn(
+                                        "Check",
+                                        click=ctrl.check_filtered_globals,
+                                        density="compact",
+                                        variant="tonal",
+                                        classes="mr-2",
+                                        disabled=("!explore_filtered_names.length",),
+                                    )
+                                    v3.VBtn(
+                                        "Uncheck",
+                                        click=ctrl.uncheck_filtered_globals,
+                                        density="compact",
+                                        variant="tonal",
+                                        disabled=("!explore_filtered_names.length",),
+                                    )
+                                with html.Div(
+                                    v_for="name in explore_filtered_names", key="name"
+                                ):
+                                    v3.VCheckbox(
+                                        label=("name",),
+                                        value=("name",),
+                                        v_model=("explore_parallel_fields",),
+                                        density="compact",
+                                        hide_details=True,
+                                    )
+                            with html.Div(v_if=("explore_plot !== 'parallel'",)):
+                                v3.VSelect(
+                                    label="Global / X",
+                                    v_model=("explore_x",),
+                                    items=("explore_names",),
+                                    density="compact",
+                                )
+                            with html.Div(
+                                v_if=("explore_plot === '2D' || explore_plot === '3D'",)
+                            ):
+                                v3.VSelect(
+                                    label="Y Global",
+                                    v_model=("explore_y",),
+                                    items=("explore_names",),
+                                    density="compact",
+                                )
+                            with html.Div(v_if=("explore_plot === '3D'",)):
+                                v3.VSelect(
+                                    label="Z Global",
+                                    v_model=("explore_z",),
+                                    items=("explore_names",),
+                                    density="compact",
+                                )
+                            with html.Div(v_if=("explore_plot !== 'parallel'",)):
+                                v3.VCheckbox(
+                                    label="Label points",
+                                    v_model=("explore_labels",),
+                                    density="compact",
+                                )
+                                v3.VSelect(
+                                    label="Label from",
+                                    v_model=("explore_label",),
+                                    items=("explore_label_names",),
+                                    density="compact",
+                                    v_if=("explore_labels",),
+                                )
+                        with html.Div(
+                            style=(
+                                "flex: 1 1 300px; min-width: 0; min-height: 0; "
+                                "height: 100%;"
+                            ),
+                        ):
+                            with html.Div(
+                                v_show="explore_has_plot",
+                                style=(
+                                    "width: 100%; height: 100%; min-height: 0; "
+                                    "display: flex; flex-direction: column;"
+                                ),
+                            ):
+                                explore_figure = plotly_widgets.Figure(
+                                    display_logo=False,
+                                    responsive=True,
+                                    autosize=True,
+                                    style="width: 100%; height: 100%; flex: 1 1 auto;",
+                                )
 
     # Trigger initial population.
     _refresh_available_features()

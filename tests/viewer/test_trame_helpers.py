@@ -11,6 +11,37 @@ import pytest
 from plaid.viewer.trame_app import server as srv
 
 
+def test_filter_global_names_regex_and_invalid_pattern() -> None:
+    names = ["Global/pressure", "Global/temperature", "Global/pressure_1"]
+
+    assert srv._filter_global_names(names, r"pressure(_\d+)?$") == (
+        ["Global/pressure", "Global/pressure_1"],
+        "",
+    )
+    assert srv._filter_global_names(names, "") == (names, "")
+    assert srv._filter_global_names(names, "missing") == ([], "")
+    matches, error = srv._filter_global_names(names, "[")
+    assert matches == []
+    assert error.startswith("Invalid regular expression:")
+
+
+def test_select_filtered_globals_preserves_hidden_selection() -> None:
+    names = ["Global/a", "Global/b", "Global/c", "Global/d"]
+    selected = ["Global/b", "Global/d"]
+    filtered = ["Global/a", "Global/b"]
+
+    assert srv._select_filtered_globals(names, selected, filtered, True) == [
+        "Global/a",
+        "Global/b",
+        "Global/d",
+    ]
+    assert srv._select_filtered_globals(names, selected, filtered, False) == [
+        "Global/d"
+    ]
+    assert srv._select_filtered_globals(names, selected, [], False) == selected
+    assert srv._select_filtered_globals(names, selected, [], True) == selected
+
+
 class _Selection:
     def __init__(self, names: list[str]) -> None:
         self.names = names

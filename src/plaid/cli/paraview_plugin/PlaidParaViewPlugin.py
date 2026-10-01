@@ -484,7 +484,6 @@ class PlaidExplorer(PlaidClientBase):
         return self._sample_cache
 
 
-# paraview.servermanager.LoadPlugin("/home/fbw/repos/Safran/plaid/src/plaid/cli/paraview_plugin/PlaidParaViewPlugin.py")
 try:
     # try to load the reader if plaid is locally available
     from plaid.storage.reader import init_from_disk, load_infos_from_disk
