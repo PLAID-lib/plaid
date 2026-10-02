@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+from datasets import IterableDataset
 
 import plaid.storage.cgns as cgns
 from plaid.infos import Infos
@@ -49,7 +50,7 @@ def test_cgns_backend_download_from_hub_delegates(monkeypatch):
         call["split_ids"] = split_ids
         call["features"] = features
         call["overwrite"] = overwrite
-        return "downloaded_path"
+        return Path("downloaded_path")
 
     monkeypatch.setattr(
         cgns, "download_datasetdict_from_hub", fake_download_datasetdict_from_hub
@@ -58,7 +59,7 @@ def test_cgns_backend_download_from_hub_delegates(monkeypatch):
     backend = CgnsBackend()
     result = backend.download_from_hub("dummy/repo", "/tmp/local")
 
-    assert result == "downloaded_path"
+    assert result == Path("downloaded_path")
     assert call == {
         "repo_id": "dummy/repo",
         "local_dir": "/tmp/local",
@@ -77,7 +78,7 @@ def test_cgns_backend_init_datasetdict_streaming_from_hub_delegates(monkeypatch)
         call["repo_id"] = repo_id
         call["split_ids"] = split_ids
         call["features"] = features
-        return {"train": "stream"}
+        return {"train": IterableDataset.from_generator(lambda: iter(()))}
 
     monkeypatch.setattr(
         cgns,
@@ -91,7 +92,7 @@ def test_cgns_backend_init_datasetdict_streaming_from_hub_delegates(monkeypatch)
         features=["a", "b"],
     )
 
-    assert result == {"train": "stream"}
+    assert isinstance(result["train"], IterableDataset)
     assert call == {
         "repo_id": "dummy/repo",
         "split_ids": {"train": [0, 2]},

@@ -81,7 +81,7 @@ def cgns_tree_from_json(text: str) -> list[Any]:
     return cgns_tree_from_json_payload(payload)
 
 
-def _encode_node(node: list[Any]) -> dict[str, Any]:
+def _encode_node(node: object) -> dict[str, Any]:
     """Encode one pyCGNS-style node as a JSON-compatible dictionary."""
     if not isinstance(node, list) or len(node) != 4:
         raise ValueError(
@@ -102,7 +102,7 @@ def _encode_node(node: list[Any]) -> dict[str, Any]:
     }
 
 
-def _decode_node(node: dict[str, Any]) -> list[Any]:
+def _decode_node(node: object) -> list[Any]:
     """Decode one JSON node dictionary into pyCGNS-style node form."""
     if not isinstance(node, dict):
         raise ValueError("Encoded CGNS nodes must be dictionaries")
