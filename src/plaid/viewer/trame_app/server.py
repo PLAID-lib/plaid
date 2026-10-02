@@ -774,6 +774,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_label", "sample_id")
     state.setdefault("explore_has_plot", False)
     state.setdefault("explore_status", "Click Extract Globals to load all splits.")
+    state.setdefault("explore_time_step", "last")
     extracted_globals: dict[str, list[dict[str, object]]] = {}
     prepared_globals: object | None = None
     # Active side-panel tab: "local" drives ``datasets_root_text`` and
@@ -1552,14 +1553,16 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         try:
             from plaid.viewer.global_plots import prepare_globals  # noqa: PLC0415
 
-            data = dataset_service.extract_globals(state.dataset_id)
+            data = dataset_service.extract_globals(
+                state.dataset_id, time_step=state.explore_time_step
+            )
             prepared = prepare_globals(data)
             extracted_globals.clear()
             extracted_globals.update(data)
             prepared_globals = prepared
             names = prepared.names
             state.explore_names = names
-            state.explore_parallel_fields = list(names)
+            state.explore_parallel_fields = []  # list(names) # all fields unchecked.
             _refresh_explore_global_filter()
             state.explore_label_names = ["sample_id", *prepared.label_names]
             state.explore_splits = list(data)
@@ -2791,6 +2794,16 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         with html.Div(
                             style="flex: 1 1 225px; max-width: 300px; min-width: 0;",
                         ):
+                            v3.VSelect(
+                                label="Time step Globals",
+                                v_model=("explore_time_step",),
+                                items=(
+                                    "[{ title: 'First Time Step Globals', value: 'first' }, "
+                                    "{ title: 'Last Time Step Globals', value: 'last' }]",
+                                ),
+                                density="compact",
+                                disabled=("is_streaming || !dataset_id",),
+                            )
                             v3.VBtn(
                                 "Extract Globals",
                                 click=ctrl.extract_globals,

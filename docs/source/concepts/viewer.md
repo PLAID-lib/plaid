@@ -118,8 +118,10 @@ streaming status.
 
 ## Explore Globals across splits
 
-Switch from **Sample (VTK)** to the **Globals** tab and click **Extract Globals**.
-This reads all `Global/` values in every sample of every local split; it does
+Switch from **Sample (VTK)** to the **Globals** tab, choose **First Time Step
+Globals** or **Last Time Step Globals** (last by default), and click **Extract
+Globals**. This reads the selected time step's `Global/` values in every sample
+of every local split; timeless Globals remain available. It does
 not alter the feature selection used by the sample view. Tick one or more
 splits on the left and choose **1D**, **2D**, **3D**, or **parallel**. Scatter
 plots use one, two, or three selectable numeric scalar Globals; in 1D the

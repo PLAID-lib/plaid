@@ -220,9 +220,7 @@ def build_globals_figure(
         A Plotly figure, or ``None`` if there is nothing to plot.
     """
     prepared = (
-        records
-        if isinstance(records, PreparedGlobals)
-        else prepare_globals(records)
+        records if isinstance(records, PreparedGlobals) else prepare_globals(records)
     )
     records = prepared.records
     names = prepared.names

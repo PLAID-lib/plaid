@@ -22,6 +22,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterator
 
+from tqdm import tqdm
+
 from plaid.viewer.config import ViewerConfig
 from plaid.viewer.models import (
     DatasetDetail,
@@ -846,20 +848,27 @@ class PlaidDatasetService:
                 )
         return [SampleRefDTO.from_ref(ref) for ref in refs]
 
-    def extract_globals(self, dataset_id: str) -> dict[str, list[dict[str, object]]]:
+    def extract_globals(
+        self, dataset_id: str, *, time_step: str | None = None
+    ) -> dict[str, list[dict[str, object]]]:
         """Read all Global columns for every sample in every local split.
 
         Args:
             dataset_id: Identifier of a disk-backed dataset.
+            time_step: ``first`` or ``last`` available step per sample;
+                ``None`` retains the original, unsliced Global columns.
 
         Returns:
             A mapping of split names to records with ``sample_id`` and
-            ``values`` (the full, unmodified Global values). The special
+            ``values`` (selected or unmodified Global values). The special
             ``__default__`` key represents an unsplit dataset.
 
         Raises:
-            ValueError: If the dataset is a forward-only stream.
+            ValueError: If the dataset is a forward-only stream or the time
+                selection is invalid.
         """
+        if time_step not in (None, "first", "last"):
+            raise ValueError(f"Invalid Global time step: {time_step}")
         if self._is_hub_dataset(dataset_id):
             raise ValueError(
                 "Globals exploration is unavailable for streaming datasets."
@@ -873,12 +882,12 @@ class PlaidDatasetService:
                 getattr(converter, "constant_features", set())
             )
             global_features = sorted(
-                feature
-                for feature in split_features
-                if feature.startswith("Global/")
+                feature for feature in split_features if feature.startswith("Global/")
             )
             records: list[dict[str, object]] = []
-            for index in range(len(dataset)):
+            for index in tqdm(
+                range(len(dataset)), desc=f"Globals Extraction split: {split}"
+            ):
                 if getattr(converter, "backend", None) == "cgns":
                     # CGNS currently ignores ``features`` in Converter.to_plaid.
                     # Keep its historical path and do not claim selective I/O.
@@ -892,8 +901,13 @@ class PlaidDatasetService:
                     sample = converter.to_plaid(
                         dataset, index, features=global_features
                     )
+                if time_step is not None:
+                    all_times = sample.get_all_time_values()
+                    time = min(all_times) if time_step == "first" else max(all_times)
+                else:
+                    time = None
                 values = {
-                    f"Global/{name}": sample.get_global(name)
+                    f"Global/{name}": sample.get_global(name, time=time)
                     for name in sample.get_global_names()
                 }
                 records.append({"sample_id": str(index), "values": values})
