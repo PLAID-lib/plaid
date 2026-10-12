@@ -145,7 +145,15 @@ numeric value for every selected Global, so samples with missing selected
 values are omitted in that mode. After extraction, **Download all Globals
 (CSV)** saves a table of every extracted sample across all splits, with
 ``split`` and ``sample_id`` columns and vector Globals expanded into numbered
-components. In **1D** and **2D**, click points to toggle their selection, or
+components. Click **Analyze Globals with skrub** to open a standalone
+data-profiling report in a new browser tab. Like the CSV export, it covers
+every extracted sample across all splits, regardless of which splits are
+selected for plotting.
+The report link is replaced when Globals are extracted again and cleared when
+the dataset changes. Report generation may take time for large tables; if it
+fails, the CSV and plots remain available.
+
+In **1D** and **2D**, click points to toggle their selection, or
 select multiple points with Plotly's box or lasso tools. In `parcoords`, brush
 one or more axes to select lines.
 **Download selected rows (CSV)** saves the selected plotted samples with the

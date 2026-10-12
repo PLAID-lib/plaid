@@ -35,6 +35,7 @@ import json
 import logging
 import os
 import re
+import secrets
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -124,6 +125,22 @@ def _csv_data_url(dataframe: Any) -> str:
 
     csv_bytes = dataframe.to_csv(index=False).encode("utf-8-sig")
     return "data:text/csv;charset=utf-8;base64," + b64encode(csv_bytes).decode("ascii")
+
+
+def _write_globals_report(dataframe: Any, path: Path, title: str) -> None:
+    """Write a standalone skrub analysis of the extracted Globals.
+
+    Args:
+        dataframe: Table of extracted Globals across all splits.
+        path: Destination HTML file within the viewer's report directory.
+        title: Dataset and time-step label for the report.
+
+    Returns:
+        None.
+    """
+    from skrub import TableReport  # noqa: PLC0415
+
+    TableReport(dataframe, title=title).write_html(path)
 
 
 def _selected_row_entries(dataframe: Any) -> list[dict[str, str]]:
@@ -760,6 +777,14 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     server = get_server(client_type="vue3")
     state, ctrl = server.state, server.controller
 
+    # Register a report-only static route before the trame server starts.
+    # The cache root is ephemeral and its contents disappear on shutdown.
+    report_dir = artifact_service._cache_root / "skrub_reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_route = f"/plaid-skrub-{secrets.token_urlsafe(24)}"
+    server.serve[report_route] = str(report_dir)
+    report_path: Path | None = None
+
     pipeline = _VtkPipeline()
     # Background task handle for the time-series playback loop (see
     # ``_on_playing`` below). Kept here so successive toggles cancel the
@@ -882,6 +907,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_status", "Click Extract Globals to load all splits.")
     state.setdefault("explore_time_step", "last")
     state.setdefault("explore_csv_url", "")
+    state.setdefault("explore_report_url", "")
     state.setdefault("explore_selected_csv_url", "")
     state.setdefault("explore_has_selection", False)
     state.setdefault("explore_selected_rows", [])
@@ -1638,6 +1664,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     @state.change("dataset_id")
     def _on_dataset(**_: object) -> None:
         nonlocal prepared_globals, explore_plot_figure
+        _clear_globals_report()
         explore_plot_figure = None
         explore_constraints.clear()
         explore_selected_points.clear()
@@ -1659,10 +1686,19 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         _refresh_available_features()
         _refresh_splits()
 
+    def _clear_globals_report() -> None:
+        """Remove the previous report and invalidate its browser link."""
+        nonlocal report_path
+        state.explore_report_url = ""
+        if report_path is not None:
+            report_path.unlink(missing_ok=True)
+            report_path = None
+
     @ctrl.set("extract_globals")
     def _extract_globals() -> None:
         """Collect Global values independently from the active mesh filter."""
-        nonlocal prepared_globals
+        nonlocal prepared_globals, report_path
+        _clear_globals_report()
         if not state.dataset_id or state.is_streaming:
             state.explore_status = (
                 "Globals exploration is unavailable for streaming datasets."
@@ -1674,8 +1710,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
         state.explore_selected_rows = []
+        report_error = ""
         try:
-            from plaid.viewer.global_plots import prepare_globals  # noqa: PLC0415
+            from plaid.viewer.global_plots import (  # noqa: PLC0415
+                globals_dataframe,
+                prepare_globals,
+            )
 
             data = dataset_service.extract_globals(
                 state.dataset_id, time_step=state.explore_time_step
@@ -1685,6 +1725,21 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             extracted_globals.update(data)
             prepared_globals = prepared
             _refresh_globals_csv()
+            dataframe = globals_dataframe(prepared)
+            if not dataframe.empty:
+                try:
+                    path = report_dir / f"{secrets.token_urlsafe(24)}.html"
+                    _write_globals_report(
+                        dataframe,
+                        path,
+                        f"{state.dataset_id} — {state.explore_time_step} Globals",
+                    )
+                    report_path = path
+                    state.explore_report_url = f"{report_route.lstrip('/')}/{path.name}"
+                except Exception as exc:  # noqa: BLE001
+                    path.unlink(missing_ok=True)
+                    logger.warning("Failed to generate skrub report: %s", exc)
+                    report_error = f" Skrub report unavailable: {exc}"
             names = prepared.names
             state.explore_names = names
             state.explore_parallel_fields = []  # list(names) # all fields unchecked.
@@ -1694,11 +1749,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             state.explore_x = names[0] if names else None
             state.explore_y = names[1] if len(names) > 1 else None
             state.explore_z = names[2] if len(names) > 2 else None
-            state.explore_status = (
+            summary = (
                 f"Extracted {sum(map(len, data.values()))} samples from "
                 f"{len(data)} splits. {len(names)} numeric scalar Globals. "
                 "Missing or non-scalar values leave gaps in parallel plots."
             )
+            state.explore_status = summary + report_error
             _render_explore_plot()
         except Exception as exc:  # noqa: BLE001
             state.explore_status = f"Failed to extract Globals: {exc}"
@@ -3044,6 +3100,19 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     variant="tonal",
                                     classes="mt-2",
                                     disabled=("!explore_csv_url",),
+                                )
+                            with html.A(
+                                href=("explore_report_url",),
+                                target="_blank",
+                                rel="noopener noreferrer",
+                                style="display: block;",
+                            ):
+                                v3.VBtn(
+                                    "Analyze Globals with skrub",
+                                    block=True,
+                                    variant="tonal",
+                                    classes="mt-2",
+                                    disabled=("!explore_report_url",),
                                 )
                             html.Div(
                                 "{{ explore_status }}",
