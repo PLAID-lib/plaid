@@ -13,6 +13,7 @@ from plaid.viewer.global_plots import (
     build_globals_figure,
     format_point_label,
     global_names,
+    globals_dataframe,
     label_names,
     prepare_globals,
     scalar_value,
@@ -406,3 +407,27 @@ def test_empty_selection_and_invalid_kind(records):
     )
     with pytest.raises(ValueError, match="Unknown plot type"):
         build_globals_figure(records, ["train"], "heatmap", [])
+
+
+def test_globals_dataframe_exports_splits_and_expanded_columns(records):
+    frame = globals_dataframe(records)
+    assert list(frame.columns) == [
+        "split",
+        "sample_id",
+        "Global/a",
+        "Global/b",
+        "Global/c",
+        "Global/vector_1",
+        "Global/vector_2",
+    ]
+    assert list(zip(frame["split"], frame["sample_id"])) == [
+        ("train", "0"),
+        ("train", "1"),
+        ("test", "0"),
+    ]
+    assert frame.loc[0, "Global/vector_2"] == 2.0
+    assert np.isnan(frame.loc[1, "Global/a"])
+    selected = globals_dataframe(prepare_globals(records), {("test", "0")})
+    assert selected["split"].tolist() == ["test"]
+    assert selected["sample_id"].tolist() == ["0"]
+    assert list(globals_dataframe(records, set()).columns) == list(frame.columns)

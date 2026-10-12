@@ -376,3 +376,93 @@ def test_install_vtk_log_router_ignores_missing_and_old_vtk(
     )
     srv._install_vtk_log_router()
     assert srv._VTK_LOG_ROUTER_INSTALLED is True
+
+
+def test_parcoords_brush_exports_only_matching_plotted_samples() -> None:
+    from base64 import b64decode
+    from io import StringIO
+
+    import pandas as pd
+
+    from plaid.viewer.global_plots import build_globals_figure
+
+    records = {
+        "train": [
+            {"sample_id": "0", "values": {"Global/a": 1, "Global/b": 10}},
+            {"sample_id": "1", "values": {"Global/a": 2, "Global/b": 20}},
+        ],
+        "test": [
+            {"sample_id": "0", "values": {"Global/a": 3, "Global/b": 30}},
+            {"sample_id": "1", "values": {"Global/a": 4}},
+        ],
+    }
+    figure = build_globals_figure(
+        records,
+        ["train", "test"],
+        "parallel",
+        [],
+        parallel_fields=["Global/a", "Global/b"],
+        parallel_mode="parcoords",
+    )
+    assert srv._parcoords_selected_rows(figure, {}) == {
+        ("train", "0"),
+        ("train", "1"),
+        ("test", "0"),
+    }
+    assert srv._parcoords_selected_rows(figure, {0: [1.5, 3.5]}) == {
+        ("train", "1"),
+        ("test", "0"),
+    }
+    assert srv._parcoords_selected_rows(
+        figure, {0: [[0.5, 1.5], [2.5, 3.5]], 1: [25, 35]}
+    ) == {("test", "0")}
+    assert srv._parcoords_selected_rows(
+        figure, {0: [[[0.5, 1.5], [2.5, 3.5]]], 1: [[25, 35]]}
+    ) == {("test", "0")}
+    assert srv._parcoords_selected_rows(figure, {0: [5, 6]}) == set()
+    assert srv._parcoords_selected_rows(None, {0: [1, 2]}) == set()
+    url = srv._csv_data_url(pd.DataFrame([{"split": "test", "sample_id": "0"}]))
+    assert url.startswith("data:text/csv;charset=utf-8;base64,")
+    csv = b64decode(url.split(",", 1)[1]).decode("utf-8-sig")
+    assert pd.read_csv(StringIO(csv))["split"].tolist() == ["test"]
+
+
+def test_scatter_selection_resolves_plot_indices_across_splits() -> None:
+    from plaid.viewer.global_plots import build_globals_figure, globals_dataframe
+
+    records = {
+        "train": [
+            {"sample_id": "0", "values": {"Global/a": 1, "Global/b": 2}},
+            {"sample_id": "1", "values": {"Global/a": None, "Global/b": 4}},
+            {"sample_id": "2", "values": {"Global/a": 5, "Global/b": 6}},
+        ],
+        "test": [
+            {"sample_id": "0", "values": {"Global/a": 7, "Global/b": 8}},
+        ],
+    }
+    points = [
+        {"curveNumber": 0, "pointNumber": 1},
+        {"curveNumber": 1, "pointNumber": 0},
+        {"curveNumber": 1, "pointNumber": 0},
+        {"curveNumber": 0, "pointNumber": 2},  # Beyond plotted points.
+        {"curveNumber": 2, "pointNumber": 0},
+        {"curveNumber": -1, "pointNumber": 0},
+        {"curveNumber": 0, "pointNumber": -1},
+        {"curveNumber": 0, "pointNumber": True},
+        {"curveNumber": "0", "pointNumber": 0},
+        {},
+    ]
+    for mode in ("1D", "2D"):
+        figure = build_globals_figure(
+            records, ["train", "test"], mode, ["Global/a", "Global/b"]
+        )
+        selected = srv._scatter_selected_rows(figure, points)
+        assert selected == {("train", "2"), ("test", "0")}
+        frame = globals_dataframe(records, selected)
+        assert list(zip(frame["split"], frame["sample_id"])) == [
+            ("train", "2"),
+            ("test", "0"),
+        ]
+        assert srv._scatter_selected_rows(figure, []) == set()
+        assert srv._scatter_selected_rows(figure, None) == set()
+    assert srv._scatter_selected_rows(None, points) == set()

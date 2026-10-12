@@ -150,6 +150,34 @@ def label_names(records: RawGlobals | PreparedGlobals) -> list[str]:
     return prepare_globals(records).label_names
 
 
+def globals_dataframe(
+    records: RawGlobals | PreparedGlobals,
+    selected: set[tuple[str, str]] | None = None,
+):
+    """Return one tabular row per extracted sample.
+
+    Args:
+        records: Extracted Globals, raw or expanded for plotting.
+        selected: Optional ``(split, sample_id)`` pairs to retain.
+
+    Returns:
+        A pandas DataFrame with split, sample_id and expanded Global columns.
+    """
+    import pandas as pd  # noqa: PLC0415
+
+    prepared = (
+        records if isinstance(records, PreparedGlobals) else prepare_globals(records)
+    )
+    columns = ["split", "sample_id", *prepared.label_names]
+    rows = [
+        {"split": split, "sample_id": str(row["sample_id"]), **row["values"]}
+        for split, split_rows in prepared.records.items()
+        for row in split_rows
+        if selected is None or (split, str(row["sample_id"])) in selected
+    ]
+    return pd.DataFrame(rows, columns=columns)
+
+
 def format_point_label(value: object) -> str:
     """Format a Global annotation with three decimal places for floats.
 

@@ -111,6 +111,100 @@ def _select_filtered_globals(
     return [name for name in names if name in selected_set]
 
 
+def _csv_data_url(dataframe: Any) -> str:
+    """Encode a pandas DataFrame as a browser-downloadable CSV data URL.
+
+    Args:
+        dataframe: Table to export.
+
+    Returns:
+        UTF-8 CSV data URL.
+    """
+    from base64 import b64encode  # noqa: PLC0415
+
+    csv_bytes = dataframe.to_csv(index=False).encode("utf-8-sig")
+    return "data:text/csv;charset=utf-8;base64," + b64encode(csv_bytes).decode("ascii")
+
+
+def _constraint_ranges(value: object) -> list[tuple[float, float]]:
+    """Normalize a Plotly axis brush, including disjoint intervals.
+
+    Args:
+        value: One ``constraintrange`` value from a restyle event.
+
+    Returns:
+        List of inclusive numeric intervals; empty for a cleared brush.
+    """
+    if not isinstance(value, (list, tuple)) or not value:
+        return []
+    if (
+        isinstance(value[0], (list, tuple))
+        and value[0]
+        and isinstance(value[0][0], (list, tuple))
+    ):
+        value = value[0]  # Plotly restyle wraps values once per trace.
+    if isinstance(value[0], (list, tuple)):
+        return [tuple(interval) for interval in value]
+    return [tuple(value)]
+
+
+def _parcoords_selected_rows(
+    figure: Any, constraints: dict[int, object]
+) -> set[tuple[str, str]]:
+    """Find plotted samples inside all active parcoords axis brushes.
+
+    Args:
+        figure: Current Plotly figure with a single parcoords trace.
+        constraints: Axis index to Plotly constraintrange (single or disjoint).
+
+    Returns:
+        Pairs of split and sample id for rows inside every constraint.
+    """
+    if not figure or not figure.data or figure.data[0].type != "parcoords":
+        return set()
+    trace = figure.data[0]
+    ticktext = list(trace.line.colorbar.ticktext)
+    selected = set()
+    for index, sample_id in enumerate(trace.customdata):
+        if all(
+            any(low <= dimension.values[index] <= high for low, high in ranges)
+            for axis, value in constraints.items()
+            for dimension in [trace.dimensions[axis]]
+            for ranges in [_constraint_ranges(value)]
+        ):
+            selected.add((ticktext[trace.line.color[index]], str(sample_id)))
+    return selected
+
+
+def _scatter_selected_rows(figure: Any, points: object) -> set[tuple[str, str]]:
+    """Resolve Plotly-selected 1D/2D points against the current figure.
+
+    Args:
+        figure: Plotly scatter figure containing per-point sample identifiers.
+        points: Plotly selected point indices with trace (curve) indices.
+
+    Returns:
+        Pairs of split name and sample id for valid plotted points.
+    """
+    selected: set[tuple[str, str]] = set()
+    if figure is None or not isinstance(points, list):
+        return selected
+    for point in points:
+        if not isinstance(point, dict):
+            continue
+        curve = point.get("curveNumber")
+        index = point.get("pointNumber")
+        if type(curve) is not int or type(index) is not int:
+            continue
+        if curve < 0 or curve >= len(figure.data):
+            continue
+        trace = figure.data[curve]
+        if trace.type != "scatter" or index < 0 or index >= len(trace.customdata):
+            continue
+        selected.add((trace.name, str(trace.customdata[index])))
+    return selected
+
+
 def _update_view(server: Any, ctrl: Any) -> None:
     """Push the current VTK frame once the trame protocol is ready.
 
@@ -775,8 +869,14 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_has_plot", False)
     state.setdefault("explore_status", "Click Extract Globals to load all splits.")
     state.setdefault("explore_time_step", "last")
+    state.setdefault("explore_csv_url", "")
+    state.setdefault("explore_selected_csv_url", "")
+    state.setdefault("explore_has_selection", False)
     extracted_globals: dict[str, list[dict[str, object]]] = {}
     prepared_globals: object | None = None
+    explore_plot_figure: object | None = None
+    explore_constraints: dict[int, object] = {}
+    explore_selected_points: set[tuple[str, str]] = set()
     # Active side-panel tab: "local" drives ``datasets_root_text`` and
     # directory browsing, "hub" drives the Hugging Face repo input. When an
     # initial Hub dataset is configured, start on the Hub tab so state and UI
@@ -1524,7 +1624,13 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     @state.change("dataset_id")
     def _on_dataset(**_: object) -> None:
-        nonlocal prepared_globals
+        nonlocal prepared_globals, explore_plot_figure
+        explore_plot_figure = None
+        explore_constraints.clear()
+        explore_selected_points.clear()
+        state.explore_csv_url = ""
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
         extracted_globals.clear()
         prepared_globals = None
         state.explore_splits = []
@@ -1550,6 +1656,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             return
         state.explore_status = "Extracting Globals from all splits..."
         state.explore_has_plot = False
+        state.explore_csv_url = ""
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
         try:
             from plaid.viewer.global_plots import prepare_globals  # noqa: PLC0415
 
@@ -1560,6 +1669,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             extracted_globals.clear()
             extracted_globals.update(data)
             prepared_globals = prepared
+            _refresh_globals_csv()
             names = prepared.names
             state.explore_names = names
             state.explore_parallel_fields = []  # list(names) # all fields unchecked.
@@ -1577,6 +1687,94 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             _render_explore_plot()
         except Exception as exc:  # noqa: BLE001
             state.explore_status = f"Failed to extract Globals: {exc}"
+
+    def _refresh_globals_csv() -> None:
+        """Publish a browser-downloadable CSV for all extracted samples."""
+        from plaid.viewer.global_plots import globals_dataframe  # noqa: PLC0415
+
+        if prepared_globals is not None:
+            state.explore_csv_url = _csv_data_url(globals_dataframe(prepared_globals))
+
+    def _refresh_selected_csv() -> None:
+        """Publish selected scatter points or brushed parcoords rows as CSV."""
+        from plaid.viewer.global_plots import globals_dataframe  # noqa: PLC0415
+
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
+        if prepared_globals is None:
+            return
+        if state.explore_plot in ("1D", "2D"):
+            selected = explore_selected_points
+        elif (
+            state.explore_plot == "parallel"
+            and state.explore_parallel_mode == "parcoords"
+            and explore_constraints
+        ):
+            selected = _parcoords_selected_rows(
+                explore_plot_figure, explore_constraints
+            )
+        else:
+            return
+        if selected:
+            state.explore_selected_csv_url = _csv_data_url(
+                globals_dataframe(prepared_globals, selected)
+            )
+            state.explore_has_selection = True
+
+    @ctrl.set("scatter_selected")
+    def _scatter_selected(points: object) -> None:
+        """Save the samples selected with a 1D/2D Plotly box or lasso."""
+        if state.explore_plot not in ("1D", "2D"):
+            return
+        explore_selected_points.clear()
+        explore_selected_points.update(
+            _scatter_selected_rows(explore_plot_figure, points)
+        )
+        _refresh_selected_csv()
+
+    @ctrl.set("scatter_click")
+    def _scatter_click(points: object) -> None:
+        """Toggle a clicked 1D/2D point in the CSV selection."""
+        if state.explore_plot not in ("1D", "2D"):
+            return
+        for row in _scatter_selected_rows(explore_plot_figure, points):
+            if row in explore_selected_points:
+                explore_selected_points.remove(row)
+            else:
+                explore_selected_points.add(row)
+        _refresh_selected_csv()
+
+    @ctrl.set("scatter_deselect")
+    def _scatter_deselect() -> None:
+        """Clear the CSV selection when Plotly deselects scatter points."""
+        if state.explore_plot in ("1D", "2D"):
+            explore_selected_points.clear()
+            _refresh_selected_csv()
+
+    @ctrl.set("parcoords_restyle")
+    def _parcoords_restyle(event: object) -> None:
+        """Track Plotly axis brushes without treating unbrushed lines as selected."""
+        if (
+            state.explore_plot != "parallel"
+            or state.explore_parallel_mode != "parcoords"
+        ):
+            return
+        if not isinstance(event, (list, tuple)) or not event:
+            return
+        changes = event[0]
+        if not isinstance(changes, dict):
+            return
+        for key, value in changes.items():
+            if not isinstance(key, str):
+                continue
+            match = re.fullmatch(r"dimensions\[(\d+)\]\.constraintrange", key)
+            if match:
+                axis = int(match.group(1))
+                if value is None or value == []:
+                    explore_constraints.pop(axis, None)
+                else:
+                    explore_constraints[axis] = value
+        _refresh_selected_csv()
 
     def _refresh_explore_global_filter() -> None:
         """Update the visible checklist from the current regex and names."""
@@ -1615,6 +1813,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     def _render_explore_plot() -> None:
         """Update the plot from the selected splits and Global axes."""
+        nonlocal explore_plot_figure
+        explore_constraints.clear()
+        explore_selected_points.clear()
+        explore_plot_figure = None
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
         if not extracted_globals or prepared_globals is None:
             state.explore_has_plot = False
             return
@@ -1633,6 +1837,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             )
             state.explore_has_plot = False
             if figure is not None:
+                explore_plot_figure = figure
                 explore_figure.update(figure)
                 state.explore_has_plot = True
         except Exception as exc:  # noqa: BLE001
@@ -2811,6 +3016,36 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                 block=True,
                                 disabled=("is_streaming || !dataset_id",),
                             )
+                            with html.A(
+                                href=("explore_csv_url",),
+                                download="plaid_globals.csv",
+                                style="display: block;",
+                            ):
+                                v3.VBtn(
+                                    "Download all Globals (CSV)",
+                                    block=True,
+                                    variant="tonal",
+                                    classes="mt-2",
+                                    disabled=("!explore_csv_url",),
+                                )
+                            with html.A(
+                                href=("explore_selected_csv_url",),
+                                download="plaid_globals_selected.csv",
+                                style="display: block;",
+                            ):
+                                v3.VBtn(
+                                    "Download selected rows (CSV)",
+                                    block=True,
+                                    variant="tonal",
+                                    classes="mt-2",
+                                    disabled=(
+                                        "!explore_has_selection || "
+                                        "(explore_plot !== '1D' && "
+                                        "explore_plot !== '2D' && "
+                                        "(explore_plot !== 'parallel' || "
+                                        "explore_parallel_mode !== 'parcoords'))",
+                                    ),
+                                )
                             html.Div(
                                 "Globals exploration is unavailable for streaming datasets.",
                                 v_if=("is_streaming",),
@@ -2933,6 +3168,22 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             ):
                                 explore_figure = plotly_widgets.Figure(
                                     display_logo=False,
+                                    restyle=(ctrl.parcoords_restyle, "[$event]"),
+                                    selected=(
+                                        ctrl.scatter_selected,
+                                        "[$event && $event.points ? "
+                                        "$event.points.map(p => ({curveNumber: "
+                                        "p.curveNumber, pointNumber: p.pointNumber})) "
+                                        ": []]",
+                                    ),
+                                    deselect=ctrl.scatter_deselect,
+                                    click=(
+                                        ctrl.scatter_click,
+                                        "[$event && $event.points ? "
+                                        "$event.points.map(p => ({curveNumber: "
+                                        "p.curveNumber, pointNumber: p.pointNumber})) "
+                                        ": []]",
+                                    ),
                                     responsive=True,
                                     autosize=True,
                                     style="width: 100%; height: 100%; flex: 1 1 auto;",
