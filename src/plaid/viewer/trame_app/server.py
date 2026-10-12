@@ -126,6 +126,18 @@ def _csv_data_url(dataframe: Any) -> str:
     return "data:text/csv;charset=utf-8;base64," + b64encode(csv_bytes).decode("ascii")
 
 
+def _selected_row_entries(dataframe: Any) -> list[dict[str, str]]:
+    """List exported row identities in CSV order for display in the viewer.
+
+    Args:
+        dataframe: DataFrame containing the selected Globals rows.
+
+    Returns:
+        Split and sample ID mappings for the selected samples.
+    """
+    return dataframe[["split", "sample_id"]].to_dict("records")
+
+
 def _constraint_ranges(value: object) -> list[tuple[float, float]]:
     """Normalize a Plotly axis brush, including disjoint intervals.
 
@@ -872,6 +884,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_csv_url", "")
     state.setdefault("explore_selected_csv_url", "")
     state.setdefault("explore_has_selection", False)
+    state.setdefault("explore_selected_rows", [])
     extracted_globals: dict[str, list[dict[str, object]]] = {}
     prepared_globals: object | None = None
     explore_plot_figure: object | None = None
@@ -1631,6 +1644,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_csv_url = ""
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
+        state.explore_selected_rows = []
         extracted_globals.clear()
         prepared_globals = None
         state.explore_splits = []
@@ -1659,6 +1673,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_csv_url = ""
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
+        state.explore_selected_rows = []
         try:
             from plaid.viewer.global_plots import prepare_globals  # noqa: PLC0415
 
@@ -1701,6 +1716,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
+        state.explore_selected_rows = []
         if prepared_globals is None:
             return
         if state.explore_plot in ("1D", "2D"):
@@ -1716,9 +1732,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         else:
             return
         if selected:
-            state.explore_selected_csv_url = _csv_data_url(
-                globals_dataframe(prepared_globals, selected)
-            )
+            dataframe = globals_dataframe(prepared_globals, selected)
+            state.explore_selected_rows = _selected_row_entries(dataframe)
+            state.explore_selected_csv_url = _csv_data_url(dataframe)
             state.explore_has_selection = True
 
     @ctrl.set("scatter_selected")
@@ -1819,6 +1835,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         explore_plot_figure = None
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
+        state.explore_selected_rows = []
         if not extracted_globals or prepared_globals is None:
             state.explore_has_plot = False
             return
@@ -3028,32 +3045,14 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     classes="mt-2",
                                     disabled=("!explore_csv_url",),
                                 )
-                            with html.A(
-                                href=("explore_selected_csv_url",),
-                                download="plaid_globals_selected.csv",
-                                style="display: block;",
-                            ):
-                                v3.VBtn(
-                                    "Download selected rows (CSV)",
-                                    block=True,
-                                    variant="tonal",
-                                    classes="mt-2",
-                                    disabled=(
-                                        "!explore_has_selection || "
-                                        "(explore_plot !== '1D' && "
-                                        "explore_plot !== '2D' && "
-                                        "(explore_plot !== 'parallel' || "
-                                        "explore_parallel_mode !== 'parcoords'))",
-                                    ),
-                                )
+                            html.Div(
+                                "{{ explore_status }}",
+                                classes="text-caption my-2",
+                            )
                             html.Div(
                                 "Globals exploration is unavailable for streaming datasets.",
                                 v_if=("is_streaming",),
                                 classes="text-caption mt-2",
-                            )
-                            html.Div(
-                                "{{ explore_status }}",
-                                classes="text-caption my-2",
                             )
                             html.Div("Splits", classes="text-subtitle-2")
                             with html.Div(v_for="name in splits", key="name"):
@@ -3092,31 +3091,46 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     clearable=True,
                                 )
                                 with html.Div(classes="d-flex mb-2"):
-                                    v3.VBtn(
-                                        "Check",
-                                        click=ctrl.check_filtered_globals,
-                                        density="compact",
-                                        variant="tonal",
-                                        classes="mr-2",
-                                        disabled=("!explore_filtered_names.length",),
-                                    )
-                                    v3.VBtn(
-                                        "Uncheck",
-                                        click=ctrl.uncheck_filtered_globals,
-                                        density="compact",
-                                        variant="tonal",
-                                        disabled=("!explore_filtered_names.length",),
-                                    )
+                                    with html.Div(
+                                        style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                    ):
+                                        v3.VBtn(
+                                            "Check",
+                                            click=ctrl.check_filtered_globals,
+                                            density="compact",
+                                            variant="tonal",
+                                            block=True,
+                                            disabled=(
+                                                "!explore_filtered_names.length",
+                                            ),
+                                        )
+                                    with html.Div(
+                                        style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                    ):
+                                        v3.VBtn(
+                                            "Uncheck",
+                                            click=ctrl.uncheck_filtered_globals,
+                                            density="compact",
+                                            variant="tonal",
+                                            block=True,
+                                            disabled=(
+                                                "!explore_filtered_names.length",
+                                            ),
+                                        )
                                 with html.Div(
-                                    v_for="name in explore_filtered_names", key="name"
+                                    style="max-height: 240px; overflow-y: auto;",
                                 ):
-                                    v3.VCheckbox(
-                                        label=("name",),
-                                        value=("name",),
-                                        v_model=("explore_parallel_fields",),
-                                        density="compact",
-                                        hide_details=True,
-                                    )
+                                    with html.Div(
+                                        v_for="name in explore_filtered_names",
+                                        key="name",
+                                    ):
+                                        v3.VCheckbox(
+                                            label=("name",),
+                                            value=("name",),
+                                            v_model=("explore_parallel_fields",),
+                                            density="compact",
+                                            hide_details=True,
+                                        )
                             with html.Div(v_if=("explore_plot !== 'parallel'",)):
                                 v3.VSelect(
                                     label="Global / X",
@@ -3153,6 +3167,47 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     density="compact",
                                     v_if=("explore_labels",),
                                 )
+
+                            with html.A(
+                                href=("explore_selected_csv_url",),
+                                download="plaid_globals_selected.csv",
+                                style="display: block;",
+                            ):
+                                v3.VBtn(
+                                    "Download selected Globals (CSV)",
+                                    block=True,
+                                    variant="tonal",
+                                    classes="mt-2",
+                                    disabled=(
+                                        "!explore_has_selection || "
+                                        "(explore_plot !== '1D' && "
+                                        "explore_plot !== '2D' && "
+                                        "(explore_plot !== 'parallel' || "
+                                        "explore_parallel_mode !== 'parcoords'))",
+                                    ),
+                                )
+                            html.Div(
+                                "Selected rows ({{ explore_selected_rows.length }})",
+                                classes="text-subtitle-2 mt-3",
+                            )
+                            html.Div(
+                                "No rows selected.",
+                                v_if=("!explore_has_selection",),
+                                classes="text-caption text-medium-emphasis",
+                            )
+                            with html.Div(
+                                v_if=("explore_has_selection",),
+                                style="max-height: 160px; overflow-y: auto;",
+                            ):
+                                with v3.VList(density="compact"):
+                                    with v3.VListItem(
+                                        v_for="row in explore_selected_rows",
+                                        key="`${row.split}:${row.sample_id}`",
+                                    ):
+                                        v3.VListItemTitle(
+                                            "{{ row.split }} / {{ row.sample_id }}",
+                                            classes="text-body-2",
+                                        )
                         with html.Div(
                             style=(
                                 "flex: 1 1 300px; min-width: 0; min-height: 0; "

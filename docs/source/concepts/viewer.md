@@ -146,11 +146,13 @@ values are omitted in that mode. After extraction, **Download all Globals
 (CSV)** saves a table of every extracted sample across all splits, with
 ``split`` and ``sample_id`` columns and vector Globals expanded into numbered
 components. In **1D** and **2D**, click points to toggle their selection, or
-select multiple points with Plotly's box or lasso tools. In `parcoords`, brush one or more axes to select lines.
+select multiple points with Plotly's box or lasso tools. In `parcoords`, brush
+one or more axes to select lines.
 **Download selected rows (CSV)** saves the selected plotted samples with the
-same columns. The button is disabled when no points are selected or no plotted
-lines match the brush. Changing the plot or extracting again clears the
-selection.
+same columns. **Selected rows** lists each matching split and sample ID,
+with a count; the list scrolls when many rows are selected. The button is
+disabled when no points are selected or no plotted lines match the brush.
+Changing the plot or extracting again clears the selection and list.
 
 All four plots use interactive Plotly views. Pan, zoom, reset, and export the
 plot with the plot toolbar; rotate the 3D scatter with the mouse. In parallel

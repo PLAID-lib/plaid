@@ -466,3 +466,23 @@ def test_scatter_selection_resolves_plot_indices_across_splits() -> None:
         assert srv._scatter_selected_rows(figure, []) == set()
         assert srv._scatter_selected_rows(figure, None) == set()
     assert srv._scatter_selected_rows(None, points) == set()
+
+
+def test_selected_row_entries_match_export_order() -> None:
+    """The displayed identities match the CSV, including duplicate sample IDs."""
+    from plaid.viewer.global_plots import globals_dataframe
+
+    records = {
+        "train": [
+            {"sample_id": "0", "values": {"Global/a": 1}},
+            {"sample_id": "1", "values": {"Global/a": 2}},
+        ],
+        "test": [{"sample_id": "0", "values": {"Global/a": 3}}],
+    }
+    selected = {("train", "1"), ("test", "0")}
+    frame = globals_dataframe(records, selected)
+    assert srv._selected_row_entries(frame) == [
+        {"split": "train", "sample_id": "1"},
+        {"split": "test", "sample_id": "0"},
+    ]
+    assert srv._selected_row_entries(globals_dataframe(records, set())) == []
