@@ -1934,9 +1934,9 @@ def test_extract_globals_without_time_selector_preserves_raw_histories(
     _install_fake_init_from_disk(
         monkeypatch, {"ds": ({"train": _FakeDataset([0])}, {"train": converter})}
     )
-    values = PlaidDatasetService(
-        ViewerConfig(datasets_root=tmp_path)
-    ).extract_globals("ds")["train"][0]["values"]
+    values = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path)).extract_globals(
+        "ds"
+    )["train"][0]["values"]
     assert set(values) == {*raw, "Global/case", "Global/case_times"}
     np.testing.assert_array_equal(values["Global/a"], history)
     np.testing.assert_array_equal(values["Global/a_times"], times)
