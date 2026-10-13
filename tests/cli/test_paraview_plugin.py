@@ -61,6 +61,7 @@ def test_get_paraview_plugin_path_one_file_writes_bundled_plugin(
     assert "# ##INCLUDE PLACEHOLDER##" not in content
     assert "def CGNSTreeToVtk" in content
     assert "def cgns_tree_to_json_payload" in content
+    assert "self.ensure_3D_points = False" in content
     assert "from __future__ import annotations" not in content
 
 
