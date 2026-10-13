@@ -53,6 +53,9 @@ class _FakeGlobalSample:
     def __init__(self, values: dict[str, object]) -> None:
         self._values = values
 
+    def get_all_time_values(self):
+        return [0.0]
+
     def get_global_names(self):
         return list(self._values)
 
@@ -205,7 +208,7 @@ def test_extract_globals_reads_only_split_globals_with_converter(
     _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, converters)})
 
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    assert service.extract_globals("ds") == {
+    assert service.extract_globals("ds", time_step="first") == {
         "train": [
             {"sample_id": "0", "values": {"Global/a": 1, "Global/vector": [1, 2]}},
             {"sample_id": "1", "values": {"Global/a": None, "Global/vector": [3]}},
@@ -1893,3 +1896,52 @@ def test_load_sample_does_not_reinject_deselected_constant_fields(
     assert "Base_2_2/Zone/VertexFields/sdf" not in converter.last_features
     assert "Base_2_2/Zone/VertexFields/sdf_times" not in converter.last_features
     assert "Base_2_2/Zone/VertexFields/pressure" not in converter.last_features
+
+
+@pytest.mark.parametrize("backend", ["hf_datasets", "zarr"])
+def test_extract_globals_without_time_selector_preserves_raw_histories(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, backend: str
+) -> None:
+    """The default API retains full arrays, time companions and constants."""
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    _make_dataset_dir(tmp_path, "ds")
+    history = np.array([1.0, 9.0])
+    times = np.array([0.0, 0.0, 1.0, 5.0, 1.0, 2.0])
+    constant = np.frombuffer(b"case-a", dtype="|S1")
+    constant_times = np.array([0.0, 0.0, -1.0])
+    raw = {"Global/a": history, "Global/a_times": times, "Global/missing": None}
+    requests = []
+
+    def read_variables(_dataset, index, *, features):
+        requests.append((index, list(features)))
+        return {feature: raw[feature] for feature in features}
+
+    converter = _FakeConverter(
+        {0: RuntimeError("unsliced extraction must not convert to Sample")},
+        backend=backend,
+        variable_features={*raw, "Field/large"},
+        constant_features={"Global/case", "Global/case_times", "Mesh/coordinates"},
+    )
+    converter.backend_spec = SimpleNamespace(to_var_sample_dict=read_variables)
+    converter.flat_cst = {
+        "Global/case": constant,
+        "Global/case_times": constant_times,
+        "Mesh/coordinates": np.zeros((3, 10)),
+    }
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": ({"train": _FakeDataset([0])}, {"train": converter})}
+    )
+    values = PlaidDatasetService(
+        ViewerConfig(datasets_root=tmp_path)
+    ).extract_globals("ds")["train"][0]["values"]
+    assert set(values) == {*raw, "Global/case", "Global/case_times"}
+    np.testing.assert_array_equal(values["Global/a"], history)
+    np.testing.assert_array_equal(values["Global/a_times"], times)
+    np.testing.assert_array_equal(values["Global/case"], constant)
+    np.testing.assert_array_equal(values["Global/case_times"], constant_times)
+    assert values["Global/missing"] is None
+    assert requests == [(0, ["Global/a", "Global/a_times", "Global/missing"])]
+    assert converter.feature_requests == []

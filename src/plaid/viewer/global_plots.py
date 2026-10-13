@@ -43,12 +43,21 @@ def _component_values(
         Scalar values keyed by Global name, with vectors expanded using 1-based
         suffixes. Invalid or non-finite components are represented by ``None``.
     """
-    components: dict[str, float | None] = {}
+    components: dict[str, object] = {}
     for name, value in values.items():
         if name.endswith("_times"):  # pragma: no cover
             continue
         try:
             array = np.asarray(value)
+            if array.dtype.kind == "S" and array.dtype.itemsize == 1:
+                components[name] = array.tobytes().decode("ascii")
+                continue
+            if (
+                array.dtype.kind == "U"
+                and array.dtype.itemsize == np.dtype("U1").itemsize
+            ):
+                components[name] = "".join(array.reshape(-1).tolist())
+                continue
             if array.size == 1 and array.dtype.kind not in "iuf":
                 components[name] = value  # Preserve text Globals for point labels.
                 continue

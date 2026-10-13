@@ -897,6 +897,27 @@ class PlaidDatasetService:
                     # backends interpret it as a request for the complete sample.
                     records.append({"sample_id": str(index), "values": {}})
                     continue
+                elif time_step is None:
+                    # Preserve the stored arrays and their time companions.
+                    # Sample.get_global(time=None) would select only the default
+                    # timestamp and silently truncate transient histories.
+                    variable_globals = [
+                        feature
+                        for feature in global_features
+                        if feature in converter.variable_features
+                    ]
+                    values = converter.backend_spec.to_var_sample_dict(
+                        dataset, index, features=variable_globals
+                    )
+                    values.update(
+                        {
+                            feature: converter.flat_cst[feature]
+                            for feature in global_features
+                            if feature in converter.constant_features
+                        }
+                    )
+                    records.append({"sample_id": str(index), "values": values})
+                    continue
                 else:
                     sample = converter.to_plaid(
                         dataset, index, features=global_features

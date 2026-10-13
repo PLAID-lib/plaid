@@ -439,3 +439,34 @@ def test_globals_dataframe_exports_splits_and_expanded_columns(records):
     assert selected["split"].tolist() == ["test"]
     assert selected["sample_id"].tolist() == ["0"]
     assert list(globals_dataframe(records, set()).columns) == list(frame.columns)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        np.frombuffer(b"case-a", dtype="|S1"),
+        np.frombuffer(b"x", dtype="|S1"),
+        np.array(list("case-a"), dtype="U1"),
+    ],
+)
+def test_character_globals_survive_table_exports_and_labels(text):
+    """CGNS character arrays remain readable in CSV and report tables."""
+    records = {
+        "train": [
+            {
+                "sample_id": "0",
+                "values": {"Global/case": text, "Global/a": 1.0},
+            },
+        ],
+    }
+    expected = "x" if text.size == 1 else "case-a"
+    prepared = prepare_globals(records)
+    assert prepared.records["train"][0]["values"]["Global/case"] == expected
+    assert prepared.names == ["Global/a"]
+    assert "Global/case" in prepared.label_names
+    for data in (records, prepared):
+        frame = globals_dataframe(data)
+        assert frame.loc[0, "Global/case"] == expected
+        assert expected in frame.to_csv(index=False)
+        selected = globals_dataframe(data, {("train", "0")})
+        assert selected.loc[0, "Global/case"] == expected
