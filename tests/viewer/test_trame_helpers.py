@@ -379,11 +379,6 @@ def test_install_vtk_log_router_ignores_missing_and_old_vtk(
 
 
 def test_parcoords_brush_exports_only_matching_plotted_samples() -> None:
-    from base64 import b64decode
-    from io import StringIO
-
-    import pandas as pd
-
     from plaid.viewer.global_plots import build_globals_figure
 
     records = {
@@ -421,10 +416,50 @@ def test_parcoords_brush_exports_only_matching_plotted_samples() -> None:
     ) == {("test", "0")}
     assert srv._parcoords_selected_rows(figure, {0: [5, 6]}) == set()
     assert srv._parcoords_selected_rows(None, {0: [1, 2]}) == set()
-    url = srv._csv_data_url(pd.DataFrame([{"split": "test", "sample_id": "0"}]))
-    assert url.startswith("data:text/csv;charset=utf-8;base64,")
-    csv = b64decode(url.split(",", 1)[1]).decode("utf-8-sig")
-    assert pd.read_csv(StringIO(csv))["split"].tolist() == ["test"]
+
+
+def test_stream_csv_writes_every_chunk_as_attachment() -> None:
+    """CSV exports are streamed block by block over HTTP."""
+    import asyncio
+
+    from aiohttp import web
+    from aiohttp.test_utils import make_mocked_request
+
+    written: list[bytes] = []
+
+    class _Writer:
+        buffer_size = 0
+        output_size = 0
+
+        async def write(self, chunk: bytes) -> None:
+            written.append(bytes(chunk))
+
+        async def write_headers(self, *_args: object) -> None:
+            return None
+
+        async def write_eof(self, *_args: object) -> None:
+            return None
+
+        async def drain(self) -> None:
+            return None
+
+        def enable_compression(self, *_args: object, **_kwargs: object) -> None:
+            return None
+
+        def enable_chunking(self) -> None:
+            return None
+
+        def send_headers(self, *_args: object) -> None:
+            return None
+
+    request = make_mocked_request("GET", "/csv", writer=_Writer())
+    response = asyncio.run(
+        srv._stream_csv(request, iter([b"a,b\n", b"1,2\n"]), "out.csv")
+    )
+    assert isinstance(response, web.StreamResponse)
+    assert response.headers["Content-Disposition"] == 'attachment; filename="out.csv"'
+    assert response.headers["Content-Type"].startswith("text/csv")
+    assert b"".join(written).endswith(b"a,b\n1,2\n")
 
 
 def test_constraint_ranges_cleared_brush() -> None:
@@ -478,7 +513,7 @@ def test_scatter_selection_resolves_plot_indices_across_splits() -> None:
 
 def test_selected_row_entries_match_export_order() -> None:
     """The displayed identities match the CSV, including duplicate sample IDs."""
-    from plaid.viewer.global_plots import globals_dataframe
+    from plaid.viewer.global_plots import globals_dataframe, prepare_globals
 
     records = {
         "train": [
@@ -487,10 +522,24 @@ def test_selected_row_entries_match_export_order() -> None:
         ],
         "test": [{"sample_id": "0", "values": {"Global/a": 3}}],
     }
+    prepared = prepare_globals(records)
     selected = {("train", "1"), ("test", "0")}
-    frame = globals_dataframe(records, selected)
-    assert srv._selected_row_entries(frame) == [
+    frame = globals_dataframe(prepared, selected)
+    expected = [
         {"split": "train", "sample_id": "1"},
         {"split": "test", "sample_id": "0"},
     ]
-    assert srv._selected_row_entries(globals_dataframe(records, set())) == []
+    assert srv._selected_row_entries(prepared, selected) == expected
+    assert frame[["split", "sample_id"]].to_dict("records") == expected
+    assert srv._selected_row_entries(prepared, set()) == []
+
+
+def test_plot_blocker_guards_heavy_or_empty_parallel_plots() -> None:
+    """Parallel plots need axes, and per-sample lines are capped."""
+    limit = srv.PARALLEL_LINES_MAX_SAMPLES
+    assert srv._plot_blocker("2D", "lines", [], 10**6) == ""
+    assert "Select the Globals" in srv._plot_blocker("parallel", "parcoords", [], 1)
+    assert srv._plot_blocker("parallel", "lines", ["Global/a"], limit) == ""
+    message = srv._plot_blocker("parallel", "lines", ["Global/a"], limit + 1)
+    assert "parcoords" in message
+    assert srv._plot_blocker("parallel", "parcoords", ["Global/a"], 10**6) == ""

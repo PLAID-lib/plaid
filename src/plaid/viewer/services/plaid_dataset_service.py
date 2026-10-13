@@ -20,7 +20,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 from tqdm import tqdm
 
@@ -121,6 +121,50 @@ def _collect_data_arrays(cgns_node) -> list[dict[str, object]]:
     for child in cgns_node[2] or []:
         _walk(child)
     return entries
+
+
+def _time_spec(times: Any) -> Any:
+    """Return stored ``[time, start, end]`` triplets as an ``(n, 3)`` array."""
+    import numpy as np  # noqa: PLC0415
+
+    return np.asarray(times, dtype=np.float64).reshape((-1, 3))
+
+
+def _global_at_time(value: Any, spec: Any, time: float) -> Any:
+    """Slice one flat Global at ``time`` as ``Sample.get_global`` would.
+
+    Args:
+        value: Concatenated values of all time steps of one Global.
+        spec: ``(n, 3)`` triplets of time, start and end (``-1`` for the end).
+        time: Selected sample time.
+
+    Returns:
+        The Global at ``time`` (a scalar when it has one element, CGNS
+        character arrays for text), or ``None`` if absent at that time.
+    """
+    import numpy as np  # noqa: PLC0415
+
+    if not isinstance(value, np.ndarray):
+        value = np.asarray(value)
+    if len(spec) == 1:  # Fast path: one stored time step.
+        if spec[0, 0] != time:
+            return None
+        row = spec[0]
+    else:
+        rows = np.flatnonzero(spec[:, 0] == time)
+        if rows.size == 0:
+            return None
+        # The last block wins, as when the flat dict is rebuilt into a Sample.
+        row = spec[rows[-1]]
+    start, end = int(row[1]), int(row[2])
+    stop = None if end == -1 else end
+    if value.ndim > 1:
+        selected = value[:, start:stop]
+    else:
+        selected = value[start:stop]
+        if selected.size and isinstance(selected[0], str):
+            selected = np.frombuffer(selected[0].encode("ascii", "strict"), "|S1")
+    return selected[0] if getattr(selected, "size", None) == 1 else selected
 
 
 class PlaidDatasetService:
@@ -849,14 +893,24 @@ class PlaidDatasetService:
         return [SampleRefDTO.from_ref(ref) for ref in refs]
 
     def extract_globals(
-        self, dataset_id: str, *, time_step: str | None = None
+        self,
+        dataset_id: str,
+        *,
+        time_step: str | None = None,
+        progress: Callable[[str, int, int], None] | None = None,
     ) -> dict[str, list[dict[str, object]]]:
         """Read all Global columns for every sample in every local split.
+
+        Non-CGNS backends read the flat Global arrays directly and slice the
+        selected time step themselves: building a PLAID ``Sample`` (CGNS tree)
+        per row dominated the extraction time of wide datasets.
 
         Args:
             dataset_id: Identifier of a disk-backed dataset.
             time_step: ``first`` or ``last`` available step per sample;
                 ``None`` retains the original, unsliced Global columns.
+            progress: Optional callback receiving the split name, the number
+                of samples read so far in that split and its size.
 
         Returns:
             A mapping of split names to records with ``sample_id`` and
@@ -884,56 +938,125 @@ class PlaidDatasetService:
             global_features = sorted(
                 feature for feature in split_features if feature.startswith("Global/")
             )
+            is_cgns = getattr(converter, "backend", None) == "cgns"
+            variable_globals: list[str] = []
+            constants: dict[str, Any] = {}
+            value_names: list[str] = []
+            constant_specs: dict[str, Any] = {}
+            if not is_cgns:
+                # The ``Global`` base and its times contribute to the sample
+                # time axis exactly as in ``Converter.to_plaid``.
+                read_features = [
+                    feature
+                    for feature in ["Global", "Global_times", *global_features]
+                    if feature in split_features
+                ]
+                variable_globals = [
+                    feature
+                    for feature in read_features
+                    if feature in converter.variable_features
+                ]
+                constants = {
+                    feature: converter.flat_cst[feature]
+                    for feature in read_features
+                    if feature in converter.constant_features
+                }
+                value_names = [
+                    feature
+                    for feature in global_features
+                    if not feature.endswith("_times")
+                ]
+                # Time specifications of constant Globals are shared by all
+                # samples, so parse them once per split.
+                constant_specs = {
+                    name: _time_spec(constants[f"{name}_times"])
+                    for name in ["Global", *value_names]
+                    if constants.get(f"{name}_times") is not None
+                }
             records: list[dict[str, object]] = []
-            for index in tqdm(
-                range(len(dataset)), desc=f"Globals Extraction split: {split}"
-            ):
-                if getattr(converter, "backend", None) == "cgns":
+            total = len(dataset)
+            for index in tqdm(range(total), desc=f"Globals Extraction split: {split}"):
+                if progress is not None:
+                    progress(split, index, total)
+                if is_cgns:
                     # CGNS currently ignores ``features`` in Converter.to_plaid.
                     # Keep its historical path and do not claim selective I/O.
                     sample = converter.to_plaid(dataset, index)
+                    time = None
+                    if time_step is not None:
+                        all_times = sample.get_all_time_values()
+                        time = (
+                            min(all_times) if time_step == "first" else max(all_times)
+                        )
+                    values = {
+                        f"Global/{name}": sample.get_global(name, time=time)
+                        for name in sample.get_global_names()
+                    }
                 elif not global_features:
                     # An empty feature list is not equivalent to no read: some
                     # backends interpret it as a request for the complete sample.
-                    records.append({"sample_id": str(index), "values": {}})
-                    continue
-                elif time_step is None:
-                    # Preserve the stored arrays and their time companions.
-                    # Sample.get_global(time=None) would select only the default
-                    # timestamp and silently truncate transient histories.
-                    variable_globals = [
-                        feature
-                        for feature in global_features
-                        if feature in converter.variable_features
-                    ]
+                    values = {}
+                else:
                     values = converter.backend_spec.to_var_sample_dict(
                         dataset, index, features=variable_globals
                     )
-                    values.update(
-                        {
-                            feature: converter.flat_cst[feature]
+                    values.update(constants)
+                    if time_step is not None:
+                        values = self._globals_at_time_step(
+                            values, value_names, constant_specs, time_step
+                        )
+                    else:
+                        # Preserve the stored arrays and their time companions.
+                        # Sample.get_global(time=None) would select only the
+                        # default timestamp and truncate transient histories.
+                        values = {
+                            feature: values[feature]
                             for feature in global_features
-                            if feature in converter.constant_features
+                            if feature in values
                         }
-                    )
-                    records.append({"sample_id": str(index), "values": values})
-                    continue
-                else:
-                    sample = converter.to_plaid(
-                        dataset, index, features=global_features
-                    )
-                if time_step is not None:
-                    all_times = sample.get_all_time_values()
-                    time = min(all_times) if time_step == "first" else max(all_times)
-                else:
-                    time = None
-                values = {
-                    f"Global/{name}": sample.get_global(name, time=time)
-                    for name in sample.get_global_names()
-                }
                 records.append({"sample_id": str(index), "values": values})
+            if progress is not None:
+                progress(split, total, total)
             result[split] = records
         return result
+
+    @staticmethod
+    def _globals_at_time_step(
+        flat: dict[str, Any],
+        names: list[str],
+        constant_specs: dict[str, Any],
+        time_step: str,
+    ) -> dict[str, object]:
+        """Select the first or last sample time from flat Global arrays.
+
+        Args:
+            flat: Flat values and ``_times`` companions of one sample.
+            names: Global feature paths, without time companions.
+            constant_specs: Pre-parsed time specifications of constants.
+            time_step: ``first`` or ``last``.
+
+        Returns:
+            Values at the selected time for every stored Global, ``None`` for
+            Globals that only exist at other times of the sample.
+        """
+        specs = {}
+        for name in ["Global", *names]:
+            if flat.get(name) is None:
+                continue  # Missing values do not create a time step.
+            spec = constant_specs.get(name)
+            if spec is None and flat.get(f"{name}_times") is not None:
+                spec = _time_spec(flat[f"{name}_times"])
+            if spec is not None:
+                specs[name] = spec
+        times = {float(time) for spec in specs.values() for time in spec[:, 0]}
+        if not times:
+            return {}
+        time = min(times) if time_step == "first" else max(times)
+        return {
+            name: _global_at_time(flat[name], specs[name], time)
+            for name in names
+            if name in specs
+        }
 
     # --------------------------------------------------- Streaming cursors
 

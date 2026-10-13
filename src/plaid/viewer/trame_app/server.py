@@ -112,23 +112,121 @@ def _select_filtered_globals(
     return [name for name in names if name in selected_set]
 
 
-def _csv_data_url(dataframe: Any) -> str:
-    """Encode a pandas DataFrame as a browser-downloadable CSV data URL.
+# skrub needs ~3 ms and ~13 kB of HTML per column without plots, ~26 ms and
+# ~29 kB with distribution plots, and associations grow faster than the
+# number of columns. Wide vector Globals (tens of thousands of components)
+# would take minutes and produce a report too large for a browser tab, so
+# the report covers the selected Globals, with plots only for small sets,
+# and is refused (never silently truncated) beyond SKRUB_MAX_COLUMNS.
+SKRUB_MAX_COLUMNS = 2000
+SKRUB_MAX_PLOT_COLUMNS = 500
+SKRUB_MAX_ASSOCIATION_COLUMNS = 200
+# The "lines" parallel renderer draws one SVG trace per sample; beyond a few
+# hundred samples the browser freezes (7352 samples x 47 axes = 21 MB of
+# figure JSON), while "parcoords" draws a single WebGL trace.
+PARALLEL_LINES_MAX_SAMPLES = 500
+
+
+def _plot_blocker(
+    kind: str, parallel_mode: str, selected: list[str], samples: int
+) -> str:
+    """Explain why a plot configuration must not be drawn.
 
     Args:
-        dataframe: Table to export.
+        kind: Plot type (``1D``, ``2D``, ``3D`` or ``parallel``).
+        parallel_mode: Parallel renderer, ``lines`` or ``parcoords``.
+        selected: Selected Globals, used as parallel axes.
+        samples: Number of samples in the selected splits.
 
     Returns:
-        UTF-8 CSV data URL.
+        A user-facing message, or an empty string if the plot can be drawn.
     """
-    from base64 import b64encode  # noqa: PLC0415
+    if kind != "parallel":
+        return ""
+    if not selected:
+        return "Select the Globals to use as parallel axes."
+    if parallel_mode == "lines" and samples > PARALLEL_LINES_MAX_SAMPLES:
+        return (
+            f"The lines renderer draws one trace per sample and would freeze "
+            f"the browser with {samples} samples (limit "
+            f"{PARALLEL_LINES_MAX_SAMPLES}). Use parcoords or select fewer "
+            "splits."
+        )
+    return ""
 
-    csv_bytes = dataframe.to_csv(index=False).encode("utf-8-sig")
-    return "data:text/csv;charset=utf-8;base64," + b64encode(csv_bytes).decode("ascii")
+
+async def _stream_csv(request: Any, chunks: Any, filename: str) -> Any:
+    """Stream CSV chunks as an HTTP download.
+
+    The export is encoded block by block in a worker thread, so neither the
+    complete CSV nor a base64 copy of it is held in memory or in trame state.
+
+    Args:
+        request: aiohttp request.
+        chunks: Iterator of encoded CSV blocks.
+        filename: Suggested download filename.
+
+    Returns:
+        The completed ``aiohttp.web.StreamResponse``.
+    """
+    from aiohttp import web  # noqa: PLC0415
+
+    response = web.StreamResponse(
+        headers={
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        }
+    )
+    await response.prepare(request)
+    iterator = iter(chunks)
+    sentinel = object()
+    while (chunk := await asyncio.to_thread(next, iterator, sentinel)) is not sentinel:
+        await response.write(chunk)  # type: ignore[arg-type]
+    await response.write_eof()
+    return response
+
+
+def _report_columns(selected: list[str], text_names: list[str]) -> list[str]:
+    """Choose the table columns of the selected Globals.
+
+    Args:
+        selected: Checked numeric Globals, in display order.
+        text_names: Text Globals (e.g. case names), always included first.
+
+    Returns:
+        Text Globals followed by the selected Globals.
+    """
+    return [*text_names, *(name for name in selected if name not in text_names)]
+
+
+def _report_blocker(selected: list[str], text_names: list[str]) -> str:
+    """Explain why the skrub report of a selection must not be generated.
+
+    Args:
+        selected: Checked numeric Globals.
+        text_names: Text Globals added to every report.
+
+    Returns:
+        A user-facing message, or an empty string if the report can be built.
+    """
+    if not selected:
+        return ""  # The button is disabled and the selection hint is shown.
+    count = len(_report_columns(selected, text_names))
+    if count > SKRUB_MAX_COLUMNS:
+        return (
+            f"{count} columns selected: the skrub report is limited to "
+            f"{SKRUB_MAX_COLUMNS}. Refine the filter to select fewer Globals."
+        )
+    return ""
 
 
 def _write_globals_report(dataframe: Any, path: Path, title: str) -> None:
     """Write a standalone skrub analysis of the extracted Globals.
+
+    Distribution plots and column associations are only computed for small
+    tables (see :data:`SKRUB_MAX_PLOT_COLUMNS`); skrub's own default would
+    disable them beyond 30 columns.
 
     Args:
         dataframe: Table of extracted Globals across all splits.
@@ -138,21 +236,41 @@ def _write_globals_report(dataframe: Any, path: Path, title: str) -> None:
     Returns:
         None.
     """
+    import matplotlib  # noqa: PLC0415
+
+    # skrub draws its plots with pyplot in a worker thread: GUI backends such
+    # as TkAgg are not thread-safe and abort the process when their figures
+    # are collected, so render off-screen.
+    matplotlib.use("Agg")
     from skrub import TableReport  # noqa: PLC0415
 
-    TableReport(dataframe, title=title).write_html(path)
+    shown = dataframe.shape[1] - 2  # Excluding split and sample_id.
+    TableReport(
+        dataframe,
+        title=title,
+        plot_distributions=shown <= SKRUB_MAX_PLOT_COLUMNS,
+        compute_associations=shown <= SKRUB_MAX_ASSOCIATION_COLUMNS,
+    ).write_html(path)
 
 
-def _selected_row_entries(dataframe: Any) -> list[dict[str, str]]:
+def _selected_row_entries(
+    prepared: Any, selected: set[tuple[str, str]]
+) -> list[dict[str, str]]:
     """List exported row identities in CSV order for display in the viewer.
 
     Args:
-        dataframe: DataFrame containing the selected Globals rows.
+        prepared: :class:`~plaid.viewer.global_plots.PreparedGlobals`.
+        selected: ``(split, sample_id)`` pairs to export.
 
     Returns:
         Split and sample ID mappings for the selected samples.
     """
-    return dataframe[["split", "sample_id"]].to_dict("records")
+    return [
+        {"split": split, "sample_id": sample_id}
+        for split in prepared.splits
+        for sample_id in prepared.sample_ids(split)
+        if (split, sample_id) in selected
+    ]
 
 
 def _constraint_ranges(value: object) -> list[tuple[float, float]]:
@@ -784,6 +902,24 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     report_route = f"/plaid-skrub-{secrets.token_urlsafe(24)}"
     server.serve[report_route] = str(report_dir)
     report_path: Path | None = None
+    report_generation = {"value": 0}
+    # CSV exports are streamed on request instead of being encoded as data
+    # URLs in the shared state (wide Globals produce gigabytes of CSV).
+    csv_route = f"/plaid-globals-csv-{secrets.token_urlsafe(24)}"
+    csv_exports: dict[str, Any] = {}
+
+    @ctrl.add("on_server_bind")
+    def _bind_csv_route(wslink_server: Any) -> None:
+        from aiohttp import web  # noqa: PLC0415
+
+        async def _csv(request: Any) -> Any:
+            export = csv_exports.get(request.match_info["name"])
+            if export is None:
+                raise web.HTTPNotFound()
+            chunks, filename = export()
+            return await _stream_csv(request, chunks, filename)
+
+        wslink_server.app.router.add_get(f"{csv_route}/{{name}}", _csv)
 
     pipeline = _VtkPipeline()
     # Background task handle for the time-series playback loop (see
@@ -891,11 +1027,15 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("viewer_tab", "sample")
     state.setdefault("explore_splits", [])
     state.setdefault("explore_names", [])
-    state.setdefault("explore_parallel_fields", [])
+    # Globals checked in the shared selection panel: parallel axes, X/Y/Z
+    # choices, the skrub report and the "selected Globals" CSV columns.
+    state.setdefault("explore_selected_globals", [])
+    state.setdefault("explore_columns_csv_url", "")
+    state.setdefault("explore_report_blocker", "")
     state.setdefault("explore_global_filter", "")
     state.setdefault("explore_filtered_names", [])
     state.setdefault("explore_global_filter_error", "")
-    state.setdefault("explore_parallel_mode", "lines")
+    state.setdefault("explore_parallel_mode", "parcoords")
     state.setdefault("explore_label_names", [])
     state.setdefault("explore_plot", "1D")
     state.setdefault("explore_x", None)
@@ -911,8 +1051,16 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_selected_csv_url", "")
     state.setdefault("explore_has_selection", False)
     state.setdefault("explore_selected_rows", [])
-    extracted_globals: dict[str, list[dict[str, object]]] = {}
-    prepared_globals: object | None = None
+    state.setdefault("explore_extracting", False)
+    state.setdefault("explore_report_running", False)
+    state.setdefault("explore_report_error", "")
+    # Column-wise Globals of the last extraction (``PreparedGlobals``).
+    prepared_globals: Any = None
+    # Plots are only drawn by the "Draw plot" button: any change to the plot
+    # configuration clears the current figure instead of redrawing it, so a
+    # heavy configuration is never rendered by accident.
+    state.setdefault("explore_plot_requested", False)
+    state.setdefault("explore_plot_message", "")
     explore_plot_figure: object | None = None
     explore_constraints: dict[int, object] = {}
     explore_selected_points: set[tuple[str, str]] = set()
@@ -1663,20 +1811,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     @state.change("dataset_id")
     def _on_dataset(**_: object) -> None:
-        nonlocal prepared_globals, explore_plot_figure
-        _clear_globals_report()
-        explore_plot_figure = None
-        explore_constraints.clear()
-        explore_selected_points.clear()
-        state.explore_csv_url = ""
-        state.explore_selected_csv_url = ""
-        state.explore_has_selection = False
-        state.explore_selected_rows = []
-        extracted_globals.clear()
+        nonlocal prepared_globals
+        _reset_globals_outputs()
         prepared_globals = None
         state.explore_splits = []
         state.explore_names = []
-        state.explore_parallel_fields = []
+        state.explore_selected_globals = []
         state.explore_global_filter = ""
         state.explore_filtered_names = []
         state.explore_global_filter_error = ""
@@ -1689,87 +1829,236 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     def _clear_globals_report() -> None:
         """Remove the previous report and invalidate its browser link."""
         nonlocal report_path
+        # Reports still being written for an older selection are discarded.
+        report_generation["value"] += 1
         state.explore_report_url = ""
+        state.explore_report_error = ""
         if report_path is not None:
             report_path.unlink(missing_ok=True)
             report_path = None
 
+    def _publish_csv(
+        name: str,
+        selected: set[tuple[str, str]] | None,
+        columns: list[str] | None = None,
+    ) -> str:
+        """Register a streamed CSV export of the current Globals.
+
+        Args:
+            name: Export slot, replaced by later exports with the same name.
+            selected: Optional ``(split, sample_id)`` rows to export.
+            columns: Optional Global columns, defaulting to all of them.
+
+        Returns:
+            Relative download URL, unique per extraction and selection.
+        """
+        from plaid.viewer.global_plots import iter_globals_csv  # noqa: PLC0415
+
+        prepared = prepared_globals
+        rows = None if selected is None else set(selected)
+        filename = f"plaid_globals_{name}.csv"
+        token = f"{name}-{secrets.token_urlsafe(12)}"
+        for key in [key for key in csv_exports if key.startswith(f"{name}-")]:
+            del csv_exports[key]
+        csv_exports[token] = lambda: (
+            iter_globals_csv(prepared, rows, columns=columns),
+            filename,
+        )
+        return f"{csv_route.lstrip('/')}/{token}"
+
+    def _selected_columns() -> list[str]:
+        """Return the table columns of the checked Globals, text ones first."""
+        if prepared_globals is None:
+            return []
+        return _report_columns(
+            list(state.explore_selected_globals or []), prepared_globals.text_names
+        )
+
+    def _refresh_selected_globals() -> None:
+        """Propagate the shared Global selection to axes and exports."""
+        names = list(state.explore_names or [])
+        selected = list(state.explore_selected_globals or [])
+        # Scatter axes are chosen among the checked Globals (all when none is
+        # checked, as computed in the X/Y/Z selects); keep them valid.
+        axis_names = selected or names
+        for key, index in (("explore_x", 0), ("explore_y", 1), ("explore_z", 2)):
+            if state[key] not in axis_names:
+                state[key] = axis_names[index] if len(axis_names) > index else None
+        state.explore_columns_csv_url = (
+            _publish_csv("columns", None, _selected_columns()) if selected else ""
+        )
+        state.explore_report_blocker = _report_blocker(
+            selected, prepared_globals.text_names if prepared_globals else []
+        )
+        # A report always reflects the selection it was generated from.
+        _clear_globals_report()
+
+    def _reset_globals_outputs() -> None:
+        """Invalidate the plot, selections and exports of the last extraction."""
+        nonlocal explore_plot_figure
+        _clear_globals_report()
+        csv_exports.clear()
+        explore_plot_figure = None
+        explore_constraints.clear()
+        explore_selected_points.clear()
+        state.explore_plot_requested = False
+        state.explore_has_plot = False
+        state.explore_plot_message = ""
+        state.explore_csv_url = ""
+        state.explore_columns_csv_url = ""
+        state.explore_report_blocker = ""
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
+        state.explore_selected_rows = []
+
+    def _set_explore_status(message: str) -> None:
+        """Update the status line from the extraction task."""
+        with state:
+            state.explore_status = message
+
+    async def _extract_globals_task(dataset_id: str, time_step: str) -> None:
+        """Read and prepare Globals off the event loop, then publish them.
+
+        Wide datasets take tens of seconds to read; running in a worker
+        thread keeps the interface responsive and lets it display progress.
+        """
+        nonlocal prepared_globals
+        from plaid.viewer.global_plots import prepare_globals  # noqa: PLC0415
+
+        loop = asyncio.get_running_loop()
+        last_report = {"time": 0.0}
+
+        def _progress(split: str, done: int, total: int) -> None:
+            now = loop.time()
+            if done < total and now - last_report["time"] < 0.5:
+                return
+            last_report["time"] = now
+            loop.call_soon_threadsafe(
+                _set_explore_status,
+                f"Extracting Globals from split {split}: {done}/{total} samples...",
+            )
+
+        def _work() -> tuple[dict, Any]:
+            data = dataset_service.extract_globals(
+                dataset_id, time_step=time_step, progress=_progress
+            )
+            loop.call_soon_threadsafe(_set_explore_status, "Preparing Globals...")
+            return data, prepare_globals(data)
+
+        try:
+            data, prepared = await asyncio.to_thread(_work)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to extract Globals: %s", exc)
+            with state:
+                state.explore_status = f"Failed to extract Globals: {exc}"
+                state.explore_extracting = False
+            return
+        with state:
+            state.explore_extracting = False
+            if state.dataset_id != dataset_id:
+                return  # The user switched datasets during extraction.
+            prepared_globals = prepared
+            names = prepared.names
+            state.explore_names = names
+            # Nothing is selected after an extraction, whatever its size: the
+            # user picks Globals with the filter ("Check" on an empty filter
+            # selects them all).
+            state.explore_selected_globals = []
+            _refresh_explore_global_filter()
+            state.explore_label_names = ["sample_id", *prepared.label_names]
+            state.explore_splits = list(prepared.splits)
+            state.explore_x = state.explore_y = state.explore_z = None
+            _refresh_selected_globals()
+            state.explore_csv_url = _publish_csv("all", None)
+            count = sum(len(prepared.sample_ids(split)) for split in prepared.splits)
+            state.explore_status = (
+                f"Extracted {count} samples from {len(prepared.splits)} splits. "
+                f"{len(names)} numeric scalar Globals. Select Globals, choose "
+                "axes and click Draw plot. Missing or non-scalar values leave "
+                "gaps in parallel plots."
+            )
+
     @ctrl.set("extract_globals")
     def _extract_globals() -> None:
         """Collect Global values independently from the active mesh filter."""
-        nonlocal prepared_globals, report_path
-        _clear_globals_report()
+        nonlocal prepared_globals
+        if state.explore_extracting:
+            return
+        _reset_globals_outputs()
         if not state.dataset_id or state.is_streaming:
             state.explore_status = (
                 "Globals exploration is unavailable for streaming datasets."
             )
             return
+        prepared_globals = None
+        state.explore_extracting = True
         state.explore_status = "Extracting Globals from all splits..."
-        state.explore_has_plot = False
-        state.explore_csv_url = ""
-        state.explore_selected_csv_url = ""
-        state.explore_has_selection = False
-        state.explore_selected_rows = []
-        report_error = ""
-        try:
-            from plaid.viewer.global_plots import (  # noqa: PLC0415
-                globals_dataframe,
-                prepare_globals,
-            )
+        asynchronous.create_task(
+            _extract_globals_task(state.dataset_id, state.explore_time_step)
+        )
 
-            data = dataset_service.extract_globals(
-                state.dataset_id, time_step=state.explore_time_step
-            )
-            prepared = prepare_globals(data)
-            extracted_globals.clear()
-            extracted_globals.update(data)
-            prepared_globals = prepared
-            _refresh_globals_csv()
-            dataframe = globals_dataframe(prepared)
-            if not dataframe.empty:
-                try:
-                    path = report_dir / f"{secrets.token_urlsafe(24)}.html"
-                    _write_globals_report(
-                        dataframe,
-                        path,
-                        f"{state.dataset_id} — {state.explore_time_step} Globals",
-                    )
-                    report_path = path
-                    state.explore_report_url = f"{report_route.lstrip('/')}/{path.name}"
-                except Exception as exc:  # noqa: BLE001
-                    path.unlink(missing_ok=True)
-                    logger.warning("Failed to generate skrub report: %s", exc)
-                    report_error = f" Skrub report unavailable: {exc}"
-            names = prepared.names
-            state.explore_names = names
-            state.explore_parallel_fields = []  # list(names) # all fields unchecked.
-            _refresh_explore_global_filter()
-            state.explore_label_names = ["sample_id", *prepared.label_names]
-            state.explore_splits = list(data)
-            state.explore_x = names[0] if names else None
-            state.explore_y = names[1] if len(names) > 1 else None
-            state.explore_z = names[2] if len(names) > 2 else None
-            summary = (
-                f"Extracted {sum(map(len, data.values()))} samples from "
-                f"{len(data)} splits. {len(names)} numeric scalar Globals. "
-                "Missing or non-scalar values leave gaps in parallel plots."
-            )
-            state.explore_status = summary + report_error
-            _render_explore_plot()
-        except Exception as exc:  # noqa: BLE001
-            state.explore_status = f"Failed to extract Globals: {exc}"
-
-    def _refresh_globals_csv() -> None:
-        """Publish a browser-downloadable CSV for all extracted samples."""
+    async def _globals_report_task(dataset_id: str, title: str) -> None:
+        """Write the skrub report in a worker thread and publish its link."""
+        nonlocal report_path
         from plaid.viewer.global_plots import globals_dataframe  # noqa: PLC0415
 
-        if prepared_globals is not None:
-            state.explore_csv_url = _csv_data_url(globals_dataframe(prepared_globals))
+        prepared = prepared_globals
+        if prepared is None:  # pragma: no cover - guarded by the button
+            return
+        generation = report_generation["value"]
+        columns = _report_columns(
+            list(state.explore_selected_globals or []), prepared.text_names
+        )
+        path = report_dir / f"{secrets.token_urlsafe(24)}.html"
+
+        def _work() -> None:
+            _write_globals_report(
+                globals_dataframe(prepared, columns=columns), path, title
+            )
+
+        try:
+            await asyncio.to_thread(_work)
+        except Exception as exc:  # noqa: BLE001
+            path.unlink(missing_ok=True)
+            logger.warning("Failed to generate skrub report: %s", exc)
+            with state:
+                state.explore_report_running = False
+                state.explore_report_error = f"Skrub report unavailable: {exc}"
+            return
+        with state:
+            state.explore_report_running = False
+            if (
+                report_generation["value"] != generation
+                or prepared_globals is not prepared
+                or state.dataset_id != dataset_id
+            ):
+                # Superseded by a new extraction or Global selection.
+                path.unlink(missing_ok=True)
+                return
+            report_path = path
+            state.explore_report_url = f"{report_route.lstrip('/')}/{path.name}"
+
+    @ctrl.set("generate_globals_report")
+    def _generate_globals_report() -> None:
+        """Build the skrub report of the selected Globals on request."""
+        if (
+            prepared_globals is None
+            or state.explore_report_running
+            or not state.explore_selected_globals
+            or state.explore_report_blocker
+        ):
+            return
+        _clear_globals_report()
+        state.explore_report_running = True
+        asynchronous.create_task(
+            _globals_report_task(
+                state.dataset_id,
+                f"{state.dataset_id} — {state.explore_time_step} Globals",
+            )
+        )
 
     def _refresh_selected_csv() -> None:
         """Publish selected scatter points or brushed parcoords rows as CSV."""
-        from plaid.viewer.global_plots import globals_dataframe  # noqa: PLC0415
-
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
         state.explore_selected_rows = []
@@ -1788,9 +2077,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         else:
             return
         if selected:
-            dataframe = globals_dataframe(prepared_globals, selected)
-            state.explore_selected_rows = _selected_row_entries(dataframe)
-            state.explore_selected_csv_url = _csv_data_url(dataframe)
+            state.explore_selected_rows = _selected_row_entries(
+                prepared_globals, selected
+            )
+            state.explore_selected_csv_url = _publish_csv("samples", selected)
             state.explore_has_selection = True
 
     @ctrl.set("scatter_selected")
@@ -1856,6 +2146,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_filtered_names = matches
         state.explore_global_filter_error = error
 
+    @state.change("explore_selected_globals")
+    def _on_selected_globals(**_: object) -> None:
+        """Update axes, CSV columns and the report when Globals are checked."""
+        if prepared_globals is not None:
+            _refresh_selected_globals()
+
     @state.change("explore_global_filter")
     def _on_explore_global_filter(**_: object) -> None:
         """Refresh the checklist as the user types a regular expression."""
@@ -1865,9 +2161,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     def _check_filtered_globals() -> None:
         """Check only Globals currently visible in the filtered checklist."""
         _refresh_explore_global_filter()
-        state.explore_parallel_fields = _select_filtered_globals(
+        state.explore_selected_globals = _select_filtered_globals(
             list(state.explore_names or []),
-            list(state.explore_parallel_fields or []),
+            list(state.explore_selected_globals or []),
             list(state.explore_filtered_names or []),
             True,
         )
@@ -1876,9 +2172,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     def _uncheck_filtered_globals() -> None:
         """Uncheck only Globals currently visible in the filtered checklist."""
         _refresh_explore_global_filter()
-        state.explore_parallel_fields = _select_filtered_globals(
+        state.explore_selected_globals = _select_filtered_globals(
             list(state.explore_names or []),
-            list(state.explore_parallel_fields or []),
+            list(state.explore_selected_globals or []),
             list(state.explore_filtered_names or []),
             False,
         )
@@ -1892,20 +2188,32 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
         state.explore_selected_rows = []
-        if not extracted_globals or prepared_globals is None:
+        state.explore_plot_message = ""
+        if prepared_globals is None:
             state.explore_has_plot = False
             return
         from plaid.viewer.global_plots import build_globals_figure  # noqa: PLC0415
 
+        splits = list(state.explore_splits or [])
+        blocker = _plot_blocker(
+            state.explore_plot,
+            state.explore_parallel_mode,
+            list(state.explore_selected_globals or []),
+            sum(len(prepared_globals.sample_ids(split)) for split in splits),
+        )
+        if blocker:
+            state.explore_has_plot = False
+            state.explore_plot_message = blocker
+            return
         axes = [state.explore_x, state.explore_y, state.explore_z]
         try:
             figure = build_globals_figure(
                 prepared_globals,
-                list(state.explore_splits or []),
+                splits,
                 state.explore_plot,
                 axes,
                 state.explore_label if state.explore_labels else None,
-                parallel_fields=list(state.explore_parallel_fields or []),
+                parallel_fields=list(state.explore_selected_globals or []),
                 parallel_mode=state.explore_parallel_mode,
             )
             state.explore_has_plot = False
@@ -1913,13 +2221,17 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 explore_plot_figure = figure
                 explore_figure.update(figure)
                 state.explore_has_plot = True
+            else:
+                state.explore_plot_message = (
+                    "Nothing to plot: check the splits and axes."
+                )
         except Exception as exc:  # noqa: BLE001
             state.explore_has_plot = False
             state.explore_status = f"Failed to draw Globals: {exc}"
 
     @state.change(
         "explore_splits",
-        "explore_parallel_fields",
+        "explore_selected_globals",
         "explore_parallel_mode",
         "explore_plot",
         "explore_x",
@@ -1929,8 +2241,29 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         "explore_label",
     )
     def _on_explore_selection(**_: object) -> None:
-        """Rebuild the plot when the exploration controls change."""
+        """Clear a drawn plot when the configuration changes.
+
+        Redrawing on every change would render intermediate (possibly very
+        heavy) configurations; the user redraws with "Draw plot" instead.
+        """
+        nonlocal explore_plot_figure
+        if not state.explore_plot_requested:
+            return
+        state.explore_plot_requested = False
+        explore_plot_figure = None
+        explore_constraints.clear()
+        explore_selected_points.clear()
+        state.explore_has_plot = False
+        state.explore_plot_message = ""
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
+        state.explore_selected_rows = []
+
+    @ctrl.set("draw_globals_plot")
+    def _draw_globals_plot() -> None:
+        """Draw the plot for the current configuration."""
         _render_explore_plot()
+        state.explore_plot_requested = bool(state.explore_has_plot)
 
     @state.change("viewer_tab")
     def _on_viewer_tab(**_: object) -> None:
@@ -3087,7 +3420,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                 click=ctrl.extract_globals,
                                 color="primary",
                                 block=True,
-                                disabled=("is_streaming || !dataset_id",),
+                                loading=("explore_extracting",),
+                                disabled=(
+                                    "is_streaming || !dataset_id || explore_extracting",
+                                ),
                             )
                             with html.A(
                                 href=("explore_csv_url",),
@@ -3102,21 +3438,60 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     disabled=("!explore_csv_url",),
                                 )
                             with html.A(
+                                href=("explore_columns_csv_url",),
+                                download="plaid_globals_columns.csv",
+                                style="display: block;",
+                            ):
+                                v3.VBtn(
+                                    "Download selected Globals (CSV)",
+                                    block=True,
+                                    variant="tonal",
+                                    classes="mt-2",
+                                    disabled=("!explore_columns_csv_url",),
+                                )
+                            # skrub analyses every column: generate the report
+                            # of the selected Globals only on request.
+                            v3.VBtn(
+                                "Generate skrub report",
+                                v_if=("!explore_report_url",),
+                                click=ctrl.generate_globals_report,
+                                block=True,
+                                variant="tonal",
+                                classes="mt-2",
+                                loading=("explore_report_running",),
+                                disabled=(
+                                    "!explore_csv_url || explore_report_running "
+                                    "|| !explore_selected_globals.length "
+                                    "|| !!explore_report_blocker",
+                                ),
+                            )
+                            html.Div(
+                                "{{ explore_report_blocker }}",
+                                v_if=("explore_report_blocker && !explore_report_url",),
+                                classes="text-caption text-warning mt-1",
+                            )
+
+                            with html.A(
+                                v_if=("explore_report_url",),
                                 href=("explore_report_url",),
                                 target="_blank",
                                 rel="noopener noreferrer",
                                 style="display: block;",
                             ):
                                 v3.VBtn(
-                                    "Analyze Globals with skrub",
+                                    "Open skrub report",
                                     block=True,
                                     variant="tonal",
                                     classes="mt-2",
-                                    disabled=("!explore_report_url",),
                                 )
                             html.Div(
                                 "{{ explore_status }}",
                                 classes="text-caption my-2",
+                            )
+                            html.Div(
+                                "{{ explore_report_error }}",
+                                v_if=("explore_report_error",),
+                                classes="text-caption text-error mb-2",
                             )
                             html.Div(
                                 "Globals exploration is unavailable for streaming datasets.",
@@ -3133,6 +3508,70 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     hide_details=True,
                                     disabled=("is_streaming || !explore_names.length",),
                                 )
+                            # Shared selection: parallel axes, X/Y/Z choices,
+                            # the skrub report and the selected-columns CSV.
+                            html.Div(
+                                "Selected Globals ({{ explore_selected_globals.length }}"
+                                " / {{ explore_names.length }})",
+                                classes="text-subtitle-2 mt-3 mb-1",
+                            )
+                            html.Div(
+                                "No Global selected: filter, then click Check "
+                                "(an empty filter checks them all). The "
+                                "selection drives parallel axes, X/Y/Z "
+                                "choices, the selected-Globals CSV and skrub.",
+                                v_if=(
+                                    "explore_names.length && "
+                                    "!explore_selected_globals.length",
+                                ),
+                                classes="text-caption text-medium-emphasis mb-1",
+                            )
+                            v3.VTextField(
+                                label="Filter Globals (regular expression)",
+                                v_model=("explore_global_filter",),
+                                density="compact",
+                                hide_details=("!explore_global_filter_error",),
+                                error_messages=("explore_global_filter_error",),
+                                clearable=True,
+                            )
+                            with html.Div(classes="d-flex mb-2"):
+                                with html.Div(
+                                    style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                ):
+                                    v3.VBtn(
+                                        "Check",
+                                        click=ctrl.check_filtered_globals,
+                                        density="compact",
+                                        variant="tonal",
+                                        block=True,
+                                        disabled=("!explore_filtered_names.length",),
+                                    )
+                                with html.Div(
+                                    style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                ):
+                                    v3.VBtn(
+                                        "Uncheck",
+                                        click=ctrl.uncheck_filtered_globals,
+                                        density="compact",
+                                        variant="tonal",
+                                        block=True,
+                                        disabled=("!explore_filtered_names.length",),
+                                    )
+                            # Vector Globals expand to thousands of
+                            # components: only render the visible rows.
+                            with v3.VVirtualScroll(
+                                items=("explore_filtered_names",),
+                                max_height=240,
+                                item_height=40,
+                            ):
+                                with html.Template(raw_attrs=['#default="{ item }"']):
+                                    v3.VCheckbox(
+                                        label=("item",),
+                                        value=("item",),
+                                        v_model=("explore_selected_globals",),
+                                        density="compact",
+                                        hide_details=True,
+                                    )
                             v3.VSelect(
                                 label="Plot type",
                                 v_model=("explore_plot",),
@@ -3147,64 +3586,14 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     items=("['lines', 'parcoords']",),
                                     density="compact",
                                 )
-                                html.Div(
-                                    "Globals to plot",
-                                    classes="text-subtitle-2 mb-1",
-                                )
-                                v3.VTextField(
-                                    label="Filter Globals (regular expression)",
-                                    v_model=("explore_global_filter",),
-                                    density="compact",
-                                    hide_details=("!explore_global_filter_error",),
-                                    error_messages=("explore_global_filter_error",),
-                                    clearable=True,
-                                )
-                                with html.Div(classes="d-flex mb-2"):
-                                    with html.Div(
-                                        style="width: 50%; padding: 0 4px; box-sizing: border-box;",
-                                    ):
-                                        v3.VBtn(
-                                            "Check",
-                                            click=ctrl.check_filtered_globals,
-                                            density="compact",
-                                            variant="tonal",
-                                            block=True,
-                                            disabled=(
-                                                "!explore_filtered_names.length",
-                                            ),
-                                        )
-                                    with html.Div(
-                                        style="width: 50%; padding: 0 4px; box-sizing: border-box;",
-                                    ):
-                                        v3.VBtn(
-                                            "Uncheck",
-                                            click=ctrl.uncheck_filtered_globals,
-                                            density="compact",
-                                            variant="tonal",
-                                            block=True,
-                                            disabled=(
-                                                "!explore_filtered_names.length",
-                                            ),
-                                        )
-                                with html.Div(
-                                    style="max-height: 240px; overflow-y: auto;",
-                                ):
-                                    with html.Div(
-                                        v_for="name in explore_filtered_names",
-                                        key="name",
-                                    ):
-                                        v3.VCheckbox(
-                                            label=("name",),
-                                            value=("name",),
-                                            v_model=("explore_parallel_fields",),
-                                            density="compact",
-                                            hide_details=True,
-                                        )
                             with html.Div(v_if=("explore_plot !== 'parallel'",)):
                                 v3.VSelect(
                                     label="Global / X",
                                     v_model=("explore_x",),
-                                    items=("explore_names",),
+                                    items=(
+                                        "explore_selected_globals.length "
+                                        "? explore_selected_globals : explore_names",
+                                    ),
                                     density="compact",
                                 )
                             with html.Div(
@@ -3213,14 +3602,20 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                 v3.VSelect(
                                     label="Y Global",
                                     v_model=("explore_y",),
-                                    items=("explore_names",),
+                                    items=(
+                                        "explore_selected_globals.length "
+                                        "? explore_selected_globals : explore_names",
+                                    ),
                                     density="compact",
                                 )
                             with html.Div(v_if=("explore_plot === '3D'",)):
                                 v3.VSelect(
                                     label="Z Global",
                                     v_model=("explore_z",),
-                                    items=("explore_names",),
+                                    items=(
+                                        "explore_selected_globals.length "
+                                        "? explore_selected_globals : explore_names",
+                                    ),
                                     density="compact",
                                 )
                             with html.Div(v_if=("explore_plot !== 'parallel'",)):
@@ -3236,14 +3631,31 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     density="compact",
                                     v_if=("explore_labels",),
                                 )
+                            # Always shown: every configuration change clears
+                            # the figure until the user draws it again.
+                            v3.VBtn(
+                                "Draw plot",
+                                click=ctrl.draw_globals_plot,
+                                color="primary",
+                                block=True,
+                                classes="mt-2",
+                                disabled=(
+                                    "!explore_names.length || explore_plot_requested",
+                                ),
+                            )
+                            html.Div(
+                                "{{ explore_plot_message }}",
+                                v_if=("explore_plot_message",),
+                                classes="text-caption text-warning mt-1",
+                            )
 
                             with html.A(
                                 href=("explore_selected_csv_url",),
-                                download="plaid_globals_selected.csv",
+                                download="plaid_globals_samples.csv",
                                 style="display: block;",
                             ):
                                 v3.VBtn(
-                                    "Download selected Globals (CSV)",
+                                    "Download selected samples (CSV)",
                                     block=True,
                                     variant="tonal",
                                     classes="mt-2",
