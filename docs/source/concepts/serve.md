@@ -213,6 +213,9 @@ result = client.process(
 
 ## ParaView usage
 
+Uniform fixed-size unstructured VTK grids use bulk connectivity conversion;
+mixed or unsupported layouts continue to use the per-cell conversion path.
+
 `plaid-serve --ParaViewRun` starts ParaView with the PLAID plugin and keeps the
 HTTP server alive until ParaView exits. The plugin reads the connection port
 from `PLAID_PORT` and can retrieve `/infos`, `/problem_definition`, and

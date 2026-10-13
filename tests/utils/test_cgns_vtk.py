@@ -789,6 +789,52 @@ def test_vtk_to_cgns_tree_round_trips_unstructured_data():
     assert restored.GetCellData().GetArray("Density").GetTuple1(0) == 4.0
 
 
+@pytest.mark.parametrize("cell_types", [(5, 5, 5), (5, 9, 5), (13, 13)])
+def test_bulk_unstructured_elements_match_per_cell_conversion(cell_types):
+    """Preserve CGNS connectivity, grouping, IDs, and dimensions for VTK grids."""
+    vtk = pytest.importorskip("vtk")
+
+    grid = vtk.vtkUnstructuredGrid()
+    points = vtk.vtkPoints()
+    for index in range(30):
+        points.InsertNextPoint(index, 0, 0)
+    grid.SetPoints(points)
+    for cell_index, cell_type in enumerate(cell_types):
+        cgns_type = cgns_vtk.VtkNumberToCGNSNumber[cell_type]
+        ids = vtk.vtkIdList()
+        for point_id in range(cgns_vtk.CGNSNumberOfNodes[cgns_type]):
+            ids.InsertNextId(point_id + cell_index)
+        grid.InsertNextCell(cell_type, ids)
+
+    class PerCellGrid:
+        """Proxy that disables the fast path without altering cell access."""
+
+        def __init__(self, wrapped):
+            self.wrapped = wrapped
+
+        def IsA(self, name):  # noqa: N802, ARG002
+            return False
+
+        def __getattr__(self, name):
+            return getattr(self.wrapped, name)
+
+    fast = cgns_vtk._vtk_unstructured_elements(
+        grid, returnCellMapping=True, elementNames={"5": "Triangles"}
+    )
+    slow = cgns_vtk._vtk_unstructured_elements(
+        PerCellGrid(grid), returnCellMapping=True, elementNames={"5": "Triangles"}
+    )
+    for fast_element, slow_element in zip(fast[0], slow[0], strict=True):
+        assert fast_element[0] == slow_element[0]
+        np.testing.assert_array_equal(fast_element[1], slow_element[1])
+        for fast_child, slow_child in zip(
+            fast_element[2], slow_element[2], strict=True
+        ):
+            np.testing.assert_array_equal(fast_child[1], slow_child[1])
+    np.testing.assert_array_equal(fast[1], slow[1])
+    np.testing.assert_array_equal(fast[2], slow[2])
+
+
 def test_metadata_free_vtk_retains_legacy_third_coordinate_override():
     """Metadata-free VTK input can still request a third coordinate array."""
     vtk = pytest.importorskip("vtk")

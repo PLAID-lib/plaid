@@ -518,7 +518,7 @@ class PlaidExplorer(PlaidClientBase):
 @smproperty.input(name="Input", port_index=0)
 @smdomain.datatype(dataTypes=["vtkDataObject"], composite_data_supported=False)
 class PlaidProcess(VTKPythonAlgorithmBase):
-    """ParaView source plugin for process using a Plaid serve endpoint."""
+    """ParaView filter for processing samples with a Plaid serve endpoint."""
 
     def __init__(self):
         super().__init__(
@@ -583,7 +583,6 @@ class PlaidProcess(VTKPythonAlgorithmBase):
     def _request_json(
         self, endpoint: str, payload: Optional[dict[str, object]] = None
     ) -> dict[str, object]:
-
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
 
         req = request.Request(
@@ -596,7 +595,7 @@ class PlaidProcess(VTKPythonAlgorithmBase):
             return json.loads(response.read().decode("utf-8"))
 
     def RequestData(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
-        """Fetch the CGNS tree for the currently requested time step and convert it to a VTK object for visualization."""
+        """Convert the cached CGNS tree for the requested time to VTK."""
         out_info = out_info_vec.GetInformationObject(0)
         executive = self.GetExecutive()
         from vtkmodules.vtkCommonDataModel import vtkPolyData, vtkUnstructuredGrid
@@ -632,7 +631,7 @@ class PlaidProcess(VTKPythonAlgorithmBase):
         return 1
 
     def RequestInformation(self, request, input_vector, out_info_vec):  # noqa: ARG002
-        """Provide time step information to ParaView based on the currently selected sample and split."""
+        """Update upstream and fetch sample time-step information."""
         # 1. Reach upstream and force the producer to execute right now
         input_vector[0].GetInformationObject(0)
         upstream_algorithm = self.GetInputConnection(0, 0).GetProducer()
@@ -662,7 +661,7 @@ class PlaidProcess(VTKPythonAlgorithmBase):
         return 1
 
     def GetSampleData(self, input_data):
-        """Fetch sample data for the the processed data."""
+        """Fetch and cache the processed sample data."""
         self._CheckInputChanged(input_data)
 
         if self._sample_cache is None:
