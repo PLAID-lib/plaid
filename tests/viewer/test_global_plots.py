@@ -85,6 +85,14 @@ def test_names_include_only_plot_eligible_globals(records):
     ]
 
 
+def test_names_accept_prepared_globals(records):
+    """Both name helpers reuse names cached during preparation."""
+    prepared = prepare_globals(records)
+
+    assert global_names(prepared) == prepared.names
+    assert label_names(prepared) == prepared.label_names
+
+
 def test_array_globals_expand_to_one_based_scalar_components():
     records = {
         "train": [

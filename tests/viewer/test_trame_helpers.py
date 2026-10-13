@@ -427,6 +427,13 @@ def test_parcoords_brush_exports_only_matching_plotted_samples() -> None:
     assert pd.read_csv(StringIO(csv))["split"].tolist() == ["test"]
 
 
+def test_constraint_ranges_cleared_brush() -> None:
+    """A cleared or malformed brush has no active ranges."""
+    assert srv._constraint_ranges(None) == []
+    assert srv._constraint_ranges([]) == []
+    assert srv._constraint_ranges(()) == []
+
+
 def test_scatter_selection_resolves_plot_indices_across_splits() -> None:
     from plaid.viewer.global_plots import build_globals_figure, globals_dataframe
 
@@ -441,6 +448,7 @@ def test_scatter_selection_resolves_plot_indices_across_splits() -> None:
         ],
     }
     points = [
+        None,  # Ignore non-dictionary selection events.
         {"curveNumber": 0, "pointNumber": 1},
         {"curveNumber": 1, "pointNumber": 0},
         {"curveNumber": 1, "pointNumber": 0},
