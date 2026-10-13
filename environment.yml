@@ -36,6 +36,7 @@ dependencies:
   - nbconvert
   - ipykernel
 ##### VIEWER #####
+  - skrub
   - trame
   - trame-vtk
   - trame-vuetify
