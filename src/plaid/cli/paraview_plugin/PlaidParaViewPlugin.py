@@ -554,41 +554,24 @@ class PlaidProcess(VTKPythonAlgorithmBase):
         self._sample_cache = None
         self.host: str = plaid_process_server_default_host
         self.port: int = plaid_process_server_default_port
-        self.process_op = "predict"
+        self.process_op: str = ""
         self.ensure_3D_points = False
 
         # Track the input used to build the cache
         self._input_mtime = None
 
-    @smproperty.intvector(
-        name="ProcessOperation",
-        default_values=0,  # Maps to "Predict" (index 3)
-        number_of_elements=1,
-    )
-    @smdomain.xml("""
-        <EnumerationDomain name="enum">
-            <Entry text="Predict" value="0" />
-            <Entry text="Transform" value="1" />
-            <Entry text="Infer" value="2" />
-            <Entry text="Inverse Transform" value="3" />
-        </EnumerationDomain>
-        <Documentation>
-            This property indicates which process mode will be used.
-        </Documentation>
-    """)
-    def SetProcessOperation(self, value):
-        """Set the operation used by the processing endpoint."""
-        # Map integers back to strings internally
-        mapping = {
-            0: "predict",
-            1: "transform",
-            2: "infer",
-            3: "inverse_transform",
-        }
+    @smproperty.stringvector(name="ProcessOperation", default_values="")
+    def SetProcessOperation(self, value: str):
+        """Set the operation name sent to the processing endpoint.
 
-        op_string = mapping.get(int(value), "predict")
-        if op_string and self.process_op != op_string:
-            self.process_op = op_string
+        Args:
+            value: Operation name entered in the ParaView text input.
+
+        Returns:
+            None.
+        """
+        if self.process_op != value:
+            self.process_op = value
             self._CleanCache()
 
     def _CleanCache(self):
@@ -769,6 +752,7 @@ class PlaidProcess(VTKPythonAlgorithmBase):
                     input_data, ensure_3D_points=self.ensure_3D_points
                 ),
             }
+
             response = self._request_json(
                 endpoint,
                 payload,

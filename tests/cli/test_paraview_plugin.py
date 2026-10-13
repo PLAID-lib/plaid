@@ -131,6 +131,47 @@ def test_run_paraview_with_plugin_sets_wslenv_for_windows_paraview(
     )
 
 
+def test_process_operation_is_text_input_and_invalidates_cache_on_change():
+    """Process operations accept arbitrary text and only clear changed data."""
+    plugin_path = paraview_plugin.get_ParaView_plugin_path() / "PlaidParaViewPlugin.py"
+    tree = ast.parse(plugin_path.read_text())
+    process_class = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.ClassDef) and node.name == "PlaidProcess"
+    )
+    method = next(
+        node
+        for node in process_class.body
+        if isinstance(node, ast.FunctionDef) and node.name == "SetProcessOperation"
+    )
+    assert len(method.decorator_list) == 1
+    decorator = method.decorator_list[0]
+    assert isinstance(decorator, ast.Call)
+    assert isinstance(decorator.func, ast.Attribute)
+    assert decorator.func.attr == "stringvector"
+    assert {
+        keyword.arg: ast.literal_eval(keyword.value) for keyword in decorator.keywords
+    } == {"name": "ProcessOperation", "default_values": ""}
+
+    method.decorator_list = []
+    namespace = {}
+    exec(
+        compile(ast.Module(body=[method], type_ignores=[]), str(plugin_path), "exec"),
+        namespace,
+    )
+    cache_clears = []
+    client = SimpleNamespace(
+        process_op="predict", _CleanCache=lambda: cache_clears.append(True)
+    )
+    namespace["SetProcessOperation"](client, "predict")
+    assert cache_clears == []
+
+    namespace["SetProcessOperation"](client, "custom_operation")
+    assert client.process_op == "custom_operation"
+    assert cache_clears == [True]
+
+
 def test_process_request_json_returns_response_and_propagates_errors(
     monkeypatch, capsys
 ):
