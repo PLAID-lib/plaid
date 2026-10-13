@@ -187,6 +187,232 @@ def test_cgns_child_helpers_find_children_by_label_and_name():
     assert cgns_vtk._cgns_child_by_name(parent, "Missing") is None
 
 
+def test_vtk_cell_conversion_validates_types_and_permutates_points():
+    points = np.arange(15)
+    cgns_type, converted = cgns_vtk._vtk_cell_to_cgns(26, points)
+    assert cgns_type == 15
+    np.testing.assert_array_equal(
+        converted, points[np.argsort(cgns_vtk.CGNSNumberToVtkPermutation[15])]
+    )
+    with pytest.raises(NotImplementedError, match="999"):
+        cgns_vtk._vtk_cell_to_cgns(999, points)
+
+
+def test_vtk_string_arrays_and_binary_tag_contract():
+    class StringArray:
+        def IsA(self, name):
+            return name == "vtkStringArray"
+
+        def GetNumberOfValues(self):
+            return 2
+
+        def GetValue(self, index):
+            return ("left", "right")[index]
+
+    assert cgns_vtk._vtk_numpy_array(StringArray(), None).tolist() == ["left", "right"]
+
+    class TagArray:
+        def __init__(self, data, components=1, data_type="unsigned char"):
+            self.data = np.asarray(data)
+            self.components = components
+            self.data_type = data_type
+
+        def GetNumberOfComponents(self):
+            return self.components
+
+        def GetDataTypeAsString(self):
+            return self.data_type
+
+        def IsA(self, name):  # noqa: ARG002
+            return False
+
+    support = SimpleNamespace(vtk_to_numpy=lambda array: array.data)
+    assert not cgns_vtk._vtk_array_is_binary_tag(None, 2, support)
+    assert not cgns_vtk._vtk_array_is_binary_tag(TagArray([0], 2), 1, support)
+    assert not cgns_vtk._vtk_array_is_binary_tag(
+        TagArray([0], data_type="int"), 1, support
+    )
+    assert not cgns_vtk._vtk_array_is_binary_tag(TagArray([0]), 2, support)
+    assert not cgns_vtk._vtk_array_is_binary_tag(TagArray([2]), 1, support)
+
+
+def test_vtk_attributes_to_nodes_skips_missing_tags_and_metadata():
+    class Array:
+        def __init__(self, name, data):
+            self.name = name
+            self.data = np.asarray(data)
+
+        def GetName(self):
+            return self.name
+
+        def IsA(self, name):  # noqa: ARG002
+            return False
+
+        def GetNumberOfComponents(self):
+            return 1
+
+        def GetDataTypeAsString(self):
+            return "unsigned char" if self.data.dtype.kind in "iu" else "double"
+
+    class Attributes:
+        arrays = [
+            None,
+            Array(None, [3.0]),
+            Array(cgns_vtk.PLAID_CGNS_ZONE_NAME, [4.0]),
+            Array("Tag", [0, 1]),
+        ]
+
+        def GetNumberOfArrays(self):
+            return len(self.arrays)
+
+        def GetArray(self, index):
+            return self.arrays[index]
+
+    support = SimpleNamespace(vtk_to_numpy=lambda array: array.data)
+    nodes = cgns_vtk._vtk_attributes_to_nodes(Attributes(), support, 2)
+    assert [node[0] for node in nodes] == ["Array1"]
+
+
+def test_vtk_coordinates_validates_and_pads_dimensions():
+    support = SimpleNamespace(vtk_to_numpy=np.asarray)
+    with pytest.raises(ValueError, match="no points"):
+        cgns_vtk._vtk_coordinates(SimpleNamespace(GetPoints=lambda: None), support)
+    bad_points = SimpleNamespace(GetData=lambda: np.ones(3))
+    with pytest.raises(ValueError, match="two-dimensional"):
+        cgns_vtk._vtk_coordinates(
+            SimpleNamespace(GetPoints=lambda: bad_points), support
+        )
+    point_data = SimpleNamespace(GetData=lambda: np.ones((2, 1)))
+    nodes = cgns_vtk._vtk_coordinates(
+        SimpleNamespace(GetPoints=lambda: point_data), support, True
+    )
+    assert [node[0] for node in nodes] == ["CoordinateX", "CoordinateY", "CoordinateZ"]
+    np.testing.assert_array_equal(nodes[1][1], [0.0, 0.0])
+
+
+def test_vtk_uniform_elements_returns_none_for_non_grid_and_empty_grid():
+    assert cgns_vtk._vtk_uniform_unstructured_elements(object(), False, None) is None
+
+    class Grid:
+        def IsA(self, name):
+            return name == "vtkUnstructuredGrid"
+
+        def GetNumberOfCells(self):
+            return 0
+
+    assert cgns_vtk._vtk_uniform_unstructured_elements(Grid(), False, None) is None
+
+
+def test_vtk_uniform_elements_falls_back_for_unsupported_layouts(monkeypatch):
+    support = SimpleNamespace(vtk_to_numpy=np.array)
+    util = ModuleType("vtkmodules.util")
+    util.numpy_support = support
+    monkeypatch.setitem(sys.modules, "vtkmodules", ModuleType("vtkmodules"))
+    monkeypatch.setitem(sys.modules, "vtkmodules.util", util)
+    monkeypatch.setitem(sys.modules, "vtkmodules.util.numpy_support", support)
+    monkeypatch.delitem(sys.modules, "paraview", raising=False)
+    monkeypatch.delitem(sys.modules, "paraview.vtk", raising=False)
+
+    class Cells:
+        def __init__(self, offsets, connectivity):
+            self.offsets = offsets
+            self.connectivity = connectivity
+
+        def GetOffsetsArray(self):
+            return self.offsets
+
+        def GetConnectivityArray(self):
+            return self.connectivity
+
+    class Grid:
+        def __init__(self, types, offsets, connectivity):
+            self.types = types
+            self.cells = Cells(offsets, connectivity)
+
+        def IsA(self, name):
+            return name == "vtkUnstructuredGrid"
+
+        def GetNumberOfCells(self):
+            return len(self.types)
+
+        def GetCellTypesArray(self):
+            return self.types
+
+        def GetCells(self):
+            return self.cells
+
+    assert (
+        cgns_vtk._vtk_uniform_unstructured_elements(
+            Grid([5, 9], [0, 3, 7], [0, 1, 2, 3, 4, 5, 6]), False, None
+        )
+        is None
+    )
+    assert (
+        cgns_vtk._vtk_uniform_unstructured_elements(
+            Grid([99], [0, 1], [0]), False, None
+        )
+        is None
+    )
+    assert (
+        cgns_vtk._vtk_uniform_unstructured_elements(
+            Grid([5], [0, 4], [0, 1, 2, 3]), False, None
+        )
+        is None
+    )
+    assert (
+        cgns_vtk._vtk_uniform_unstructured_elements(
+            Grid([5], [1, 4], [0, 1, 2]), False, None
+        )
+        is None
+    )
+
+
+def test_vtk_uniform_elements_permutates_and_returns_mapping(monkeypatch):
+    support = SimpleNamespace(vtk_to_numpy=np.asarray)
+    util = ModuleType("vtkmodules.util")
+    util.numpy_support = support
+    monkeypatch.setitem(sys.modules, "vtkmodules", ModuleType("vtkmodules"))
+    monkeypatch.setitem(sys.modules, "vtkmodules.util", util)
+    monkeypatch.setitem(sys.modules, "vtkmodules.util.numpy_support", support)
+    monkeypatch.delitem(sys.modules, "paraview", raising=False)
+    monkeypatch.delitem(sys.modules, "paraview.vtk", raising=False)
+
+    class Cells:
+        def GetOffsetsArray(self):
+            return [0, 15]
+
+        def GetConnectivityArray(self):
+            return np.arange(15)
+
+    class Grid:
+        def IsA(self, name):
+            return name == "vtkUnstructuredGrid"
+
+        def GetNumberOfCells(self):
+            return 1
+
+        def GetCellTypesArray(self):
+            return [26]
+
+        def GetCells(self):
+            return Cells()
+
+    elements, cell_ids, dimensions = cgns_vtk._vtk_uniform_unstructured_elements(
+        Grid(), True, {"15": "Penta15"}
+    )
+    assert elements[0][0] == "Penta15"
+    np.testing.assert_array_equal(
+        elements[0][2][1][1],
+        (np.arange(15)[np.argsort(cgns_vtk.CGNSNumberToVtkPermutation[15])] + 1),
+    )
+    np.testing.assert_array_equal(cell_ids, [1])
+    np.testing.assert_array_equal(dimensions, [3])
+    elements_only = cgns_vtk._vtk_uniform_unstructured_elements(
+        Grid(), False, {"15": "Penta15"}
+    )
+    assert elements_only[0][0] == "Penta15"
+
+
 def test_cgns_value_as_string_decodes_supported_values():
     chars = np.array(list("Vertex\x00"), dtype="U1")
 
@@ -377,6 +603,350 @@ def test_cgns_insert_cells_from_elements_node_applies_mixed_permutation():
     cgns_vtk._cgns_insert_cells_from_elements_node(elements, [], [0], connectivity)
 
     assert connectivity == [0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 13, 14, 9, 10, 11]
+
+    cells = SimpleNamespace(
+        GetNumberOfPoints=lambda: 15,
+        GetPointId=lambda index: index,
+    )
+    grid = SimpleNamespace(
+        GetNumberOfCells=lambda: 1,
+        GetCellType=lambda _cell: 26,
+        GetCell=lambda _cell: cells,
+    )
+    converted = cgns_vtk._vtk_unstructured_elements(grid)
+    assert converted[0][0] == "Elements_15"
+
+
+def test_cgns_index_ranges_support_descending_and_multidimensional_values():
+    descending = _node(
+        "Tag",
+        None,
+        [_node("Range", np.array([3, 1]), label="IndexRange_t")],
+    )
+    np.testing.assert_array_equal(
+        cgns_vtk._cgns_index_values(descending, (3,)), [3, 2, 1]
+    )
+    rectangle = _node(
+        "Tag",
+        None,
+        [_node("Range", np.array([[1, 2], [2, 3]]), label="IndexRange_t")],
+    )
+    np.testing.assert_array_equal(
+        cgns_vtk._cgns_index_values(rectangle, (3, 4)), [2, 3, 6, 7]
+    )
+    ignored = _node(
+        "Tag",
+        None,
+        [_node("Range", np.array([1, 2, 3]), label="IndexRange_t")],
+    )
+    assert cgns_vtk._cgns_index_values(ignored, (3,)).size == 0
+
+    null_then_indices = _node(
+        "Tag",
+        None,
+        [
+            _node("Empty", None, label="IndexArray_t"),
+            _node("Indices", np.array([2, 3]), label="IndexArray_t"),
+        ],
+    )
+    np.testing.assert_array_equal(
+        cgns_vtk._cgns_index_values(null_then_indices, (3,)), [2, 3]
+    )
+
+
+def test_cgns_tag_helpers_merge_masks_and_validate_indices():
+    attributes = _FakeAttributes()
+
+    class ExistingArray(_FakeVtkArray):
+        pass
+
+    attributes.arrays.append(ExistingArray([1, 0, 0]))
+    attributes.arrays[0].SetName("merged")
+    attributes.GetArray = lambda name: next(
+        (array for array in attributes.arrays if array.name == name), None
+    )
+    attributes.RemoveArray = lambda name: attributes.arrays.__setitem__(
+        slice(None), [array for array in attributes.arrays if array.name != name]
+    )
+    support = SimpleNamespace(
+        vtk_to_numpy=lambda array: array.data,
+        numpy_to_vtk=_FakeNumpySupport.numpy_to_vtk,
+    )
+    cgns_vtk._cgns_add_tag_array(
+        attributes, "merged", np.array([False, True, False]), support
+    )
+    np.testing.assert_array_equal(attributes.arrays[0].data, [1, 1, 0])
+    assert (
+        cgns_vtk._cgns_tag_name(_node("Named_ZSR", None, [], label="ZoneSubRegion_t"))
+        == "Named"
+    )
+
+    vtk_object = _FakeVtkObject()
+    vtk_object.points = _FakePoints()
+    vtk_object.points.SetData(_FakeVtkArray(np.zeros((2, 3))))
+    point_tag = _node(
+        "invalid",
+        None,
+        [_node("PointList", np.array([0]), label="IndexArray_t")],
+        label="BC_t",
+    )
+    with pytest.raises(ValueError, match="invalid indices"):
+        cgns_vtk._cgns_add_tags_to_vtk(
+            _node(
+                "Zone",
+                None,
+                [_node("ZoneBC", None, [point_tag], label="ZoneBC_t")],
+                label="Zone_t",
+            ),
+            vtk_object,
+            support,
+        )
+
+
+@pytest.mark.parametrize(
+    ("topological_dim", "selected_dim", "location"),
+    [(3, 2, "FaceCenter"), (2, 1, "EdgeCenter")],
+)
+def test_vtk_dataset_cell_boundary_tags_use_boundary_conditions(
+    topological_dim, selected_dim, location
+):
+    class TagArray:
+        def __init__(self):
+            self.data = np.array([1, 0], dtype=np.uint8)
+
+        def IsA(self, name):  # noqa: ARG002
+            return False
+
+        def GetNumberOfComponents(self):
+            return 1
+
+        def GetDataTypeAsString(self):
+            return "unsigned char"
+
+        def GetName(self):
+            return "boundary"
+
+    class Attributes:
+        def GetNumberOfArrays(self):
+            return 1
+
+        def GetArray(self, _index):
+            return TagArray()
+
+    empty_attributes = SimpleNamespace(
+        GetNumberOfArrays=lambda: 0,
+        GetArray=lambda _index: None,
+    )
+    data = SimpleNamespace(
+        GetPointData=lambda: empty_attributes,
+        GetCellData=lambda: Attributes(),
+        GetNumberOfPoints=lambda: 0,
+        GetNumberOfCells=lambda: 2,
+    )
+    children = cgns_vtk._vtk_dataset_tag_nodes(
+        data,
+        SimpleNamespace(vtk_to_numpy=lambda array: array.data),
+        np.array([1, 2]),
+        np.array([selected_dim, topological_dim]),
+    )
+    assert children[0][0] == "ZoneBC"
+    assert cgns_vtk._cgns_value_as_string(children[0][2][0][2][1]) == location
+
+    # Both dimensions are explicitly supplied so this helper's topological
+    # dimension is inferred from the cell dimension array as expected.
+    assert topological_dim in (2, 3)
+
+
+def test_vtk_grid_metadata_removes_old_values_and_decodes_bad_name_metadata():
+    class FieldData(_FakeFieldData):
+        def GetArray(self, name):
+            return next((array for array in self.arrays if array.name == name), None)
+
+        def RemoveArray(self, name):
+            self.arrays = [array for array in self.arrays if array.name != name]
+
+    vtk_object = _FakeVtkObject()
+    vtk_object.field_data = FieldData()
+    for name in (
+        cgns_vtk.PLAID_CGNS_BASE_NAME,
+        cgns_vtk.PLAID_CGNS_BASE_DIMENSIONS,
+        cgns_vtk.PLAID_CGNS_ZONE_NAME,
+    ):
+        old = _FakeVtkArray([0])
+        old.SetName(name)
+        vtk_object.field_data.AddArray(old)
+
+    cgns_vtk._vtk_add_cgns_grid_metadata(
+        vtk_object, "Base", np.array([3, 2]), "Zone", _FakeNumpySupport
+    )
+    assert len(vtk_object.field_data.arrays) == 3
+
+    class MetadataArray:
+        def __init__(self, value):
+            self.value = value
+
+    class MetadataFieldData:
+        def __init__(self, value):
+            self.value = value
+
+        def GetArray(self, _key):
+            return self.value
+
+    class MetadataObject:
+        def __init__(self, value):
+            self.field = MetadataFieldData(value)
+
+        def GetFieldData(self):
+            return self.field
+
+    support = SimpleNamespace(vtk_to_numpy=lambda array: array.value)
+    assert (
+        cgns_vtk._vtk_read_names_metadata(
+            MetadataObject(MetadataArray(np.array([255], dtype=np.uint8))),
+            "names",
+            support,
+        )
+        == {}
+    )
+    assert (
+        cgns_vtk._vtk_read_names_metadata(
+            MetadataObject(MetadataArray(np.frombuffer(b"[]", dtype=np.uint8))),
+            "names",
+            support,
+        )
+        == {}
+    )
+    assert cgns_vtk._vtk_read_names_metadata(
+        MetadataObject(
+            MetadataArray(np.frombuffer(b'{"a": 1, "b": "B"}', dtype=np.uint8))
+        ),
+        "names",
+        support,
+    ) == {"b": "B"}
+
+
+def test_vtk_dataset_blocks_skips_empty_blocks_and_default_names():
+    class Metadata:
+        def Has(self, _key):
+            return False
+
+    class Leaf:
+        def IsA(self, _name):
+            return False
+
+    class MultiBlock:
+        def __init__(self):
+            self.leaf = Leaf()
+
+        def IsA(self, name):
+            return name == "vtkMultiBlockDataSet"
+
+        def GetNumberOfBlocks(self):
+            return 2
+
+        def GetBlock(self, index):
+            return (None, self.leaf)[index]
+
+        def GetMetaData(self, _index):
+            return Metadata()
+
+        def NAME(self):
+            return "name"
+
+    multiblock = MultiBlock()
+    assert cgns_vtk._vtk_dataset_blocks(multiblock) == [
+        ("Block_1_Zone", multiblock.GetBlock(1))
+    ]
+
+
+def test_vtk_to_cgns_tree_validates_type_empty_blocks_and_base_dimensions(
+    monkeypatch,
+):
+    fake_numpy_support = SimpleNamespace(
+        vtk_to_numpy=lambda array: np.asarray(array.data)
+    )
+    vtkmodules_util = ModuleType("vtkmodules.util")
+    vtkmodules_util.numpy_support = fake_numpy_support
+    monkeypatch.setitem(sys.modules, "vtkmodules.util", vtkmodules_util)
+    monkeypatch.setitem(
+        sys.modules, "vtkmodules.util.numpy_support", fake_numpy_support
+    )
+    monkeypatch.delitem(sys.modules, "paraview", raising=False)
+    monkeypatch.delitem(sys.modules, "paraview.vtk", raising=False)
+    with pytest.raises(TypeError, match="expects a VTK dataset"):
+        cgns_vtk.VtkToCGNSTree(SimpleNamespace(IsA=lambda _name: False))
+
+    class EmptyMultiBlock:
+        def IsA(self, name):
+            return name == "vtkMultiBlockDataSet"
+
+        def GetNumberOfBlocks(self):
+            return 0
+
+    with pytest.raises(ValueError, match="contains no data sets"):
+        cgns_vtk.VtkToCGNSTree(EmptyMultiBlock())
+
+    class Metadata:
+        def __init__(self, values):
+            self.values = values
+
+        def GetArray(self, name):
+            value = self.values.get(name)
+            return None if value is None else SimpleNamespace(data=value)
+
+    class Grid:
+        def __init__(self, dimensions):
+            self.field = Metadata(
+                {
+                    cgns_vtk.PLAID_CGNS_BASE_NAME: np.frombuffer(
+                        b"Base", dtype=np.uint8
+                    ),
+                    cgns_vtk.PLAID_CGNS_BASE_DIMENSIONS: np.asarray(dimensions),
+                    cgns_vtk.PLAID_CGNS_ZONE_NAME: np.frombuffer(
+                        b"Zone", dtype=np.uint8
+                    ),
+                }
+            )
+
+        def IsA(self, name):
+            return name == "vtkDataSet"
+
+        def GetFieldData(self):
+            return self.field
+
+    monkeypatch.setattr(
+        cgns_vtk,
+        "_vtk_dataset_to_zone",
+        lambda *_args, **_kwargs: ["Zone", None, [], "Zone_t"],
+    )
+    multiblock = SimpleNamespace(
+        IsA=lambda name: name == "vtkMultiBlockDataSet",
+        GetNumberOfBlocks=lambda: 2,
+        GetBlock=lambda index: (Grid([2, 2]), Grid([3, 2]))[index],
+        GetMetaData=lambda _index: None,
+        NAME=lambda: "name",
+    )
+    with pytest.raises(ValueError, match="inconsistent dimensions"):
+        cgns_vtk.VtkToCGNSTree(multiblock)
+
+
+def test_cgns_add_tags_rejects_unknown_cell_number():
+    cell_tag = _node(
+        "missing_cell",
+        None,
+        [
+            _node("PointList", np.array([4]), label="IndexArray_t"),
+            _node("GridLocation", "CellCenter", label="GridLocation_t"),
+        ],
+        label="ZoneSubRegion_t",
+    )
+    with pytest.raises(ValueError, match="invalid element number 4"):
+        cgns_vtk._cgns_add_tags_to_vtk(
+            _node("Zone", None, [cell_tag], label="Zone_t"),
+            _FakeVtkObject(),
+            _FakeNumpySupport,
+            cgnsElementToVtkCell={},
+        )
 
 
 def test_cgns_add_flow_solutions_to_vtk_routes_point_and_cell_data():
@@ -602,6 +1172,85 @@ def test_cgns_base_to_vtk_converts_unstructured_zone(monkeypatch):
 
     assert output.cell_types == [5]
     np.testing.assert_array_equal(output.cell_array.connectivity.data, [0, 1, 2])
+
+
+def test_unstructured_zone_mixed_section_omits_ambiguous_element_names(monkeypatch):
+    _patch_fake_vtk_import(monkeypatch)
+    zone = _node(
+        "Zone",
+        np.array([[3, 2, 0]]),
+        [
+            _node(
+                "GridCoordinates",
+                None,
+                [_node("CoordinateX", np.array([0.0, 1.0, 0.0]))],
+                label="GridCoordinates_t",
+            ),
+            _node(
+                "Triangles",
+                np.array([5]),
+                [
+                    _node("ElementRange", np.array([1, 1]), label="IndexRange_t"),
+                    _node("ElementConnectivity", np.array([1, 2, 3])),
+                ],
+                label="Elements_t",
+            ),
+            _node(
+                "Mixed",
+                np.array([20]),
+                [
+                    _node("ElementRange", np.array([2, 2]), label="IndexRange_t"),
+                    _node("ElementConnectivity", np.array([5, 1, 2, 3])),
+                ],
+                label="Elements_t",
+            ),
+        ],
+        label="Zone_t",
+    )
+
+    output = cgns_vtk._cgns_unstructured_zone_to_vtk(zone, 2)
+
+    assert output.cell_types == [5, 5]
+    assert all(
+        array.name != cgns_vtk.PLAID_CGNS_ELEMENT_NAMES
+        for array in output.field_data.arrays
+    )
+
+
+def test_unstructured_zone_repeated_element_types_omit_original_names(monkeypatch):
+    _patch_fake_vtk_import(monkeypatch)
+    coordinates = _node(
+        "GridCoordinates",
+        None,
+        [_node("CoordinateX", np.array([0.0, 1.0, 0.0]))],
+        label="GridCoordinates_t",
+    )
+    sections = [
+        _node(
+            name,
+            np.array([5]),
+            [
+                _node("ElementRange", np.array([index, index]), label="IndexRange_t"),
+                _node("ElementConnectivity", np.array([1, 2, 3])),
+            ],
+            label="Elements_t",
+        )
+        for index, name in enumerate(("TrianglesA", "TrianglesB"), start=1)
+    ]
+    zone = _node(
+        "Zone",
+        np.array([[3, 2, 0]]),
+        [coordinates, *sections],
+        label="Zone_t",
+    )
+
+    output = cgns_vtk._cgns_unstructured_zone_to_vtk(zone, 2)
+
+    assert output.cell_types == [5, 5]
+    assert all(
+        array.name != cgns_vtk.PLAID_CGNS_ELEMENT_NAMES
+        for array in output.field_data.arrays
+    )
 
 
 def test_cgns_base_to_vtk_returns_multiblock_for_multiple_zones(monkeypatch):
