@@ -19,6 +19,7 @@ from plaid.viewer.services import PlaidDatasetService
 from plaid.viewer.services.plaid_dataset_service import (
     _array_preview,
     _cached_service,
+    _global_at_time,
     _safe_list_dir,
 )
 
@@ -474,6 +475,56 @@ def test_extract_globals_supports_cgns_samples(
     values = service.extract_globals("ds")["train"][0]["values"]
     assert values == {"Global/energy": 2.5}
     assert converter.feature_requests == [None]
+
+
+def test_extract_globals_reports_progress_for_each_split(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Report each sample and a final completion event, even for empty splits."""
+    _make_dataset_dir(tmp_path, "ds")
+    datasets = {"train": _FakeDataset([0, 1]), "test": _FakeDataset([])}
+    converters = {split: _FakeConverter({}) for split in datasets}
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, converters)})
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    updates: list[tuple[str, int, int]] = []
+
+    assert service.extract_globals(
+        "ds", progress=lambda split, index, total: updates.append((split, index, total))
+    ) == {
+        "train": [
+            {"sample_id": "0", "values": {}},
+            {"sample_id": "1", "values": {}},
+        ],
+        "test": [],
+    }
+    assert updates == [
+        ("train", 0, 2),
+        ("train", 1, 2),
+        ("train", 2, 2),
+        ("test", 0, 0),
+    ]
+
+
+def test_global_at_time_handles_missing_steps_and_matrix_values() -> None:
+    """Flat Globals select matching time blocks and keep matrix row layout."""
+    import numpy as np
+
+    one_step = np.array([[1.0, 0, -1]])
+    assert _global_at_time([4, 5], one_step, 2.0) is None
+    multiple_steps = np.array([[1.0, 0, 1], [3.0, 1, -1]])
+    assert _global_at_time([4, 5], multiple_steps, 2.0) is None
+    np.testing.assert_array_equal(
+        _global_at_time(np.array([[1, 2, 3], [4, 5, 6]]), multiple_steps, 3.0),
+        [[2, 3], [5, 6]],
+    )
+
+
+def test_globals_at_time_step_without_times_returns_empty(tmp_path: Path) -> None:
+    """A Global without a time specification cannot define a first step."""
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    assert (
+        service._globals_at_time_step({"Global/a": 3}, ["Global/a"], {}, "first") == {}
+    )
 
 
 def test_describe_non_visual_bases_lists_zoneless_bases_only(

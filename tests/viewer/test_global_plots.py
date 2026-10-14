@@ -553,3 +553,42 @@ def test_prepared_globals_list_text_globals():
     )
     assert prepared.text_names == ["Global/c"]
     assert prepared.names == ["Global/a"]
+
+
+def test_character_components_and_missing_prepared_values():
+    """Decode character vectors and return None for an absent component."""
+    characters = np.frombuffer(b"case", dtype="|S1")
+    assert _component_values({"Global/case": characters}) == {"Global/case": "case"}
+    prepared = prepare_globals(
+        {"train": [{"sample_id": "0", "values": {"Global/case": characters}}]}
+    )
+    assert prepared.value("train", 0, "Global/missing") is None
+
+
+def test_non_numeric_vectors_are_not_prepared_as_columns():
+    """Ignore multi-element object arrays that cannot be plotted or labeled."""
+    prepared = prepare_globals(
+        {
+            "train": [
+                {
+                    "sample_id": "0",
+                    "values": {"Global/objects": np.array(["one", "two"])},
+                }
+            ]
+        }
+    )
+    assert prepared.label_names == []
+    assert prepared.splits["train"].objects == {}
+
+
+def test_csv_export_decodes_byte_values():
+    """Export byte-valued labels with replacement for invalid ASCII."""
+    from plaid.viewer.global_plots import iter_globals_csv
+
+    records = {
+        "train": [
+            {"sample_id": "0", "values": {"Global/label": b"caf\xe9"}},
+        ]
+    }
+    text = b"".join(iter_globals_csv(records)).decode("utf-8-sig")
+    assert '"caf\ufffd"' in text
