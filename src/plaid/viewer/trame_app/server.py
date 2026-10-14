@@ -3561,7 +3561,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                         )
                             with html.Div(classes="rounded-lg border pa-2 mb-3"):
                                 html.Div(
-                                    "Export & Repport",
+                                    "Export & Report",
                                     classes="text-subtitle-1 text-center font-weight-medium py-1",
                                     style=(
                                         "margin: -8px -8px 8px; "
