@@ -68,7 +68,15 @@ def _safe_list_dir(path: Path) -> list[Path]:
 
 
 def _array_preview(value, *, max_items: int = 6) -> str | None:
-    """Return a short string preview of a numpy-like array value."""
+    """Preview a numpy-like array, joining character arrays into strings.
+
+    Args:
+        value: Array-like value to preview, or ``None``.
+        max_items: Maximum number of elements shown for non-character arrays.
+
+    Returns:
+        The formatted preview, or ``None`` if the value cannot be converted.
+    """
     if value is None:
         return None
     try:
@@ -82,6 +90,10 @@ def _array_preview(value, *, max_items: int = 6) -> str | None:
     if arr.size == 0:
         return "[]"
     flat = arr.ravel()
+    if arr.dtype == np.dtype("S1"):
+        return b"".join(flat).decode("utf-8", errors="replace")
+    if arr.dtype == np.dtype("U1"):
+        return "".join(flat)
     if flat.size <= max_items:
         return np.array2string(arr, separator=", ", threshold=max_items + 1)
     head = np.array2string(flat[:max_items], separator=", ")
