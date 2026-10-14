@@ -25,6 +25,24 @@ def test_filter_global_names_regex_and_invalid_pattern() -> None:
     assert error.startswith("Invalid regular expression:")
 
 
+def test_label_options_follow_selected_globals_and_keep_label_only_fields() -> None:
+    """Keep sample IDs and text labels while narrowing numeric labels."""
+    labels = ["sample_id", "Global/a", "Global/case", "Global/b"]
+    names = ["Global/a", "Global/b"]
+
+    assert srv._label_options(labels, names, []) == labels
+    assert srv._label_options(labels, names, ["Global/b"]) == [
+        "sample_id",
+        "Global/case",
+        "Global/b",
+    ]
+    assert srv._label_options(labels, names, ["Global/a"]) == [
+        "sample_id",
+        "Global/a",
+        "Global/case",
+    ]
+
+
 def test_select_filtered_globals_preserves_hidden_selection() -> None:
     names = ["Global/a", "Global/b", "Global/c", "Global/d"]
     selected = ["Global/b", "Global/d"]

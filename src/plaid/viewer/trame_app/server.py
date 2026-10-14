@@ -89,6 +89,26 @@ def _filter_global_names(names: list[str], pattern: str) -> tuple[list[str], str
     return [name for name in names if regex.search(name)], ""
 
 
+def _label_options(
+    label_names: list[str], names: list[str], selected: list[str]
+) -> list[str]:
+    """Limit plottable label Globals to the checked axes selection.
+
+    Args:
+        label_names: All available labels, including sample IDs and text Globals.
+        names: Plottable numeric Global names.
+        selected: Checked numeric Globals.
+
+    Returns:
+        Available labels in their original order, keeping label-only fields.
+    """
+    if not selected:
+        return label_names
+    plottable = set(names)
+    checked = set(selected)
+    return [name for name in label_names if name not in plottable or name in checked]
+
+
 def _select_filtered_globals(
     names: list[str], selected: list[str], filtered: list[str], check: bool
 ) -> list[str]:
@@ -1037,6 +1057,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_global_filter_error", "")
     state.setdefault("explore_parallel_mode", "parcoords")
     state.setdefault("explore_label_names", [])
+    state.setdefault("explore_filtered_label_names", [])
     state.setdefault("explore_plot", "1D")
     state.setdefault("explore_x", None)
     state.setdefault("explore_y", None)
@@ -1821,6 +1842,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_filtered_names = []
         state.explore_global_filter_error = ""
         state.explore_label_names = []
+        state.explore_filtered_label_names = []
         state.explore_has_plot = False
         state.explore_status = "Click Extract Globals to load all splits."
         _refresh_available_features()
@@ -1966,6 +1988,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             state.explore_selected_globals = []
             _refresh_explore_global_filter()
             state.explore_label_names = ["sample_id", *prepared.label_names]
+            state.explore_filtered_label_names = _label_options(
+                state.explore_label_names, names, []
+            )
             state.explore_splits = list(prepared.splits)
             state.explore_x = state.explore_y = state.explore_z = None
             _refresh_selected_globals()
@@ -2149,6 +2174,11 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     @state.change("explore_selected_globals")
     def _on_selected_globals(**_: object) -> None:
         """Update axes, CSV columns and the report when Globals are checked."""
+        state.explore_filtered_label_names = _label_options(
+            list(state.explore_label_names or []),
+            list(state.explore_names or []),
+            list(state.explore_selected_globals or []),
+        )
         if prepared_globals is not None:
             _refresh_selected_globals()
 
@@ -3639,7 +3669,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     )
                                 with html.Div(v_if=("explore_plot !== 'parallel'",)):
                                     v3.VSelect(
-                                        label="Global / X",
+                                        label="X",
                                         v_model=("explore_x",),
                                         items=(
                                             "explore_selected_globals.length "
@@ -3654,7 +3684,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     )
                                 ):
                                     v3.VSelect(
-                                        label="Y Global",
+                                        label="Y",
                                         v_model=("explore_y",),
                                         items=(
                                             "explore_selected_globals.length "
@@ -3665,7 +3695,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     )
                                 with html.Div(v_if=("explore_plot === '3D'",)):
                                     v3.VSelect(
-                                        label="Z Global",
+                                        label="Z",
                                         v_model=("explore_z",),
                                         items=(
                                             "explore_selected_globals.length "
@@ -3702,7 +3732,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                             v3.VSelect(
                                                 label="Label from",
                                                 v_model=("explore_label",),
-                                                items=("explore_label_names",),
+                                                items=("explore_filtered_label_names",),
                                                 density="compact",
                                                 hide_details=True,
                                             )
