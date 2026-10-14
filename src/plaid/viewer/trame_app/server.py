@@ -2995,6 +2995,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
                         ),
                         density="compact",
+                        hide_details=True,
                     )
 
                 html.Div(
@@ -3006,6 +3007,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     v_model=("split",),
                     items=("splits",),
                     density="compact",
+                    hide_details=True,
                 )
                 v3.VDivider(classes="my-2")
                 html.Div(
@@ -3135,6 +3137,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     v_model=("field",),
                     items=("field_options",),
                     density="compact",
+                    hide_details=True,
                 )
 
                 # Sample picker. Two mutually-exclusive widgets:
@@ -3261,6 +3264,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     v_model=("cmap",),
                     items=("cmaps",),
                     density="compact",
+                    hide_details=True,
                 )
                 v3.VSwitch(
                     label="Show edges",
@@ -3398,297 +3402,370 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     # the actual panel width instead of using md/lg columns.
                     with html.Div(
                         style=(
-                            "display: flex; flex-wrap: nowrap; gap: 16px; padding: 16px; "
+                            "display: flex; flex-wrap: nowrap; gap: 12px; padding: 12px; "
                             "height: 100%; min-height: 0; box-sizing: border-box;"
                         ),
                     ):
                         with html.Div(
-                            style="flex: 1 1 225px; max-width: 300px; min-width: 0;",
+                            style=(
+                                "flex: 1 1 400px; max-width: 420px; min-width: 0; "
+                                "height: 100%; overflow-y: auto;"
+                            ),
                         ):
-                            v3.VSelect(
-                                label="Time step Globals",
-                                v_model=("explore_time_step",),
-                                items=(
-                                    "[{ title: 'First Time Step Globals', value: 'first' }, "
-                                    "{ title: 'Last Time Step Globals', value: 'last' }]",
-                                ),
-                                density="compact",
-                                disabled=("is_streaming || !dataset_id",),
-                            )
-                            v3.VBtn(
-                                "Extract Globals",
-                                click=ctrl.extract_globals,
-                                color="primary",
-                                block=True,
-                                loading=("explore_extracting",),
-                                disabled=(
-                                    "is_streaming || !dataset_id || explore_extracting",
-                                ),
-                            )
-                            with html.A(
-                                href=("explore_csv_url",),
-                                download="plaid_globals.csv",
-                                style="display: block;",
-                            ):
-                                v3.VBtn(
-                                    "Download all Globals (CSV)",
-                                    block=True,
-                                    variant="tonal",
-                                    classes="mt-2",
-                                    disabled=("!explore_csv_url",),
+                            with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                                html.Div(
+                                    "Data Extraction",
+                                    classes="text-subtitle-1 text-center font-weight-medium py-1",
+                                    style=(
+                                        "margin: -8px -8px 8px; "
+                                        "border-radius: 8px 8px 0 0; "
+                                        "background: rgba(var(--v-theme-on-surface), 0.12);"
+                                    ),
                                 )
-                            with html.A(
-                                href=("explore_columns_csv_url",),
-                                download="plaid_globals_columns.csv",
-                                style="display: block;",
-                            ):
-                                v3.VBtn(
-                                    "Download selected Globals (CSV)",
-                                    block=True,
-                                    variant="tonal",
-                                    classes="mt-2",
-                                    disabled=("!explore_columns_csv_url",),
-                                )
-                            # skrub analyses every column: generate the report
-                            # of the selected Globals only on request.
-                            v3.VBtn(
-                                "Generate skrub report",
-                                v_if=("!explore_report_url",),
-                                click=ctrl.generate_globals_report,
-                                block=True,
-                                variant="tonal",
-                                classes="mt-2",
-                                loading=("explore_report_running",),
-                                disabled=(
-                                    "!explore_csv_url || explore_report_running "
-                                    "|| !explore_selected_globals.length "
-                                    "|| !!explore_report_blocker",
-                                ),
-                            )
-                            html.Div(
-                                "{{ explore_report_blocker }}",
-                                v_if=("explore_report_blocker && !explore_report_url",),
-                                classes="text-caption text-warning mt-1",
-                            )
-
-                            with html.A(
-                                v_if=("explore_report_url",),
-                                href=("explore_report_url",),
-                                target="_blank",
-                                rel="noopener noreferrer",
-                                style="display: block;",
-                            ):
-                                v3.VBtn(
-                                    "Open skrub report",
-                                    block=True,
-                                    variant="tonal",
-                                    classes="mt-2",
-                                )
-                            html.Div(
-                                "{{ explore_status }}",
-                                classes="text-caption my-2",
-                            )
-                            html.Div(
-                                "{{ explore_report_error }}",
-                                v_if=("explore_report_error",),
-                                classes="text-caption text-error mb-2",
-                            )
-                            html.Div(
-                                "Globals exploration is unavailable for streaming datasets.",
-                                v_if=("is_streaming",),
-                                classes="text-caption mt-2",
-                            )
-                            html.Div("Splits", classes="text-subtitle-2")
-                            with html.Div(v_for="name in splits", key="name"):
-                                v3.VCheckbox(
-                                    label=("name",),
-                                    value=("name",),
-                                    v_model=("explore_splits",),
+                                v3.VSelect(
+                                    label="Time step Globals",
+                                    v_model=("explore_time_step",),
+                                    items=(
+                                        "[{ title: 'First Time Step Globals', value: 'first' }, "
+                                        "{ title: 'Last Time Step Globals', value: 'last' }]",
+                                    ),
                                     density="compact",
                                     hide_details=True,
-                                    disabled=("is_streaming || !explore_names.length",),
+                                    disabled=("is_streaming || !dataset_id",),
                                 )
-                            # Shared selection: parallel axes, X/Y/Z choices,
-                            # the skrub report and the selected-columns CSV.
-                            html.Div(
-                                "Selected Globals ({{ explore_selected_globals.length }}"
-                                " / {{ explore_names.length }})",
-                                classes="text-subtitle-2 mt-3 mb-1",
-                            )
-                            html.Div(
-                                "No Global selected: filter, then click Check "
-                                "(an empty filter checks them all). The "
-                                "selection drives parallel axes, X/Y/Z "
-                                "choices, the selected-Globals CSV and skrub.",
-                                v_if=(
-                                    "explore_names.length && "
-                                    "!explore_selected_globals.length",
-                                ),
-                                classes="text-caption text-medium-emphasis mb-1",
-                            )
-                            v3.VTextField(
-                                label="Filter Globals (regular expression)",
-                                v_model=("explore_global_filter",),
-                                density="compact",
-                                hide_details=("!explore_global_filter_error",),
-                                error_messages=("explore_global_filter_error",),
-                                clearable=True,
-                            )
-                            with html.Div(classes="d-flex mb-2"):
-                                with html.Div(
-                                    style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                v3.VBtn(
+                                    "Extract Globals",
+                                    click=ctrl.extract_globals,
+                                    color="primary",
+                                    block=True,
+                                    loading=("explore_extracting",),
+                                    disabled=(
+                                        "is_streaming || !dataset_id || explore_extracting",
+                                    ),
+                                )
+                                html.Div(
+                                    "{{ explore_status }}",
+                                    classes="text-caption my-2",
+                                )
+                                with html.A(
+                                    href=("explore_csv_url",),
+                                    download="plaid_globals.csv",
+                                    style="display: block;",
                                 ):
                                     v3.VBtn(
-                                        "Check",
-                                        click=ctrl.check_filtered_globals,
-                                        density="compact",
-                                        variant="tonal",
+                                        "Download all Globals (CSV)",
                                         block=True,
-                                        disabled=("!explore_filtered_names.length",),
+                                        variant="tonal",
+                                        classes="mt-2",
+                                        disabled=("!explore_csv_url",),
                                     )
+                                # Shared selection: parallel axes, X/Y/Z choices,
+                                # the skrub report and the selected-columns CSV.
                                 with html.Div(
-                                    style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                    "Selected Globals ({{ explore_selected_globals.length }}"
+                                    " / {{ explore_names.length }})",
+                                    classes="text-subtitle-2 mt-3 mb-1",
+                                ):
+                                    v3.VTooltip(
+                                        text=(
+                                            "No Global selected: filter, then click Check "
+                                            "(an empty filter checks them all). The "
+                                            "selection drives parallel axes, X/Y/Z "
+                                            "choices, the selected-Globals CSV and skrub."
+                                        ),
+                                        activator="parent",
+                                        disabled=(
+                                            "!explore_names.length || "
+                                            "explore_selected_globals.length",
+                                        ),
+                                    )
+                                v3.VTextField(
+                                    label="Filter Globals (regular expression)",
+                                    v_model=("explore_global_filter",),
+                                    density="compact",
+                                    hide_details=("!explore_global_filter_error",),
+                                    error_messages=("explore_global_filter_error",),
+                                    clearable=True,
+                                )
+                                with html.Div(classes="d-flex mb-2"):
+                                    with html.Div(
+                                        style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                    ):
+                                        v3.VBtn(
+                                            "Check",
+                                            click=ctrl.check_filtered_globals,
+                                            density="compact",
+                                            variant="tonal",
+                                            block=True,
+                                            disabled=(
+                                                "!explore_filtered_names.length",
+                                            ),
+                                        )
+                                    with html.Div(
+                                        style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                    ):
+                                        v3.VBtn(
+                                            "Uncheck",
+                                            click=ctrl.uncheck_filtered_globals,
+                                            density="compact",
+                                            variant="tonal",
+                                            block=True,
+                                            disabled=(
+                                                "!explore_filtered_names.length",
+                                            ),
+                                        )
+                                # Vector Globals expand to thousands of
+                                # components: only render the visible rows.
+                                with v3.VVirtualScroll(
+                                    items=("explore_filtered_names",),
+                                    max_height=240,
+                                    item_height=32,
+                                ):
+                                    with html.Template(
+                                        raw_attrs=['#default="{ item }"']
+                                    ):
+                                        v3.VCheckboxBtn(
+                                            label=("item",),
+                                            value=("item",),
+                                            v_model=("explore_selected_globals",),
+                                            multiple=True,
+                                            density="compact",
+                                        )
+                            with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                                html.Div(
+                                    "Export & Repport",
+                                    classes="text-subtitle-1 text-center font-weight-medium py-1",
+                                    style=(
+                                        "margin: -8px -8px 8px; "
+                                        "border-radius: 8px 8px 0 0; "
+                                        "background: rgba(var(--v-theme-on-surface), 0.12);"
+                                    ),
+                                )
+                                with html.A(
+                                    href=("explore_columns_csv_url",),
+                                    download="plaid_globals_columns.csv",
+                                    style="display: block;",
                                 ):
                                     v3.VBtn(
-                                        "Uncheck",
-                                        click=ctrl.uncheck_filtered_globals,
-                                        density="compact",
-                                        variant="tonal",
+                                        "Download selected Globals (CSV)",
                                         block=True,
-                                        disabled=("!explore_filtered_names.length",),
+                                        variant="tonal",
+                                        classes="mt-2",
+                                        disabled=("!explore_columns_csv_url",),
                                     )
-                            # Vector Globals expand to thousands of
-                            # components: only render the visible rows.
-                            with v3.VVirtualScroll(
-                                items=("explore_filtered_names",),
-                                max_height=240,
-                                item_height=40,
-                            ):
-                                with html.Template(raw_attrs=['#default="{ item }"']):
-                                    v3.VCheckbox(
-                                        label=("item",),
-                                        value=("item",),
-                                        v_model=("explore_selected_globals",),
+                                # skrub analyses every column: generate the report
+                                # of the selected Globals only on request.
+                                v3.VBtn(
+                                    "Generate skrub report",
+                                    v_if=("!explore_report_url",),
+                                    click=ctrl.generate_globals_report,
+                                    block=True,
+                                    variant="tonal",
+                                    classes="mt-2",
+                                    loading=("explore_report_running",),
+                                    disabled=(
+                                        "!explore_csv_url || explore_report_running "
+                                        "|| !explore_selected_globals.length "
+                                        "|| !!explore_report_blocker",
+                                    ),
+                                )
+                                html.Div(
+                                    "{{ explore_report_blocker }}",
+                                    v_if=(
+                                        "explore_report_blocker && !explore_report_url",
+                                    ),
+                                    classes="text-caption text-warning mt-1",
+                                )
+
+                                with html.A(
+                                    v_if=("explore_report_url",),
+                                    href=("explore_report_url",),
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    style="display: block;",
+                                ):
+                                    v3.VBtn(
+                                        "Open skrub report",
+                                        block=True,
+                                        variant="tonal",
+                                        classes="mt-2",
+                                    )
+
+                                html.Div(
+                                    "{{ explore_report_error }}",
+                                    v_if=("explore_report_error",),
+                                    classes="text-caption text-error mb-2",
+                                )
+                            with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                                html.Div(
+                                    "Plot",
+                                    classes="text-subtitle-1 text-center font-weight-medium py-1",
+                                    style=(
+                                        "margin: -8px -8px 8px; "
+                                        "border-radius: 8px 8px 0 0; "
+                                        "background: rgba(var(--v-theme-on-surface), 0.12);"
+                                    ),
+                                )
+                                html.Div(
+                                    "Globals exploration is unavailable for streaming datasets.",
+                                    v_if=("is_streaming",),
+                                    classes="text-caption mt-2",
+                                )
+                                html.Div("Splits", classes="text-subtitle-2")
+                                with html.Div(v_for="name in splits", key="name"):
+                                    v3.VCheckboxBtn(
+                                        label=("name",),
+                                        value=("name",),
+                                        v_model=("explore_splits",),
+                                        multiple=True,
+                                        density="compact",
+                                        disabled=(
+                                            "is_streaming || !explore_names.length",
+                                        ),
+                                    )
+                                v3.VSelect(
+                                    label="Plot type",
+                                    v_model=("explore_plot",),
+                                    items=("['1D', '2D', '3D', 'parallel']",),
+                                    density="compact",
+                                    hide_details=True,
+                                    classes="mt-3",
+                                )
+                                with html.Div(v_if=("explore_plot === 'parallel'",)):
+                                    v3.VSelect(
+                                        label="Parallel renderer",
+                                        v_model=("explore_parallel_mode",),
+                                        items=("['lines', 'parcoords']",),
                                         density="compact",
                                         hide_details=True,
                                     )
-                            v3.VSelect(
-                                label="Plot type",
-                                v_model=("explore_plot",),
-                                items=("['1D', '2D', '3D', 'parallel']",),
-                                density="compact",
-                                classes="mt-3",
-                            )
-                            with html.Div(v_if=("explore_plot === 'parallel'",)):
-                                v3.VSelect(
-                                    label="Parallel renderer",
-                                    v_model=("explore_parallel_mode",),
-                                    items=("['lines', 'parcoords']",),
-                                    density="compact",
-                                )
-                            with html.Div(v_if=("explore_plot !== 'parallel'",)):
-                                v3.VSelect(
-                                    label="Global / X",
-                                    v_model=("explore_x",),
-                                    items=(
-                                        "explore_selected_globals.length "
-                                        "? explore_selected_globals : explore_names",
-                                    ),
-                                    density="compact",
-                                )
-                            with html.Div(
-                                v_if=("explore_plot === '2D' || explore_plot === '3D'",)
-                            ):
-                                v3.VSelect(
-                                    label="Y Global",
-                                    v_model=("explore_y",),
-                                    items=(
-                                        "explore_selected_globals.length "
-                                        "? explore_selected_globals : explore_names",
-                                    ),
-                                    density="compact",
-                                )
-                            with html.Div(v_if=("explore_plot === '3D'",)):
-                                v3.VSelect(
-                                    label="Z Global",
-                                    v_model=("explore_z",),
-                                    items=(
-                                        "explore_selected_globals.length "
-                                        "? explore_selected_globals : explore_names",
-                                    ),
-                                    density="compact",
-                                )
-                            with html.Div(v_if=("explore_plot !== 'parallel'",)):
-                                v3.VCheckbox(
-                                    label="Label points",
-                                    v_model=("explore_labels",),
-                                    density="compact",
-                                )
-                                v3.VSelect(
-                                    label="Label from",
-                                    v_model=("explore_label",),
-                                    items=("explore_label_names",),
-                                    density="compact",
-                                    v_if=("explore_labels",),
-                                )
-                            # Always shown: every configuration change clears
-                            # the figure until the user draws it again.
-                            v3.VBtn(
-                                "Draw plot",
-                                click=ctrl.draw_globals_plot,
-                                color="primary",
-                                block=True,
-                                classes="mt-2",
-                                disabled=(
-                                    "!explore_names.length || explore_plot_requested",
-                                ),
-                            )
-                            html.Div(
-                                "{{ explore_plot_message }}",
-                                v_if=("explore_plot_message",),
-                                classes="text-caption text-warning mt-1",
-                            )
-
-                            with html.A(
-                                href=("explore_selected_csv_url",),
-                                download="plaid_globals_samples.csv",
-                                style="display: block;",
-                            ):
+                                with html.Div(v_if=("explore_plot !== 'parallel'",)):
+                                    v3.VSelect(
+                                        label="Global / X",
+                                        v_model=("explore_x",),
+                                        items=(
+                                            "explore_selected_globals.length "
+                                            "? explore_selected_globals : explore_names",
+                                        ),
+                                        density="compact",
+                                        hide_details=True,
+                                    )
+                                with html.Div(
+                                    v_if=(
+                                        "explore_plot === '2D' || explore_plot === '3D'",
+                                    )
+                                ):
+                                    v3.VSelect(
+                                        label="Y Global",
+                                        v_model=("explore_y",),
+                                        items=(
+                                            "explore_selected_globals.length "
+                                            "? explore_selected_globals : explore_names",
+                                        ),
+                                        density="compact",
+                                        hide_details=True,
+                                    )
+                                with html.Div(v_if=("explore_plot === '3D'",)):
+                                    v3.VSelect(
+                                        label="Z Global",
+                                        v_model=("explore_z",),
+                                        items=(
+                                            "explore_selected_globals.length "
+                                            "? explore_selected_globals : explore_names",
+                                        ),
+                                        density="compact",
+                                        hide_details=True,
+                                    )
+                                with html.Div(v_if=("explore_plot !== 'parallel'",)):
+                                    with html.Div(classes="d-flex align-center"):
+                                        with html.Div(
+                                            classes="mr-2",
+                                            style="display: inline-flex; flex: 0 0 auto;",
+                                        ):
+                                            v3.VCheckboxBtn(
+                                                v_model=("explore_labels",),
+                                                label=(
+                                                    "explore_labels ? '' : 'Label points'",
+                                                ),
+                                                density="compact",
+                                                raw_attrs=['aria-label="Label points"'],
+                                            )
+                                            v3.VTooltip(
+                                                text=(
+                                                    "Adding labels to more than 1,000 "
+                                                    "rows can be slow."
+                                                ),
+                                                activator="parent",
+                                            )
+                                        with html.Div(
+                                            v_if=("explore_labels",),
+                                            style="flex: 1 1 auto; min-width: 0;",
+                                        ):
+                                            v3.VSelect(
+                                                label="Label from",
+                                                v_model=("explore_label",),
+                                                items=("explore_label_names",),
+                                                density="compact",
+                                                hide_details=True,
+                                            )
+                                # Always shown: every configuration change clears
+                                # the figure until the user draws it again.
                                 v3.VBtn(
-                                    "Download selected samples (CSV)",
+                                    "Draw plot",
+                                    click=ctrl.draw_globals_plot,
+                                    color="primary",
                                     block=True,
-                                    variant="tonal",
                                     classes="mt-2",
                                     disabled=(
-                                        "!explore_has_selection || "
-                                        "(explore_plot !== '1D' && "
-                                        "explore_plot !== '2D' && "
-                                        "(explore_plot !== 'parallel' || "
-                                        "explore_parallel_mode !== 'parcoords'))",
+                                        "!explore_names.length || explore_plot_requested",
                                     ),
                                 )
-                            html.Div(
-                                "Selected rows ({{ explore_selected_rows.length }})",
-                                classes="text-subtitle-2 mt-3",
-                            )
-                            html.Div(
-                                "No rows selected.",
-                                v_if=("!explore_has_selection",),
-                                classes="text-caption text-medium-emphasis",
-                            )
-                            with html.Div(
-                                v_if=("explore_has_selection",),
-                                style="max-height: 160px; overflow-y: auto;",
-                            ):
-                                with v3.VList(density="compact"):
-                                    with v3.VListItem(
-                                        v_for="row in explore_selected_rows",
-                                        key="`${row.split}:${row.sample_id}`",
-                                    ):
-                                        v3.VListItemTitle(
-                                            "{{ row.split }} / {{ row.sample_id }}",
-                                            classes="text-body-2",
-                                        )
+                                html.Div(
+                                    "{{ explore_plot_message }}",
+                                    v_if=("explore_plot_message",),
+                                    classes="text-caption text-warning mt-1",
+                                )
+
+                                with html.A(
+                                    href=("explore_selected_csv_url",),
+                                    download="plaid_globals_samples.csv",
+                                    style="display: block;",
+                                ):
+                                    v3.VBtn(
+                                        "Download selected samples (CSV)",
+                                        block=True,
+                                        variant="tonal",
+                                        classes="mt-2",
+                                        disabled=(
+                                            "!explore_has_selection || "
+                                            "(explore_plot !== '1D' && "
+                                            "explore_plot !== '2D' && "
+                                            "(explore_plot !== 'parallel' || "
+                                            "explore_parallel_mode !== 'parcoords'))",
+                                        ),
+                                    )
+                                html.Div(
+                                    "Selected rows ({{ explore_selected_rows.length }})",
+                                    classes="text-subtitle-2 mt-3",
+                                )
+                                html.Div(
+                                    "No rows selected.",
+                                    v_if=("!explore_has_selection",),
+                                    classes="text-caption text-medium-emphasis",
+                                )
+                                with html.Div(
+                                    v_if=("explore_has_selection",),
+                                    style="max-height: 160px; overflow-y: auto;",
+                                ):
+                                    with v3.VList(density="compact"):
+                                        with v3.VListItem(
+                                            v_for="row in explore_selected_rows",
+                                            key="`${row.split}:${row.sample_id}`",
+                                        ):
+                                            v3.VListItemTitle(
+                                                "{{ row.split }} / {{ row.sample_id }}",
+                                                classes="text-body-2",
+                                            )
                         with html.Div(
                             style=(
                                 "flex: 1 1 300px; min-width: 0; min-height: 0; "
