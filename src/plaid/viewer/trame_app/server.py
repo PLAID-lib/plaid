@@ -3044,19 +3044,6 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     "4) Select Base (and/or enable Globals)",
                     classes="text-subtitle-2 mb-1",
                 )
-                # "Globals" toggle. Off by default; flipping it on adds
-                # every ``Globals/...`` PLAID feature path to the active
-                # filter so the side-panel "Globals" descriptor list is
-                # populated. The switch is only shown once the
-                # currently-selected dataset declares any global at all.
-                v3.VSwitch(
-                    label="Globals",
-                    v_model=("show_globals",),
-                    density="compact",
-                    hide_details=True,
-                    color="primary",
-                    classes="mb-1",
-                )
                 html.Div("Base", classes="text-caption")
 
                 # ``mandatory`` is intentionally left off so the user
@@ -3307,24 +3294,54 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
                 html.Div("{{ status }}", classes="text-caption mt-2")
 
-                # PLAID globals for the current sample (filtered out of
-                # ``IterationValues`` / ``TimeValues`` bookkeeping arrays).
-                with html.Div(
-                    v_if=("(sample_globals || []).length > 0",),
-                    classes="mt-3",
-                ):
-                    html.Div("Globals", classes="text-subtitle-2 mb-1")
-                    with v3.VList(density="compact"):
-                        with v3.VListItem(v_for="g in sample_globals", key="g.name"):
-                            v3.VListItemTitle(
-                                "{{ g.name }} "
-                                "<span class='text-caption text-medium-emphasis'>"
-                                "({{ g.dtype }}, shape={{ g.shape }})"
-                                "</span>"
-                            )
-                            v3.VListItemSubtitle(
-                                "{{ g.preview }}", classes="text-caption"
-                            )
+
+                #with html.Div(
+                #        style=(
+                #            "flex: 1 1 400px; max-width: 420px; min-width: 0; "
+                #            "height: 100%; overflow-y: auto;"
+                #        ),
+                #    ):
+                with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                    # "Globals" toggle. Off by default; flipping it on adds
+                    # every ``Globals/...`` PLAID feature path to the active
+                    # filter so the side-panel "Globals" descriptor list is
+                    # populated. The switch is only shown once the
+                    # currently-selected dataset declares any global at all.
+                    with html.Div(
+                        classes="d-flex justify-center",
+                        style=(
+                            "margin: -8px -8px 8px; "
+                            "border-radius: 8px 8px 0 0; "
+                            "background: rgba(var(--v-theme-on-surface), 0.12);"
+                        ),
+                    ):
+                        v3.VSwitch(
+                            label="Sample Globals",
+                            v_model=("show_globals",),
+                            density="compact",
+                            hide_details=True,
+                            color="primary",
+                            classes="text-subtitle-1 font-weight-medium py-1",
+                            style="flex: 0 0 auto;",
+                        )
+
+                    # PLAID globals for the current sample (filtered out of
+                    # ``IterationValues`` / ``TimeValues`` bookkeeping arrays).
+                    with html.Div(
+                        v_if=("(sample_globals || []).length > 0",),
+                        classes="mt-3",
+                    ):
+                        with v3.VList(density="compact"):
+                            with v3.VListItem(v_for="g in sample_globals", key="g.name"):
+                                v3.VListItemTitle(
+                                    "{{ g.name }} "
+                                    "<span class='text-caption text-medium-emphasis'>"
+                                    "({{ g.dtype }}, shape={{ g.shape }})"
+                                    "</span>"
+                                )
+                                v3.VListItemSubtitle(
+                                    "{{ g.preview }}", classes="text-caption"
+                                )
 
         # File-system browser dialog for the datasets root. Scoped to the
         # server's ``browse_roots`` sandbox so the user can only reach
