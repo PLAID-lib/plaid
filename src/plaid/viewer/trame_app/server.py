@@ -3455,7 +3455,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     v3.VBtn(
                                         "Download all Globals (CSV)",
                                         block=True,
-                                        variant="tonal",
+                                        color="primary",
                                         classes="mt-2",
                                         disabled=("!explore_csv_url",),
                                     )
@@ -3494,8 +3494,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                         v3.VBtn(
                                             "Check",
                                             click=ctrl.check_filtered_globals,
-                                            density="compact",
-                                            variant="tonal",
+                                            color="primary",
                                             block=True,
                                             disabled=(
                                                 "!explore_filtered_names.length",
@@ -3507,8 +3506,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                         v3.VBtn(
                                             "Uncheck",
                                             click=ctrl.uncheck_filtered_globals,
-                                            density="compact",
-                                            variant="tonal",
+                                            color="primary",
                                             block=True,
                                             disabled=(
                                                 "!explore_filtered_names.length",
@@ -3549,7 +3547,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     v3.VBtn(
                                         "Download selected Globals (CSV)",
                                         block=True,
-                                        variant="tonal",
+                                        color="primary",
                                         classes="mt-2",
                                         disabled=("!explore_columns_csv_url",),
                                     )
@@ -3560,7 +3558,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     v_if=("!explore_report_url",),
                                     click=ctrl.generate_globals_report,
                                     block=True,
-                                    variant="tonal",
+                                    color="primary",
                                     classes="mt-2",
                                     loading=("explore_report_running",),
                                     disabled=(
@@ -3587,7 +3585,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     v3.VBtn(
                                         "Open skrub report",
                                         block=True,
-                                        variant="tonal",
+                                        color="primary",
                                         classes="mt-2",
                                     )
 
@@ -3734,7 +3732,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     v3.VBtn(
                                         "Download selected samples (CSV)",
                                         block=True,
-                                        variant="tonal",
+                                        color="primary",
                                         classes="mt-2",
                                         disabled=(
                                             "!explore_has_selection || "
