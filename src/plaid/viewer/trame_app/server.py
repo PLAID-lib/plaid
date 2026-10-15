@@ -2955,9 +2955,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             v3.VTab("Hub", value="hub")
                         # Local datasets root form.
                         with html.Div(v_if=("source_tab === 'local'",)):
-                            html.Div("Datasets root", classes="text-caption")
                             with html.Div(classes="d-flex align-center"):
                                 v3.VTextField(
+                                    label="Datasets root",
                                     v_model=("datasets_root_text",),
                                     density="compact",
                                     hide_details=True,
@@ -2983,12 +2983,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                 )
                         # Hugging Face Hub streaming form.
                         with html.Div(v_if=("source_tab === 'hub'",)):
-                            html.Div(
-                                "Hugging Face Hub dataset",
-                                classes="text-caption",
-                            )
                             with html.Div(classes="d-flex align-center"):
                                 v3.VTextField(
+                                    label="Hugging Face Hub dataset",
                                     v_model=("hub_repo_input",),
                                     density="compact",
                                     hide_details=True,
@@ -3067,8 +3064,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             classes="text-subtitle-1 font-weight-medium py-1",
                             style="flex: 0 0 auto;",
                         )
-                    html.Div("Base", classes="text-caption")
-
+                    html.Div(
+                        "Available Bases",
+                        classes="text-subtitle-2 mb-1 mt-2",
+                    )
                     # ``mandatory`` is intentionally left off so the user
                     # can deselect every base (clicking the active one a
                     # second time clears the toggle). An empty selection
@@ -3218,7 +3217,13 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             classes="text-caption text-medium-emphasis mb-2",
                         )
 
-                    html.Div("{{ status }}", classes="text-caption mt-2")
+                    html.Div(
+                        "{{ status }}",
+                        classes=(
+                            "status === 'Pick a Base or enable Globals to load the sample' "
+                            "? 'text-caption mt-2 text-error' : 'text-caption mt-2'",
+                        ),
+                    )
                 # Time axis slider, only shown when the sample actually
                 # exposes a time axis (time-dependent samples).
                 with html.Div(v_if=("time_count > 1",), classes="mb-2"):
@@ -3270,7 +3275,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             density="compact",
                         )
 
-                with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                with html.Div(classes="rounded-lg border pa-2 mb-3",
+                            v_if=("active_base",),
+                            ):
                     with html.Div(
                         classes="d-flex justify-center",
                         style=(
@@ -3283,12 +3290,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             "3D Rendering options",
                             classes="text-subtitle-2 mb-1",
                         )
-                    html.Div(
-                        "Field to plot",
-                        classes="text-subtitle-2 mb-1 mt-2",
-                    )
                     v3.VSelect(
-                        label="Field",
+                        label="Field to plot",
                         v_model=("field",),
                         items=("field_options",),
                         density="compact",
