@@ -153,6 +153,13 @@ The response shape is:
 The sample payloads use the same JSON representation as
 `plaid.utils.sample_json.sample_to_json_payload`.
 
+PLAID normally serializes NumPy values with explicit dtype and shape metadata.
+For interoperability with other JSON producers, deserialization also accepts a
+plain JSON string for CGNS nodes whose declared datatype includes `C1`, such as
+`ZoneType_t` and `GridLocation_t`. These values are restored as NumPy `|S1`
+character arrays, as required by pyCGNS and mesh readers such as Muscat. Scalar
+strings on non-character nodes remain Python strings.
+
 ## Python client usage
 
 `plaid.utils.process_client.PlaidClient` can query the read-only endpoints when
@@ -206,10 +213,46 @@ result = client.process(
 
 ## ParaView usage
 
+The PLAID ParaView plugin converts directly between VTK datasets and CGNS tree
+nodes, without writing an intermediate mesh file. Conversion preserves geometry,
+cell connectivity, point and cell fields, supported mesh tags, and CGNS base and
+zone names when the data is round-tripped through VTK field-data metadata. VTK
+character arrays containing only `0` and `1` are interpreted as mesh-tag masks;
+other arrays are treated as fields.
+
+Uniform fixed-size unstructured VTK grids use bulk connectivity conversion for
+better performance. Mixed cell types and layouts that do not meet the fast-path
+requirements use per-cell conversion instead. Supported CGNS cell types are
+converted directly; unsupported VTK cell types raise an error rather than being
+silently dropped.
+
+CGNS tree JSON serialization preserves NumPy dtype and shape information. For
+interoperability with external JSON producers, character-valued CGNS nodes such
+as `ZoneType_t` and `GridLocation_t` may also be supplied as plain JSON strings;
+they are restored as one-byte character arrays.
+
 `plaid-serve --ParaViewRun` starts ParaView with the PLAID plugin and keeps the
 HTTP server alive until ParaView exits. The plugin reads the connection port
 from `PLAID_PORT` and can retrieve `/infos`, `/problem_definition`, and
 `/samples` from the server.
+
+The launcher bundles the plugin and its CGNS JSON, JSON codec, and VTK conversion
+helpers into a single `PlaidParaViewPlugin.py` file, so ParaView can load the
+plugin without installing PLAID in its Python environment. To create that
+self-contained file in a specific directory instead of a temporary directory,
+use the helper from Python:
+
+```python
+from pathlib import Path
+
+from plaid.cli.paraview_plugin import get_ParaView_plugin_path_one_file
+
+plugin_directory = get_ParaView_plugin_path_one_file(Path("/tmp/plaid-plugin"))
+print(Path(plugin_directory) / "PlaidParaViewPlugin.py")
+```
+
+The provided directory must already exist. The helper returns its path as a
+string; without a `path` argument, it creates a temporary directory.
 
 The plugin also exposes a "Process" toggle for servers that implement
 `/process`. Leave this toggle disabled when using the built-in `plaid-serve`
