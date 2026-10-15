@@ -2926,12 +2926,13 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 # root (``init_from_disk``) and Hugging Face Hub streaming
                 # (``init_streaming_from_hub``). The tabs only drive which
                 # form is rendered; registered datasets from either
-                # source always land in ``dataset_ids`` together. Hidden
-                # when ``--disable-root-change`` was passed on the CLI so
-                # a public deployment can pin the root for good.
+                # source always land in ``dataset_ids`` together. The root
+                # controls can be hidden independently of dataset selection.
 
-                with html.Div(classes="rounded-lg border pa-2 mb-3", v_if=("allow_root_change || allow_dataset_change",)):
-
+                with html.Div(
+                    classes="rounded-lg border pa-2 mb-3",
+                    v_if=("allow_root_change || allow_dataset_change",),
+                ):
                     with html.Div(
                         classes="d-flex justify-center",
                         style=(
@@ -3017,17 +3018,16 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     classes="mr-1 mb-1",
                                     click_close=(ctrl.remove_hub_repo, "[repo]"),
                                 )
-                        v3.VDivider(classes="my-2")
-                        with html.Div(v_if=("allow_dataset_change",)):
-                            v3.VSelect(
-                                label="Dataset",
-                                v_model=("dataset_id",),
-                                items=(
-                                    "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
-                                ),
-                                density="compact",
-                                hide_details=True,
-                            )
+                    with html.Div(v_if=("allow_dataset_change",)):
+                        v3.VSelect(
+                            label="Dataset",
+                            v_model=("dataset_id",),
+                            items=(
+                                "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
+                            ),
+                            density="compact",
+                            hide_details=True,
+                        )
 
                 with html.Div(classes="rounded-lg border pa-2 mb-3"):
                     with html.Div(
@@ -3050,20 +3050,15 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         density="compact",
                         hide_details=True,
                     )
-                    #v3.VDivider(classes="my-2")
-                    #html.Div(
-                    #    "4) Select Base (and/or enable Globals)",
-                    #    classes="text-subtitle-2 mb-1",
-                    #)
                     v3.VSwitch(
-                            label="Sample Globals",
-                            v_model=("show_globals",),
-                            density="compact",
-                            hide_details=True,
-                            color="primary",
-                            classes="text-subtitle-1 font-weight-medium py-1",
-                            style="flex: 0 0 auto;",
-                        )
+                        label="Sample Globals",
+                        v_model=("show_globals",),
+                        density="compact",
+                        hide_details=True,
+                        color="primary",
+                        classes="text-subtitle-1 font-weight-medium py-1",
+                        style="flex: 0 0 auto;",
+                    )
                     html.Div(
                         "Available Bases",
                         classes="text-subtitle-2 mb-1 mt-2",
@@ -3099,10 +3094,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             variant=("active_base === base ? 'flat' : 'outlined'",),
                         )
 
-                    # Feature filter panel. Moved between the Base toggle
-                    # and the Field dropdown to match the numbered workflow
-                    # exposed in the drawer (1) Dataset, 2) Split, 3) Base,
-                    # 4) Pre-select fields, 5) Field/Colormap/Edges).
+                    # Feature filter panel sits between the Base toggle
+                    # and sample navigation / rendering controls.
                     # Streaming datasets need this panel too: selecting a Base
                     # loads only geometry, so without it there is no way to
                     # request arrays for the field-to-plot dropdown. Applying
@@ -3111,7 +3104,6 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         v_if=("has_features",),
                         classes="mb-2",
                     ):
-
                         with html.Div(classes="d-flex align-center mb-1"):
                             html.Div(
                                 "Pre-select browsable field features",
@@ -3133,7 +3125,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                 )
                                 with v3.VExpansionPanelText():
                                     html.Div(
-                                        "Empty selection loads every feature.",
+                                        "Empty selection loads no fields.",
                                         classes="text-caption text-medium-emphasis mb-1",
                                     )
                                     with html.Div(classes="d-flex mb-1"):
@@ -3177,10 +3169,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     #   only be consumed forward, so we expose a "Next"
                     #   button that advances the ``_StreamCursor`` by one
                     #   step via ``ctrl.stream_next``.
-                    # Placed at step 5 (between the field selection and the
-                    # downstream rendering options) so the user picks
-                    # *what* to look at (Dataset / Split / Base / Field)
-                    # before navigating *which sample* to display.
+                    # Pick the data to load before navigating samples;
+                    # rendering controls appear in the next card.
                     v3.VSlider(
                         v_if=("!is_streaming",),
                         v_model_number=("sample_index",),
@@ -3227,9 +3217,11 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 # Time axis slider, only shown when the sample actually
                 # exposes a time axis (time-dependent samples).
                 with html.Div(v_if=("time_count > 1",), classes="mb-2"):
-                    html.Div("Time = {{ current_time }} ({{ time_index + 1 }} / {{ time_count }})", classes="text-caption mt-2")
+                    html.Div(
+                        "Time = {{ current_time }} ({{ time_index + 1 }} / {{ time_count }})",
+                        classes="text-caption mt-2",
+                    )
                     with html.Div(classes="d-flex align-center mt-2"):
-
                         v3.VBtn(
                             icon=("playing ? 'mdi-pause' : 'mdi-play'",),
                             click="playing = !playing",
@@ -3275,9 +3267,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             density="compact",
                         )
 
-                with html.Div(classes="rounded-lg border pa-2 mb-3",
-                            v_if=("active_base",),
-                            ):
+                with html.Div(
+                    classes="rounded-lg border pa-2 mb-3",
+                    v_if=("active_base",),
+                ):
                     with html.Div(
                         classes="d-flex justify-center",
                         style=(
@@ -3312,13 +3305,11 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     )
                     v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
 
-                with html.Div(classes="rounded-lg border pa-2 mb-3",
-                              v_if=("(sample_globals || []).length > 0",)):
-                    # "Globals" toggle. Off by default; flipping it on adds
-                    # every ``Globals/...`` PLAID feature path to the active
-                    # filter so the side-panel "Globals" descriptor list is
-                    # populated. The switch is only shown once the
-                    # currently-selected dataset declares any global at all.
+                with html.Div(
+                    classes="rounded-lg border pa-2 mb-3",
+                    v_if=("(sample_globals || []).length > 0",),
+                ):
+                    # Show globals loaded for the current sample.
                     with html.Div(
                         classes="d-flex justify-center",
                         style=(
@@ -3328,10 +3319,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         ),
                     ):
                         html.Div(
-                            "Sample Globals Ouput",
+                            "Sample Globals Output",
                             classes="text-subtitle-2 mb-1",
                         )
-
 
                     # PLAID globals for the current sample (filtered out of
                     # ``IterationValues`` / ``TimeValues`` bookkeeping arrays).
@@ -3340,7 +3330,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         classes="mt-3",
                     ):
                         with v3.VList(density="compact"):
-                            with v3.VListItem(v_for="g in sample_globals", key="g.name"):
+                            with v3.VListItem(
+                                v_for="g in sample_globals", key="g.name"
+                            ):
                                 v3.VListItemTitle(
                                     "{{ g.name }} "
                                     "<span class='text-caption text-medium-emphasis'>"
@@ -3433,7 +3425,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     color="primary",
                     style="flex: 0 0 auto; width: 100%;",
                 ):
-                    v3.VTab("Sample (VTK)", value="sample")
+                    v3.VTab("Sample 3D View", value="sample")
                     v3.VTab("Dataset Globals", value="globals")
                 with html.Div(
                     v_show="viewer_tab === 'sample'",

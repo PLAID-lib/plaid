@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 import types
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,68 @@ class _FakeCGNSFileSeriesReader:
 
     def UpdateInformation(self) -> None:  # noqa: N802 - VTK API
         self.update_information_calls += 1
+
+
+@pytest.mark.parametrize("allow_root_change", [True, False])
+def test_dataset_selector_is_independent_of_root_controls(
+    tmp_path: Path, allow_root_change: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep dataset selection available when the datasets root is pinned."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services.paraview_artifact_service import (  # noqa: PLC0415
+        ParaviewArtifactService,
+    )
+    from plaid.viewer.services.plaid_dataset_service import (  # noqa: PLC0415
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(
+            name=f"dataset-selector-{allow_root_change}", **kwargs
+        ),
+    )
+
+    class DatasetSelectorParser(HTMLParser):
+        """Record visibility conditions surrounding the dataset selector."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.conditions: list[str] = []
+            self.selector_conditions: list[str] | None = None
+
+        def handle_starttag(
+            self, tag: str, attrs: list[tuple[str, str | None]]
+        ) -> None:
+            """Track open div conditions and inspect the dataset selector."""
+            attributes = dict(attrs)
+            if tag == "div":
+                self.conditions.append(attributes.get("v-if", ""))
+            if tag == "vselect" and attributes.get("label") == "Dataset":
+                self.selector_conditions = list(self.conditions)
+
+        def handle_endtag(self, tag: str) -> None:
+            """Remove the visibility condition for a closed div."""
+            if tag == "div":
+                self.conditions.pop()
+
+    service = PlaidDatasetService(
+        ViewerConfig(datasets_root=tmp_path, allow_root_change=allow_root_change)
+    )
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    server.state.ready()
+
+    parser = DatasetSelectorParser()
+    parser.feed(server.state["trame__template_main"])
+    assert server.state.allow_root_change is allow_root_change
+    assert parser.selector_conditions is not None
+    assert "allow_dataset_change" in parser.selector_conditions
+    assert "allow_root_change" not in parser.selector_conditions
 
 
 def test_load_reader_series_uses_vtk_cgns_file_series_reader(
