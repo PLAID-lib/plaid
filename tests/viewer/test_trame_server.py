@@ -11,6 +11,45 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture
+def headless_trame_view(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Avoid creating a native VTK interactor in UI/state-only tests.
+
+    Args:
+        monkeypatch: Pytest fixture for replacing rendering components.
+    """
+    from trame.widgets import html, vtk  # noqa: PLC0415
+
+    from plaid.viewer.trame_app import server as server_module  # noqa: PLC0415
+
+    class HeadlessPipeline:
+        """Provide only the empty-scene operations used by state callbacks."""
+
+        def __init__(self) -> None:
+            self.render_window = None
+            self.reader = None
+            self.mapper = types.SimpleNamespace(
+                RemoveAllInputConnections=lambda _port: None,
+                ScalarVisibilityOff=lambda: None,
+            )
+            self.scalar_bar = types.SimpleNamespace(SetVisibility=lambda _value: None)
+
+    class HeadlessRemoteView(html.Div):
+        """Keep the trame UI tree without registering a VTK render window."""
+
+        def __init__(self, _render_window: object, **kwargs: object) -> None:
+            super().__init__(**kwargs)
+
+        def update(self) -> None:
+            """No frame is needed for state-only tests."""
+
+        def reset_camera(self) -> None:
+            """No camera is needed for state-only tests."""
+
+    monkeypatch.setattr(server_module, "_VtkPipeline", HeadlessPipeline)
+    monkeypatch.setattr(vtk, "VtkRemoteView", HeadlessRemoteView)
+
+
 class _FakeCGNSReader:
     def __init__(self) -> None:
         self.file_name: str | None = None
@@ -49,8 +88,11 @@ class _FakeCGNSFileSeriesReader:
 
 
 @pytest.mark.parametrize("allow_root_change", [True, False])
+@pytest.mark.usefixtures("headless_trame_view")
 def test_dataset_selector_is_independent_of_root_controls(
-    tmp_path: Path, allow_root_change: bool, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    allow_root_change: bool,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Keep dataset selection available when the datasets root is pinned."""
     from trame import app  # noqa: PLC0415
@@ -202,6 +244,7 @@ def test_update_view_pushes_frame_when_protocol_is_ready() -> None:
     assert calls == [None]
 
 
+@pytest.mark.usefixtures("headless_trame_view")
 def test_streaming_base_options_survive_initialisation_and_split_switch(
     tmp_path: Path,
 ) -> None:
