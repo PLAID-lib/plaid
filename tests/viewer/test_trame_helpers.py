@@ -25,6 +25,24 @@ def test_filter_global_names_regex_and_invalid_pattern() -> None:
     assert error.startswith("Invalid regular expression:")
 
 
+def test_label_options_follow_selected_globals_and_keep_label_only_fields() -> None:
+    """Keep sample IDs and text labels while narrowing numeric labels."""
+    labels = ["sample_id", "Global/a", "Global/case", "Global/b"]
+    names = ["Global/a", "Global/b"]
+
+    assert srv._label_options(labels, names, []) == labels
+    assert srv._label_options(labels, names, ["Global/b"]) == [
+        "sample_id",
+        "Global/case",
+        "Global/b",
+    ]
+    assert srv._label_options(labels, names, ["Global/a"]) == [
+        "sample_id",
+        "Global/a",
+        "Global/case",
+    ]
+
+
 def test_select_filtered_globals_preserves_hidden_selection() -> None:
     names = ["Global/a", "Global/b", "Global/c", "Global/d"]
     selected = ["Global/b", "Global/d"]
@@ -376,3 +394,170 @@ def test_install_vtk_log_router_ignores_missing_and_old_vtk(
     )
     srv._install_vtk_log_router()
     assert srv._VTK_LOG_ROUTER_INSTALLED is True
+
+
+def test_parcoords_brush_exports_only_matching_plotted_samples() -> None:
+    from plaid.viewer.global_plots import build_globals_figure
+
+    records = {
+        "train": [
+            {"sample_id": "0", "values": {"Global/a": 1, "Global/b": 10}},
+            {"sample_id": "1", "values": {"Global/a": 2, "Global/b": 20}},
+        ],
+        "test": [
+            {"sample_id": "0", "values": {"Global/a": 3, "Global/b": 30}},
+            {"sample_id": "1", "values": {"Global/a": 4}},
+        ],
+    }
+    figure = build_globals_figure(
+        records,
+        ["train", "test"],
+        "parallel",
+        [],
+        parallel_fields=["Global/a", "Global/b"],
+        parallel_mode="parcoords",
+    )
+    assert srv._parcoords_selected_rows(figure, {}) == {
+        ("train", "0"),
+        ("train", "1"),
+        ("test", "0"),
+    }
+    assert srv._parcoords_selected_rows(figure, {0: [1.5, 3.5]}) == {
+        ("train", "1"),
+        ("test", "0"),
+    }
+    assert srv._parcoords_selected_rows(
+        figure, {0: [[0.5, 1.5], [2.5, 3.5]], 1: [25, 35]}
+    ) == {("test", "0")}
+    assert srv._parcoords_selected_rows(
+        figure, {0: [[[0.5, 1.5], [2.5, 3.5]]], 1: [[25, 35]]}
+    ) == {("test", "0")}
+    assert srv._parcoords_selected_rows(figure, {0: [5, 6]}) == set()
+    assert srv._parcoords_selected_rows(None, {0: [1, 2]}) == set()
+
+
+def test_stream_csv_writes_every_chunk_as_attachment() -> None:
+    """CSV exports are streamed block by block over HTTP."""
+    import asyncio
+
+    from aiohttp import web
+    from aiohttp.test_utils import make_mocked_request
+
+    written: list[bytes] = []
+
+    class _Writer:
+        buffer_size = 0
+        output_size = 0
+
+        async def write(self, chunk: bytes) -> None:
+            written.append(bytes(chunk))
+
+        async def write_headers(self, *_args: object) -> None:
+            return None
+
+        async def write_eof(self, *_args: object) -> None:
+            return None
+
+        async def drain(self) -> None:
+            return None
+
+        def enable_compression(self, *_args: object, **_kwargs: object) -> None:
+            return None
+
+        def enable_chunking(self) -> None:
+            return None
+
+        def send_headers(self, *_args: object) -> None:
+            return None
+
+    request = make_mocked_request("GET", "/csv", writer=_Writer())
+    response = asyncio.run(
+        srv._stream_csv(request, iter([b"a,b\n", b"1,2\n"]), "out.csv")
+    )
+    assert isinstance(response, web.StreamResponse)
+    assert response.headers["Content-Disposition"] == 'attachment; filename="out.csv"'
+    assert response.headers["Content-Type"].startswith("text/csv")
+    assert b"".join(written).endswith(b"a,b\n1,2\n")
+
+
+def test_constraint_ranges_cleared_brush() -> None:
+    """A cleared or malformed brush has no active ranges."""
+    assert srv._constraint_ranges(None) == []
+    assert srv._constraint_ranges([]) == []
+    assert srv._constraint_ranges(()) == []
+
+
+def test_scatter_selection_resolves_plot_indices_across_splits() -> None:
+    from plaid.viewer.global_plots import build_globals_figure, globals_dataframe
+
+    records = {
+        "train": [
+            {"sample_id": "0", "values": {"Global/a": 1, "Global/b": 2}},
+            {"sample_id": "1", "values": {"Global/a": None, "Global/b": 4}},
+            {"sample_id": "2", "values": {"Global/a": 5, "Global/b": 6}},
+        ],
+        "test": [
+            {"sample_id": "0", "values": {"Global/a": 7, "Global/b": 8}},
+        ],
+    }
+    points = [
+        None,  # Ignore non-dictionary selection events.
+        {"curveNumber": 0, "pointNumber": 1},
+        {"curveNumber": 1, "pointNumber": 0},
+        {"curveNumber": 1, "pointNumber": 0},
+        {"curveNumber": 0, "pointNumber": 2},  # Beyond plotted points.
+        {"curveNumber": 2, "pointNumber": 0},
+        {"curveNumber": -1, "pointNumber": 0},
+        {"curveNumber": 0, "pointNumber": -1},
+        {"curveNumber": 0, "pointNumber": True},
+        {"curveNumber": "0", "pointNumber": 0},
+        {},
+    ]
+    for mode in ("1D", "2D"):
+        figure = build_globals_figure(
+            records, ["train", "test"], mode, ["Global/a", "Global/b"]
+        )
+        selected = srv._scatter_selected_rows(figure, points)
+        assert selected == {("train", "2"), ("test", "0")}
+        frame = globals_dataframe(records, selected)
+        assert list(zip(frame["split"], frame["sample_id"])) == [
+            ("train", "2"),
+            ("test", "0"),
+        ]
+        assert srv._scatter_selected_rows(figure, []) == set()
+        assert srv._scatter_selected_rows(figure, None) == set()
+    assert srv._scatter_selected_rows(None, points) == set()
+
+
+def test_selected_row_entries_match_export_order() -> None:
+    """The displayed identities match the CSV, including duplicate sample IDs."""
+    from plaid.viewer.global_plots import globals_dataframe, prepare_globals
+
+    records = {
+        "train": [
+            {"sample_id": "0", "values": {"Global/a": 1}},
+            {"sample_id": "1", "values": {"Global/a": 2}},
+        ],
+        "test": [{"sample_id": "0", "values": {"Global/a": 3}}],
+    }
+    prepared = prepare_globals(records)
+    selected = {("train", "1"), ("test", "0")}
+    frame = globals_dataframe(prepared, selected)
+    expected = [
+        {"split": "train", "sample_id": "1"},
+        {"split": "test", "sample_id": "0"},
+    ]
+    assert srv._selected_row_entries(prepared, selected) == expected
+    assert frame[["split", "sample_id"]].to_dict("records") == expected
+    assert srv._selected_row_entries(prepared, set()) == []
+
+
+def test_plot_blocker_guards_heavy_or_empty_parallel_plots() -> None:
+    """Parallel plots need axes, and per-sample lines are capped."""
+    limit = srv.PARALLEL_LINES_MAX_SAMPLES
+    assert srv._plot_blocker("2D", "lines", [], 10**6) == ""
+    assert "Select the Globals" in srv._plot_blocker("parallel", "parcoords", [], 1)
+    assert srv._plot_blocker("parallel", "lines", ["Global/a"], limit) == ""
+    message = srv._plot_blocker("parallel", "lines", ["Global/a"], limit + 1)
+    assert "parcoords" in message
+    assert srv._plot_blocker("parallel", "parcoords", ["Global/a"], 10**6) == ""

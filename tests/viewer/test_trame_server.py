@@ -5,9 +5,49 @@ from __future__ import annotations
 import json
 import sys
 import types
+from html.parser import HTMLParser
 from pathlib import Path
 
 import pytest
+
+
+@pytest.fixture
+def headless_trame_view(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Avoid creating a native VTK interactor in UI/state-only tests.
+
+    Args:
+        monkeypatch: Pytest fixture for replacing rendering components.
+    """
+    from trame.widgets import html, vtk  # noqa: PLC0415
+
+    from plaid.viewer.trame_app import server as server_module  # noqa: PLC0415
+
+    class HeadlessPipeline:
+        """Provide only the empty-scene operations used by state callbacks."""
+
+        def __init__(self) -> None:
+            self.render_window = None
+            self.reader = None
+            self.mapper = types.SimpleNamespace(
+                RemoveAllInputConnections=lambda _port: None,
+                ScalarVisibilityOff=lambda: None,
+            )
+            self.scalar_bar = types.SimpleNamespace(SetVisibility=lambda _value: None)
+
+    class HeadlessRemoteView(html.Div):
+        """Keep the trame UI tree without registering a VTK render window."""
+
+        def __init__(self, _render_window: object, **kwargs: object) -> None:
+            super().__init__(**kwargs)
+
+        def update(self) -> None:
+            """No frame is needed for state-only tests."""
+
+        def reset_camera(self) -> None:
+            """No camera is needed for state-only tests."""
+
+    monkeypatch.setattr(server_module, "_VtkPipeline", HeadlessPipeline)
+    monkeypatch.setattr(vtk, "VtkRemoteView", HeadlessRemoteView)
 
 
 class _FakeCGNSReader:
@@ -45,6 +85,71 @@ class _FakeCGNSFileSeriesReader:
 
     def UpdateInformation(self) -> None:  # noqa: N802 - VTK API
         self.update_information_calls += 1
+
+
+@pytest.mark.parametrize("allow_root_change", [True, False])
+@pytest.mark.usefixtures("headless_trame_view")
+def test_dataset_selector_is_independent_of_root_controls(
+    tmp_path: Path,
+    allow_root_change: bool,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Keep dataset selection available when the datasets root is pinned."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services.paraview_artifact_service import (  # noqa: PLC0415
+        ParaviewArtifactService,
+    )
+    from plaid.viewer.services.plaid_dataset_service import (  # noqa: PLC0415
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(
+            name=f"dataset-selector-{allow_root_change}", **kwargs
+        ),
+    )
+
+    class DatasetSelectorParser(HTMLParser):
+        """Record visibility conditions surrounding the dataset selector."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.conditions: list[str] = []
+            self.selector_conditions: list[str] | None = None
+
+        def handle_starttag(
+            self, tag: str, attrs: list[tuple[str, str | None]]
+        ) -> None:
+            """Track open div conditions and inspect the dataset selector."""
+            attributes = dict(attrs)
+            if tag == "div":
+                self.conditions.append(attributes.get("v-if", ""))
+            if tag == "vselect" and attributes.get("label") == "Dataset":
+                self.selector_conditions = list(self.conditions)
+
+        def handle_endtag(self, tag: str) -> None:
+            """Remove the visibility condition for a closed div."""
+            if tag == "div":
+                self.conditions.pop()
+
+    service = PlaidDatasetService(
+        ViewerConfig(datasets_root=tmp_path, allow_root_change=allow_root_change)
+    )
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    server.state.ready()
+
+    parser = DatasetSelectorParser()
+    parser.feed(server.state["trame__template_main"])
+    assert server.state.allow_root_change is allow_root_change
+    assert parser.selector_conditions is not None
+    assert "allow_dataset_change" in parser.selector_conditions
+    assert "allow_root_change" not in parser.selector_conditions
 
 
 def test_load_reader_series_uses_vtk_cgns_file_series_reader(
@@ -137,3 +242,85 @@ def test_update_view_pushes_frame_when_protocol_is_ready() -> None:
     _update_view(server, ctrl)
 
     assert calls == [None]
+
+
+@pytest.mark.usefixtures("headless_trame_view")
+def test_streaming_base_options_survive_initialisation_and_split_switch(
+    tmp_path: Path,
+) -> None:
+    """A streamed dataset's metadata bases remain selectable before Next."""
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.models import DatasetDetail  # noqa: PLC0415
+    from plaid.viewer.services.paraview_artifact_service import (  # noqa: PLC0415
+        ParaviewArtifactService,
+    )
+    from plaid.viewer.services.plaid_dataset_service import (  # noqa: PLC0415
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    repo_id = "test/force_asr"
+    mesh_path = "Base_2_2/Zone/GridCoordinates/CoordinateX"
+    field_path = "Base_2_2/Zone/VertexFields/pressure"
+
+    class StreamingService(PlaidDatasetService):
+        """Use real metadata filtering without contacting the Hub."""
+
+        def is_streaming(self, dataset_id: str) -> bool:  # noqa: ARG002
+            """Mark the registered repository as a stream."""
+            return True
+
+        def _open(self, dataset_id: str) -> tuple[dict, dict]:  # noqa: ARG002
+            """Return empty streams without connecting to the Hub."""
+            return {"res_SENS": iter(()), "other": iter(())}, {}
+
+        def get_dataset(self, dataset_id: str) -> DatasetDetail:
+            """Expose two splits without opening a remote dataset."""
+            return DatasetDetail(
+                dataset_id=dataset_id,
+                is_streaming=True,
+                path=f"hf://{dataset_id}",
+                splits={"res_SENS": None, "other": None},
+            )
+
+        def reset_stream_cursor(self, dataset_id: str, split: str | None) -> None:
+            """Avoid fetching Parquet data while resetting an empty stream."""
+
+    service = StreamingService(ViewerConfig())
+    service.add_hub_dataset(repo_id)
+    service._feature_metadata[repo_id] = (["Base_2_2", mesh_path], [field_path])
+    artifact_service = ParaviewArtifactService(service, tmp_path)
+    server = build_server(service, artifact_service)
+
+    # State callbacks are dispatched only when the trame state becomes ready.
+    server.state.ready()
+    assert server.state.base_options == ["Base_2_2"]
+    assert server.state.sample_id is None
+    assert server.state.stream_position == -1
+
+    server.state.split = "other"
+    server.state.flush()
+    assert server.state.base_options == ["Base_2_2"]
+    assert server.state.sample_id is None
+
+    server.state.active_base = "Base_2_2"
+    server.state.flush()
+    assert server.state.base_options == ["Base_2_2"]
+    assert mesh_path in service.get_features(repo_id)
+    assert field_path in server.state.available_features
+    assert field_path not in service.get_features(repo_id)
+
+    # Applying a field after a mesh-only sample was displayed must
+    # invalidate the previous step as well as update the feature filter.
+    server.state.stream_position = 0
+    server.state.sample_id = "cursor"
+    server.state.field_options = ["point:old_field"]
+    server.state.selected_features = [field_path]
+    server.controller.apply_features()
+    server.state.flush()
+
+    assert mesh_path in service.get_features(repo_id)
+    assert field_path in service.get_features(repo_id)
+    assert server.state.stream_position == -1
+    assert server.state.sample_id is None
+    assert server.state.field_options == []

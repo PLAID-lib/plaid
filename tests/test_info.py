@@ -131,6 +131,17 @@ def test_normalize_infos_rejects_legacy_plaid_section_and_copies():
     assert "plaid" in infos
 
 
+def test_normalize_mapping_returns_independent_mapping():
+    """Valid infos are normalized without sharing nested mutable data."""
+    infos = _valid_infos(num_samples={"train": 2})
+
+    normalized = Infos.normalize_mapping(infos)
+
+    assert normalized == infos
+    normalized["num_samples"]["train"] = 3
+    assert infos["num_samples"] == {"train": 2}
+
+
 def test_model_validate_rejects_plaid_section():
     with pytest.raises(ValidationError, match="extra_forbidden"):
         Infos.model_validate(

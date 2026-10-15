@@ -35,6 +35,7 @@ import json
 import logging
 import os
 import re
+import secrets
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -88,6 +89,26 @@ def _filter_global_names(names: list[str], pattern: str) -> tuple[list[str], str
     return [name for name in names if regex.search(name)], ""
 
 
+def _label_options(
+    label_names: list[str], names: list[str], selected: list[str]
+) -> list[str]:
+    """Limit plottable label Globals to the checked axes selection.
+
+    Args:
+        label_names: All available labels, including sample IDs and text Globals.
+        names: Plottable numeric Global names.
+        selected: Checked numeric Globals.
+
+    Returns:
+        Available labels in their original order, keeping label-only fields.
+    """
+    if not selected:
+        return label_names
+    plottable = set(names)
+    checked = set(selected)
+    return [name for name in label_names if name not in plottable or name in checked]
+
+
 def _select_filtered_globals(
     names: list[str], selected: list[str], filtered: list[str], check: bool
 ) -> list[str]:
@@ -109,6 +130,246 @@ def _select_filtered_globals(
     else:
         selected_set.difference_update(filtered_set)
     return [name for name in names if name in selected_set]
+
+
+# skrub needs ~3 ms and ~13 kB of HTML per column without plots, ~26 ms and
+# ~29 kB with distribution plots, and associations grow faster than the
+# number of columns. Wide vector Globals (tens of thousands of components)
+# would take minutes and produce a report too large for a browser tab, so
+# the report covers the selected Globals, with plots only for small sets,
+# and is refused (never silently truncated) beyond SKRUB_MAX_COLUMNS.
+SKRUB_MAX_COLUMNS = 2000
+SKRUB_MAX_PLOT_COLUMNS = 500
+SKRUB_MAX_ASSOCIATION_COLUMNS = 200
+# The "lines" parallel renderer draws one SVG trace per sample; beyond a few
+# hundred samples the browser freezes (7352 samples x 47 axes = 21 MB of
+# figure JSON), while "parcoords" draws a single WebGL trace.
+PARALLEL_LINES_MAX_SAMPLES = 500
+
+
+def _plot_blocker(
+    kind: str, parallel_mode: str, selected: list[str], samples: int
+) -> str:
+    """Explain why a plot configuration must not be drawn.
+
+    Args:
+        kind: Plot type (``1D``, ``2D``, ``3D`` or ``parallel``).
+        parallel_mode: Parallel renderer, ``lines`` or ``parcoords``.
+        selected: Selected Globals, used as parallel axes.
+        samples: Number of samples in the selected splits.
+
+    Returns:
+        A user-facing message, or an empty string if the plot can be drawn.
+    """
+    if kind != "parallel":
+        return ""
+    if not selected:
+        return "Select the Globals to use as parallel axes."
+    if parallel_mode == "lines" and samples > PARALLEL_LINES_MAX_SAMPLES:
+        return (
+            f"The lines renderer draws one trace per sample and would freeze "
+            f"the browser with {samples} samples (limit "
+            f"{PARALLEL_LINES_MAX_SAMPLES}). Use parcoords or select fewer "
+            "splits."
+        )
+    return ""
+
+
+async def _stream_csv(request: Any, chunks: Any, filename: str) -> Any:
+    """Stream CSV chunks as an HTTP download.
+
+    The export is encoded block by block in a worker thread, so neither the
+    complete CSV nor a base64 copy of it is held in memory or in trame state.
+
+    Args:
+        request: aiohttp request.
+        chunks: Iterator of encoded CSV blocks.
+        filename: Suggested download filename.
+
+    Returns:
+        The completed ``aiohttp.web.StreamResponse``.
+    """
+    from aiohttp import web  # noqa: PLC0415
+
+    response = web.StreamResponse(
+        headers={
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+        }
+    )
+    await response.prepare(request)
+    iterator = iter(chunks)
+    sentinel = object()
+    while (chunk := await asyncio.to_thread(next, iterator, sentinel)) is not sentinel:
+        await response.write(chunk)  # type: ignore[arg-type]
+    await response.write_eof()
+    return response
+
+
+def _report_columns(selected: list[str], text_names: list[str]) -> list[str]:
+    """Choose the table columns of the selected Globals.
+
+    Args:
+        selected: Checked numeric Globals, in display order.
+        text_names: Text Globals (e.g. case names), always included first.
+
+    Returns:
+        Text Globals followed by the selected Globals.
+    """
+    return [*text_names, *(name for name in selected if name not in text_names)]
+
+
+def _report_blocker(selected: list[str], text_names: list[str]) -> str:
+    """Explain why the skrub report of a selection must not be generated.
+
+    Args:
+        selected: Checked numeric Globals.
+        text_names: Text Globals added to every report.
+
+    Returns:
+        A user-facing message, or an empty string if the report can be built.
+    """
+    if not selected:
+        return ""  # The button is disabled and the selection hint is shown.
+    count = len(_report_columns(selected, text_names))
+    if count > SKRUB_MAX_COLUMNS:
+        return (
+            f"{count} columns selected: the skrub report is limited to "
+            f"{SKRUB_MAX_COLUMNS}. Refine the filter to select fewer Globals."
+        )
+    return ""
+
+
+def _write_globals_report(dataframe: Any, path: Path, title: str) -> None:
+    """Write a standalone skrub analysis of the extracted Globals.
+
+    Distribution plots and column associations are only computed for small
+    tables (see :data:`SKRUB_MAX_PLOT_COLUMNS`); skrub's own default would
+    disable them beyond 30 columns.
+
+    Args:
+        dataframe: Table of extracted Globals across all splits.
+        path: Destination HTML file within the viewer's report directory.
+        title: Dataset and time-step label for the report.
+
+    Returns:
+        None.
+    """
+    import matplotlib  # noqa: PLC0415
+
+    # skrub draws its plots with pyplot in a worker thread: GUI backends such
+    # as TkAgg are not thread-safe and abort the process when their figures
+    # are collected, so render off-screen.
+    matplotlib.use("Agg")
+    from skrub import TableReport  # noqa: PLC0415
+
+    shown = dataframe.shape[1] - 2  # Excluding split and sample_id.
+    TableReport(
+        dataframe,
+        title=title,
+        plot_distributions=shown <= SKRUB_MAX_PLOT_COLUMNS,
+        compute_associations=shown <= SKRUB_MAX_ASSOCIATION_COLUMNS,
+    ).write_html(path)
+
+
+def _selected_row_entries(
+    prepared: Any, selected: set[tuple[str, str]]
+) -> list[dict[str, str]]:
+    """List exported row identities in CSV order for display in the viewer.
+
+    Args:
+        prepared: :class:`~plaid.viewer.global_plots.PreparedGlobals`.
+        selected: ``(split, sample_id)`` pairs to export.
+
+    Returns:
+        Split and sample ID mappings for the selected samples.
+    """
+    return [
+        {"split": split, "sample_id": sample_id}
+        for split in prepared.splits
+        for sample_id in prepared.sample_ids(split)
+        if (split, sample_id) in selected
+    ]
+
+
+def _constraint_ranges(value: object) -> list[tuple[float, float]]:
+    """Normalize a Plotly axis brush, including disjoint intervals.
+
+    Args:
+        value: One ``constraintrange`` value from a restyle event.
+
+    Returns:
+        List of inclusive numeric intervals; empty for a cleared brush.
+    """
+    if not isinstance(value, (list, tuple)) or not value:
+        return []
+    if (
+        isinstance(value[0], (list, tuple))
+        and value[0]
+        and isinstance(value[0][0], (list, tuple))
+    ):
+        value = value[0]  # Plotly restyle wraps values once per trace.
+    if isinstance(value[0], (list, tuple)):
+        return [tuple(interval) for interval in value]
+    return [tuple(value)]
+
+
+def _parcoords_selected_rows(
+    figure: Any, constraints: dict[int, object]
+) -> set[tuple[str, str]]:
+    """Find plotted samples inside all active parcoords axis brushes.
+
+    Args:
+        figure: Current Plotly figure with a single parcoords trace.
+        constraints: Axis index to Plotly constraintrange (single or disjoint).
+
+    Returns:
+        Pairs of split and sample id for rows inside every constraint.
+    """
+    if not figure or not figure.data or figure.data[0].type != "parcoords":
+        return set()
+    trace = figure.data[0]
+    ticktext = list(trace.line.colorbar.ticktext)
+    selected = set()
+    for index, sample_id in enumerate(trace.customdata):
+        if all(
+            any(low <= dimension.values[index] <= high for low, high in ranges)
+            for axis, value in constraints.items()
+            for dimension in [trace.dimensions[axis]]
+            for ranges in [_constraint_ranges(value)]
+        ):
+            selected.add((ticktext[trace.line.color[index]], str(sample_id)))
+    return selected
+
+
+def _scatter_selected_rows(figure: Any, points: object) -> set[tuple[str, str]]:
+    """Resolve Plotly-selected 1D/2D points against the current figure.
+
+    Args:
+        figure: Plotly scatter figure containing per-point sample identifiers.
+        points: Plotly selected point indices with trace (curve) indices.
+
+    Returns:
+        Pairs of split name and sample id for valid plotted points.
+    """
+    selected: set[tuple[str, str]] = set()
+    if figure is None or not isinstance(points, list):
+        return selected
+    for point in points:
+        if not isinstance(point, dict):
+            continue
+        curve = point.get("curveNumber")
+        index = point.get("pointNumber")
+        if type(curve) is not int or type(index) is not int:
+            continue
+        if curve < 0 or curve >= len(figure.data):
+            continue
+        trace = figure.data[curve]
+        if trace.type != "scatter" or index < 0 or index >= len(trace.customdata):
+            continue
+        selected.add((trace.name, str(trace.customdata[index])))
+    return selected
 
 
 def _update_view(server: Any, ctrl: Any) -> None:
@@ -654,6 +915,32 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     server = get_server(client_type="vue3")
     state, ctrl = server.state, server.controller
 
+    # Register a report-only static route before the trame server starts.
+    # The cache root is ephemeral and its contents disappear on shutdown.
+    report_dir = artifact_service._cache_root / "skrub_reports"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_route = f"/plaid-skrub-{secrets.token_urlsafe(24)}"
+    server.serve[report_route] = str(report_dir)
+    report_path: Path | None = None
+    report_generation = {"value": 0}
+    # CSV exports are streamed on request instead of being encoded as data
+    # URLs in the shared state (wide Globals produce gigabytes of CSV).
+    csv_route = f"/plaid-globals-csv-{secrets.token_urlsafe(24)}"
+    csv_exports: dict[str, Any] = {}
+
+    @ctrl.add("on_server_bind")
+    def _bind_csv_route(wslink_server: Any) -> None:
+        from aiohttp import web  # noqa: PLC0415
+
+        async def _csv(request: Any) -> Any:
+            export = csv_exports.get(request.match_info["name"])
+            if export is None:
+                raise web.HTTPNotFound()
+            chunks, filename = export()
+            return await _stream_csv(request, chunks, filename)
+
+        wslink_server.app.router.add_get(f"{csv_route}/{{name}}", _csv)
+
     pipeline = _VtkPipeline()
     # Background task handle for the time-series playback loop (see
     # ``_on_playing`` below). Kept here so successive toggles cancel the
@@ -760,12 +1047,17 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("viewer_tab", "sample")
     state.setdefault("explore_splits", [])
     state.setdefault("explore_names", [])
-    state.setdefault("explore_parallel_fields", [])
+    # Globals checked in the shared selection panel: parallel axes, X/Y/Z
+    # choices, the skrub report and the "selected Globals" CSV columns.
+    state.setdefault("explore_selected_globals", [])
+    state.setdefault("explore_columns_csv_url", "")
+    state.setdefault("explore_report_blocker", "")
     state.setdefault("explore_global_filter", "")
     state.setdefault("explore_filtered_names", [])
     state.setdefault("explore_global_filter_error", "")
-    state.setdefault("explore_parallel_mode", "lines")
+    state.setdefault("explore_parallel_mode", "parcoords")
     state.setdefault("explore_label_names", [])
+    state.setdefault("explore_filtered_label_names", [])
     state.setdefault("explore_plot", "1D")
     state.setdefault("explore_x", None)
     state.setdefault("explore_y", None)
@@ -774,7 +1066,25 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_label", "sample_id")
     state.setdefault("explore_has_plot", False)
     state.setdefault("explore_status", "Click Extract Globals to load all splits.")
-    extracted_globals: dict[str, list[dict[str, object]]] = {}
+    state.setdefault("explore_time_step", "last")
+    state.setdefault("explore_csv_url", "")
+    state.setdefault("explore_report_url", "")
+    state.setdefault("explore_selected_csv_url", "")
+    state.setdefault("explore_has_selection", False)
+    state.setdefault("explore_selected_rows", [])
+    state.setdefault("explore_extracting", False)
+    state.setdefault("explore_report_running", False)
+    state.setdefault("explore_report_error", "")
+    # Column-wise Globals of the last extraction (``PreparedGlobals``).
+    prepared_globals: Any = None
+    # Plots are only drawn by the "Draw plot" button: any change to the plot
+    # configuration clears the current figure instead of redrawing it, so a
+    # heavy configuration is never rendered by accident.
+    state.setdefault("explore_plot_requested", False)
+    state.setdefault("explore_plot_message", "")
+    explore_plot_figure: object | None = None
+    explore_constraints: dict[int, object] = {}
+    explore_selected_points: set[tuple[str, str]] = set()
     # Active side-panel tab: "local" drives ``datasets_root_text`` and
     # directory browsing, "hub" drives the Hugging Face repo input. When an
     # initial Hub dataset is configured, start on the Hub tab so state and UI
@@ -993,8 +1303,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             pipeline.mapper.RemoveAllInputConnections(0)
             pipeline.mapper.ScalarVisibilityOff()
             _hide_scalar_bar(pipeline.scalar_bar)
-            state.base_options = []
-            state.active_base = None
+            # Keep the metadata-derived bases and the user's selection.
+            # Selecting a base refreshes this stream, so clearing either
+            # here would prevent the user from loading its mesh with Next.
             state.field_options = []
             state.field = None
             state.sample_globals = []
@@ -1481,7 +1792,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         # cache (for streaming datasets, the iterator is rebuilt) and
         # any cached paraview artifact for this dataset. The simplest
         # way to propagate the change to the view is to run the full
-        # split/sample refresh cascade.
+        # split/sample refresh cascade. For streams this deliberately
+        # clears the old mesh and cursor: the next click fetches the
+        # first record with the newly selected fields.
         state.status = (
             f"Applied feature filter ({len(features)} selected)."
             if features
@@ -1522,55 +1835,336 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     @state.change("dataset_id")
     def _on_dataset(**_: object) -> None:
-        extracted_globals.clear()
+        nonlocal prepared_globals
+        _reset_globals_outputs()
+        prepared_globals = None
         state.explore_splits = []
         state.explore_names = []
-        state.explore_parallel_fields = []
+        state.explore_selected_globals = []
         state.explore_global_filter = ""
         state.explore_filtered_names = []
         state.explore_global_filter_error = ""
         state.explore_label_names = []
+        state.explore_filtered_label_names = []
         state.explore_has_plot = False
         state.explore_status = "Click Extract Globals to load all splits."
         _refresh_available_features()
         _refresh_splits()
 
+    def _clear_globals_report() -> None:
+        """Remove the previous report and invalidate its browser link."""
+        nonlocal report_path
+        # Reports still being written for an older selection are discarded.
+        report_generation["value"] += 1
+        state.explore_report_url = ""
+        state.explore_report_error = ""
+        if report_path is not None:
+            report_path.unlink(missing_ok=True)
+            report_path = None
+
+    def _publish_csv(
+        name: str,
+        selected: set[tuple[str, str]] | None,
+        columns: list[str] | None = None,
+    ) -> str:
+        """Register a streamed CSV export of the current Globals.
+
+        Args:
+            name: Export slot, replaced by later exports with the same name.
+            selected: Optional ``(split, sample_id)`` rows to export.
+            columns: Optional Global columns, defaulting to all of them.
+
+        Returns:
+            Relative download URL, unique per extraction and selection.
+        """
+        from plaid.viewer.global_plots import iter_globals_csv  # noqa: PLC0415
+
+        prepared = prepared_globals
+        rows = None if selected is None else set(selected)
+        filename = f"plaid_globals_{name}.csv"
+        token = f"{name}-{secrets.token_urlsafe(12)}"
+        for key in [key for key in csv_exports if key.startswith(f"{name}-")]:
+            del csv_exports[key]
+        csv_exports[token] = lambda: (
+            iter_globals_csv(prepared, rows, columns=columns),
+            filename,
+        )
+        return f"{csv_route.lstrip('/')}/{token}"
+
+    def _selected_columns() -> list[str]:
+        """Return the table columns of the checked Globals, text ones first."""
+        if prepared_globals is None:
+            return []
+        return _report_columns(
+            list(state.explore_selected_globals or []), prepared_globals.text_names
+        )
+
+    def _refresh_selected_globals() -> None:
+        """Propagate the shared Global selection to axes and exports."""
+        names = list(state.explore_names or [])
+        selected = list(state.explore_selected_globals or [])
+        # Scatter axes are chosen among the checked Globals (all when none is
+        # checked, as computed in the X/Y/Z selects); keep them valid.
+        axis_names = selected or names
+        for key, index in (("explore_x", 0), ("explore_y", 1), ("explore_z", 2)):
+            if state[key] not in axis_names:
+                state[key] = axis_names[index] if len(axis_names) > index else None
+        state.explore_columns_csv_url = (
+            _publish_csv("columns", None, _selected_columns()) if selected else ""
+        )
+        state.explore_report_blocker = _report_blocker(
+            selected, prepared_globals.text_names if prepared_globals else []
+        )
+        # A report always reflects the selection it was generated from.
+        _clear_globals_report()
+
+    def _reset_globals_outputs() -> None:
+        """Invalidate the plot, selections and exports of the last extraction."""
+        nonlocal explore_plot_figure
+        _clear_globals_report()
+        csv_exports.clear()
+        explore_plot_figure = None
+        explore_constraints.clear()
+        explore_selected_points.clear()
+        state.explore_plot_requested = False
+        state.explore_has_plot = False
+        state.explore_plot_message = ""
+        state.explore_csv_url = ""
+        state.explore_columns_csv_url = ""
+        state.explore_report_blocker = ""
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
+        state.explore_selected_rows = []
+
+    def _set_explore_status(message: str) -> None:
+        """Update the status line from the extraction task."""
+        with state:
+            state.explore_status = message
+
+    async def _extract_globals_task(dataset_id: str, time_step: str) -> None:
+        """Read and prepare Globals off the event loop, then publish them.
+
+        Wide datasets take tens of seconds to read; running in a worker
+        thread keeps the interface responsive and lets it display progress.
+        """
+        nonlocal prepared_globals
+        from plaid.viewer.global_plots import prepare_globals  # noqa: PLC0415
+
+        loop = asyncio.get_running_loop()
+        last_report = {"time": 0.0}
+
+        def _progress(split: str, done: int, total: int) -> None:
+            now = loop.time()
+            if done < total and now - last_report["time"] < 0.5:
+                return
+            last_report["time"] = now
+            loop.call_soon_threadsafe(
+                _set_explore_status,
+                f"Extracting Globals from split {split}: {done}/{total} samples...",
+            )
+
+        def _work() -> tuple[dict, Any]:
+            data = dataset_service.extract_globals(
+                dataset_id, time_step=time_step, progress=_progress
+            )
+            loop.call_soon_threadsafe(_set_explore_status, "Preparing Globals...")
+            return data, prepare_globals(data)
+
+        try:
+            data, prepared = await asyncio.to_thread(_work)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Failed to extract Globals: %s", exc)
+            with state:
+                state.explore_status = f"Failed to extract Globals: {exc}"
+                state.explore_extracting = False
+            return
+        with state:
+            state.explore_extracting = False
+            if state.dataset_id != dataset_id:
+                return  # The user switched datasets during extraction.
+            prepared_globals = prepared
+            names = prepared.names
+            state.explore_names = names
+            # Nothing is selected after an extraction, whatever its size: the
+            # user picks Globals with the filter ("Check" on an empty filter
+            # selects them all).
+            state.explore_selected_globals = []
+            _refresh_explore_global_filter()
+            state.explore_label_names = ["sample_id", *prepared.label_names]
+            state.explore_filtered_label_names = _label_options(
+                state.explore_label_names, names, []
+            )
+            state.explore_splits = list(prepared.splits)
+            state.explore_x = state.explore_y = state.explore_z = None
+            _refresh_selected_globals()
+            state.explore_csv_url = _publish_csv("all", None)
+            count = sum(len(prepared.sample_ids(split)) for split in prepared.splits)
+            state.explore_status = (
+                f"Extracted {count} samples from {len(prepared.splits)} splits. "
+                f"{len(names)} numeric scalar Globals. Select Globals, choose "
+                "axes and click Draw plot. Missing or non-scalar values leave "
+                "gaps in parallel plots."
+            )
+
     @ctrl.set("extract_globals")
     def _extract_globals() -> None:
         """Collect Global values independently from the active mesh filter."""
+        nonlocal prepared_globals
+        if state.explore_extracting:
+            return
+        _reset_globals_outputs()
         if not state.dataset_id or state.is_streaming:
             state.explore_status = (
                 "Globals exploration is unavailable for streaming datasets."
             )
             return
+        prepared_globals = None
+        state.explore_extracting = True
         state.explore_status = "Extracting Globals from all splits..."
-        state.explore_has_plot = False
-        try:
-            from plaid.viewer.global_plots import (  # noqa: PLC0415
-                global_names,
-                label_names,
+        asynchronous.create_task(
+            _extract_globals_task(state.dataset_id, state.explore_time_step)
+        )
+
+    async def _globals_report_task(dataset_id: str, title: str) -> None:
+        """Write the skrub report in a worker thread and publish its link."""
+        nonlocal report_path
+        from plaid.viewer.global_plots import globals_dataframe  # noqa: PLC0415
+
+        prepared = prepared_globals
+        if prepared is None:  # pragma: no cover - guarded by the button
+            return
+        generation = report_generation["value"]
+        columns = _report_columns(
+            list(state.explore_selected_globals or []), prepared.text_names
+        )
+        path = report_dir / f"{secrets.token_urlsafe(24)}.html"
+
+        def _work() -> None:
+            _write_globals_report(
+                globals_dataframe(prepared, columns=columns), path, title
             )
 
-            data = dataset_service.extract_globals(state.dataset_id)
-            extracted_globals.clear()
-            extracted_globals.update(data)
-            names = global_names(data)
-            state.explore_names = names
-            state.explore_parallel_fields = list(names)
-            _refresh_explore_global_filter()
-            state.explore_label_names = ["sample_id", *label_names(data)]
-            state.explore_splits = list(data)
-            state.explore_x = names[0] if names else None
-            state.explore_y = names[1] if len(names) > 1 else None
-            state.explore_z = names[2] if len(names) > 2 else None
-            state.explore_status = (
-                f"Extracted {sum(map(len, data.values()))} samples from "
-                f"{len(data)} splits. {len(names)} numeric scalar Globals. "
-                "Missing or non-scalar values leave gaps in parallel plots."
-            )
-            _render_explore_plot()
+        try:
+            await asyncio.to_thread(_work)
         except Exception as exc:  # noqa: BLE001
-            state.explore_status = f"Failed to extract Globals: {exc}"
+            path.unlink(missing_ok=True)
+            logger.warning("Failed to generate skrub report: %s", exc)
+            with state:
+                state.explore_report_running = False
+                state.explore_report_error = f"Skrub report unavailable: {exc}"
+            return
+        with state:
+            state.explore_report_running = False
+            if (
+                report_generation["value"] != generation
+                or prepared_globals is not prepared
+                or state.dataset_id != dataset_id
+            ):
+                # Superseded by a new extraction or Global selection.
+                path.unlink(missing_ok=True)
+                return
+            report_path = path
+            state.explore_report_url = f"{report_route.lstrip('/')}/{path.name}"
+
+    @ctrl.set("generate_globals_report")
+    def _generate_globals_report() -> None:
+        """Build the skrub report of the selected Globals on request."""
+        if (
+            prepared_globals is None
+            or state.explore_report_running
+            or not state.explore_selected_globals
+            or state.explore_report_blocker
+        ):
+            return
+        _clear_globals_report()
+        state.explore_report_running = True
+        asynchronous.create_task(
+            _globals_report_task(
+                state.dataset_id,
+                f"{state.dataset_id} — {state.explore_time_step} Globals",
+            )
+        )
+
+    def _refresh_selected_csv() -> None:
+        """Publish selected scatter points or brushed parcoords rows as CSV."""
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
+        state.explore_selected_rows = []
+        if prepared_globals is None:
+            return
+        if state.explore_plot in ("1D", "2D"):
+            selected = explore_selected_points
+        elif (
+            state.explore_plot == "parallel"
+            and state.explore_parallel_mode == "parcoords"
+            and explore_constraints
+        ):
+            selected = _parcoords_selected_rows(
+                explore_plot_figure, explore_constraints
+            )
+        else:
+            return
+        if selected:
+            state.explore_selected_rows = _selected_row_entries(
+                prepared_globals, selected
+            )
+            state.explore_selected_csv_url = _publish_csv("samples", selected)
+            state.explore_has_selection = True
+
+    @ctrl.set("scatter_selected")
+    def _scatter_selected(points: object) -> None:
+        """Save the samples selected with a 1D/2D Plotly box or lasso."""
+        if state.explore_plot not in ("1D", "2D"):
+            return
+        explore_selected_points.clear()
+        explore_selected_points.update(
+            _scatter_selected_rows(explore_plot_figure, points)
+        )
+        _refresh_selected_csv()
+
+    @ctrl.set("scatter_click")
+    def _scatter_click(points: object) -> None:
+        """Toggle a clicked 1D/2D point in the CSV selection."""
+        if state.explore_plot not in ("1D", "2D"):
+            return
+        for row in _scatter_selected_rows(explore_plot_figure, points):
+            if row in explore_selected_points:
+                explore_selected_points.remove(row)
+            else:
+                explore_selected_points.add(row)
+        _refresh_selected_csv()
+
+    @ctrl.set("scatter_deselect")
+    def _scatter_deselect() -> None:
+        """Clear the CSV selection when Plotly deselects scatter points."""
+        if state.explore_plot in ("1D", "2D"):
+            explore_selected_points.clear()
+            _refresh_selected_csv()
+
+    @ctrl.set("parcoords_restyle")
+    def _parcoords_restyle(event: object) -> None:
+        """Track Plotly axis brushes without treating unbrushed lines as selected."""
+        if (
+            state.explore_plot != "parallel"
+            or state.explore_parallel_mode != "parcoords"
+        ):
+            return
+        if not isinstance(event, (list, tuple)) or not event:
+            return
+        changes = event[0]
+        if not isinstance(changes, dict):
+            return
+        for key, value in changes.items():
+            if not isinstance(key, str):
+                continue
+            match = re.fullmatch(r"dimensions\[(\d+)\]\.constraintrange", key)
+            if match:
+                axis = int(match.group(1))
+                if value is None or value == []:
+                    explore_constraints.pop(axis, None)
+                else:
+                    explore_constraints[axis] = value
+        _refresh_selected_csv()
 
     def _refresh_explore_global_filter() -> None:
         """Update the visible checklist from the current regex and names."""
@@ -1579,6 +2173,17 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         )
         state.explore_filtered_names = matches
         state.explore_global_filter_error = error
+
+    @state.change("explore_selected_globals")
+    def _on_selected_globals(**_: object) -> None:
+        """Update axes, CSV columns and the report when Globals are checked."""
+        state.explore_filtered_label_names = _label_options(
+            list(state.explore_label_names or []),
+            list(state.explore_names or []),
+            list(state.explore_selected_globals or []),
+        )
+        if prepared_globals is not None:
+            _refresh_selected_globals()
 
     @state.change("explore_global_filter")
     def _on_explore_global_filter(**_: object) -> None:
@@ -1589,9 +2194,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     def _check_filtered_globals() -> None:
         """Check only Globals currently visible in the filtered checklist."""
         _refresh_explore_global_filter()
-        state.explore_parallel_fields = _select_filtered_globals(
+        state.explore_selected_globals = _select_filtered_globals(
             list(state.explore_names or []),
-            list(state.explore_parallel_fields or []),
+            list(state.explore_selected_globals or []),
             list(state.explore_filtered_names or []),
             True,
         )
@@ -1600,42 +2205,66 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     def _uncheck_filtered_globals() -> None:
         """Uncheck only Globals currently visible in the filtered checklist."""
         _refresh_explore_global_filter()
-        state.explore_parallel_fields = _select_filtered_globals(
+        state.explore_selected_globals = _select_filtered_globals(
             list(state.explore_names or []),
-            list(state.explore_parallel_fields or []),
+            list(state.explore_selected_globals or []),
             list(state.explore_filtered_names or []),
             False,
         )
 
     def _render_explore_plot() -> None:
         """Update the plot from the selected splits and Global axes."""
-        if not extracted_globals:
+        nonlocal explore_plot_figure
+        explore_constraints.clear()
+        explore_selected_points.clear()
+        explore_plot_figure = None
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
+        state.explore_selected_rows = []
+        state.explore_plot_message = ""
+        if prepared_globals is None:
             state.explore_has_plot = False
             return
         from plaid.viewer.global_plots import build_globals_figure  # noqa: PLC0415
 
+        splits = list(state.explore_splits or [])
+        blocker = _plot_blocker(
+            state.explore_plot,
+            state.explore_parallel_mode,
+            list(state.explore_selected_globals or []),
+            sum(len(prepared_globals.sample_ids(split)) for split in splits),
+        )
+        if blocker:
+            state.explore_has_plot = False
+            state.explore_plot_message = blocker
+            return
         axes = [state.explore_x, state.explore_y, state.explore_z]
         try:
             figure = build_globals_figure(
-                extracted_globals,
-                list(state.explore_splits or []),
+                prepared_globals,
+                splits,
                 state.explore_plot,
                 axes,
                 state.explore_label if state.explore_labels else None,
-                parallel_fields=list(state.explore_parallel_fields or []),
+                parallel_fields=list(state.explore_selected_globals or []),
                 parallel_mode=state.explore_parallel_mode,
             )
             state.explore_has_plot = False
             if figure is not None:
+                explore_plot_figure = figure
                 explore_figure.update(figure)
                 state.explore_has_plot = True
+            else:
+                state.explore_plot_message = (
+                    "Nothing to plot: check the splits and axes."
+                )
         except Exception as exc:  # noqa: BLE001
             state.explore_has_plot = False
             state.explore_status = f"Failed to draw Globals: {exc}"
 
     @state.change(
         "explore_splits",
-        "explore_parallel_fields",
+        "explore_selected_globals",
         "explore_parallel_mode",
         "explore_plot",
         "explore_x",
@@ -1645,8 +2274,29 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         "explore_label",
     )
     def _on_explore_selection(**_: object) -> None:
-        """Rebuild the plot when the exploration controls change."""
+        """Clear a drawn plot when the configuration changes.
+
+        Redrawing on every change would render intermediate (possibly very
+        heavy) configurations; the user redraws with "Draw plot" instead.
+        """
+        nonlocal explore_plot_figure
+        if not state.explore_plot_requested:
+            return
+        state.explore_plot_requested = False
+        explore_plot_figure = None
+        explore_constraints.clear()
+        explore_selected_points.clear()
+        state.explore_has_plot = False
+        state.explore_plot_message = ""
+        state.explore_selected_csv_url = ""
+        state.explore_has_selection = False
+        state.explore_selected_rows = []
+
+    @ctrl.set("draw_globals_plot")
+    def _draw_globals_plot() -> None:
+        """Draw the plot for the current configuration."""
         _render_explore_plot()
+        state.explore_plot_requested = bool(state.explore_has_plot)
 
     @state.change("viewer_tab")
     def _on_viewer_tab(**_: object) -> None:
@@ -2276,320 +2926,301 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 # root (``init_from_disk``) and Hugging Face Hub streaming
                 # (``init_streaming_from_hub``). The tabs only drive which
                 # form is rendered; registered datasets from either
-                # source always land in ``dataset_ids`` together. Hidden
-                # when ``--disable-root-change`` was passed on the CLI so
-                # a public deployment can pin the root for good.
-                with html.Div(v_if=("allow_root_change",), classes="mb-2"):
-                    html.Div(
-                        "1) Select Datasets root",
-                        classes="text-subtitle-2 mb-1",
-                    )
-                    with v3.VTabs(
-                        v_model=("source_tab",),
+                # source always land in ``dataset_ids`` together. The root
+                # controls can be hidden independently of dataset selection.
+
+                with html.Div(
+                    classes="rounded-lg border pa-2 mb-3",
+                    v_if=("allow_root_change || allow_dataset_change",),
+                ):
+                    with html.Div(
+                        classes="d-flex justify-center",
+                        style=(
+                            "margin: -8px -8px 8px; "
+                            "border-radius: 8px 8px 0 0; "
+                            "background: rgba(var(--v-theme-on-surface), 0.12);"
+                        ),
+                    ):
+                        html.Div(
+                            "Select Datasets root and Dataset to load",
+                            classes="text-subtitle-2 mb-1",
+                        )
+                    with html.Div(v_if=("allow_root_change",), classes="mb-2"):
+                        with v3.VTabs(
+                            v_model=("source_tab",),
+                            density="compact",
+                            grow=True,
+                            classes="mb-2",
+                        ):
+                            v3.VTab("Local", value="local")
+                            v3.VTab("Hub", value="hub")
+                        # Local datasets root form.
+                        with html.Div(v_if=("source_tab === 'local'",)):
+                            with html.Div(classes="d-flex align-center"):
+                                v3.VTextField(
+                                    label="Datasets root",
+                                    v_model=("datasets_root_text",),
+                                    density="compact",
+                                    hide_details=True,
+                                    placeholder="/absolute/path/to/datasets",
+                                    classes="mr-2",
+                                    clearable=True,
+                                    __events=[("keyup_enter", "keyup.enter")],
+                                    keyup_enter=ctrl.apply_datasets_root,
+                                )
+                                v3.VBtn(
+                                    icon="mdi-folder-open",
+                                    click=ctrl.open_browse_dialog,
+                                    density="compact",
+                                    variant="tonal",
+                                    classes="mr-1",
+                                )
+                                v3.VBtn(
+                                    icon="mdi-check",
+                                    click=ctrl.apply_datasets_root,
+                                    density="compact",
+                                    variant="tonal",
+                                    color="primary",
+                                )
+                        # Hugging Face Hub streaming form.
+                        with html.Div(v_if=("source_tab === 'hub'",)):
+                            with html.Div(classes="d-flex align-center"):
+                                v3.VTextField(
+                                    label="Hugging Face Hub dataset",
+                                    v_model=("hub_repo_input",),
+                                    density="compact",
+                                    hide_details=True,
+                                    placeholder="namespace/name",
+                                    prepend_inner_icon="mdi-cloud-download",
+                                    classes="mr-2",
+                                    clearable=True,
+                                    __events=[("keyup_enter", "keyup.enter")],
+                                    keyup_enter=ctrl.add_hub_repo,
+                                )
+                                v3.VBtn(
+                                    icon="mdi-plus",
+                                    click=ctrl.add_hub_repo,
+                                    density="compact",
+                                    variant="tonal",
+                                    color="primary",
+                                )
+                            # Chip list of registered repos with a remove button.
+                            with html.Div(
+                                v_if=("(hub_repos || []).length > 0",),
+                                classes="mt-1 d-flex flex-wrap",
+                            ):
+                                v3.VChip(
+                                    "{{ repo }}",
+                                    v_for="repo in hub_repos",
+                                    key="repo",
+                                    closable=True,
+                                    size="small",
+                                    classes="mr-1 mb-1",
+                                    click_close=(ctrl.remove_hub_repo, "[repo]"),
+                                )
+                    with html.Div(v_if=("allow_dataset_change",)):
+                        v3.VSelect(
+                            label="Dataset",
+                            v_model=("dataset_id",),
+                            items=(
+                                "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
+                            ),
+                            density="compact",
+                            hide_details=True,
+                        )
+
+                with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                    with html.Div(
+                        classes="d-flex justify-center",
+                        style=(
+                            "margin: -8px -8px 8px; "
+                            "border-radius: 8px 8px 0 0; "
+                            "background: rgba(var(--v-theme-on-surface), 0.12);"
+                        ),
+                    ):
+                        html.Div(
+                            "Sample to load: Split, globals, base and fields",
+                            classes="text-subtitle-2 mb-1",
+                        )
+
+                    v3.VSelect(
+                        label="Split",
+                        v_model=("split",),
+                        items=("splits",),
                         density="compact",
-                        grow=True,
+                        hide_details=True,
+                    )
+                    v3.VSwitch(
+                        label="Sample Globals",
+                        v_model=("show_globals",),
+                        density="compact",
+                        hide_details=True,
+                        color="primary",
+                        classes="text-subtitle-1 font-weight-medium py-1",
+                        style="flex: 0 0 auto;",
+                    )
+                    html.Div(
+                        "Available Bases",
+                        classes="text-subtitle-2 mb-1 mt-2",
+                    )
+                    # ``mandatory`` is intentionally left off so the user
+                    # can deselect every base (clicking the active one a
+                    # second time clears the toggle). An empty selection
+                    # combined with ``show_globals=False`` makes
+                    # ``_apply_user_filter`` push an empty feature filter,
+                    # which clears the scene and shows the
+                    # "Pick a Base or enable Globals to load the sample"
+                    # placeholder.
+                    # ``selected-class="bg-primary text-white"`` makes the
+                    # active base visually obvious: Vuetify applies it to
+                    # the toggled button, which would otherwise only differ
+                    # from the inactive ones by a subtle grey background.
+                    # ``color="primary"`` covers the case where the global
+                    # theme overrides the default ``bg-primary`` token.
+                    with v3.VBtnToggle(
+                        v_model=("active_base",),
+                        density="compact",
+                        divided=True,
+                        color="primary",
+                        selected_class="bg-primary text-white",
+                        classes="flex-wrap mb-2",
+                    ):
+                        v3.VBtn(
+                            "{{ base }}",
+                            v_for="base in base_options",
+                            key="base",
+                            value=("base",),
+                            size="small",
+                            variant=("active_base === base ? 'flat' : 'outlined'",),
+                        )
+
+                    # Feature filter panel sits between the Base toggle
+                    # and sample navigation / rendering controls.
+                    # Streaming datasets need this panel too: selecting a Base
+                    # loads only geometry, so without it there is no way to
+                    # request arrays for the field-to-plot dropdown. Applying
+                    # a new selection restarts the stream at its first record.
+                    with html.Div(
+                        v_if=("has_features",),
                         classes="mb-2",
                     ):
-                        v3.VTab("Local", value="local")
-                        v3.VTab("Hub", value="hub")
-                    # Local datasets root form.
-                    with html.Div(v_if=("source_tab === 'local'",)):
-                        html.Div("Datasets root", classes="text-caption")
-                        with html.Div(classes="d-flex align-center"):
-                            v3.VTextField(
-                                v_model=("datasets_root_text",),
-                                density="compact",
-                                hide_details=True,
-                                placeholder="/absolute/path/to/datasets",
-                                classes="mr-2",
-                                clearable=True,
-                                __events=[("keyup_enter", "keyup.enter")],
-                                keyup_enter=ctrl.apply_datasets_root,
+                        with html.Div(classes="d-flex align-center mb-1"):
+                            html.Div(
+                                "Pre-select browsable field features",
+                                classes="text-subtitle-2 flex-grow-1",
                             )
                             v3.VBtn(
-                                icon="mdi-folder-open",
-                                click=ctrl.open_browse_dialog,
-                                density="compact",
-                                variant="tonal",
-                                classes="mr-1",
-                            )
-                            v3.VBtn(
-                                icon="mdi-check",
-                                click=ctrl.apply_datasets_root,
-                                density="compact",
-                                variant="tonal",
+                                "Load all",
+                                click=ctrl.select_all_features,
+                                size="x-small",
                                 color="primary",
-                            )
-                    # Hugging Face Hub streaming form.
-                    with html.Div(v_if=("source_tab === 'hub'",)):
-                        html.Div(
-                            "Hugging Face Hub dataset",
-                            classes="text-caption",
-                        )
-                        with html.Div(classes="d-flex align-center"):
-                            v3.VTextField(
-                                v_model=("hub_repo_input",),
-                                density="compact",
-                                hide_details=True,
-                                placeholder="namespace/name",
-                                prepend_inner_icon="mdi-cloud-download",
-                                classes="mr-2",
-                                clearable=True,
-                                __events=[("keyup_enter", "keyup.enter")],
-                                keyup_enter=ctrl.add_hub_repo,
-                            )
-                            v3.VBtn(
-                                icon="mdi-plus",
-                                click=ctrl.add_hub_repo,
-                                density="compact",
                                 variant="tonal",
-                                color="primary",
                             )
-                        # Chip list of registered repos with a remove button.
-                        with html.Div(
-                            v_if=("(hub_repos || []).length > 0",),
-                            classes="mt-1 d-flex flex-wrap",
-                        ):
-                            v3.VChip(
-                                "{{ repo }}",
-                                v_for="repo in hub_repos",
-                                key="repo",
-                                closable=True,
-                                size="small",
-                                classes="mr-1 mb-1",
-                                click_close=(ctrl.remove_hub_repo, "[repo]"),
-                            )
-                    v3.VDivider(classes="my-2")
-
-                # The dropdown ``items`` are filtered by ``source_tab``:
-                # Local tab -> ``local_dataset_ids`` (``init_from_disk``
-                # datasets), Hub tab -> ``hub_dataset_ids``
-                # (``init_streaming_from_hub`` datasets). The user never
-                # sees ids from the inactive source in the same menu.
-                with html.Div(v_if=("allow_dataset_change",)):
-                    html.Div(
-                        "2) Select Dataset",
-                        classes="text-subtitle-2 mb-1",
-                    )
-                    v3.VSelect(
-                        label="Dataset",
-                        v_model=("dataset_id",),
-                        items=(
-                            "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
-                        ),
-                        density="compact",
-                    )
-
-                html.Div(
-                    "3) Select Split",
-                    classes="text-subtitle-2 mb-1 mt-2",
-                )
-                v3.VSelect(
-                    label="Split",
-                    v_model=("split",),
-                    items=("splits",),
-                    density="compact",
-                )
-                v3.VDivider(classes="my-2")
-                html.Div(
-                    "4) Select Base (and/or enable Globals)",
-                    classes="text-subtitle-2 mb-1",
-                )
-                # "Globals" toggle. Off by default; flipping it on adds
-                # every ``Globals/...`` PLAID feature path to the active
-                # filter so the side-panel "Globals" descriptor list is
-                # populated. The switch is only shown once the
-                # currently-selected dataset declares any global at all.
-                v3.VSwitch(
-                    label="Globals",
-                    v_model=("show_globals",),
-                    density="compact",
-                    hide_details=True,
-                    color="primary",
-                    classes="mb-1",
-                )
-                html.Div("Base", classes="text-caption")
-
-                # ``mandatory`` is intentionally left off so the user
-                # can deselect every base (clicking the active one a
-                # second time clears the toggle). An empty selection
-                # combined with ``show_globals=False`` makes
-                # ``_apply_user_filter`` push an empty feature filter,
-                # which clears the scene and shows the
-                # "Pick a Base or enable Globals to load the sample"
-                # placeholder.
-                # ``selected-class="bg-primary text-white"`` makes the
-                # active base visually obvious: Vuetify applies it to
-                # the toggled button, which would otherwise only differ
-                # from the inactive ones by a subtle grey background.
-                # ``color="primary"`` covers the case where the global
-                # theme overrides the default ``bg-primary`` token.
-                with v3.VBtnToggle(
-                    v_model=("active_base",),
-                    density="compact",
-                    divided=True,
-                    color="primary",
-                    selected_class="bg-primary text-white",
-                    classes="flex-wrap mb-2",
-                ):
-                    v3.VBtn(
-                        "{{ base }}",
-                        v_for="base in base_options",
-                        key="base",
-                        value=("base",),
-                        size="small",
-                        variant=("active_base === base ? 'flat' : 'outlined'",),
-                    )
-
-                # Feature filter panel. Moved between the Base toggle
-                # and the Field dropdown to match the numbered workflow
-                # exposed in the drawer (1) Dataset, 2) Split, 3) Base,
-                # 4) Pre-select fields, 5) Field/Colormap/Edges).
-                # Hidden for streaming (Hugging Face Hub) datasets:
-                # feature filtering goes through ``init_streaming_from_hub``
-                # which rebuilds the iterator from the dataset-wide
-                # metadata union, a workflow that does not fit the
-                # per-split viewer model and led to confusing "Missing
-                # features" errors.
-                with html.Div(
-                    v_if=("!is_streaming && has_features",),
-                    classes="mb-2",
-                ):
-                    with html.Div(classes="d-flex align-center mb-1"):
-                        html.Div(
-                            "5) Pre-select browsable field features",
-                            classes="text-subtitle-2 flex-grow-1",
-                        )
-                        v3.VBtn(
-                            "Load all",
-                            click=ctrl.select_all_features,
-                            size="x-small",
-                            color="primary",
-                            variant="tonal",
-                        )
-                    with v3.VExpansionPanels(variant="accordion", multiple=True):
-                        with v3.VExpansionPanel():
-                            v3.VExpansionPanelTitle(
-                                "Select features ({{ (selected_features"
-                                " || []).length }} / {{ (available_features"
-                                " || []).length }})"
-                            )
-                            with v3.VExpansionPanelText():
-                                html.Div(
-                                    "Empty selection loads every feature.",
-                                    classes="text-caption text-medium-emphasis mb-1",
+                        with v3.VExpansionPanels(variant="accordion", multiple=True):
+                            with v3.VExpansionPanel():
+                                v3.VExpansionPanelTitle(
+                                    "Select features ({{ (selected_features"
+                                    " || []).length }} / {{ (available_features"
+                                    " || []).length }})"
                                 )
-                                with html.Div(classes="d-flex mb-1"):
-                                    v3.VBtn(
-                                        "Clear",
-                                        click="selected_features = []",
-                                        size="x-small",
-                                        variant="text",
-                                        classes="mr-1",
+                                with v3.VExpansionPanelText():
+                                    html.Div(
+                                        "Empty selection loads no fields.",
+                                        classes="text-caption text-medium-emphasis mb-1",
                                     )
-                                    v3.VBtn(
-                                        "Apply",
-                                        click=ctrl.apply_features,
-                                        size="x-small",
-                                        color="primary",
-                                        variant="tonal",
-                                    )
-                                with html.Div(
-                                    style="max-height: 240px; overflow: auto;",
-                                    classes="pa-1",
-                                ):
-                                    v3.VCheckbox(
-                                        v_for="feat in available_features",
-                                        key="feat",
-                                        v_model=("selected_features",),
-                                        value=("feat",),
-                                        label=("feat",),
-                                        density="compact",
-                                        hide_details=True,
-                                        multiple=True,
-                                    )
-
-                html.Div(
-                    "6) Select field to plot",
-                    classes="text-subtitle-2 mb-1 mt-2",
-                )
-                v3.VSelect(
-                    label="Field",
-                    v_model=("field",),
-                    items=("field_options",),
-                    density="compact",
-                )
-
-                # Sample picker. Two mutually-exclusive widgets:
-                # - Local datasets expose a random-access slider over
-                #   the integer sample indices.
-                # - Hub streaming datasets have no ``__len__`` and can
-                #   only be consumed forward, so we expose a "Next"
-                #   button that advances the ``_StreamCursor`` by one
-                #   step via ``ctrl.stream_next``.
-                # Placed at step 5 (between the field selection and the
-                # downstream rendering options) so the user picks
-                # *what* to look at (Dataset / Split / Base / Field)
-                # before navigating *which sample* to display.
-                html.Div(
-                    "7) Select Sample",
-                    classes="text-subtitle-2 mb-1 mt-2",
-                )
-                v3.VSlider(
-                    v_if=("!is_streaming",),
-                    v_model_number=("sample_index",),
-                    min=0,
-                    max=("sample_count > 0 ? sample_count - 1 : 0",),
-                    step=1,
-                    thumb_label=True,
-                    hide_details=True,
-                    disabled=("sample_count === 0",),
-                )
-                with html.Div(
-                    v_if=("is_streaming",),
-                    classes="d-flex align-center mb-1",
-                ):
-                    v3.VBtn(
-                        "Next",
-                        prepend_icon="mdi-arrow-right",
-                        click=ctrl.stream_next,
-                        disabled=("stream_exhausted",),
-                        color="primary",
-                        variant="tonal",
-                        density="compact",
-                        classes="mr-2",
+                                    with html.Div(classes="d-flex mb-1"):
+                                        v3.VBtn(
+                                            "Clear",
+                                            click="selected_features = []",
+                                            size="x-small",
+                                            variant="text",
+                                            classes="mr-1",
+                                        )
+                                        v3.VBtn(
+                                            "Apply",
+                                            click=ctrl.apply_features,
+                                            size="x-small",
+                                            color="primary",
+                                            variant="tonal",
+                                        )
+                                    with html.Div(
+                                        style="max-height: 240px; overflow: auto;",
+                                        classes="pa-1",
+                                    ):
+                                        v3.VCheckbox(
+                                            v_for="feat in available_features",
+                                            key="feat",
+                                            v_model=("selected_features",),
+                                            value=("feat",),
+                                            label=("feat",),
+                                            density="compact",
+                                            hide_details=True,
+                                            multiple=True,
+                                        )
+                    html.Div(
+                        "Select Sample",
+                        classes="text-subtitle-2 mb-1 mt-2",
                     )
-                # Sample counter: for local datasets the slider exposes
-                # all ids up-front; for streaming datasets we report the
-                # step number (the total is unknown until the iterator
-                # is exhausted, at which point "end of stream" appears).
-                html.Div(
-                    "{{ is_streaming"
-                    " ? ('step ' + (stream_position + 1) + (stream_exhausted"
-                    " ? ' (end of stream)' : ' (streaming)'))"
-                    " : ((sample_id ?? '-') + ' / ' + sample_count + ' samples') }}",
-                    classes="text-caption text-medium-emphasis mb-2",
-                )
 
-                # Time axis slider, only shown when the sample actually
-                # exposes a time axis (time-dependent samples).
-                with html.Div(v_if=("time_count > 1",), classes="mb-2"):
-                    html.Div("Time", classes="text-caption mt-2")
+                    # Sample picker. Two mutually-exclusive widgets:
+                    # - Local datasets expose a random-access slider over
+                    #   the integer sample indices.
+                    # - Hub streaming datasets have no ``__len__`` and can
+                    #   only be consumed forward, so we expose a "Next"
+                    #   button that advances the ``_StreamCursor`` by one
+                    #   step via ``ctrl.stream_next``.
+                    # Pick the data to load before navigating samples;
+                    # rendering controls appear in the next card.
                     v3.VSlider(
-                        v_model_number=("time_index",),
+                        v_if=("!is_streaming",),
+                        v_model_number=("sample_index",),
                         min=0,
-                        max=("time_count > 0 ? time_count - 1 : 0",),
+                        max=("sample_count > 0 ? sample_count - 1 : 0",),
                         step=1,
                         thumb_label=True,
                         hide_details=True,
+                        disabled=("sample_count === 0",),
                     )
+                    with html.Div(
+                        v_if=("is_streaming",),
+                        classes="d-flex align-center mb-1",
+                    ):
+                        v3.VBtn(
+                            "Next",
+                            prepend_icon="mdi-arrow-right",
+                            click=ctrl.stream_next,
+                            disabled=("stream_exhausted",),
+                            color="primary",
+                            variant="tonal",
+                            density="compact",
+                            classes="mr-2",
+                        )
+                        # Sample counter: for local datasets the slider exposes
+                        # all ids up-front; for streaming datasets we report the
+                        # step number (the total is unknown until the iterator
+                        # is exhausted, at which point "end of stream" appears).
+                        html.Div(
+                            "{{ is_streaming"
+                            " ? ('step ' + (stream_position + 1) + (stream_exhausted"
+                            " ? ' (end of stream)' : ' (streaming)'))"
+                            " : ((sample_id ?? '-') + ' / ' + sample_count + ' samples') }}",
+                            classes="text-caption text-medium-emphasis mb-2",
+                        )
+
                     html.Div(
-                        "t = {{ current_time }} "
-                        "<span class='text-medium-emphasis'>"
-                        "({{ time_index + 1 }} / {{ time_count }})</span>",
-                        classes="text-caption text-medium-emphasis",
+                        "{{ status }}",
+                        classes=(
+                            "status === 'Pick a Base or enable Globals to load the sample' "
+                            "? 'text-caption mt-2 text-error' : 'text-caption mt-2'",
+                        ),
                     )
-                    # Playback controls: Play/Pause + FPS slider + loop.
+                # Time axis slider, only shown when the sample actually
+                # exposes a time axis (time-dependent samples).
+                with html.Div(v_if=("time_count > 1",), classes="mb-2"):
+                    html.Div(
+                        "Time = {{ current_time }} ({{ time_index + 1 }} / {{ time_count }})",
+                        classes="text-caption mt-2",
+                    )
                     with html.Div(classes="d-flex align-center mt-2"):
                         v3.VBtn(
                             icon=("playing ? 'mdi-pause' : 'mdi-play'",),
@@ -2611,69 +3242,106 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             density="compact",
                             variant="tonal",
                         )
-                    html.Div("FPS: {{ play_fps }}", classes="text-caption mt-1")
-                    v3.VSlider(
-                        v_model_number=("play_fps",),
-                        min=1,
-                        max=30,
-                        step=1,
-                        hide_details=True,
-                        density="compact",
-                    )
+                        v3.VSlider(
+                            v_model_number=("time_index",),
+                            min=0,
+                            max=("time_count > 0 ? time_count - 1 : 0",),
+                            step=1,
+                            thumb_label=True,
+                            hide_details=True,
+                        )
 
-                # Bold visual separator between the selection-stage
-                # controls (steps 1-6 above) and the rendering / camera
-                # options (Colormap, Show edges, Reset camera) below.
-                # The default ``VDivider`` is a 1px hair-thin grey line
-                # that is barely visible inside the drawer; we
-                # emphasise this one with a thicker, primary-coloured
-                # rule and extra vertical margin so the two sections
-                # are clearly separated.
-                v3.VDivider(
-                    thickness=3,
-                    color="primary",
-                    classes="my-4",
-                )
-                html.Div(
-                    "Rendering options",
-                    classes="text-overline text-medium-emphasis mb-1",
-                )
+                    # Playback controls: Play/Pause + FPS slider + loop.
+                    with html.Div(classes="d-flex align-center mt-2"):
+                        html.Div(
+                            "Animation speed (fps):{{ String(play_fps).padStart(2, ' ') }}",
+                            classes="text-caption mt-1",
+                            style="white-space: pre; font-family: monospace;",
+                        )
+                        v3.VSlider(
+                            v_model_number=("play_fps",),
+                            min=1,
+                            max=30,
+                            step=1,
+                            hide_details=True,
+                            density="compact",
+                        )
 
-                v3.VSelect(
-                    label="Colormap",
-                    v_model=("cmap",),
-                    items=("cmaps",),
-                    density="compact",
-                )
-                v3.VSwitch(
-                    label="Show edges",
-                    v_model=("show_edges",),
-                    density="compact",
-                    hide_details=True,
-                )
-                v3.VDivider(classes="my-2")
-                v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
-
-                html.Div("{{ status }}", classes="text-caption mt-2")
-
-                # PLAID globals for the current sample (filtered out of
-                # ``IterationValues`` / ``TimeValues`` bookkeeping arrays).
                 with html.Div(
-                    v_if=("(sample_globals || []).length > 0",),
-                    classes="mt-3",
+                    classes="rounded-lg border pa-2 mb-3",
+                    v_if=("active_base",),
                 ):
-                    html.Div("Globals", classes="text-subtitle-2 mb-1")
-                    with v3.VList(density="compact"):
-                        with v3.VListItem(v_for="g in sample_globals", key="g.name"):
-                            v3.VListItemTitle(
-                                "{{ g.name }} "
-                                "<span class='text-caption text-medium-emphasis'>"
-                                "({{ g.dtype }}, shape={{ g.shape }})"
-                                "</span>"
-                            )
-                            v3.VListItemSubtitle(
-                                "{{ g.preview }}", classes="text-caption"
-                            )
+                    with html.Div(
+                        classes="d-flex justify-center",
+                        style=(
+                            "margin: -8px -8px 8px; "
+                            "border-radius: 8px 8px 0 0; "
+                            "background: rgba(var(--v-theme-on-surface), 0.12);"
+                        ),
+                    ):
+                        html.Div(
+                            "3D Rendering options",
+                            classes="text-subtitle-2 mb-1",
+                        )
+                    v3.VSelect(
+                        label="Field to plot",
+                        v_model=("field",),
+                        items=("field_options",),
+                        density="compact",
+                        hide_details=True,
+                    )
+                    v3.VSelect(
+                        label="Colormap",
+                        v_model=("cmap",),
+                        items=("cmaps",),
+                        density="compact",
+                        hide_details=True,
+                    )
+                    v3.VSwitch(
+                        label="Show edges",
+                        v_model=("show_edges",),
+                        density="compact",
+                        hide_details=True,
+                    )
+                    v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
+
+                with html.Div(
+                    classes="rounded-lg border pa-2 mb-3",
+                    v_if=("(sample_globals || []).length > 0",),
+                ):
+                    # Show globals loaded for the current sample.
+                    with html.Div(
+                        classes="d-flex justify-center",
+                        style=(
+                            "margin: -8px -8px 8px; "
+                            "border-radius: 8px 8px 0 0; "
+                            "background: rgba(var(--v-theme-on-surface), 0.12);"
+                        ),
+                    ):
+                        html.Div(
+                            "Sample Globals Output",
+                            classes="text-subtitle-2 mb-1",
+                        )
+
+                    # PLAID globals for the current sample (filtered out of
+                    # ``IterationValues`` / ``TimeValues`` bookkeeping arrays).
+                    with html.Div(
+                        v_if=("(sample_globals || []).length > 0",),
+                        classes="mt-3",
+                    ):
+                        with v3.VList(density="compact"):
+                            with v3.VListItem(
+                                v_for="g in sample_globals", key="g.name"
+                            ):
+                                v3.VListItemTitle(
+                                    "{{ g.name }} "
+                                    "<span class='text-caption text-medium-emphasis'>"
+                                    "({{ g.dtype }}, shape={{ g.shape }})"
+                                    "</span>"
+                                )
+                                v3.VListItemSubtitle(
+                                    "{{ g.preview }}", classes="text-caption"
+                                )
 
         # File-system browser dialog for the datasets root. Scoped to the
         # server's ``browse_roots`` sandbox so the user can only reach
@@ -2757,8 +3425,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     color="primary",
                     style="flex: 0 0 auto; width: 100%;",
                 ):
-                    v3.VTab("Sample (VTK)", value="sample")
-                    v3.VTab("Globals", value="globals")
+                    v3.VTab("Sample 3D View", value="sample")
+                    v3.VTab("Dataset Globals", value="globals")
                 with html.Div(
                     v_show="viewer_tab === 'sample'",
                     style="flex: 1 1 auto; min-height: 0; width: 100%;",
@@ -2781,57 +3449,83 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     # the actual panel width instead of using md/lg columns.
                     with html.Div(
                         style=(
-                            "display: flex; flex-wrap: nowrap; gap: 16px; padding: 16px; "
+                            "display: flex; flex-wrap: nowrap; gap: 12px; padding: 12px; "
                             "height: 100%; min-height: 0; box-sizing: border-box;"
                         ),
                     ):
                         with html.Div(
-                            style="flex: 1 1 225px; max-width: 300px; min-width: 0;",
+                            style=(
+                                "flex: 1 1 400px; max-width: 420px; min-width: 0; "
+                                "height: 100%; overflow-y: auto;"
+                            ),
                         ):
-                            v3.VBtn(
-                                "Extract Globals",
-                                click=ctrl.extract_globals,
-                                color="primary",
-                                block=True,
-                                disabled=("is_streaming || !dataset_id",),
-                            )
-                            html.Div(
-                                "Globals exploration is unavailable for streaming datasets.",
-                                v_if=("is_streaming",),
-                                classes="text-caption mt-2",
-                            )
-                            html.Div(
-                                "{{ explore_status }}",
-                                classes="text-caption my-2",
-                            )
-                            html.Div("Splits", classes="text-subtitle-2")
-                            with html.Div(v_for="name in splits", key="name"):
-                                v3.VCheckbox(
-                                    label=("name",),
-                                    value=("name",),
-                                    v_model=("explore_splits",),
+                            with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                                html.Div(
+                                    "Data Extraction",
+                                    classes="text-subtitle-1 text-center font-weight-medium py-1",
+                                    style=(
+                                        "margin: -8px -8px 8px; "
+                                        "border-radius: 8px 8px 0 0; "
+                                        "background: rgba(var(--v-theme-on-surface), 0.12);"
+                                    ),
+                                )
+                                v3.VSelect(
+                                    label="Time step Globals",
+                                    v_model=("explore_time_step",),
+                                    items=(
+                                        "[{ title: 'First Time Step Globals', value: 'first' }, "
+                                        "{ title: 'Last Time Step Globals', value: 'last' }]",
+                                    ),
                                     density="compact",
                                     hide_details=True,
-                                    disabled=("is_streaming || !explore_names.length",),
+                                    disabled=("is_streaming || !dataset_id",),
                                 )
-                            v3.VSelect(
-                                label="Plot type",
-                                v_model=("explore_plot",),
-                                items=("['1D', '2D', '3D', 'parallel']",),
-                                density="compact",
-                                classes="mt-3",
-                            )
-                            with html.Div(v_if=("explore_plot === 'parallel'",)):
-                                v3.VSelect(
-                                    label="Parallel renderer",
-                                    v_model=("explore_parallel_mode",),
-                                    items=("['lines', 'parcoords']",),
-                                    density="compact",
+                                v3.VBtn(
+                                    "Extract Globals",
+                                    click=ctrl.extract_globals,
+                                    color="primary",
+                                    block=True,
+                                    loading=("explore_extracting",),
+                                    disabled=(
+                                        "is_streaming || !dataset_id || explore_extracting",
+                                    ),
                                 )
                                 html.Div(
-                                    "Globals to plot",
-                                    classes="text-subtitle-2 mb-1",
+                                    "{{ explore_status }}",
+                                    classes="text-caption my-2",
                                 )
+                                with html.A(
+                                    href=("explore_csv_url",),
+                                    download="plaid_globals.csv",
+                                    style="display: block;",
+                                ):
+                                    v3.VBtn(
+                                        "Download all Globals (CSV)",
+                                        block=True,
+                                        color="primary",
+                                        classes="mt-2",
+                                        disabled=("!explore_csv_url",),
+                                    )
+                                # Shared selection: parallel axes, X/Y/Z choices,
+                                # the skrub report and the selected-columns CSV.
+                                with html.Div(
+                                    "Selected Globals ({{ explore_selected_globals.length }}"
+                                    " / {{ explore_names.length }})",
+                                    classes="text-subtitle-2 mt-3 mb-1",
+                                ):
+                                    v3.VTooltip(
+                                        text=(
+                                            "No Global selected: filter, then click Check "
+                                            "(an empty filter checks them all). The "
+                                            "selection drives parallel axes, X/Y/Z "
+                                            "choices, the selected-Globals CSV and skrub."
+                                        ),
+                                        activator="parent",
+                                        disabled=(
+                                            "!explore_names.length || "
+                                            "explore_selected_globals.length",
+                                        ),
+                                    )
                                 v3.VTextField(
                                     label="Filter Globals (regular expression)",
                                     v_model=("explore_global_filter",),
@@ -2841,67 +3535,282 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                     clearable=True,
                                 )
                                 with html.Div(classes="d-flex mb-2"):
-                                    v3.VBtn(
-                                        "Check",
-                                        click=ctrl.check_filtered_globals,
-                                        density="compact",
-                                        variant="tonal",
-                                        classes="mr-2",
-                                        disabled=("!explore_filtered_names.length",),
-                                    )
-                                    v3.VBtn(
-                                        "Uncheck",
-                                        click=ctrl.uncheck_filtered_globals,
-                                        density="compact",
-                                        variant="tonal",
-                                        disabled=("!explore_filtered_names.length",),
-                                    )
-                                with html.Div(
-                                    v_for="name in explore_filtered_names", key="name"
+                                    with html.Div(
+                                        style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                    ):
+                                        v3.VBtn(
+                                            "Check",
+                                            click=ctrl.check_filtered_globals,
+                                            color="primary",
+                                            block=True,
+                                            disabled=(
+                                                "!explore_filtered_names.length",
+                                            ),
+                                        )
+                                    with html.Div(
+                                        style="width: 50%; padding: 0 4px; box-sizing: border-box;",
+                                    ):
+                                        v3.VBtn(
+                                            "Uncheck",
+                                            click=ctrl.uncheck_filtered_globals,
+                                            color="primary",
+                                            block=True,
+                                            disabled=(
+                                                "!explore_filtered_names.length",
+                                            ),
+                                        )
+                                # Vector Globals expand to thousands of
+                                # components: only render the visible rows.
+                                with v3.VVirtualScroll(
+                                    items=("explore_filtered_names",),
+                                    max_height=240,
+                                    item_height=32,
                                 ):
-                                    v3.VCheckbox(
+                                    with html.Template(
+                                        raw_attrs=['#default="{ item }"']
+                                    ):
+                                        v3.VCheckboxBtn(
+                                            label=("item",),
+                                            value=("item",),
+                                            v_model=("explore_selected_globals",),
+                                            multiple=True,
+                                            density="compact",
+                                        )
+                            with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                                html.Div(
+                                    "Export & Report",
+                                    classes="text-subtitle-1 text-center font-weight-medium py-1",
+                                    style=(
+                                        "margin: -8px -8px 8px; "
+                                        "border-radius: 8px 8px 0 0; "
+                                        "background: rgba(var(--v-theme-on-surface), 0.12);"
+                                    ),
+                                )
+                                with html.A(
+                                    href=("explore_columns_csv_url",),
+                                    download="plaid_globals_columns.csv",
+                                    style="display: block;",
+                                ):
+                                    v3.VBtn(
+                                        "Download selected Globals (CSV)",
+                                        block=True,
+                                        color="primary",
+                                        classes="mt-2",
+                                        disabled=("!explore_columns_csv_url",),
+                                    )
+                                # skrub analyses every column: generate the report
+                                # of the selected Globals only on request.
+                                v3.VBtn(
+                                    "Generate skrub report",
+                                    v_if=("!explore_report_url",),
+                                    click=ctrl.generate_globals_report,
+                                    block=True,
+                                    color="primary",
+                                    classes="mt-2",
+                                    loading=("explore_report_running",),
+                                    disabled=(
+                                        "!explore_csv_url || explore_report_running "
+                                        "|| !explore_selected_globals.length "
+                                        "|| !!explore_report_blocker",
+                                    ),
+                                )
+                                html.Div(
+                                    "{{ explore_report_blocker }}",
+                                    v_if=(
+                                        "explore_report_blocker && !explore_report_url",
+                                    ),
+                                    classes="text-caption text-warning mt-1",
+                                )
+
+                                with html.A(
+                                    v_if=("explore_report_url",),
+                                    href=("explore_report_url",),
+                                    target="_blank",
+                                    rel="noopener noreferrer",
+                                    style="display: block;",
+                                ):
+                                    v3.VBtn(
+                                        "Open skrub report",
+                                        block=True,
+                                        color="primary",
+                                        classes="mt-2",
+                                    )
+
+                                html.Div(
+                                    "{{ explore_report_error }}",
+                                    v_if=("explore_report_error",),
+                                    classes="text-caption text-error mb-2",
+                                )
+                            with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                                html.Div(
+                                    "Plot",
+                                    classes="text-subtitle-1 text-center font-weight-medium py-1",
+                                    style=(
+                                        "margin: -8px -8px 8px; "
+                                        "border-radius: 8px 8px 0 0; "
+                                        "background: rgba(var(--v-theme-on-surface), 0.12);"
+                                    ),
+                                )
+                                html.Div(
+                                    "Globals exploration is unavailable for streaming datasets.",
+                                    v_if=("is_streaming",),
+                                    classes="text-caption mt-2",
+                                )
+                                html.Div("Splits", classes="text-subtitle-2")
+                                with html.Div(v_for="name in splits", key="name"):
+                                    v3.VCheckboxBtn(
                                         label=("name",),
                                         value=("name",),
-                                        v_model=("explore_parallel_fields",),
+                                        v_model=("explore_splits",),
+                                        multiple=True,
+                                        density="compact",
+                                        disabled=(
+                                            "is_streaming || !explore_names.length",
+                                        ),
+                                    )
+                                v3.VSelect(
+                                    label="Plot type",
+                                    v_model=("explore_plot",),
+                                    items=("['1D', '2D', '3D', 'parallel']",),
+                                    density="compact",
+                                    hide_details=True,
+                                    classes="mt-3",
+                                )
+                                with html.Div(v_if=("explore_plot === 'parallel'",)):
+                                    v3.VSelect(
+                                        label="Parallel renderer",
+                                        v_model=("explore_parallel_mode",),
+                                        items=("['lines', 'parcoords']",),
                                         density="compact",
                                         hide_details=True,
                                     )
-                            with html.Div(v_if=("explore_plot !== 'parallel'",)):
-                                v3.VSelect(
-                                    label="Global / X",
-                                    v_model=("explore_x",),
-                                    items=("explore_names",),
-                                    density="compact",
+                                with html.Div(v_if=("explore_plot !== 'parallel'",)):
+                                    v3.VSelect(
+                                        label="X",
+                                        v_model=("explore_x",),
+                                        items=(
+                                            "explore_selected_globals.length "
+                                            "? explore_selected_globals : explore_names",
+                                        ),
+                                        density="compact",
+                                        hide_details=True,
+                                    )
+                                with html.Div(
+                                    v_if=(
+                                        "explore_plot === '2D' || explore_plot === '3D'",
+                                    )
+                                ):
+                                    v3.VSelect(
+                                        label="Y",
+                                        v_model=("explore_y",),
+                                        items=(
+                                            "explore_selected_globals.length "
+                                            "? explore_selected_globals : explore_names",
+                                        ),
+                                        density="compact",
+                                        hide_details=True,
+                                    )
+                                with html.Div(v_if=("explore_plot === '3D'",)):
+                                    v3.VSelect(
+                                        label="Z",
+                                        v_model=("explore_z",),
+                                        items=(
+                                            "explore_selected_globals.length "
+                                            "? explore_selected_globals : explore_names",
+                                        ),
+                                        density="compact",
+                                        hide_details=True,
+                                    )
+                                with html.Div(v_if=("explore_plot !== 'parallel'",)):
+                                    with html.Div(classes="d-flex align-center"):
+                                        with html.Div(
+                                            classes="mr-2",
+                                            style="display: inline-flex; flex: 0 0 auto;",
+                                        ):
+                                            v3.VCheckboxBtn(
+                                                v_model=("explore_labels",),
+                                                label=(
+                                                    "explore_labels ? '' : 'Label points'",
+                                                ),
+                                                density="compact",
+                                                raw_attrs=['aria-label="Label points"'],
+                                            )
+                                            v3.VTooltip(
+                                                text=(
+                                                    "Adding labels to more than 1,000 "
+                                                    "rows can be slow."
+                                                ),
+                                                activator="parent",
+                                            )
+                                        with html.Div(
+                                            v_if=("explore_labels",),
+                                            style="flex: 1 1 auto; min-width: 0;",
+                                        ):
+                                            v3.VSelect(
+                                                label="Label from",
+                                                v_model=("explore_label",),
+                                                items=("explore_filtered_label_names",),
+                                                density="compact",
+                                                hide_details=True,
+                                            )
+                                # Always shown: every configuration change clears
+                                # the figure until the user draws it again.
+                                v3.VBtn(
+                                    "Draw plot",
+                                    click=ctrl.draw_globals_plot,
+                                    color="primary",
+                                    block=True,
+                                    classes="mt-2",
+                                    disabled=(
+                                        "!explore_names.length || explore_plot_requested",
+                                    ),
                                 )
-                            with html.Div(
-                                v_if=("explore_plot === '2D' || explore_plot === '3D'",)
-                            ):
-                                v3.VSelect(
-                                    label="Y Global",
-                                    v_model=("explore_y",),
-                                    items=("explore_names",),
-                                    density="compact",
+                                html.Div(
+                                    "{{ explore_plot_message }}",
+                                    v_if=("explore_plot_message",),
+                                    classes="text-caption text-warning mt-1",
                                 )
-                            with html.Div(v_if=("explore_plot === '3D'",)):
-                                v3.VSelect(
-                                    label="Z Global",
-                                    v_model=("explore_z",),
-                                    items=("explore_names",),
-                                    density="compact",
+
+                                with html.A(
+                                    href=("explore_selected_csv_url",),
+                                    download="plaid_globals_samples.csv",
+                                    style="display: block;",
+                                ):
+                                    v3.VBtn(
+                                        "Download selected samples (CSV)",
+                                        block=True,
+                                        color="primary",
+                                        classes="mt-2",
+                                        disabled=(
+                                            "!explore_has_selection || "
+                                            "(explore_plot !== '1D' && "
+                                            "explore_plot !== '2D' && "
+                                            "(explore_plot !== 'parallel' || "
+                                            "explore_parallel_mode !== 'parcoords'))",
+                                        ),
+                                    )
+                                html.Div(
+                                    "Selected rows ({{ explore_selected_rows.length }})",
+                                    classes="text-subtitle-2 mt-3",
                                 )
-                            with html.Div(v_if=("explore_plot !== 'parallel'",)):
-                                v3.VCheckbox(
-                                    label="Label points",
-                                    v_model=("explore_labels",),
-                                    density="compact",
+                                html.Div(
+                                    "No rows selected.",
+                                    v_if=("!explore_has_selection",),
+                                    classes="text-caption text-medium-emphasis",
                                 )
-                                v3.VSelect(
-                                    label="Label from",
-                                    v_model=("explore_label",),
-                                    items=("explore_label_names",),
-                                    density="compact",
-                                    v_if=("explore_labels",),
-                                )
+                                with html.Div(
+                                    v_if=("explore_has_selection",),
+                                    style="max-height: 160px; overflow-y: auto;",
+                                ):
+                                    with v3.VList(density="compact"):
+                                        with v3.VListItem(
+                                            v_for="row in explore_selected_rows",
+                                            key="`${row.split}:${row.sample_id}`",
+                                        ):
+                                            v3.VListItemTitle(
+                                                "{{ row.split }} / {{ row.sample_id }}",
+                                                classes="text-body-2",
+                                            )
                         with html.Div(
                             style=(
                                 "flex: 1 1 300px; min-width: 0; min-height: 0; "
@@ -2917,6 +3826,22 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             ):
                                 explore_figure = plotly_widgets.Figure(
                                     display_logo=False,
+                                    restyle=(ctrl.parcoords_restyle, "[$event]"),
+                                    selected=(
+                                        ctrl.scatter_selected,
+                                        "[$event && $event.points ? "
+                                        "$event.points.map(p => ({curveNumber: "
+                                        "p.curveNumber, pointNumber: p.pointNumber})) "
+                                        ": []]",
+                                    ),
+                                    deselect=ctrl.scatter_deselect,
+                                    click=(
+                                        ctrl.scatter_click,
+                                        "[$event && $event.points ? "
+                                        "$event.points.map(p => ({curveNumber: "
+                                        "p.curveNumber, pointNumber: p.pointNumber})) "
+                                        ": []]",
+                                    ),
                                     responsive=True,
                                     autosize=True,
                                     style="width: 100%; height: 100%; flex: 1 1 auto;",

@@ -12,12 +12,14 @@ from pathlib import Path
 
 import pytest
 
+from plaid.containers.sample import Sample
 from plaid.viewer.config import ViewerConfig
 from plaid.viewer.models import SampleRef
 from plaid.viewer.services import PlaidDatasetService
 from plaid.viewer.services.plaid_dataset_service import (
     _array_preview,
     _cached_service,
+    _global_at_time,
     _safe_list_dir,
 )
 
@@ -27,11 +29,99 @@ class _FakeDataset(list):
 
 
 class _FakeConverter:
-    def __init__(self, samples_by_index: dict[int, object]) -> None:
+    def __init__(
+        self,
+        samples_by_index: dict[int, object],
+        *,
+        backend: str = "hf_datasets",
+        variable_features: set[str] | None = None,
+        constant_features: set[str] | None = None,
+    ) -> None:
         self._samples = samples_by_index
+        self.backend = backend
+        self.variable_features = variable_features or set()
+        self.constant_features = constant_features or set()
+        self.feature_requests: list[list[str] | None] = []
 
-    def to_plaid(self, dataset, index: int):  # noqa: ARG002 - interface match
+    def to_plaid(self, dataset, index: int, features=None):  # noqa: ARG002
+        self.feature_requests.append(list(features) if features is not None else None)
         return self._samples[index]
+
+
+class _FlatGlobalsConverter(_FakeConverter):
+    """Serve PLAID samples in the flat storage layout of hf_datasets/zarr.
+
+    Values and ``_times`` companions are produced by the storage writer
+    (:func:`build_sample_dict`), so the viewer's time slicing is exercised
+    against the real on-disk format. ``constant_features`` are read from
+    ``flat_cst`` (taken from the first sample), as ``Converter`` does.
+    """
+
+    def __init__(
+        self,
+        samples_by_index: dict[int, Sample],
+        *,
+        variable_features: set[str],
+        constant_features: set[str] | None = None,
+    ) -> None:
+        from types import SimpleNamespace  # noqa: PLC0415
+
+        from plaid.storage.common.preprocessor import (  # noqa: PLC0415
+            build_sample_dict,
+        )
+
+        constant_features = set(constant_features or ())
+        self._flat = {
+            index: build_sample_dict(sample)[0]
+            for index, sample in samples_by_index.items()
+        }
+        stored = set().union(*map(set, self._flat.values()))
+        companions = {f"{f}_times" for f in variable_features | constant_features}
+        super().__init__(
+            samples_by_index,
+            variable_features={
+                *variable_features,
+                *(companions & stored) - {f"{f}_times" for f in constant_features},
+                *({"Global", "Global_times"} & stored),
+            },
+            constant_features={
+                *constant_features,
+                *({f"{f}_times" for f in constant_features} & stored),
+            },
+        )
+        first = self._flat[min(self._flat)]
+        self.flat_cst = {f: first.get(f) for f in self.constant_features}
+        self.variable_requests: list[list[str]] = []
+        self.backend_spec = SimpleNamespace(to_var_sample_dict=self._read)
+
+    def _read(self, _dataset, index: int, *, features):
+        self.variable_requests.append(list(features))
+        return {feature: self._flat[index].get(feature) for feature in features}
+
+
+def _global_sample(values: dict[str, object]) -> Sample:
+    """Build a single-time PLAID sample from Global names to values."""
+    sample = Sample()
+    for name, value in values.items():
+        if value is not None:
+            sample.add_global(name, value)
+    return sample
+
+
+class _FakeGlobalSample:
+    """Minimal Global-only sample with the same retrieval interface as Sample."""
+
+    def __init__(self, values: dict[str, object]) -> None:
+        self._values = values
+
+    def get_all_time_values(self):
+        return [0.0]
+
+    def get_global_names(self):
+        return list(self._values)
+
+    def get_global(self, name: str, time: float | None = None):  # noqa: ARG002
+        return self._values[name]
 
 
 def _make_dataset_dir(root: Path, name: str) -> Path:
@@ -50,6 +140,9 @@ def test_small_helpers_cover_edge_cases(tmp_path: Path) -> None:
     assert _array_preview(None) is None
     assert _array_preview([]) == "[]"
     assert "total 8 values" in (_array_preview(np.arange(8), max_items=3) or "")
+    assert _array_preview(np.array(["one", "two"])) == "['one', 'two']"
+    assert _array_preview(np.array([b"h", b"i"], dtype="S1")) == "hi"
+    assert _array_preview(np.array(["h", "i"], dtype="U1")) == "hi"
 
     class BadArray:
         def __array__(self, *_args):
@@ -155,35 +248,197 @@ def test_get_dataset_reports_split_counts_from_dataset_dict(
     assert detail.splits == {"train": 3, "test": 2}
 
 
-def test_extract_globals_reads_every_split_without_converting_samples(
+def test_extract_globals_reads_only_split_globals_with_converter(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Global columns retain raw vectors, nulls and per-split sample IDs."""
+    """Global values are read from flat storage without building a Sample."""
+    import numpy as np
+
     _make_dataset_dir(tmp_path, "ds")
-
-    class Columns(list):
-        @property
-        def column_names(self):
-            return ["Global/a", "Global/vector", "mesh"]
-
-    datasets = {
-        "train": Columns(
-            [
-                {"Global/a": 1, "Global/vector": [1, 2], "mesh": 0},
-                {"Global/a": None, "Global/vector": [3], "mesh": 1},
-            ]
+    datasets = {"train": _FakeDataset([0, 1]), "test": _FakeDataset([0])}
+    converters = {
+        "train": _FlatGlobalsConverter(
+            {
+                0: _global_sample({"a": 1, "vector": np.array([1, 2])}),
+                1: _global_sample({"a": None, "vector": np.array([3])}),
+            },
+            variable_features={"Global/a", "Global/vector", "Field/large"},
         ),
-        "test": Columns([{"Global/a": 9, "Global/vector": [], "mesh": 2}]),
+        "test": _FlatGlobalsConverter(
+            {0: _global_sample({"a": 9, "constant_test": "case"})},
+            variable_features={"Global/a", "Field/large"},
+            constant_features={"Global/constant_test"},
+        ),
     }
-    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, converters)})
+
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
-    assert service.extract_globals("ds") == {
-        "train": [
-            {"sample_id": "0", "values": {"Global/a": 1, "Global/vector": [1, 2]}},
-            {"sample_id": "1", "values": {"Global/a": None, "Global/vector": [3]}},
-        ],
-        "test": [{"sample_id": "0", "values": {"Global/a": 9, "Global/vector": []}}],
-    }
+    result = service.extract_globals("ds", time_step="first")
+    train = [record["values"] for record in result["train"]]
+    assert [record["sample_id"] for record in result["train"]] == ["0", "1"]
+    assert train[0]["Global/a"] == 1
+    assert train[0]["Global/vector"].tolist() == [1, 2]
+    assert "Global/a" not in train[1]  # Missing values are not invented.
+    assert train[1]["Global/vector"] == 3
+    test = result["test"][0]["values"]
+    assert test["Global/a"] == 9
+    assert test["Global/constant_test"].tobytes() == b"case"
+    for converter in converters.values():
+        assert converter.feature_requests == []  # No PLAID Sample conversion.
+    assert (
+        converters["train"].variable_requests
+        == [
+            [
+                "Global",
+                "Global_times",
+                "Global/a",
+                "Global/a_times",
+                "Global/vector",
+                "Global/vector_times",
+            ],
+        ]
+        * 2
+    )
+    assert all(
+        not feature.startswith("Field")
+        for request in converters["test"].variable_requests
+        for feature in request
+    )
+
+
+@pytest.mark.parametrize(
+    ("time_step", "expected"),
+    [("first", [1, 2]), ("last", [7, 8])],
+)
+def test_extract_globals_selects_converted_sample_time_step(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, time_step: str, expected: list[int]
+) -> None:
+    """Select the first or last time from a converted PLAID sample."""
+    import numpy as np
+
+    _make_dataset_dir(tmp_path, "ds")
+    sample = Sample()
+    sample.add_global("vector", np.array([1, 2]), time=0.0)
+    sample.add_global("vector", np.array([7, 8]), time=5.0)
+    sample.add_global("constant", 42, time=0.0)
+    sample.add_global("constant", 42, time=5.0)
+    sample.add_global("late_only", 3, time=5.0)
+    converter = _FlatGlobalsConverter(
+        {0: sample},
+        variable_features={"Global/vector", "Global/late_only"},
+        constant_features={"Global/constant"},
+    )
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": ({"train": _FakeDataset([0])}, {"train": converter})}
+    )
+    records = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path)).extract_globals(
+        "ds", time_step=time_step
+    )["train"]
+    assert records[0]["sample_id"] == "0"
+    assert records[0]["values"]["Global/vector"].tolist() == expected
+    assert records[0]["values"]["Global/constant"] == 42
+    assert records[0]["values"]["Global/late_only"] == (
+        None if time_step == "first" else 3
+    )
+    assert converter.feature_requests == []
+    assert len(converter.variable_requests) == 1
+
+
+def test_extract_globals_selects_time_per_sample(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each converted sample chooses its own earliest and latest time."""
+    _make_dataset_dir(tmp_path, "ds")
+    first_sample = Sample()
+    first_sample.add_global("a", 4, time=0.0)
+    first_sample.add_global("a", 8, time=2.0)
+    second_sample = Sample()
+    second_sample.add_global("a", 10, time=3.0)
+    second_sample.add_global("a", 12, time=7.0)
+    converter = _FlatGlobalsConverter(
+        {0: first_sample, 1: second_sample}, variable_features={"Global/a"}
+    )
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": ({"train": _FakeDataset([0, 1])}, {"train": converter})}
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    first = service.extract_globals("ds", time_step="first")["train"]
+    last = service.extract_globals("ds", time_step="last")["train"]
+    assert [record["values"]["Global/a"] for record in first] == [4, 10]
+    assert [record["values"]["Global/a"] for record in last] == [8, 12]
+    assert converter.feature_requests == []
+    assert len(converter.variable_requests) == 4
+
+
+@pytest.mark.parametrize(
+    ("time_step", "expected"),
+    [("first", 0.0), ("last", 300.0)],
+)
+def test_extract_globals_uses_split_constant_features(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    time_step: str,
+    expected: float,
+) -> None:
+    """Include split constants in selective conversion at the chosen time."""
+    from plaid.viewer.global_plots import global_names
+
+    _make_dataset_dir(tmp_path, "ds")
+    sample = Sample()
+    sample.add_global("y-force", 0.0, time=0.0)
+    sample.add_global("y-force", 300.0, time=300.0)
+    sample.add_global("case", "test", time=0.0)
+    sample.add_global("case", "test", time=300.0)
+    converter = _FlatGlobalsConverter(
+        {0: sample},
+        variable_features={"Global/y-force", "Mesh/coordinates"},
+        constant_features={"Global/case"},
+    )
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": ({"train": _FakeDataset([0])}, {"train": converter})}
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    records = service.extract_globals("ds", time_step=time_step)
+    selected = records["train"][0]["values"]
+    assert selected["Global/y-force"] == expected
+    assert selected["Global/case"].tobytes().decode("ascii") == "test"
+    assert global_names(records) == ["Global/y-force"]
+    assert converter.feature_requests == []
+    assert all(
+        feature.startswith("Global")
+        for request in converter.variable_requests
+        for feature in request
+    )
+
+
+def test_extract_globals_selects_cgns_sample_time_step(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Read the selected sample time instead of its default time."""
+    _make_dataset_dir(tmp_path, "ds")
+    sample = Sample()
+    sample.add_global("early", 1.0, time=1.0)
+    sample.add_global("late", 9.0, time=5.0)
+    converter = _FakeConverter(
+        {0: sample}, backend="cgns", variable_features={"Global/early", "Global/late"}
+    )
+    _install_fake_init_from_disk(
+        monkeypatch,
+        {"ds": ({"train": _FakeDataset([sample])}, {"train": converter})},
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    first = service.extract_globals("ds", time_step="first")["train"][0]["values"]
+    last = service.extract_globals("ds", time_step="last")["train"][0]["values"]
+    assert first == {"Global/early": 1.0, "Global/late": None}
+    assert last == {"Global/early": None, "Global/late": 9.0}
+    assert converter.feature_requests == [None, None]
+
+
+def test_extract_globals_rejects_invalid_time_step(tmp_path: Path) -> None:
+    """Reject unsupported selectors instead of silently picking a step."""
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    with pytest.raises(ValueError, match="Invalid Global time step"):
+        service.extract_globals("ds", time_step="middle")
 
 
 def test_extract_globals_rejects_streaming_dataset(tmp_path: Path) -> None:
@@ -193,37 +448,86 @@ def test_extract_globals_rejects_streaming_dataset(tmp_path: Path) -> None:
         service.extract_globals("org/stream")
 
 
-def test_extract_globals_supports_rows_without_column_names(
+def test_extract_globals_without_globals_does_not_decode_samples(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Zarr-style row dictionaries may expose different Globals per sample."""
     _make_dataset_dir(tmp_path, "ds")
-    datasets = {"train": _FakeDataset([{"Global/a": 1}, {"Global/b": [2, 3]}])}
-    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    converter = _FakeConverter({0: RuntimeError("must not decode")})
+    datasets = {"train": _FakeDataset([0])}
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {"train": converter})})
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     assert service.extract_globals("ds") == {
-        "train": [
-            {"sample_id": "0", "values": {"Global/a": 1}},
-            {"sample_id": "1", "values": {"Global/b": [2, 3]}},
-        ]
+        "train": [{"sample_id": "0", "values": {}}]
     }
+    assert converter.feature_requests == []
 
 
 def test_extract_globals_supports_cgns_samples(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """CGNS-backed datasets yield Sample objects rather than column rows."""
-    from plaid.containers.sample import Sample
-
+    """CGNS keeps its historical unfiltered conversion path."""
     _make_dataset_dir(tmp_path, "ds")
-    sample = Sample()
-    sample.add_global("energy", 2.5)
-    datasets = {"train": _FakeDataset([sample])}
-    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, {})})
+    sample = _FakeGlobalSample({"energy": 2.5})
+    converter = _FakeConverter(
+        {0: sample}, backend="cgns", variable_features={"Global/energy"}
+    )
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": ({"train": _FakeDataset([sample])}, {"train": converter})}
+    )
     service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
     values = service.extract_globals("ds")["train"][0]["values"]
-    assert "Global/energy" in values
-    assert float(values["Global/energy"]) == 2.5
+    assert values == {"Global/energy": 2.5}
+    assert converter.feature_requests == [None]
+
+
+def test_extract_globals_reports_progress_for_each_split(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Report each sample and a final completion event, even for empty splits."""
+    _make_dataset_dir(tmp_path, "ds")
+    datasets = {"train": _FakeDataset([0, 1]), "test": _FakeDataset([])}
+    converters = {split: _FakeConverter({}) for split in datasets}
+    _install_fake_init_from_disk(monkeypatch, {"ds": (datasets, converters)})
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    updates: list[tuple[str, int, int]] = []
+
+    assert service.extract_globals(
+        "ds", progress=lambda split, index, total: updates.append((split, index, total))
+    ) == {
+        "train": [
+            {"sample_id": "0", "values": {}},
+            {"sample_id": "1", "values": {}},
+        ],
+        "test": [],
+    }
+    assert updates == [
+        ("train", 0, 2),
+        ("train", 1, 2),
+        ("train", 2, 2),
+        ("test", 0, 0),
+    ]
+
+
+def test_global_at_time_handles_missing_steps_and_matrix_values() -> None:
+    """Flat Globals select matching time blocks and keep matrix row layout."""
+    import numpy as np
+
+    one_step = np.array([[1.0, 0, -1]])
+    assert _global_at_time([4, 5], one_step, 2.0) is None
+    multiple_steps = np.array([[1.0, 0, 1], [3.0, 1, -1]])
+    assert _global_at_time([4, 5], multiple_steps, 2.0) is None
+    np.testing.assert_array_equal(
+        _global_at_time(np.array([[1, 2, 3], [4, 5, 6]]), multiple_steps, 3.0),
+        [[2, 3], [5, 6]],
+    )
+
+
+def test_globals_at_time_step_without_times_returns_empty(tmp_path: Path) -> None:
+    """A Global without a time specification cannot define a first step."""
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    assert (
+        service._globals_at_time_step({"Global/a": 3}, ["Global/a"], {}, "first") == {}
+    )
 
 
 def test_describe_non_visual_bases_lists_zoneless_bases_only(
@@ -1020,6 +1324,67 @@ def test_streaming_open_empty_filter_keeps_geometry_but_drops_globals(
     ]
 
 
+def test_streaming_hf_requests_only_parquet_columns_on_next(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hub constants must not be requested as Parquet columns on Next."""
+    from types import SimpleNamespace  # noqa: PLC0415
+
+    import pyarrow as pa  # noqa: PLC0415
+
+    import plaid.storage as storage  # noqa: PLC0415
+    from plaid.storage.common import reader as reader_mod  # noqa: PLC0415
+
+    repo_id = "org/force_asr"
+    base = "Base_2_2"
+    zone = f"{base}/Zone"
+    coordinate = f"{zone}/GridCoordinates/CoordinateX"
+    constant = {
+        "train": {
+            base: None,
+            f"{base}_times": None,
+            zone: None,
+            f"{zone}_times": None,
+            f"{zone}/ZoneType": None,
+            f"{zone}/ZoneType_times": None,
+            f"{zone}/GridCoordinates": None,
+            f"{zone}/GridCoordinates_times": None,
+            f"{zone}/VertexFields": None,
+            f"{zone}/VertexFields_times": None,
+        }
+    }
+    variable = {coordinate: None, f"{coordinate}_times": None}
+    _install_fake_metadata(
+        monkeypatch, variable_schema=variable, constant_schema=constant
+    )
+    monkeypatch.setattr(
+        reader_mod,
+        "load_infos_from_hub",
+        lambda _repo: SimpleNamespace(storage_backend="hf_datasets"),
+    )
+    requested: list[str] = []
+
+    def fake_init(_repo: str, features=None):
+        requested[:] = features or []
+
+        def rows():
+            missing = set(requested) - set(variable)
+            if missing:
+                raise pa.ArrowInvalid(f"No match for FieldRef.Name({min(missing)})")
+            yield {coordinate: [0.0]}
+
+        return {"train": rows()}, {"train": object()}
+
+    monkeypatch.setattr(storage, "init_streaming_from_hub", fake_init)
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset(repo_id)
+    service.set_features(repo_id, [coordinate])
+
+    service.advance_stream_cursor(repo_id, "train")
+
+    assert requested == sorted(variable)
+
+
 def test_set_features_invalidates_store_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1726,3 +2091,52 @@ def test_load_sample_does_not_reinject_deselected_constant_fields(
     assert "Base_2_2/Zone/VertexFields/sdf" not in converter.last_features
     assert "Base_2_2/Zone/VertexFields/sdf_times" not in converter.last_features
     assert "Base_2_2/Zone/VertexFields/pressure" not in converter.last_features
+
+
+@pytest.mark.parametrize("backend", ["hf_datasets", "zarr"])
+def test_extract_globals_without_time_selector_preserves_raw_histories(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, backend: str
+) -> None:
+    """The default API retains full arrays, time companions and constants."""
+    from types import SimpleNamespace
+
+    import numpy as np
+
+    _make_dataset_dir(tmp_path, "ds")
+    history = np.array([1.0, 9.0])
+    times = np.array([0.0, 0.0, 1.0, 5.0, 1.0, 2.0])
+    constant = np.frombuffer(b"case-a", dtype="|S1")
+    constant_times = np.array([0.0, 0.0, -1.0])
+    raw = {"Global/a": history, "Global/a_times": times, "Global/missing": None}
+    requests = []
+
+    def read_variables(_dataset, index, *, features):
+        requests.append((index, list(features)))
+        return {feature: raw[feature] for feature in features}
+
+    converter = _FakeConverter(
+        {0: RuntimeError("unsliced extraction must not convert to Sample")},
+        backend=backend,
+        variable_features={*raw, "Field/large"},
+        constant_features={"Global/case", "Global/case_times", "Mesh/coordinates"},
+    )
+    converter.backend_spec = SimpleNamespace(to_var_sample_dict=read_variables)
+    converter.flat_cst = {
+        "Global/case": constant,
+        "Global/case_times": constant_times,
+        "Mesh/coordinates": np.zeros((3, 10)),
+    }
+    _install_fake_init_from_disk(
+        monkeypatch, {"ds": ({"train": _FakeDataset([0])}, {"train": converter})}
+    )
+    values = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path)).extract_globals(
+        "ds"
+    )["train"][0]["values"]
+    assert set(values) == {*raw, "Global/case", "Global/case_times"}
+    np.testing.assert_array_equal(values["Global/a"], history)
+    np.testing.assert_array_equal(values["Global/a_times"], times)
+    np.testing.assert_array_equal(values["Global/case"], constant)
+    np.testing.assert_array_equal(values["Global/case_times"], constant_times)
+    assert values["Global/missing"] is None
+    assert requests == [(0, ["Global/a", "Global/a_times", "Global/missing"])]
+    assert converter.feature_requests == []

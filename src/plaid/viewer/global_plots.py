@@ -1,6 +1,14 @@
-"""Prepare scalar Global values and build interactive exploration plots."""
+"""Prepare scalar Global values and build interactive exploration plots.
+
+Extracted Globals are stored column-wise: datasets with many vector Globals
+expand to tens of thousands of scalar components, and one dictionary per
+sample (or a pandas table of the whole extraction) does not fit in memory.
+"""
 
 from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Iterator, TypeAlias
 
 import numpy as np
 import plotly.graph_objects as go
@@ -28,6 +36,15 @@ def scalar_value(value: object) -> float | None:
         return None
 
 
+def _text_value(array: np.ndarray) -> str | None:
+    """Decode CGNS character arrays, or return ``None`` for other values."""
+    if array.dtype.kind == "S" and array.dtype.itemsize == 1:
+        return array.tobytes().decode("ascii")
+    if array.dtype.kind == "U" and array.dtype.itemsize == np.dtype("U1").itemsize:
+        return "".join(array.reshape(-1).tolist())
+    return None
+
+
 def _component_values(
     values: dict[str, object],
 ) -> dict[str, object]:
@@ -40,12 +57,16 @@ def _component_values(
         Scalar values keyed by Global name, with vectors expanded using 1-based
         suffixes. Invalid or non-finite components are represented by ``None``.
     """
-    components: dict[str, float | None] = {}
+    components: dict[str, object] = {}
     for name, value in values.items():
         if name.endswith("_times"):  # pragma: no cover
             continue
         try:
             array = np.asarray(value)
+            text = _text_value(array)
+            if text is not None:
+                components[name] = text
+                continue
             if array.size == 1 and array.dtype.kind not in "iuf":
                 components[name] = value  # Preserve text Globals for point labels.
                 continue
@@ -66,30 +87,192 @@ def _component_values(
     return components
 
 
-def _expanded_records(
-    records: dict[str, list[dict[str, object]]],
-) -> dict[str, list[dict[str, object]]]:
-    """Expand vector Globals to scalar components in copied sample records.
+RawGlobals: TypeAlias = dict[str, list[dict[str, object]]]
+
+
+@dataclass
+class _SplitColumns:
+    """Column-wise Globals of one split.
+
+    Numeric Globals are stored as ``(samples, components)`` float matrices
+    with ``NaN`` for missing or non-finite values; other values are kept as
+    one Python object per sample (``None`` when absent).
+    """
+
+    sample_ids: list[str]
+    numeric: dict[str, np.ndarray]
+    objects: dict[str, list[object]]
+
+
+@dataclass(frozen=True)
+class PreparedGlobals:
+    """Cached plot inputs derived once from raw extracted Global records.
+
+    Attributes:
+        splits: Column-wise values keyed by split name.
+        names: Sorted plottable scalar components (``Global/x`` or
+            ``Global/x_<i>`` for vectors).
+        label_names: Sorted components usable as point labels and exported
+            as table columns.
+        text_names: Sorted non-numeric Globals (e.g. case names), included
+            in label and table columns but never plotted.
+    """
+
+    splits: dict[str, _SplitColumns]
+    names: list[str]
+    label_names: list[str]
+    text_names: list[str]
+
+    def sample_ids(self, split: str) -> list[str]:
+        """Return the sample identifiers of ``split`` in extraction order."""
+        columns = self.splits.get(split)
+        return columns.sample_ids if columns is not None else []
+
+    def column(self, split: str, name: str) -> np.ndarray | list[object] | None:
+        """Return one expanded component of ``split``.
+
+        Args:
+            split: Split name.
+            name: A name from :attr:`label_names`.
+
+        Returns:
+            A float array (``NaN`` for missing values) for numeric components,
+            a list of objects for text or other values, or ``None`` when the
+            component does not exist in the split.
+        """
+        columns = self.splits.get(split)
+        if columns is None:
+            return None
+        located = _component_location(name, columns)
+        if located is None:
+            return None
+        source, component = located
+        if component is None:
+            if source in columns.numeric:
+                return columns.numeric[source][:, 0]
+            return columns.objects[source]
+        return columns.numeric[source][:, component]
+
+    def numeric_column(self, split: str, name: str) -> np.ndarray | None:
+        """Return a numeric component of ``split`` as floats, else ``None``."""
+        column = self.column(split, name)
+        return column if isinstance(column, np.ndarray) else None
+
+    def value(self, split: str, index: int, name: str) -> object:
+        """Return the prepared value of one sample, ``None`` when missing."""
+        column = self.column(split, name)
+        if column is None:
+            return None
+        value = column[index]
+        if isinstance(value, np.floating):
+            return float(value) if np.isfinite(value) else None
+        return value
+
+
+def _component_location(
+    name: str, columns: _SplitColumns
+) -> tuple[str, int | None] | None:
+    """Map an expanded component name to its stored Global and column index."""
+    if name in columns.objects:
+        return name, None
+    matrix = columns.numeric.get(name)
+    if matrix is not None and matrix.shape[1] == 1:
+        return name, None
+    source, _, suffix = name.rpartition("_")
+    if source and suffix.isdigit():
+        matrix = columns.numeric.get(source)
+        index = int(suffix) - 1
+        if matrix is not None and matrix.shape[1] > 1 and 0 <= index < matrix.shape[1]:
+            return source, index
+    return None
+
+
+def _component_names(name: str, width: int) -> list[str]:
+    """Return expanded names of a stored Global with ``width`` components."""
+    if width == 1:
+        return [name]
+    return [f"{name}_{index}" for index in range(1, width + 1)]
+
+
+def _split_columns(rows: list[dict[str, object]]) -> _SplitColumns:
+    """Build column-wise storage for one split of raw records.
 
     Args:
-        records: Raw extracted records, left unmodified.
+        rows: Raw records with ``sample_id`` and ``values``.
 
     Returns:
-        Records with plottable scalar Global values and 1-based component names.
+        Numeric Globals as float matrices and other Globals as object lists.
     """
-    return {
-        split: [
-            {
-                **row,
-                "values": _component_values(row["values"]),
-            }
-            for row in rows
-        ]
-        for split, rows in records.items()
-    }
+    count = len(rows)
+    widths: dict[str, int] = {}
+    numeric: dict[str, dict[int, np.ndarray]] = {}
+    objects: dict[str, list[object]] = {}
+    for index, row in enumerate(rows):
+        values: dict[str, object] = row["values"]  # type: ignore[assignment]
+        for name, value in values.items():
+            if name.endswith("_times") or value is None:
+                continue
+            try:
+                array = np.asarray(value)
+            except (TypeError, ValueError):  # pragma: no cover
+                continue
+            text = _text_value(array)
+            if text is not None or (array.size == 1 and array.dtype.kind not in "iuf"):
+                objects.setdefault(name, [None] * count)[index] = (
+                    text if text is not None else value
+                )
+                continue
+            if array.dtype.kind not in "iuf" or array.size == 0:
+                continue
+            flat = array.reshape(-1)
+            widths[name] = max(widths.get(name, 0), flat.size)
+            numeric.setdefault(name, {})[index] = flat
+    matrices: dict[str, np.ndarray] = {}
+    for name, width in widths.items():
+        if name in objects:  # pragma: no cover - mixed text and numbers
+            for index, flat in numeric[name].items():
+                objects[name][index] = flat[0] if flat.size == 1 else flat
+            continue
+        # Keep single precision when stored so: wide float32 Globals would
+        # otherwise double in memory. Integers and doubles use float64.
+        dtype = (
+            np.float32
+            if all(flat.dtype == np.float32 for flat in numeric[name].values())
+            else np.float64
+        )
+        # Shorter vectors leave NaN gaps in trailing components.
+        matrix = np.full((count, width), np.nan, dtype=dtype)
+        for index, flat in numeric[name].items():
+            matrix[index, : flat.size] = flat
+        matrix[~np.isfinite(matrix)] = np.nan
+        matrices[name] = matrix
+    return _SplitColumns([str(row["sample_id"]) for row in rows], matrices, objects)
 
 
-def global_names(records: dict[str, list[dict[str, object]]]) -> list[str]:
+def prepare_globals(records: RawGlobals) -> PreparedGlobals:
+    """Store raw records column-wise and cache numeric and label names."""
+    splits = {split: _split_columns(rows) for split, rows in records.items()}
+    names: set[str] = set()
+    labels: set[str] = set()
+    texts: set[str] = set()
+    for columns in splits.values():
+        for name, matrix in columns.numeric.items():
+            expanded = _component_names(name, matrix.shape[1])
+            labels.update(expanded)
+            present = ~np.isnan(matrix).all(axis=0)
+            names.update(
+                component for component, keep in zip(expanded, present) if keep
+            )
+        labels.update(columns.objects)
+        texts.update(columns.objects)
+    return PreparedGlobals(splits, sorted(names), sorted(labels), sorted(texts))
+
+
+def _prepared(records: RawGlobals | PreparedGlobals) -> PreparedGlobals:
+    return records if isinstance(records, PreparedGlobals) else prepare_globals(records)
+
+
+def global_names(records: RawGlobals | PreparedGlobals) -> list[str]:
     """List Global paths with at least one plottable value.
 
     Args:
@@ -98,19 +281,10 @@ def global_names(records: dict[str, list[dict[str, object]]]) -> list[str]:
     Returns:
         Sorted names of numeric scalar Globals (excluding time companions).
     """
-    expanded = _expanded_records(records)
-    return sorted(
-        {
-            name
-            for rows in expanded.values()
-            for row in rows
-            for name, value in row["values"].items()
-            if scalar_value(value) is not None
-        }
-    )
+    return _prepared(records).names
 
 
-def label_names(records: dict[str, list[dict[str, object]]]) -> list[str]:
+def label_names(records: RawGlobals | PreparedGlobals) -> list[str]:
     """List all extracted Global paths usable as point labels.
 
     Args:
@@ -119,10 +293,154 @@ def label_names(records: dict[str, list[dict[str, object]]]) -> list[str]:
     Returns:
         Sorted paths, including non-numeric values but excluding time arrays.
     """
-    expanded = _expanded_records(records)
-    return sorted(
-        {name for rows in expanded.values() for row in rows for name in row["values"]}
-    )
+    return _prepared(records).label_names
+
+
+def _table_rows(
+    prepared: PreparedGlobals, selected: set[tuple[str, str]] | None
+) -> list[tuple[str, list[int]]]:
+    """List exported row indices per split, preserving extraction order."""
+    return [
+        (
+            split,
+            [
+                index
+                for index, sample_id in enumerate(columns.sample_ids)
+                if selected is None or (split, sample_id) in selected
+            ],
+        )
+        for split, columns in prepared.splits.items()
+    ]
+
+
+def _arrow_block(
+    prepared: PreparedGlobals,
+    split: str,
+    indices: list[int],
+    columns: list[str],
+):
+    """Build an Arrow table for ``indices`` rows of ``split``.
+
+    Args:
+        prepared: Column-wise Globals.
+        split: Split name.
+        indices: Row indices within the split.
+        columns: Expanded Global names, in output order.
+
+    Returns:
+        A ``pyarrow.Table`` with ``split``, ``sample_id`` and ``columns``.
+    """
+    import pyarrow as pa  # noqa: PLC0415
+
+    split_columns = prepared.splits[split]
+    rows = np.asarray(indices, dtype=np.int64)
+    arrays = [
+        pa.array([split] * len(indices), pa.string()),
+        pa.array([split_columns.sample_ids[i] for i in indices], pa.string()),
+    ]
+    for name in columns:
+        column = prepared.column(split, name)
+        if column is None:
+            arrays.append(pa.nulls(len(indices), pa.float64()))
+        elif isinstance(column, np.ndarray):
+            values = column[rows]
+            arrays.append(pa.array(values, mask=np.isnan(values)))
+        else:
+            arrays.append(
+                pa.array([_cell(column[i]) for i in indices], pa.string(), safe=False)
+            )
+    return pa.Table.from_arrays(arrays, names=["split", "sample_id", *columns])
+
+
+def _cell(value: object) -> str | None:
+    """Format a non-numeric Global for tabular exports."""
+    if value is None:
+        return None
+    if isinstance(value, (bytes, np.bytes_)):
+        return bytes(value).decode("ascii", "replace")
+    return str(value)
+
+
+def iter_globals_csv(
+    records: RawGlobals | PreparedGlobals,
+    selected: set[tuple[str, str]] | None = None,
+    *,
+    columns: list[str] | None = None,
+    chunk_rows: int | None = None,
+) -> Iterator[bytes]:
+    """Stream the extracted Globals as UTF-8 CSV without a full table.
+
+    Args:
+        records: Extracted Globals, raw or prepared.
+        selected: Optional ``(split, sample_id)`` pairs to retain.
+        columns: Optional expanded Global columns, defaulting to all labels.
+        chunk_rows: Number of samples encoded per chunk. By default, chunks
+            hold about four million cells so wide exports use bounded memory.
+
+    Yields:
+        CSV bytes: a UTF-8 BOM and header, then blocks of rows.
+    """
+    import csv  # noqa: PLC0415
+    import io  # noqa: PLC0415
+
+    import pyarrow.csv as pa_csv  # noqa: PLC0415
+
+    prepared = _prepared(records)
+    columns = prepared.label_names if columns is None else columns
+    header = io.StringIO()
+    csv.writer(header, lineterminator="\n").writerow(["split", "sample_id", *columns])
+    yield ("﻿" + header.getvalue()).encode("utf-8")
+    if chunk_rows is None:
+        chunk_rows = max(1, min(4096, 4_000_000 // (len(columns) + 2)))
+    options = pa_csv.WriteOptions(include_header=False)
+    for split, indices in _table_rows(prepared, selected):
+        for start in range(0, len(indices), chunk_rows):
+            block = _arrow_block(
+                prepared, split, indices[start : start + chunk_rows], columns
+            )
+            buffer = io.BytesIO()
+            pa_csv.write_csv(block, buffer, options)
+            yield buffer.getvalue()
+
+
+def globals_dataframe(
+    records: RawGlobals | PreparedGlobals,
+    selected: set[tuple[str, str]] | None = None,
+    columns: list[str] | None = None,
+):
+    """Return one tabular row per extracted sample.
+
+    Args:
+        records: Extracted Globals, raw or expanded for plotting.
+        selected: Optional ``(split, sample_id)`` pairs to retain.
+        columns: Optional expanded Global columns, defaulting to all labels.
+
+    Returns:
+        A pandas DataFrame with split, sample_id and expanded Global columns.
+    """
+    import pandas as pd  # noqa: PLC0415
+
+    prepared = _prepared(records)
+    columns = prepared.label_names if columns is None else columns
+    frames = []
+    for split, indices in _table_rows(prepared, selected):
+        rows = np.asarray(indices, dtype=np.int64)
+        data: dict[str, object] = {
+            "split": [split] * len(indices),
+            "sample_id": [prepared.splits[split].sample_ids[i] for i in indices],
+        }
+        for name in columns:
+            column = prepared.column(split, name)
+            if column is None:
+                data[name] = np.full(len(indices), np.nan)
+            elif isinstance(column, np.ndarray):
+                data[name] = column[rows]
+            else:
+                data[name] = pd.Series([column[i] for i in indices], dtype=object)
+        frames.append(pd.DataFrame(data, columns=["split", "sample_id", *columns]))
+    if not frames:
+        return pd.DataFrame(columns=["split", "sample_id", *columns])
+    return pd.concat(frames, ignore_index=True)
 
 
 def format_point_label(value: object) -> str:
@@ -170,8 +488,26 @@ def _parallel_values(
     return scaled
 
 
+def _split_matrix(
+    prepared: PreparedGlobals, split: str, fields: list[str]
+) -> np.ndarray:
+    """Stack selected numeric components of ``split`` (``NaN`` when missing)."""
+    count = len(prepared.sample_ids(split))
+    matrix = np.full((count, len(fields)), np.nan)
+    for axis, field in enumerate(fields):
+        column = prepared.numeric_column(split, field)
+        if column is not None:
+            matrix[:, axis] = column
+    return matrix
+
+
+def _optional(numbers: np.ndarray) -> list[float | None]:
+    """Convert ``NaN`` gaps to ``None`` for Plotly and JSON serialization."""
+    return [None if np.isnan(number) else float(number) for number in numbers]
+
+
 def build_globals_figure(
-    records: dict[str, list[dict[str, object]]],
+    records: RawGlobals | PreparedGlobals,
     splits: list[str],
     kind: str,
     axes: list[str],
@@ -194,8 +530,8 @@ def build_globals_figure(
     Returns:
         A Plotly figure, or ``None`` if there is nothing to plot.
     """
-    records = _expanded_records(records)
-    names = global_names(records)
+    prepared = _prepared(records)
+    names = prepared.names
     dimensions = {"1D": 1, "2D": 2, "3D": 3, "parallel": len(names)}
     if kind not in dimensions:
         raise ValueError(f"Unknown plot type: {kind}")
@@ -205,59 +541,55 @@ def build_globals_figure(
         fields = names if parallel_fields is None else parallel_fields
     else:
         fields = axes[: dimensions[kind]]
+    known = set(names)
     if (
         not splits
         or (kind != "parallel" and len(fields) != dimensions[kind])
         or not fields
-        or any(field not in names for field in fields)
+        or any(field not in known for field in fields)
     ):
         return None
 
+    matrices = {split: _split_matrix(prepared, split, fields) for split in splits}
     ranges: list[tuple[float, float] | None] = []
     if kind == "parallel":
-        for field in fields:
-            present = [
-                number
-                for split in splits
-                for row in records.get(split, [])
-                if (number := scalar_value(row["values"].get(field))) is not None
-            ]
-            ranges.append((min(present), max(present)) if present else None)
+        stacked = np.vstack(list(matrices.values()))
+        for axis in range(len(fields)):
+            present = stacked[:, axis][~np.isnan(stacked[:, axis])]
+            ranges.append(
+                (float(present.min()), float(present.max())) if present.size else None
+            )
 
     figure = go.Figure()
     dashes = ["solid", "dash", "dot", "dashdot"]
     symbols = ["circle", "square", "diamond", "cross", "x"]
     if kind == "parallel" and parallel_mode == "parcoords":
-        dimensions_data = [[] for _ in fields]
-        sample_ids = []
-        split_values = []
+        blocks = []
+        sample_ids: list[str] = []
+        split_values: list[int] = []
         plotted_splits = []
         for split in splits:
-            split_rows = []
-            for row in records.get(split, []):
-                numbers = [scalar_value(row["values"].get(field)) for field in fields]
-                if any(number is None for number in numbers):
-                    continue
-                split_rows.append((row, numbers))
-            if not split_rows:
+            matrix = matrices[split]
+            complete = ~np.isnan(matrix).any(axis=1)
+            if not complete.any():
                 continue
             split_index = len(plotted_splits)
             plotted_splits.append(split)
-            for row, numbers in split_rows:
-                sample_ids.append(str(row["sample_id"]))
-                split_values.append(split_index)
-                for dimension, number in zip(dimensions_data, numbers):
-                    dimension.append(number)
+            blocks.append(matrix[complete])
+            ids = prepared.sample_ids(split)
+            sample_ids.extend(ids[i] for i in np.flatnonzero(complete))
+            split_values.extend([split_index] * int(complete.sum()))
         if not sample_ids:  # pragma: no cover
             return None
+        values = np.vstack(blocks)
 
         trace_dimensions = [
             {
                 "label": field.removeprefix("Global/"),
-                "values": values,
+                "values": values[:, axis].tolist(),
                 "range": list(axis_range) if axis_range is not None else None,
             }
-            for field, values, axis_range in zip(fields, dimensions_data, ranges)
+            for axis, (field, axis_range) in enumerate(zip(fields, ranges))
         ]
         colors = [
             qualitative.Plotly[i % len(qualitative.Plotly)]
@@ -290,15 +622,14 @@ def build_globals_figure(
         )
     for split_index, split in enumerate(splits):
         color = qualitative.Plotly[split_index % len(qualitative.Plotly)]
-        rows = records.get(split, [])
+        matrix = matrices[split]
+        ids = prepared.sample_ids(split)
         if kind == "parallel":
             if parallel_mode == "parcoords":
                 continue
             plotted = False
-            for row in rows:
-                numbers = [scalar_value(row["values"].get(f)) for f in fields]
-                if all(number is None for number in numbers):
-                    continue
+            for index in np.flatnonzero(~np.isnan(matrix).all(axis=1)):
+                numbers = _optional(matrix[index])
                 figure.add_trace(
                     go.Scatter(
                         x=list(range(len(fields))),
@@ -311,9 +642,7 @@ def build_globals_figure(
                         line={"color": color, "dash": dashes[split_index % 4]},
                         marker={"color": color, "size": 5},
                         opacity=0.65,
-                        customdata=[
-                            [str(row["sample_id"]), number] for number in numbers
-                        ],
+                        customdata=[[ids[index], number] for number in numbers],
                         hovertemplate=(
                             "Sample %{customdata[0]}<br>"
                             "Value: %{customdata[1]}<extra>%{fullData.name}</extra>"
@@ -322,46 +651,42 @@ def build_globals_figure(
                 )
                 plotted = True
         else:
-            points = []
-            for row in rows:
-                numbers = [scalar_value(row["values"].get(f)) for f in fields]
-                if any(number is None for number in numbers):
-                    continue
-                value = (
-                    row["sample_id"]
-                    if label == "sample_id"
-                    else row["values"].get(label)
-                    if label
-                    else None
-                )
-                points.append((row, numbers, value))
-            if not points:  # pragma: no cover
+            points = np.flatnonzero(~np.isnan(matrix).any(axis=1))
+            if not points.size:  # pragma: no cover
                 continue
-            x = [
-                int(row["sample_id"]) if kind == "1D" else nums[0]
-                for row, nums, _ in points
-            ]
-            y = [nums[0] if kind == "1D" else nums[1] for _, nums, _ in points]
-            text = [
-                format_point_label(value) if value is not None else ""
-                for _, _, value in points
-            ]
+            text = None
+            if label:
+                text = [
+                    format_point_label(value) if value is not None else ""
+                    for value in (
+                        ids[index]
+                        if label == "sample_id"
+                        else prepared.value(split, int(index), label)
+                        for index in points
+                    )
+                ]
+            if kind == "1D":
+                x = [int(ids[index]) for index in points]
+                y = matrix[points, 0].tolist()
+            else:
+                x = matrix[points, 0].tolist()
+                y = matrix[points, 1].tolist()
             props = {
                 "x": x,
                 "y": y,
                 "name": split,
                 "mode": "markers+text" if label else "markers",
-                "text": text if label else None,
+                "text": text,
                 "textposition": "top center",
                 "marker": {
                     "color": color,
                     "symbol": symbols[split_index % len(symbols)],
                     "size": 8,
                 },
-                "customdata": [str(row["sample_id"]) for row, _, _ in points],
+                "customdata": [ids[index] for index in points],
             }
             if kind == "3D":
-                props["z"] = [nums[2] for _, nums, _ in points]
+                props["z"] = matrix[points, 2].tolist()
                 figure.add_trace(go.Scatter3d(**props))
             else:
                 figure.add_trace(go.Scatter(**props))

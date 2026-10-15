@@ -13,7 +13,9 @@ from plaid.viewer.global_plots import (
     build_globals_figure,
     format_point_label,
     global_names,
+    globals_dataframe,
     label_names,
+    prepare_globals,
     scalar_value,
 )
 
@@ -55,6 +57,17 @@ def test_scalar_value_filters_missing_and_non_scalars():
     assert scalar_value("text") is None
 
 
+def test_prepared_globals_are_reused_by_figure_builder(records, monkeypatch):
+    prepared = prepare_globals(records)
+
+    def fail_if_expanded(_records):
+        raise AssertionError("prepared records must not be expanded again")
+
+    monkeypatch.setattr("plaid.viewer.global_plots.prepare_globals", fail_if_expanded)
+    figure = build_globals_figure(prepared, ["train"], "1D", ["Global/a"])
+    assert figure is not None
+
+
 def test_names_include_only_plot_eligible_globals(records):
     assert global_names(records) == [
         "Global/a",
@@ -70,6 +83,14 @@ def test_names_include_only_plot_eligible_globals(records):
         "Global/vector_1",
         "Global/vector_2",
     ]
+
+
+def test_names_accept_prepared_globals(records):
+    """Both name helpers reuse names cached during preparation."""
+    prepared = prepare_globals(records)
+
+    assert global_names(prepared) == prepared.names
+    assert label_names(prepared) == prepared.label_names
 
 
 def test_array_globals_expand_to_one_based_scalar_components():
@@ -394,3 +415,180 @@ def test_empty_selection_and_invalid_kind(records):
     )
     with pytest.raises(ValueError, match="Unknown plot type"):
         build_globals_figure(records, ["train"], "heatmap", [])
+
+
+def test_globals_dataframe_exports_splits_and_expanded_columns(records):
+    frame = globals_dataframe(records)
+    assert list(frame.columns) == [
+        "split",
+        "sample_id",
+        "Global/a",
+        "Global/b",
+        "Global/c",
+        "Global/vector_1",
+        "Global/vector_2",
+    ]
+    assert list(zip(frame["split"], frame["sample_id"])) == [
+        ("train", "0"),
+        ("train", "1"),
+        ("test", "0"),
+    ]
+    assert frame.loc[0, "Global/vector_2"] == 2.0
+    assert np.isnan(frame.loc[1, "Global/a"])
+    selected = globals_dataframe(prepare_globals(records), {("test", "0")})
+    assert selected["split"].tolist() == ["test"]
+    assert selected["sample_id"].tolist() == ["0"]
+    assert list(globals_dataframe(records, set()).columns) == list(frame.columns)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        np.frombuffer(b"case-a", dtype="|S1"),
+        np.frombuffer(b"x", dtype="|S1"),
+        np.array(list("case-a"), dtype="U1"),
+    ],
+)
+def test_character_globals_survive_table_exports_and_labels(text):
+    """CGNS character arrays remain readable in CSV and report tables."""
+    records = {
+        "train": [
+            {
+                "sample_id": "0",
+                "values": {"Global/case": text, "Global/a": 1.0},
+            },
+        ],
+    }
+    expected = "x" if text.size == 1 else "case-a"
+    prepared = prepare_globals(records)
+    assert prepared.value("train", 0, "Global/case") == expected
+    assert prepared.names == ["Global/a"]
+    assert "Global/case" in prepared.label_names
+    for data in (records, prepared):
+        frame = globals_dataframe(data)
+        assert frame.loc[0, "Global/case"] == expected
+        assert expected in frame.to_csv(index=False)
+        selected = globals_dataframe(data, {("train", "0")})
+        assert selected.loc[0, "Global/case"] == expected
+
+
+def test_streamed_csv_matches_dataframe_export(records):
+    """Chunked CSV export keeps the header, order and missing values."""
+    from io import StringIO
+
+    import pandas as pd
+
+    from plaid.viewer.global_plots import iter_globals_csv
+
+    records["train"][0]["values"]["Global/case"] = np.frombuffer(b"a,b", "|S1")
+    prepared = prepare_globals(records)
+    chunks = list(iter_globals_csv(prepared, chunk_rows=1))
+    assert len(chunks) == 4  # Header, then one block per sample.
+    text = b"".join(chunks).decode("utf-8-sig")
+    streamed = pd.read_csv(StringIO(text), dtype={"sample_id": str})
+    expected = globals_dataframe(prepared)
+    assert list(streamed.columns) == list(expected.columns)
+    numeric = prepared.names
+    np.testing.assert_allclose(
+        streamed[numeric].to_numpy(float), expected[numeric].to_numpy(float)
+    )
+    assert streamed["split"].tolist() == expected["split"].tolist()
+    assert streamed["sample_id"].tolist() == expected["sample_id"].tolist()
+    assert streamed["Global/case"].tolist()[0] == "a,b"
+    assert streamed["Global/case"].isna().tolist()[1:] == [True, True]
+    selected = b"".join(iter_globals_csv(records, {("test", "0")})).decode("utf-8-sig")
+    assert selected.splitlines()[1].startswith('"test","0"')
+
+
+def test_prepared_globals_store_vectors_as_dense_columns():
+    """Vector Globals are stored once per split instead of once per component."""
+    prepared = prepare_globals(
+        {
+            "train": [
+                {"sample_id": "0", "values": {"Global/v": np.arange(3.0)}},
+                {"sample_id": "1", "values": {"Global/v": np.array([np.inf, 4.0])}},
+            ]
+        }
+    )
+    columns = prepared.splits["train"]
+    assert list(columns.numeric) == ["Global/v"]
+    assert columns.numeric["Global/v"].shape == (2, 3)
+    assert prepared.names == ["Global/v_1", "Global/v_2", "Global/v_3"]
+    np.testing.assert_array_equal(
+        prepared.numeric_column("train", "Global/v_3"), [2.0, np.nan]
+    )
+    assert prepared.value("train", 1, "Global/v_1") is None  # Non-finite.
+    assert prepared.value("train", 1, "Global/v_2") == 4.0
+    assert prepared.column("train", "Global/v_4") is None
+    assert prepared.column("missing", "Global/v_1") is None
+    assert prepared.sample_ids("missing") == []
+
+
+def test_globals_dataframe_selects_columns_and_handles_empty_records():
+    frame = globals_dataframe(
+        {"train": [{"sample_id": "0", "values": {"Global/a": 1.0, "Global/b": 2.0}}]},
+        columns=["Global/b", "Global/missing"],
+    )
+    assert list(frame.columns) == ["split", "sample_id", "Global/b", "Global/missing"]
+    assert frame.loc[0, "Global/b"] == 2.0
+    assert np.isnan(frame.loc[0, "Global/missing"])
+    assert list(globals_dataframe({}).columns) == ["split", "sample_id"]
+
+
+def test_streamed_csv_exports_only_requested_columns(records):
+    from plaid.viewer.global_plots import iter_globals_csv
+
+    text = b"".join(
+        iter_globals_csv(records, columns=["Global/b", "Global/vector_2"])
+    ).decode("utf-8-sig")
+    lines = text.splitlines()
+    assert lines[0] == "split,sample_id,Global/b,Global/vector_2"
+    assert lines[1] == '"train","0",2,2'
+    assert len(lines) == 4
+
+
+def test_prepared_globals_list_text_globals():
+    prepared = prepare_globals(
+        {"train": [{"sample_id": "0", "values": {"Global/a": 1.0, "Global/c": "x"}}]}
+    )
+    assert prepared.text_names == ["Global/c"]
+    assert prepared.names == ["Global/a"]
+
+
+def test_character_components_and_missing_prepared_values():
+    """Decode character vectors and return None for an absent component."""
+    characters = np.frombuffer(b"case", dtype="|S1")
+    assert _component_values({"Global/case": characters}) == {"Global/case": "case"}
+    prepared = prepare_globals(
+        {"train": [{"sample_id": "0", "values": {"Global/case": characters}}]}
+    )
+    assert prepared.value("train", 0, "Global/missing") is None
+
+
+def test_non_numeric_vectors_are_not_prepared_as_columns():
+    """Ignore multi-element object arrays that cannot be plotted or labeled."""
+    prepared = prepare_globals(
+        {
+            "train": [
+                {
+                    "sample_id": "0",
+                    "values": {"Global/objects": np.array(["one", "two"])},
+                }
+            ]
+        }
+    )
+    assert prepared.label_names == []
+    assert prepared.splits["train"].objects == {}
+
+
+def test_csv_export_decodes_byte_values():
+    """Export byte-valued labels with replacement for invalid ASCII."""
+    from plaid.viewer.global_plots import iter_globals_csv
+
+    records = {
+        "train": [
+            {"sample_id": "0", "values": {"Global/label": b"caf\xe9"}},
+        ]
+    }
+    text = b"".join(iter_globals_csv(records)).decode("utf-8-sig")
+    assert '"caf\ufffd"' in text

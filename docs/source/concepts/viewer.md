@@ -44,9 +44,10 @@ Useful launch options:
 
 ![defaults](../images/viewer.jpg)
 
-The left panel is numbered in the same order as a typical workflow.
+The left panel groups dataset selection, sample loading, rendering options,
+and the current sample's Globals into separate cards.
 
-### 1) Select Datasets root
+### Select a datasets root and dataset
 
 Choose where the datasets come from.
 
@@ -56,59 +57,51 @@ Choose where the datasets come from.
   `PLAID-lib/VKI-LS59`, then click the plus button. Added Hub datasets appear
   as chips and can be removed from the same area.
 
-If you started the viewer with `--datasets-root` or `--hub-repo`, this step may
-already be filled in.
+If you started the viewer with `--datasets-root` or `--hub-repo`, the source may
+already be filled in. The root controls and dataset selector may be hidden
+independently when the viewer is configured to pin either choice.
 
-### 2) Select Dataset
+Pick the **Dataset** you want to inspect.
 
-Pick the dataset you want to inspect.
-
-The list depends on the tab selected in step 1: local datasets are shown on the
+The list depends on the selected source tab: local datasets are shown on the
 **Local** tab, while streamed Hub datasets are shown on the **Hub** tab.
 
-### 3) Select Split
+### Load a sample: split, Globals, base and fields
 
-Choose the dataset split, for example `train`, `test`, or any other split
-provided by the dataset.
+Choose a **Split**, for example `train`, `test`, or any other split provided by
+the dataset.
 
-### 4) Select Base (and/or enable Globals)
+Choose which high-level part of the sample to load:
 
-Choose which high-level part of the sample to load.
-
-- Click a **Base** button to display the mesh for that base.
-- Enable **Globals** if you want to load and display global values associated
-  with the sample.
+- Click an **Available Bases** button to display its mesh. Click the active
+  button again to deselect it.
+- Enable **Sample Globals** to load global values associated with the sample.
+  Loaded values appear in the **Sample Globals Output** card.
 
 By default, the viewer starts light: it does not load every field immediately.
-Pick a base and/or enable globals first, then choose fields in the next steps.
+Pick a base and/or enable Sample Globals first, then choose fields.
 
-### 5) Pre-select browsable field features
-
-This step is shown when the local dataset exposes selectable fields.
+This step is shown when the dataset exposes selectable fields, including
+datasets streamed from the Hub.
 
 Use it to choose which fields should be loaded for the selected base. This is
 useful for large datasets because you can avoid loading everything at once.
 
-- Click **Load all** to load every available field for the current selection.
+- Click **Load all** to select every available field for the current selection.
 - Expand **Select features** to tick only the fields you need.
 - Click **Apply** after changing the checked fields.
-- Click **Clear** to uncheck the current selection.
+- Click **Clear** to uncheck the current selection, then **Apply** to load no
+  fields (the mesh can still be shown).
 
-For streamed Hub datasets, this panel can be hidden because samples are loaded
-progressively from the stream.
+For streamed Hub datasets, choosing a Base initially loads only the mesh.
+Select fields here and click **Apply** before **Next** to include them in the
+stream. Applying a new selection restarts the stream from the first sample;
+click **Next** again to load it with the selected fields.
 
-### 6) Select field to plot
+### Select a sample
 
-Choose the field used to color the 3D view.
-
-If no field is selected, the viewer still shows the mesh, but without scalar
-coloring. When a field is selected, a color legend appears in the 3D view.
-
-### 7) Select Sample
-
-Choose which sample to display.
-
-- For local datasets, use the slider to move through the available samples.
+- For local datasets, use the **Select Sample** slider to move through the
+  available samples.
 - For streamed Hub datasets, click **Next** to fetch the next sample. Streaming
   is forward-only: the viewer loads samples one after another instead of
   knowing the full list in advance.
@@ -116,10 +109,25 @@ Choose which sample to display.
 The label under this control shows the current sample id, number of samples, or
 streaming status.
 
+### Configure 3D rendering
+
+The **3D Rendering options** card appears when a base is selected. Choose a
+**Field to plot** to color the 3D view.
+
+Choose the field used to color the 3D view.
+
+If no field is selected, the viewer still shows the mesh, but without scalar
+coloring. When a field is selected, a color legend appears in the 3D view.
+
+The same card also contains the colormap, edge visibility, and camera reset
+controls described below.
+
 ## Explore Globals across splits
 
-Switch from **Sample (VTK)** to the **Globals** tab and click **Extract Globals**.
-This reads all `Global/` values in every sample of every local split; it does
+Switch from **Sample 3D View** to the **Dataset Globals** tab, choose **First Time
+Step Globals** or **Last Time Step Globals** (last by default), and click
+**Extract Globals**. This reads the selected time step's `Global/` values in
+every sample of every local split; timeless Globals remain available. It does
 not alter the feature selection used by the sample view. Tick one or more
 splits on the left and choose **1D**, **2D**, **3D**, or **parallel**. Scatter
 plots use one, two, or three selectable numeric scalar Globals; in 1D the
@@ -137,10 +145,39 @@ hidden selections remain unchanged. Clear the filter to show the full list
 again. Different line styles and colors distinguish the selected splits.
 Each parallel axis is scaled independently from 0 to 1 for comparison across
 different units.
+
+The Dataset Globals view below shows extracted values plotted in 3D, with
+controls for choosing Globals, splits, plot axes, and exports on the left.
+
+![Dataset Globals tab with a 3D scatter plot of extracted Globals](../images/viewerglobals.jpg)
+
 Use **Parallel renderer** to try either partial-line plotting (`lines`) or
 Plotly's interactive `Parcoords` renderer. `Parcoords` requires a complete
 numeric value for every selected Global, so samples with missing selected
-values are omitted in that mode.
+values are omitted in that mode. After extraction, **Download all Globals
+(CSV)** saves a table of every extracted sample across all splits, with
+``split`` and ``sample_id`` columns and vector Globals expanded into numbered
+components. Click **Generate skrub report** to open a standalone
+data-profiling report in a new browser tab. Like the CSV export, it covers
+every extracted sample across all splits, regardless of which splits are
+selected for plotting.
+The report link is replaced when Globals are extracted again and cleared when
+the dataset changes. Report generation may take time for large tables; if it
+fails, the CSV and plots remain available.
+
+The skrub report displays a table of extracted Globals and column statistics,
+including missing-value counts and distributions, as shown below.
+
+![Skrub report showing extracted Globals and statistics for a selected column](../images/viewerskrub.jpg)
+
+In **1D** and **2D**, click points to toggle their selection, or
+select multiple points with Plotly's box or lasso tools. In `parcoords`, brush
+one or more axes to select lines.
+**Download selected rows (CSV)** saves the selected plotted samples with the
+same columns. **Selected rows** lists each matching split and sample ID,
+with a count; the list scrolls when many rows are selected. The button is
+disabled when no points are selected or no plotted lines match the brush.
+Changing the plot or extracting again clears the selection and list.
 
 All four plots use interactive Plotly views. Pan, zoom, reset, and export the
 plot with the plot toolbar; rotate the 3D scatter with the mouse. In parallel
@@ -172,7 +209,7 @@ You can:
 
 ## Rendering options
 
-The controls below the thick separator only change how the current sample is
+The controls in **3D Rendering options** only change how the current sample is
 drawn. They do not change which data is loaded.
 
 - **Colormap** changes the colors used for the selected field.
@@ -205,9 +242,11 @@ When streaming is active, a `streaming` chip appears in the toolbar.
 ## Troubleshooting
 
 !!! tip "Viewer tips"
-    - If the 3D view is empty, first select a **Base** in step 4.
+    - If the 3D view is empty, first select a button under **Available Bases**.
     - If the field dropdown is empty, load fields with **Load all** or by selecting
-      features in step 5.
+      features under **Pre-select browsable field features**. For Hub streams,
+      click **Next** after applying the selection to fetch a sample with those
+      fields.
     - If the viewer feels slow on a large dataset, load only one base and a small
       number of fields.
     - The message at the bottom of the side panel reports the latest action or

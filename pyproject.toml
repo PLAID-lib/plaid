@@ -39,6 +39,7 @@ dependencies = [
 ]
 [project.optional-dependencies]
 viewer = [
+    "skrub>=0.10,<1",
     "trame>=4.0,<5.0",
     "trame-plotly>=3,<4",
     "trame-vtk>=2.8,<3.0",
