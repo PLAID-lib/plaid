@@ -1581,6 +1581,19 @@ class PlaidDatasetService:
                 expanded_features = update_features_for_CGNS_compatibility(
                     base_features, constant_keys, variable_keys
                 )
+                # The HF streaming reader passes these paths as Parquet
+                # ``columns``. Constants are loaded separately from the
+                # dataset metadata; they are not Parquet columns. Requesting
+                # them here fails only when the first row is fetched.
+                from plaid.storage.common.reader import (  # noqa: PLC0415
+                    load_infos_from_hub,
+                )
+
+                infos = load_infos_from_hub(dataset_id)
+                if infos is not None and infos.storage_backend == "hf_datasets":
+                    expanded_features = sorted(
+                        set(expanded_features) & set(variable_keys)
+                    )
                 try:
                     datasetdict, converterdict = init_streaming_from_hub(
                         dataset_id, features=expanded_features

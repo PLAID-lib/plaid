@@ -84,7 +84,8 @@ Pick a base and/or enable globals first, then choose fields in the next steps.
 
 ### 5) Pre-select browsable field features
 
-This step is shown when the local dataset exposes selectable fields.
+This step is shown when the dataset exposes selectable fields, including
+datasets streamed from the Hub.
 
 Use it to choose which fields should be loaded for the selected base. This is
 useful for large datasets because you can avoid loading everything at once.
@@ -94,8 +95,10 @@ useful for large datasets because you can avoid loading everything at once.
 - Click **Apply** after changing the checked fields.
 - Click **Clear** to uncheck the current selection.
 
-For streamed Hub datasets, this panel can be hidden because samples are loaded
-progressively from the stream.
+For streamed Hub datasets, choosing a Base initially loads only the mesh.
+Select fields here and click **Apply** before **Next** to include them in the
+stream. Applying a new selection restarts the stream from the first sample;
+click **Next** again to load it with the selected fields.
 
 ### 6) Select field to plot
 
@@ -227,7 +230,8 @@ When streaming is active, a `streaming` chip appears in the toolbar.
 !!! tip "Viewer tips"
     - If the 3D view is empty, first select a **Base** in step 4.
     - If the field dropdown is empty, load fields with **Load all** or by selecting
-      features in step 5.
+      features in step 5. For Hub streams, click **Next** after applying the
+      selection to fetch a sample with those fields.
     - If the viewer feels slow on a large dataset, load only one base and a small
       number of fields.
     - The message at the bottom of the side panel reports the latest action or

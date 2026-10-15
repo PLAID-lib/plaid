@@ -137,3 +137,84 @@ def test_update_view_pushes_frame_when_protocol_is_ready() -> None:
     _update_view(server, ctrl)
 
     assert calls == [None]
+
+
+def test_streaming_base_options_survive_initialisation_and_split_switch(
+    tmp_path: Path,
+) -> None:
+    """A streamed dataset's metadata bases remain selectable before Next."""
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.models import DatasetDetail  # noqa: PLC0415
+    from plaid.viewer.services.paraview_artifact_service import (  # noqa: PLC0415
+        ParaviewArtifactService,
+    )
+    from plaid.viewer.services.plaid_dataset_service import (  # noqa: PLC0415
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    repo_id = "test/force_asr"
+    mesh_path = "Base_2_2/Zone/GridCoordinates/CoordinateX"
+    field_path = "Base_2_2/Zone/VertexFields/pressure"
+
+    class StreamingService(PlaidDatasetService):
+        """Use real metadata filtering without contacting the Hub."""
+
+        def is_streaming(self, dataset_id: str) -> bool:  # noqa: ARG002
+            """Mark the registered repository as a stream."""
+            return True
+
+        def _open(self, dataset_id: str) -> tuple[dict, dict]:  # noqa: ARG002
+            """Return empty streams without connecting to the Hub."""
+            return {"res_SENS": iter(()), "other": iter(())}, {}
+
+        def get_dataset(self, dataset_id: str) -> DatasetDetail:
+            """Expose two splits without opening a remote dataset."""
+            return DatasetDetail(
+                dataset_id=dataset_id,
+                is_streaming=True,
+                path=f"hf://{dataset_id}",
+                splits={"res_SENS": None, "other": None},
+            )
+
+        def reset_stream_cursor(self, dataset_id: str, split: str | None) -> None:
+            """Avoid fetching Parquet data while resetting an empty stream."""
+
+    service = StreamingService(ViewerConfig())
+    service.add_hub_dataset(repo_id)
+    service._feature_metadata[repo_id] = (["Base_2_2", mesh_path], [field_path])
+    artifact_service = ParaviewArtifactService(service, tmp_path)
+    server = build_server(service, artifact_service)
+
+    # State callbacks are dispatched only when the trame state becomes ready.
+    server.state.ready()
+    assert server.state.base_options == ["Base_2_2"]
+    assert server.state.sample_id is None
+    assert server.state.stream_position == -1
+
+    server.state.split = "other"
+    server.state.flush()
+    assert server.state.base_options == ["Base_2_2"]
+    assert server.state.sample_id is None
+
+    server.state.active_base = "Base_2_2"
+    server.state.flush()
+    assert server.state.base_options == ["Base_2_2"]
+    assert mesh_path in service.get_features(repo_id)
+    assert field_path in server.state.available_features
+    assert field_path not in service.get_features(repo_id)
+
+    # Applying a field after a mesh-only sample was displayed must
+    # invalidate the previous step as well as update the feature filter.
+    server.state.stream_position = 0
+    server.state.sample_id = "cursor"
+    server.state.field_options = ["point:old_field"]
+    server.state.selected_features = [field_path]
+    server.controller.apply_features()
+    server.state.flush()
+
+    assert mesh_path in service.get_features(repo_id)
+    assert field_path in service.get_features(repo_id)
+    assert server.state.stream_position == -1
+    assert server.state.sample_id is None
+    assert server.state.field_options == []

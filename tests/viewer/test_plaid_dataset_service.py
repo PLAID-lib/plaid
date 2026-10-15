@@ -1322,6 +1322,67 @@ def test_streaming_open_empty_filter_keeps_geometry_but_drops_globals(
     ]
 
 
+def test_streaming_hf_requests_only_parquet_columns_on_next(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Hub constants must not be requested as Parquet columns on Next."""
+    from types import SimpleNamespace  # noqa: PLC0415
+
+    import pyarrow as pa  # noqa: PLC0415
+
+    import plaid.storage as storage  # noqa: PLC0415
+    from plaid.storage.common import reader as reader_mod  # noqa: PLC0415
+
+    repo_id = "org/force_asr"
+    base = "Base_2_2"
+    zone = f"{base}/Zone"
+    coordinate = f"{zone}/GridCoordinates/CoordinateX"
+    constant = {
+        "train": {
+            base: None,
+            f"{base}_times": None,
+            zone: None,
+            f"{zone}_times": None,
+            f"{zone}/ZoneType": None,
+            f"{zone}/ZoneType_times": None,
+            f"{zone}/GridCoordinates": None,
+            f"{zone}/GridCoordinates_times": None,
+            f"{zone}/VertexFields": None,
+            f"{zone}/VertexFields_times": None,
+        }
+    }
+    variable = {coordinate: None, f"{coordinate}_times": None}
+    _install_fake_metadata(
+        monkeypatch, variable_schema=variable, constant_schema=constant
+    )
+    monkeypatch.setattr(
+        reader_mod,
+        "load_infos_from_hub",
+        lambda _repo: SimpleNamespace(storage_backend="hf_datasets"),
+    )
+    requested: list[str] = []
+
+    def fake_init(_repo: str, features=None):
+        requested[:] = features or []
+
+        def rows():
+            missing = set(requested) - set(variable)
+            if missing:
+                raise pa.ArrowInvalid(f"No match for FieldRef.Name({min(missing)})")
+            yield {coordinate: [0.0]}
+
+        return {"train": rows()}, {"train": object()}
+
+    monkeypatch.setattr(storage, "init_streaming_from_hub", fake_init)
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset(repo_id)
+    service.set_features(repo_id, [coordinate])
+
+    service.advance_stream_cursor(repo_id, "train")
+
+    assert requested == sorted(variable)
+
+
 def test_set_features_invalidates_store_cache(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

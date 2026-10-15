@@ -1303,8 +1303,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             pipeline.mapper.RemoveAllInputConnections(0)
             pipeline.mapper.ScalarVisibilityOff()
             _hide_scalar_bar(pipeline.scalar_bar)
-            state.base_options = []
-            state.active_base = None
+            # Keep the metadata-derived bases and the user's selection.
+            # Selecting a base refreshes this stream, so clearing either
+            # here would prevent the user from loading its mesh with Next.
             state.field_options = []
             state.field = None
             state.sample_globals = []
@@ -1791,7 +1792,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         # cache (for streaming datasets, the iterator is rebuilt) and
         # any cached paraview artifact for this dataset. The simplest
         # way to propagate the change to the view is to run the full
-        # split/sample refresh cascade.
+        # split/sample refresh cascade. For streams this deliberately
+        # clears the old mesh and cursor: the next click fetches the
+        # first record with the newly selected fields.
         state.status = (
             f"Applied feature filter ({len(features)} selected)."
             if features
@@ -2926,308 +2929,302 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 # source always land in ``dataset_ids`` together. Hidden
                 # when ``--disable-root-change`` was passed on the CLI so
                 # a public deployment can pin the root for good.
-                with html.Div(v_if=("allow_root_change",), classes="mb-2"):
-                    html.Div(
-                        "1) Select Datasets root",
-                        classes="text-subtitle-2 mb-1",
-                    )
-                    with v3.VTabs(
-                        v_model=("source_tab",),
-                        density="compact",
-                        grow=True,
-                        classes="mb-2",
-                    ):
-                        v3.VTab("Local", value="local")
-                        v3.VTab("Hub", value="hub")
-                    # Local datasets root form.
-                    with html.Div(v_if=("source_tab === 'local'",)):
-                        html.Div("Datasets root", classes="text-caption")
-                        with html.Div(classes="d-flex align-center"):
-                            v3.VTextField(
-                                v_model=("datasets_root_text",),
-                                density="compact",
-                                hide_details=True,
-                                placeholder="/absolute/path/to/datasets",
-                                classes="mr-2",
-                                clearable=True,
-                                __events=[("keyup_enter", "keyup.enter")],
-                                keyup_enter=ctrl.apply_datasets_root,
-                            )
-                            v3.VBtn(
-                                icon="mdi-folder-open",
-                                click=ctrl.open_browse_dialog,
-                                density="compact",
-                                variant="tonal",
-                                classes="mr-1",
-                            )
-                            v3.VBtn(
-                                icon="mdi-check",
-                                click=ctrl.apply_datasets_root,
-                                density="compact",
-                                variant="tonal",
-                                color="primary",
-                            )
-                    # Hugging Face Hub streaming form.
-                    with html.Div(v_if=("source_tab === 'hub'",)):
-                        html.Div(
-                            "Hugging Face Hub dataset",
-                            classes="text-caption",
-                        )
-                        with html.Div(classes="d-flex align-center"):
-                            v3.VTextField(
-                                v_model=("hub_repo_input",),
-                                density="compact",
-                                hide_details=True,
-                                placeholder="namespace/name",
-                                prepend_inner_icon="mdi-cloud-download",
-                                classes="mr-2",
-                                clearable=True,
-                                __events=[("keyup_enter", "keyup.enter")],
-                                keyup_enter=ctrl.add_hub_repo,
-                            )
-                            v3.VBtn(
-                                icon="mdi-plus",
-                                click=ctrl.add_hub_repo,
-                                density="compact",
-                                variant="tonal",
-                                color="primary",
-                            )
-                        # Chip list of registered repos with a remove button.
-                        with html.Div(
-                            v_if=("(hub_repos || []).length > 0",),
-                            classes="mt-1 d-flex flex-wrap",
-                        ):
-                            v3.VChip(
-                                "{{ repo }}",
-                                v_for="repo in hub_repos",
-                                key="repo",
-                                closable=True,
-                                size="small",
-                                classes="mr-1 mb-1",
-                                click_close=(ctrl.remove_hub_repo, "[repo]"),
-                            )
-                    v3.VDivider(classes="my-2")
 
-                # The dropdown ``items`` are filtered by ``source_tab``:
-                # Local tab -> ``local_dataset_ids`` (``init_from_disk``
-                # datasets), Hub tab -> ``hub_dataset_ids``
-                # (``init_streaming_from_hub`` datasets). The user never
-                # sees ids from the inactive source in the same menu.
-                with html.Div(v_if=("allow_dataset_change",)):
-                    html.Div(
-                        "2) Select Dataset",
-                        classes="text-subtitle-2 mb-1",
-                    )
-                    v3.VSelect(
-                        label="Dataset",
-                        v_model=("dataset_id",),
-                        items=(
-                            "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
+                with html.Div(classes="rounded-lg border pa-2 mb-3", v_if=("allow_root_change || allow_dataset_change",)):
+
+                    with html.Div(
+                        classes="d-flex justify-center",
+                        style=(
+                            "margin: -8px -8px 8px; "
+                            "border-radius: 8px 8px 0 0; "
+                            "background: rgba(var(--v-theme-on-surface), 0.12);"
                         ),
+                    ):
+                        html.Div(
+                            "Select Datasets root and Dataset to load",
+                            classes="text-subtitle-2 mb-1",
+                        )
+                    with html.Div(v_if=("allow_root_change",), classes="mb-2"):
+                        with v3.VTabs(
+                            v_model=("source_tab",),
+                            density="compact",
+                            grow=True,
+                            classes="mb-2",
+                        ):
+                            v3.VTab("Local", value="local")
+                            v3.VTab("Hub", value="hub")
+                        # Local datasets root form.
+                        with html.Div(v_if=("source_tab === 'local'",)):
+                            html.Div("Datasets root", classes="text-caption")
+                            with html.Div(classes="d-flex align-center"):
+                                v3.VTextField(
+                                    v_model=("datasets_root_text",),
+                                    density="compact",
+                                    hide_details=True,
+                                    placeholder="/absolute/path/to/datasets",
+                                    classes="mr-2",
+                                    clearable=True,
+                                    __events=[("keyup_enter", "keyup.enter")],
+                                    keyup_enter=ctrl.apply_datasets_root,
+                                )
+                                v3.VBtn(
+                                    icon="mdi-folder-open",
+                                    click=ctrl.open_browse_dialog,
+                                    density="compact",
+                                    variant="tonal",
+                                    classes="mr-1",
+                                )
+                                v3.VBtn(
+                                    icon="mdi-check",
+                                    click=ctrl.apply_datasets_root,
+                                    density="compact",
+                                    variant="tonal",
+                                    color="primary",
+                                )
+                        # Hugging Face Hub streaming form.
+                        with html.Div(v_if=("source_tab === 'hub'",)):
+                            html.Div(
+                                "Hugging Face Hub dataset",
+                                classes="text-caption",
+                            )
+                            with html.Div(classes="d-flex align-center"):
+                                v3.VTextField(
+                                    v_model=("hub_repo_input",),
+                                    density="compact",
+                                    hide_details=True,
+                                    placeholder="namespace/name",
+                                    prepend_inner_icon="mdi-cloud-download",
+                                    classes="mr-2",
+                                    clearable=True,
+                                    __events=[("keyup_enter", "keyup.enter")],
+                                    keyup_enter=ctrl.add_hub_repo,
+                                )
+                                v3.VBtn(
+                                    icon="mdi-plus",
+                                    click=ctrl.add_hub_repo,
+                                    density="compact",
+                                    variant="tonal",
+                                    color="primary",
+                                )
+                            # Chip list of registered repos with a remove button.
+                            with html.Div(
+                                v_if=("(hub_repos || []).length > 0",),
+                                classes="mt-1 d-flex flex-wrap",
+                            ):
+                                v3.VChip(
+                                    "{{ repo }}",
+                                    v_for="repo in hub_repos",
+                                    key="repo",
+                                    closable=True,
+                                    size="small",
+                                    classes="mr-1 mb-1",
+                                    click_close=(ctrl.remove_hub_repo, "[repo]"),
+                                )
+                        v3.VDivider(classes="my-2")
+                        with html.Div(v_if=("allow_dataset_change",)):
+                            v3.VSelect(
+                                label="Dataset",
+                                v_model=("dataset_id",),
+                                items=(
+                                    "source_tab === 'hub' ? hub_dataset_ids : local_dataset_ids",
+                                ),
+                                density="compact",
+                                hide_details=True,
+                            )
+
+                with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                    with html.Div(
+                        classes="d-flex justify-center",
+                        style=(
+                            "margin: -8px -8px 8px; "
+                            "border-radius: 8px 8px 0 0; "
+                            "background: rgba(var(--v-theme-on-surface), 0.12);"
+                        ),
+                    ):
+                        html.Div(
+                            "Sample to load: Split, globals, base and fields",
+                            classes="text-subtitle-2 mb-1",
+                        )
+
+                    v3.VSelect(
+                        label="Split",
+                        v_model=("split",),
+                        items=("splits",),
                         density="compact",
                         hide_details=True,
                     )
-
-                html.Div(
-                    "3) Select Split",
-                    classes="text-subtitle-2 mb-1 mt-2",
-                )
-                v3.VSelect(
-                    label="Split",
-                    v_model=("split",),
-                    items=("splits",),
-                    density="compact",
-                    hide_details=True,
-                )
-                v3.VDivider(classes="my-2")
-                html.Div(
-                    "4) Select Base (and/or enable Globals)",
-                    classes="text-subtitle-2 mb-1",
-                )
-                html.Div("Base", classes="text-caption")
-
-                # ``mandatory`` is intentionally left off so the user
-                # can deselect every base (clicking the active one a
-                # second time clears the toggle). An empty selection
-                # combined with ``show_globals=False`` makes
-                # ``_apply_user_filter`` push an empty feature filter,
-                # which clears the scene and shows the
-                # "Pick a Base or enable Globals to load the sample"
-                # placeholder.
-                # ``selected-class="bg-primary text-white"`` makes the
-                # active base visually obvious: Vuetify applies it to
-                # the toggled button, which would otherwise only differ
-                # from the inactive ones by a subtle grey background.
-                # ``color="primary"`` covers the case where the global
-                # theme overrides the default ``bg-primary`` token.
-                with v3.VBtnToggle(
-                    v_model=("active_base",),
-                    density="compact",
-                    divided=True,
-                    color="primary",
-                    selected_class="bg-primary text-white",
-                    classes="flex-wrap mb-2",
-                ):
-                    v3.VBtn(
-                        "{{ base }}",
-                        v_for="base in base_options",
-                        key="base",
-                        value=("base",),
-                        size="small",
-                        variant=("active_base === base ? 'flat' : 'outlined'",),
-                    )
-
-                # Feature filter panel. Moved between the Base toggle
-                # and the Field dropdown to match the numbered workflow
-                # exposed in the drawer (1) Dataset, 2) Split, 3) Base,
-                # 4) Pre-select fields, 5) Field/Colormap/Edges).
-                # Hidden for streaming (Hugging Face Hub) datasets:
-                # feature filtering goes through ``init_streaming_from_hub``
-                # which rebuilds the iterator from the dataset-wide
-                # metadata union, a workflow that does not fit the
-                # per-split viewer model and led to confusing "Missing
-                # features" errors.
-                with html.Div(
-                    v_if=("!is_streaming && has_features",),
-                    classes="mb-2",
-                ):
-                    with html.Div(classes="d-flex align-center mb-1"):
-                        html.Div(
-                            "5) Pre-select browsable field features",
-                            classes="text-subtitle-2 flex-grow-1",
-                        )
-                        v3.VBtn(
-                            "Load all",
-                            click=ctrl.select_all_features,
-                            size="x-small",
+                    #v3.VDivider(classes="my-2")
+                    #html.Div(
+                    #    "4) Select Base (and/or enable Globals)",
+                    #    classes="text-subtitle-2 mb-1",
+                    #)
+                    v3.VSwitch(
+                            label="Sample Globals",
+                            v_model=("show_globals",),
+                            density="compact",
+                            hide_details=True,
                             color="primary",
-                            variant="tonal",
+                            classes="text-subtitle-1 font-weight-medium py-1",
+                            style="flex: 0 0 auto;",
                         )
-                    with v3.VExpansionPanels(variant="accordion", multiple=True):
-                        with v3.VExpansionPanel():
-                            v3.VExpansionPanelTitle(
-                                "Select features ({{ (selected_features"
-                                " || []).length }} / {{ (available_features"
-                                " || []).length }})"
-                            )
-                            with v3.VExpansionPanelText():
-                                html.Div(
-                                    "Empty selection loads every feature.",
-                                    classes="text-caption text-medium-emphasis mb-1",
-                                )
-                                with html.Div(classes="d-flex mb-1"):
-                                    v3.VBtn(
-                                        "Clear",
-                                        click="selected_features = []",
-                                        size="x-small",
-                                        variant="text",
-                                        classes="mr-1",
-                                    )
-                                    v3.VBtn(
-                                        "Apply",
-                                        click=ctrl.apply_features,
-                                        size="x-small",
-                                        color="primary",
-                                        variant="tonal",
-                                    )
-                                with html.Div(
-                                    style="max-height: 240px; overflow: auto;",
-                                    classes="pa-1",
-                                ):
-                                    v3.VCheckbox(
-                                        v_for="feat in available_features",
-                                        key="feat",
-                                        v_model=("selected_features",),
-                                        value=("feat",),
-                                        label=("feat",),
-                                        density="compact",
-                                        hide_details=True,
-                                        multiple=True,
-                                    )
+                    html.Div("Base", classes="text-caption")
 
-                html.Div(
-                    "6) Select field to plot",
-                    classes="text-subtitle-2 mb-1 mt-2",
-                )
-                v3.VSelect(
-                    label="Field",
-                    v_model=("field",),
-                    items=("field_options",),
-                    density="compact",
-                    hide_details=True,
-                )
-
-                # Sample picker. Two mutually-exclusive widgets:
-                # - Local datasets expose a random-access slider over
-                #   the integer sample indices.
-                # - Hub streaming datasets have no ``__len__`` and can
-                #   only be consumed forward, so we expose a "Next"
-                #   button that advances the ``_StreamCursor`` by one
-                #   step via ``ctrl.stream_next``.
-                # Placed at step 5 (between the field selection and the
-                # downstream rendering options) so the user picks
-                # *what* to look at (Dataset / Split / Base / Field)
-                # before navigating *which sample* to display.
-                html.Div(
-                    "7) Select Sample",
-                    classes="text-subtitle-2 mb-1 mt-2",
-                )
-                v3.VSlider(
-                    v_if=("!is_streaming",),
-                    v_model_number=("sample_index",),
-                    min=0,
-                    max=("sample_count > 0 ? sample_count - 1 : 0",),
-                    step=1,
-                    thumb_label=True,
-                    hide_details=True,
-                    disabled=("sample_count === 0",),
-                )
-                with html.Div(
-                    v_if=("is_streaming",),
-                    classes="d-flex align-center mb-1",
-                ):
-                    v3.VBtn(
-                        "Next",
-                        prepend_icon="mdi-arrow-right",
-                        click=ctrl.stream_next,
-                        disabled=("stream_exhausted",),
-                        color="primary",
-                        variant="tonal",
+                    # ``mandatory`` is intentionally left off so the user
+                    # can deselect every base (clicking the active one a
+                    # second time clears the toggle). An empty selection
+                    # combined with ``show_globals=False`` makes
+                    # ``_apply_user_filter`` push an empty feature filter,
+                    # which clears the scene and shows the
+                    # "Pick a Base or enable Globals to load the sample"
+                    # placeholder.
+                    # ``selected-class="bg-primary text-white"`` makes the
+                    # active base visually obvious: Vuetify applies it to
+                    # the toggled button, which would otherwise only differ
+                    # from the inactive ones by a subtle grey background.
+                    # ``color="primary"`` covers the case where the global
+                    # theme overrides the default ``bg-primary`` token.
+                    with v3.VBtnToggle(
+                        v_model=("active_base",),
                         density="compact",
-                        classes="mr-2",
-                    )
-                # Sample counter: for local datasets the slider exposes
-                # all ids up-front; for streaming datasets we report the
-                # step number (the total is unknown until the iterator
-                # is exhausted, at which point "end of stream" appears).
-                html.Div(
-                    "{{ is_streaming"
-                    " ? ('step ' + (stream_position + 1) + (stream_exhausted"
-                    " ? ' (end of stream)' : ' (streaming)'))"
-                    " : ((sample_id ?? '-') + ' / ' + sample_count + ' samples') }}",
-                    classes="text-caption text-medium-emphasis mb-2",
-                )
+                        divided=True,
+                        color="primary",
+                        selected_class="bg-primary text-white",
+                        classes="flex-wrap mb-2",
+                    ):
+                        v3.VBtn(
+                            "{{ base }}",
+                            v_for="base in base_options",
+                            key="base",
+                            value=("base",),
+                            size="small",
+                            variant=("active_base === base ? 'flat' : 'outlined'",),
+                        )
 
-                # Time axis slider, only shown when the sample actually
-                # exposes a time axis (time-dependent samples).
-                with html.Div(v_if=("time_count > 1",), classes="mb-2"):
-                    html.Div("Time", classes="text-caption mt-2")
+                    # Feature filter panel. Moved between the Base toggle
+                    # and the Field dropdown to match the numbered workflow
+                    # exposed in the drawer (1) Dataset, 2) Split, 3) Base,
+                    # 4) Pre-select fields, 5) Field/Colormap/Edges).
+                    # Streaming datasets need this panel too: selecting a Base
+                    # loads only geometry, so without it there is no way to
+                    # request arrays for the field-to-plot dropdown. Applying
+                    # a new selection restarts the stream at its first record.
+                    with html.Div(
+                        v_if=("has_features",),
+                        classes="mb-2",
+                    ):
+
+                        with html.Div(classes="d-flex align-center mb-1"):
+                            html.Div(
+                                "Pre-select browsable field features",
+                                classes="text-subtitle-2 flex-grow-1",
+                            )
+                            v3.VBtn(
+                                "Load all",
+                                click=ctrl.select_all_features,
+                                size="x-small",
+                                color="primary",
+                                variant="tonal",
+                            )
+                        with v3.VExpansionPanels(variant="accordion", multiple=True):
+                            with v3.VExpansionPanel():
+                                v3.VExpansionPanelTitle(
+                                    "Select features ({{ (selected_features"
+                                    " || []).length }} / {{ (available_features"
+                                    " || []).length }})"
+                                )
+                                with v3.VExpansionPanelText():
+                                    html.Div(
+                                        "Empty selection loads every feature.",
+                                        classes="text-caption text-medium-emphasis mb-1",
+                                    )
+                                    with html.Div(classes="d-flex mb-1"):
+                                        v3.VBtn(
+                                            "Clear",
+                                            click="selected_features = []",
+                                            size="x-small",
+                                            variant="text",
+                                            classes="mr-1",
+                                        )
+                                        v3.VBtn(
+                                            "Apply",
+                                            click=ctrl.apply_features,
+                                            size="x-small",
+                                            color="primary",
+                                            variant="tonal",
+                                        )
+                                    with html.Div(
+                                        style="max-height: 240px; overflow: auto;",
+                                        classes="pa-1",
+                                    ):
+                                        v3.VCheckbox(
+                                            v_for="feat in available_features",
+                                            key="feat",
+                                            v_model=("selected_features",),
+                                            value=("feat",),
+                                            label=("feat",),
+                                            density="compact",
+                                            hide_details=True,
+                                            multiple=True,
+                                        )
+                    html.Div(
+                        "Select Sample",
+                        classes="text-subtitle-2 mb-1 mt-2",
+                    )
+
+                    # Sample picker. Two mutually-exclusive widgets:
+                    # - Local datasets expose a random-access slider over
+                    #   the integer sample indices.
+                    # - Hub streaming datasets have no ``__len__`` and can
+                    #   only be consumed forward, so we expose a "Next"
+                    #   button that advances the ``_StreamCursor`` by one
+                    #   step via ``ctrl.stream_next``.
+                    # Placed at step 5 (between the field selection and the
+                    # downstream rendering options) so the user picks
+                    # *what* to look at (Dataset / Split / Base / Field)
+                    # before navigating *which sample* to display.
                     v3.VSlider(
-                        v_model_number=("time_index",),
+                        v_if=("!is_streaming",),
+                        v_model_number=("sample_index",),
                         min=0,
-                        max=("time_count > 0 ? time_count - 1 : 0",),
+                        max=("sample_count > 0 ? sample_count - 1 : 0",),
                         step=1,
                         thumb_label=True,
                         hide_details=True,
+                        disabled=("sample_count === 0",),
                     )
-                    html.Div(
-                        "t = {{ current_time }} "
-                        "<span class='text-medium-emphasis'>"
-                        "({{ time_index + 1 }} / {{ time_count }})</span>",
-                        classes="text-caption text-medium-emphasis",
-                    )
-                    # Playback controls: Play/Pause + FPS slider + loop.
+                    with html.Div(
+                        v_if=("is_streaming",),
+                        classes="d-flex align-center mb-1",
+                    ):
+                        v3.VBtn(
+                            "Next",
+                            prepend_icon="mdi-arrow-right",
+                            click=ctrl.stream_next,
+                            disabled=("stream_exhausted",),
+                            color="primary",
+                            variant="tonal",
+                            density="compact",
+                            classes="mr-2",
+                        )
+                        # Sample counter: for local datasets the slider exposes
+                        # all ids up-front; for streaming datasets we report the
+                        # step number (the total is unknown until the iterator
+                        # is exhausted, at which point "end of stream" appears).
+                        html.Div(
+                            "{{ is_streaming"
+                            " ? ('step ' + (stream_position + 1) + (stream_exhausted"
+                            " ? ' (end of stream)' : ' (streaming)'))"
+                            " : ((sample_id ?? '-') + ' / ' + sample_count + ' samples') }}",
+                            classes="text-caption text-medium-emphasis mb-2",
+                        )
+
+                    html.Div("{{ status }}", classes="text-caption mt-2")
+                # Time axis slider, only shown when the sample actually
+                # exposes a time axis (time-dependent samples).
+                with html.Div(v_if=("time_count > 1",), classes="mb-2"):
+                    html.Div("Time = {{ current_time }} ({{ time_index + 1 }} / {{ time_count }})", classes="text-caption mt-2")
                     with html.Div(classes="d-flex align-center mt-2"):
+
                         v3.VBtn(
                             icon=("playing ? 'mdi-pause' : 'mdi-play'",),
                             click="playing = !playing",
@@ -3248,60 +3245,72 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             density="compact",
                             variant="tonal",
                         )
-                    html.Div("FPS: {{ play_fps }}", classes="text-caption mt-1")
-                    v3.VSlider(
-                        v_model_number=("play_fps",),
-                        min=1,
-                        max=30,
-                        step=1,
-                        hide_details=True,
-                        density="compact",
-                    )
+                        v3.VSlider(
+                            v_model_number=("time_index",),
+                            min=0,
+                            max=("time_count > 0 ? time_count - 1 : 0",),
+                            step=1,
+                            thumb_label=True,
+                            hide_details=True,
+                        )
 
-                # Bold visual separator between the selection-stage
-                # controls (steps 1-6 above) and the rendering / camera
-                # options (Colormap, Show edges, Reset camera) below.
-                # The default ``VDivider`` is a 1px hair-thin grey line
-                # that is barely visible inside the drawer; we
-                # emphasise this one with a thicker, primary-coloured
-                # rule and extra vertical margin so the two sections
-                # are clearly separated.
-                v3.VDivider(
-                    thickness=3,
-                    color="primary",
-                    classes="my-4",
-                )
-                html.Div(
-                    "Rendering options",
-                    classes="text-overline text-medium-emphasis mb-1",
-                )
+                    # Playback controls: Play/Pause + FPS slider + loop.
+                    with html.Div(classes="d-flex align-center mt-2"):
+                        html.Div(
+                            "Animation speed (fps):{{ String(play_fps).padStart(2, ' ') }}",
+                            classes="text-caption mt-1",
+                            style="white-space: pre; font-family: monospace;",
+                        )
+                        v3.VSlider(
+                            v_model_number=("play_fps",),
+                            min=1,
+                            max=30,
+                            step=1,
+                            hide_details=True,
+                            density="compact",
+                        )
 
-                v3.VSelect(
-                    label="Colormap",
-                    v_model=("cmap",),
-                    items=("cmaps",),
-                    density="compact",
-                    hide_details=True,
-                )
-                v3.VSwitch(
-                    label="Show edges",
-                    v_model=("show_edges",),
-                    density="compact",
-                    hide_details=True,
-                )
-                v3.VDivider(classes="my-2")
-                v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
-
-                html.Div("{{ status }}", classes="text-caption mt-2")
-
-
-                #with html.Div(
-                #        style=(
-                #            "flex: 1 1 400px; max-width: 420px; min-width: 0; "
-                #            "height: 100%; overflow-y: auto;"
-                #        ),
-                #    ):
                 with html.Div(classes="rounded-lg border pa-2 mb-3"):
+                    with html.Div(
+                        classes="d-flex justify-center",
+                        style=(
+                            "margin: -8px -8px 8px; "
+                            "border-radius: 8px 8px 0 0; "
+                            "background: rgba(var(--v-theme-on-surface), 0.12);"
+                        ),
+                    ):
+                        html.Div(
+                            "3D Rendering options",
+                            classes="text-subtitle-2 mb-1",
+                        )
+                    html.Div(
+                        "Field to plot",
+                        classes="text-subtitle-2 mb-1 mt-2",
+                    )
+                    v3.VSelect(
+                        label="Field",
+                        v_model=("field",),
+                        items=("field_options",),
+                        density="compact",
+                        hide_details=True,
+                    )
+                    v3.VSelect(
+                        label="Colormap",
+                        v_model=("cmap",),
+                        items=("cmaps",),
+                        density="compact",
+                        hide_details=True,
+                    )
+                    v3.VSwitch(
+                        label="Show edges",
+                        v_model=("show_edges",),
+                        density="compact",
+                        hide_details=True,
+                    )
+                    v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
+
+                with html.Div(classes="rounded-lg border pa-2 mb-3",
+                              v_if=("(sample_globals || []).length > 0",)):
                     # "Globals" toggle. Off by default; flipping it on adds
                     # every ``Globals/...`` PLAID feature path to the active
                     # filter so the side-panel "Globals" descriptor list is
@@ -3315,15 +3324,11 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             "background: rgba(var(--v-theme-on-surface), 0.12);"
                         ),
                     ):
-                        v3.VSwitch(
-                            label="Sample Globals",
-                            v_model=("show_globals",),
-                            density="compact",
-                            hide_details=True,
-                            color="primary",
-                            classes="text-subtitle-1 font-weight-medium py-1",
-                            style="flex: 0 0 auto;",
+                        html.Div(
+                            "Sample Globals Ouput",
+                            classes="text-subtitle-2 mb-1",
                         )
+
 
                     # PLAID globals for the current sample (filtered out of
                     # ``IterationValues`` / ``TimeValues`` bookkeeping arrays).
@@ -3426,7 +3431,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     style="flex: 0 0 auto; width: 100%;",
                 ):
                     v3.VTab("Sample (VTK)", value="sample")
-                    v3.VTab("Globals", value="globals")
+                    v3.VTab("Dataset Globals", value="globals")
                 with html.Div(
                     v_show="viewer_tab === 'sample'",
                     style="flex: 1 1 auto; min-height: 0; width: 100%;",
