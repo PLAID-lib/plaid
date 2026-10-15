@@ -141,6 +141,8 @@ def test_small_helpers_cover_edge_cases(tmp_path: Path) -> None:
     assert _array_preview([]) == "[]"
     assert "total 8 values" in (_array_preview(np.arange(8), max_items=3) or "")
     assert _array_preview(np.array(["one", "two"])) == "['one', 'two']"
+    assert _array_preview(np.array([b"h", b"i"], dtype="S1")) == "hi"
+    assert _array_preview(np.array(["h", "i"], dtype="U1")) == "hi"
 
     class BadArray:
         def __array__(self, *_args):
