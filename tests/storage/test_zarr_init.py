@@ -49,7 +49,7 @@ def test_zarr_backend_download_from_hub_delegates(monkeypatch):
         call["split_ids"] = split_ids
         call["features"] = features
         call["overwrite"] = overwrite
-        return "downloaded_path"
+        return Path("downloaded_path")
 
     monkeypatch.setattr(
         zarr, "download_datasetdict_from_hub", fake_download_datasetdict_from_hub
@@ -58,7 +58,7 @@ def test_zarr_backend_download_from_hub_delegates(monkeypatch):
     backend = ZarrBackend()
     result = backend.download_from_hub("dummy/repo", "/tmp/local")
 
-    assert result == "downloaded_path"
+    assert result == Path("downloaded_path")
     assert call == {
         "repo_id": "dummy/repo",
         "local_dir": "/tmp/local",
