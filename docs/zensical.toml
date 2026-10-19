@@ -127,6 +127,7 @@ nav = [
         { "cache" = "api/viewer/cache.md" },
         { "cli" = "api/viewer/cli.md" },
         { "config" = "api/viewer/config.md" },
+        { "global_plots" = "api/viewer/global_plots.md" },
         { "models" = "api/viewer/models.md" },
         { "preferences" = "api/viewer/preferences.md" },
         { "services" = [

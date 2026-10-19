@@ -273,24 +273,26 @@ def _write_globals_report(dataframe: Any, path: Path, title: str) -> None:
     ).write_html(path)
 
 
-def _selected_row_entries(
-    prepared: Any, selected: set[tuple[str, str]]
-) -> list[dict[str, str]]:
-    """List exported row identities in CSV order for display in the viewer.
+def _selected_rows_yaml(prepared: Any, selected: set[tuple[str, str]]) -> str:
+    """Format selected samples as a problem-definition split block.
+
+    The text is indented by four spaces so it can be pasted as-is under
+    ``train_split:`` or ``test_split:`` in a problem definition YAML.
 
     Args:
         prepared: :class:`~plaid.viewer.global_plots.PreparedGlobals`.
         selected: ``(split, sample_id)`` pairs to export.
 
     Returns:
-        Split and sample ID mappings for the selected samples.
+        YAML lines in CSV order, grouped by split; empty when nothing is selected.
     """
-    return [
-        {"split": split, "sample_id": sample_id}
-        for split in prepared.splits
-        for sample_id in prepared.sample_ids(split)
-        if (split, sample_id) in selected
-    ]
+    lines: list[str] = []
+    for split in prepared.splits:
+        ids = [sid for sid in prepared.sample_ids(split) if (split, sid) in selected]
+        if ids:
+            lines.append(f"    {split}:")
+            lines.extend(f"    - {sid}" for sid in ids)
+    return "\n".join(lines)
 
 
 def _constraint_ranges(value: object) -> list[tuple[float, float]]:
@@ -1071,7 +1073,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_report_url", "")
     state.setdefault("explore_selected_csv_url", "")
     state.setdefault("explore_has_selection", False)
-    state.setdefault("explore_selected_rows", [])
+    state.setdefault("explore_selected_count", 0)
+    state.setdefault("explore_selected_yaml", "")
     state.setdefault("explore_extracting", False)
     state.setdefault("explore_report_running", False)
     state.setdefault("explore_report_error", "")
@@ -1934,7 +1937,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_report_blocker = ""
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
-        state.explore_selected_rows = []
+        state.explore_selected_count = 0
+        state.explore_selected_yaml = ""
 
     def _set_explore_status(message: str) -> None:
         """Update the status line from the extraction task."""
@@ -2089,7 +2093,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         """Publish selected scatter points or brushed parcoords rows as CSV."""
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
-        state.explore_selected_rows = []
+        state.explore_selected_count = 0
+        state.explore_selected_yaml = ""
         if prepared_globals is None:
             return
         if state.explore_plot in ("1D", "2D"):
@@ -2105,7 +2110,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         else:
             return
         if selected:
-            state.explore_selected_rows = _selected_row_entries(
+            state.explore_selected_count = len(selected)
+            state.explore_selected_yaml = _selected_rows_yaml(
                 prepared_globals, selected
             )
             state.explore_selected_csv_url = _publish_csv("samples", selected)
@@ -2220,7 +2226,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         explore_plot_figure = None
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
-        state.explore_selected_rows = []
+        state.explore_selected_count = 0
+        state.explore_selected_yaml = ""
         state.explore_plot_message = ""
         if prepared_globals is None:
             state.explore_has_plot = False
@@ -2290,7 +2297,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.explore_plot_message = ""
         state.explore_selected_csv_url = ""
         state.explore_has_selection = False
-        state.explore_selected_rows = []
+        state.explore_selected_count = 0
+        state.explore_selected_yaml = ""
 
     @ctrl.set("draw_globals_plot")
     def _draw_globals_plot() -> None:
@@ -3171,16 +3179,41 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     #   step via ``ctrl.stream_next``.
                     # Pick the data to load before navigating samples;
                     # rendering controls appear in the next card.
-                    v3.VSlider(
+                    # On large datasets one slider pixel spans several
+                    # indices, so -/+ buttons step by exactly one sample.
+                    with html.Div(
                         v_if=("!is_streaming",),
-                        v_model_number=("sample_index",),
-                        min=0,
-                        max=("sample_count > 0 ? sample_count - 1 : 0",),
-                        step=1,
-                        thumb_label=True,
-                        hide_details=True,
-                        disabled=("sample_count === 0",),
-                    )
+                        classes="d-flex align-center",
+                    ):
+                        v3.VBtn(
+                            icon="mdi-minus",
+                            click="sample_index = Math.max(0, sample_index - 1)",
+                            disabled=("sample_count === 0 || sample_index <= 0",),
+                            density="compact",
+                            variant="tonal",
+                            classes="mr-2",
+                        )
+                        v3.VSlider(
+                            v_model_number=("sample_index",),
+                            min=0,
+                            max=("sample_count > 0 ? sample_count - 1 : 0",),
+                            step=1,
+                            thumb_label=True,
+                            hide_details=True,
+                            disabled=("sample_count === 0",),
+                        )
+                        v3.VBtn(
+                            icon="mdi-plus",
+                            click=(
+                                "sample_index = Math.min(sample_count - 1, sample_index + 1)"
+                            ),
+                            disabled=(
+                                "sample_count === 0 || sample_index >= sample_count - 1",
+                            ),
+                            density="compact",
+                            variant="tonal",
+                            classes="ml-2",
+                        )
                     with html.Div(
                         v_if=("is_streaming",),
                         classes="d-flex align-center mb-1",
@@ -3789,28 +3822,40 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                             "explore_parallel_mode !== 'parcoords'))",
                                         ),
                                     )
-                                html.Div(
-                                    "Selected rows ({{ explore_selected_rows.length }})",
-                                    classes="text-subtitle-2 mt-3",
-                                )
+                                with html.Div(classes="d-flex align-center mt-3"):
+                                    html.Div(
+                                        "Selected rows ({{ explore_selected_count }})",
+                                        classes="text-subtitle-2",
+                                    )
+                                    v3.VSpacer()
+                                    v3.VBtn(
+                                        icon="mdi-content-copy",
+                                        v_if=("explore_has_selection",),
+                                        click=(
+                                            "navigator.clipboard"
+                                            ".writeText(explore_selected_yaml)"
+                                        ),
+                                        title="Copy as problem definition split",
+                                        density="compact",
+                                        variant="text",
+                                        size="small",
+                                    )
                                 html.Div(
                                     "No rows selected.",
                                     v_if=("!explore_has_selection",),
                                     classes="text-caption text-medium-emphasis",
                                 )
-                                with html.Div(
+                                # Indented YAML block, pasteable under
+                                # ``train_split:`` / ``test_split:``.
+                                html.Pre(
+                                    "{{ explore_selected_yaml }}",
                                     v_if=("explore_has_selection",),
-                                    style="max-height: 160px; overflow-y: auto;",
-                                ):
-                                    with v3.VList(density="compact"):
-                                        with v3.VListItem(
-                                            v_for="row in explore_selected_rows",
-                                            key="`${row.split}:${row.sample_id}`",
-                                        ):
-                                            v3.VListItemTitle(
-                                                "{{ row.split }} / {{ row.sample_id }}",
-                                                classes="text-body-2",
-                                            )
+                                    classes="text-body-2",
+                                    style=(
+                                        "max-height: 160px; overflow-y: auto; "
+                                        "font-family: monospace; user-select: text;"
+                                    ),
+                                )
                         with html.Div(
                             style=(
                                 "flex: 1 1 300px; min-width: 0; min-height: 0; "

@@ -7,6 +7,7 @@ import types
 from pathlib import Path
 
 import pytest
+import yaml
 
 from plaid.viewer.trame_app import server as srv
 
@@ -529,8 +530,8 @@ def test_scatter_selection_resolves_plot_indices_across_splits() -> None:
     assert srv._scatter_selected_rows(None, points) == set()
 
 
-def test_selected_row_entries_match_export_order() -> None:
-    """The displayed identities match the CSV, including duplicate sample IDs."""
+def test_selected_rows_yaml_match_export_order() -> None:
+    """The YAML block lists identities in CSV order, grouped by split."""
     from plaid.viewer.global_plots import globals_dataframe, prepare_globals
 
     records = {
@@ -543,13 +544,16 @@ def test_selected_row_entries_match_export_order() -> None:
     prepared = prepare_globals(records)
     selected = {("train", "1"), ("test", "0")}
     frame = globals_dataframe(prepared, selected)
-    expected = [
+    assert frame[["split", "sample_id"]].to_dict("records") == [
         {"split": "train", "sample_id": "1"},
         {"split": "test", "sample_id": "0"},
     ]
-    assert srv._selected_row_entries(prepared, selected) == expected
-    assert frame[["split", "sample_id"]].to_dict("records") == expected
-    assert srv._selected_row_entries(prepared, set()) == []
+    text = srv._selected_rows_yaml(prepared, selected)
+    assert text == "    train:\n    - 1\n    test:\n    - 0"
+    assert yaml.safe_load(f"train_split:\n{text}") == {
+        "train_split": {"train": [1], "test": [0]}
+    }
+    assert srv._selected_rows_yaml(prepared, set()) == ""
 
 
 def test_plot_blocker_guards_heavy_or_empty_parallel_plots() -> None:
