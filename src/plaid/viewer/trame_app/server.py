@@ -3832,7 +3832,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                         icon="mdi-content-copy",
                                         v_if=("explore_has_selection",),
                                         click=(
-                                            "navigator.clipboard"
+                                            # Vue templates only expose ``window``,
+                                            # not the ``navigator`` global.
+                                            "window.navigator.clipboard"
                                             ".writeText(explore_selected_yaml)"
                                         ),
                                         title="Copy as problem definition split",
