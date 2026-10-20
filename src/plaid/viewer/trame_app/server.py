@@ -241,20 +241,19 @@ def _report_blocker(selected: list[str], text_names: list[str]) -> str:
     return ""
 
 
-def _write_globals_report(dataframe: Any, path: Path, title: str) -> None:
-    """Write a standalone skrub analysis of the extracted Globals.
+def _globals_table_report(dataframe: Any, title: str) -> Any:
+    """Build the skrub report of extracted Globals.
 
     Distribution plots and column associations are only computed for small
     tables (see :data:`SKRUB_MAX_PLOT_COLUMNS`); skrub's own default would
     disable them beyond 30 columns.
 
     Args:
-        dataframe: Table of extracted Globals across all splits.
-        path: Destination HTML file within the viewer's report directory.
-        title: Dataset and time-step label for the report.
+        dataframe: Table of extracted Globals with split and sample_id columns.
+        title: Label displayed at the top of the report.
 
     Returns:
-        None.
+        A ``skrub.TableReport``.
     """
     import matplotlib  # noqa: PLC0415
 
@@ -265,12 +264,110 @@ def _write_globals_report(dataframe: Any, path: Path, title: str) -> None:
     from skrub import TableReport  # noqa: PLC0415
 
     shown = dataframe.shape[1] - 2  # Excluding split and sample_id.
-    TableReport(
+    return TableReport(
         dataframe,
         title=title,
         plot_distributions=shown <= SKRUB_MAX_PLOT_COLUMNS,
         compute_associations=shown <= SKRUB_MAX_ASSOCIATION_COLUMNS,
-    ).write_html(path)
+    )
+
+
+def _write_globals_report(dataframe: Any, path: Path, title: str) -> None:
+    """Write a standalone skrub analysis of the extracted Globals.
+
+    Args:
+        dataframe: Table of extracted Globals across all splits.
+        path: Destination HTML file within the viewer's report directory.
+        title: Dataset and time-step label for the report.
+
+    Returns:
+        None.
+    """
+    _globals_table_report(dataframe, title).write_html(path)
+
+
+# Mirrors tab changes across the stacked reports. It relies on skrub's report
+# markup (open shadow roots, tab buttons with data-role/data-target-panel-id,
+# data-is-selected on the active tab), checked by tests/viewer.
+_TAB_SYNC_SCRIPT = """
+<script>
+// Observers start after skrub's own deferred init has selected the first tab.
+window.addEventListener("load", () => setTimeout(() => {
+  const reports = [...document.querySelectorAll("skrub-table-report")].filter(
+    (report) => report.shadowRoot
+  );
+  const tabSelector = "button[data-role='tab']";
+  const tabs = (report) => [...report.shadowRoot.querySelectorAll(tabSelector)];
+  const selected = (report) =>
+    tabs(report).find((tab) => tab.hasAttribute("data-is-selected"));
+  // Observer callbacks are asynchronous: tracking the shared panel stops the
+  // tabs clicked below from re-triggering a sync from their own report.
+  let current = reports.length ? selected(reports[0])?.dataset.targetPanelId : null;
+  const sync = (source, tab) => {
+    current = tab.dataset.targetPanelId;
+    const { scrollX, scrollY } = window;
+    for (const report of reports) {
+      if (report === source) continue;
+      const other = tabs(report).find(
+        (button) => button.dataset.targetPanelId === current
+      );
+      if (other && !other.hasAttribute("data-is-selected")) other.click();
+    }
+    // skrub focuses each clicked tab: give focus and scroll back to the user.
+    tab.focus({ preventScroll: true });
+    window.scrollTo(scrollX, scrollY);
+  };
+  for (const report of reports) {
+    new MutationObserver(() => {
+      const tab = selected(report);
+      if (tab && tab.dataset.targetPanelId !== current) sync(report, tab);
+    }).observe(report.shadowRoot, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-is-selected"],
+    });
+  }
+}));
+</script>
+"""
+
+
+def _write_split_reports(dataframe: Any, path: Path, title: str) -> None:
+    """Write one page stacking a skrub report per split, with synced tabs.
+
+    Args:
+        dataframe: Table of extracted Globals across all splits.
+        path: Destination HTML file within the viewer's report directory.
+        title: Dataset and time-step label for the page.
+
+    Returns:
+        None.
+    """
+    import html  # noqa: PLC0415
+
+    snippets = [
+        _globals_table_report(
+            dataframe[dataframe["split"] == split].reset_index(drop=True),
+            f"{title} — {split}",
+        ).html_snippet()
+        for split in dataframe["split"].unique()
+    ]
+    page = (
+        '<!DOCTYPE html>\n<html lang="en-US">\n<head>\n'
+        '<meta charset="utf-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        f"<title>{html.escape(title)}</title>\n"
+        "<style>\n"
+        'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",'
+        ' "Noto Sans", Helvetica, Arial, sans-serif; }\n'
+        "@media (prefers-color-scheme: dark) { body { background: #202020; } }\n"
+        "</style>\n</head>\n<body>\n<main>\n"
+        + "\n".join(snippets)
+        + "\n</main>\n"
+        + _TAB_SYNC_SCRIPT
+        + "</body>\n</html>\n"
+    )
+    path.write_text(page, encoding="utf-8")
 
 
 def _selected_rows_yaml(prepared: Any, selected: set[tuple[str, str]]) -> str:
@@ -2047,7 +2144,9 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             _extract_globals_task(state.dataset_id, state.explore_time_step)
         )
 
-    async def _globals_report_task(dataset_id: str, title: str) -> None:
+    async def _globals_report_task(
+        dataset_id: str, title: str, per_split: bool
+    ) -> None:
         """Write the skrub report in a worker thread and publish its link."""
         nonlocal report_path
         from plaid.viewer.global_plots import globals_dataframe  # noqa: PLC0415
@@ -2061,10 +2160,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         )
         path = report_dir / f"{secrets.token_urlsafe(24)}.html"
 
+        write = _write_split_reports if per_split else _write_globals_report
+
         def _work() -> None:
-            _write_globals_report(
-                globals_dataframe(prepared, columns=columns), path, title
-            )
+            write(globals_dataframe(prepared, columns=columns), path, title)
 
         try:
             await asyncio.to_thread(_work)
@@ -2088,8 +2187,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             report_path = path
             state.explore_report_url = f"{report_route.lstrip('/')}/{path.name}"
 
-    @ctrl.set("generate_globals_report")
-    def _generate_globals_report() -> None:
+    def _start_globals_report(per_split: bool) -> None:
         """Build the skrub report of the selected Globals on request."""
         if (
             prepared_globals is None
@@ -2100,12 +2198,22 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             return
         _clear_globals_report()
         state.explore_report_running = True
+        title = f"{state.dataset_id} — {state.explore_time_step} Globals"
+        if per_split:
+            title += " by split"
         asynchronous.create_task(
-            _globals_report_task(
-                state.dataset_id,
-                f"{state.dataset_id} — {state.explore_time_step} Globals",
-            )
+            _globals_report_task(state.dataset_id, title, per_split)
         )
+
+    @ctrl.set("generate_globals_report")
+    def _generate_globals_report() -> None:
+        """Build one skrub report of the selected Globals over all splits."""
+        _start_globals_report(per_split=False)
+
+    @ctrl.set("compare_globals_splits")
+    def _compare_globals_splits() -> None:
+        """Build one stacked skrub report of the selected Globals per split."""
+        _start_globals_report(per_split=True)
 
     def _refresh_selected_csv() -> None:
         """Publish selected scatter points or brushed parcoords rows as CSV."""
@@ -3663,6 +3771,23 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                         "!explore_csv_url || explore_report_running "
                                         "|| !explore_selected_globals.length "
                                         "|| !!explore_report_blocker",
+                                    ),
+                                )
+                                # One stacked report per split, tabs kept in sync.
+                                v3.VBtn(
+                                    "Compare splits",
+                                    v_if=("!explore_report_url",),
+                                    click=ctrl.compare_globals_splits,
+                                    block=True,
+                                    color="primary",
+                                    variant="outlined",
+                                    classes="mt-2",
+                                    loading=("explore_report_running",),
+                                    disabled=(
+                                        "!explore_csv_url || explore_report_running "
+                                        "|| !explore_selected_globals.length "
+                                        "|| !!explore_report_blocker "
+                                        "|| splits.length < 2",
                                     ),
                                 )
                                 html.Div(

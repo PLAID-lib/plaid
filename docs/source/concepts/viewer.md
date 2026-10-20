@@ -170,6 +170,14 @@ including missing-value counts and distributions, as shown below.
 
 ![Skrub report showing extracted Globals and statistics for a selected column](../images/viewerskrub.jpg)
 
+To compare splits, click **Compare splits** instead (available when the
+dataset has at least two splits). It builds one skrub report per extracted
+split and stacks them on a single page, in extraction order. Switching tab
+(Table, Stats, Distributions or Associations) in any report switches every
+report to the same tab, so the distributions of, for example, `train` and
+`test` can be read one below the other. This is a side-by-side view, not a
+statistical test between splits.
+
 In **1D** and **2D**, click points to toggle their selection, or
 select multiple points with Plotly's box or lasso tools. In `parcoords`, brush
 one or more axes to select lines.
