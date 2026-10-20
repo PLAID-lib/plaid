@@ -885,11 +885,11 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         self.renderer.AddViewProp(self.scalar_bar)
 
         self._current_dataset = None
+        self.camera_initialized = False
 
     def load(self, cgns_path: Path) -> None:
-        """Load a new CGNS/series file and reset the pipeline."""
+        """Load a new CGNS/series file without moving the current camera."""
         self.reader = _load_reader(cgns_path)
-        self._rebuild()
 
     def update(
         self,
@@ -949,9 +949,7 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         camera.SetViewUp(0.0, 1.0, 0.0)
         camera.SetViewAngle(30.0)
         self.renderer.ResetCamera()
-
-    def _rebuild(self) -> None:
-        self.renderer.ResetCamera()
+        self.camera_initialized = True
 
 
 def _build_lut(cmap: str, lo: float, hi: float):
@@ -1544,10 +1542,18 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         except Exception as exc:  # noqa: BLE001
             logger.warning("Failed to list time values: %s", exc)
             times = []
+        previous_time = state.current_time
         state.time_values = times
         state.time_count = len(times)
-        state.time_index = 0
-        state.current_time = times[0] if times else None
+        # Prefer the same physical time across samples. If the new sample
+        # has a different time axis, use its closest available step.
+        index = (
+            min(range(len(times)), key=lambda i: abs(times[i] - previous_time))
+            if times and previous_time is not None
+            else 0
+        )
+        state.time_index = index
+        state.current_time = times[index] if times else None
         # Pre-compute the globals descriptors for *every* timestep of
         # the sample and stash them in ``globals_snapshot``. The
         # playback loop in ``_apply_time_step_impl`` then refreshes the
@@ -1640,6 +1646,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 non_visual_names = []
             if non_visual_names:
                 _disable_bases_on_reader(pipeline.reader, non_visual_names)
+            if state.current_time is not None:
+                _advance_reader_time(pipeline.reader, float(state.current_time))
             with _silence_stderr():
                 pipeline.reader.Update()
             bases, _points, _cells = _reader_bases_and_fields(pipeline.reader)
@@ -1698,7 +1706,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                 )
             else:
                 state.status = f"Loaded sample {ref.encode()}"
-            _apply_pipeline(reset_camera=True)
+            _apply_pipeline(reset_camera=not pipeline.camera_initialized)
         except Exception as exc:  # noqa: BLE001
             # "Missing features" errors bubble up from the PLAID converter
             # when a feature path selected by the user does not exist in
