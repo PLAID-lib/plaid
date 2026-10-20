@@ -128,7 +128,9 @@ Switch from **Sample 3D View** to the **Dataset Globals** tab, choose **First Ti
 Step Globals** or **Last Time Step Globals** (last by default), and click
 **Extract Globals**. This reads the selected time step's `Global/` values in
 every sample of every local split; timeless Globals remain available. It does
-not alter the feature selection used by the sample view. Tick one or more
+not alter the feature selection used by the sample view. Changing the time step
+discards the extracted Globals: click **Extract Globals** again to reload them.
+Tick one or more
 splits on the left and choose **1D**, **2D**, **3D**, or **parallel**. Scatter
 plots use one, two, or three selectable numeric scalar Globals; in 1D the
 horizontal axis is the sample index. Points use different colors and shapes

@@ -1177,6 +1177,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_report_error", "")
     # Column-wise Globals of the last extraction (``PreparedGlobals``).
     prepared_globals: Any = None
+    # Time step ("first" or "last") the current ``prepared_globals`` came from.
+    extracted_time_step = ""
     # Plots are only drawn by the "Draw plot" button: any change to the plot
     # configuration clears the current figure instead of redrawing it, so a
     # heavy configuration is never rendered by accident.
@@ -1951,23 +1953,33 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.selected_features = list(state.available_features or [])
         _apply_features()
 
-    @state.change("dataset_id")
-    def _on_dataset(**_: object) -> None:
+    def _discard_globals() -> None:
+        """Drop the extracted Globals and everything derived from them."""
         nonlocal prepared_globals
         _reset_globals_outputs()
         prepared_globals = None
         state.explore_splits = []
         state.explore_names = []
         state.explore_selected_globals = []
-        state.explore_global_filter = ""
         state.explore_filtered_names = []
-        state.explore_global_filter_error = ""
         state.explore_label_names = []
         state.explore_filtered_label_names = []
         state.explore_has_plot = False
         state.explore_status = "Click Extract Globals to load all splits."
+
+    @state.change("dataset_id")
+    def _on_dataset(**_: object) -> None:
+        _discard_globals()
+        state.explore_global_filter = ""
+        state.explore_global_filter_error = ""
         _refresh_available_features()
         _refresh_splits()
+
+    @state.change("explore_time_step")
+    def _on_time_step(**_: object) -> None:
+        # Extraction is slow, so it is never re-run automatically: the stale
+        # Globals are dropped until the user clicks Extract Globals again.
+        _discard_globals()
 
     def _clear_globals_report() -> None:
         """Remove the previous report and invalidate its browser link."""
@@ -2066,7 +2078,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         Wide datasets take tens of seconds to read; running in a worker
         thread keeps the interface responsive and lets it display progress.
         """
-        nonlocal prepared_globals
+        nonlocal prepared_globals, extracted_time_step
         from plaid.viewer.global_plots import prepare_globals  # noqa: PLC0415
 
         loop = asyncio.get_running_loop()
@@ -2099,9 +2111,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             return
         with state:
             state.explore_extracting = False
-            if state.dataset_id != dataset_id:
-                return  # The user switched datasets during extraction.
+            if state.dataset_id != dataset_id or state.explore_time_step != time_step:
+                # The user switched datasets or time step meanwhile.
+                state.explore_status = "Click Extract Globals to load all splits."
+                return
             prepared_globals = prepared
+            extracted_time_step = time_step
             names = prepared.names
             state.explore_names = names
             # Nothing is selected after an extraction, whatever its size: the
@@ -2198,7 +2213,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             return
         _clear_globals_report()
         state.explore_report_running = True
-        title = f"{state.dataset_id} — {state.explore_time_step} Globals"
+        title = f"{state.dataset_id} — {extracted_time_step} timestep"
         if per_split:
             title += " by split"
         asynchronous.create_task(
