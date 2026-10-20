@@ -51,6 +51,9 @@ logger = logging.getLogger(__name__)
 
 _COLORMAPS = ["viridis", "plasma", "inferno", "magma", "coolwarm", "turbo", "jet"]
 _RANGE_MODES = ["Dynamic", "Fix", "Grow only"]
+CONTINUOUS_COLORS = 256
+ISO_CONTOUR_LEVELS = 9
+_DEFAULT_SCALAR_BAR_LABELS = 5
 
 _VTK_LOG_ROUTER_INSTALLED = False
 _C_STDERR_REROUTED = False
@@ -834,11 +837,15 @@ def _resolve_color_limit(
 
 
 def _show_scalar_bar_for_field(
-    scalar_bar, lut, field_name: str, association: str
+    scalar_bar, lut, field_name: str, association: str, iso_contour: bool = False
 ) -> None:
     """Display ``scalar_bar`` as the legend for the active coloured field."""
     scalar_bar.SetLookupTable(lut)
     scalar_bar.SetTitle(f"{field_name} ({association})")
+    # One label per band boundary, so each value marks a colour change.
+    scalar_bar.SetNumberOfLabels(
+        ISO_CONTOUR_LEVELS + 1 if iso_contour else _DEFAULT_SCALAR_BAR_LABELS
+    )
     scalar_bar.SetVisibility(True)
 
 
@@ -911,7 +918,7 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         # until scalar colouring is enabled by the field dropdown.
         self.scalar_bar = vtk.vtkScalarBarActor()
         self.scalar_bar.SetLookupTable(self.lut)
-        self.scalar_bar.SetNumberOfLabels(5)
+        self.scalar_bar.SetNumberOfLabels(_DEFAULT_SCALAR_BAR_LABELS)
         self.scalar_bar.SetPosition(0.88, 0.08)
         self.scalar_bar.SetWidth(0.1)
         self.scalar_bar.SetHeight(0.35)
@@ -937,6 +944,7 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         cmap: str,
         show_edges: bool,
         color_range: tuple[float, float],
+        iso_contour: bool = False,
     ) -> None:
         """Rebuild the downstream pipeline with the current options."""
         if self.reader is None:
@@ -961,10 +969,16 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
             self.mapper.SetColorModeToMapScalars()
             self.mapper.ScalarVisibilityOn()
             lo, hi = color_range
-            self.lut = _build_lut(cmap, lo, hi)
+            n_colors = ISO_CONTOUR_LEVELS if iso_contour else CONTINUOUS_COLORS
+            # Colour per pixel from the interpolated value, so iso-contour
+            # boundaries are smooth lines crossing elements, not jagged edges.
+            self.mapper.SetInterpolateScalarsBeforeMapping(bool(iso_contour))
+            self.lut = _build_lut(cmap, lo, hi, n_colors)
             self.mapper.SetLookupTable(self.lut)
             self.mapper.SetScalarRange(lo, hi)
-            _show_scalar_bar_for_field(self.scalar_bar, self.lut, field, association)
+            _show_scalar_bar_for_field(
+                self.scalar_bar, self.lut, field, association, iso_contour
+            )
         else:
             self.mapper.ScalarVisibilityOff()
             _hide_scalar_bar(self.scalar_bar)
@@ -991,14 +1005,17 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         self.camera_initialized = True
 
 
-def _build_lut(cmap: str, lo: float, hi: float):
-    """Build a simple ``vtkLookupTable`` approximating a matplotlib colormap."""
+def _build_lut(cmap: str, lo: float, hi: float, n_colors: int = CONTINUOUS_COLORS):
+    """Build a simple ``vtkLookupTable`` approximating a matplotlib colormap.
+
+    A small ``n_colors`` splits the range into equal bands of solid colour.
+    """
     import vtk  # noqa: PLC0415
 
     # Minimal built-in approximations - use HueRange for the common cases.
     lut = vtk.vtkLookupTable()
     lut.SetTableRange(lo, hi)
-    lut.SetNumberOfColors(256)
+    lut.SetNumberOfColors(n_colors)
     presets = {
         "viridis": (0.75, 0.0),
         "plasma": (0.8, 0.05),
@@ -1307,6 +1324,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("cmap", "viridis")
     state.setdefault("cmaps", _COLORMAPS)
     state.setdefault("show_edges", False)
+    state.setdefault("iso_contour", False)
     state.setdefault("field_range", [0.0, 1.0])
     state.setdefault("color_min", 0.0)
     state.setdefault("color_max", 1.0)
@@ -1881,6 +1899,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             cmap=state.cmap,
             show_edges=bool(state.show_edges),
             color_range=(lo, hi),
+            iso_contour=bool(state.iso_contour),
         )
         if reset_camera:
             pipeline.reset_camera()
@@ -3003,7 +3022,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             return
         _apply_user_filter()
 
-    @state.change("field", "cmap", "show_edges")
+    @state.change("field", "cmap", "show_edges", "iso_contour")
     def _on_view_params(**_: object) -> None:
         _apply_pipeline()
 
@@ -3654,12 +3673,19 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         v_if=("color_range_error",),
                         classes="text-error text-caption",
                     )
-                    v3.VSwitch(
-                        label="Show edges",
-                        v_model=("show_edges",),
-                        density="compact",
-                        hide_details=True,
-                    )
+                    with html.Div(classes="d-flex ga-2"):
+                        v3.VSwitch(
+                            label="Show edges",
+                            v_model=("show_edges",),
+                            density="compact",
+                            hide_details=True,
+                        )
+                        v3.VSwitch(
+                            label="Iso contour",
+                            v_model=("iso_contour",),
+                            density="compact",
+                            hide_details=True,
+                        )
                     v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
 
                 with html.Div(

@@ -236,6 +236,10 @@ drawn. They do not change which data is loaded.
 
 - **Colormap** changes the colors used for the selected field.
 - **Show edges** overlays mesh edges.
+- **Iso contour** splits the color scale into 9 equal bands of solid color,
+  like iso-contours, instead of a continuous gradient. The legend then shows
+  the value at each of the 10 band boundaries. The bands follow the **Min** and
+  **Max** limits.
 - **Reset camera** recenters the view after you rotate, pan, or zoom.
 
 ## Interacting with the 3D view
