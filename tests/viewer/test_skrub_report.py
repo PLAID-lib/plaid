@@ -104,7 +104,7 @@ _SPLIT_RECORDS = {
 
 
 def test_write_split_reports_stacks_one_report_per_split(tmp_path: Path) -> None:
-    """Compare splits writes one page with a skrub report per split."""
+    """Individual split comparison writes one page with a report per split."""
     from plaid.viewer.trame_app import server as srv
 
     destination = tmp_path / "splits.html"

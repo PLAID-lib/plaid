@@ -1168,6 +1168,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("explore_time_step", "last")
     state.setdefault("explore_csv_url", "")
     state.setdefault("explore_report_url", "")
+    state.setdefault("explore_compare_splits", False)
     state.setdefault("explore_selected_csv_url", "")
     state.setdefault("explore_has_selection", False)
     state.setdefault("explore_selected_count", 0)
@@ -1957,6 +1958,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         """Drop the extracted Globals and everything derived from them."""
         nonlocal prepared_globals
         _reset_globals_outputs()
+        state.explore_compare_splits = False
         prepared_globals = None
         state.explore_splits = []
         state.explore_names = []
@@ -1991,6 +1993,11 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         if report_path is not None:
             report_path.unlink(missing_ok=True)
             report_path = None
+
+    @state.change("explore_compare_splits")
+    def _on_compare_splits(**_: object) -> None:
+        """Invalidate a report when its global/per-split mode changes."""
+        _clear_globals_report()
 
     def _publish_csv(
         name: str,
@@ -2222,13 +2229,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     @ctrl.set("generate_globals_report")
     def _generate_globals_report() -> None:
-        """Build one skrub report of the selected Globals over all splits."""
-        _start_globals_report(per_split=False)
-
-    @ctrl.set("compare_globals_splits")
-    def _compare_globals_splits() -> None:
-        """Build one stacked skrub report of the selected Globals per split."""
-        _start_globals_report(per_split=True)
+        """Build a global or per-split report according to the viewer switch."""
+        _start_globals_report(
+            per_split=bool(state.explore_compare_splits) and len(state.splits or []) > 1
+        )
 
     def _refresh_selected_csv() -> None:
         """Publish selected scatter points or brushed parcoords rows as CSV."""
@@ -3772,6 +3776,17 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                         classes="mt-2",
                                         disabled=("!explore_columns_csv_url",),
                                     )
+                                # Choose between a global report and stacked
+                                # per-split reports before generating it.
+                                v3.VSwitch(
+                                    label="Compare individual splits",
+                                    v_model=("explore_compare_splits",),
+                                    density="compact",
+                                    hide_details=True,
+                                    color="primary",
+                                    classes="mt-2",
+                                    disabled=("splits.length < 2",),
+                                )
                                 # skrub analyses every column: generate the report
                                 # of the selected Globals only on request.
                                 v3.VBtn(
@@ -3786,23 +3801,6 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                                         "!explore_csv_url || explore_report_running "
                                         "|| !explore_selected_globals.length "
                                         "|| !!explore_report_blocker",
-                                    ),
-                                )
-                                # One stacked report per split, tabs kept in sync.
-                                v3.VBtn(
-                                    "Compare splits",
-                                    v_if=("!explore_report_url",),
-                                    click=ctrl.compare_globals_splits,
-                                    block=True,
-                                    color="primary",
-                                    variant="outlined",
-                                    classes="mt-2",
-                                    loading=("explore_report_running",),
-                                    disabled=(
-                                        "!explore_csv_url || explore_report_running "
-                                        "|| !explore_selected_globals.length "
-                                        "|| !!explore_report_blocker "
-                                        "|| splits.length < 2",
                                     ),
                                 )
                                 html.Div(
