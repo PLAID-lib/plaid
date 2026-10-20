@@ -100,8 +100,8 @@ click **Next** again to load it with the selected fields.
 
 ### Select a sample
 
-- For local datasets, use the **Select Sample** slider to move through the
-  available samples.
+- For local datasets, enter a zero-based sample index in **Select Sample**,
+  use its small +/− buttons to step one sample at a time, or drag the slider.
 - For streamed Hub datasets, click **Next** to fetch the next sample. Streaming
   is forward-only: the viewer loads samples one after another instead of
   knowing the full list in advance.
