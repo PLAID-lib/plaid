@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- (dataset-viewer) add an **Iso contour** switch next to **Show edges** that splits the color scale into 9 solid bands, with a legend label at each band boundary.
+- (dataset-viewer) add an **Iso contour** switch that limits the colormap to 9 color bands, to visualize the iso contours of the field.
 - (dataset-viewer) add independent **Min** and **Max** color scale limits, each with a **Dynamic** (default), **Fix** or **Grow only** mode; invalid fixed limits keep the last valid scale and show an error.
 - (dataset-viewer) add a **Compare individual splits** switch to generate stacked skrub reports per split, with tabs synchronized across reports; turn it off to return to the global report.
 - (ParaView plugin) support direct CGNS-tree/VTK conversion, including VTK-to-CGNS export, CGNS hierarchy and tag preservation, and bulk connectivity conversion for uniform fixed-size unstructured grids. The self-contained plugin bundle can be written to a caller-provided directory.
