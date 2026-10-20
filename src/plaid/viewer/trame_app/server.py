@@ -1097,6 +1097,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("sample_id", None)
     state.setdefault("sample_index", 0)
     state.setdefault("sample_count", 0)
+    state.setdefault("sample_max_index", 0)
     # Streaming (Hugging Face Hub) navigation. Hub datasets expose
     # ``IterableDataset`` splits without a ``__len__``, so the slider is
     # driven by a forward-only cursor rather than a random-access index
@@ -1219,13 +1220,23 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         if same_split:
             _refresh_samples()
 
-    def _clear_scene(status: str | None = None) -> None:
+    def _clear_scene(
+        status: str | None = None, *, preserve_samples: bool = False
+    ) -> None:
         """Empty the VTK view and all sample-related panels.
 
         Used whenever no sample should be displayed (no dataset
         selected, streaming dataset waiting for the first ``Next``
         click, ...). Keeping this in a single place ensures the 3D
         view never lingers on a stale frame from a previous selection.
+
+        Args:
+            status: Optional status message for the empty view.
+            preserve_samples: Keep navigation available while the current
+                sample has no selected features.
+
+        Returns:
+            None.
         """
         pipeline.reader = None
         pipeline.mapper.RemoveAllInputConnections(0)
@@ -1244,10 +1255,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         state.time_count = 0
         state.time_index = 0
         state.current_time = None
-        state.sample_ids = []
-        state.sample_id = None
-        state.sample_count = 0
-        state.sample_index = 0
+        if not preserve_samples:
+            state.sample_ids = []
+            state.sample_id = None
+            state.sample_count = 0
+            state.sample_max_index = 0
+            state.sample_index = 0
         if status is not None:
             state.status = status
         _update_view(server, ctrl)
@@ -1291,6 +1304,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             state.stream_exhausted = False
             state.sample_ids = []
             state.sample_count = 0
+            state.sample_max_index = 0
             state.sample_index = 0
             # No sample has been fetched yet: the status bar invites the
             # user to click "Next" to consume the first element of the
@@ -1329,6 +1343,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         ids = [r.sample_id for r in refs if r.split == split_key]
         state.sample_ids = ids
         state.sample_count = len(ids)
+        state.sample_max_index = max(0, len(ids) - 1)
         state.sample_index = 0
         new_sample_id = ids[0] if ids else None
         # Switching dataset/split may leave ``state.sample_id`` unchanged
@@ -1401,7 +1416,10 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         except Exception:  # noqa: BLE001
             current_features = None
         if current_features is not None and len(current_features) == 0:
-            _clear_scene(status="Pick a Base or enable Globals to load the sample")
+            _clear_scene(
+                status="Pick a Base or enable Globals to load the sample",
+                preserve_samples=True,
+            )
             return
 
         # "Globals only" mode: the user enabled the Globals toggle but
@@ -2428,6 +2446,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             # Grow the slider's reachable range by one so the user can
             # fetch the next sample on the next right-arrow press.
             state.sample_count = int(state.stream_position) + 2
+            state.sample_max_index = int(state.stream_position) + 1
             state.sample_id = "cursor"
             # ``sample_id`` did not actually change ("cursor" both times),
             # so the ``@state.change("sample_id")`` listener is skipped.
@@ -2436,9 +2455,12 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             return
         ids = list(state.sample_ids or [])
         if not ids:
+            state.sample_index = 0
             state.sample_id = None
             return
         idx = max(0, min(idx, len(ids) - 1))
+        if state.sample_index != idx:
+            state.sample_index = idx
         state.sample_id = ids[idx]
 
     @state.change("sample_id")
@@ -2761,6 +2783,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             state.sample_ids = []
             state.sample_id = None
             state.sample_count = 0
+            state.sample_max_index = 0
             state.base_options = []
             state.active_base = None
             state.field_options = []
@@ -2902,6 +2925,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         new_position = int(state.stream_position) + 1
         state.stream_position = new_position
         state.sample_count = new_position + 1
+        state.sample_max_index = new_position
         state.sample_index = new_position
         state.sample_id = STREAM_CURSOR_ID
         # ``sample_id`` did not actually change (both times the sentinel
@@ -3171,8 +3195,8 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     )
 
                     # Sample picker. Two mutually-exclusive widgets:
-                    # - Local datasets expose a random-access slider over
-                    #   the integer sample indices.
+                    # - Local datasets expose an integer picker and a
+                    #   random-access slider over the sample indices.
                     # - Hub streaming datasets have no ``__len__`` and can
                     #   only be consumed forward, so we expose a "Next"
                     #   button that advances the ``_StreamCursor`` by one
@@ -3180,39 +3204,33 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     # Pick the data to load before navigating samples;
                     # rendering controls appear in the next card.
                     # On large datasets one slider pixel spans several
-                    # indices, so -/+ buttons step by exactly one sample.
+                    # indices, so the number input allows precise navigation.
                     with html.Div(
                         v_if=("!is_streaming",),
                         classes="d-flex align-center",
                     ):
-                        v3.VBtn(
-                            icon="mdi-minus",
-                            click="sample_index = Math.max(0, sample_index - 1)",
-                            disabled=("sample_count === 0 || sample_index <= 0",),
+                        v3.VNumberInput(
+                            v_model=("sample_index",),
+                            min=(0,),
+                            max=("sample_max_index",),
+                            step=(1,),
+                            precision=(0,),
+                            control_variant="stacked",
                             density="compact",
-                            variant="tonal",
+                            variant="outlined",
+                            hide_details=True,
+                            disabled=("sample_count === 0",),
+                            style="width: 110px; flex: 0 0 110px;",
                             classes="mr-2",
                         )
                         v3.VSlider(
                             v_model_number=("sample_index",),
                             min=0,
-                            max=("sample_count > 0 ? sample_count - 1 : 0",),
+                            max=("sample_max_index",),
                             step=1,
                             thumb_label=True,
                             hide_details=True,
                             disabled=("sample_count === 0",),
-                        )
-                        v3.VBtn(
-                            icon="mdi-plus",
-                            click=(
-                                "sample_index = Math.min(sample_count - 1, sample_index + 1)"
-                            ),
-                            disabled=(
-                                "sample_count === 0 || sample_index >= sample_count - 1",
-                            ),
-                            density="compact",
-                            variant="tonal",
-                            classes="ml-2",
                         )
                     with html.Div(
                         v_if=("is_streaming",),

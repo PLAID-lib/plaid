@@ -152,6 +152,112 @@ def test_dataset_selector_is_independent_of_root_controls(
     assert "allow_root_change" not in parser.selector_conditions
 
 
+@pytest.mark.usefixtures("headless_trame_view")
+def test_local_sample_picker_has_number_input_before_slider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Use native steppers and a numeric maximum for local sample navigation."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services.paraview_artifact_service import (  # noqa: PLC0415
+        ParaviewArtifactService,
+    )
+    from plaid.viewer.services.plaid_dataset_service import (  # noqa: PLC0415
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    class SamplePickerParser(HTMLParser):
+        """Collect the controls inside the local-only sample picker."""
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.depth = 0
+            self.controls: list[tuple[str, dict[str, str | None]]] = []
+
+        def handle_starttag(
+            self, tag: str, attrs: list[tuple[str, str | None]]
+        ) -> None:
+            """Record controls nested inside the local picker.
+
+            Args:
+                tag: HTML element name.
+                attrs: Element attributes.
+            """
+            attributes = dict(attrs)
+            if tag == "div":
+                if self.depth:
+                    self.depth += 1
+                elif attributes.get("v-if") == "!is_streaming":
+                    self.depth = 1
+            elif self.depth:
+                self.controls.append((tag, attributes))
+
+        def handle_endtag(self, tag: str) -> None:
+            """Leave the picker when its outer div closes.
+
+            Args:
+                tag: HTML element name.
+            """
+            if tag == "div" and self.depth:
+                self.depth -= 1
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(name="sample-picker-layout", **kwargs),
+    )
+    dataset_root = Path(__file__).resolve().parents[1] / "containers"
+    service = PlaidDatasetService(ViewerConfig(datasets_root=dataset_root))
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    server.state.ready()
+    parser = SamplePickerParser()
+    parser.feed(server.state["trame__template_main"])
+
+    assert [tag for tag, _ in parser.controls] == ["vnumberinput", "vslider"]
+    number_input, slider = (attrs for _, attrs in parser.controls)
+    # Vuetify parses the number input's text internally. Vue's .number
+    # modifier on it turns its intermediate text into a number too early,
+    # triggering a `t.replace is not a function` JS error while typing.
+    assert number_input["v-model"] == slider["v-model.number"] == "sample_index"
+    assert "v-model.number" not in number_input
+    # Native increment computes model + step; static HTML step="1" can
+    # reach Vuetify as a string and produce "01" instead of 1.
+    assert number_input[":min"] == slider["min"] == "0"
+    assert number_input[":max"] == slider[":max"] == "sample_max_index"
+    assert number_input[":step"] == slider["step"] == "1"
+    assert number_input["controlvariant"] == "stacked"
+    assert number_input[":precision"] == "0"
+    assert number_input[":disabled"] == slider[":disabled"]
+    assert server.state.sample_count == 10
+    assert server.state.sample_index == 0
+    assert server.state.sample_max_index == 9
+    assert len(server.state.sample_ids) == 10
+
+    server.state.sample_index = 1
+    server.state.flush()
+    assert server.state.sample_id == "1"
+    assert server.state.sample_max_index == 9
+    assert server.state.sample_count == 10
+
+    server.state.sample_index = "5"
+    server.state.flush()
+    assert server.state.sample_index == 5
+    assert server.state.sample_id == "5"
+
+    server.state.sample_index = 20
+    server.state.flush()
+    assert server.state.sample_index == 9
+    assert server.state.sample_id == "9"
+
+    server.state.sample_index = -1
+    server.state.flush()
+    assert server.state.sample_index == 0
+    assert server.state.sample_id == "0"
+
+
 def test_load_reader_series_uses_vtk_cgns_file_series_reader(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
