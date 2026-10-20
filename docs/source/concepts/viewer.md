@@ -128,7 +128,9 @@ Switch from **Sample 3D View** to the **Dataset Globals** tab, choose **First Ti
 Step Globals** or **Last Time Step Globals** (last by default), and click
 **Extract Globals**. This reads the selected time step's `Global/` values in
 every sample of every local split; timeless Globals remain available. It does
-not alter the feature selection used by the sample view. Tick one or more
+not alter the feature selection used by the sample view. Changing the time step
+discards the extracted Globals: click **Extract Globals** again to reload them.
+Tick one or more
 splits on the left and choose **1D**, **2D**, **3D**, or **parallel**. Scatter
 plots use one, two, or three selectable numeric scalar Globals; in 1D the
 horizontal axis is the sample index. Points use different colors and shapes
@@ -157,18 +159,29 @@ numeric value for every selected Global, so samples with missing selected
 values are omitted in that mode. After extraction, **Download all Globals
 (CSV)** saves a table of every extracted sample across all splits, with
 ``split`` and ``sample_id`` columns and vector Globals expanded into numbered
-components. Click **Generate skrub report** to open a standalone
-data-profiling report in a new browser tab. Like the CSV export, it covers
-every extracted sample across all splits, regardless of which splits are
-selected for plotting.
-The report link is replaced when Globals are extracted again and cleared when
-the dataset changes. Report generation may take time for large tables; if it
-fails, the CSV and plots remain available.
+components. With **Compare individual splits** off, click **Generate skrub
+report** to open a standalone data-profiling report in a new browser tab.
+Like the CSV export, the global report covers every extracted sample across
+all splits, regardless of which splits are selected for plotting.
+The report link is cleared when Globals are extracted again, the dataset or
+time step changes, or the report mode is switched. Report generation may take
+time for large tables; if it fails, the CSV and plots remain available.
 
 The skrub report displays a table of extracted Globals and column statistics,
 including missing-value counts and distributions, as shown below.
 
 ![Skrub report showing extracted Globals and statistics for a selected column](../images/viewerskrub.jpg)
+
+To compare splits, enable **Compare individual splits** before clicking
+**Generate skrub report** (available when the dataset has at least two splits).
+It builds one skrub report per extracted split and stacks them on a single
+page, in extraction order. Switching tab
+(Table, Stats, Distributions or Associations) in any report switches every
+report to the same tab, so the distributions of, for example, `train` and
+`test` can be read one below the other. This is a side-by-side view, not a
+statistical test between splits.
+Turn the switch off to generate a global report again. Changing the switch
+clears the previous report link until a new report is generated.
 
 In **1D** and **2D**, click points to toggle their selection, or
 select multiple points with Plotly's box or lasso tools. In `parcoords`, brush

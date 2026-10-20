@@ -430,3 +430,89 @@ def test_streaming_base_options_survive_initialisation_and_split_switch(
     assert server.state.stream_position == -1
     assert server.state.sample_id is None
     assert server.state.field_options == []
+
+
+@pytest.mark.usefixtures("headless_trame_view")
+def test_time_step_change_discards_extracted_globals(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Switching time step drops stale Globals without re-extracting them."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services.paraview_artifact_service import (  # noqa: PLC0415
+        ParaviewArtifactService,
+    )
+    from plaid.viewer.services.plaid_dataset_service import (  # noqa: PLC0415
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app, "get_server", lambda **kwargs: get_server(name="time-step", **kwargs)
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    monkeypatch.setattr(
+        service,
+        "extract_globals",
+        lambda *_a, **_k: pytest.fail("extraction must not be automatic"),
+    )
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    server.state.ready()
+
+    server.state.explore_names = ["Global/a"]
+    server.state.explore_selected_globals = ["Global/a"]
+    server.state.explore_csv_url = "csv/all-token"
+    server.state.explore_report_url = "report/old.html"
+    server.state.explore_compare_splits = True
+    server.state.flush()
+
+    server.state.explore_time_step = "first"
+    server.state.flush()
+
+    assert server.state.explore_names == []
+    assert server.state.explore_selected_globals == []
+    assert server.state.explore_csv_url == ""
+    assert server.state.explore_report_url == ""
+    assert server.state.explore_compare_splits is False
+    assert server.state.explore_status == "Click Extract Globals to load all splits."
+
+
+@pytest.mark.usefixtures("headless_trame_view")
+def test_skrub_split_switch_clears_report_and_keeps_global_default(
+    tmp_path: Path,
+) -> None:
+    """Switching report modes invalidates the previous link in either direction.
+
+    Args:
+        tmp_path: Temporary directory for the viewer artifact cache.
+    """
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services.paraview_artifact_service import (  # noqa: PLC0415
+        ParaviewArtifactService,
+    )
+    from plaid.viewer.services.plaid_dataset_service import (  # noqa: PLC0415
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    state = server.state
+    state.ready()
+
+    markup = state["trame__template_main"]
+    assert state.explore_compare_splits is False
+    assert 'label="Compare individual splits"' in markup
+    assert 'v-model="explore_compare_splits"' in markup
+    assert 'disabled="splits.length < 2"' in markup
+    assert 'label="Compare splits"' not in markup
+    assert markup.count("Generate skrub report") == 1
+
+    for enabled in (True, False):
+        state.explore_report_url = "previous-report.html"
+        state.explore_compare_splits = enabled
+        state.flush()
+        assert state.explore_report_url == ""
+        assert state.explore_compare_splits is enabled

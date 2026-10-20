@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- (dataset-viewer) add a **Compare individual splits** switch to generate stacked skrub reports per split, with tabs synchronized across reports; turn it off to return to the global report.
 - (ParaView plugin) support direct CGNS-tree/VTK conversion, including VTK-to-CGNS export, CGNS hierarchy and tag preservation, and bulk connectivity conversion for uniform fixed-size unstructured grids. The self-contained plugin bundle can be written to a caller-provided directory.
 - (storage/writer) add optional `sample_callback` to `save_to_disk`, invoked once per sample right after it is written to disk as `sample_callback(split_name, index, sample_path)`. This lets callers process samples one by one once written instead of waiting for the whole dataset. Currently supported for the `cgns` backend, including parallel writing (`num_proc > 1`), where the callback runs inside the worker processes and must be picklable and process-safe.
 - (python env) add python 3.14 support
@@ -19,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- (dataset-viewer) discard extracted Globals when the time step changes, so plots, CSV exports and skrub reports never mix time steps.
 - (dataset-viewer) discover bases and paths in CGNS-backed datasets.
 - (storage/preprocessor) preserve the source floating-point dtype during schema inference.
 - (storage/reader) Fix HF backend split download not respecting `~` character on Linux.
