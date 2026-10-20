@@ -87,6 +87,153 @@ class _FakeCGNSFileSeriesReader:
         self.update_information_calls += 1
 
 
+def test_pipeline_load_keeps_camera_until_explicit_reset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Replacing a reader must not move the server-side camera."""
+    import vtk  # noqa: PLC0415
+
+    from plaid.viewer.trame_app import server as server_module  # noqa: PLC0415
+
+    pipeline = server_module._VtkPipeline.__new__(server_module._VtkPipeline)
+    pipeline.renderer = vtk.vtkRenderer()
+    pipeline.camera_initialized = True
+    camera = pipeline.renderer.GetActiveCamera()
+    camera.SetPosition(4, 5, 6)
+    camera.SetFocalPoint(1, 2, 3)
+    camera.SetViewUp(0, 0, 1)
+    camera.SetParallelScale(7)
+    monkeypatch.setattr(server_module, "_load_reader", lambda _path: object())
+
+    pipeline.load(tmp_path / "first.cgns")
+    pipeline.load(tmp_path / "second.cgns")
+    assert camera.GetPosition() == (4, 5, 6)
+    assert camera.GetFocalPoint() == (1, 2, 3)
+    assert camera.GetViewUp() == (0, 0, 1)
+    assert camera.GetParallelScale() == 7
+
+    pipeline.reset_camera()
+    assert camera.GetPosition() != (4, 5, 6)
+
+
+@pytest.mark.usefixtures("headless_trame_view")
+@pytest.mark.parametrize(
+    ("next_times", "expected_index", "expected_time"),
+    [
+        ([0.0, 2.0, 4.0], 1, 2.0),
+        ([0.0, 2.5, 5.0], 1, 2.5),
+        ([0.0, 1.0], 1, 1.0),
+        ([], 0, None),
+    ],
+)
+def test_sample_change_preserves_closest_time(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    next_times: list[float],
+    expected_index: int,
+    expected_time: float | None,
+) -> None:
+    """Changing samples keeps the physical time when possible."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services.paraview_artifact_service import (  # noqa: PLC0415
+        ParaviewArtifactService,
+    )
+    from plaid.viewer.services.plaid_dataset_service import (  # noqa: PLC0415
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app import server as server_module  # noqa: PLC0415
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(name=f"time-{next_times}", **kwargs),
+    )
+
+    class Reader:
+        """Represent a loaded mesh in the headless test."""
+
+        def Update(self) -> None:  # noqa: N802 - VTK API
+            """Accept an update to the current step."""
+
+        def GetOutput(self) -> None:  # noqa: N802 - VTK API
+            """Return an empty mesh."""
+
+    class Pipeline:
+        """Keep the camera's initialization state across sample loads."""
+
+        def __init__(self) -> None:
+            self.render_window = None
+            self.reader = None
+            self.camera_initialized = False
+            self.mapper = types.SimpleNamespace(
+                RemoveAllInputConnections=lambda _port: None,
+                ScalarVisibilityOff=lambda: None,
+            )
+            self.scalar_bar = types.SimpleNamespace(SetVisibility=lambda _value: None)
+            self.reset_count = 0
+
+        def load(self, _path: Path) -> None:
+            """Replace the reader but retain camera state."""
+            self.reader = Reader()
+
+        def update(self, **_kwargs: object) -> None:
+            """Accept a pipeline update."""
+
+        def reset_camera(self) -> None:
+            """Record explicit or initial camera resets."""
+            self.reset_count += 1
+            self.camera_initialized = True
+
+    pipeline = Pipeline()
+    reader_times: list[float] = []
+    monkeypatch.setattr(server_module, "_VtkPipeline", lambda: pipeline)
+    monkeypatch.setattr(
+        server_module, "_reader_bases_and_fields", lambda _reader: ([], [], [])
+    )
+    monkeypatch.setattr(server_module, "_apply_base_selection", lambda *_args: None)
+    monkeypatch.setattr(
+        server_module,
+        "_advance_reader_time",
+        lambda _reader, time: reader_times.append(time),
+    )
+
+    class TimedService(PlaidDatasetService):
+        """Expose distinct time axes for local samples."""
+
+        def get_features(self, dataset_id: str) -> list[str]:  # noqa: ARG002
+            """Keep a mesh feature enabled while navigating samples."""
+            return ["Base_2_3"]
+
+        def list_time_values(self, ref) -> list[float]:
+            """Return the time axis for the selected sample."""
+            return [0.0, 2.0, 4.0] if ref.sample_id == "0" else next_times
+
+    root = Path(__file__).resolve().parents[1] / "containers"
+    service = TimedService(ViewerConfig(datasets_root=root))
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    server.state.ready()
+    server.state.active_base = "Base_2_3"
+    server.state.flush()
+    assert server.state.status.startswith("Loaded sample")
+    server.state.time_index = 1
+    server.state.flush()
+    assert server.state.current_time == 2.0
+
+    server.state.sample_index = 1
+    server.state.flush()
+    assert server.state.sample_id == "1"
+    assert pipeline.reset_count == 1
+    assert server.state.time_values == next_times
+    assert server.state.time_index == expected_index
+    assert server.state.current_time == expected_time
+    if expected_time is not None:
+        assert reader_times[-1] == expected_time
+
+
 @pytest.mark.parametrize("allow_root_change", [True, False])
 @pytest.mark.usefixtures("headless_trame_view")
 def test_dataset_selector_is_independent_of_root_controls(
@@ -348,6 +495,132 @@ def test_update_view_pushes_frame_when_protocol_is_ready() -> None:
     _update_view(server, ctrl)
 
     assert calls == [None]
+
+
+@pytest.mark.usefixtures("headless_trame_view")
+def test_color_range_controls_follow_field_and_reject_invalid_limits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Exercise the actual trame callbacks with successive field ranges."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services import (  # noqa: PLC0415
+        ParaviewArtifactService,
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app import server as module  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(name="color-range-controls", **kwargs),
+    )
+    field_range = [1.0, 5.0]
+    applied: list[tuple[float, float]] = []
+
+    class Reader:
+        """Return a distinct field range on successive redraws."""
+
+        def GetOutput(self) -> None:  # noqa: N802
+            """Represent the current reader output."""
+
+    class Pipeline:
+        """Record the color range passed to the actual VTK pipeline."""
+
+        def __init__(self) -> None:
+            self.reader = None
+            self.render_window = None
+            self.mapper = types.SimpleNamespace(
+                RemoveAllInputConnections=lambda _port: None,
+                ScalarVisibilityOff=lambda: None,
+            )
+            self.scalar_bar = types.SimpleNamespace(SetVisibility=lambda _value: None)
+
+        def update(self, **kwargs: object) -> None:
+            """Record the scalar limits selected by the server."""
+            applied.append(kwargs["color_range"])
+
+    pipeline = Pipeline()
+    monkeypatch.setattr(module, "_VtkPipeline", lambda: pipeline)
+    monkeypatch.setattr(module, "_compute_field_range", lambda *_: tuple(field_range))
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    server = module.build_server(service, ParaviewArtifactService(service, tmp_path))
+    state = server.state
+    state.ready()
+    pipeline.reader = Reader()
+    state.field = "point:pressure"
+    state.flush()
+    assert applied[-1] == (1.0, 5.0)
+    field_range[:] = [2.0, 4.0]
+    state.color_min_mode = "Grow only"
+    state.color_max_mode = "Grow only"
+    state.flush()
+    assert applied[-1] == (1.0, 5.0)
+    field_range[:] = [-3.0, 7.0]
+    state.cmap = "jet"
+    state.flush()
+    assert applied[-1] == (-3.0, 7.0)
+    state.color_max_mode = "Fix"
+    state.color_max = "10"
+    state.flush()
+    assert applied[-1] == (-3.0, 10.0)
+    state.color_min = "oops"  # Disabled in the UI while Grow only.
+    state.color_min_mode = "Fix"
+    state.flush()
+    assert applied[-1] == (-3.0, 10.0)
+    assert state.color_range_error
+    assert state.color_min == "oops"
+    state.color_min = "-5"
+    state.flush()
+    assert applied[-1] == (-5.0, 10.0)
+    assert not state.color_range_error
+    state.color_min = "11"
+    state.flush()
+    assert applied[-1] == (-5.0, 10.0)
+    assert "less than" in state.color_range_error
+    state.color_min = "-5"
+    state.flush()
+    state.color_min_mode = "Dynamic"
+    field_range[:] = [0.0, 3.0]
+    state.flush()
+    assert applied[-1] == (0.0, 10.0)
+    state.field = "cell:temperature"
+    field_range[:] = [1.0, 2.0]
+    state.flush()
+    assert applied[-1] == (1.0, 10.0)
+
+
+@pytest.mark.usefixtures("headless_trame_view")
+def test_color_range_ui_has_independent_limits_and_modes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Expose both editable values and independent mode selectors."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services import (  # noqa: PLC0415
+        ParaviewArtifactService,
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(name="color-range-ui", **kwargs),
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    server.state.ready()
+    template = server.state["trame__template_main"]
+    for name in ("min", "max"):
+        assert f'label="{name.title()}"' in template
+        assert f'v-model="color_{name}"' in template
+        assert f'v-model="color_{name}_mode"' in template
+    assert server.state.color_range_modes == ["Dynamic", "Fix", "Grow only"]
 
 
 @pytest.mark.usefixtures("headless_trame_view")

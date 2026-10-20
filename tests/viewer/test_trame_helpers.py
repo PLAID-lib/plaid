@@ -12,6 +12,35 @@ import yaml
 from plaid.viewer.trame_app import server as srv
 
 
+@pytest.mark.parametrize(
+    ("mode", "is_min", "previous", "expected"),
+    [
+        ("Dynamic", True, -10.0, 2.0),
+        ("Dynamic", False, 20.0, 2.0),
+        ("Grow only", True, -10.0, -10.0),
+        ("Grow only", True, 5.0, 2.0),
+        ("Grow only", False, 20.0, 20.0),
+        ("Grow only", False, 1.0, 2.0),
+        ("Grow only", True, None, 2.0),
+        ("Fix", True, None, 7.5),
+    ],
+)
+def test_resolve_color_limit(
+    mode: str, is_min: bool, previous: float | None, expected: float
+) -> None:
+    """Resolve each end independently, using input only for fixed limits."""
+    assert (
+        srv._resolve_color_limit(mode, 2.0, "7.5", previous, is_min=is_min) == expected
+    )
+
+
+@pytest.mark.parametrize("value", ["", "abc", "nan", "inf", None])
+def test_fixed_color_limit_requires_finite_number(value: object) -> None:
+    """Reject missing, invalid and non-finite fixed values."""
+    with pytest.raises(ValueError, match="finite numeric"):
+        srv._resolve_color_limit("Fix", 2.0, value, None, is_min=True)
+
+
 def test_filter_global_names_regex_and_invalid_pattern() -> None:
     names = ["Global/pressure", "Global/temperature", "Global/pressure_1"]
 

@@ -122,6 +122,15 @@ coloring. When a field is selected, a color legend appears in the 3D view.
 The same card also contains the colormap, edge visibility, and camera reset
 controls described below.
 
+The **Min** and **Max** controls below **Colormap** independently set the
+color scale limits. Each displays the limit currently used by the 3D colors
+and legend. Choose **Dynamic** (the default) to follow the current field,
+**Fix** to enter a numeric limit, or **Grow only** to retain the lowest
+minimum or highest maximum encountered while moving between samples and time
+steps. Changing the plotted field starts a new Grow-only range. A fixed limit
+must be finite and the minimum must stay below the maximum; an invalid entry
+leaves the last valid color scale in use and shows an error.
+
 ## Explore Globals across splits
 
 Switch from **Sample 3D View** to the **Dataset Globals** tab, choose **First Time
