@@ -992,27 +992,25 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
 
 
 def _build_lut(cmap: str, lo: float, hi: float):
-    """Build a simple ``vtkLookupTable`` approximating a matplotlib colormap."""
+    """Build a 256-color ``vtkLookupTable`` sampling a matplotlib colormap.
+
+    Unknown names fall back to a blue-to-red hue ramp.
+    """
     import vtk  # noqa: PLC0415
 
-    # Minimal built-in approximations - use HueRange for the common cases.
     lut = vtk.vtkLookupTable()
     lut.SetTableRange(lo, hi)
     lut.SetNumberOfColors(256)
-    presets = {
-        "viridis": (0.75, 0.0),
-        "plasma": (0.8, 0.05),
-        "inferno": (0.0, 0.15),
-        "magma": (0.85, 0.0),
-        "coolwarm": (0.667, 0.0),
-        "turbo": (0.7, 0.0),
-        "jet": (0.667, 0.0),
-    }
-    h0, h1 = presets.get(cmap, (0.667, 0.0))
-    lut.SetHueRange(h0, h1)
-    lut.SetSaturationRange(1.0, 1.0)
-    lut.SetValueRange(1.0, 1.0)
+    if cmap not in _COLORMAPS:
+        lut.SetHueRange(0.667, 0.0)
+        lut.Build()
+        return lut
+    import matplotlib  # noqa: PLC0415
+
+    colormap = matplotlib.colormaps[cmap].resampled(256)
     lut.Build()
+    for index in range(256):
+        lut.SetTableValue(index, *colormap(index))
     return lut
 
 
@@ -3659,6 +3657,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         v_model=("show_edges",),
                         density="compact",
                         hide_details=True,
+                        color="primary",
                     )
                     v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
 

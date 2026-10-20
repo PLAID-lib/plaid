@@ -305,6 +305,7 @@ def test_load_reader_plain_and_build_lut(
     class FakeLookupTable:
         def __init__(self) -> None:
             self.hue = None
+            self.table: dict[int, tuple[float, ...]] = {}
 
         def SetTableRange(self, *_args):
             pass  # noqa: ANN002
@@ -315,11 +316,8 @@ def test_load_reader_plain_and_build_lut(
         def SetHueRange(self, *args):
             self.hue = args  # noqa: ANN002
 
-        def SetSaturationRange(self, *_args):
-            pass  # noqa: ANN002
-
-        def SetValueRange(self, *_args):
-            pass  # noqa: ANN002
+        def SetTableValue(self, index, *rgba):
+            self.table[index] = rgba  # noqa: ANN001, ANN002
 
         def Build(self):
             pass
@@ -333,6 +331,14 @@ def test_load_reader_plain_and_build_lut(
     assert reader.file_name == str(path)
     assert reader.calls == ["info", "bases", "points", "cells"]
     assert srv._build_lut("unknown", 0.0, 1.0).hue == (0.667, 0.0)
+    # Known colormaps sample matplotlib instead of a hue ramp.
+    import matplotlib  # noqa: PLC0415
+
+    viridis = srv._build_lut("viridis", 0.0, 1.0)
+    assert viridis.hue is None
+    assert len(viridis.table) == 256
+    assert viridis.table[0] == pytest.approx(matplotlib.colormaps["viridis"](0.0))
+    assert viridis.table[255] == pytest.approx(matplotlib.colormaps["viridis"](1.0))
 
 
 def test_install_vtk_log_router_with_fake_vtk(monkeypatch: pytest.MonkeyPatch) -> None:

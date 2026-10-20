@@ -68,6 +68,7 @@ report.xml
 docs/_build/
 docs/source/api
 docs/source/notebooks
+docs/source/concepts/viewer_skrub_report.html
 
 ###############################################################################
 # .gitignore PATTERN FORMAT:
