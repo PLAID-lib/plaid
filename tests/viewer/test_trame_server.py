@@ -498,6 +498,132 @@ def test_update_view_pushes_frame_when_protocol_is_ready() -> None:
 
 
 @pytest.mark.usefixtures("headless_trame_view")
+def test_color_range_controls_follow_field_and_reject_invalid_limits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Exercise the actual trame callbacks with successive field ranges."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services import (  # noqa: PLC0415
+        ParaviewArtifactService,
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app import server as module  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(name="color-range-controls", **kwargs),
+    )
+    field_range = [1.0, 5.0]
+    applied: list[tuple[float, float]] = []
+
+    class Reader:
+        """Return a distinct field range on successive redraws."""
+
+        def GetOutput(self) -> None:  # noqa: N802
+            """Represent the current reader output."""
+
+    class Pipeline:
+        """Record the color range passed to the actual VTK pipeline."""
+
+        def __init__(self) -> None:
+            self.reader = None
+            self.render_window = None
+            self.mapper = types.SimpleNamespace(
+                RemoveAllInputConnections=lambda _port: None,
+                ScalarVisibilityOff=lambda: None,
+            )
+            self.scalar_bar = types.SimpleNamespace(SetVisibility=lambda _value: None)
+
+        def update(self, **kwargs: object) -> None:
+            """Record the scalar limits selected by the server."""
+            applied.append(kwargs["color_range"])
+
+    pipeline = Pipeline()
+    monkeypatch.setattr(module, "_VtkPipeline", lambda: pipeline)
+    monkeypatch.setattr(module, "_compute_field_range", lambda *_: tuple(field_range))
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    server = module.build_server(service, ParaviewArtifactService(service, tmp_path))
+    state = server.state
+    state.ready()
+    pipeline.reader = Reader()
+    state.field = "point:pressure"
+    state.flush()
+    assert applied[-1] == (1.0, 5.0)
+    field_range[:] = [2.0, 4.0]
+    state.color_min_mode = "Grow only"
+    state.color_max_mode = "Grow only"
+    state.flush()
+    assert applied[-1] == (1.0, 5.0)
+    field_range[:] = [-3.0, 7.0]
+    state.cmap = "jet"
+    state.flush()
+    assert applied[-1] == (-3.0, 7.0)
+    state.color_max_mode = "Fix"
+    state.color_max = "10"
+    state.flush()
+    assert applied[-1] == (-3.0, 10.0)
+    state.color_min = "oops"  # Disabled in the UI while Grow only.
+    state.color_min_mode = "Fix"
+    state.flush()
+    assert applied[-1] == (-3.0, 10.0)
+    assert state.color_range_error
+    assert state.color_min == "oops"
+    state.color_min = "-5"
+    state.flush()
+    assert applied[-1] == (-5.0, 10.0)
+    assert not state.color_range_error
+    state.color_min = "11"
+    state.flush()
+    assert applied[-1] == (-5.0, 10.0)
+    assert "less than" in state.color_range_error
+    state.color_min = "-5"
+    state.flush()
+    state.color_min_mode = "Dynamic"
+    field_range[:] = [0.0, 3.0]
+    state.flush()
+    assert applied[-1] == (0.0, 10.0)
+    state.field = "cell:temperature"
+    field_range[:] = [1.0, 2.0]
+    state.flush()
+    assert applied[-1] == (1.0, 10.0)
+
+
+@pytest.mark.usefixtures("headless_trame_view")
+def test_color_range_ui_has_independent_limits_and_modes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Expose both editable values and independent mode selectors."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services import (  # noqa: PLC0415
+        ParaviewArtifactService,
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(name="color-range-ui", **kwargs),
+    )
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    server.state.ready()
+    template = server.state["trame__template_main"]
+    for name in ("min", "max"):
+        assert f'label="{name.title()}"' in template
+        assert f'v-model="color_{name}"' in template
+        assert f'v-model="color_{name}_mode"' in template
+    assert server.state.color_range_modes == ["Dynamic", "Fix", "Grow only"]
+
+
+@pytest.mark.usefixtures("headless_trame_view")
 def test_streaming_base_options_survive_initialisation_and_split_switch(
     tmp_path: Path,
 ) -> None:

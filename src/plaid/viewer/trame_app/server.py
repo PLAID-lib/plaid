@@ -33,6 +33,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import math
 import os
 import re
 import secrets
@@ -49,6 +50,7 @@ from plaid.viewer.services.plaid_dataset_service import STREAM_CURSOR_ID
 logger = logging.getLogger(__name__)
 
 _COLORMAPS = ["viridis", "plasma", "inferno", "magma", "coolwarm", "turbo", "jet"]
+_RANGE_MODES = ["Dynamic", "Fix", "Grow only"]
 
 _VTK_LOG_ROUTER_INSTALLED = False
 _C_STDERR_REROUTED = False
@@ -795,6 +797,42 @@ def _compute_field_range(
     return lo, hi
 
 
+def _resolve_color_limit(
+    mode: str,
+    field_value: float,
+    displayed: object,
+    previous: float | None,
+    *,
+    is_min: bool,
+) -> float:
+    """Resolve one color limit independently of the other.
+
+    Args:
+        mode: Dynamic, Fix, or Grow only.
+        field_value: Current field minimum or maximum.
+        displayed: Value entered or currently displayed in the text field.
+        previous: Previously applied limit, if any.
+        is_min: Whether this is the lower limit.
+
+    Returns:
+        The finite limit to apply to the color map.
+
+    Raises:
+        ValueError: If a fixed value is not a finite number.
+    """
+    if mode == "Fix":
+        try:
+            value = float(displayed)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Enter a finite numeric color limit") from exc
+        if not math.isfinite(value):
+            raise ValueError("Enter a finite numeric color limit")
+        return value
+    if mode == "Grow only" and previous is not None:
+        return min(previous, field_value) if is_min else max(previous, field_value)
+    return field_value
+
+
 def _show_scalar_bar_for_field(
     scalar_bar, lut, field_name: str, association: str
 ) -> None:
@@ -898,6 +936,7 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         association: str,
         cmap: str,
         show_edges: bool,
+        color_range: tuple[float, float],
     ) -> None:
         """Rebuild the downstream pipeline with the current options."""
         if self.reader is None:
@@ -921,7 +960,7 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
                 self.mapper.SetScalarModeToUseCellFieldData()
             self.mapper.SetColorModeToMapScalars()
             self.mapper.ScalarVisibilityOn()
-            lo, hi = _compute_field_range(self.reader.GetOutput(), field, association)
+            lo, hi = color_range
             self.lut = _build_lut(cmap, lo, hi)
             self.mapper.SetLookupTable(self.lut)
             self.mapper.SetScalarRange(lo, hi)
@@ -1269,6 +1308,15 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     state.setdefault("cmaps", _COLORMAPS)
     state.setdefault("show_edges", False)
     state.setdefault("field_range", [0.0, 1.0])
+    state.setdefault("color_min", 0.0)
+    state.setdefault("color_max", 1.0)
+    state.setdefault("color_min_mode", "Dynamic")
+    state.setdefault("color_max_mode", "Dynamic")
+    state.setdefault("color_range_modes", _RANGE_MODES)
+    state.setdefault("color_range_error", "")
+    color_range_history: dict[str, Any] = {"field": None, "range": None}
+    last_color_modes = {"min": "Dynamic", "max": "Dynamic"}
+    last_displayed_color_range: dict[str, tuple[object, ...] | None] = {"values": None}
     state.setdefault("status", "Select a dataset to start.")
     # Loading indicator: True while the VTK reader is opening a new sample
     # or advancing to a new time step. Consumed by a ``VProgressLinear`` in
@@ -1747,15 +1795,92 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         if state.field:
             association, name = state.field.split(":", 1)
         if name is not None:
-            lo, hi = _compute_field_range(
+            field_range = _compute_field_range(
                 pipeline.reader.GetOutput(), name, association
             )
-            state.field_range = [float(lo), float(hi)]
+            if color_range_history["field"] != state.field:
+                color_range_history["field"] = state.field
+                color_range_history["range"] = None
+                # A fixed value belongs to the user; the other modes begin
+                # afresh when changing to a field with different units.
+                if state.color_min_mode != "Fix":
+                    state.color_min = field_range[0]
+                if state.color_max_mode != "Fix":
+                    state.color_max = field_range[1]
+            previous = color_range_history["range"]
+            # Switching to Grow only starts at the currently displayed
+            # limit; switching from Fix to Dynamic ignores that fixed value.
+            try:
+                min_previous = (
+                    float(state.color_min)
+                    if state.color_min_mode == "Grow only"
+                    and last_color_modes["min"] != "Grow only"
+                    and previous is not None
+                    else previous[0]
+                    if previous
+                    else None
+                )
+                max_previous = (
+                    float(state.color_max)
+                    if state.color_max_mode == "Grow only"
+                    and last_color_modes["max"] != "Grow only"
+                    and previous is not None
+                    else previous[1]
+                    if previous
+                    else None
+                )
+                lo = _resolve_color_limit(
+                    state.color_min_mode,
+                    field_range[0],
+                    state.color_min,
+                    min_previous,
+                    is_min=True,
+                )
+                hi = _resolve_color_limit(
+                    state.color_max_mode,
+                    field_range[1],
+                    state.color_max,
+                    max_previous,
+                    is_min=False,
+                )
+                if lo >= hi:
+                    raise ValueError("Color Min must be less than Color Max")
+            except ValueError as exc:
+                state.color_range_error = str(exc)
+                if previous is None:
+                    lo, hi = field_range
+                else:
+                    lo, hi = previous
+                # Keep the user's input while editing (including intermediate
+                # text such as "-"), without applying it to the VTK scale.
+                last_displayed_color_range["values"] = (
+                    state.color_min,
+                    state.color_max,
+                    state.color_min_mode,
+                    state.color_max_mode,
+                )
+            else:
+                state.color_range_error = ""
+                color_range_history["range"] = (lo, hi)
+                last_color_modes["min"] = state.color_min_mode
+                last_color_modes["max"] = state.color_max_mode
+                state.color_min = lo
+                state.color_max = hi
+                last_displayed_color_range["values"] = (
+                    lo,
+                    hi,
+                    state.color_min_mode,
+                    state.color_max_mode,
+                )
+            state.field_range = [lo, hi]
+        else:
+            lo, hi = state.field_range
         pipeline.update(
             field=name,
             association=association,
             cmap=state.cmap,
             show_edges=bool(state.show_edges),
+            color_range=(lo, hi),
         )
         if reset_camera:
             pipeline.reset_camera()
@@ -2882,6 +3007,17 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
     def _on_view_params(**_: object) -> None:
         _apply_pipeline()
 
+    @state.change("color_min", "color_max", "color_min_mode", "color_max_mode")
+    def _on_color_range(**_: object) -> None:
+        """Apply edited or automatically updated scalar color limits."""
+        if (
+            state.color_min,
+            state.color_max,
+            state.color_min_mode,
+            state.color_max_mode,
+        ) != last_displayed_color_range["values"]:
+            _apply_pipeline()
+
     # --- Datasets root management ----------------------------------------
 
     def _reload_dataset_list() -> None:
@@ -3482,6 +3618,41 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                         items=("cmaps",),
                         density="compact",
                         hide_details=True,
+                    )
+                    with html.Div(classes="d-flex ga-2"):
+                        v3.VTextField(
+                            label="Min",
+                            v_model=("color_min",),
+                            density="compact",
+                            hide_details=True,
+                            disabled=("color_min_mode !== 'Fix'",),
+                        )
+                        v3.VSelect(
+                            label="Min mode",
+                            v_model=("color_min_mode",),
+                            items=("color_range_modes",),
+                            density="compact",
+                            hide_details=True,
+                        )
+                    with html.Div(classes="d-flex ga-2"):
+                        v3.VTextField(
+                            label="Max",
+                            v_model=("color_max",),
+                            density="compact",
+                            hide_details=True,
+                            disabled=("color_max_mode !== 'Fix'",),
+                        )
+                        v3.VSelect(
+                            label="Max mode",
+                            v_model=("color_max_mode",),
+                            items=("color_range_modes",),
+                            density="compact",
+                            hide_details=True,
+                        )
+                    html.Div(
+                        "{{ color_range_error }}",
+                        v_if=("color_range_error",),
+                        classes="text-error text-caption",
                     )
                     v3.VSwitch(
                         label="Show edges",
