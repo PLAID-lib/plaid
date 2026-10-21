@@ -264,6 +264,9 @@ def test_scalar_bar_helpers() -> None:
         def SetTitle(self, title: str) -> None:  # noqa: N802
             self.title = title
 
+        def SetNumberOfLabels(self, count: int) -> None:  # noqa: N802
+            self.labels = count
+
         def SetVisibility(self, visible: bool) -> None:  # noqa: N802, FBT001
             self.visible = visible
 
@@ -273,7 +276,12 @@ def test_scalar_bar_helpers() -> None:
     srv._show_scalar_bar_for_field(scalar_bar, lut, "pressure", "point")
     assert scalar_bar.lut is lut
     assert scalar_bar.title == "pressure (point)"
+    assert scalar_bar.labels == 5
     assert scalar_bar.visible is True
+
+    # Iso contour: one label at each of the 10 boundaries of the 9 bands.
+    srv._show_scalar_bar_for_field(scalar_bar, lut, "pressure", "point", True)
+    assert scalar_bar.labels == srv.ISO_CONTOUR_LEVELS + 1 == 10
 
     srv._hide_scalar_bar(scalar_bar)
     assert scalar_bar.visible is False
@@ -305,13 +313,14 @@ def test_load_reader_plain_and_build_lut(
     class FakeLookupTable:
         def __init__(self) -> None:
             self.hue = None
+            self.colors = None
             self.table: dict[int, tuple[float, ...]] = {}
 
         def SetTableRange(self, *_args):
             pass  # noqa: ANN002
 
-        def SetNumberOfColors(self, *_args):
-            pass  # noqa: ANN002
+        def SetNumberOfColors(self, count: int) -> None:  # noqa: N802
+            self.colors = count
 
         def SetHueRange(self, *args):
             self.hue = args  # noqa: ANN002
@@ -330,7 +339,9 @@ def test_load_reader_plain_and_build_lut(
     reader = srv._load_reader(path)
     assert reader.file_name == str(path)
     assert reader.calls == ["info", "bases", "points", "cells"]
-    assert srv._build_lut("unknown", 0.0, 1.0).hue == (0.667, 0.0)
+    lut = srv._build_lut("unknown", 0.0, 1.0)
+    assert lut.hue == (0.667, 0.0)
+    assert lut.colors == srv.CONTINUOUS_COLORS == 256
     # Known colormaps sample matplotlib instead of a hue ramp.
     import matplotlib  # noqa: PLC0415
 
@@ -339,6 +350,8 @@ def test_load_reader_plain_and_build_lut(
     assert len(viridis.table) == 256
     assert viridis.table[0] == pytest.approx(matplotlib.colormaps["viridis"](0.0))
     assert viridis.table[255] == pytest.approx(matplotlib.colormaps["viridis"](1.0))
+    banded = srv._build_lut("viridis", 0.0, 1.0, srv.ISO_CONTOUR_LEVELS)
+    assert banded.colors == len(banded.table) == 9
 
 
 def test_install_vtk_log_router_with_fake_vtk(monkeypatch: pytest.MonkeyPatch) -> None:
