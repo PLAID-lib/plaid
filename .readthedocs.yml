@@ -25,3 +25,4 @@ build:
     - cd docs && PATH="$HOME/firefox-bin/firefox:$PATH" MOZ_HEADLESS=1 uv run bash generate_doc.sh
     - mkdir -p $READTHEDOCS_OUTPUT/html
     - cp -R docs/_build/html/. $READTHEDOCS_OUTPUT/html/
+    - git status
