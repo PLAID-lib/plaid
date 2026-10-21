@@ -18,6 +18,10 @@ build:
     - asdf install uv latest
     - asdf global uv latest
     - uv sync --dev --extra viewer
-    - cd docs && uv run bash generate_doc.sh
+    - mkdir -p "$HOME/firefox-bin"
+    - curl -fL "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" -o /tmp/firefox.tar.xz
+    - tar -xf /tmp/firefox.tar.xz -C "$HOME/firefox-bin"
+    - '"$HOME/firefox-bin/firefox/firefox" --version'
+    - cd docs && PATH="$HOME/firefox-bin/firefox:$PATH" MOZ_HEADLESS=1 uv run bash generate_doc.sh
     - mkdir -p $READTHEDOCS_OUTPUT/html
     - cp -R docs/_build/html/. $READTHEDOCS_OUTPUT/html/
