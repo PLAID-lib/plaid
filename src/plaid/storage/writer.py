@@ -28,7 +28,6 @@ from plaid.storage.registry import available_backends, get_backend
 
 from ..containers.sample import Sample
 from ..infos import Infos
-from ..problem_definition import ProblemDefinition
 from .callbacks import SampleCallback
 from .common.preprocessor import preprocess
 from .common.reader import (
@@ -121,7 +120,7 @@ def save_to_disk(
     ids: Mapping[str, Any],
     infos: Optional[Infos] = None,
     backend: str = "hf_datasets",
-    pb_defs: Optional[dict[str, ProblemDefinition]] = None,
+    pb_defs: object = None,
     num_proc: int = 1,
     verbose: bool = False,
     overwrite: bool = False,
