@@ -119,8 +119,8 @@ Choose the field used to color the 3D view.
 If no field is selected, the viewer still shows the mesh, but without scalar
 coloring. When a field is selected, a color legend appears in the 3D view.
 
-The same card also contains the colormap, edge visibility, and camera reset
-controls described below.
+The same card also contains the colormap, edge visibility, iso contour, and
+camera reset controls described below.
 
 The **Min** and **Max** controls below **Colormap** independently set the
 color scale limits. Each displays the limit currently used by the 3D colors
@@ -236,6 +236,8 @@ drawn. They do not change which data is loaded.
 
 - **Colormap** changes the colors used for the selected field.
 - **Show edges** overlays mesh edges.
+- **Iso contour** limits the colormap to 9 color bands, to visualize the iso
+  contours of the field.
 - **Reset camera** recenters the view after you rotate, pan, or zoom.
 
 ## Interacting with the 3D view
