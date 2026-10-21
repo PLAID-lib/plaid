@@ -17,7 +17,7 @@ echo "#---# Regenerate mkdocstrings API reference stubs"
 python "${DOCS_DIR}/generate_api_stubs.py"
 
 echo "#---# Generate the skrub report embedded in the viewer page"
-python "${DOCS_DIR}/source/images/generate_viewer_images.py" --report-only
+python "${DOCS_DIR}/source/images/generate_viewer_images.py"
 
 echo "#---# Copy Jupytext notebooks from examples/"
 mkdir -p source/notebooks

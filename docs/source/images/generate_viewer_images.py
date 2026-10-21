@@ -180,6 +180,7 @@ def _free_port() -> int:
 
 @contextlib.asynccontextmanager
 async def _firefox(profile: Path):
+    """Start Firefox with ``profile`` and yield a content-tab BiDi client."""
     import aiohttp  # noqa: PLC0415
 
     executable = shutil.which("firefox")
@@ -187,35 +188,45 @@ async def _firefox(profile: Path):
         raise SystemExit("Firefox is required to capture the viewer screenshots.")
     port = _free_port()
     profile.mkdir(parents=True, exist_ok=True)
-    process = subprocess.Popen(
-        [executable, "--headless", "--no-remote", "--profile", str(profile)]
-        + ["--remote-debugging-port", str(port)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    try:
-        async with aiohttp.ClientSession() as http:
-            for _ in range(150):
-                try:
-                    ws = await http.ws_connect(f"ws://127.0.0.1:{port}/session")
-                    break
-                except aiohttp.ClientError:
-                    await asyncio.sleep(0.2)
-            else:
-                raise RuntimeError("Firefox did not start its WebDriver BiDi server.")
-            browser = _Firefox(ws)
-            await browser.call("session.new", capabilities={})
-            tree = await browser.call("browsingContext.getTree")
-            browser.context = tree["contexts"][0]["context"]
-            await browser.call(
-                "browsingContext.setViewport",
-                context=browser.context,
-                viewport=VIEWPORT,
-            )
-            yield browser
-    finally:
-        process.terminate()
-        process.wait()
+    with tempfile.TemporaryFile(mode="w+t") as log:
+        process = subprocess.Popen(
+            [executable, "--headless", "--no-remote", "--profile", str(profile)]
+            + ["--remote-debugging-port", str(port), "--remote-allow-system-access"],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+        )
+        try:
+            async with aiohttp.ClientSession() as http:
+                ws = None
+                for _ in range(150):
+                    try:
+                        ws = await http.ws_connect(f"ws://127.0.0.1:{port}/session")
+                        break
+                    except aiohttp.ClientError:
+                        if process.poll() is not None:
+                            break
+                        await asyncio.sleep(0.2)
+                if ws is None or process.poll() is not None:
+                    log.seek(0)
+                    raise RuntimeError(
+                        "Firefox did not start its WebDriver BiDi server.\n"
+                        f"Firefox output:\n{log.read()}"
+                    )
+                browser = _Firefox(ws)
+                await browser.call("session.new", capabilities={})
+                # The startup page may be privileged (about:home); use a content tab.
+                tab = await browser.call("browsingContext.create", type="tab")
+                browser.context = tab["context"]
+                await browser.call(
+                    "browsingContext.setViewport",
+                    context=browser.context,
+                    viewport=VIEWPORT,
+                )
+                yield browser
+        finally:
+            if process.poll() is None:
+                process.terminate()
+            process.wait()
 
 
 async def _settle(server, browser: _Firefox, condition: str, delay: float = 1.0):
@@ -311,7 +322,10 @@ def main() -> None:
         help="Only write the skrub report embedded in the documentation.",
     )
     args = parser.parse_args()
-    with tempfile.TemporaryDirectory(prefix="plaid-viewer-doc-") as tmp:
+    # Snap-packaged Firefox cannot access profiles under the system /tmp.
+    with tempfile.TemporaryDirectory(
+        prefix="plaid-viewer-doc-", dir=Path.home()
+    ) as tmp:
         work = Path(tmp)
         # The viewer persists the datasets root it opens: keep the user's own.
         os.environ["PLAID_VIEWER_CONFIG_FILE"] = str(work / "viewer.json")
