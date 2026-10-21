@@ -63,6 +63,25 @@ independently when the viewer is configured to pin either choice.
 
 Pick the **Dataset** you want to inspect.
 
+For a **local** dataset, click **Open in ParaView** to launch ParaView with the
+PLAID plugin connected to a loopback-only `plaid-serve` data API. The viewer
+chooses a free API port automatically and keeps the server running until that
+ParaView instance exits (or the viewer shuts down). ParaView must be installed
+and available as `paraview` on your `PATH`, or you must set `PARAVIEW_EXEC` to
+the ParaView executable **before starting `plaid-viewer`**. For example, when
+running from WSL with ParaView installed on Windows:
+
+```bash
+export PARAVIEW_EXEC=/mnt/c/Users/User/Apps/ParaView-6.2.0-Windows-Python3.12-msvc2017-AMD64/bin/paraview.exe
+uv run plaid-viewer
+```
+
+Replace the example path with the location of your ParaView installation.
+The launch script adds and displays a **Plaid Explorer** source in ParaView
+automatically so you can inspect and compare samples.
+Hub-streamed datasets are not supported by `plaid-serve` and cannot be opened
+with this button.
+
 The list depends on the selected source tab: local datasets are shown on the
 **Local** tab, while streamed Hub datasets are shown on the **Hub** tab.
 

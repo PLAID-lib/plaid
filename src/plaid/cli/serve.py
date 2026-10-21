@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import threading
 from dataclasses import dataclass, field
 from http import HTTPStatus
@@ -500,22 +499,21 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    if args.ParaViewRun:
-        os.environ["PLAID_PORT"] = str(args.port)
-        from .paraview_plugin import run_paraview_with_plugin
-
-        process = run_paraview_with_plugin()
-    else:
-        process = None
-
     context = ServeContext(default_dataset_uri=args.dataset)
     server = _ServeHTTPServer((str(args.host), int(args.port)), context)
     log.info("PLAID data API listening on http://%s:%s", args.host, args.port)
 
-    if process is None:
+    if not args.ParaViewRun:
         log.info("Running PLAID data API until interrupted")
         server.serve_forever()
     else:
+        from .paraview_plugin import run_paraview_with_plugin_client_server
+
+        try:
+            process = run_paraview_with_plugin_client_server(port=server.server_port)
+        except BaseException:
+            server.server_close()
+            raise
         log.info("Running PLAID data API for ParaView")
         _run_server_until_process_exits(server, process)
 
