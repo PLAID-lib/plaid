@@ -3044,6 +3044,16 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
             session = open_dataset_in_paraview(Path(dataset.path))
         except StopIteration:
             state.paraview_status = "Selected local dataset is no longer available."
+        except FileNotFoundError as exc:
+            logger.exception("Failed to open dataset in ParaView")
+            if exc.filename == os.environ.get("PARAVIEW_EXEC", "paraview"):
+                state.paraview_status = (
+                    "Cannot launch ParaView. Add paraview to your PATH, or set "
+                    "PARAVIEW_EXEC to its executable path before starting "
+                    "plaid-viewer."
+                )
+            else:
+                state.paraview_status = f"Cannot open ParaView: {exc}"
         except Exception as exc:  # noqa: BLE001
             logger.exception("Failed to open dataset in ParaView")
             state.paraview_status = f"Cannot open ParaView: {exc}"
@@ -3364,15 +3374,24 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             hide_details=True,
                         )
 
-                v3.VBtn(
-                    "Open in ParaView",
-                    click=ctrl.open_in_paraview,
-                    disabled=("!dataset_id || source_tab !== 'local'",),
-                    color="primary",
-                    variant="tonal",
-                    block=True,
-                    classes="mb-1",
-                )
+                with html.Div(classes="mb-1"):
+                    v3.VBtn(
+                        "Open in ParaView",
+                        click=ctrl.open_in_paraview,
+                        disabled=("!dataset_id || source_tab !== 'local'",),
+                        color="primary",
+                        variant="tonal",
+                        block=True,
+                    )
+                    v3.VTooltip(
+                        text=(
+                            "Open a local dataset in ParaView. Add paraview "
+                            "to your PATH, or set PARAVIEW_EXEC to the full "
+                            "executable path before starting plaid-viewer. "
+                            "Hub datasets are not supported."
+                        ),
+                        activator="parent",
+                    )
                 html.Div(
                     "{{ paraview_status }}",
                     v_if=("paraview_status",),

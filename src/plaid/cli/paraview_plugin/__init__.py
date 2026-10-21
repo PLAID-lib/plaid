@@ -88,7 +88,7 @@ def run_paraview_with_plugin_client_server(
     my_env = os.environ.copy()
 
     my_env["PV_PLUGIN_PATH"] = str(get_ParaView_plugin_path_one_file())
-    my_env["PARAVIEW_LOG_PLUGIN_VERBOSITY"] = "ON"
+    #my_env["PARAVIEW_LOG_PLUGIN_VERBOSITY"] = "ON"
     my_env["PLAID_PORT"] = str(port)
 
     current_pv_path = os.environ.get("PARAVIEW_EXEC", paraview_exec)
@@ -110,7 +110,7 @@ paraview.simple._DisableFirstRenderCameraReset()
 
 # create a new 'Plaid Explorer'
 plaidExplorer1 = PlaidExplorer(registrationName={tree_name!r})
-
+plaidExplorer1.UpdatePipeline()
 # get animation scene
 animationScene1 = GetAnimationScene()
 
@@ -119,9 +119,8 @@ animationScene1.UpdateAnimationUsingDataTimeSteps()
 
 # get active view
 renderView1 = GetActiveViewOrCreate('RenderView')
-
 # show data in view
-plaidExplorer1Display = Show(plaidExplorer1, renderView1, 'UnstructuredGridRepresentation')
+plaidExplorer1Display = Show(plaidExplorer1, renderView1)
 
 # trace defaults for the display properties.
 plaidExplorer1Display.Representation = 'Surface'

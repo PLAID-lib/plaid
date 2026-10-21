@@ -98,7 +98,9 @@ def open_dataset_in_paraview(dataset_path: Path) -> ParaViewSession:
     try:
         # Bind and serve before launching: the plugin can connect immediately.
         server_thread.start()
-        process = run_paraview_with_plugin_client_server(port=server.server_port)
+        process = run_paraview_with_plugin_client_server(
+            port=server.server_port, options={"tree_name": path.name}
+        )
         session = ParaViewSession(server, process, server_thread)
         session.start()
     except BaseException:

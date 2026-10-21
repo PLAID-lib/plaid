@@ -16,7 +16,7 @@ def test_open_dataset_serves_selected_path_on_actual_port(
 ) -> None:
     dataset = tmp_path / "selected"
     dataset.mkdir()
-    launched: list[int] = []
+    launched: list[tuple[int, dict[str, str]]] = []
     exited = threading.Event()
 
     class Process:
@@ -26,9 +26,17 @@ def test_open_dataset_serves_selected_path_on_actual_port(
             """Block until ParaView exits."""
             exited.wait(timeout=5)
 
-    def launch(port: int) -> Process:
-        """Capture the actual data API port passed to ParaView."""
-        launched.append(port)
+    def launch(port: int, options: dict[str, str]) -> Process:
+        """Capture the API port and source options passed to ParaView.
+
+        Args:
+            port: Port of the viewer-owned data API.
+            options: ParaView source settings, including the tree name.
+
+        Returns:
+            The simulated running ParaView process.
+        """
+        launched.append((port, options))
         with request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as response:
             assert response.read() == b'{"status": "ok"}'
         return Process()
@@ -38,7 +46,7 @@ def test_open_dataset_serves_selected_path_on_actual_port(
     )
     session = paraview_session.open_dataset_in_paraview(dataset)
     try:
-        assert launched == [session.port]
+        assert launched == [(session.port, {"tree_name": "selected"})]
         assert session.server.server_address[0] == "127.0.0.1"
         assert session.server.context.default_dataset_uri == str(dataset.resolve())
         with request.urlopen(
@@ -57,8 +65,14 @@ def test_launch_failure_releases_port(
     dataset = tmp_path / "selected"
     dataset.mkdir()
 
-    def fail(port: int) -> None:
-        """Raise when ParaView cannot be started."""
+    def fail(port: int, options: dict[str, str]) -> None:
+        """Raise when ParaView cannot be started.
+
+        Args:
+            port: Port of the viewer-owned data API.
+            options: ParaView source settings.
+        """
+        assert options == {"tree_name": "selected"}
         raise OSError(f"Cannot launch on {port}")
 
     monkeypatch.setattr(
@@ -97,7 +111,7 @@ def test_session_closes_after_paraview_exits(
     monkeypatch.setattr(
         paraview_session,
         "run_paraview_with_plugin_client_server",
-        lambda port: Process(),  # noqa: ARG005 - named launcher keyword
+        lambda port, options: Process(),  # noqa: ARG005 - launcher keywords
     )
     session = paraview_session.open_dataset_in_paraview(dataset)
     try:

@@ -335,6 +335,9 @@ def test_open_in_paraview_uses_current_local_selection(
     server = build_server(service, ParaviewArtifactService(service, tmp_path))
     server.state.ready()
     assert "Open in ParaView" in server.state["trame__template_main"]
+    assert "Add paraview to your PATH" in server.state["trame__template_main"]
+    assert "PARAVIEW_EXEC" in server.state["trame__template_main"]
+    assert "Hub datasets are not supported" in server.state["trame__template_main"]
 
     server.state.dataset_id = "second"
     server.state.flush()
@@ -357,6 +360,40 @@ def test_open_in_paraview_uses_current_local_selection(
     )
     server.controller.open_in_paraview()
     assert "not installed" in server.state.paraview_status
+
+    def missing_executable(_path: Path) -> None:
+        """Model the launcher failing to find the ParaView executable."""
+        raise FileNotFoundError(2, "No such file or directory", "paraview")
+
+    monkeypatch.setattr(
+        paraview_session, "open_dataset_in_paraview", missing_executable
+    )
+    server.controller.open_in_paraview()
+    assert "paraview to your PATH" in server.state.paraview_status
+    assert "PARAVIEW_EXEC" in server.state.paraview_status
+
+    monkeypatch.setenv("PARAVIEW_EXEC", "/opt/paraview/bin/paraview")
+
+    def missing_custom_executable(_path: Path) -> None:
+        """Model a missing custom ParaView executable."""
+        raise FileNotFoundError(
+            2, "No such file or directory", "/opt/paraview/bin/paraview"
+        )
+
+    monkeypatch.setattr(
+        paraview_session, "open_dataset_in_paraview", missing_custom_executable
+    )
+    server.controller.open_in_paraview()
+    assert "PARAVIEW_EXEC" in server.state.paraview_status
+
+    monkeypatch.setattr(
+        paraview_session,
+        "open_dataset_in_paraview",
+        lambda _path: (_ for _ in ()).throw(FileNotFoundError("dataset missing")),
+    )
+    server.controller.open_in_paraview()
+    assert "dataset missing" in server.state.paraview_status
+    assert "Add paraview" not in server.state.paraview_status
 
 
 @pytest.mark.usefixtures("headless_trame_view")

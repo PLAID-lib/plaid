@@ -315,8 +315,8 @@ class PlaidClientBase(PlaidDataSetBase):
             inputType=inputType,
             outputType=outputType,
         )
-        self.host: str = plaid_explorer_server_default_host
-        self.port: int = plaid_explorer_server_default_port
+        self.host_name: str = plaid_explorer_server_default_host
+        self.port_nb: int = plaid_explorer_server_default_port
         self.server_ok = False
 
     def _CleanCache(self):
@@ -329,18 +329,18 @@ class PlaidClientBase(PlaidDataSetBase):
     def SetHost(self, value):
         """Set the server host address to connect to for fetching dataset information and samples."""
         value = str(value)
-        if self.host != value:
-            self.host = value
+        if self.host_name != value:
+            self.host_name = value
             self._CleanCache()
 
     @smproperty.intvector(
-        name="Port", default_values=str(plaid_explorer_server_default_port)
+        name="PortNB", default_values=str(plaid_explorer_server_default_port)
     )
-    def SetPort(self, value):
+    def SetPortNB(self, value):
         """Set the server port to connect to for fetching dataset information and samples."""
         value = int(value)
-        if self.port != value:
-            self.port = value
+        if self.port_nb != value:
+            self.port_nb = value
             self._CleanCache()
 
     def isServerOK(self):
@@ -349,7 +349,7 @@ class PlaidClientBase(PlaidDataSetBase):
         try:
             with request.urlopen(
                 request.Request(
-                    url=f"http://{self.host}:{self.port}/health",
+                    url=f"http://{self.host_name}:{self.port_nb}/health",
                     headers={"Content-Type": "application/json"},
                     method="POST",
                 ),
@@ -384,7 +384,7 @@ class PlaidClientBase(PlaidDataSetBase):
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
 
         req = request.Request(
-            url=f"http://{self.host}:{self.port}{endpoint}",
+            url=f"http://{self.host_name}:{self.port_nb}{endpoint}",
             data=data,
             headers={"Content-Type": "application/json"},
             method="POST",
@@ -428,11 +428,11 @@ class PlaidExplorer(PlaidClientBase):
         return super().SetHost(value)
 
     @smproperty.intvector(
-        name="Port", default_values=str(plaid_explorer_server_default_port)
+        name="PortNb", default_values=str(plaid_explorer_server_default_port)
     )
-    def SetPort(self, value):
+    def SetPortNB(self, value):
         """Set the server port to connect to for fetching dataset information and samples."""
-        return super().SetPort(value)
+        return super().SetPortNB(value)
 
     @smproperty.stringvector(
         name="SelectSplit", default_values="", immediate_update="1"
@@ -617,13 +617,13 @@ class PlaidProcess(VTKPythonAlgorithmBase):
             self._PropertyChanged()
 
     @smproperty.intvector(
-        name="Port", default_values=int(plaid_process_server_default_port)
+        name="PortNB", default_values=int(plaid_process_server_default_port)
     )
-    def SetPort(self, value):
+    def SetPortNB(self, value):
         """Set the server port to connect to for processing data."""
         value = int(value)
-        if self.port != value:
-            self.port = value
+        if self.port_nb != value:
+            self.port_nb = value
             self._PropertyChanged()
 
     def _request_json(
@@ -646,7 +646,7 @@ class PlaidProcess(VTKPythonAlgorithmBase):
         data = json.dumps(payload).encode("utf-8") if payload is not None else None
 
         req = request.Request(
-            url=f"http://{self.host}:{self.port}{endpoint}",
+            url=f"http://{self.host}:{self.port_nb}{endpoint}",
             data=data,
             headers={"Content-Type": "application/json"},
             method="POST",
