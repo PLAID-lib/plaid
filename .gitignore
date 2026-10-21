@@ -70,7 +70,7 @@ docs/source/api
 docs/source/notebooks
 docs/source/concepts/viewer_skrub_report.html
 docs/source/images/viewer.jpg
-source/images/viewerglobals.jpg
+docs/source/images/viewerglobals.jpg
 
 ###############################################################################
 # .gitignore PATTERN FORMAT:
