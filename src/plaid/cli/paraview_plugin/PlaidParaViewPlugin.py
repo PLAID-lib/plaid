@@ -428,7 +428,7 @@ class PlaidExplorer(PlaidClientBase):
         return super().SetHost(value)
 
     @smproperty.intvector(
-        name="PortNb", default_values=str(plaid_explorer_server_default_port)
+        name="PortNB", default_values=str(plaid_explorer_server_default_port)
     )
     def SetPortNB(self, value):
         """Set the server port to connect to for fetching dataset information and samples."""
@@ -553,7 +553,7 @@ class PlaidProcess(VTKPythonAlgorithmBase):
         self._timestep_values_cache: list[float] | None = None
         self._sample_cache = None
         self.host: str = plaid_process_server_default_host
-        self.port: int = plaid_process_server_default_port
+        self.port_nb: int = plaid_process_server_default_port
         self.process_op: str = ""
         self.ensure_3D_points = False
 
