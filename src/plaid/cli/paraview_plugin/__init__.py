@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Optional
 
 paraview_exec = "paraview"
-paraview_install_dir = ""
 
 
 def get_ParaView_plugin_path():
@@ -88,7 +87,7 @@ def run_paraview_with_plugin_client_server(
     my_env = os.environ.copy()
 
     my_env["PV_PLUGIN_PATH"] = str(get_ParaView_plugin_path_one_file())
-    #my_env["PARAVIEW_LOG_PLUGIN_VERBOSITY"] = "ON"
+    # my_env["PARAVIEW_LOG_PLUGIN_VERBOSITY"] = "ON" # uncomment this for debug
     my_env["PLAID_PORT"] = str(port)
 
     current_pv_path = os.environ.get("PARAVIEW_EXEC", paraview_exec)

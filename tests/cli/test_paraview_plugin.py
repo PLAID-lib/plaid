@@ -105,7 +105,6 @@ def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
     assert calls[0]["env"]["SCRIPT_PATH"] == calls[0]["args"][2]
     assert calls[0]["stdin"] == paraview_plugin.subprocess.DEVNULL
     assert calls[0]["env"]["PV_PLUGIN_PATH"] == str(tmp_path)
-    assert calls[0]["env"]["PARAVIEW_LOG_PLUGIN_VERBOSITY"] == "ON"
     assert calls[0]["env"]["PLAID_PORT"] == "8123"
     assert os.environ["PARAVIEW_EXEC"] == "custom-paraview"
 
@@ -251,7 +250,7 @@ def test_process_request_json_returns_response_and_propagates_errors(
         compile(ast.Module(body=[method], type_ignores=[]), str(plugin_path), "exec"),
         namespace,
     )
-    client = SimpleNamespace(host="localhost", port=8001)
+    client = SimpleNamespace(host="localhost", port_nb=8001)
 
     class Response:
         """Provide a JSON HTTP response context manager."""
