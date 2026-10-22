@@ -1006,30 +1006,26 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
 
 
 def _build_lut(cmap: str, lo: float, hi: float, n_colors: int = CONTINUOUS_COLORS):
-    """Build a simple ``vtkLookupTable`` approximating a matplotlib colormap.
+    """Build a ``vtkLookupTable`` sampling a matplotlib colormap.
 
     A small ``n_colors`` splits the range into equal bands of solid colour.
+    Unknown names fall back to a blue-to-red hue ramp.
     """
     import vtk  # noqa: PLC0415
 
-    # Minimal built-in approximations - use HueRange for the common cases.
     lut = vtk.vtkLookupTable()
     lut.SetTableRange(lo, hi)
     lut.SetNumberOfColors(n_colors)
-    presets = {
-        "viridis": (0.75, 0.0),
-        "plasma": (0.8, 0.05),
-        "inferno": (0.0, 0.15),
-        "magma": (0.85, 0.0),
-        "coolwarm": (0.667, 0.0),
-        "turbo": (0.7, 0.0),
-        "jet": (0.667, 0.0),
-    }
-    h0, h1 = presets.get(cmap, (0.667, 0.0))
-    lut.SetHueRange(h0, h1)
-    lut.SetSaturationRange(1.0, 1.0)
-    lut.SetValueRange(1.0, 1.0)
+    if cmap not in _COLORMAPS:
+        lut.SetHueRange(0.667, 0.0)
+        lut.Build()
+        return lut
+    import matplotlib  # noqa: PLC0415
+
+    colormap = matplotlib.colormaps[cmap].resampled(n_colors)
     lut.Build()
+    for index in range(n_colors):
+        lut.SetTableValue(index, *colormap(index))
     return lut
 
 
@@ -3679,12 +3675,14 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             v_model=("show_edges",),
                             density="compact",
                             hide_details=True,
+                            color="primary",
                         )
                         v3.VSwitch(
                             label="Iso contour",
                             v_model=("iso_contour",),
                             density="compact",
                             hide_details=True,
+                            color="primary",
                         )
                     v3.VBtn("Reset camera", click=ctrl.reset_camera, block=True)
 

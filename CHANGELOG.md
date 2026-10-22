@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (ParaView plugin) support direct CGNS-tree/VTK conversion, including VTK-to-CGNS export, CGNS hierarchy and tag preservation, and bulk connectivity conversion for uniform fixed-size unstructured grids. The self-contained plugin bundle can be written to a caller-provided directory.
 - (storage/writer) add optional `sample_callback` to `save_to_disk`, invoked once per sample right after it is written to disk as `sample_callback(split_name, index, sample_path)`. This lets callers process samples one by one once written instead of waiting for the whole dataset. Currently supported for the `cgns` backend, including parallel writing (`num_proc > 1`), where the callback runs inside the worker processes and must be picklable and process-safe.
 - (python env) add python 3.14 support
+- (docs) generate the viewer screenshots from a synthetic dataset (`docs/source/images/generate_viewer_images.py`) and embed an interactive skrub report, built with the documentation, in the viewer page.
 
 ### Changed
 
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (dataset-viewer) discard extracted Globals when the time step changes, so plots, CSV exports and skrub reports never mix time steps.
 - (dataset-viewer) discover bases and paths in CGNS-backed datasets.
+- (dataset-viewer) render the selected colormap (viridis, plasma, ...) instead of a rainbow hue ramp, and color the **Show edges** switch so its state is visible.
 - (storage/preprocessor) preserve the source floating-point dtype during schema inference.
 - (storage/reader) Fix HF backend split download not respecting `~` character on Linux.
 
