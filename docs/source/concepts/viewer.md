@@ -65,8 +65,11 @@ Pick the **Dataset** you want to inspect.
 
 For a **local** dataset, click **Open in ParaView** to launch ParaView with the
 PLAID plugin connected to a loopback-only `plaid-serve` data API. The viewer
-chooses a free API port automatically and keeps the server running until that
-ParaView instance exits (or the viewer shuts down). ParaView must be installed
+chooses the first available API port from **8081–8090**, keeping it close to the
+default viewer port (8080), and keeps the server running until that ParaView
+instance exits (or the viewer shuts down). If all ports in this range are in use
+or denied, the launch reports an error instead of using a high-numbered port.
+Your firewall must allow the selected API port. ParaView must be installed
 and available as `paraview` on your `PATH`, or you must set `PARAVIEW_EXEC` to
 the ParaView executable **before starting `plaid-viewer`**. For example, when
 running from WSL with ParaView installed on Windows:

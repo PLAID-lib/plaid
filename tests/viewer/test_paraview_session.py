@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import errno
+import socket
 import threading
 from pathlib import Path
 from urllib import request
@@ -46,6 +48,7 @@ def test_open_dataset_serves_selected_path_on_actual_port(
     )
     session = paraview_session.open_dataset_in_paraview(dataset)
     try:
+        assert 8081 <= session.port <= 8090
         assert launched == [(session.port, {"tree_name": "selected"})]
         assert session.server.server_address[0] == "127.0.0.1"
         assert session.server.context.default_dataset_uri == str(dataset.resolve())
@@ -123,3 +126,60 @@ def test_session_closes_after_paraview_exits(
     finally:
         finished.set()
         session.close()
+
+
+def test_server_skips_occupied_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use the next candidate when a real socket occupies the first port."""
+    with socket.socket() as occupied, socket.socket() as available:
+        occupied.bind(("127.0.0.1", 0))
+        occupied.listen()
+        available.bind(("127.0.0.1", 0))
+        occupied_port = occupied.getsockname()[1]
+        available_port = available.getsockname()[1]
+        available.close()
+        monkeypatch.setattr(
+            paraview_session, "_PARAVIEW_PORTS", (occupied_port, available_port)
+        )
+        server = paraview_session._create_server(paraview_session.ServeContext())
+        try:
+            assert server.server_port == available_port
+        finally:
+            server.server_close()
+
+
+def test_server_reports_exhausted_ports(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Report exhaustion rather than fall back to an OS-assigned port."""
+    with socket.socket() as occupied:
+        occupied.bind(("127.0.0.1", 0))
+        occupied.listen()
+        monkeypatch.setattr(
+            paraview_session, "_PARAVIEW_PORTS", (occupied.getsockname()[1],)
+        )
+        with pytest.raises(OSError, match="no available port in 8081-8090"):
+            paraview_session._create_server(paraview_session.ServeContext())
+
+
+@pytest.mark.parametrize("error_number", [errno.EACCES, errno.EINVAL])
+def test_server_handles_bind_errors(
+    monkeypatch: pytest.MonkeyPatch, error_number: int
+) -> None:
+    """Skip denied ports, but propagate unexpected server errors."""
+    attempted: list[int] = []
+
+    def fail(address: tuple[str, int], context: object) -> None:
+        """Record the bind attempt and simulate an operating system error.
+
+        Args:
+            address: Loopback address and candidate API port.
+            context: Dataset serving context.
+        """
+        assert isinstance(context, paraview_session.ServeContext)
+        attempted.append(address[1])
+        raise OSError(error_number, "bind failed")
+
+    monkeypatch.setattr(paraview_session, "_ServeHTTPServer", fail)
+    message = "no available port" if error_number == errno.EACCES else "bind failed"
+    with pytest.raises(OSError, match=message):
+        paraview_session._create_server(paraview_session.ServeContext())
+    expected = list(range(8081, 8091)) if error_number == errno.EACCES else [8081]
+    assert attempted == expected

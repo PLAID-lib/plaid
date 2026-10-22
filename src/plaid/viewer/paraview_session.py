@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import atexit
+import errno
 import logging
 import threading
 from pathlib import Path
@@ -13,6 +14,7 @@ from plaid.cli.paraview_plugin import run_paraview_with_plugin_client_server
 from plaid.cli.serve import ServeContext, _ServeHTTPServer
 
 logger = logging.getLogger(__name__)
+_PARAVIEW_PORTS = range(8081, 8091)
 _sessions: set[ParaViewSession] = set()
 _sessions_lock = threading.Lock()
 
@@ -75,6 +77,30 @@ def _close_sessions() -> None:
 atexit.register(_close_sessions)
 
 
+def _create_server(context: ServeContext) -> _ServeHTTPServer:
+    """Bind the data API to the first available port near the viewer port.
+
+    Args:
+        context: Dataset context to expose through the data API.
+
+    Returns:
+        A loopback-only server bound to a port between 8081 and 8090.
+
+    Raises:
+        OSError: If no permitted port is available or server creation fails.
+    """
+    for port in _PARAVIEW_PORTS:
+        try:
+            return _ServeHTTPServer(("127.0.0.1", port), context)
+        except OSError as error:
+            if error.errno not in (errno.EADDRINUSE, errno.EACCES):
+                raise
+    raise OSError(
+        "Cannot start the ParaView data API: no available port in 8081-8090. "
+        "Free or allow a port in this range and try again."
+    )
+
+
 def open_dataset_in_paraview(dataset_path: Path) -> ParaViewSession:
     """Start a loopback-only data API and launch ParaView for a local dataset.
 
@@ -82,7 +108,7 @@ def open_dataset_in_paraview(dataset_path: Path) -> ParaViewSession:
         dataset_path: Directory of the selected local PLAID dataset.
 
     Returns:
-        The session, with the actual OS-assigned API port.
+        The session, with the selected API port between 8081 and 8090.
 
     Raises:
         FileNotFoundError: If the dataset directory no longer exists.
@@ -91,9 +117,7 @@ def open_dataset_in_paraview(dataset_path: Path) -> ParaViewSession:
     path = dataset_path.resolve(strict=True)
     if not path.is_dir():
         raise FileNotFoundError(f"Dataset is not a directory: {path}")
-    server = _ServeHTTPServer(
-        ("127.0.0.1", 0), ServeContext(default_dataset_uri=str(path))
-    )
+    server = _create_server(ServeContext(default_dataset_uri=str(path)))
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
     try:
         # Bind and serve before launching: the plugin can connect immediately.
