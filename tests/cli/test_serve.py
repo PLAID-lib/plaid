@@ -565,6 +565,7 @@ def test_main_runs_server_forever(monkeypatch):
 
     class FakeServer:
         def __init__(self, address, context):
+            self.server_port = address[1]
             calls.append(("init", address, context.default_dataset_uri))
 
         def serve_forever(self):
@@ -583,6 +584,7 @@ def test_main_runs_until_paraview_process_exits(monkeypatch):
 
     class FakeServer:
         def __init__(self, address, context):
+            self.server_port = address[1]
             calls.append(("init", address, context.default_dataset_uri))
 
     monkeypatch.setattr(serve, "_ServeHTTPServer", FakeServer)
@@ -592,11 +594,42 @@ def test_main_runs_until_paraview_process_exits(monkeypatch):
         lambda server, pv_process: calls.append(("run_until_exit", server, pv_process)),
     )
     monkeypatch.setattr(
-        "plaid.cli.paraview_plugin.run_paraview_with_plugin",
-        lambda: process,
+        "plaid.cli.paraview_plugin.run_paraview_with_plugin_client_server",
+        lambda port: calls.append(("launch", port)) or process,
     )
 
     assert serve.main(["--port", "8123", "--ParaViewRun"]) == 0
     assert calls[0] == ("init", ("0.0.0.0", 8123), None)
-    assert calls[1][0] == "run_until_exit"
-    assert calls[1][2] is process
+    assert calls[1] == ("launch", 8123)
+    assert calls[2][0] == "run_until_exit"
+    assert calls[2][2] is process
+
+
+def test_main_closes_server_when_paraview_cannot_launch(monkeypatch):
+    """A failed ParaView launch must release the bound data API port."""
+    calls = []
+
+    class FakeServer:
+        """Record server cleanup after a launch failure."""
+
+        def __init__(self, address, context):
+            self.server_port = address[1]
+            calls.append(("bind", context.default_dataset_uri))
+
+        def server_close(self):
+            """Record socket closure."""
+            calls.append("close")
+
+    def fail(port):
+        """Simulate ParaView not being installed."""
+        calls.append(("launch", port))
+        raise OSError("ParaView not found")
+
+    monkeypatch.setattr(serve, "_ServeHTTPServer", FakeServer)
+    monkeypatch.setattr(
+        "plaid.cli.paraview_plugin.run_paraview_with_plugin_client_server", fail
+    )
+
+    with pytest.raises(OSError, match="ParaView not found"):
+        serve.main(["--port", "8123", "--dataset", "/tmp/data", "--ParaViewRun"])
+    assert calls == [("bind", "/tmp/data"), ("launch", 8123), "close"]

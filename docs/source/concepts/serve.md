@@ -36,6 +36,10 @@ location in the JSON body using either `dataset` or `uri`.
 | `--dataset PATH` | Default local PLAID dataset directory used by dataset endpoints. |
 | `--ParaViewRun` | Launch ParaView with the PLAID plugin, set `PLAID_PORT` to the selected port, and stop the server when ParaView exits. The ParaView executable is read from `PARAVIEW_EXEC`. |
 
+When `--ParaViewRun` is used, the launcher passes a generated script to
+ParaView to create and display a **Plaid Explorer** source. The script is kept
+available until the launcher exits.
+
 ## Request conventions
 
 Dataset endpoints use `POST` with a JSON object body. The server resolves the

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (ParaView plugin) support direct CGNS-tree/VTK conversion, including VTK-to-CGNS export, CGNS hierarchy and tag preservation, and bulk connectivity conversion for uniform fixed-size unstructured grids. The self-contained plugin bundle can be written to a caller-provided directory.
 - (storage/writer) add optional `sample_callback` to `save_to_disk`, invoked once per sample right after it is written to disk as `sample_callback(split_name, index, sample_path)`. This lets callers process samples one by one once written instead of waiting for the whole dataset. Currently supported for the `cgns` backend, including parallel writing (`num_proc > 1`), where the callback runs inside the worker processes and must be picklable and process-safe.
 - (python env) add python 3.14 support
+- (dataset-viewer) add an **Open in ParaView** button for local datasets: it serves the selected dataset through a loopback-only `plaid-serve` data API on the first available port in 8081–8090 and launches ParaView with the PLAID plugin, keeping the server alive until ParaView exits. The ParaView executable is read from `PARAVIEW_EXEC` (default `paraview`).
 - (docs) generate the viewer screenshots from a synthetic dataset (`docs/source/images/generate_viewer_images.py`) and embed an interactive skrub report, built with the documentation, in the viewer page.
 
 ### Changed
@@ -22,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (plaidcheck/problem_definition) support multiple subsplits per problem-definition split.
 - (dataset-viewer) keep the camera viewpoint when changing samples; it is only reset on the first load or by **Reset camera**.
 - (dataset-viewer) keep the current physical time when changing samples, using the closest available time step of the new sample.
+- (plaid-serve) `--ParaViewRun` now starts the data API before launching ParaView, and passes a generated script that creates and displays a **Plaid Explorer** source automatically.
+- (ParaView plugin) rename the server port property from `Port` to `PortNB` (`SetPort` to `SetPortNB`); update ParaView state files and scripts that set it.
 
 ### Fixed
 

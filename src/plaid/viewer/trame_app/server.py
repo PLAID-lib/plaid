@@ -1183,6 +1183,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
         "allow_dataset_change", dataset_service._config.allow_dataset_change
     )
     state.setdefault("dataset_id", initial_dataset_id)
+    state.setdefault("paraview_status", "")
     # Separate lists per source so the dropdown only shows datasets that
     # match the active tab. ``dataset_ids`` is kept for backwards
     # compatibility (e.g. tests that inspect the full list) but the UI
@@ -2119,6 +2120,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     @state.change("dataset_id")
     def _on_dataset(**_: object) -> None:
+        state.paraview_status = ""
         _discard_globals()
         state.explore_global_filter = ""
         state.explore_global_filter_error = ""
@@ -3035,6 +3037,46 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
 
     # --- Datasets root management ----------------------------------------
 
+    @ctrl.set("open_in_paraview")
+    def _open_in_paraview() -> None:
+        """Serve the selected local dataset and open the ParaView plugin."""
+        dataset_id = state.dataset_id
+        if not dataset_id or dataset_id not in (state.local_dataset_ids or []):
+            state.paraview_status = "Select a local dataset first."
+            return
+        try:
+            # Re-discover rather than trusting a browser-supplied dataset id
+            # as a filesystem path (or the editable datasets-root text field).
+            dataset = next(
+                entry
+                for entry in dataset_service.list_datasets()
+                if entry.dataset_id == dataset_id and not entry.is_streaming
+            )
+            from plaid.viewer.paraview_session import (  # noqa: PLC0415
+                open_dataset_in_paraview,
+            )
+
+            session = open_dataset_in_paraview(Path(dataset.path))
+        except StopIteration:
+            state.paraview_status = "Selected local dataset is no longer available."
+        except FileNotFoundError as exc:
+            logger.exception("Failed to open dataset in ParaView")
+            if exc.filename == os.environ.get("PARAVIEW_EXEC", "paraview"):
+                state.paraview_status = (
+                    "Cannot launch ParaView. Add paraview to your PATH, or set "
+                    "PARAVIEW_EXEC to its executable path before starting "
+                    "plaid-viewer."
+                )
+            else:
+                state.paraview_status = f"Cannot open ParaView: {exc}"
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to open dataset in ParaView")
+            state.paraview_status = f"Cannot open ParaView: {exc}"
+        else:
+            state.paraview_status = (
+                f"Opened {dataset_id} in ParaView (data API port {session.port})."
+            )
+
     def _reload_dataset_list() -> None:
         """Re-discover datasets under the (possibly new) datasets root."""
         try:
@@ -3346,6 +3388,30 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             density="compact",
                             hide_details=True,
                         )
+
+                with html.Div(classes="mb-1"):
+                    v3.VBtn(
+                        "Open in ParaView",
+                        click=ctrl.open_in_paraview,
+                        disabled=("!dataset_id || source_tab !== 'local'",),
+                        color="primary",
+                        variant="tonal",
+                        block=True,
+                    )
+                    v3.VTooltip(
+                        text=(
+                            "Open a local dataset in ParaView. Add paraview "
+                            "to your PATH, or set PARAVIEW_EXEC to the full "
+                            "executable path before starting plaid-viewer. "
+                            "Hub datasets are not supported."
+                        ),
+                        activator="parent",
+                    )
+                html.Div(
+                    "{{ paraview_status }}",
+                    v_if=("paraview_status",),
+                    classes="text-caption mb-3",
+                )
 
                 with html.Div(classes="rounded-lg border pa-2 mb-3"):
                     with html.Div(

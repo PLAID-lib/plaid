@@ -300,6 +300,103 @@ def test_dataset_selector_is_independent_of_root_controls(
 
 
 @pytest.mark.usefixtures("headless_trame_view")
+def test_open_in_paraview_uses_current_local_selection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Launch only the selected local dataset, not another root or Hub repo."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer import paraview_session  # noqa: PLC0415
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services import (  # noqa: PLC0415
+        ParaviewArtifactService,
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app.server import build_server  # noqa: PLC0415
+
+    for name in ("first", "second"):
+        (tmp_path / name / "data").mkdir(parents=True)
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(name="open-paraview-test", **kwargs),
+    )
+    launched: list[Path] = []
+
+    def launch(path: Path) -> types.SimpleNamespace:
+        """Record the selected path without starting a desktop application."""
+        launched.append(path)
+        return types.SimpleNamespace(port=8123)
+
+    monkeypatch.setattr(paraview_session, "open_dataset_in_paraview", launch)
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    service.add_hub_dataset("org/repo")
+    server = build_server(service, ParaviewArtifactService(service, tmp_path))
+    server.state.ready()
+    assert "Open in ParaView" in server.state["trame__template_main"]
+    assert "Add paraview to your PATH" in server.state["trame__template_main"]
+    assert "PARAVIEW_EXEC" in server.state["trame__template_main"]
+    assert "Hub datasets are not supported" in server.state["trame__template_main"]
+
+    server.state.dataset_id = "second"
+    server.state.flush()
+    server.controller.open_in_paraview()
+    assert launched == [tmp_path / "second"]
+    assert "8123" in server.state.paraview_status
+
+    server.state.dataset_id = "org/repo"
+    server.state.flush()
+    server.controller.open_in_paraview()
+    assert launched == [tmp_path / "second"]
+    assert "Select a local dataset" in server.state.paraview_status
+
+    server.state.dataset_id = "first"
+    server.state.flush()
+    monkeypatch.setattr(
+        paraview_session,
+        "open_dataset_in_paraview",
+        lambda _path: (_ for _ in ()).throw(OSError("not installed")),
+    )
+    server.controller.open_in_paraview()
+    assert "not installed" in server.state.paraview_status
+
+    def missing_executable(_path: Path) -> None:
+        """Model the launcher failing to find the ParaView executable."""
+        raise FileNotFoundError(2, "No such file or directory", "paraview")
+
+    monkeypatch.setattr(
+        paraview_session, "open_dataset_in_paraview", missing_executable
+    )
+    server.controller.open_in_paraview()
+    assert "paraview to your PATH" in server.state.paraview_status
+    assert "PARAVIEW_EXEC" in server.state.paraview_status
+
+    monkeypatch.setenv("PARAVIEW_EXEC", "/opt/paraview/bin/paraview")
+
+    def missing_custom_executable(_path: Path) -> None:
+        """Model a missing custom ParaView executable."""
+        raise FileNotFoundError(
+            2, "No such file or directory", "/opt/paraview/bin/paraview"
+        )
+
+    monkeypatch.setattr(
+        paraview_session, "open_dataset_in_paraview", missing_custom_executable
+    )
+    server.controller.open_in_paraview()
+    assert "PARAVIEW_EXEC" in server.state.paraview_status
+
+    monkeypatch.setattr(
+        paraview_session,
+        "open_dataset_in_paraview",
+        lambda _path: (_ for _ in ()).throw(FileNotFoundError("dataset missing")),
+    )
+    server.controller.open_in_paraview()
+    assert "dataset missing" in server.state.paraview_status
+    assert "Add paraview" not in server.state.paraview_status
+
+
+@pytest.mark.usefixtures("headless_trame_view")
 def test_local_sample_picker_has_number_input_before_slider(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

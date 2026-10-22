@@ -84,8 +84,10 @@ def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
     """Launching ParaView should pass plugin-related environment variables."""
     calls = []
 
-    def fake_popen(args, env):
-        calls.append({"args": args, "env": env})
+    def fake_popen(args, env, stdin):
+        calls.append({"args": args, "env": env, "stdin": stdin})
+        assert Path(args[2]).is_file()
+        assert "PlaidExplorer1" in Path(args[2]).read_text()
         return SimpleNamespace(pid=1234)
 
     monkeypatch.setattr(
@@ -96,12 +98,14 @@ def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
     monkeypatch.setattr(paraview_plugin.subprocess, "Popen", fake_popen)
     monkeypatch.setenv("PARAVIEW_EXEC", "custom-paraview")
 
-    process = paraview_plugin.run_paraview_with_plugin()
+    process = paraview_plugin.run_paraview_with_plugin_client_server(port=8123)
 
     assert process.pid == 1234
-    assert calls[0]["args"] == ["custom-paraview"]
+    assert calls[0]["args"][:2] == ["custom-paraview", "--script"]
+    assert calls[0]["env"]["SCRIPT_PATH"] == calls[0]["args"][2]
+    assert calls[0]["stdin"] == paraview_plugin.subprocess.DEVNULL
     assert calls[0]["env"]["PV_PLUGIN_PATH"] == str(tmp_path)
-    assert calls[0]["env"]["PARAVIEW_LOG_PLUGIN_VERBOSITY"] == "ON"
+    assert calls[0]["env"]["PLAID_PORT"] == "8123"
     assert os.environ["PARAVIEW_EXEC"] == "custom-paraview"
 
 
@@ -120,15 +124,60 @@ def test_run_paraview_with_plugin_sets_wslenv_for_windows_paraview(
     monkeypatch.setattr(
         paraview_plugin.subprocess,
         "Popen",
-        lambda args, env: calls.append({"args": args, "env": env}) or object(),
+        lambda args, env, stdin: (
+            calls.append({"args": args, "env": env, "stdin": stdin}) or object()
+        ),
     )
     monkeypatch.setenv("PARAVIEW_EXEC", "/mnt/c/ParaView/bin/paraview.exe")
 
-    paraview_plugin.run_paraview_with_plugin()
+    monkeypatch.setenv("WSLENV", "EXISTING/u")
+    paraview_plugin.run_paraview_with_plugin_client_server(port=8123)
 
     assert calls[0]["env"]["WSLENV"] == (
-        "PV_PLUGIN_PATH/p:PARAVIEW_LOG_PLUGIN_VERBOSITY/p"
+        "EXISTING/u:PV_PLUGIN_PATH/p:PARAVIEW_LOG_PLUGIN_VERBOSITY:PLAID_PORT:SCRIPT_PATH"
     )
+    assert calls[0]["env"]["PLAID_PORT"] == "8123"
+
+
+def test_paraview_script_uses_custom_tree_name(monkeypatch, tmp_path):
+    """The options are reflected in the script passed to ParaView."""
+    monkeypatch.setattr(
+        paraview_plugin, "get_ParaView_plugin_path_one_file", lambda: tmp_path
+    )
+    scripts = []
+
+    def fake_popen(args, env, stdin):
+        assert env["SCRIPT_PATH"] == args[2]
+        assert stdin == paraview_plugin.subprocess.DEVNULL
+        scripts.append(Path(args[2]).read_text())
+        return SimpleNamespace(pid=1234)
+
+    monkeypatch.setattr(paraview_plugin.subprocess, "Popen", fake_popen)
+    paraview_plugin.run_paraview_with_plugin_client_server(
+        options={"tree_name": "A 'special' sample"}
+    )
+    assert "registrationName=\"A 'special' sample\"" in scripts[0]
+
+
+def test_paraview_script_directory_is_cleaned_up_on_launch_failure(
+    monkeypatch, tmp_path
+):
+    """A failed executable launch does not leave the generated script behind."""
+    monkeypatch.setattr(
+        paraview_plugin, "get_ParaView_plugin_path_one_file", lambda: tmp_path
+    )
+    script_paths = []
+
+    def fail(args, env, stdin):
+        assert env["SCRIPT_PATH"] == args[2]
+        assert stdin == paraview_plugin.subprocess.DEVNULL
+        script_paths.append(Path(args[2]))
+        raise OSError("ParaView unavailable")
+
+    monkeypatch.setattr(paraview_plugin.subprocess, "Popen", fail)
+    with pytest.raises(OSError, match="ParaView unavailable"):
+        paraview_plugin.run_paraview_with_plugin_client_server()
+    assert not script_paths[0].exists()
 
 
 def test_process_operation_is_text_input_and_invalidates_cache_on_change():
@@ -201,7 +250,7 @@ def test_process_request_json_returns_response_and_propagates_errors(
         compile(ast.Module(body=[method], type_ignores=[]), str(plugin_path), "exec"),
         namespace,
     )
-    client = SimpleNamespace(host="localhost", port=8001)
+    client = SimpleNamespace(host="localhost", port_nb=8001)
 
     class Response:
         """Provide a JSON HTTP response context manager."""
