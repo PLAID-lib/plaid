@@ -4,7 +4,7 @@
 #
 # The PLAID documentation is built with Zensical (mkdocstrings handler),
 # so we drive the build through ``docs/generate_doc.sh`` using the
-# ``build.commands`` escape hatch.
+# ``build.jobs.build.html`` job.
 
 version: 2
 
@@ -12,17 +12,23 @@ build:
   os: "ubuntu-24.04"
   tools:
     python: "3.12"
-  commands:
-    - git fetch origin --unshallow || true
-    - asdf plugin add uv || true
-    - asdf install uv latest
-    - asdf global uv latest
-    - uv sync --dev --extra viewer
-    - mkdir -p "$HOME/firefox-bin"
-    - curl -fL "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" -o /tmp/firefox.tar.xz
-    - tar -xf /tmp/firefox.tar.xz -C "$HOME/firefox-bin"
-    - '"$HOME/firefox-bin/firefox/firefox" --version'
-    - cd docs && PATH="$HOME/firefox-bin/firefox:$PATH" MOZ_HEADLESS=1 uv run bash generate_doc.sh
-    - mkdir -p $READTHEDOCS_OUTPUT/html
-    - cp -R docs/_build/html/. $READTHEDOCS_OUTPUT/html/
-    - git status
+  apt_packages:
+    - xvfb
+    - libgl1-mesa-dri
+    - libegl1
+  jobs:
+    build:
+      html:
+        - git fetch origin --unshallow || true
+        - asdf plugin add uv || true
+        - asdf install uv latest
+        - asdf global uv latest
+        - uv sync --dev --extra viewer
+        - mkdir -p "$HOME/firefox-bin"
+        - curl -fL "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US" -o /tmp/firefox.tar.xz
+        - tar -xf /tmp/firefox.tar.xz -C "$HOME/firefox-bin"
+        - '"$HOME/firefox-bin/firefox/firefox" --version'
+        - cd docs && PATH="$HOME/firefox-bin/firefox:$PATH" MOZ_HEADLESS=1 LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a -s "-screen 0 1920x1440x24" uv run bash generate_doc.sh
+        - mkdir -p "$READTHEDOCS_OUTPUT/html"
+        - cp -R docs/_build/html/. "$READTHEDOCS_OUTPUT/html/"
+        - git status
