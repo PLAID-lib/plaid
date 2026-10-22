@@ -721,6 +721,72 @@ def test_color_range_ui_has_independent_limits_and_modes(
 
 
 @pytest.mark.usefixtures("headless_trame_view")
+def test_iso_contour_switch_reaches_the_pipeline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Iso contour switch is shown and redraws the view with 9 bands."""
+    from trame import app  # noqa: PLC0415
+
+    from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
+    from plaid.viewer.services import (  # noqa: PLC0415
+        ParaviewArtifactService,
+        PlaidDatasetService,
+    )
+    from plaid.viewer.trame_app import server as module  # noqa: PLC0415
+
+    get_server = app.get_server
+    monkeypatch.setattr(
+        app,
+        "get_server",
+        lambda **kwargs: get_server(name="iso-contour", **kwargs),
+    )
+    applied: list[object] = []
+
+    class Reader:
+        def GetOutput(self) -> None:  # noqa: N802
+            """Represent the current reader output."""
+
+    class Pipeline:
+        """Record the iso-contour flag passed to the VTK pipeline."""
+
+        def __init__(self) -> None:
+            self.reader = None
+            self.render_window = None
+            self.mapper = types.SimpleNamespace(
+                RemoveAllInputConnections=lambda _port: None,
+                ScalarVisibilityOff=lambda: None,
+            )
+            self.scalar_bar = types.SimpleNamespace(SetVisibility=lambda _value: None)
+
+        def update(self, **kwargs: object) -> None:
+            applied.append(kwargs["iso_contour"])
+
+    pipeline = Pipeline()
+    monkeypatch.setattr(module, "_VtkPipeline", lambda: pipeline)
+    monkeypatch.setattr(module, "_compute_field_range", lambda *_: (0.0, 1.0))
+    service = PlaidDatasetService(ViewerConfig(datasets_root=tmp_path))
+    server = module.build_server(service, ParaviewArtifactService(service, tmp_path))
+    state = server.state
+    state.ready()
+
+    template = state["trame__template_main"]
+    assert 'label="Iso contour"' in template
+    assert 'v-model="iso_contour"' in template
+    assert state.iso_contour is False
+
+    pipeline.reader = Reader()
+    state.field = "point:pressure"
+    state.flush()
+    assert applied[-1] is False
+    state.iso_contour = True
+    state.flush()
+    assert applied[-1] is True
+    state.iso_contour = False
+    state.flush()
+    assert applied[-1] is False
+
+
+@pytest.mark.usefixtures("headless_trame_view")
 def test_streaming_base_options_survive_initialisation_and_split_switch(
     tmp_path: Path,
 ) -> None:

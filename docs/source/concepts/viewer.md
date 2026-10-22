@@ -13,11 +13,9 @@ From a terminal, run:
 plaid-viewer
 ```
 
-From a `uv`-managed development checkout, use `uv run plaid-viewer` instead.
-
-```bash
-uv run plaid-viewer
-```
+The viewer needs the optional `viewer` dependencies (`pip install
+"pyplaid[viewer]"`). From a `uv`-managed development checkout, use
+`uv run plaid-viewer` instead.
 
 You can also start directly from a local datasets folder:
 
@@ -37,12 +35,19 @@ Useful launch options:
 | --- | --- |
 | `--datasets-root /path/to/datasets` | Opens a local folder containing PLAID datasets. |
 | `--hub-repo namespace/name` | Adds a Hugging Face Hub dataset to stream. Can be repeated. |
+| `--dataset-id name` | Selects this dataset when the viewer starts. |
+| `--browse-roots /path ...` | Limits the folders the root field and folder browser can open (home directory by default). |
+| `--disable-root-change` | Hides the datasets root controls. |
+| `--disable-dataset-change` | Hides the dataset selector, pinning the selected dataset. |
 | `--host 0.0.0.0` | Makes the viewer reachable from another machine. |
 | `--port 8080` | Changes the web server port. |
 
+Without `--datasets-root`, the viewer reopens the last local root selected in
+the interface.
+
 ## Follow the steps in the side panel
 
-![defaults](../images/viewer.jpg)
+![Sample 3D View tab showing a sample colored by a field](../images/viewer.jpg)
 
 The left panel groups dataset selection, sample loading, rendering options,
 and the current sample's Globals into separate cards.
@@ -54,12 +59,12 @@ Choose where the datasets come from.
 - **Local**: enter the path to a folder on your computer. You can also click
   the folder button to browse, then validate with the check button.
 - **Hub**: enter a Hugging Face Hub repository name such as
-  `PLAID-lib/VKI-LS59`, then click the plus button. Added Hub datasets appear
+  `PhysArena/VKI-LS59`, then click the plus button. Added Hub datasets appear
   as chips and can be removed from the same area.
 
 If you started the viewer with `--datasets-root` or `--hub-repo`, the source may
-already be filled in. The root controls and dataset selector may be hidden
-independently when the viewer is configured to pin either choice.
+already be filled in. The root controls and dataset selector are hidden by
+`--disable-root-change` and `--disable-dataset-change`.
 
 Pick the **Dataset** you want to inspect.
 
@@ -103,13 +108,12 @@ Choose which high-level part of the sample to load:
 By default, the viewer starts light: it does not load every field immediately.
 Pick a base and/or enable Sample Globals first, then choose fields.
 
-This step is shown when the dataset exposes selectable fields, including
-datasets streamed from the Hub.
+When the dataset exposes selectable fields, including datasets streamed from
+the Hub, **Pre-select browsable field features** chooses which fields are
+loaded. This is useful for large datasets because you can avoid loading
+everything at once.
 
-Use it to choose which fields should be loaded for the selected base. This is
-useful for large datasets because you can avoid loading everything at once.
-
-- Click **Load all** to select every available field for the current selection.
+- Click **Load all** to select and load every available field.
 - Expand **Select features** to tick only the fields you need.
 - Click **Apply** after changing the checked fields.
 - Click **Clear** to uncheck the current selection, then **Apply** to load no
@@ -128,21 +132,19 @@ click **Next** again to load it with the selected fields.
   is forward-only: the viewer loads samples one after another instead of
   knowing the full list in advance.
 
-The label under this control shows the current sample id, number of samples, or
-streaming status.
+The message under this control reports the loaded sample, the streaming
+step, or the latest error.
 
 ### Configure 3D rendering
 
 The **3D Rendering options** card appears when a base is selected. Choose a
 **Field to plot** to color the 3D view.
 
-Choose the field used to color the 3D view.
-
 If no field is selected, the viewer still shows the mesh, but without scalar
 coloring. When a field is selected, a color legend appears in the 3D view.
 
-The same card also contains the colormap, edge visibility, and camera reset
-controls described below.
+The same card also contains the colormap, edge visibility, iso contour, and
+camera reset controls described in [Rendering options](#rendering-options).
 
 The **Min** and **Max** controls below **Colormap** independently set the
 color scale limits. Each displays the limit currently used by the 3D colors
@@ -155,88 +157,114 @@ leaves the last valid color scale in use and shows an error.
 
 ## Explore Globals across splits
 
-Switch from **Sample 3D View** to the **Dataset Globals** tab, choose **First Time
-Step Globals** or **Last Time Step Globals** (last by default), and click
-**Extract Globals**. This reads the selected time step's `Global/` values in
-every sample of every local split; timeless Globals remain available. It does
-not alter the feature selection used by the sample view. Changing the time step
-discards the extracted Globals: click **Extract Globals** again to reload them.
-Tick one or more
-splits on the left and choose **1D**, **2D**, **3D**, or **parallel**. Scatter
-plots use one, two, or three selectable numeric scalar Globals; in 1D the
-horizontal axis is the sample index. Points use different colors and shapes
-for each split. Enable **Label points** to annotate points with their sample
-ID or another Global. Numeric Global arrays with multiple values are expanded
-into scalar components named with 1-based suffixes (for example, `Global/foo_1`,
-`Global/foo_2`). These components can be selected like other Globals. For
-parallel coordinates, use the **Globals to plot**
-checkboxes to select the numeric scalar Globals to display (all are selected
-by default). Enter a regular expression in **Filter Globals** to show only
-matching checkboxes; an invalid expression displays an error and matches
-nothing. **Check** and **Uncheck** affect only the visible Globals, while
-hidden selections remain unchanged. Clear the filter to show the full list
-again. Different line styles and colors distinguish the selected splits.
-Each parallel axis is scaled independently from 0 to 1 for comparison across
-different units.
+Switch from **Sample 3D View** to the **Dataset Globals** tab.
 
-The Dataset Globals view below shows extracted values plotted in 3D, with
-controls for choosing Globals, splits, plot axes, and exports on the left.
+### Extract Globals
+
+In **Data Extraction**, choose **First Time Step Globals** or **Last Time Step
+Globals** (last by default) and click **Extract Globals**. This reads the
+selected time step's `Global/` values in every sample of every local split;
+timeless Globals remain available. It does not alter the feature selection
+used by the sample view. Changing the time step discards the extracted
+Globals: click **Extract Globals** again to reload them.
+
+Numeric Global arrays with multiple values are expanded into scalar components
+named with 1-based suffixes (for example, `Global/foo_1`, `Global/foo_2`).
+Text Globals (for example, case names) are kept as table columns and point
+labels, but are never plotted. Extracted values are retained even if they are
+arrays or missing. Extraction may take time for large datasets.
+
+**Streaming Hub datasets are not supported** in the Globals tab; the extract
+button is disabled for these datasets.
+
+### Select Globals
+
+Nothing is selected after an extraction. The **Selected Globals** list drives
+the parallel axes, the X/Y/Z choices, the selected-Globals CSV and the skrub
+report. Enter a regular expression in **Filter Globals** to show only matching
+Globals; an invalid expression displays an error and matches nothing.
+**Check** and **Uncheck** affect only the visible Globals, so **Check** with an
+empty filter selects them all. Hidden selections remain unchanged. Clear the
+filter to show the full list again.
+
+### Plot Globals
+
+In **Plot**, tick one or more **Splits** and choose a **Plot type**: **1D**,
+**2D**, **3D**, or **parallel**, then click **Draw plot**. Any change to the
+configuration clears the plot until **Draw plot** is clicked again, so heavy
+configurations are never drawn by accident.
+
+- Scatter plots (1D, 2D, 3D) use one, two, or three numeric Globals chosen in
+  **X**, **Y** and **Z** among the selected Globals (among all of them when none
+  is selected). In 1D the horizontal axis is the sample id. Points use
+  different colors and shapes for each split. Enable **Label points** and pick
+  **Label from** to annotate points with their sample id or another Global;
+  labelling more than about 1,000 points can be slow.
+- Parallel plots use the selected Globals as axes. Each axis is scaled
+  independently from 0 to 1 for comparison across different units; hover over
+  a point to see the original value. **Parallel renderer** switches between
+  partial-line plotting (`lines`), limited to 500 samples across the selected
+  splits, and Plotly's interactive `parcoords`. `parcoords` needs a value for
+  every selected Global, so samples with missing selected values are omitted
+  in that mode.
+
+The Dataset Globals view below shows extracted values plotted in 3D (the side
+panel is collapsed with the menu button to widen the plot).
 
 ![Dataset Globals tab with a 3D scatter plot of extracted Globals](../images/viewerglobals.jpg)
 
-Use **Parallel renderer** to try either partial-line plotting (`lines`) or
-Plotly's interactive `Parcoords` renderer. `Parcoords` requires a complete
-numeric value for every selected Global, so samples with missing selected
-values are omitted in that mode. After extraction, **Download all Globals
-(CSV)** saves a table of every extracted sample across all splits, with
-``split`` and ``sample_id`` columns and vector Globals expanded into numbered
-components. With **Compare individual splits** off, click **Generate skrub
-report** to open a standalone data-profiling report in a new browser tab.
-Like the CSV export, the global report covers every extracted sample across
-all splits, regardless of which splits are selected for plotting.
-The report link is cleared when Globals are extracted again, the dataset or
-time step changes, or the report mode is switched. Report generation may take
-time for large tables; if it fails, the CSV and plots remain available.
+Scatter plots skip samples with missing, non-finite, or non-scalar values on
+the chosen axes. `lines` parallel plots show the available parts of each
+sample's line, leaving gaps for missing axes and marking isolated values;
+samples without any plottable values are skipped. Time-companion (`*_times`)
+columns are not plotted. All plots use interactive Plotly views: pan, zoom,
+reset, and export the plot with the plot toolbar; rotate the 3D scatter with
+the mouse.
 
-The skrub report displays a table of extracted Globals and column statistics,
-including missing-value counts and distributions, as shown below.
+### Select samples
 
-![Skrub report showing extracted Globals and statistics for a selected column](../images/viewerskrub.jpg)
+In **1D** and **2D**, click points to toggle their selection, or select
+multiple points with Plotly's box or lasso tools. In `parcoords`, brush one or
+more axes to select lines. **Selected rows** lists each matching split and
+sample id, with a count, in the format of a problem-definition split: the copy
+button next to the count copies the list, ready to paste under `train_split:`
+or `test_split:`. **Download selected samples (CSV)** saves the selected
+samples with every extracted Global. The button is disabled when no points are
+selected or no plotted lines match the brush. Changing the plot or extracting
+again clears the selection.
+
+### Export and report
+
+- **Download all Globals (CSV)**, in **Data Extraction**, saves every extracted
+  sample across all splits, with `split` and `sample_id` columns and vector
+  Globals expanded into numbered components.
+- **Download selected Globals (CSV)**, in **Export & Report**, saves the same
+  rows with only the selected Globals (and text Globals).
+- **Generate skrub report** builds a standalone data-profiling report of the
+  selected Globals, then **Open skrub report** opens it in a new browser tab.
+  Like the CSV exports, the report covers every extracted sample across all
+  splits, regardless of which splits are selected for plotting. It is limited
+  to 2,000 columns. Report generation may take time for large tables; if it
+  fails, the CSV exports and plots remain available.
+
+The report link is cleared when Globals are extracted again, the selected
+Globals change, the dataset or time step changes, or the report mode is
+switched.
+
+The report below is generated by the viewer from a small synthetic dataset,
+where the `test` split has no `Global/Efficiency` values. It is interactive:
+switch tabs (Table, Stats, Distributions, Associations) or click a column to
+see its statistics.
+
+<iframe src="viewer_skrub_report.html" title="Interactive skrub report of extracted Globals" style="width: 100%; height: 720px; border: 1px solid #ddd;" loading="lazy"></iframe>
 
 To compare splits, enable **Compare individual splits** before clicking
 **Generate skrub report** (available when the dataset has at least two splits).
 It builds one skrub report per extracted split and stacks them on a single
-page, in extraction order. Switching tab
-(Table, Stats, Distributions or Associations) in any report switches every
-report to the same tab, so the distributions of, for example, `train` and
-`test` can be read one below the other. This is a side-by-side view, not a
-statistical test between splits.
-Turn the switch off to generate a global report again. Changing the switch
-clears the previous report link until a new report is generated.
-
-In **1D** and **2D**, click points to toggle their selection, or
-select multiple points with Plotly's box or lasso tools. In `parcoords`, brush
-one or more axes to select lines.
-**Download selected rows (CSV)** saves the selected plotted samples with the
-same columns. **Selected rows** lists each matching split and sample ID,
-with a count; the list scrolls when many rows are selected. The button is
-disabled when no points are selected or no plotted lines match the brush.
-Changing the plot or extracting again clears the selection and list.
-
-All four plots use interactive Plotly views. Pan, zoom, reset, and export the
-plot with the plot toolbar; rotate the 3D scatter with the mouse. In parallel
-plots, hover over a point to see the original (unnormalized) Global value.
-
-Extracted values are retained even if they are arrays or missing. Scatter
-plots skip samples with missing, non-finite, or non-scalar values on the chosen
-axes. Parallel plots show the available parts of each sample's line, leaving
-gaps for missing axes and marking isolated values; samples without any
-plottable values are skipped. Time-companion (`*_times`) columns are not plotted.
-Extraction may take time for large datasets and the plot may be dense when
-showing many samples.
-
-**Streaming Hub datasets are not supported** in the Globals tab; the extract
-button is disabled for these datasets.
+page, in extraction order. Switching tab in any report switches every report
+to the same tab, so the distributions of, for example, `train` and `test` can
+be read one below the other. This is a side-by-side view, not a statistical
+test between splits. Turn the switch off to generate a global report again.
 
 ## Time-dependent samples
 
@@ -249,7 +277,7 @@ You can:
 - press play/pause to animate the sample;
 - press stop to go back to the first time step;
 - toggle loop playback;
-- adjust the playback FPS.
+- adjust the playback speed with **Animation speed (fps)**.
 
 ## Rendering options
 
@@ -258,6 +286,8 @@ drawn. They do not change which data is loaded.
 
 - **Colormap** changes the colors used for the selected field.
 - **Show edges** overlays mesh edges.
+- **Iso contour** limits the colormap to 9 color bands, to visualize the iso
+  contours of the field.
 - **Reset camera** recenters the view after you rotate, pan, or zoom.
 
 ## Interacting with the 3D view
@@ -274,24 +304,29 @@ The small axes marker in the corner helps you keep track of the orientation.
 
 The viewer can open data from two places:
 
-- **Local datasets** are read from disk and can usually be accessed in any
-  order. The sample control is therefore a slider.
+- **Local datasets** are read from disk and can be accessed in any order. The
+  sample control is therefore an index field and a slider.
 - **Hub datasets** are streamed from Hugging Face Hub. This avoids downloading
   the full dataset first, but samples are consumed forward with the **Next**
   button.
 
 When streaming is active, a `streaming` chip appears in the toolbar.
 
-
 ## Troubleshooting
 
 !!! tip "Viewer tips"
     - If the 3D view is empty, first select a button under **Available Bases**.
-    - If the field dropdown is empty, load fields with **Load all** or by selecting
-      features under **Pre-select browsable field features**. For Hub streams,
-      click **Next** after applying the selection to fetch a sample with those
-      fields.
+      The message "Pick a Base or enable Globals to load the sample" means that
+      neither a base nor **Sample Globals** is selected.
+    - If the field dropdown is empty, load fields with **Load all**, or tick them
+      under **Select features** and click **Apply**. For Hub streams, click
+      **Next** after applying the selection to fetch a sample with those fields.
     - If the viewer feels slow on a large dataset, load only one base and a small
       number of fields.
-    - The message at the bottom of the side panel reports the latest action or
-      error.
+    - The message under the sample selector reports the latest action or error;
+      on the **Dataset Globals** tab, the message under **Extract Globals** does.
+    - **Draw plot** and **Download all Globals (CSV)** stay disabled until
+      Globals are extracted. **Download selected Globals (CSV)**, **Generate
+      skrub report** and parallel plots also need selected Globals: check them
+      with **Filter Globals** and **Check** first.
+    - Hover over **Selected Globals** for a reminder when nothing is selected.
