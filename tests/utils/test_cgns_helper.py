@@ -9,6 +9,18 @@ from plaid.utils import cgns_helper
 
 
 # %% Tests
+def test_spatial_selection_includes_boundary_condition_parents():
+    """Selecting a mesh retains the full boundary-condition hierarchy."""
+    coordinate = "Base_2_2/Zone/GridCoordinates/CoordinateX"
+    boundary = "Base_2_2/Zone/ZoneBC/Wall/PointList"
+    features = cgns_helper.update_features_for_CGNS_compatibility(
+        [coordinate], [coordinate, boundary], []
+    )
+    assert boundary in features
+    assert "Base_2_2/Zone/ZoneBC/Wall" in features
+    assert "Base_2_2/Zone/ZoneBC" in features
+
+
 class Test_cgns_helper:
     def test_get_base_names(self, sample_with_tree):
         tree = sample_with_tree.get_tree()

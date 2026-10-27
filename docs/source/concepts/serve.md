@@ -262,6 +262,64 @@ The plugin also exposes a "Process" toggle for servers that implement
 `/process`. Leave this toggle disabled when using the built-in `plaid-serve`
 data server.
 
+### Opening individual Samples
+
+The plugin can read individual Samples directly from disk without starting
+`plaid-serve`:
+
+| Reader | Input | PLAID required in ParaView's Python environment |
+| --- | --- | --- |
+| **Plaid Sample JSON Reader** (`PlaidSampleJSONReader`) | A `.json` file produced by `sample_to_json` | No, when using the self-contained plugin |
+| **Plaid Sample Directory Reader** (`PlaidSampleReader`) | A directory written by `Sample.save_to_dir` | Yes |
+
+Export an existing Sample from your PLAID Python environment:
+
+```python
+from pathlib import Path
+
+from plaid import Sample
+from plaid.utils.sample_json import sample_to_json
+
+sample = Sample.load_from_dir("sample_000000000")
+Path("sample.json").write_text(sample_to_json(sample), encoding="utf-8")
+
+# Alternatively, save an in-memory Sample as a directory.
+sample.save_to_dir("sample_for_paraview")
+```
+
+The JSON reader expects the versioned `plaid-sample-json` format (version 1),
+including its timestamped CGNS trees; arbitrary JSON files are not supported.
+
+Generate the self-contained plugin using
+`get_ParaView_plugin_path_one_file` as shown above. In ParaView, load the generated
+`PlaidParaViewPlugin.py` through **Tools → Manage Plugins → Load New**. Then use
+**File → Open** to select `sample.json` or the Sample directory, choose the
+corresponding PLAID reader if prompted, and click **Apply**. The directory reader
+loads through `Sample.load_from_dir`; it and the existing dataset reader are
+registered only when the optional PLAID imports succeed. Missing PLAID does not
+disable the JSON reader or the rest of the self-contained plugin.
+
+After loading the plugin, a ParaView Python script can also create either reader:
+
+```python
+from paraview.simple import PlaidSampleJSONReader
+
+reader = PlaidSampleJSONReader(FileName="/absolute/path/to/sample.json")
+reader.UpdatePipeline()
+
+# Requires PLAID in ParaView's Python environment:
+# from paraview.simple import PlaidSampleReader
+# reader = PlaidSampleReader(FileName="/absolute/path/to/sample_for_paraview")
+```
+
+Both readers expose timestamps in ascending order for ParaView's animation
+controls. A requested time selects the nearest available timestamp; without an
+explicit request, the earliest timestamp is used. Structured, unstructured, and
+multiblock mesh outputs retain their corresponding VTK types. Changing the input
+path clears the cached Sample. In client/server sessions, input paths must be
+accessible to the ParaView server, and the directory reader requires PLAID in
+the server's Python environment.
+
 ## Unsupported processing endpoint
 
 `POST /process` is intentionally unsupported by `plaid-serve` and returns HTTP

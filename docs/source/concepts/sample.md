@@ -96,7 +96,12 @@ sample = Sample.load_from_dir("sample_000000000")
 use `Sample.load_from_dir(path)` to create a loaded sample, or instantiate an
 empty sample and call `sample.load(path)`.
 
-The CGNS files can be open in Paraview for advanced visualization and post-treatment.
+For advanced visualization and post-processing, the PLAID ParaView plugin can
+open a complete Sample directory with **Plaid Sample Directory Reader**, or a
+serialized Sample JSON file with **Plaid Sample JSON Reader**. The JSON reader
+also works with the self-contained plugin without PLAID installed in ParaView.
+See [Opening individual Samples in ParaView](serve.md#opening-individual-samples)
+for export examples and loading instructions.
 
 For large samples, `save_to_dir(..., memory_safe=True)` writes CGNS files through
 a subprocess to reduce pyCGNS memory-leak risks.
