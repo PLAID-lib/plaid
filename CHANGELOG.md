@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - (ParaView plugin) add a Sample JSON reader that works with the self-contained plugin without PLAID installed, and an optional Sample directory reader using `Sample.load_from_dir`. Both readers support timestamp navigation and structured, unstructured, or multiblock output.
+- (ParaView plugin) add an experimental `PlaidSampleVTKReader` that reads Sample directories or their `meshes` subdirectories through VTK's native CGNS reader without PLAID or pyCGNS. It uses physical timestamps for nearest-timestep navigation and returns native VTK multiblock output, leaving the existing PLAID directory reader unchanged.
+- (ParaView plugin) expose a second, time-synchronized Globals table output on the experimental VTK Sample reader, using `h5py` to read Sample global values.
+- (docs) document individual Sample export and loading in ParaView, reader dependencies, and the experimental VTK reader's hierarchy differences and CGNS compatibility limitations.
 - (dataset-viewer) add an **Iso contour** switch that limits the colormap to 9 color bands, to visualize the iso contours of the field.
 - (dataset-viewer) add independent **Min** and **Max** color scale limits, each with a **Dynamic** (default), **Fix** or **Grow only** mode; invalid fixed limits keep the last valid scale and show an error.
 - (dataset-viewer) add a **Compare individual splits** switch to generate stacked skrub reports per split, with tabs synchronized across reports; turn it off to return to the global report.

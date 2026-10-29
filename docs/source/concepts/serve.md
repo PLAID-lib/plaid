@@ -271,6 +271,7 @@ The plugin can read individual Samples directly from disk without starting
 | --- | --- | --- |
 | **Plaid Sample JSON Reader** (`PlaidSampleJSONReader`) | A `.json` file produced by `sample_to_json` | No, when using the self-contained plugin |
 | **Plaid Sample Directory Reader** (`PlaidSampleReader`) | A directory written by `Sample.save_to_dir` | Yes |
+| **Plaid Sample Directory Reader (VTK, Experimental)** (`PlaidSampleVTKReader`) | A Sample directory containing `meshes/mesh_*.cgns` | No, when using the self-contained plugin |
 
 Export an existing Sample from your PLAID Python environment:
 
@@ -320,6 +321,49 @@ path clears the cached Sample. In client/server sessions, input paths must be
 accessible to the ParaView server, and the directory reader requires PLAID in
 the server's Python environment.
 
+
+#### Experimental VTK directory reader
+
+For side-by-side compatibility testing, select **Plaid Sample Directory Reader
+(VTK, Experimental)** instead of the existing directory reader. The existing
+`PlaidSampleReader` is unchanged and still requires PLAID. The experimental
+reader uses VTK's built-in CGNS reader without PLAID or pyCGNS. Its Globals
+table output additionally requires `h5py` in ParaView's Python environment:
+
+```python
+from paraview.simple import PlaidSampleDirectoryReaderVTKExperimental
+
+reader = PlaidSampleDirectoryReaderVTKExperimental(FileName="/absolute/path/to/sample_for_paraview")
+reader.UpdatePipeline()
+```
+
+Select either the Sample directory (for example `sample_000000000`) or its
+`meshes` subdirectory. A directory directly containing `mesh_*.cgns` files is
+also accepted, including a directory with just one mesh.
+
+It reads each CGNS file's physical timestamp, sorts those times for animation,
+and loads the nearest requested timestep. Only the current timestep's mesh is
+cached; selecting a different directory clears both metadata and mesh caches.
+Each file must report exactly one finite timestamp, with no duplicate times
+across files. Filename indices are not used as substitute timestamps. VTK can
+report a synthetic `0.0` for a file without time metadata; the experimental
+reader cannot distinguish this from a real zero time. Multiple such files are
+rejected as duplicate timestamps.
+
+This reader intentionally returns VTK's native multiblock hierarchy, which can
+have additional base/zone blocks compared with the existing PLAID converter.
+All spatial bases and point/cell arrays are enabled. The zone-less `Global`
+base is explicitly disabled for mesh reading. Mesh tags and CGNS metadata
+are not guaranteed to match the existing reader and must be compared
+before adopting this experimental path. No fallback to PLAID is performed.
+
+**Known compatibility limitation:** CGNS trees produced by the current
+`VtkToCGNSTree` helper can contain one-value `Elements_t` descriptors. VTK's CGNS
+reader rejects these, whereas the existing PLAID reader accepts them. The
+experimental reader reports an error rather than returning a partial mesh;
+use the existing reader or the JSON reader for those files. CGNS read failures,
+invalid time metadata, and duplicate timestamps are also reported explicitly.
+
 ## Unsupported processing endpoint
 
 `POST /process` is intentionally unsupported by `plaid-serve` and returns HTTP
@@ -349,3 +393,19 @@ Unknown `POST` routes return:
 
 Unexpected server errors return HTTP 500 with an `error` message and are logged
 by the server.
+
+
+### Experimental reader Globals output
+
+The experimental reader exposes two output ports: **port 0 is the mesh** and
+**port 1 is a Globals table**. Select the second output in the Pipeline Browser
+and show it in a Spreadsheet View using row data. Both outputs follow the same
+selected physical timestep.
+
+Globals are read from direct `DataArray_t` children of the CGNS `Global` base;
+`Time`/`BaseIterativeData_t` bookkeeping is excluded. The table contains `Name`,
+`Index`, `Value`, `DType`, and `Shape` columns. Numeric arrays have one row per
+element (zero-based indices); character arrays are decoded as a single string.
+Values are displayed as text to accommodate heterogeneous types and shapes.
+Files without a Global base produce an empty table. HDF5 CGNS files and `h5py`
+are required for this output; no PLAID import or fallback is used.
