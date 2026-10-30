@@ -8,6 +8,7 @@ import json
 import os
 import socket
 import time
+from pathlib import Path
 from typing import Optional
 from urllib import error, request
 
@@ -773,10 +774,447 @@ class PlaidProcess(VTKPythonAlgorithmBase):
         return self._sample_cache
 
 
-# paraview.servermanager.LoadPlugin("/home/fbw/repos/Safran/plaid/src/plaid/cli/paraview_plugin/PlaidParaViewPlugin.py")
+class PlaidSingleSampleReaderBase(VTKPythonAlgorithmBase):
+    """Read one timestamped Sample without dataset-specific controls."""
+
+    def __init__(self):
+        super().__init__(nInputPorts=0, nOutputPorts=1, outputType="vtkDataObject")
+        self._filename = ""
+        self._sample_cache = None
+
+    @smproperty.stringvector(name="FileName")
+    @smdomain.filelist()
+    def SetFileName(self, name):
+        """Set the input path and invalidate cached trees when it changes.
+
+        Args:
+            name: File or directory path on the ParaView server.
+        """
+        if self._filename != name:
+            self._filename = name
+            self._sample_cache = None
+            self.Modified()
+
+    def GetSampleData(self):
+        """Return cached timestamped trees, loading the input on first use."""
+        if not self._filename or self._filename == "None":
+            return {}
+        if self._sample_cache is None:
+            self._sample_cache = self._load_sample_data()
+        return self._sample_cache
+
+    def _load_sample_data(self):
+        """Return timestamped trees decoded by a concrete reader."""
+        raise NotImplementedError
+
+    @smproperty.doublevector(name="TimestepValues", information_only="1")
+    def GetTimestepValues(self):
+        """Return all sample timestamps in ascending order."""
+        return sorted(self.GetSampleData())
+
+    def RequestInformation(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Publish sample timestamps and clear obsolete pipeline time metadata."""
+        info = out_info_vec.GetInformationObject(0)
+        executive = self.GetExecutive()
+        info.Remove(executive.TIME_STEPS())
+        info.Remove(executive.TIME_RANGE())
+        times = self.GetTimestepValues()
+        if times:
+            for time_value in times:
+                info.Append(executive.TIME_STEPS(), time_value)
+            info.Append(executive.TIME_RANGE(), times[0])
+            info.Append(executive.TIME_RANGE(), times[-1])
+        return 1
+
+    def _get_requested_output(self, info):
+        """Return the selected VTK object and time for pipeline information.
+
+        Args:
+            info: Output pipeline information, optionally requesting a time.
+
+        Returns:
+            Pair of VTK data and selected timestamp, or empty data and None.
+        """
+        data = self.GetSampleData()
+        if not data:
+            return vtk.vtkUnstructuredGrid(), None
+        times = sorted(data)
+        key = self.GetExecutive().UPDATE_TIME_STEP()
+        requested = info.Get(key) if info.Has(key) else times[0]
+        time_value = find_closest_numpy(times, requested)
+        return CGNSTreeToVtk(data[time_value]), float(time_value)
+
+    def RequestDataObject(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Allocate the actual output type for structured or multiblock data."""
+        info = out_info_vec.GetInformationObject(0)
+        data, _ = self._get_requested_output(info)
+        current = info.Get(vtk.vtkDataObject.DATA_OBJECT())
+        if current is None or current.GetClassName() != data.GetClassName():
+            info.Set(vtk.vtkDataObject.DATA_OBJECT(), data.NewInstance())
+        return 1
+
+    def RequestData(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Populate VTK output for the nearest available requested timestamp."""
+        info = out_info_vec.GetInformationObject(0)
+        data, time_value = self._get_requested_output(info)
+        output = info.Get(vtk.vtkDataObject.DATA_OBJECT())
+        output.ShallowCopy(data)
+        output.GetInformation().Remove(vtk.vtkDataObject.DATA_TIME_STEP())
+        if time_value is not None:
+            output.GetInformation().Set(vtk.vtkDataObject.DATA_TIME_STEP(), time_value)
+        return 1
+
+
+@smproxy.reader(
+    name="PlaidSampleJSONReader",
+    label="Plaid Sample JSON Reader",
+    extensions="json",
+    file_description="PLAID Sample JSON",
+)
+class PlaidSampleJSONReader(PlaidSingleSampleReaderBase):
+    """Read Sample JSON using only helpers bundled in the standalone plugin."""
+
+    @smproperty.stringvector(name="FileName")
+    @smdomain.filelist()
+    @smhint.filechooser(extensions="json", file_description="PLAID Sample JSON")
+    def SetFileName(self, name):
+        """Set the JSON file path, clearing cached data if it changes.
+
+        Args:
+            name: Path to a serialized PLAID Sample JSON file.
+        """
+        return super().SetFileName(name)
+
+    @smproperty.doublevector(name="TimestepValues", information_only="1")
+    def GetTimestepValues(self):
+        """Return sorted sample timestamps for the ParaView time controls."""
+        return super().GetTimestepValues()
+
+    def _load_sample_data(self):
+        """Return decoded trees after validating the Sample JSON envelope."""
+        with open(self._filename, encoding="utf-8") as stream:
+            payload = json.load(stream)
+        if (
+            not isinstance(payload, dict)
+            or payload.get("format") != "plaid-sample-json"
+        ):
+            raise ValueError("Unsupported Sample JSON format")
+        if payload.get("version") != 1:
+            raise ValueError("Unsupported Sample JSON version")
+        if not isinstance(payload.get("trees"), list):
+            raise ValueError("Sample JSON payload must contain a list in 'trees'")
+        data = {}
+        for entry in payload["trees"]:
+            if (
+                not isinstance(entry, dict)
+                or "time" not in entry
+                or "tree" not in entry
+            ):
+                raise ValueError(
+                    "Each Sample JSON tree entry must contain 'time' and 'tree'"
+                )
+            if not isinstance(entry["time"], (int, float)):
+                raise ValueError("Sample JSON time entries must be numeric")
+            data[float(entry["time"])] = cgns_tree_from_json_payload(entry["tree"])
+        return data
+
+
+@smproxy.reader(
+    name="PlaidSampleVTKReader",
+    label="Plaid Sample Directory Reader (VTK, Experimental)",
+    file_description="PLAID Sample Directory (VTK, Experimental)",
+    is_directory=True,
+    filename_patterns="*",
+)
+@smproperty.xml('<OutputPort index="1" name="Globals" />')
+class PlaidSampleVTKReader(PlaidSingleSampleReaderBase):
+    """Read CGNS Sample directories with VTK only, for compatibility testing.
+
+    This experimental reader deliberately preserves VTK's native multiblock
+    layout rather than the existing PLAID converter's representation.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.SetNumberOfOutputPorts(2)
+        self._vtk_cache = None
+        self._globals_cache = None
+
+    def FillOutputPortInformation(self, port, info):
+        """Declare separate multiblock Mesh and table Globals output ports.
+
+        Args:
+            port: Output port index, zero for Mesh and one for Globals.
+            info: Output port information populated for VTK.
+
+        Returns:
+            One to indicate successful output declaration.
+        """
+        info.Set(
+            vtk.vtkDataObject.DATA_TYPE_NAME(),
+            "vtkMultiBlockDataSet" if port == 0 else "vtkTable",
+        )
+        return 1
+
+    def RequestDataObject(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Allocate mesh and globals objects without reading either file payload."""
+        for port, data_type in enumerate((vtk.vtkMultiBlockDataSet, vtk.vtkTable)):
+            info = out_info_vec.GetInformationObject(port)
+            current = info.Get(vtk.vtkDataObject.DATA_OBJECT())
+            if current is None or not current.IsA(data_type.__name__):
+                info.Set(vtk.vtkDataObject.DATA_OBJECT(), data_type())
+        return 1
+
+    def RequestInformation(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Publish the same physical time metadata on both output ports."""
+        times = self.GetTimestepValues()
+        executive = self.GetExecutive()
+        for port in range(2):
+            info = out_info_vec.GetInformationObject(port)
+            info.Remove(executive.TIME_STEPS())
+            info.Remove(executive.TIME_RANGE())
+            for time_value in times:
+                info.Append(executive.TIME_STEPS(), time_value)
+            if times:
+                info.Append(executive.TIME_RANGE(), times[0])
+                info.Append(executive.TIME_RANGE(), times[-1])
+        return 1
+
+    def _read_globals_table(self, path):
+        """Read direct Global/DataArray_t children, excluding time bookkeeping.
+
+        Args:
+            path: CGNS/HDF5 file for the selected physical timestep.
+
+        Returns:
+            Table with Name, Index, Value, DType and Shape string columns.
+
+        Raises:
+            ImportError: If h5py is unavailable in ParaView's Python environment.
+        """
+        try:
+            import h5py
+        except ImportError as exc:
+            raise ImportError("The experimental Globals output requires h5py") from exc
+
+        table = vtk.vtkTable()
+        columns = []
+        for name in ("Name", "Index", "Value", "DType", "Shape"):
+            column = vtk.vtkStringArray()
+            column.SetName(name)
+            columns.append(column)
+            table.AddColumn(column)
+        with h5py.File(str(path), "r") as stream:
+            if "Global" not in stream:
+                return table
+            for name, node in sorted(stream["Global"].items()):
+                if not isinstance(node, h5py.Group):
+                    continue
+                label = node.attrs.get("label", b"")
+                if isinstance(label, bytes):
+                    label = label.decode("ascii")
+                if label != "DataArray_t" or " data" not in node:
+                    continue
+                values = np.asarray(node[" data"][()])
+                kind = node.attrs.get("type", b"")
+                if isinstance(kind, bytes):
+                    kind = kind.decode("ascii")
+                if kind == "C1":
+                    text = (
+                        values.tobytes()
+                        .decode("utf-8", errors="replace")
+                        .rstrip("\x00")
+                    )
+                    rows = [("", text)]
+                else:
+                    rows = [
+                        (str(index), str(values[index]))
+                        for index in np.ndindex(values.shape)
+                    ]
+                    if values.size == 0:
+                        rows = [("", "")]
+                for index, value in rows:
+                    for column, item in zip(
+                        columns,
+                        (name, index, value, str(values.dtype), str(values.shape)),
+                    ):
+                        column.InsertNextValue(item)
+        return table
+
+    def RequestData(self, request, in_info_vec, out_info_vec):  # noqa: ARG002
+        """Update both mesh and globals for the requested output port's time."""
+        port = request.Get(vtk.vtkDemandDrivenPipeline.FROM_OUTPUT_PORT())
+        if port not in (0, 1):
+            port = 0
+        info = out_info_vec.GetInformationObject(port)
+        mesh, time_value = self._get_requested_output(info)
+        if time_value is None:
+            table = vtk.vtkTable()
+        else:
+            if self._globals_cache is None or self._globals_cache[0] != time_value:
+                table = self._read_globals_table(self.GetSampleData()[time_value])
+                self._globals_cache = (time_value, table)
+            table = self._globals_cache[1]
+        for output_port, data in enumerate((mesh, table)):
+            output_info = out_info_vec.GetInformationObject(output_port)
+            output = output_info.Get(vtk.vtkDataObject.DATA_OBJECT())
+            output.ShallowCopy(data)
+            output.GetInformation().Remove(vtk.vtkDataObject.DATA_TIME_STEP())
+            if time_value is not None:
+                output.GetInformation().Set(
+                    vtk.vtkDataObject.DATA_TIME_STEP(), time_value
+                )
+        return 1
+
+    @smproperty.stringvector(name="FileName")
+    @smdomain.filelist()
+    @smhint.filechooser(extensions="", file_description="PLAID Sample Directory")
+    def SetFileName(self, name):
+        """Set the Sample directory and clear cached files and VTK output.
+
+        Args:
+            name: Sample directory or its meshes subdirectory.
+        """
+        if self._filename != name:
+            self._vtk_cache = None
+            self._globals_cache = None
+        return super().SetFileName(name)
+
+    @smproperty.doublevector(name="TimestepValues", information_only="1")
+    def GetTimestepValues(self):
+        """Return sorted physical timestamps read from the CGNS files."""
+        return super().GetTimestepValues()
+
+    def _read_cgns(self, path, time_value=None):
+        """Read CGNS metadata or one timestep and report VTK reader failures.
+
+        Args:
+            path: Path to a CGNS file.
+            time_value: Physical time to load, or None for metadata only.
+
+        Returns:
+            Configured VTK CGNS reader containing metadata or loaded output.
+
+        Raises:
+            ValueError: If VTK reports a CGNS read error.
+        """
+        reader = vtk.vtkCGNSReader()
+        errors = []
+        reader.AddObserver("ErrorEvent", lambda *_args: errors.append(True))
+        reader.SetFileName(str(path))
+        reader.UpdateInformation()
+        if time_value is not None and not errors:
+            reader.EnableAllBases()
+            selection = reader.GetBaseSelection()
+            if selection.ArrayExists("Global"):
+                selection.DisableArray("Global")
+            reader.EnableAllPointArrays()
+            reader.EnableAllCellArrays()
+            reader.UpdateTimeStep(time_value)
+        if errors or reader.GetErrorCode():
+            raise ValueError(f"Unable to read CGNS file: {path}")
+        return reader
+
+    def _load_sample_data(self):
+        """Return a physical-time-to-file index without loading mesh arrays.
+
+        Returns:
+            Mapping of physical timestamps to CGNS file paths.
+
+        Raises:
+            FileNotFoundError: If the Sample directory does not exist.
+            NotADirectoryError: If the selected path is not a directory.
+            ValueError: If files lack unique, finite, single-timestep metadata.
+        """
+        directory = Path(self._filename)
+        if not directory.exists():
+            raise FileNotFoundError(f"Sample directory does not exist: {directory}")
+        if not directory.is_dir():
+            raise NotADirectoryError(f"Sample path is not a directory: {directory}")
+        meshes = directory / "meshes"
+        if not meshes.is_dir():
+            if directory.name == "meshes" or any(directory.glob("mesh_*.cgns")):
+                meshes = directory
+            elif not any(directory.iterdir()):
+                return {}
+            else:
+                raise ValueError(
+                    f"Sample directory has no meshes directory or mesh_*.cgns files: {directory}"
+                )
+        files = sorted(path for path in meshes.glob("mesh_*.cgns") if path.is_file())
+        if not files:
+            raise ValueError(f"No Sample CGNS files found in: {meshes}")
+        data = {}
+        key = vtk.vtkStreamingDemandDrivenPipeline.TIME_STEPS()
+        for path in files:
+            reader = self._read_cgns(path)
+            times = reader.GetOutputInformation(0).Get(key)
+            if times is None or len(times) != 1 or not np.isfinite(times[0]):
+                raise ValueError(f"Expected one finite physical timestamp in: {path}")
+            time_value = float(times[0])
+            if time_value in data:
+                raise ValueError(
+                    f"Duplicate physical timestamp {time_value} in: {path}"
+                )
+            data[time_value] = path
+        return data
+
+    def _get_requested_output(self, info):
+        """Return native VTK multiblock output for the nearest physical time.
+
+        Args:
+            info: Pipeline information optionally containing a requested time.
+
+        Returns:
+            Pair of multiblock data and selected time, or empty data and None.
+        """
+        data = self.GetSampleData()
+        if not data:
+            return vtk.vtkMultiBlockDataSet(), None
+        times = sorted(data)
+        key = self.GetExecutive().UPDATE_TIME_STEP()
+        requested = info.Get(key) if info.Has(key) else times[0]
+        time_value = float(find_closest_numpy(times, requested))
+        if self._vtk_cache is None or self._vtk_cache[0] != time_value:
+            reader = self._read_cgns(data[time_value], time_value)
+            self._vtk_cache = (time_value, reader.GetOutput())
+        return self._vtk_cache[1], time_value
+
+
 try:
     # try to load the reader if plaid is locally available
+    from plaid import Sample
     from plaid.storage.reader import init_from_disk, load_infos_from_disk
+
+    @smproxy.reader(
+        name="PlaidSampleReader",
+        label="Plaid Sample Directory Reader",
+        file_description="PLAID Sample Directory",
+        is_directory="True",
+        filename_patterns="*",
+    )
+    class PlaidSampleReader(PlaidSingleSampleReaderBase):
+        """Read a Sample directory when PLAID is installed on the server."""
+
+        @smproperty.stringvector(name="FileName")
+        @smdomain.filelist()
+        @smhint.filechooser(extensions="", file_description="PLAID Sample Directory")
+        def SetFileName(self, name):
+            """Set the Sample directory path, clearing cached data if it changes.
+
+            Args:
+                name: Directory previously written by Sample.save_to_dir.
+            """
+            return super().SetFileName(name)
+
+        @smproperty.doublevector(name="TimestepValues", information_only="1")
+        def GetTimestepValues(self):
+            """Return sorted sample timestamps for the ParaView time controls."""
+            return super().GetTimestepValues()
+
+        def _load_sample_data(self):
+            """Return timestamped trees loaded with Sample.load_from_dir."""
+            return Sample.load_from_dir(self._filename).data
 
     # <SourceProxy name="PXDMFReader"  label="PXDMFReader"
     # class="vtkPXDMFReader"
@@ -905,7 +1343,7 @@ try:
     print_debug("Reader PlaidSampleReader Loaded")
 except ImportError as exc:
     print_debug(
-        f"PlaidDatasetReader not loaded because optional plaid.storage.reader import failed: {exc}"
+        f"PLAID directory readers not loaded because optional PLAID imports failed: {exc}"
     )
 
 print_debug("Plaid ParaView Plugin Loaded")
