@@ -84,6 +84,23 @@ To use the library, the simplest way is to install it from the packages availabl
 - A Spack package recipe is available for Linux, macOS, and Windows, but has only been tested on Linux.
 - On Apple Silicon, users can force an `osx-64` conda environment with `CONDA_SUBDIR=osx-64` to install the existing macOS-64 builds under Rosetta.
 
+### Run the dataset viewer with Docker
+
+From the repository root:
+
+```bash
+docker build -f docker/Dockerfile -t plaid-viewer:local .
+docker run --rm --init -p 127.0.0.1:8080:8080 \
+  --mount type=bind,source=/absolute/path/to/datasets,target=/datasets,readonly \
+  plaid-viewer:local
+```
+
+Open `http://127.0.0.1:8080/` in your browser. The image uses headless CPU
+rendering and runs as a non-root user. Replace the datasets path with an
+existing, readable directory. No prebuilt image is published by this setup.
+See `docs/source/concepts/viewer.md` for Compose, Hub streaming, validation,
+and the limitations of launching desktop ParaView from a container.
+
 ### 2.2 Contributing to the library
 
 To contribute to the library, you need to clone the repo using git:
