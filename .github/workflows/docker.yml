@@ -1,0 +1,35 @@
+name: Docker viewer smoke test
+
+on:
+  pull_request:
+    paths:
+      - 'docker/**'
+      - '.github/workflows/docker.yml'
+      - 'src/**'
+      - 'tests/containers/dataset_cgns/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+  push:
+    branches: [main]
+    paths:
+      - 'docker/**'
+      - '.github/workflows/docker.yml'
+      - 'src/**'
+      - 'tests/containers/dataset_cgns/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build viewer image
+        run: docker build -f docker/Dockerfile -t plaid-viewer:local .
+      - name: Check headless sample rendering and HTTP startup
+        run: python3 docker/smoke_test_viewer_image.py

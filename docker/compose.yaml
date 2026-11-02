@@ -1,0 +1,16 @@
+services:
+  viewer:
+    image: plaid-viewer:local
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    init: true
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - type: bind
+        source: ${PLAID_DATASETS_ROOT:?Set PLAID_DATASETS_ROOT to an absolute datasets directory}
+        target: /datasets
+        read_only: true
+        bind:
+          create_host_path: false

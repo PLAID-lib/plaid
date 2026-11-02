@@ -45,6 +45,90 @@ Useful launch options:
 Without `--datasets-root`, the viewer reopens the last local root selected in
 the interface.
 
+## Run with Docker
+
+The repository includes a Docker image definition for the browser-based
+viewer. Build it locally from the repository root (no prebuilt image is
+published by this setup):
+
+```bash
+cd /absolute/path/to/plaid
+docker build -f docker/Dockerfile -t plaid-viewer:local .
+```
+
+The image installs the checkout, not the PyPI release, with the `viewer`
+dependencies from `uv.lock`. It uses Python 3.12 and CPU-based Mesa/EGL
+rendering, so no GPU, X server, or display forwarding is required. The
+runtime runs as the non-root `viewer` user (UID 1000). The default package
+version is `0.0.0+docker` because Git history is excluded from the build
+context. For a release checkout, pass its Python package version explicitly,
+for example `--build-arg PLAID_VERSION=1.0.0`.
+
+Start the viewer with a read-only mount of your datasets directory:
+
+```bash
+docker run --rm --init \
+  -p 127.0.0.1:8080:8080 \
+  --mount type=bind,source=/absolute/path/to/datasets,target=/datasets,readonly \
+  plaid-viewer:local
+```
+
+Open `http://127.0.0.1:8080/` in your host browser. The mounted directory must
+exist and be readable/traversable by UID 1000. On WSL, use Linux paths
+accessible to the Docker daemon. Paths entered in the viewer are container
+paths, such as `/datasets`, not paths on the host. The folder browser is
+restricted to `/datasets` by default.
+
+Alternatively, the included Compose configuration provides the same
+read-only mount and loopback-only port binding:
+
+```bash
+export PLAID_DATASETS_ROOT=/absolute/path/to/datasets
+docker compose -f docker/compose.yaml up --build
+# Stop and remove the service afterwards:
+docker compose -f docker/compose.yaml down
+```
+
+Arguments after the image name replace its default arguments. For example,
+to stream a Hub dataset without mounting local data:
+
+```bash
+docker run --rm --init -p 127.0.0.1:8080:8080 plaid-viewer:local \
+  --port 8080 --hub-repo PhysArena/VKI-LS59
+```
+
+The entry point always supplies `--host 0.0.0.0` for container networking.
+Keep the host port bound to `127.0.0.1` unless you intentionally expose the
+viewer to a trusted network; this setup does not add authentication or TLS.
+For local datasets, preserve `--datasets-root /datasets --browse-roots
+/datasets` when replacing the default arguments. To change the host port,
+use, for example, `-p 127.0.0.1:8090:8080` without changing the container port.
+
+Preferences and Hub downloads are discarded when a container is removed.
+Optionally persist them by adding a named home volume:
+`--mount type=volume,source=plaid-viewer-home,target=/home/viewer`.
+Rendering/export artifacts remain temporary under `/tmp`.
+
+**ParaView limitation:** the image does not include the ParaView desktop
+application. **Open in ParaView** cannot launch ParaView on the host from
+this container. Use the browser viewer, download a CGNS export and open it
+manually in host ParaView, or run `plaid-viewer` directly on the host when
+you need that integration.
+
+### Validate the image
+
+After building, run this from the checkout with a running Docker daemon:
+
+```bash
+python3 docker/smoke_test_viewer_image.py plaid-viewer:local
+```
+
+The smoke test starts the image, checks its HTTP endpoint, non-root user,
+and read-only dataset mount, then loads and renders a real CGNS sample
+using the viewer's VTK pipeline. It removes the test container on success
+or failure. The build-only GitHub Actions workflow runs the same test;
+it does not publish an image.
+
 ## Follow the steps in the side panel
 
 ![Sample 3D View tab showing a sample colored by a field](../images/viewer.jpg)
