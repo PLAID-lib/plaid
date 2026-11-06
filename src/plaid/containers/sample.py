@@ -1297,7 +1297,7 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
             return None
 
         if getattr(global_, "size", None) == 1:
-            return global_[0]
+            return np.asarray(global_).reshape(-1)[0]
 
         return global_
 

@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (python env) add python 3.14 support
 - (dataset-viewer) add an **Open in ParaView** button for local datasets: it serves the selected dataset through a loopback-only `plaid-serve` data API on the first available port in 8081–8090 and launches ParaView with the PLAID plugin, keeping the server alive until ParaView exits. The ParaView executable is read from `PARAVIEW_EXEC` (default `paraview`).
 - (docs) generate the viewer screenshots from a synthetic dataset (`docs/source/images/generate_viewer_images.py`) and embed an interactive skrub report, built with the documentation, in the viewer page.
+- (types) integrate beartype runtime type checking and improve type annotations across the package, including structural protocols for service dependencies and runtime-safe NumPy array aliases.
 
 ### Changed
 
