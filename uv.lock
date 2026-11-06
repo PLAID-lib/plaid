@@ -9,10 +9,10 @@ resolution-markers = [
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.12' and python_full_version < '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -506,10 +506,10 @@ version = "1.3.3"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -2273,7 +2273,7 @@ wheels = [
 
 [[package]]
 name = "muscat"
-version = "2.5.2"
+version = "2.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cvxpy" },
@@ -2289,18 +2289,18 @@ dependencies = [
     { name = "sympy" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ed/fa/21d07b34470e6418648b23d720162b7addc11d966f41597ade950991098f/muscat-2.5.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:46651355355b6356eacfc910a514232e89650e721210c983280fc547b15fec73", size = 10806512, upload-time = "2026-07-07T14:48:14.961Z" },
-    { url = "https://files.pythonhosted.org/packages/c2/60/aa43e517d140bd039abec52e78a0faa1c935686e02f2413e4614ad3dc6fc/muscat-2.5.2-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:052deab750608bc92ce38c82a399c8831316eed839500c0e39f7644cc3f38d85", size = 5303419, upload-time = "2026-07-07T14:48:16.782Z" },
-    { url = "https://files.pythonhosted.org/packages/c5/8f/b995d5e0d2ec400a5ed0b124a265216ff7e5c394fec7ad67d06187408a94/muscat-2.5.2-cp311-cp311-win_amd64.whl", hash = "sha256:1c726678445cae9f5a66716e07f7508ae8fef64ecd2a25e074662a5b91a41cd5", size = 13655813, upload-time = "2026-07-07T14:48:18.298Z" },
-    { url = "https://files.pythonhosted.org/packages/1a/66/b36985a221fe4b9dfa2eee65ef847e95c8bb0a7502f3839a3e9b5b1ff3c7/muscat-2.5.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:9f8280109a9802e1eabccbe9790d67b62146f89fd88bb8e54e0b44a0e2382ad0", size = 10801640, upload-time = "2026-07-07T14:48:20.259Z" },
-    { url = "https://files.pythonhosted.org/packages/f3/80/be780f6eac930f836116ec8929ceffb4bf9b9b33e4af985198d98d59f552/muscat-2.5.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:bf4f3c1a85f0e8fee3d9f86b0d59bd49df6689fce4273c6f70a7b77ed1ae10b9", size = 5278596, upload-time = "2026-07-07T14:48:22.037Z" },
-    { url = "https://files.pythonhosted.org/packages/67/86/a4dda165b12d3480c743d065f308700cd22c4626dfeda94da829fcab216d/muscat-2.5.2-cp312-cp312-win_amd64.whl", hash = "sha256:2852327e420df2f52980a31e2a2ea340c42d1b8def4fc2e3868872dede3bc9d1", size = 13650583, upload-time = "2026-07-07T14:48:23.715Z" },
-    { url = "https://files.pythonhosted.org/packages/dc/1f/8d3a82baf965beaa5ebf61f56ec3ad20489e472e1f38da3eb4269672029c/muscat-2.5.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:cf9d788fc27d02d8656b2ce1e56ba4a81d5827d8a3cc0ab968a470e8208bfa69", size = 10795125, upload-time = "2026-07-07T14:48:25.654Z" },
-    { url = "https://files.pythonhosted.org/packages/1c/ce/a1bcb59498067cf24b414343248f366429606339616221de9b6e82db9e83/muscat-2.5.2-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:ccc1d7912ff56c43948975442abd4922be05b109b735bc1bb7d0af68a0d2a6d6", size = 5277717, upload-time = "2026-07-07T14:48:27.653Z" },
-    { url = "https://files.pythonhosted.org/packages/7e/9c/7aead83e64c1aab358aed11173fb1e0325fa0cc4f81ed92336c42f51150b/muscat-2.5.2-cp313-cp313-win_amd64.whl", hash = "sha256:4f033f3d212c939d3a1fcd7d63d9fdbeaa77bfcf404baede81464e6cbb9ae548", size = 13648818, upload-time = "2026-07-07T14:48:29.174Z" },
-    { url = "https://files.pythonhosted.org/packages/d6/45/61915083fad84ecf6b2ec81257f0b19a3156eee47c17e217ba790bed8ee9/muscat-2.5.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:8765fa0e624f256beb78c2bca622d42f5b248ab8b6fe760d228bf6bda450a3b0", size = 10799214, upload-time = "2026-07-07T14:48:31.458Z" },
-    { url = "https://files.pythonhosted.org/packages/fc/60/98108223bf91842c20bb7f8038be7bf41076494d565a1c39ad2f256050d8/muscat-2.5.2-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:40ecfc1e4f257bc027f23dca5ac060ec0fcac2c41a6bf8751b40e55fbdfc734b", size = 5282203, upload-time = "2026-07-07T14:48:33.501Z" },
-    { url = "https://files.pythonhosted.org/packages/43/e9/35d685484dadce745aa2e81a62e80322199c183b6f4233b934910251515d/muscat-2.5.2-cp314-cp314-win_amd64.whl", hash = "sha256:213facbdae207d74b5371bcd64eb89a3714887fe52b34a078ed9668d1d7b79b4", size = 13881138, upload-time = "2026-07-07T14:48:35.2Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/de/159c536c23c0ef011a8e2b19a2a8b46ebafb3890d7b3fbe6a1af265459e9/muscat-2.6.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:2a0989800e668664e291a33d12d83ad551a79cbe1c1bb5e31236897bd521f38d", size = 9699020, upload-time = "2026-11-05T21:19:41.156Z" },
+    { url = "https://files.pythonhosted.org/packages/51/ce/94747363464cc59d3fe0779e559e2b46086c5df79650b5adc938937d893f/muscat-2.6.0-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:b6da5739a30f0ca74f0d8a03506d01d5cdc5115eee26f561b9b9c932ebd1204f", size = 7003596, upload-time = "2026-11-05T21:19:43.356Z" },
+    { url = "https://files.pythonhosted.org/packages/08/bc/82b379847bfc2bcb6ad81963fc57054981da50d19b3bb0ec678c2207d4c9/muscat-2.6.0-cp311-cp311-win_amd64.whl", hash = "sha256:876df90a68eb58e15eac2e52248ada2912b51daf1e2fcc297505119b2241e807", size = 16375463, upload-time = "2026-11-05T21:19:45.409Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/c3/bdda57ed8f227ffb5d0a9c257da371e5585a1e3289c8a80ea706894cd9ff/muscat-2.6.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:5667ee6e6a484dc489bdb8bf76a1df4bd66eb753760660dc8c81ce20c4854796", size = 9695706, upload-time = "2026-11-05T21:19:47.958Z" },
+    { url = "https://files.pythonhosted.org/packages/79/bc/56677e1151b55914909520581a090d7a16b545f7f59522139ffa142a3bd1/muscat-2.6.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a16d6e9f5c889676ded32b57e53f981624a05b3890da57266c4022c3ae5d215a", size = 6963240, upload-time = "2026-11-05T21:19:49.95Z" },
+    { url = "https://files.pythonhosted.org/packages/55/59/9fc5f08afd4f3bc3341a8945d402226beceea6f19af036399fec29ef3602/muscat-2.6.0-cp312-cp312-win_amd64.whl", hash = "sha256:509cb9af2991ea4dc3e644a25ae60383bfe5097c6375dc43ea8ef3a3ba7e110b", size = 16368791, upload-time = "2026-11-05T21:19:51.781Z" },
+    { url = "https://files.pythonhosted.org/packages/20/c8/6567a91986d887e6f7d4c3dff95e347776555b33fdd235041dd0775e6b64/muscat-2.6.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:b9d3911d6b241415b76633caf8fab55bc190318235a47831141b1e5ee2e4ec41", size = 9690666, upload-time = "2026-11-05T21:19:54.339Z" },
+    { url = "https://files.pythonhosted.org/packages/04/d3/9b21b525118556e4d8e37a27c04d4ae6f2cf5e9e7c07ac6ee08573437e24/muscat-2.6.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:c9e3eb6bb65f0440267894092f1d5df45087482b20b75eab630bd1d9137c825f", size = 6953853, upload-time = "2026-11-05T21:19:56.448Z" },
+    { url = "https://files.pythonhosted.org/packages/8d/d6/b9099aa1e1397a720636ca864b0e88456d090c1bc2a0e44ee65e8fb54c09/muscat-2.6.0-cp313-cp313-win_amd64.whl", hash = "sha256:10aa72b4e6d34b879b3fd3887e79df49406418f80515d2e351e417c50d603db1", size = 16367738, upload-time = "2026-11-05T21:19:58.58Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/89/ac77e002dce872b3e3c36532e6be1c3225c22c825e2d08a0fea2af00fbe8/muscat-2.6.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:2a8f154310258998c891ea0cafceeb7e687c1293b9e0f1da91dd67f851e027f5", size = 9698812, upload-time = "2026-11-05T21:20:01.215Z" },
+    { url = "https://files.pythonhosted.org/packages/62/82/1a04d98696eb49fa7b23a844f8e70f8f166e8a0b3cae803141c893ac5613/muscat-2.6.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:872e95b29261408335af57a9e98ef979fd743788c2913d34d107adae6e161e3c", size = 6960338, upload-time = "2026-11-05T21:20:03.501Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/05/bf995eb6e69c930149d54689edc1085aa36054607ee4b413e36aa29f21e6/muscat-2.6.0-cp314-cp314-win_amd64.whl", hash = "sha256:118237a6965431a3381a0e8feeb7a406abd485e1f7555afc30676758b27e23bc", size = 16661417, upload-time = "2026-11-05T21:20:05.495Z" },
 ]
 
 [package.optional-dependencies]
@@ -2389,10 +2389,10 @@ version = "3.6.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6a/51/63fe664f3908c97be9d2e4f1158eb633317598cfa6e1fc14af5383f17512/networkx-3.6.1.tar.gz", hash = "sha256:26b7c357accc0c8cde558ad486283728b65b6a95d85ee1cd66bafab4c8168509", size = 2517025, upload-time = "2025-12-08T17:02:39.908Z" }
@@ -2432,10 +2432,10 @@ version = "0.16.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -2512,10 +2512,10 @@ version = "2.4.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d0/ad/fed0499ce6a338d2a03ebae59cd15093910c8875328855781952abf6c2fe/numpy-2.4.6.tar.gz", hash = "sha256:f3a3570c4a2a16746ac2c31a7c7c7b0c186b95ce902e33db6f28094ed7387dda", size = 20735807, upload-time = "2026-05-18T23:37:14.07Z" }
@@ -3360,7 +3360,7 @@ dev = [
     { name = "jupytext", specifier = ">=1.19.3" },
     { name = "matplotlib", specifier = ">=3,<4" },
     { name = "mkdocstrings", extras = ["python"], specifier = ">=0.27.0" },
-    { name = "muscat", extras = ["storage"], specifier = ">=2.5.1" },
+    { name = "muscat", extras = ["storage"], specifier = ">=2.6.0" },
     { name = "nbconvert", specifier = ">=7.16.0" },
     { name = "pre-commit", specifier = ">=4.5.1" },
     { name = "pytest", specifier = ">=9.0.2" },
@@ -3840,10 +3840,10 @@ version = "1.17.1"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -4779,10 +4779,10 @@ version = "3.1.6"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'win32'",
-    "python_full_version < '3.11.5' and sys_platform == 'win32'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform == 'emscripten'",
-    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version >= '3.11.5' and python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'win32'",
+    "python_full_version < '3.11.5' and sys_platform == 'emscripten'",
     "python_full_version < '3.11.5' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 dependencies = [
@@ -4844,7 +4844,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/df/b2/30d59a91ed2828fbe6d9a297990dd6de1fd3c5d722354421d80352bba322/zensical-0.0.72-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:9afa0bdb357e0197f5d65cb882e2ad1652d7a3790e2fc3d243f0669092aab536", size = 18269323, upload-time = "2026-10-23T14:52:02.987Z" },
     { url = "https://files.pythonhosted.org/packages/2b/46/33d705f40d8fb3c2291fff63fce8b0688d11e11b4729c7bd11491ead3649/zensical-0.0.72-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:2103dabfb6fcbea16ffbf226b5405389f3ac67370293eb649f949f03314dd64c", size = 17790144, upload-time = "2026-10-23T14:52:06.092Z" },
     { url = "https://files.pythonhosted.org/packages/45/02/9d4ed7fa43f0cc8464e4ba4e844201c83abcfce9043073c06acf3518f4ba/zensical-0.0.72-cp311-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3631d44074d4b28448e710d7b54a506caacb6156b38bd0d91d6a033d65da6ad3", size = 18290933, upload-time = "2026-10-23T14:52:09.003Z" },
-    { url = "https://files.pythonhosted.org/packages/5b/e9/8aa7a24085811cb62987427e86bb5071dbc7c8da7a541a1128996311f070/zensical-0.0.72-cp311-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:1298ced62e0acfe52787ab59607358fbcf6643bf793a1a66813fb760aec009f9", size = 18237453, upload-time = "2026-10-23T14:52:11.589Z" },
     { url = "https://files.pythonhosted.org/packages/98/d8/d176cc7515465c5347c20b412f7e52313f051dc4bcf585b18060044d0d61/zensical-0.0.72-cp311-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3513bf501ff5e28b9e8b7255f225bb117d5651c5d50af39a1eb7bb3bbd7251b0", size = 18789079, upload-time = "2026-10-23T14:52:13.896Z" },
     { url = "https://files.pythonhosted.org/packages/07/01/e378f3cb316bd0f3d1e7c2610d4eb8e6a4adf8797fdfebcaf6cb7e15f85f/zensical-0.0.72-cp311-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:a0603827ea0a04f920cf2a5be555f9e81818beaac1ff5a92399f19f79e330b2e", size = 18467423, upload-time = "2026-10-23T14:52:16.554Z" },
     { url = "https://files.pythonhosted.org/packages/95/b3/979d2344d0efcb3d43bdcf613fa9846daae174993ba79ba5bab6e02aad45/zensical-0.0.72-cp311-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:042795a983823efd2478630164afa708b04b6aff7708a04177657e57292bc1b8", size = 19047304, upload-time = "2026-10-23T14:52:19.283Z" },
