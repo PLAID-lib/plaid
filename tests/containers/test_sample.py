@@ -696,6 +696,18 @@ class Test_Sample:
         sample.add_global("g_str", np.array([7.0]))
         assert sample.get_global("g_str") == 7.0
 
+    @pytest.mark.parametrize("value", [42, 1.5, np.int64(7), np.float64(2.5)])
+    def test_add_global_accepts_python_and_numpy_scalars(self, sample: Sample, value):
+        """Store Python and NumPy numeric scalars with runtime checks enabled.
+
+        Args:
+            sample: Empty sample fixture.
+            value: Numeric scalar to store as a global.
+        """
+        sample.add_global("scalar", value)
+
+        assert sample.get_global("scalar") == value
+
     def test_get_global_names_excludes_time_arrays(self, sample: Sample):
         sample.init_base(2, 2, "Base_2_2", time=0.0)
         sample.add_global("kept_name", np.array([1.0]), time=0.0)

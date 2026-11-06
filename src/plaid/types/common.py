@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 # scalars
-ScalarDType = Union[np.integer, np.floating, float]
+ScalarDType = Union[np.integer, np.floating, int, float]
 
 # arrays
 if TYPE_CHECKING:
