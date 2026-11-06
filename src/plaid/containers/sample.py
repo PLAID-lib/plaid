@@ -1285,7 +1285,7 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
             time (float, optional): The time step for which to retrieve the global array. If not provided, uses the default time.
 
         Returns:
-            Optional[Array]: The global array if found, otherwise None. Returns a scalar if the array has size 1.
+            Optional[Array]: The global array if found, otherwise None. Returns a scalar if the array has size 1., return a vector if the array has size > 1, or return a string if the array is of type string.
         """
         time = self.resolve_time(time)
 

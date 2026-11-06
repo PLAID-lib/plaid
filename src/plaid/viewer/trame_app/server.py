@@ -415,8 +415,9 @@ def _constraint_ranges(value: object) -> list[tuple[float, float]]:
     ):
         value = value[0]  # Plotly restyle wraps values once per trace.
     if isinstance(value[0], (list, tuple)):
-        return [tuple(interval) for interval in value]
-    return [tuple(value)]
+        return [(float(low), float(high)) for low, high in value]
+    low, high = value
+    return [(float(low), float(high))]
 
 
 def _parcoords_selected_rows(
@@ -1037,7 +1038,7 @@ def _build_lut(cmap: str, lo: float, hi: float, n_colors: int = CONTINUOUS_COLOR
 def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless safe
     dataset_service: PlaidDatasetService,
     artifact_service: ParaviewArtifactService,
-) -> "Any":
+) -> Any:
     """Create a configured trame :class:`Server` instance.
 
     Args:

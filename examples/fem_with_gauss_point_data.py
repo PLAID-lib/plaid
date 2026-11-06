@@ -89,7 +89,7 @@ def main() -> None:
         sample.add_tree(MeshToCGNS(mesh.View()), time=t)
 
     print(sample)
-    print(sample.get_field_names(time=0))
+    print(sample.get_field_names(time=0.0))
 
     # Add nodal and integration-point fields as vertex fields.
     reader.atIntegrationPoints = False
