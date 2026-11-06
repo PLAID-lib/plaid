@@ -1,0 +1,16 @@
+# Only package inputs enter the build context: no Git history, virtualenv,
+# credentials, datasets, local changes outside the package, or test outputs.
+**
+!docker/
+!docker/Dockerfile
+!docker/Dockerfile.dockerignore
+!pyproject.toml
+!uv.lock
+!README.md
+!LICENSE.txt
+!src/
+!src/plaid/
+!src/plaid/**
+**/__pycache__/
+**/*.py[cod]
+src/plaid/_version.py
