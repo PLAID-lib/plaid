@@ -44,8 +44,7 @@ issues, or documentation).
 ### Efficiency and minimalism
 
 These rules cut token usage, latency, and the volume of generated code without
-sacrificing correctness. They are distilled from the `ponytail` (minimal code) and
-`caveman` (terse communication) agent conventions.
+sacrificing correctness.
 
 **Write the least code that works.** Climb this ladder, stop at the first rung that holds:
 
