@@ -31,8 +31,8 @@ and open-source library design. You prioritize backward compatibility and clean 
 
 ### Confidentiality
 
-plaid is a **public** repository. Some downstream libraries in the PLAID ecosystem are private.
-Never mention private repository names, internal project names, or confidential details
+plaid is a **public** repository. Some downstream libraries in the PLAID ecosystem are not public.
+Never mention non-public repository names, internal project names, or confidential details
 in any public-facing content (code comments, docstrings, commit messages, PR descriptions,
 issues, or documentation).
 
@@ -73,8 +73,8 @@ integrity is non-negotiable -- see Decision priorities above.
 
 ## Tech stack
 
-- **Language**: Python 3.11--3.13
-- **Package manager**: uv (with `pyproject.toml`)
+- **Language**: Python 3.11--3.14 (`requires-python = ">=3.11, <3.15"`, all four versions tested in CI)
+- **Package manager**: uv (with `pyproject.toml`; dev tools in the `dev` dependency group, viewer dependencies in the `viewer` extra)
 - **Build backend**: setuptools with setuptools-scm (dynamic versioning)
 - **Linter/formatter**: ruff
 - **Test framework**: pytest
@@ -91,16 +91,17 @@ integrity is non-negotiable -- see Decision priorities above.
 ├── CHANGELOG.md               <- Version history
 ├── CONTRIBUTING.md            <- Contribution guidelines
 ├── src/plaid/                 <- Source code
-│   ├── __init__.py            <- Public API: Sample, Infos, ProblemDefinition
+│   ├── __init__.py            <- Public API: Sample, Infos, ProblemDefinition + storage helpers
+│   ├── version.py             <- Package version (setuptools-scm)
 │   ├── constants.py           <- Global constants
 │   ├── problem_definition.py  <- ProblemDefinition (core concept)
-│   ├── infos.py               <- Infos (dataset/problem metadata)
+│   ├── infos.py               <- Infos (dataset metadata)
 │   ├── containers/            <- Sample container + helpers (see nested AGENTS.md)
 │   ├── storage/               <- Storage backends: zarr, hf_datasets, cgns (see nested AGENTS.md)
 │   ├── types/                 <- Shared type aliases and definitions
-│   ├── utils/                 <- Internal helpers: base.py, cgns_helper.py, cgns_worker.py
-│   ├── cli/                   <- Command-line entry points (plaid-check, plaid-serve, plaid-viewer)
-│   ├── viewer/                <- Dataset visualization services
+│   ├── utils/                 <- Internal helpers (CGNS trees, JSON codecs, worker processes)
+│   ├── cli/                   <- plaid-check and plaid-serve entry points, ParaView plugin
+│   ├── viewer/                <- Dataset viewer (trame) and its plaid-viewer entry point
 │   └── downloadable_examples/ <- Built-in downloadable example datasets
 ├── tests/                     <- Test suite
 ├── docs/                      <- Zensical (Markdown) documentation source
@@ -119,20 +120,21 @@ integrity is non-negotiable -- see Decision priorities above.
 
 | Concept | Module | Description |
 |---------|--------|-------------|
-| `ProblemDefinition` | `problem_definition.py` | Declares fields, meshes, and their roles (input/output/context) for a physics problem |
-| `Infos` | `infos.py` | Metadata describing a dataset/problem (legal, data production, etc.) |
+| `ProblemDefinition` | `problem_definition.py` | Declares the input and output features and the train/test splits of a learning problem |
+| `Infos` | `infos.py` | Dataset metadata (owner, license, data production, number of samples, storage backend, etc.) |
 | `Sample` | `containers/sample.py` | One simulation snapshot: mesh + field values (a pydantic `BaseModel`) |
 
 `Sample`, `Infos` and `ProblemDefinition` are re-exported at the top level of the
 `plaid` package, together with the helpers `get_number_of_samples` and `get_sample_ids`
-from `containers/utils.py`.
+from `containers/utils.py` and the main storage entry points (`init_from_disk`,
+`download_from_hub`, `load_infos_from_disk`, ...); see `__all__` in `src/plaid/__init__.py`.
 
 ### Storage pattern
 
 Storage uses a **Registry pattern** (`storage/registry.py`) to dispatch read/write
-operations to the correct backend (zarr, hf_datasets, cgns). Each backend implements
-a `reader.py` and `writer.py` following the backend contract defined in
-`storage/backend_api.py` and the shared interfaces in `storage/common/`.
+operations to the correct backend (zarr, hf_datasets, cgns). Each backend is a class
+conforming to the `BackendModule` Protocol defined in `storage/backend_api.py`, with
+its `reader.py` and `writer.py`; backend-independent helpers live in `storage/common/`.
 Reading/writing a collection of samples is done through this storage layer rather
 than through a dedicated `Dataset` class.
 
@@ -148,22 +150,15 @@ Ruff is configured in `ruff.toml`:
 - **Excluded directories**: `examples/`, `docs/`, `benchmarks/`
 - **Per-file ignores**: test files ignore docstring rules (`D`) and `S101` (assert); `__init__.py` files ignore `F401` (unused imports, to allow re-exports)
 
-```bash
-# Check linting
-uv run ruff check .
-
-# Auto-fix
-uv run ruff check --fix .
-
-# Format
-uv run ruff format .
-```
+CI (`lint-format-check.yaml`) runs both `ruff check .` and `ruff format --check .`;
+the commands are listed under [Commands](#commands).
 
 ### Type hints
 
 - Required on all public functions and methods
-- Use modern syntax: `list[str]`, `dict[str, int]`, `X | None` (not `Optional[X]`)
-- Never use deprecated `typing.List`, `typing.Dict`, `typing.Optional`
+- In new code, use modern syntax: `list[str]`, `dict[str, int]`, `X | None`
+- Do not introduce deprecated `typing.List` / `typing.Dict`; existing modules still use
+  `Optional[X]` / `Union[...]` -- do not rewrite them in unrelated changes
 
 ### Docstrings
 
@@ -188,7 +183,8 @@ Guidelines:
 
 ## Pull request rules
 
-PR titles **must start with one of the following emojis** to indicate the type of change:
+PR titles **must start with one of the following emojis** to indicate the type of change
+(checked by `.github/workflows/pr-title-checker.yml`):
 
 | Emoji | Type |
 |-------|------|
@@ -204,13 +200,13 @@ PR checklist (from `.github/pull_request_template.md`):
 - Documentation updated
 - Changelog updated
 - Tests and example updates
-- Coverage should be 100%
+- Coverage should be 100% (a review goal: CI reports coverage but sets no `fail_under` threshold)
 
 ## Commands
 
 ```bash
-# Install dependencies
-uv sync
+# Install dependencies (dev group + viewer extra, as in CI; tests/viewer needs the extra)
+uv sync --extra viewer
 
 # Run tests
 uv run pytest
@@ -221,11 +217,13 @@ uv run ruff check .
 # Auto-fix linting issues
 uv run ruff check --fix .
 
-# Format code
+# Format code / check formatting (as in CI)
 uv run ruff format .
+uv run ruff format --check .
 
-# Build documentation
-bash docs/generate_doc.sh
+# Build documentation (executes the example notebooks, then runs Zensical;
+# system packages needed by the viewer screenshots: see .github/workflows/doc.yml)
+uv run bash docs/generate_doc.sh
 ```
 
 ## Contribution workflow
