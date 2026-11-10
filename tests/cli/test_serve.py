@@ -509,8 +509,12 @@ def test_run_server_until_process_exits_starts_and_stops_server():
 
     serve._run_server_until_process_exits(server, process)
 
-    assert "wait" in calls
-    assert calls[-2:] == ["shutdown", "server_close"]
+    # serve_forever runs in a background thread: its position relative to the
+    # other calls depends on thread scheduling, so only the lifecycle order of
+    # the main-thread calls is asserted.
+    assert "serve_forever" in calls
+    main_thread_calls = [call for call in calls if call != "serve_forever"]
+    assert main_thread_calls == ["wait", "shutdown", "server_close"]
 
 
 def test_run_server_until_process_exits_terminates_on_keyboard_interrupt():
