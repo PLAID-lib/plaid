@@ -3389,7 +3389,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                             hide_details=True,
                         )
 
-                with html.Div(classes="mb-1"):
+                with html.Div(v_if=("allow_root_change",), classes="mb-1"):
                     v3.VBtn(
                         "Open in ParaView",
                         click=ctrl.open_in_paraview,
@@ -3409,7 +3409,7 @@ def build_server(  # pragma: no cover - trame/VTK UI startup is not CI-headless 
                     )
                 html.Div(
                     "{{ paraview_status }}",
-                    v_if=("paraview_status",),
+                    v_if=("allow_root_change && paraview_status",),
                     classes="text-caption mb-3",
                 )
 
