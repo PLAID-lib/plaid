@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (dataset-viewer) hide the **Open in ParaView** desktop launcher, its tooltip and status message when `--disable-root-change` is used for server deployments without a desktop.
 - (plaidcheck/problem_definition) support multiple subsplits per problem-definition split.
 - (dataset-viewer) keep the camera viewpoint when changing samples; it is only reset on the first load or by **Reset camera**.
 - (dataset-viewer) keep the current physical time when changing samples, using the closest available time step of the new sample.
@@ -39,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (dataset-viewer) render the selected colormap (viridis, plasma, ...) instead of a rainbow hue ramp, and color the **Show edges** switch so its state is visible.
 - (storage/preprocessor) preserve the source floating-point dtype during schema inference.
 - (storage/reader) Fix HF backend split download not respecting `~` character on Linux.
+- (tests/cli) make `test_run_server_until_process_exits_starts_and_stops_server` independent of thread scheduling: `serve_forever` runs in a background thread and may be recorded after `server_close`, which made the test fail on CI.
 
 ## [1.0.0] - 2026-07-07
 

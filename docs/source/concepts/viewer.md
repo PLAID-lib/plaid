@@ -37,7 +37,7 @@ Useful launch options:
 | `--hub-repo namespace/name` | Adds a Hugging Face Hub dataset to stream. Can be repeated. |
 | `--dataset-id name` | Selects this dataset when the viewer starts. |
 | `--browse-roots /path ...` | Limits the folders the root field and folder browser can open (home directory by default). |
-| `--disable-root-change` | Hides the datasets root controls. |
+| `--disable-root-change` | Hides the datasets root controls and the desktop-only Open in ParaView launcher (for server deployments). |
 | `--disable-dataset-change` | Hides the dataset selector, pinning the selected dataset. |
 | `--host 0.0.0.0` | Makes the viewer reachable from another machine. |
 | `--port 8080` | Changes the web server port. |
