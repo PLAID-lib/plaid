@@ -744,6 +744,34 @@ def _apply_base_selection(reader, active_bases: list[str]) -> None:
         reader.Update()
 
 
+def _field_array_options(attributes) -> dict[str, tuple[str, int]]:
+    """Map selectable field names to source arrays and component indices.
+
+    Args:
+        attributes: VTK point or cell data attributes.
+
+    Returns:
+        Field names mapped to array names and component indices; -1 selects
+        magnitude. Native array names take precedence over component aliases.
+        VTK's named ``dummy`` padding component is not exposed.
+    """
+    options = {
+        attributes.GetArrayName(i): (attributes.GetArrayName(i), -1)
+        for i in range(attributes.GetNumberOfArrays())
+    }
+    for name in list(options):
+        array = attributes.GetArray(name)
+        if array is None or array.GetNumberOfComponents() <= 1:
+            continue
+        for component in range(array.GetNumberOfComponents()):
+            label = array.GetComponentName(component)
+            if label == "dummy":
+                continue
+            label = label or str(component)
+            options.setdefault(f"{name}_{label}", (name, component))
+    return options
+
+
 def _list_point_and_cell_fields(dataset) -> tuple[list[str], list[str]]:
     """Return the point and cell field names available on ``dataset``."""
     point_fields: set[str] = set()
@@ -759,14 +787,41 @@ def _list_point_and_cell_fields(dataset) -> tuple[list[str], list[str]]:
         pd = obj.GetPointData() if hasattr(obj, "GetPointData") else None
         cd = obj.GetCellData() if hasattr(obj, "GetCellData") else None
         if pd is not None:
-            for i in range(pd.GetNumberOfArrays()):
-                point_fields.add(pd.GetArrayName(i))
+            point_fields.update(_field_array_options(pd))
         if cd is not None:
-            for i in range(cd.GetNumberOfArrays()):
-                cell_fields.add(cd.GetArrayName(i))
+            cell_fields.update(_field_array_options(cd))
 
     _visit(dataset)
     return sorted(point_fields), sorted(cell_fields)
+
+
+def _resolve_field_selection(dataset, field: str, association: str) -> tuple[str, int]:
+    """Resolve a field alias before geometry filters discard component names.
+
+    Args:
+        dataset: Reader output, possibly a nested multiblock dataset.
+        field: Selected native array name or component alias.
+        association: ``point`` or ``cell`` data association.
+
+    Returns:
+        Source array name and component index, or -1 for magnitude.
+    """
+    if dataset is not None:
+        if hasattr(dataset, "GetNumberOfBlocks"):
+            for index in range(dataset.GetNumberOfBlocks()):
+                selection = _resolve_field_selection(
+                    dataset.GetBlock(index), field, association
+                )
+                if selection != (field, -1):
+                    return selection
+        else:
+            attributes = (
+                dataset.GetPointData()
+                if association == "point"
+                else dataset.GetCellData()
+            )
+            return _field_array_options(attributes).get(field, (field, -1))
+    return field, -1
 
 
 def _compute_field_range(
@@ -787,10 +842,12 @@ def _compute_field_range(
         data = obj.GetPointData() if association == "point" else obj.GetCellData()
         if data is None:
             return
-        arr = data.GetArray(field_name)
-        if arr is None:
+        selection = _field_array_options(data).get(field_name)
+        if selection is None:
             return
-        r = arr.GetRange(-1)
+        array_name, component = selection
+        arr = data.GetArray(array_name)
+        r = arr.GetRange(component)
         lo = min(lo, r[0])
         hi = max(hi, r[1])
 
@@ -960,7 +1017,10 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
         self.mapper.SetInputConnection(geom.GetOutputPort())
 
         if field is not None:
-            self.mapper.SelectColorArray(field)
+            array_name, component = _resolve_field_selection(
+                self.reader.GetOutputDataObject(0), field, association
+            )
+            self.mapper.SelectColorArray(array_name)
 
             if association == "point":
                 self.mapper.SetScalarModeToUsePointFieldData()
@@ -974,6 +1034,11 @@ class _VtkPipeline:  # pragma: no cover - requires real VTK rendering/display st
             # boundaries are smooth lines crossing elements, not jagged edges.
             self.mapper.SetInterpolateScalarsBeforeMapping(bool(iso_contour))
             self.lut = _build_lut(cmap, lo, hi, n_colors)
+            if component < 0:
+                self.lut.SetVectorModeToMagnitude()
+            else:
+                self.lut.SetVectorModeToComponent()
+                self.lut.SetVectorComponent(component)
             self.mapper.SetLookupTable(self.lut)
             self.mapper.SetScalarRange(lo, hi)
             _show_scalar_bar_for_field(

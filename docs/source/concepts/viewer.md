@@ -227,6 +227,13 @@ The **3D Rendering options** card appears when a base is selected. Choose a
 If no field is selected, the viewer still shows the mesh, but without scalar
 coloring. When a field is selected, a color legend appears in the 3D view.
 
+Vector fields also expose individual components in **Field to plot**. For
+example, when the CGNS reader groups `U_x` and `U_y` into `U`, select
+`point:U` for displacement magnitude, `point:U_x` for the signed x component,
+or `point:U_y` for the signed y component. The artificial zero component
+added by VTK for 2D vectors is hidden. Components without names use zero-based
+numeric suffixes. The source arrays and dataset files are unchanged.
+
 The same card also contains the colormap, edge visibility, iso contour, and
 camera reset controls described in [Rendering options](#rendering-options).
 
