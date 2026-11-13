@@ -445,6 +445,29 @@ def test_install_vtk_log_router_ignores_missing_and_old_vtk(
     assert srv._VTK_LOG_ROUTER_INSTALLED is True
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        (None, []),
+        ([], []),
+        ([1, 2], [(1.0, 2.0)]),
+        ([[1, 2], [3, 4]], [(1.0, 2.0), (3.0, 4.0)]),
+        ([[[1, 2], [3, 4]]], [(1.0, 2.0), (3.0, 4.0)]),
+    ],
+)
+def test_constraint_ranges_normalizes_numeric_bounds(value, expected) -> None:
+    """Normalize integer brush bounds to floats, including wrapped intervals.
+
+    Args:
+        value: Plotly brush payload or cleared selection.
+        expected: Normalized floating-point intervals.
+    """
+    ranges = srv._constraint_ranges(value)
+
+    assert ranges == expected
+    assert all(isinstance(bound, float) for interval in ranges for bound in interval)
+
+
 def test_parcoords_brush_exports_only_matching_plotted_samples() -> None:
     from plaid.viewer.global_plots import build_globals_figure
 
