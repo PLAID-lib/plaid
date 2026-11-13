@@ -57,6 +57,7 @@ nav = [
     ] },
     { "plaid-viewer" = "concepts/viewer.md" },
     { "plaid-check" = "concepts/check.md" },
+    { "plaid-tools" = "concepts/tools.md" },
     { "Upgrade guide" = "upgrade_guide.md" },
     # >>> AUTO-GENERATED API REFERENCE START
     # The block below is overwritten by `python docs/generate_api_stubs.py`.

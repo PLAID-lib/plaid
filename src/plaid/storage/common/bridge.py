@@ -96,7 +96,7 @@ def to_sample_dict(
     Returns:
         dict: Time-based sample dictionary.
     """
-    assert not isinstance(flat_cst[next(iter(flat_cst))], dict), (
+    assert not flat_cst or not isinstance(flat_cst[next(iter(flat_cst))], dict), (
         "did you provide the complete `flat_cst` instead of the one for the considered split?"
     )
 
