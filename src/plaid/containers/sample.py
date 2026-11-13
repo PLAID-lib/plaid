@@ -1296,6 +1296,11 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         if global_ is None:
             return None
 
+        if isinstance(
+            global_, np.generic
+        ):  # return NumPy scalars before trying to index them
+            return global_
+
         if getattr(global_, "size", None) == 1:
             return global_[0]
 
