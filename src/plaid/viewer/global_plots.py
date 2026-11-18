@@ -7,8 +7,8 @@ sample (or a pandas table of the whole extraction) does not fit in memory.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator, TypeAlias
 
 import numpy as np
 import plotly.graph_objects as go
@@ -87,7 +87,7 @@ def _component_values(
     return components
 
 
-RawGlobals: TypeAlias = dict[str, list[dict[str, object]]]
+RawGlobals = dict[str, list[dict[str, object]]]
 
 
 @dataclass

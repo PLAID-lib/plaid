@@ -6,7 +6,7 @@ the ParaView plugin without forcing users to install plaid.
 """
 
 import json
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import numpy as np
 
@@ -757,7 +757,7 @@ def VtkToCGNSTree(data_object, ensure_3D_points=False) -> list:
     ]
 
 
-def _cgns_children_by_label(node: list, label: str) -> List[list]:
+def _cgns_children_by_label(node: list, label: str) -> list[list]:
     """Return direct children of a CGNS/Python node matching a label."""
     return [child for child in node[2] if len(child) > 3 and child[3] == label]
 

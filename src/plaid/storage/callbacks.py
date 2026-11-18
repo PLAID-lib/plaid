@@ -1,8 +1,8 @@
 """Callback contracts for the storage API."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from ..containers.sample import Sample
 

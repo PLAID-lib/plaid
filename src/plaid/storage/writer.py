@@ -13,8 +13,9 @@ Key features:
 
 import logging
 import shutil
+from collections.abc import Callable, Generator, Mapping
 from pathlib import Path
-from typing import Any, Callable, Generator, Mapping, Optional, Union
+from typing import Any, Optional, Union
 
 from plaid.storage.common.writer import (
     push_infos_to_hub,

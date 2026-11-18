@@ -1,8 +1,9 @@
 """Utility functions for PLAID containers."""
 # %% Imports
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence, Union
+from typing import Optional, Union
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np

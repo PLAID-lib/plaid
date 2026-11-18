@@ -8,8 +8,9 @@ parallel processing of sample shards.
 import hashlib
 import logging
 import multiprocessing as mp
+from collections.abc import Callable, Generator, Sequence
 from queue import Empty
-from typing import Any, Callable, Generator, Optional, Sequence, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 from tqdm import tqdm

@@ -5,8 +5,9 @@ and Hugging Face Datasets format. It includes utilities for feature type convers
 dataset generation from PLAID objects, and sample reconstruction.
 """
 
+from collections.abc import Callable, Generator
 from functools import partial
-from typing import Any, Callable, Generator, Optional
+from typing import Any, Optional
 
 import datasets
 import numpy as np

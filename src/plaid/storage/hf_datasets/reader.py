@@ -14,8 +14,9 @@
 import logging
 import os
 import tempfile
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Optional, Union
 
 import datasets
 from datasets import load_dataset, load_from_disk

@@ -17,10 +17,11 @@ from __future__ import annotations
 import json
 import logging
 from collections import OrderedDict
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any
 
 from tqdm import tqdm
 

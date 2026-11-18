@@ -1,18 +1,10 @@
 """Implementation of the `ProblemDefinition` class."""
 # %% Imports
 
-import sys
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:  # pragma: no cover
-    from typing import TypeVar
-
-    Self = TypeVar("Self")
-
 import logging
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Literal, Sequence, Union
+from typing import Any, Literal, Self, Union
 
 import yaml
 from pydantic import BaseModel, field_validator, model_validator

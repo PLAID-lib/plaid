@@ -1,13 +1,10 @@
 """Protocol definition for storage backend modules."""
 
+from collections.abc import Callable, Generator, Iterable, Mapping
 from pathlib import Path
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
-    Generator,
-    Iterable,
-    Mapping,
     Optional,
     Protocol,
     Union,

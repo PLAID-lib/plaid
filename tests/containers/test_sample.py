@@ -708,6 +708,14 @@ class Test_Sample:
 
         assert sample.get_global("scalar") == value
 
+    def test_get_global_size_one_str_and_bool(self, sample: Sample):
+        """Size-1 str and bool globals come back as NumPy scalars allowed by the return hint."""
+        sample.add_global("g_char", "a")
+        assert sample.get_global("g_char") == b"a"
+
+        sample.add_global("g_bool", np.array([True]))
+        assert sample.get_global("g_bool") == np.True_
+
     def test_get_global_names_excludes_time_arrays(self, sample: Sample):
         sample.init_base(2, 2, "Base_2_2", time=0.0)
         sample.add_global("kept_name", np.array([1.0]), time=0.0)

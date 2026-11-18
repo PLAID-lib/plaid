@@ -14,8 +14,9 @@ Key features:
 import logging
 import os
 import tempfile
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Iterable, Iterator, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 from datasets import IterableDataset
