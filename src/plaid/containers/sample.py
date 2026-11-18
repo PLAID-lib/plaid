@@ -1,25 +1,14 @@
 """Implementation of the `Sample` container."""
 
 # %% Imports
-import sys
-
-from ..types.cgns_types import CGNSTree
-from ..types.common import ScalarOrArrayOrStr
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:  # pragma: no cover
-    from typing import TypeVar
-
-    Self = TypeVar("Self")
-
 import logging
 import pickle
 import shutil
 import subprocess
+import sys
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Self, Union
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
@@ -35,6 +24,8 @@ from ..constants import (
     CGNS_FIELD_LOCATIONS,
 )
 from ..types import Array, CGNSNode
+from ..types.cgns_types import CGNSTree
+from ..types.common import ScalarOrArrayOrStr
 from ..utils import cgns_helper as CGH
 from .managers.default_manager import DefaultManager
 from .utils import _check_names, _read_index, get_feature_details_from_path
@@ -1285,7 +1276,7 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
             time (float, optional): The time step for which to retrieve the global array. If not provided, uses the default time.
 
         Returns:
-            Optional[Array]: The global array if found, otherwise None. Returns a scalar if the array has size 1.
+            Optional[Array]: The global array if found, otherwise None. Returns a scalar if the array has size 1., return a vector if the array has size > 1, or return a string if the array is of type string.
         """
         time = self.resolve_time(time)
 
@@ -1295,6 +1286,11 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         global_ = CGU.getValueByPath(self.data[time], "Global/" + name)
         if global_ is None:
             return None
+
+        if isinstance(
+            global_, np.generic
+        ):  # return NumPy scalars before trying to index them
+            return global_
 
         if getattr(global_, "size", None) == 1:
             return global_[0]
@@ -1550,6 +1546,51 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         return elements
 
     # -------------------------------------------------------------------------#
+    def _get_field_names_one_time_base_zone_location(
+        self, location: str, zone: str, base: str, time: float
+    ) -> list[str]:
+        """Return the field names stored at one (time, base, zone, location)."""
+        # get_zone will look for default zone, base, time
+        search_node = self.get_zone(zone=zone, base=base, time=time)
+        if search_node is None:  # pragma: no cover
+            return []
+
+        names = []
+        # try to find IntegrationPoint on UserDefinedData_t
+        solution_paths = CGU.getPathsByTypeSet(
+            search_node, [CGK.FlowSolution_t, "UserDefinedData_t"]
+        )
+        for f_path in solution_paths:
+            grid_loc_node = CGU.getValueByPath(search_node, f_path + "/GridLocation")
+            if grid_loc_node is not None:
+                if grid_loc_node.tobytes().decode() != location:
+                    continue
+            else:
+                ##possible an integration point data check Muscat Implementation for details
+                grid_loc_node = CGU.getValueByPath(
+                    search_node, f_path + "/gridlocation"
+                )
+                if grid_loc_node is not None:
+                    if grid_loc_node.tobytes().decode() != location:
+                        continue  # pragma: no cover
+                else:
+                    continue  # pragma: no cover
+
+            f_node = CGU.getNodeByPath(search_node, f_path)
+            for path in CGU.getPathByTypeFilter(f_node, CGK.DataArray_t):
+                field_name = path.split("/")[-1]
+                if field_name not in [
+                    "GridLocation",
+                    "ItgRules",
+                    "gridlocation",
+                    "ItgPointStartOffset",
+                    "Ids",
+                    "Path",
+                ]:
+                    names.append(field_name)
+
+        return names
+
     def get_field_names(
         self,
         location: str = None,
@@ -1573,53 +1614,6 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         Returns:
             set[str]: A set containing the names of the fields that match the specified criteria.
         """
-
-        def get_field_names_one_time_base_zone_location(
-            location: str, zone: str, base: str, time: float
-        ) -> list[str]:
-            # get_zone will look for default zone, base, time
-            search_node = self.get_zone(zone=zone, base=base, time=time)
-            if search_node is None:  # pragma: no cover
-                return []
-
-            names = []
-            # try to find IntegrationPoint on UserDefinedData_t
-            solution_paths = CGU.getPathsByTypeSet(
-                search_node, [CGK.FlowSolution_t, "UserDefinedData_t"]
-            )
-            for f_path in solution_paths:
-                grid_loc_node = CGU.getValueByPath(
-                    search_node, f_path + "/GridLocation"
-                )
-                if grid_loc_node is not None:
-                    if grid_loc_node.tobytes().decode() != location:
-                        continue
-                else:
-                    ##possible an integration point data check Muscat Implementation for details
-                    grid_loc_node = CGU.getValueByPath(
-                        search_node, f_path + "/gridlocation"
-                    )
-                    if grid_loc_node is not None:
-                        if grid_loc_node.tobytes().decode() != location:
-                            continue  # pragma: no cover
-                    else:
-                        continue  # pragma: no cover
-
-                f_node = CGU.getNodeByPath(search_node, f_path)
-                for path in CGU.getPathByTypeFilter(f_node, CGK.DataArray_t):
-                    field_name = path.split("/")[-1]
-                    if field_name not in [
-                        "GridLocation",
-                        "ItgRules",
-                        "gridlocation",
-                        "ItgPointStartOffset",
-                        "Ids",
-                        "Path",
-                    ]:
-                        names.append(field_name)
-
-            return names
-
         field_names = []
         times = [time] if time is not None else self.get_all_time_values()
         for _time in times:
@@ -1635,11 +1629,13 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
                         [location] if location is not None else CGNS_FIELD_LOCATIONS
                     )
                     for _location in locations:
-                        field_names += get_field_names_one_time_base_zone_location(
-                            location=_location,
-                            zone=_zone,
-                            base=_base,
-                            time=_time,
+                        field_names += (
+                            self._get_field_names_one_time_base_zone_location(
+                                location=_location,
+                                zone=_zone,
+                                base=_base,
+                                time=_time,
+                            )
                         )
 
         field_names = sorted(set(field_names))

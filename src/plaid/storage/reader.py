@@ -11,8 +11,9 @@ Key features:
 - Sample conversion between storage formats and PLAID objects
 """
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable, Optional, Union
+from typing import Any, Optional, Union
 
 from plaid.storage.common.bridge import (
     plaid_to_sample_dict,

@@ -14,8 +14,9 @@ Key features:
 
 import gc
 import multiprocessing as mp
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import yaml

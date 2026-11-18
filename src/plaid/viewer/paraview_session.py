@@ -15,7 +15,6 @@ from plaid.cli.serve import ServeContext, _ServeHTTPServer
 
 logger = logging.getLogger(__name__)
 _PARAVIEW_PORTS = range(8081, 8091)
-_sessions: set[ParaViewSession] = set()
 _sessions_lock = threading.Lock()
 
 
@@ -64,6 +63,9 @@ class ParaViewSession:
         self.server.shutdown()
         self.server.server_close()
         self._server_thread.join(timeout=5)
+
+
+_sessions: set[ParaViewSession] = set()
 
 
 def _close_sessions() -> None:

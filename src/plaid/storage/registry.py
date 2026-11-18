@@ -14,8 +14,22 @@ BACKENDS = {
 }
 
 
-def get_backend(name: str) -> type[BackendModule]:
-    """Return backend module."""
+def get_backend(name: str) -> BackendModule:
+    """Return the backend object implementing the storage protocol.
+
+    Backends expose static methods, so their classes satisfy the protocol
+    directly. Avoid ``type[BackendModule]``: its runtime subclass check is
+    unsupported for protocols with data members such as ``name``.
+
+    Args:
+        name: Registered storage backend name.
+
+    Returns:
+        The backend class exposing the storage methods and backend name.
+
+    Raises:
+        ValueError: If the backend name is not registered.
+    """
     if name not in BACKENDS:
         raise ValueError(
             f"Error! backend '{name}' not available, option are: {list(BACKENDS.keys())}"

@@ -1,8 +1,8 @@
 """Package for HF_datasets storage."""
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import Any, Callable, Optional, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 from datasets import Dataset, IterableDatasetDict

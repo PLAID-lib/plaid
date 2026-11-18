@@ -16,6 +16,7 @@ dependencies:
   - datasets
   - numpy
 #---# data validation
+  - beartype
   - pydantic
 ##### DEV/TESTS/EXAMPLES #####
 #---# mesh/graph libs

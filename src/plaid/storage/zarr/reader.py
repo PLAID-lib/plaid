@@ -14,8 +14,9 @@ Key features:
 
 import logging
 import os
+from collections.abc import Iterable, Iterator
 from pathlib import Path
-from typing import Any, Iterable, Iterator, Optional, Union
+from typing import Any, Optional, Union
 
 import fsspec
 import yaml

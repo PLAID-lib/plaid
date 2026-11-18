@@ -7,8 +7,9 @@ uploading to Hugging Face Hub, and configuring dataset cards.
 
 import logging
 import multiprocessing as mp
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Any, Optional, Union
 
 import yaml
 from huggingface_hub import DatasetCard, HfApi

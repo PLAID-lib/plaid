@@ -1,7 +1,8 @@
 """Utility functions for working with CGNS trees and nodes."""
 
 from collections import defaultdict
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any, Optional
 
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np

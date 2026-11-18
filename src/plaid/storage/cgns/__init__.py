@@ -1,8 +1,8 @@
 """Package for CGNS storage."""
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
-from typing import Any, Callable, Mapping, Optional, Union
+from typing import Any, Optional, Union
 
 from datasets import IterableDataset
 
