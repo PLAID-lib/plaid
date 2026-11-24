@@ -199,7 +199,13 @@ class _Data:
 
     def GetArray(self, name: str):  # noqa: N802
         rng = self.arrays.get(name)
-        return None if rng is None else types.SimpleNamespace(GetRange=lambda _idx: rng)
+        return (
+            None
+            if rng is None
+            else types.SimpleNamespace(
+                GetRange=lambda _idx: rng, GetNumberOfComponents=lambda: 1
+            )
+        )
 
 
 class _Leaf:

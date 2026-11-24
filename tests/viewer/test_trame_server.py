@@ -241,7 +241,13 @@ def test_dataset_selector_is_independent_of_root_controls(
     allow_root_change: bool,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Keep dataset selection available when the datasets root is pinned."""
+    """Hide desktop controls for pinned roots, but keep dataset selection.
+
+    Args:
+        tmp_path: Temporary datasets root and artifact directory.
+        allow_root_change: Whether desktop root controls are enabled.
+        monkeypatch: Pytest fixture for isolating the trame server name.
+    """
     from trame import app  # noqa: PLC0415
 
     from plaid.viewer.config import ViewerConfig  # noqa: PLC0415
@@ -269,6 +275,9 @@ def test_dataset_selector_is_independent_of_root_controls(
             super().__init__()
             self.conditions: list[str] = []
             self.selector_conditions: list[str] | None = None
+            self.paraview_conditions: list[str] | None = None
+            self.tooltip_conditions: list[str] | None = None
+            self.status_conditions: list[str] | None = None
 
         def handle_starttag(
             self, tag: str, attrs: list[tuple[str, str | None]]
@@ -279,6 +288,21 @@ def test_dataset_selector_is_independent_of_root_controls(
                 self.conditions.append(attributes.get("v-if", ""))
             if tag == "vselect" and attributes.get("label") == "Dataset":
                 self.selector_conditions = list(self.conditions)
+            if tag == "vtooltip" and attributes.get("text", "").startswith(
+                "Open a local dataset in ParaView."
+            ):
+                self.tooltip_conditions = list(self.conditions)
+
+        def handle_data(self, data: str) -> None:
+            """Record visibility conditions for ParaView controls.
+
+            Args:
+                data: Text content from the generated UI template.
+            """
+            if data.strip() == "Open in ParaView":
+                self.paraview_conditions = list(self.conditions)
+            if data.strip() == "{{ paraview_status }}":
+                self.status_conditions = list(self.conditions)
 
         def handle_endtag(self, tag: str) -> None:
             """Remove the visibility condition for a closed div."""
@@ -297,6 +321,12 @@ def test_dataset_selector_is_independent_of_root_controls(
     assert parser.selector_conditions is not None
     assert "allow_dataset_change" in parser.selector_conditions
     assert "allow_root_change" not in parser.selector_conditions
+    assert parser.paraview_conditions is not None
+    assert "allow_root_change" in parser.paraview_conditions
+    assert parser.tooltip_conditions is not None
+    assert "allow_root_change" in parser.tooltip_conditions
+    assert parser.status_conditions is not None
+    assert "allow_root_change && paraview_status" in parser.status_conditions
 
 
 @pytest.mark.usefixtures("headless_trame_view")

@@ -49,7 +49,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--disable-root-change",
         action="store_true",
         help=(
-            "Hide the 'Datasets root' UI panel; the root stays fixed to "
+            "Hide the 'Datasets root' UI panel and 'Open in ParaView' "
+            "desktop launcher; the root stays fixed to "
             "--datasets-root for the lifetime of the server. Recommended "
             "for public deployments (e.g. Hugging Face Spaces)."
         ),

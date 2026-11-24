@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (docs) document individual Sample export and loading in ParaView, reader dependencies, and the experimental VTK reader's hierarchy differences and CGNS compatibility limitations.
 - (dataset-viewer) add an **Iso contour** switch that limits the colormap to 9 color bands, to visualize the iso contours of the field.
 - (dataset-viewer) add independent **Min** and **Max** color scale limits, each with a **Dynamic** (default), **Fix** or **Grow only** mode; invalid fixed limits keep the last valid scale and show an error.
+- (dataset-viewer) expose individual vector components (e.g. `U_x`, `U_y`) alongside vector magnitude in **Field to plot**, with signed component color ranges and VTK's artificial 2D padding component hidden.
 - (dataset-viewer) add a **Compare individual splits** switch to generate stacked skrub reports per split, with tabs synchronized across reports; turn it off to return to the global report.
 - (ParaView plugin) support direct CGNS-tree/VTK conversion, including VTK-to-CGNS export, CGNS hierarchy and tag preservation, and bulk connectivity conversion for uniform fixed-size unstructured grids. The self-contained plugin bundle can be written to a caller-provided directory.
 - (storage/writer) add optional `sample_callback` to `save_to_disk`, invoked once per sample right after it is written to disk as `sample_callback(split_name, index, sample_path)`. This lets callers process samples one by one once written instead of waiting for the whole dataset. Currently supported for the `cgns` backend, including parallel writing (`num_proc > 1`), where the callback runs inside the worker processes and must be picklable and process-safe.
@@ -26,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (dataset-viewer) hide the **Open in ParaView** desktop launcher, its tooltip and status message when `--disable-root-change` is used for server deployments without a desktop.
 - (plaidcheck/problem_definition) support multiple subsplits per problem-definition split.
 - (dataset-viewer) keep the camera viewpoint when changing samples; it is only reset on the first load or by **Reset camera**.
 - (dataset-viewer) keep the current physical time when changing samples, using the closest available time step of the new sample.
@@ -39,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (dataset-viewer) render the selected colormap (viridis, plasma, ...) instead of a rainbow hue ramp, and color the **Show edges** switch so its state is visible.
 - (storage/preprocessor) preserve the source floating-point dtype during schema inference.
 - (storage/reader) Fix HF backend split download not respecting `~` character on Linux.
+- (tests/cli) make `test_run_server_until_process_exits_starts_and_stops_server` independent of thread scheduling: `serve_forever` runs in a background thread and may be recorded after `server_close`, which made the test fail on CI.
 
 ## [1.0.0] - 2026-07-07
 

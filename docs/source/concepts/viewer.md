@@ -37,7 +37,7 @@ Useful launch options:
 | `--hub-repo namespace/name` | Adds a Hugging Face Hub dataset to stream. Can be repeated. |
 | `--dataset-id name` | Selects this dataset when the viewer starts. |
 | `--browse-roots /path ...` | Limits the folders the root field and folder browser can open (home directory by default). |
-| `--disable-root-change` | Hides the datasets root controls. |
+| `--disable-root-change` | Hides the datasets root controls and the desktop-only Open in ParaView launcher (for server deployments). |
 | `--disable-dataset-change` | Hides the dataset selector, pinning the selected dataset. |
 | `--host 0.0.0.0` | Makes the viewer reachable from another machine. |
 | `--port 8080` | Changes the web server port. |
@@ -226,6 +226,13 @@ The **3D Rendering options** card appears when a base is selected. Choose a
 
 If no field is selected, the viewer still shows the mesh, but without scalar
 coloring. When a field is selected, a color legend appears in the 3D view.
+
+Vector fields also expose individual components in **Field to plot**. For
+example, when the CGNS reader groups `U_x` and `U_y` into `U`, select
+`point:U` for displacement magnitude, `point:U_x` for the signed x component,
+or `point:U_y` for the signed y component. The artificial zero component
+added by VTK for 2D vectors is hidden. Components without names use zero-based
+numeric suffixes. The source arrays and dataset files are unchanged.
 
 The same card also contains the colormap, edge visibility, iso contour, and
 camera reset controls described in [Rendering options](#rendering-options).
