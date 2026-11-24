@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- (types) public functions and methods now check their arguments and return values at runtime with beartype: a call with a wrong type (e.g. a `str` where a `Sample` is expected) raises `beartype.roar.BeartypeCallHintViolation` instead of failing later or silently. `int` stays accepted where `float` is expected.
 - (dataset-viewer) hide the **Open in ParaView** desktop launcher, its tooltip and status message when `--disable-root-change` is used for server deployments without a desktop.
 - (plaidcheck/problem_definition) support multiple subsplits per problem-definition split.
 - (dataset-viewer) keep the camera viewpoint when changing samples; it is only reset on the first load or by **Reset camera**.

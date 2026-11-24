@@ -2,9 +2,11 @@
 
 import logging
 
+from beartype import BeartypeConf
 from beartype.claw import beartype_this_package  # <-- boilerplate for victory
 
-beartype_this_package()
+# PEP 484 numeric tower: ``float`` hints accept ``int``, as mypy and pyright do.
+beartype_this_package(conf=BeartypeConf(is_pep484_tower=True))
 
 from .containers.sample import Sample  # noqa: E402
 from .containers.utils import get_number_of_samples, get_sample_ids  # noqa: E402

@@ -3,6 +3,11 @@
 import subprocess
 import sys
 
+import pytest
+
+# The script imports viewer modules, which need the ``viewer`` extra.
+pytest.importorskip("plotly")
+
 # beartype classes cannot go through ``python -W`` (resolved before import), so filter in code.
 _SCRIPT = """
 import warnings
