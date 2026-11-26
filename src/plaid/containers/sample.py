@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Literal, Optional, Self, Union
+from typing import Optional, Self, Union
 
 import CGNS.MAP as CGM
 import CGNS.PAT.cgnskeywords as CGK
@@ -638,15 +638,13 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         tree: CGNSTree,
         time: Optional[float] = None,
         in_place: bool = False,
-        on_duplicate_base: Literal["ignore", "raise"] = "ignore",
     ) -> CGNSTree:
         """Merge a CGNS tree into the tree stored at a given time.
 
         If there is no tree at ``time``, the added tree is stored as a whole. Otherwise, Base
         nodes from ``tree`` are appended only when their name does not already exist in
-        the destination tree. Bases with duplicate names are handled according to
-        ``on_duplicate_base``: ignored with a warning (default), or rejected with a
-        ``ValueError`` before the stored tree is modified.
+        the destination tree. Bases with duplicate names are ignored and a warning is
+        emitted.
 
         The ``Time/TimeValues`` metadata of every inserted base is set to ``[time]``,
         so a tree reused from another time step is stored with the new timestamp. A
@@ -683,14 +681,9 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
             in_place (bool, optional): Controls ownership of the input tree. When
                 ``False`` (default), only the tree structure is recursively copied.
                 When ``True``, the provided structure may be used directly.
-            on_duplicate_base (Literal["ignore", "raise"], optional): What to do when
-                a base of ``tree`` already exists at ``time``. ``"ignore"`` (default)
-                skips it and logs a warning; ``"raise"`` raises a ``ValueError`` and
-                adds nothing.
 
         Raises:
-            ValueError: If ``tree`` is an empty list, or if ``on_duplicate_base`` is
-                ``"raise"`` and a base of ``tree`` already exists at ``time``.
+            ValueError: If ``tree`` is an empty list.
 
         Returns:
             CGNSTree: The resulting tree for the resolved ``time``.
@@ -729,15 +722,9 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
             # TODO: gérer le cas où il y a des bases de mêmes noms... + merge
             # récursif des nœuds
             local_bases = self.get_base_names(time=time)
-            base_nodes = [
-                node for _, node in CGU.getNodesFromTypeSet(tree, "CGNSBase_t")
-            ]
-            duplicates = [n[__NAME__] for n in base_nodes if n[__NAME__] in local_bases]
-            if duplicates and on_duplicate_base == "raise":
-                raise ValueError(f"bases {duplicates} already exist at time {time}")
             inserted_bases = []
-            for node in base_nodes:
-                if node[__NAME__] in duplicates:
+            for _, node in CGU.getNodesFromTypeSet(tree, "CGNSBase_t"):
+                if node[__NAME__] in local_bases:
                     logger.warning(
                         f"base <{node[__NAME__]}> already exists in self._tree --> ignored"
                     )

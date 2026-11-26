@@ -35,7 +35,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (plaid-serve) `--ParaViewRun` now starts the data API before launching ParaView, and passes a generated script that creates and displays a **Plaid Explorer** source automatically.
 - (ParaView plugin) rename the server port property from `Port` to `PortNB` (`SetPort` to `SetPortNB`); update ParaView state files and scripts that set it.
 - (sample) `Sample.add_tree` now defaults to `in_place=False`: it recursively copies the CGNS tree structure without copying the NumPy arrays, and marks the shared arrays (including those in the caller's tree) and newly created time metadata read-only. Pass `in_place=True` to reuse the tree structure without changing array writeability.
-- (sample) `Sample.add_tree` adds `on_duplicate_base="ignore" | "raise"`; bases ignored as duplicates keep their array flags.
 
 ### Fixed
 

@@ -450,21 +450,6 @@ class Test_Sample:
             a.flags.writeable for a in arrays(sample.get_base(base_name + "_new"))
         )
 
-    def test_add_tree_raises_on_duplicate_base(self, sample: Sample, tree):
-        stored = sample.add_tree(tree)
-        base_name = sample.get_base_names()[0]
-        other = copy.deepcopy(tree)
-        new_base = copy.deepcopy(CGU.getNodeByPath(other, "/CGNSTree/" + base_name))
-        new_base[0] = base_name + "_new"
-        other[2].append(new_base)
-        n_children = len(stored[2])
-
-        with pytest.raises(ValueError, match=base_name):
-            sample.add_tree(other, on_duplicate_base="raise")
-
-        assert len(stored[2]) == n_children
-        assert sample.get_base_names() == [base_name]
-
     def test_add_tree_completes_time_node_without_time_values(
         self, sample: Sample, tree
     ):
