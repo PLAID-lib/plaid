@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (plaid-serve) `--ParaViewRun` now starts the data API before launching ParaView, and passes a generated script that creates and displays a **Plaid Explorer** source automatically.
 - (ParaView plugin) rename the server port property from `Port` to `PortNB` (`SetPort` to `SetPortNB`); update ParaView state files and scripts that set it.
 - (sample) `Sample.add_tree` now defaults to `in_place=False`: it recursively copies the CGNS tree structure without copying the NumPy arrays, and marks the shared arrays (including those in the caller's tree) and newly created time metadata read-only. Pass `in_place=True` to reuse the tree structure without changing array writeability.
+- (sample) `Sample.add_tree` adds `on_duplicate_base="ignore" | "raise"`; bases ignored as duplicates keep their array flags.
 
 ### Fixed
 
@@ -44,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (storage/preprocessor) preserve the source floating-point dtype during schema inference.
 - (storage/reader) Fix HF backend split download not respecting `~` character on Linux.
 - (tests/cli) make `test_run_server_until_process_exits_starts_and_stops_server` independent of thread scheduling: `serve_forever` runs in a background thread and may be recorded after `server_close`, which made the test fail on CI.
+- (sample) fix `Sample.add_tree` keeping the source `Time/TimeValues` when a tree is reused at another time step: every inserted base now gets the insertion time, so the second step no longer overwrites the first on save/load.
 - (sample) fix `Sample.summarize()` to show each global's value at its own time step instead of using the default time. Multi-step summaries label each Scalars entry with its timestamp.
 
 ## [1.0.0] - 2026-07-07

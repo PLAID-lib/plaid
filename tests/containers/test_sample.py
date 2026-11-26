@@ -1,6 +1,7 @@
 # %% Imports
 
 import copy
+import logging
 from pathlib import Path
 
 import CGNS.PAT.cgnskeywords as CGK
@@ -392,6 +393,110 @@ class Test_Sample:
         new_paths = added_arrays.keys() - original_arrays.keys()
         assert any(path.endswith("/Time/TimeValues") for path in new_paths)
         assert all(added_arrays[path].flags.writeable == in_place for path in new_paths)
+
+    def test_add_tree_reused_tree_gets_insertion_time(
+        self, sample: Sample, tree, tmp_path
+    ):
+        tree_0 = sample.add_tree(tree, time=0.0)
+        tree_1 = sample.add_tree(tree_0, time=1.0)
+
+        coord_path = CGU.getPathsByTypeSet(tree_0, ["GridCoordinates_t"])[0]
+        coord_x = coord_path + "/CoordinateX"
+        assert np.shares_memory(
+            CGU.getValueByPath(tree_1, coord_x), CGU.getValueByPath(tree_0, coord_x)
+        )
+        base_name = sample.get_base_names(time=0.0)[0]
+        tv_path = f"{base_name}/Time/TimeValues"
+        np.testing.assert_array_equal(CGU.getValueByPath(tree_0, tv_path), [0.0])
+        np.testing.assert_array_equal(CGU.getValueByPath(tree_1, tv_path), [1.0])
+
+        n_nodes = sample.get_nodes(time=0.0).shape[0]
+        sample.add_field("u", np.zeros(n_nodes), time=0.0)
+        sample.add_field("u", np.ones(n_nodes), time=1.0)
+
+        sample.save_to_dir(tmp_path / "sample")
+        loaded = Sample.load_from_dir(tmp_path / "sample")
+
+        assert loaded.get_all_time_values() == [0.0, 1.0]
+        np.testing.assert_array_equal(loaded.get_field("u", time=0.0), 0.0)
+        np.testing.assert_array_equal(loaded.get_field("u", time=1.0), 1.0)
+
+    def test_add_tree_ignored_base_keeps_writeable_arrays(
+        self, sample: Sample, tree, caplog
+    ):
+        sample.add_tree(tree)
+        base_name = sample.get_base_names()[0]
+
+        other = copy.deepcopy(tree)
+        ignored_base = CGU.getNodeByPath(other, "/CGNSTree/" + base_name)
+        new_base = copy.deepcopy(ignored_base)
+        new_base[0] = base_name + "_new"
+        other[2].append(new_base)
+
+        def arrays(node):
+            if isinstance(node[1], np.ndarray):
+                yield node[1]
+            for child in node[2]:
+                yield from arrays(child)
+
+        assert all(a.flags.writeable for a in arrays(ignored_base))
+        with caplog.at_level(logging.WARNING):
+            sample.add_tree(other)
+
+        assert f"base <{base_name}> already exists" in caplog.text
+        assert all(a.flags.writeable for a in arrays(ignored_base))
+        assert sample.get_base_names() == [base_name, base_name + "_new"]
+        assert not any(
+            a.flags.writeable for a in arrays(sample.get_base(base_name + "_new"))
+        )
+
+    def test_add_tree_raises_on_duplicate_base(self, sample: Sample, tree):
+        stored = sample.add_tree(tree)
+        base_name = sample.get_base_names()[0]
+        other = copy.deepcopy(tree)
+        new_base = copy.deepcopy(CGU.getNodeByPath(other, "/CGNSTree/" + base_name))
+        new_base[0] = base_name + "_new"
+        other[2].append(new_base)
+        n_children = len(stored[2])
+
+        with pytest.raises(ValueError, match=base_name):
+            sample.add_tree(other, on_duplicate_base="raise")
+
+        assert len(stored[2]) == n_children
+        assert sample.get_base_names() == [base_name]
+
+    def test_add_tree_completes_time_node_without_time_values(
+        self, sample: Sample, tree
+    ):
+        base_node = next(CGU.getNodesFromTypeSet(tree, "CGNSBase_t"))[1]
+        CGL.newBaseIterativeData(base_node, "Time", 1)
+
+        sample.add_tree(tree, time=0.5)
+        added_base = sample.get_base(base_node[0], time=0.5)
+
+        assert [c[0] for c in added_base[2]].count("Time") == 1
+        np.testing.assert_array_equal(
+            CGU.getValueByPath(added_base, "Time/TimeValues"), [0.5]
+        )
+
+    def test_add_tree_earlier_writable_view_changes_shared_data(
+        self, sample: Sample, tree
+    ):
+        coord_path = CGU.getPathsByTypeSet(tree, ["GridCoordinates_t"])[0]
+        coords = CGU.getValueByPath(tree, coord_path + "/CoordinateX")
+        view = coords[:]
+        sample.add_tree(tree, time=0.0)
+        sample.add_tree(tree, time=1.0)
+
+        with pytest.raises(ValueError):
+            coords[0] = 42.0
+        view[0] = 42.0
+
+        for time in (0.0, 1.0):
+            stored = CGU.getValueByPath(
+                sample.get_tree(time), coord_path + "/CoordinateX"
+            )
+            assert stored[0] == 42.0
 
     def test_del_tree(self, sample, tree):
         sample.add_tree(tree)
