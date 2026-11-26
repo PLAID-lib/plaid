@@ -1481,7 +1481,25 @@ class Test_Sample:
         print(sample.summarize())
 
     def test_summarize_with_scalar(self, sample_with_scalar):
-        print(sample_with_scalar.summarize())
+        value = sample_with_scalar.get_global("test_scalar_1")
+        summary = sample_with_scalar.summarize()
+        assert f"Scalars (1):\n  - test_scalar_1: {value}\n\n" in summary
+
+    def test_summarize_globals_at_each_time(self, sample: Sample):
+        """Show each global at its own time, regardless of the default time."""
+        sample.add_global("pressure", 10.0, time=0.0)
+        sample.add_global("pressure", 20.0, time=1.0)
+        sample.add_global("temperature", 30.0, time=1.0)
+        sample.set_default_time(0.0)
+
+        summary = sample.summarize()
+
+        assert (
+            "Scalars (3):\n"
+            "  - pressure (time=0.0): 10.0\n"
+            "  - pressure (time=1.0): 20.0\n"
+            "  - temperature (time=1.0): 30.0\n\n"
+        ) in summary
 
     def test_summarize_with_tree(self, sample_with_tree):
         print(sample_with_tree.summarize())

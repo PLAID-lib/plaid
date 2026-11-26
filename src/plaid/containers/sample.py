@@ -306,7 +306,8 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         """Provide detailed summary of the Sample content, showing feature names and mesh information.
 
         This provides more detailed information than the __repr__ method,
-        including the name of each feature.
+        including the name of each feature. When there are multiple time steps,
+        each global entry is labeled with its timestamp.
 
         Returns:
             str: A detailed string representation of the sample content.
@@ -342,18 +343,20 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         """
         summary = "Sample Summary:\n"
         summary += "=" * 50 + "\n"
+        times = self.get_all_time_values()
 
         # Scalars with names
-        scalar_names = self.get_global_names()
-        if scalar_names:
-            summary += f"Scalars ({len(scalar_names)}):\n"
-            for name in scalar_names:
-                value = self.get_global(name)
-                summary += f"  - {name}: {value}\n"
-            summary += "\n"
+        scalar_lines = []
+        for time in times:
+            time_label = f" (time={time})" if len(times) > 1 else ""
+            for name in self.get_global_names(time=time):
+                value = self.get_global(name, time=time)
+                scalar_lines.append(f"  - {name}{time_label}: {value}\n")
+        if scalar_lines:
+            summary += f"Scalars ({len(scalar_lines)}):\n"
+            summary += "".join(scalar_lines) + "\n"
 
         # Mesh information
-        times = self.get_all_time_values()
         summary += f"Meshes ({len(times)} timestamps):\n"
         if times:
             for time in times:

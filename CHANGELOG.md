@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (storage/preprocessor) preserve the source floating-point dtype during schema inference.
 - (storage/reader) Fix HF backend split download not respecting `~` character on Linux.
 - (tests/cli) make `test_run_server_until_process_exits_starts_and_stops_server` independent of thread scheduling: `serve_forever` runs in a background thread and may be recorded after `server_close`, which made the test fail on CI.
+- (sample) fix `Sample.summarize()` to show each global's value at its own time step instead of using the default time. Multi-step summaries label each Scalars entry with its timestamp.
 
 ## [1.0.0] - 2026-07-07
 
