@@ -4,7 +4,9 @@ import ast
 import json
 import os
 import socket
+import sys
 from pathlib import Path
+from subprocess import Popen
 from types import SimpleNamespace
 from typing import Optional
 from urllib import error, request
@@ -12,6 +14,13 @@ from urllib import error, request
 import pytest
 
 from plaid.cli import paraview_plugin
+
+
+@pytest.fixture
+def local_process():
+    """Yield a real local process and reap it after the launcher test."""
+    with Popen([sys.executable, "-c", "pass"]) as process:
+        yield process
 
 
 def test_get_paraview_plugin_path_returns_module_directory():
@@ -80,7 +89,9 @@ def test_get_paraview_plugin_path_one_file_uses_provided_directory(tmp_path):
     assert (tmp_path / "PlaidParaViewPlugin.py").is_file()
 
 
-def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
+def test_run_paraview_with_plugin_sets_environment(
+    monkeypatch, tmp_path, local_process
+):
     """Launching ParaView should pass plugin-related environment variables."""
     calls = []
 
@@ -88,7 +99,7 @@ def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
         calls.append({"args": args, "env": env, "stdin": stdin})
         assert Path(args[2]).is_file()
         assert "PlaidExplorer1" in Path(args[2]).read_text()
-        return SimpleNamespace(pid=1234)
+        return local_process
 
     monkeypatch.setattr(
         paraview_plugin,
@@ -100,7 +111,7 @@ def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
 
     process = paraview_plugin.run_paraview_with_plugin_client_server(port=8123)
 
-    assert process.pid == 1234
+    assert process is local_process
     assert calls[0]["args"][:2] == ["custom-paraview", "--script"]
     assert calls[0]["env"]["SCRIPT_PATH"] == calls[0]["args"][2]
     assert calls[0]["stdin"] == paraview_plugin.subprocess.DEVNULL
@@ -112,6 +123,7 @@ def test_run_paraview_with_plugin_sets_environment(monkeypatch, tmp_path):
 def test_run_paraview_with_plugin_sets_wslenv_for_windows_paraview(
     monkeypatch,
     tmp_path,
+    local_process,
 ):
     """WSL launches should propagate plugin variables to Windows ParaView."""
     calls = []
@@ -125,7 +137,7 @@ def test_run_paraview_with_plugin_sets_wslenv_for_windows_paraview(
         paraview_plugin.subprocess,
         "Popen",
         lambda args, env, stdin: (
-            calls.append({"args": args, "env": env, "stdin": stdin}) or object()
+            calls.append({"args": args, "env": env, "stdin": stdin}) or local_process
         ),
     )
     monkeypatch.setenv("PARAVIEW_EXEC", "/mnt/c/ParaView/bin/paraview.exe")
@@ -139,7 +151,7 @@ def test_run_paraview_with_plugin_sets_wslenv_for_windows_paraview(
     assert calls[0]["env"]["PLAID_PORT"] == "8123"
 
 
-def test_paraview_script_uses_custom_tree_name(monkeypatch, tmp_path):
+def test_paraview_script_uses_custom_tree_name(monkeypatch, tmp_path, local_process):
     """The options are reflected in the script passed to ParaView."""
     monkeypatch.setattr(
         paraview_plugin, "get_ParaView_plugin_path_one_file", lambda: tmp_path
@@ -150,7 +162,7 @@ def test_paraview_script_uses_custom_tree_name(monkeypatch, tmp_path):
         assert env["SCRIPT_PATH"] == args[2]
         assert stdin == paraview_plugin.subprocess.DEVNULL
         scripts.append(Path(args[2]).read_text())
-        return SimpleNamespace(pid=1234)
+        return local_process
 
     monkeypatch.setattr(paraview_plugin.subprocess, "Popen", fake_popen)
     paraview_plugin.run_paraview_with_plugin_client_server(

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import errno
 import socket
-import threading
+import sys
 from pathlib import Path
+from subprocess import PIPE, Popen
 from urllib import request
 
 import pytest
@@ -19,16 +20,8 @@ def test_open_dataset_serves_selected_path_on_actual_port(
     dataset = tmp_path / "selected"
     dataset.mkdir()
     launched: list[tuple[int, dict[str, str]]] = []
-    exited = threading.Event()
 
-    class Process:
-        """Model a running ParaView until the test releases it."""
-
-        def wait(self) -> None:
-            """Block until ParaView exits."""
-            exited.wait(timeout=5)
-
-    def launch(port: int, options: dict[str, str]) -> Process:
+    def launch(port: int, options: dict[str, str]) -> Popen[bytes]:
         """Capture the API port and source options passed to ParaView.
 
         Args:
@@ -36,12 +29,12 @@ def test_open_dataset_serves_selected_path_on_actual_port(
             options: ParaView source settings, including the tree name.
 
         Returns:
-            The simulated running ParaView process.
+            A local process that waits for its standard input to close.
         """
         launched.append((port, options))
         with request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as response:
             assert response.read() == b'{"status": "ok"}'
-        return Process()
+        return Popen([sys.executable, "-c", "import sys; sys.stdin.read()"], stdin=PIPE)
 
     monkeypatch.setattr(
         paraview_session, "run_paraview_with_plugin_client_server", launch
@@ -57,7 +50,9 @@ def test_open_dataset_serves_selected_path_on_actual_port(
         ) as response:
             assert response.read() == b'{"status": "ok"}'
     finally:
-        exited.set()
+        assert session.process.stdin is not None
+        session.process.stdin.close()
+        session.process.wait(timeout=5)
         session.close()
         session.close()
 
@@ -101,30 +96,45 @@ def test_session_closes_after_paraview_exits(
     """The process watcher releases the API even when waiting fails."""
     dataset = tmp_path / "selected"
     dataset.mkdir()
-    finished = threading.Event()
 
-    class Process:
-        """Model a ParaView wait failure after its process exits."""
+    class Process(Popen[bytes]):
+        """Raise a wait error after a real local process exits."""
 
-        def wait(self) -> None:
-            """Signal the watcher, then raise a process error."""
-            finished.wait(timeout=5)
+        def wait(self, timeout: float | None = None) -> int:
+            """Wait for the process to exit, then simulate a wait error.
+
+            Args:
+                timeout: Maximum number of seconds to wait.
+
+            Returns:
+                No value, because the simulated error is always raised.
+
+            Raises:
+                OSError: After the local process has exited.
+            """
+            super().wait(timeout=timeout)
             raise OSError("wait failed")
 
+    process = Process(
+        [sys.executable, "-c", "import sys; sys.stdin.read()"], stdin=PIPE
+    )
     monkeypatch.setattr(
         paraview_session,
         "run_paraview_with_plugin_client_server",
-        lambda port, options: Process(),  # noqa: ARG005 - launcher keywords
+        lambda port, options: process,  # noqa: ARG005 - launcher keywords
     )
     session = paraview_session.open_dataset_in_paraview(dataset)
     try:
         assert session in paraview_session._sessions
-        finished.set()
+        assert process.stdin is not None
+        process.stdin.close()
         # Both the watcher and shutdown cleanup should be safe to call.
         paraview_session._close_sessions()
         assert session not in paraview_session._sessions
     finally:
-        finished.set()
+        if process.stdin is not None:
+            process.stdin.close()
+        Popen.wait(process, timeout=5)
         session.close()
 
 

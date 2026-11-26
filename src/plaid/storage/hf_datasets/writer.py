@@ -14,8 +14,9 @@ Key features:
 import gc
 import logging
 import tempfile
+from collections.abc import Callable, Generator
 from pathlib import Path
-from typing import Any, Callable, Generator, Optional, Union
+from typing import Any, Optional, Union
 
 import yaml
 from huggingface_hub import DatasetCard, hf_hub_download
