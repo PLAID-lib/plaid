@@ -351,17 +351,47 @@ class Test_Sample:
         # With in_place=True, the same object may be reused internally.
         assert CGU.getValueByPath(base_node, "Time/TimeValues") is not None
 
-    def test_add_tree_in_place_false_preserves_input_tree(self, sample: Sample, tree):
+    @pytest.mark.parametrize("kwargs", [{}, {"in_place": False}])
+    def test_add_tree_copies_input_structure(self, sample: Sample, tree, kwargs):
         base_path = CGU.getPathsByTypeSet(tree, ["CGNSBase_t"])[0]
         base_node = CGU.getNodeByPath(tree, base_path)
         assert CGU.getValueByPath(base_node, "Time/TimeValues") is None
 
-        sample.add_tree(tree, in_place=False)
+        added_tree = sample.add_tree(tree, **kwargs)
 
-        # With in_place=False, the input tree is deep-copied first.
+        assert added_tree is not tree
+        assert added_tree[2] is not tree[2]
         assert CGU.getValueByPath(base_node, "Time/TimeValues") is None
         added_base_node = sample.get_base(time=0.0)
+        assert added_base_node is not base_node
+        assert added_base_node[2] is not base_node[2]
         assert CGU.getValueByPath(added_base_node, "Time/TimeValues") is not None
+
+    @pytest.mark.parametrize("in_place", [False, True])
+    def test_add_tree_shared_array_writeability(self, sample: Sample, tree, in_place):
+        def array_values(node):
+            name, value, children, _ = node
+            if isinstance(value, np.ndarray):
+                yield name, value
+            for child in children:
+                for path, value in array_values(child):
+                    yield f"{name}/{path}", value
+
+        original_arrays = dict(array_values(tree))
+        original_flags = {
+            path: value.flags.writeable for path, value in original_arrays.items()
+        }
+        assert any(original_flags.values())
+        added_tree = sample.add_tree(tree, in_place=in_place)
+        added_arrays = dict(array_values(added_tree))
+
+        for path, value in original_arrays.items():
+            assert added_arrays[path] is value
+            assert value.flags.writeable == (in_place and original_flags[path])
+
+        new_paths = added_arrays.keys() - original_arrays.keys()
+        assert any(path.endswith("/Time/TimeValues") for path in new_paths)
+        assert all(added_arrays[path].flags.writeable == in_place for path in new_paths)
 
     def test_del_tree(self, sample, tree):
         sample.add_tree(tree)

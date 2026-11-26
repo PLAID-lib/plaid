@@ -6,7 +6,6 @@ import pickle
 import shutil
 import subprocess
 import sys
-from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Self, Union
 
@@ -15,7 +14,7 @@ import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
+from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__, __VALUE__
 from pydantic import BaseModel, model_validator
 from pydantic import Field as PydanticField
 
@@ -605,22 +604,27 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
             )
 
     def add_tree(
-        self, tree: CGNSTree, time: Optional[float] = None, in_place: bool = True
+        self, tree: CGNSTree, time: Optional[float] = None, in_place: bool = False
     ) -> CGNSTree:
         """Merge a CGNS tree into the tree stored at a given time.
 
-        If there is no tree at ``time``, ``tree`` is stored directly. Otherwise, Base
+        If there is no tree at ``time``, the added tree is stored as a whole. Otherwise, Base
         nodes from ``tree`` are appended only when their name does not already exist in
         the destination tree. Bases with duplicate names are ignored and a warning is
         emitted.
+
+        NumPy arrays are reused in both modes. When ``in_place`` is ``False``,
+        shared arrays and newly created time metadata are marked read-only.
+        When ``True``, existing array flags are left unchanged and new time
+        metadata is writable.
 
         Args:
             tree (CGNSTree): CGNS tree to add.
             time (float, optional): Time step at which the tree is added. If omitted,
                 the default time resolution is used.
             in_place (bool, optional): Controls ownership of the input tree. When
-                ``True`` (default), the provided object may be stored/used directly.
-                When ``False``, the input tree is deep-copied before insertion.
+                ``False`` (default), only the tree structure is recursively copied.
+                When ``True``, the provided structure may be used directly.
 
         Raises:
             ValueError: If ``tree`` is an empty list.
@@ -631,8 +635,18 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         if tree == []:
             raise ValueError("CGNS Tree should not be an empty list")
 
-        if not in_place:
-            tree = deepcopy(tree)
+        def _prepare_node(node: CGNSNode, copy_structure: bool) -> CGNSNode:
+            value = node[__VALUE__]
+            if isinstance(value, np.ndarray):
+                value.setflags(write=False)
+            children = node[__CHILDREN__]
+            if copy_structure:
+                node = node.copy()
+                node[__CHILDREN__] = [_prepare_node(child, True) for child in children]
+            else:
+                for child in children:
+                    _prepare_node(child, False)
+            return node
 
         def _iter_node_names(node: CGNSNode) -> list[str]:
             names = []
@@ -650,6 +664,8 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         _check_names(all_names)
 
         time = self.resolve_time(time)
+        if not in_place:
+            tree = _prepare_node(tree, copy_structure=True)
 
         if not self.data:
             self.data = {time: tree}
@@ -677,6 +693,8 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
                     "TimeValues", None, [], CGK.DataArray_ts, baseIterativeData_node
                 )
                 CGU.setValue(TimeValues_node, np.array([time]))
+                if not in_place:
+                    _prepare_node(baseIterativeData_node, copy_structure=False)
 
         return self.data[time]
 
