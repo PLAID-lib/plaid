@@ -6,7 +6,6 @@ import pickle
 import shutil
 import subprocess
 import sys
-from copy import deepcopy
 from pathlib import Path
 from typing import Optional, Self, Union
 
@@ -15,7 +14,7 @@ import CGNS.PAT.cgnskeywords as CGK
 import CGNS.PAT.cgnslib as CGL
 import CGNS.PAT.cgnsutils as CGU
 import numpy as np
-from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__
+from CGNS.PAT.cgnsutils import __CHILDREN__, __NAME__, __VALUE__
 from pydantic import BaseModel, model_validator
 from pydantic import Field as PydanticField
 
@@ -33,6 +32,33 @@ from .utils import _check_names, _read_index, get_feature_details_from_path
 logger = logging.getLogger(__name__)
 
 CGNS_WORKER = Path(__file__).parent.parent / "utils" / "cgns_worker.py"
+
+
+def _set_time_values(base_node: CGNSNode, time: float, read_only: bool = False) -> None:
+    """Set ``Time/TimeValues`` of a CGNS base to ``[time]``.
+
+    Missing ``Time`` or ``TimeValues`` nodes are created. A stale ``TimeValues``
+    array is replaced, never written into, because it may be shared with another
+    tree.
+
+    Args:
+        base_node (CGNSNode): The CGNSBase_t node to update.
+        time (float): The time value to store.
+        read_only (bool, optional): Whether created arrays are marked read-only.
+            Defaults to False.
+    """
+    time_node = CGU.getNodeByPath(base_node, "Time")
+    if time_node is None:
+        time_node = CGL.newBaseIterativeData(base_node, "Time", 1)
+        for node in [time_node, *time_node[__CHILDREN__]]:  # incl. IterationValues
+            node[__VALUE__].setflags(write=not read_only)
+    values_node = CGU.getNodeByPath(time_node, "TimeValues")
+    if values_node is None:
+        values_node = CGU.newNode("TimeValues", None, [], CGK.DataArray_ts, time_node)
+    elif np.array_equal(values_node[__VALUE__], [time]):
+        return
+    values_node[__VALUE__] = np.array([time])
+    values_node[__VALUE__].setflags(write=not read_only)
 
 
 class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
@@ -307,7 +333,8 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         """Provide detailed summary of the Sample content, showing feature names and mesh information.
 
         This provides more detailed information than the __repr__ method,
-        including the name of each feature.
+        including the name of each feature. When there are multiple time steps,
+        each global entry is labeled with its timestamp.
 
         Returns:
             str: A detailed string representation of the sample content.
@@ -343,18 +370,20 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         """
         summary = "Sample Summary:\n"
         summary += "=" * 50 + "\n"
+        times = self.get_all_time_values()
 
         # Scalars with names
-        scalar_names = self.get_global_names()
-        if scalar_names:
-            summary += f"Scalars ({len(scalar_names)}):\n"
-            for name in scalar_names:
-                value = self.get_global(name)
-                summary += f"  - {name}: {value}\n"
-            summary += "\n"
+        scalar_lines = []
+        for time in times:
+            time_label = f" (time={time})" if len(times) > 1 else ""
+            for name in self.get_global_names(time=time):
+                value = self.get_global(name, time=time)
+                scalar_lines.append(f"  - {name}{time_label}: {value}\n")
+        if scalar_lines:
+            summary += f"Scalars ({len(scalar_lines)}):\n"
+            summary += "".join(scalar_lines) + "\n"
 
         # Mesh information
-        times = self.get_all_time_values()
         summary += f"Meshes ({len(times)} timestamps):\n"
         if times:
             for time in times:
@@ -605,22 +634,53 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
             )
 
     def add_tree(
-        self, tree: CGNSTree, time: Optional[float] = None, in_place: bool = True
+        self,
+        tree: CGNSTree,
+        time: Optional[float] = None,
+        in_place: bool = False,
     ) -> CGNSTree:
         """Merge a CGNS tree into the tree stored at a given time.
 
-        If there is no tree at ``time``, ``tree`` is stored directly. Otherwise, Base
+        If there is no tree at ``time``, the added tree is stored as a whole. Otherwise, Base
         nodes from ``tree`` are appended only when their name does not already exist in
         the destination tree. Bases with duplicate names are ignored and a warning is
         emitted.
+
+        The ``Time/TimeValues`` metadata of every inserted base is set to ``[time]``,
+        so a tree reused from another time step is stored with the new timestamp. A
+        stale ``TimeValues`` array is replaced, not modified, and the source tree
+        keeps its own timestamp when ``in_place`` is ``False``.
+
+        NumPy arrays are reused in both modes, never copied. When ``in_place`` is
+        ``False``, the arrays of the inserted bases (including those in the caller's
+        tree) and new time metadata are marked read-only; arrays of ignored bases
+        keep their flags. To change shared data, store a new array instead of
+        writing into the current one. When ``True``, existing array flags are left
+        unchanged and new time metadata is writable.
+
+        The read-only flag is set on the arrays themselves, not on views created
+        earlier. A NumPy view that was already writable before the call can still
+        modify the shared data, and the change is then visible at every time step
+        that shares it. Copy the arrays first (for example with
+        ``copy.deepcopy(tree)``) when the time steps must stay independent.
+
+        Example:
+            .. code-block:: python
+
+                coords = CGU.getValueByPath(tree, path_to_coordinate_x)
+                view = coords[:]  # writable view, created before add_tree
+                sample.add_tree(tree, time=0.0)
+                sample.add_tree(tree, time=1.0)
+                coords[0] = 42.0  # ValueError: assignment destination is read-only
+                view[0] = 42.0  # changes the coordinates at both time steps
 
         Args:
             tree (CGNSTree): CGNS tree to add.
             time (float, optional): Time step at which the tree is added. If omitted,
                 the default time resolution is used.
             in_place (bool, optional): Controls ownership of the input tree. When
-                ``True`` (default), the provided object may be stored/used directly.
-                When ``False``, the input tree is deep-copied before insertion.
+                ``False`` (default), only the tree structure is recursively copied.
+                When ``True``, the provided structure may be used directly.
 
         Raises:
             ValueError: If ``tree`` is an empty list.
@@ -631,8 +691,15 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
         if tree == []:
             raise ValueError("CGNS Tree should not be an empty list")
 
-        if not in_place:
-            tree = deepcopy(tree)
+        def _copy_structure(node: CGNSNode) -> CGNSNode:
+            # Copy the node lists only: arrays are shared and frozen in place.
+            if isinstance(node[__VALUE__], np.ndarray):
+                node[__VALUE__].setflags(write=False)
+            node = node.copy()
+            node[__CHILDREN__] = [
+                _copy_structure(child) for child in node[__CHILDREN__]
+            ]
+            return node
 
         def _iter_node_names(node: CGNSNode) -> list[str]:
             names = []
@@ -651,32 +718,33 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
 
         time = self.resolve_time(time)
 
-        if not self.data:
-            self.data = {time: tree}
-        elif time not in self.data:
-            self.data[time] = tree
-        else:
+        if self.data and time in self.data:
             # TODO: gérer le cas où il y a des bases de mêmes noms... + merge
             # récursif des nœuds
             local_bases = self.get_base_names(time=time)
-            base_nodes = CGU.getNodesFromTypeSet(tree, "CGNSBase_t")
-            for _, node in base_nodes:
-                if node[__NAME__] not in local_bases:  # pragma: no cover
-                    self.data[time][__CHILDREN__].append(node)
-                else:
+            inserted_bases = []
+            for _, node in CGU.getNodesFromTypeSet(tree, "CGNSBase_t"):
+                if node[__NAME__] in local_bases:
                     logger.warning(
                         f"base <{node[__NAME__]}> already exists in self._tree --> ignored"
                     )
+                else:
+                    if not in_place:
+                        node = _copy_structure(node)
+                    inserted_bases.append(node)
+            self.data[time][__CHILDREN__].extend(inserted_bases)
+        else:
+            if not in_place:
+                tree = _copy_structure(tree)
+            if not self.data:
+                self.data = {}
+            self.data[time] = tree
+            inserted_bases = [
+                node for _, node in CGU.getNodesFromTypeSet(tree, "CGNSBase_t")
+            ]
 
-        base_names = self.get_base_names(time=time)
-        for base_name in base_names:
-            base_node = self.get_base(base_name, time=time)
-            if CGU.getValueByPath(base_node, "Time/TimeValues") is None:
-                baseIterativeData_node = CGL.newBaseIterativeData(base_node, "Time", 1)
-                TimeValues_node = CGU.newNode(
-                    "TimeValues", None, [], CGK.DataArray_ts, baseIterativeData_node
-                )
-                CGU.setValue(TimeValues_node, np.array([time]))
+        for base_node in inserted_bases:
+            _set_time_values(base_node, time, read_only=not in_place)
 
         return self.data[time]
 
@@ -811,17 +879,8 @@ class Sample(BaseModel, arbitrary_types_allowed=True, extra="forbid"):
                 self.data[time], base, topological_dim, physical_dim
             )
 
-        base_names = self.get_base_names(time=time)
-        for base in base_names:
-            base_node = self.get_base(base, time=time)
-            if CGU.getValueByPath(base_node, "Time/TimeValues") is None:
-                base_iterative_data_node = CGL.newBaseIterativeData(
-                    base_node, "Time", 1
-                )
-                time_values_node = CGU.newNode(
-                    "TimeValues", None, [], CGK.DataArray_ts, base_iterative_data_node
-                )
-                CGU.setValue(time_values_node, np.array([time]))
+        for base in self.get_base_names(time=time):
+            _set_time_values(self.get_base(base, time=time), time)
 
         return base_node
 
